@@ -43,7 +43,7 @@ export class GameEngine {
     // Initialize managers
     this.inputManager = new InputManager();
     this.sceneManager = new SceneManager(mountDiv);
-    this.effectsManager = new EffectsManager(this.sceneManager.getScene());
+    this.effectsManager = new EffectsManager(this.sceneManager.getScene(), this.sceneManager.getCamera());
     this.audioManager = new AudioManager();
     this.physicsManager = new PhysicsManager();
     
