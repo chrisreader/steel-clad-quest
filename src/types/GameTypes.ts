@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface Vector3 {
@@ -26,6 +25,8 @@ export interface PlayerBody {
   group: THREE.Group;
   leftArm: THREE.Group;
   rightArm: THREE.Group;
+  leftHand: THREE.Group;
+  rightHand: THREE.Group;
   leftLeg: THREE.Mesh;
   rightLeg: THREE.Mesh;
   body: THREE.Mesh;
