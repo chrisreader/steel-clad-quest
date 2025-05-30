@@ -570,8 +570,10 @@ export class GameEngine {
       console.log("🎮 [GameEngine] Pointer lock request:", type);
       
       if (type === 'requestPointerLock') {
+        console.log("🎮 [GameEngine] Calling InputManager.requestPointerLock()");
         this.inputManager.requestPointerLock();
       } else if (type === 'requestPointerUnlock') {
+        console.log("🎮 [GameEngine] Calling InputManager.exitPointerLock()");
         this.inputManager.exitPointerLock();
       }
       return;

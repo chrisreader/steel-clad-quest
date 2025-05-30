@@ -232,6 +232,8 @@ export class InputManager {
     this.pointerLocked = document.pointerLockElement === this.renderer?.domElement;
     
     console.log("🔒 [InputManager] Pointer lock state changed from", wasLocked, "to", this.pointerLocked);
+    console.log("🔒 [InputManager] Document.pointerLockElement:", document.pointerLockElement);
+    console.log("🔒 [InputManager] Renderer domElement:", this.renderer?.domElement);
     
     this.dispatchInputEvent('pointerLockChange', { locked: this.pointerLocked });
   }
@@ -467,7 +469,12 @@ export class InputManager {
         console.warn("Failed to request pointer lock:", error);
       }
     } else {
-      console.warn("Cannot request pointer lock - renderer, element missing, already locked, or element not in DOM");
+      console.warn("🔒 [InputManager] Cannot request pointer lock:", {
+        hasRenderer: !!this.renderer,
+        hasElement: !!this.renderer?.domElement,
+        alreadyLocked: this.pointerLocked,
+        inDOM: this.renderer?.domElement ? document.contains(this.renderer.domElement) : false
+      });
     }
   }
   
@@ -475,6 +482,8 @@ export class InputManager {
     if (this.pointerLocked) {
       console.log("🔒 [InputManager] Exiting pointer lock");
       document.exitPointerLock();
+    } else {
+      console.log("🔒 [InputManager] Cannot exit pointer lock - not currently locked");
     }
   }
   
