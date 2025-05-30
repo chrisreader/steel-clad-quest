@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { SceneManager } from './SceneManager';
 import { InputManager } from './InputManager';
@@ -126,20 +125,26 @@ export class GameEngine {
           speed: 5,
           attackPower: 10
         }),
-        update: (deltaTime: number) => {}
+        update: (deltaTime: number) => {},
+        move: (direction: THREE.Vector3, deltaTime: number) => {
+          console.log('Player moving:', direction, deltaTime);
+        },
+        startSprint: () => console.log('Player started sprinting'),
+        stopSprint: () => console.log('Player stopped sprinting'),
+        getSprinting: () => false
       };
+      
+      // Create input manager first
+      this.inputManager = new InputManager(this.sceneManager.getRenderer().domElement);
       
       // Now initialize the systems with proper dependencies
       const scene = this.sceneManager.getScene();
       const camera = this.sceneManager.getCamera();
       
-      if (scene && camera && this.player) {
-        this.movementSystem = new MovementSystem(scene, camera, this.player, this.inputManager!);
+      if (scene && camera && this.player && this.inputManager) {
+        this.movementSystem = new MovementSystem(scene, camera, this.player, this.inputManager);
         this.combatSystem = new CombatSystem(scene, this.player, this.effectsManager, this.audioManager);
       }
-      
-      // Create input manager
-      this.inputManager = new InputManager(this.sceneManager.getRenderer().domElement);
       
       console.log('🎮 [GameEngine] InputManager created');
       
@@ -246,36 +251,17 @@ export class GameEngine {
       return;
     }
     
+    // For movement inputs, we don't need to call setInput since MovementSystem 
+    // handles input directly through the InputManager
     switch (inputType) {
       case 'moveForward':
-        if (this.movementSystem && this.movementSystem.setInput) {
-          this.movementSystem.setInput('forward', true);
-        }
-        break;
       case 'moveBackward':
-        if (this.movementSystem && this.movementSystem.setInput) {
-          this.movementSystem.setInput('backward', true);
-        }
-        break;
       case 'moveLeft':
-        if (this.movementSystem && this.movementSystem.setInput) {
-          this.movementSystem.setInput('left', true);
-        }
-        break;
       case 'moveRight':
-        if (this.movementSystem && this.movementSystem.setInput) {
-          this.movementSystem.setInput('right', true);
-        }
-        break;
       case 'sprint':
-        if (this.movementSystem && this.movementSystem.setInput) {
-          this.movementSystem.setInput('sprint', true);
-        }
-        break;
       case 'jump':
-        if (this.movementSystem && this.movementSystem.setInput) {
-          this.movementSystem.setInput('jump', true);
-        }
+        // MovementSystem handles these inputs directly through InputManager
+        console.log(`🎮 [GameEngine] Movement input ${inputType} will be handled by MovementSystem`);
         break;
       case 'attack':
         // CRITICAL ADDITION: Additional safety check for attack input
@@ -409,9 +395,9 @@ export class GameEngine {
       this.player.update(deltaTime);
     }
     
-    // Update audio
+    // Update audio - AudioManager.update doesn't expect deltaTime
     if (this.audioManager && this.audioManager.update) {
-      this.audioManager.update(deltaTime);
+      this.audioManager.update();
     }
     
     // Update effects
