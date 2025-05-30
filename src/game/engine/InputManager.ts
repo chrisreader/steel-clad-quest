@@ -20,7 +20,7 @@ export class InputManager {
   private mouse: { x: number; y: number; buttons: number } = { x: 0, y: 0, buttons: 0 };
   private previousMouse: { x: number; y: number } = { x: 0, y: 0 };
   private pointerLocked: boolean = false;
-  private mouseSensitivity: number = 0.002;
+  private mouseSensitivity: number = 1.0;
   private lastMouseDown: number = 0;
   private doubleClickThreshold: number = 300;
   private doubleClickDistance: number = 10;
@@ -83,37 +83,40 @@ export class InputManager {
   public initialize(renderer: THREE.WebGLRenderer): void {
     this.renderer = renderer;
     console.log('InputManager initialized with renderer');
+    
+    // Add pointer lock change listener specifically for this canvas
+    if (renderer && renderer.domElement) {
+      console.log('Setting up pointer lock listeners for canvas');
+      document.addEventListener('pointerlockchange', this.onPointerLockChange);
+      document.addEventListener('pointerlockerror', this.handlePointerLockError.bind(this));
+    }
   }
   
   private detectDeviceType(): void {
-    // Detect touch device
     this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    
-    // Detect mobile device
     this.isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     console.log(`Device detection: Touch: ${this.isTouchDevice}, Mobile: ${this.isMobileDevice}`);
   }
   
   private setupEventListeners(): void {
+    console.log('Setting up input event listeners...');
+    
     // Keyboard events
-    document.addEventListener('keydown', this.handleKeyDown.bind(this));
-    document.addEventListener('keyup', this.handleKeyUp.bind(this));
+    document.addEventListener('keydown', this.handleKeyDown.bind(this), true);
+    document.addEventListener('keyup', this.handleKeyUp.bind(this), true);
     
     // Mouse events
-    document.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    document.addEventListener('mousedown', this.handleMouseDown.bind(this));
-    document.addEventListener('mouseup', this.handleMouseUp.bind(this));
-    document.addEventListener('wheel', this.handleMouseWheel.bind(this));
-    
-    // Pointer lock events
-    document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    document.addEventListener('mousemove', this.handleMouseMove.bind(this), true);
+    document.addEventListener('mousedown', this.handleMouseDown.bind(this), true);
+    document.addEventListener('mouseup', this.handleMouseUp.bind(this), true);
+    document.addEventListener('wheel', this.handleMouseWheel.bind(this), true);
     
     // Touch events for mobile
     if (this.isTouchDevice) {
-      document.addEventListener('touchstart', this.handleTouchStart.bind(this));
-      document.addEventListener('touchmove', this.handleTouchMove.bind(this));
-      document.addEventListener('touchend', this.handleTouchEnd.bind(this));
+      document.addEventListener('touchstart', this.handleTouchStart.bind(this), true);
+      document.addEventListener('touchmove', this.handleTouchMove.bind(this), true);
+      document.addEventListener('touchend', this.handleTouchEnd.bind(this), true);
     }
     
     // Context menu (prevent right-click menu)
@@ -121,12 +124,14 @@ export class InputManager {
     
     // Visibility change (pause when tab inactive)
     document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+    
+    console.log('Input event listeners set up successfully');
   }
   
   private handleKeyDown(event: KeyboardEvent): void {
-    // Prevent handling repeated keydown events (key held down)
     if (event.repeat) return;
     
+    console.log('Key pressed:', event.code);
     this.keys[event.code] = true;
     
     // Special case for sprint double-tap detection
@@ -135,7 +140,6 @@ export class InputManager {
       const timeSinceLastPress = now - this.lastWKeyPress;
       
       if (timeSinceLastPress < this.doubleTapWindow && timeSinceLastPress > 50) {
-        // Double-tap W detected
         this.dispatchInputEvent('doubleTapForward');
       }
       
@@ -147,6 +151,7 @@ export class InputManager {
   }
   
   private handleKeyUp(event: KeyboardEvent): void {
+    console.log('Key released:', event.code);
     this.keys[event.code] = false;
   }
   
@@ -163,20 +168,16 @@ export class InputManager {
     this.mouseMovement.x = event.movementX || 0;
     this.mouseMovement.y = event.movementY || 0;
     
-    // Always dispatch look event if there's movement, regardless of pointer lock
-    if (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0) {
-      console.log("Mouse movement detected:", this.mouseMovement.x, this.mouseMovement.y);
-      
-      // Dispatch look event with scaled movement
+    // Only dispatch look events if pointer is locked and there's movement
+    if (this.pointerLocked && (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0)) {
       this.dispatchInputEvent('look', {
-        x: this.mouseMovement.x * this.mouseSensitivity,
-        y: this.mouseMovement.y * this.mouseSensitivity
+        x: this.mouseMovement.x,
+        y: this.mouseMovement.y
       });
     }
   }
   
   private handleMouseDown(event: MouseEvent): void {
-    // Update mouse buttons state
     this.mouse.buttons |= (1 << event.button);
     
     console.log("Mouse button pressed:", event.button);
@@ -201,14 +202,9 @@ export class InputManager {
     // Handle specific buttons
     switch (event.button) {
       case 0: // Left mouse button
-        // Only request pointer lock if we have a valid renderer and element
-        if (!this.pointerLocked && this.renderer && this.renderer.domElement && document.contains(this.renderer.domElement)) {
-          try {
-            console.log("Requesting pointer lock from mouse down");
-            this.renderer.domElement.requestPointerLock();
-          } catch (error) {
-            console.warn("Failed to request pointer lock on mouse down:", error);
-          }
+        // Try to request pointer lock if not already locked
+        if (!this.pointerLocked && this.renderer && this.renderer.domElement) {
+          this.requestPointerLock();
         }
         this.dispatchInputEvent('attack');
         break;
@@ -222,10 +218,8 @@ export class InputManager {
   }
   
   private handleMouseUp(event: MouseEvent): void {
-    // Update mouse buttons state
     this.mouse.buttons &= ~(1 << event.button);
     
-    // Handle specific buttons
     switch (event.button) {
       case 0: // Left mouse button
         this.dispatchInputEvent('attackEnd');
@@ -250,17 +244,20 @@ export class InputManager {
     this.dispatchInputEvent('pointerLockChange', { locked: this.pointerLocked });
   }
   
+  private handlePointerLockError(): void {
+    console.error("Pointer lock request failed");
+    this.pointerLocked = false;
+  }
+  
   private handleTouchStart(event: TouchEvent): void {
     event.preventDefault();
     
-    // Store first touch info for swipe detection
     if (event.touches.length === 1) {
       const touch = event.touches[0];
       this.touchStartPosition.x = touch.clientX;
       this.touchStartPosition.y = touch.clientY;
       this.touchStartTime = Date.now();
       
-      // If touch is on the left side of screen, activate virtual joystick
       if (touch.clientX < window.innerWidth / 2) {
         this.virtualJoystick.active = true;
         this.virtualJoystick.center.x = touch.clientX;
@@ -271,11 +268,9 @@ export class InputManager {
         
         this.dispatchInputEvent('joystickStart');
       } else {
-        // Touch on right side - camera look or attack
         this.dispatchInputEvent('attack');
       }
     } else if (event.touches.length === 2) {
-      // Two finger touch - could be used for pinch zoom or other actions
       this.dispatchInputEvent('twoFingerTouch');
     }
   }
@@ -283,7 +278,6 @@ export class InputManager {
   private handleTouchMove(event: TouchEvent): void {
     event.preventDefault();
     
-    // Handle joystick movement
     if (this.virtualJoystick.active) {
       for (let i = 0; i < event.touches.length; i++) {
         const touch = event.touches[i];
@@ -292,15 +286,12 @@ export class InputManager {
           this.virtualJoystick.current.x = touch.clientX;
           this.virtualJoystick.current.y = touch.clientY;
           
-          // Calculate joystick direction and magnitude
           const deltaX = this.virtualJoystick.current.x - this.virtualJoystick.center.x;
           const deltaY = this.virtualJoystick.current.y - this.virtualJoystick.center.y;
           const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
           
-          // Normalize and clamp distance
           const normalizedDistance = Math.min(distance, this.virtualJoystick.maxDistance) / this.virtualJoystick.maxDistance;
           
-          // Calculate direction
           let angle = Math.atan2(deltaY, deltaX);
           
           this.dispatchInputEvent('joystickMove', {
@@ -315,12 +306,10 @@ export class InputManager {
       }
     }
     
-    // Handle right side touch for camera control
     for (let i = 0; i < event.touches.length; i++) {
       const touch = event.touches[i];
       
       if (touch.clientX > window.innerWidth / 2) {
-        // Calculate delta from center of right half
         const centerX = window.innerWidth * 0.75;
         const centerY = window.innerHeight * 0.5;
         const deltaX = (touch.clientX - centerX) * this.mouseSensitivity * 0.5;
@@ -334,16 +323,13 @@ export class InputManager {
   private handleTouchEnd(event: TouchEvent): void {
     event.preventDefault();
     
-    // Check if all touches are gone
     if (event.touches.length === 0) {
-      // End joystick movement
       if (this.virtualJoystick.active) {
         this.virtualJoystick.active = false;
         this.virtualJoystick.id = null;
         this.dispatchInputEvent('joystickEnd');
       }
       
-      // Check for tap (quick touch)
       const touchDuration = Date.now() - this.touchStartTime;
       if (touchDuration < this.touchTapThreshold) {
         this.dispatchInputEvent('tap', {
@@ -353,12 +339,10 @@ export class InputManager {
         });
       }
       
-      // End attack if on right side
       if (this.touchStartPosition.x > window.innerWidth / 2) {
         this.dispatchInputEvent('attackEnd');
       }
     } else {
-      // Check if joystick touch ended but other touches remain
       let joystickTouchFound = false;
       
       for (let i = 0; i < event.touches.length; i++) {
@@ -378,7 +362,6 @@ export class InputManager {
   
   private handleVisibilityChange(): void {
     if (document.hidden) {
-      // Page is hidden, reset all inputs
       this.resetAllInputs();
       this.dispatchInputEvent('visibilityChange', { visible: false });
     } else {
@@ -387,25 +370,22 @@ export class InputManager {
   }
   
   private resetAllInputs(): void {
-    // Reset all keys
     for (const key in this.keys) {
       this.keys[key] = false;
     }
     
-    // Reset mouse
     this.mouse.buttons = 0;
     this.mouseMovement.x = 0;
     this.mouseMovement.y = 0;
     
-    // Reset joystick
     this.virtualJoystick.active = false;
     this.virtualJoystick.id = null;
   }
   
   private checkActionBindings(keyCode: string): void {
-    // Check for matches with key bindings
     for (const [action, keyCodes] of Object.entries(this.keyBindings)) {
       if (keyCodes.includes(keyCode)) {
+        console.log('Action triggered:', action);
         this.dispatchInputEvent(action);
       }
     }
@@ -493,15 +473,13 @@ export class InputManager {
   }
   
   public requestPointerLock(): void {
-    if (this.renderer && this.renderer.domElement && !this.pointerLocked && document.contains(this.renderer.domElement)) {
+    if (this.renderer && this.renderer.domElement && !this.pointerLocked) {
       try {
-        console.log("Requesting pointer lock");
+        console.log("Requesting pointer lock on canvas");
         this.renderer.domElement.requestPointerLock();
       } catch (error) {
-        console.warn("Failed to request pointer lock:", error);
+        console.error("Failed to request pointer lock:", error);
       }
-    } else {
-      console.warn("Cannot request pointer lock - renderer, element missing, already locked, or element not in DOM");
     }
   }
   
@@ -524,6 +502,8 @@ export class InputManager {
   }
   
   public dispose(): void {
+    console.log('Disposing InputManager...');
+    
     // Clean up event listeners
     document.removeEventListener('keydown', this.handleKeyDown);
     document.removeEventListener('keyup', this.handleKeyUp);
@@ -532,10 +512,16 @@ export class InputManager {
     document.removeEventListener('mouseup', this.handleMouseUp);
     document.removeEventListener('wheel', this.handleMouseWheel);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
-    document.removeEventListener('touchstart', this.handleTouchStart);
-    document.removeEventListener('touchmove', this.handleTouchMove);
-    document.removeEventListener('touchend', this.handleTouchEnd);
-    document.removeEventListener('contextmenu', (e) => e.preventDefault());
+    document.removeEventListener('pointerlockerror', this.handlePointerLockError);
+    
+    if (this.isTouchDevice) {
+      document.removeEventListener('touchstart', this.handleTouchStart);
+      document.removeEventListener('touchmove', this.handleTouchMove);
+      document.removeEventListener('touchend', this.handleTouchEnd);
+    }
+    
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    
+    console.log('InputManager disposed');
   }
 }
