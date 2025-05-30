@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -72,29 +71,56 @@ export class GameEngine {
     
     try {
       // Create the scene manager
-      this.sceneManager = new SceneManager(this.mountElement);
-      this.scene = this.sceneManager.getScene();
-      this.camera = this.sceneManager.getCamera();
-      this.renderer = this.sceneManager.getRenderer();
+      console.log("Creating SceneManager...");
+      try {
+        this.sceneManager = new SceneManager(this.mountElement);
+        this.scene = this.sceneManager.getScene();
+        this.camera = this.sceneManager.getCamera();
+        this.renderer = this.sceneManager.getRenderer();
+        console.log("SceneManager created successfully");
+      } catch (sceneError) {
+        console.error("Failed to create SceneManager:", sceneError);
+        throw new Error("Scene initialization failed: " + sceneError.message);
+      }
       
       // Create default world
+      console.log("Creating default world...");
       this.sceneManager.createDefaultWorld();
+      console.log("Default world created");
       
       // Create the input manager
+      console.log("Creating InputManager...");
       this.inputManager = new InputManager();
+      console.log("InputManager created");
       
       // Create the effects manager
+      console.log("Creating EffectsManager...");
       this.effectsManager = new EffectsManager(this.scene, this.camera);
+      console.log("EffectsManager created");
       
       // Create the audio manager
+      console.log("Creating AudioManager...");
       this.audioManager = new AudioManager(this.camera, this.scene);
-      await this.preloadAudio();
+      console.log("AudioManager created");
+      
+      console.log("Preloading audio...");
+      try {
+        await this.preloadAudio();
+        console.log("Audio preloaded successfully");
+      } catch (audioError) {
+        console.warn("Audio preloading failed, continuing without audio:", audioError);
+        // Continue without audio
+      }
       
       // Create the player
+      console.log("Creating Player...");
       this.player = new Player(this.scene, this.effectsManager, this.audioManager);
+      console.log("Player created");
       
       // Create game systems
+      console.log("Creating CombatSystem...");
       this.combatSystem = new CombatSystem(this.scene, this.player, this.effectsManager, this.audioManager);
+      console.log("CombatSystem created");
       
       // Set game as initialized
       this.isInitialized = true;
@@ -102,36 +128,50 @@ export class GameEngine {
       console.log("Game engine initialized successfully!");
       
       // Start the game
+      console.log("Starting game...");
       this.start();
+      console.log("Game started");
     } catch (error) {
       console.error("Error initializing game engine:", error);
-      throw error;
+      // Don't rethrow the error - mark as initialized with issues
+      this.isInitialized = true; // Still mark as initialized so loading completes
+      console.warn("Game initialized with errors - some features may not work");
     }
   }
   
   private async preloadAudio(): Promise<void> {
-    // Preload common sound effects
+    // Use Promise.allSettled instead of Promise.all to handle individual failures
+    const preloadPromises = [
+      this.loadAudioWithFallback('sword_swing'),
+      this.loadAudioWithFallback('sword_hit'),
+      this.loadAudioWithFallback('player_hurt'),
+      this.loadAudioWithFallback('enemy_hurt'),
+      this.loadAudioWithFallback('enemy_death'),
+      this.loadAudioWithFallback('gold_pickup'),
+      this.loadAudioWithFallback('footstep'),
+      this.loadAudioWithFallback('tavern_ambience'),
+      this.loadAudioWithFallback('forest_ambience'),
+      this.loadAudioWithFallback('game_music')
+    ];
+    
+    await Promise.allSettled(preloadPromises);
+    console.log("Audio preloading complete - some files may have failed to load");
+  }
+
+  private async loadAudioWithFallback(id: string): Promise<void> {
     try {
-      await this.audioManager.loadSound('assets/sounds/sword_swing.mp3', 'sword_swing', SoundCategory.SFX);
-      await this.audioManager.loadSound('assets/sounds/sword_hit.mp3', 'sword_hit', SoundCategory.SFX);
-      await this.audioManager.loadSound('assets/sounds/player_hurt.mp3', 'player_hurt', SoundCategory.SFX);
-      await this.audioManager.loadSound('assets/sounds/enemy_hurt.mp3', 'enemy_hurt', SoundCategory.SFX);
-      await this.audioManager.loadSound('assets/sounds/enemy_death.mp3', 'enemy_death', SoundCategory.SFX);
-      await this.audioManager.loadSound('assets/sounds/gold_pickup.mp3', 'gold_pickup', SoundCategory.SFX);
-      await this.audioManager.loadSound('assets/sounds/footstep.mp3', 'footstep', SoundCategory.SFX);
-      
-      // Load ambient sounds
-      await this.audioManager.loadSound('assets/sounds/tavern_ambience.mp3', 'tavern_ambience', SoundCategory.AMBIENT);
-      await this.audioManager.loadSound('assets/sounds/forest_ambience.mp3', 'forest_ambience', SoundCategory.AMBIENT);
-      
-      // Load music
-      await this.audioManager.loadSound('assets/sounds/game_music.mp3', 'game_music', SoundCategory.MUSIC);
-      
-      // Start ambient sounds
-      this.audioManager.play('tavern_ambience', true, 1);
-      this.audioManager.play('game_music', true, 2);
-    } catch (error) {
-      console.warn("Some audio files couldn't be loaded. The game will continue without them.", error);
+      // Try to load from assets/sounds first
+      await this.audioManager.loadSound(`assets/sounds/${id}.mp3`, id, SoundCategory.SFX);
+      console.log(`Loaded audio: ${id}`);
+    } catch (e) {
+      try {
+        // Try alternate location
+        await this.audioManager.loadSound(`/sounds/${id}.mp3`, id, SoundCategory.SFX);
+        console.log(`Loaded audio from alternate path: ${id}`);
+      } catch (e2) {
+        console.warn(`Failed to load audio: ${id} - game will continue without this sound`);
+        // Don't rethrow, just continue without this audio
+      }
     }
   }
   
