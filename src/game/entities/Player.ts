@@ -255,7 +255,7 @@ export class Player {
     const baseShoulder = Math.PI / 8; // Natural shoulder position
     
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder * 1.95, // Pushed back 50% more to hide cylinder top from first-person view
+      baseShoulder * 2.925, // Pushed back 50% more to hide cylinder top from first-person view
       -0.6, // Extended outward horizontally to reach bow handle
       0.3   // Upward angle for proper grip positioning
     );
@@ -272,7 +272,7 @@ export class Player {
     
     // Enhanced arm rotations during draw - both shoulders at same level
     this.bowDrawAnimation.leftArmDrawRotation.set(
-      baseShoulder * 1.95, // Left arm stays pushed back 50% more
+      baseShoulder * 2.925, // Left arm stays pushed back 50% more
       -0.6, // Maintain horizontal extension
       0.3   // Maintain grip angle
     );
@@ -287,7 +287,7 @@ export class Player {
     this.bowDrawAnimation.bowRestRotation.set(0, Math.PI / 2, 0);
     this.bowDrawAnimation.bowDrawRotation.set(0, Math.PI / 2, 0);
     
-    console.log("🏹 [Player] FIXED: Left shoulder pushed back 50% more (1.95x) to hide cylinder top from first-person view");
+    console.log("🏹 [Player] FIXED: Left shoulder pushed back 50% more (2.925x) to hide cylinder top from first-person view");
   }
   
   public equipWeapon(weaponId: string): boolean {
