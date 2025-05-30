@@ -74,16 +74,29 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const [engineReady, setEngineReady] = useState(false);
   const [mountReady, setMountReady] = useState(false);
   
-  // Moved inventory state management to KnightGame (top level)
+  // Start with empty inventory - no starting weapon in inventory
   const [inventory, setInventory] = useState<Item[]>([]);
 
-  // Add weapon slot state - moved to top to avoid hooks order issues
+  // Start with Steel Sword already equipped in mainhand slot
   const [activeWeaponSlot, setActiveWeaponSlot] = useState<1 | 2>(1);
   const [equippedWeapons, setEquippedWeapons] = useState<{
     mainhand: Item | null;
     offhand: Item | null;
   }>({
-    mainhand: null,
+    mainhand: {
+      id: '1', 
+      name: 'Steel Sword', 
+      type: 'weapon' as const, 
+      subtype: 'sword' as const,
+      value: 200, 
+      description: 'A masterfully forged steel blade with razor-sharp edges. This superior weapon offers exceptional balance and deadly precision in combat (+15 attack)', 
+      quantity: 1,
+      equipmentSlot: 'mainhand' as const,
+      stats: { attack: 15 },
+      tier: 'uncommon' as const,
+      icon: 'sword',
+      weaponId: 'steel_sword'
+    },
     offhand: null
   });
 
@@ -96,38 +109,9 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     isAnyUIOpen
   });
 
-  // Initialize inventory immediately on component mount (like normal games)
+  // Log the initial setup
   useEffect(() => {
-    console.log('[KnightGame] Initializing inventory on mount...');
-    
-    // Only the Steel Sword - the player's starting weapon
-    const initialInventory: Item[] = [
-      { 
-        id: '1', 
-        name: 'Steel Sword', 
-        type: 'weapon' as const, 
-        subtype: 'sword' as const,
-        value: 200, 
-        description: 'A masterfully forged steel blade with razor-sharp edges. This superior weapon offers exceptional balance and deadly precision in combat (+15 attack)', 
-        quantity: 1,
-        equipmentSlot: 'mainhand' as const,
-        stats: { attack: 15 },
-        tier: 'uncommon' as const,
-        icon: 'sword',
-        weaponId: 'steel_sword'
-      }
-    ];
-
-    setInventory(initialInventory);
-    
-    // Automatically equip the starting weapon in slot 1
-    setEquippedWeapons({
-      mainhand: initialInventory[0],
-      offhand: null
-    });
-    setActiveWeaponSlot(1);
-    
-    console.log('[KnightGame] Inventory initialized with Steel Sword equipped in mainhand');
+    console.log('[KnightGame] Initial setup - Steel Sword equipped in mainhand, empty inventory');
   }, []); // Empty dependency array - runs once on mount
 
   // Sync equipped weapons with game engine when weapons or game engine changes
@@ -329,7 +313,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const startGame = useCallback(() => {
     console.log('Starting knight adventure...');
     console.log('GameEngine available:', !!gameEngine);
-    console.log('Inventory ready with', inventory.length, 'items');
+    console.log('Starting with Steel Sword equipped in mainhand');
     
     if (gameEngine) {
       console.log('Starting GameEngine...');
@@ -341,7 +325,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     
     setGameStarted(true);
     setIsGameOver(false);
-  }, [gameEngine, inventory.length, setGameStarted, setIsGameOver]);
+  }, [gameEngine, setGameStarted, setIsGameOver]);
 
   const restartGame = useCallback(() => {
     gameControllerRef.current?.restartGame();
