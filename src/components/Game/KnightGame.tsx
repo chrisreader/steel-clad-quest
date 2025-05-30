@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -105,6 +104,15 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     });
     return uiOpen;
   }, [showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, isPaused]);
+
+  // CRITICAL ADDITION: Notify GameEngine about UI state changes
+  useEffect(() => {
+    if (!gameEngine) return;
+    
+    const anyUIOpen = isAnyUIOpen();
+    console.log(`🎮 [KnightGame] Notifying GameEngine - UI state: ${anyUIOpen ? 'OPEN' : 'CLOSED'}`);
+    gameEngine.setUIState(anyUIOpen);
+  }, [gameEngine, isAnyUIOpen]);
 
   // Enhanced pointer lock management with better debugging and fallbacks
   useEffect(() => {

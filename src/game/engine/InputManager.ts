@@ -157,14 +157,16 @@ export class InputManager {
     this.mouseMovement.x = event.movementX || 0;
     this.mouseMovement.y = event.movementY || 0;
     
-    // Dispatch look event with unscaled movement (scaling will be done in GameEngine)
-    if (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0) {
-      console.log("Mouse movement detected:", this.mouseMovement.x, this.mouseMovement.y);
+    // CRITICAL FIX: Only dispatch look events when pointer is actually locked
+    if (this.pointerLocked && (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0)) {
+      console.log("🖱️ [InputManager] Mouse movement dispatched (pointer locked):", this.mouseMovement.x, this.mouseMovement.y);
       
       this.dispatchInputEvent('look', {
         x: this.mouseMovement.x,
         y: this.mouseMovement.y
       });
+    } else if (!this.pointerLocked && (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0)) {
+      console.log("🖱️ [InputManager] Mouse movement ignored (pointer not locked):", this.mouseMovement.x, this.mouseMovement.y);
     }
   }
   
@@ -229,7 +231,7 @@ export class InputManager {
     const wasLocked = this.pointerLocked;
     this.pointerLocked = document.pointerLockElement === this.renderer?.domElement;
     
-    console.log("Pointer lock state changed from", wasLocked, "to", this.pointerLocked);
+    console.log("🔒 [InputManager] Pointer lock state changed from", wasLocked, "to", this.pointerLocked);
     
     this.dispatchInputEvent('pointerLockChange', { locked: this.pointerLocked });
   }
@@ -459,7 +461,7 @@ export class InputManager {
   public requestPointerLock(): void {
     if (this.renderer && this.renderer.domElement && !this.pointerLocked && document.contains(this.renderer.domElement)) {
       try {
-        console.log("Requesting pointer lock");
+        console.log("🔒 [InputManager] Requesting pointer lock");
         this.renderer.domElement.requestPointerLock();
       } catch (error) {
         console.warn("Failed to request pointer lock:", error);
@@ -471,6 +473,7 @@ export class InputManager {
   
   public exitPointerLock(): void {
     if (this.pointerLocked) {
+      console.log("🔒 [InputManager] Exiting pointer lock");
       document.exitPointerLock();
     }
   }

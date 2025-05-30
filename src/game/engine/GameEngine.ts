@@ -36,6 +36,9 @@ export class GameEngine {
   // Movement state
   private isMoving: boolean = false;
   
+  // UI state tracking - CRITICAL ADDITION
+  private isUIOpen: boolean = false;
+  
   // First-person camera controls
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private mouseSensitivity: number = 0.002;
@@ -75,6 +78,12 @@ export class GameEngine {
       score: 0,
       timeElapsed: 0
     };
+  }
+  
+  // NEW METHOD: Set UI state from KnightGame
+  public setUIState(isUIOpen: boolean): void {
+    console.log(`🎮 [GameEngine] UI state changed to: ${isUIOpen ? 'OPEN' : 'CLOSED'}`);
+    this.isUIOpen = isUIOpen;
   }
   
   public async initialize(): Promise<void> {
@@ -294,7 +303,13 @@ export class GameEngine {
   }
   
   private handleMouseLook(deltaX: number, deltaY: number): void {
-    console.log("Handling mouse look:", deltaX, deltaY);
+    // CRITICAL FIX: Ignore mouse look when UI is open
+    if (this.isUIOpen) {
+      console.log(`🚫 [GameEngine] Mouse look ignored - UI is open (deltaX: ${deltaX}, deltaY: ${deltaY})`);
+      return;
+    }
+    
+    console.log("📹 [GameEngine] Processing mouse look:", deltaX, deltaY);
     
     // Update yaw (left/right rotation)
     this.cameraRotation.yaw -= deltaX * this.mouseSensitivity;
