@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
 import { GameMenu } from './UI/GameMenu';
 import { GameControls } from './UI/GameControls';
-import { InventoryUI } from './UI/InventoryUI';
+import { InventorySystem } from './systems/InventorySystem';
 import { SkillTreeUI } from './UI/SkillTreeUI';
 import { QuestLogUI } from './UI/QuestLogUI';
 import { CraftingUI } from './UI/CraftingUI';
@@ -12,9 +13,11 @@ import PlayerStatsPanel from './UI/PlayerStatsPanel';
 import GameEngineController from './GameEngineController';
 import GameController, { GameControllerRef } from './GameController';
 import { GameEngine } from '../../game/engine/GameEngine';
-import { Item, Quest, Skill } from '../../types/GameTypes';
+import { Item } from '../../types/GameTypes';
 import { useGameState } from './hooks/useGameState';
 import { useUIState } from './hooks/useUIState';
+import { useWeaponManagement } from './hooks/useWeaponManagement';
+import { useGameManager } from './hooks/useGameManager';
 import { useCursorManagement } from './hooks/useCursorManagement';
 import { useInputHandling } from './hooks/useInputHandling';
 
@@ -70,19 +73,26 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     closeAllUIs
   } = useUIState();
 
-  const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);
-  const [engineReady, setEngineReady] = useState(false);
-  const [mountReady, setMountReady] = useState(false);
-  
-  // Start with empty inventory - no starting weapon in inventory
-  const [inventory, setInventory] = useState<Item[]>([]);
+  // Use the game manager hook
+  const {
+    gameEngine,
+    engineReady,
+    inventory,
+    setGameEngine,
+    setEngineReady,
+    handleEngineReady,
+    handleUseItem
+  } = useGameManager();
 
-  // Start with Steel Sword already equipped in mainhand slot
-  const [activeWeaponSlot, setActiveWeaponSlot] = useState<1 | 2>(1);
-  const [equippedWeapons, setEquippedWeapons] = useState<{
-    mainhand: Item | null;
-    offhand: Item | null;
-  }>({
+  // Use weapon management hook with Steel Sword pre-equipped
+  const {
+    equippedWeapons,
+    setEquippedWeapons,
+    activeWeaponSlot,
+    handleEquipWeapon,
+    handleUnequipWeapon,
+    handleWeaponSlotSelect
+  } = useWeaponManagement({
     mainhand: {
       id: '1', 
       name: 'Steel Sword', 
@@ -100,6 +110,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     offhand: null
   });
 
+  const [mountReady, setMountReady] = useState(false);
   const gameControllerRef = useRef<GameControllerRef>(null);
   const engineControllerRef = useRef<GameEngineControllerRef>(null);
 
@@ -159,7 +170,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     setGameEngine(engine || null);
     console.log('GameEngine instance set:', !!engine);
     onLoadingComplete?.();
-  }, [onLoadingComplete]);
+  }, [onLoadingComplete, setEngineReady, setGameEngine]);
 
   // Toggle pause function
   const togglePause = useCallback(() => {
@@ -230,85 +241,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       }, 100);
     }
   }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen, forceCursorVisible]);
-
-  // Direct item use handler (simplified)
-  const handleUseItem = useCallback((item: Item) => {
-    console.log('[KnightGame] Using item:', item.name);
-    
-    if (item.type === 'potion' && item.name === 'Health Potion') {
-      console.log(`Used ${item.name}`);
-      if (gameEngine) {
-        const player = gameEngine.getPlayer();
-        player.heal(item.value);
-        gameEngine.handleInput('playSound', { soundName: 'item_use' });
-      }
-    }
-  }, [gameEngine]);
-
-  // Enhanced weapon slot selection handler
-  const handleWeaponSlotSelect = useCallback((slot: 1 | 2) => {
-    console.log(`[KnightGame] Switching to weapon slot ${slot}`);
-    setActiveWeaponSlot(slot);
-    
-    if (gameEngine) {
-      const player = gameEngine.getPlayer();
-      
-      // Get the weapon for the selected slot
-      const targetWeapon = slot === 1 ? equippedWeapons.mainhand : equippedWeapons.offhand;
-      
-      if (targetWeapon && targetWeapon.weaponId) {
-        console.log(`[KnightGame] Equipping weapon: ${targetWeapon.name} from slot ${slot}`);
-        player.equipWeapon(targetWeapon.weaponId);
-      } else {
-        console.log(`[KnightGame] Slot ${slot} is empty - unequipping current weapon`);
-        player.unequipWeapon();
-      }
-    }
-  }, [gameEngine, equippedWeapons]);
-
-  // Enhanced weapon equip handler that updates equipped weapons state
-  const handleEquipWeapon = useCallback((item: Item) => {
-    console.log('[KnightGame] Equipping weapon:', item.name);
-    
-    if (gameEngine && item.weaponId) {
-      const player = gameEngine.getPlayer();
-      
-      // Determine which slot to equip to based on item's equipment slot
-      const targetSlot = item.equipmentSlot === 'offhand' ? 2 : 1;
-      
-      // Update equipped weapons state
-      setEquippedWeapons(prev => ({
-        ...prev,
-        [item.equipmentSlot]: item
-      }));
-      
-      // Set the active slot to the newly equipped weapon's slot
-      setActiveWeaponSlot(targetSlot);
-      
-      // The useEffect will handle the actual equipping in the game engine
-      
-      console.log(`Successfully equipped ${item.name} in ${item.equipmentSlot} slot`);
-    }
-  }, [gameEngine]);
-
-  // Enhanced weapon unequip handler
-  const handleUnequipWeapon = useCallback(() => {
-    console.log('[KnightGame] Unequipping weapon from active slot');
-    
-    if (gameEngine) {
-      const player = gameEngine.getPlayer();
-      
-      // Unequip from the currently active slot
-      if (activeWeaponSlot === 1) {
-        setEquippedWeapons(prev => ({ ...prev, mainhand: null }));
-      } else {
-        setEquippedWeapons(prev => ({ ...prev, offhand: null }));
-      }
-      
-      // The useEffect will handle the actual unequipping in the game engine
-      console.log(`Weapon unequipped from slot ${activeWeaponSlot}`);
-    }
-  }, [gameEngine, activeWeaponSlot]);
 
   const startGame = useCallback(() => {
     console.log('Starting knight adventure...');
@@ -456,8 +388,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         onClose={() => setShowStatsPanel(false)}
       />
 
-      {/* Updated inventory with equipped weapons sync */}
-      <InventoryUI
+      {/* Updated inventory system */}
+      <InventorySystem
         items={inventory}
         isOpen={showInventory}
         onClose={toggleInventory}
