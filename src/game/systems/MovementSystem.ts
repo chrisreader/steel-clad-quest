@@ -75,8 +75,23 @@ export class MovementSystem {
       const speed = this.player.getSprinting() ? 1.5 : 1.0;
       moveDirection.multiplyScalar(speed);
       
-      // Move player
-      this.player.move(moveDirection, deltaTime);
+      // Transform movement direction relative to camera rotation (first-person)
+      const cameraDirection = new THREE.Vector3();
+      this.camera.getWorldDirection(cameraDirection);
+      
+      // Calculate right vector (perpendicular to camera direction)
+      const rightVector = new THREE.Vector3().crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0)).normalize();
+      
+      // Calculate forward vector (camera direction but without Y component for ground movement)
+      const forwardVector = new THREE.Vector3(cameraDirection.x, 0, cameraDirection.z).normalize();
+      
+      // Apply movement relative to camera orientation
+      const worldMoveDirection = new THREE.Vector3();
+      worldMoveDirection.addScaledVector(forwardVector, -moveDirection.z); // Forward/backward
+      worldMoveDirection.addScaledVector(rightVector, moveDirection.x); // Left/right
+      
+      // Move player in world space
+      this.player.move(worldMoveDirection, deltaTime);
     }
   }
   

@@ -36,6 +36,11 @@ export class GameEngine {
   // Movement state
   private isMoving: boolean = false;
   
+  // First-person camera controls
+  private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
+  private mouseSensitivity: number = 0.002;
+  private maxPitch: number = Math.PI / 2 - 0.1; // Prevent over-rotation
+  
   // Callbacks
   private onUpdateHealth: (health: number) => void;
   private onUpdateGold: (gold: number) => void;
@@ -97,6 +102,9 @@ export class GameEngine {
       this.inputManager.initialize(this.renderer);
       console.log("InputManager created");
       
+      // Setup mouse look controls
+      this.setupMouseLookControls();
+      
       // Create the effects manager
       console.log("Creating EffectsManager...");
       this.effectsManager = new EffectsManager(this.scene, this.camera);
@@ -121,6 +129,9 @@ export class GameEngine {
       this.player = new Player(this.scene, this.effectsManager, this.audioManager);
       console.log("Player created at position:", this.player.getPosition());
       
+      // Hide player model for first-person view
+      this.player.getGroup().visible = false;
+      
       // Create game systems
       console.log("Creating CombatSystem...");
       this.combatSystem = new CombatSystem(this.scene, this.player, this.effectsManager, this.audioManager);
@@ -131,12 +142,8 @@ export class GameEngine {
       this.movementSystem = new MovementSystem(this.scene, this.camera, this.player, this.inputManager);
       console.log("MovementSystem created");
       
-      // Set proper initial camera position for third-person view
-      const playerPosition = this.player.getPosition();
-      this.camera.position.set(playerPosition.x, playerPosition.y + 5, playerPosition.z + 8);
-      this.camera.lookAt(playerPosition.x, playerPosition.y + 1, playerPosition.z);
-      console.log("Camera positioned at:", this.camera.position);
-      console.log("Camera looking at:", playerPosition.x, playerPosition.y + 1, playerPosition.z);
+      // Set first-person camera position
+      this.setupFirstPersonCamera();
       
       // Log scene children to verify scene content
       console.log("Scene has", this.scene.children.length, "children");
@@ -157,6 +164,72 @@ export class GameEngine {
       this.isInitialized = true; // Still mark as initialized so loading completes
       console.warn("Game initialized with errors - some features may not work");
     }
+  }
+  
+  private setupFirstPersonCamera(): void {
+    const playerPosition = this.player.getPosition();
+    
+    // Position camera at player's eye level
+    this.camera.position.set(playerPosition.x, playerPosition.y + 1.7, playerPosition.z);
+    
+    // Reset camera rotation
+    this.cameraRotation.pitch = 0;
+    this.cameraRotation.yaw = 0;
+    
+    // Apply initial rotation
+    this.updateCameraRotation();
+    
+    console.log("First-person camera set up at:", this.camera.position);
+  }
+  
+  private setupMouseLookControls(): void {
+    // Listen for mouse look input
+    document.addEventListener('gameInput', (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { type, data } = customEvent.detail;
+      
+      if (type === 'look' && this.inputManager.isPointerLocked()) {
+        this.handleMouseLook(data.x, data.y);
+      }
+      
+      if (type === 'pointerLockChange') {
+        console.log("Pointer lock changed:", data.locked);
+      }
+    });
+    
+    // Request pointer lock on canvas click
+    this.renderer.domElement.addEventListener('click', () => {
+      if (!this.inputManager.isPointerLocked()) {
+        this.inputManager.requestPointerLock();
+      }
+    });
+  }
+  
+  private handleMouseLook(deltaX: number, deltaY: number): void {
+    // Update yaw (left/right rotation)
+    this.cameraRotation.yaw -= deltaX * this.mouseSensitivity;
+    
+    // Update pitch (up/down rotation) with clamping
+    this.cameraRotation.pitch -= deltaY * this.mouseSensitivity;
+    this.cameraRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.cameraRotation.pitch));
+    
+    // Apply rotation to camera
+    this.updateCameraRotation();
+  }
+  
+  private updateCameraRotation(): void {
+    // Create rotation quaternion from pitch and yaw
+    const pitchQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.cameraRotation.pitch);
+    const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.cameraRotation.yaw);
+    
+    // Combine rotations (yaw first, then pitch)
+    const finalQuaternion = new THREE.Quaternion().multiplyQuaternions(yawQuaternion, pitchQuaternion);
+    
+    // Apply rotation to camera
+    this.camera.quaternion.copy(finalQuaternion);
+    
+    // Update player rotation to match camera yaw for movement
+    this.player.setRotation(this.cameraRotation.yaw);
   }
   
   private async preloadAudio(): Promise<void> {
@@ -260,8 +333,8 @@ export class GameEngine {
     // Update player with movement information
     this.player.update(deltaTime, this.isMoving);
     
-    // Update camera to follow player
-    this.updateCamera();
+    // Update camera to follow player (first-person)
+    this.updateFirstPersonCamera();
     
     // Check location changes
     this.checkLocationChanges();
@@ -270,21 +343,13 @@ export class GameEngine {
     this.checkGameOver();
   }
   
-  private updateCamera(): void {
+  private updateFirstPersonCamera(): void {
     const playerPosition = this.player.getPosition();
     
-    // Follow player with some offset - adjusted for better third-person view
-    const targetX = playerPosition.x;
-    const targetZ = playerPosition.z + 8;
-    const targetY = playerPosition.y + 5;
+    // Keep camera at player's eye level
+    this.camera.position.set(playerPosition.x, playerPosition.y + 1.7, playerPosition.z);
     
-    // Smooth camera following
-    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetX, 0.1);
-    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetZ, 0.1);
-    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetY, 0.1);
-    
-    // Look at player (slightly above player position)
-    this.camera.lookAt(playerPosition.x, playerPosition.y + 1, playerPosition.z);
+    // Camera rotation is handled by mouse look controls
   }
   
   private checkLocationChanges(): void {
@@ -334,9 +399,8 @@ export class GameEngine {
     // Clear enemies and gold
     this.combatSystem.clear();
     
-    // Reset camera position
-    this.camera.position.set(0, 5, 8);
-    this.camera.lookAt(0, 0, 0);
+    // Reset first-person camera
+    this.setupFirstPersonCamera();
     
     // Restart clock
     this.clock.start();
