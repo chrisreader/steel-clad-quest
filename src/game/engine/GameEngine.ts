@@ -87,6 +87,9 @@ export class GameEngine {
         this.camera = this.sceneManager.getCamera();
         this.renderer = this.sceneManager.getRenderer();
         console.log("SceneManager created successfully");
+        console.log("Scene created with", this.scene.children.length, "initial children");
+        console.log("Camera position:", this.camera.position);
+        console.log("Renderer size:", this.renderer.getSize(new THREE.Vector2()));
       } catch (sceneError) {
         console.error("Failed to create SceneManager:", sceneError);
         throw new Error("Scene initialization failed: " + sceneError.message);
@@ -95,7 +98,16 @@ export class GameEngine {
       // Create default world
       console.log("Creating default world...");
       this.sceneManager.createDefaultWorld();
-      console.log("Default world created");
+      console.log("Default world created, scene now has", this.scene.children.length, "children");
+      
+      // Add a debug cube to verify rendering is working
+      const debugGeometry = new THREE.BoxGeometry(2, 2, 2);
+      const debugMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+      const debugCube = new THREE.Mesh(debugGeometry, debugMaterial);
+      debugCube.position.set(0, 1, -5);
+      debugCube.userData.isDebugCube = true;
+      this.scene.add(debugCube);
+      console.log("Debug cube added at position (0, 1, -5)");
       
       // Create the input manager
       console.log("Creating InputManager...");
@@ -146,9 +158,10 @@ export class GameEngine {
       // Set first-person camera position
       this.setupFirstPersonCamera();
       
-      // Log scene children to verify scene content
-      console.log("Scene has", this.scene.children.length, "children");
+      // Log final scene children to verify scene content
+      console.log("Final scene has", this.scene.children.length, "children");
       console.log("Scene children types:", this.scene.children.map(child => child.type));
+      console.log("Scene children userData:", this.scene.children.map(child => Object.keys(child.userData)));
       
       // Set game as initialized
       this.isInitialized = true;
@@ -181,6 +194,7 @@ export class GameEngine {
     this.updateCameraRotation();
     
     console.log("First-person camera set up at:", this.camera.position);
+    console.log("Camera looking at direction:", this.camera.getWorldDirection(new THREE.Vector3()));
   }
   
   private setupMouseLookControls(): void {
@@ -330,6 +344,17 @@ export class GameEngine {
     this.gameState.isPaused = false;
     this.clock.start();
     
+    // Log initial render state
+    console.log("Starting render loop...");
+    console.log("Game state:", this.gameState);
+    console.log("Scene children count:", this.scene.children.length);
+    console.log("Camera position:", this.camera.position);
+    console.log("Renderer info:", {
+      domElement: !!this.renderer.domElement,
+      size: this.renderer.getSize(new THREE.Vector2()),
+      pixelRatio: this.renderer.getPixelRatio()
+    });
+    
     // Start the render loop
     this.animate();
     
@@ -337,7 +362,10 @@ export class GameEngine {
   }
   
   private animate = (): void => {
-    if (!this.isInitialized || !this.gameState.isPlaying) return;
+    if (!this.isInitialized || !this.gameState.isPlaying) {
+      console.log("Animation stopped - initialized:", this.isInitialized, "playing:", this.gameState.isPlaying);
+      return;
+    }
     
     // Request next frame
     requestAnimationFrame(this.animate);
@@ -352,6 +380,11 @@ export class GameEngine {
     
     // Update total elapsed time
     this.gameState.timeElapsed += deltaTime;
+    
+    // Debug logging every 60 frames (roughly 1 second)
+    if (Math.floor(this.gameState.timeElapsed * 60) % 60 === 0) {
+      console.log("Render loop active - time:", this.gameState.timeElapsed.toFixed(2), "camera pos:", this.camera.position, "scene children:", this.scene.children.length);
+    }
     
     // Update game systems
     this.update(deltaTime);
@@ -369,6 +402,17 @@ export class GameEngine {
                    this.inputManager.isActionPressed('moveBackward') ||
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
+    
+    // Log movement input for debugging
+    if (this.isMoving) {
+      console.log("Movement detected:", {
+        forward: this.inputManager.isActionPressed('moveForward'),
+        backward: this.inputManager.isActionPressed('moveBackward'),
+        left: this.inputManager.isActionPressed('moveLeft'),
+        right: this.inputManager.isActionPressed('moveRight'),
+        playerPos: this.player.getPosition()
+      });
+    }
     
     // Update combat system
     this.combatSystem.update(deltaTime);

@@ -1,4 +1,5 @@
 
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -21,6 +22,8 @@ export class MovementSystem {
     this.player = player;
     this.inputManager = inputManager;
     
+    console.log("MovementSystem initialized with player at:", this.player.getPosition());
+    
     // Set up sprint input handler
     this.setupSprintHandler();
   }
@@ -32,6 +35,7 @@ export class MovementSystem {
       const { type } = customEvent.detail;
       
       if (type === 'doubleTapForward') {
+        console.log("Double tap forward detected - starting sprint");
         this.player.startSprint();
       }
     });
@@ -40,28 +44,44 @@ export class MovementSystem {
   public update(deltaTime: number): void {
     // Handle movement input using the correct InputManager API
     const moveDirection = new THREE.Vector3();
+    let hasMovementInput = false;
     
     if (this.inputManager.isActionPressed('moveForward')) {
       moveDirection.z -= 1;
+      hasMovementInput = true;
     }
     if (this.inputManager.isActionPressed('moveBackward')) {
       moveDirection.z += 1;
+      hasMovementInput = true;
     }
     if (this.inputManager.isActionPressed('moveLeft')) {
       moveDirection.x -= 1;
+      hasMovementInput = true;
     }
     if (this.inputManager.isActionPressed('moveRight')) {
       moveDirection.x += 1;
+      hasMovementInput = true;
+    }
+    
+    // Debug log movement input
+    if (hasMovementInput) {
+      console.log("Movement input detected:", {
+        direction: moveDirection,
+        playerPos: this.player.getPosition(),
+        deltaTime: deltaTime
+      });
     }
     
     // Check for sprint
     if (this.inputManager.isActionPressed('sprint')) {
       if (!this.isSprintEnabled) {
+        console.log("Sprint started");
         this.player.startSprint();
         this.isSprintEnabled = true;
       }
     } else {
       if (this.isSprintEnabled) {
+        console.log("Sprint stopped");
         this.player.stopSprint();
         this.isSprintEnabled = false;
       }
@@ -90,8 +110,24 @@ export class MovementSystem {
       worldMoveDirection.addScaledVector(forwardVector, -moveDirection.z); // Forward/backward
       worldMoveDirection.addScaledVector(rightVector, moveDirection.x); // Left/right
       
+      // Store previous position for debugging
+      const previousPosition = this.player.getPosition().clone();
+      
       // Move player in world space
       this.player.move(worldMoveDirection, deltaTime);
+      
+      // Log movement result
+      const newPosition = this.player.getPosition();
+      const actualMovement = newPosition.clone().sub(previousPosition);
+      
+      if (actualMovement.length() > 0.001) {
+        console.log("Player moved:", {
+          from: previousPosition,
+          to: newPosition,
+          movement: actualMovement,
+          distance: actualMovement.length()
+        });
+      }
     }
   }
   
@@ -114,3 +150,4 @@ export class MovementSystem {
     // Cleanup if needed
   }
 }
+

@@ -43,6 +43,8 @@ export class Player {
     this.group.userData.isPlayer = true;
     scene.add(this.group);
     
+    console.log("Player group created and added to scene at position:", this.group.position);
+    
     // Create player body
     this.playerBody = this.createPlayerBody();
     
@@ -70,6 +72,8 @@ export class Player {
       speed: 5,
       attackPower: 20
     };
+    
+    console.log("Player initialized with stats:", this.stats);
   }
   
   private createPlayerBody(): PlayerBody {
@@ -567,6 +571,7 @@ export class Player {
   
   public setPosition(position: THREE.Vector3): void {
     this.group.position.copy(position);
+    console.log("Player position set to:", this.group.position);
   }
   
   public getRotation(): number {
@@ -615,8 +620,23 @@ export class Player {
   
   public move(direction: any, deltaTime: number): void {
     const speed = this.stats.speed * deltaTime * (this.isSprinting ? 1.5 : 1);
+    const previousPosition = this.group.position.clone();
+    
     this.group.position.x += direction.x * speed;
     this.group.position.z += direction.z * speed;
+    
+    const actualMovement = this.group.position.clone().sub(previousPosition);
+    
+    if (actualMovement.length() > 0.001) {
+      console.log("Player.move() executed:", {
+        direction: direction,
+        speed: speed,
+        deltaTime: deltaTime,
+        previousPos: previousPosition,
+        newPos: this.group.position.clone(),
+        actualMovement: actualMovement
+      });
+    }
     
     // Face movement direction
     if (direction.x !== 0 || direction.z !== 0) {
