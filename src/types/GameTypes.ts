@@ -1,4 +1,6 @@
 
+import * as THREE from 'three';
+
 export interface Vector3 {
   x: number;
   y: number;
