@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import { SceneManager } from './SceneManager';
 import { InputManager } from './InputManager';
 import { AudioManager } from './AudioManager';
-import { MovementSystem } from './systems/MovementSystem';
-import { CombatSystem } from './systems/CombatSystem';
+import { MovementSystem } from '../systems/MovementSystem';
+import { CombatSystem } from '../systems/CombatSystem';
 import { EffectsManager } from './EffectsManager';
 
 export class GameEngine {
@@ -47,8 +47,10 @@ export class GameEngine {
     // Initialize all managers and systems
     this.sceneManager = new SceneManager(this.mountElement!);
     this.audioManager = new AudioManager();
-    this.movementSystem = new MovementSystem();
-    this.combatSystem = new CombatSystem();
+    
+    // Create temporary placeholders for systems until we have proper scene/camera/player
+    this.movementSystem = {} as MovementSystem;
+    this.combatSystem = {} as CombatSystem;
     this.effectsManager = new EffectsManager();
     
     this.gameState = {
@@ -126,6 +128,15 @@ export class GameEngine {
         }),
         update: (deltaTime: number) => {}
       };
+      
+      // Now initialize the systems with proper dependencies
+      const scene = this.sceneManager.getScene();
+      const camera = this.sceneManager.getCamera();
+      
+      if (scene && camera && this.player) {
+        this.movementSystem = new MovementSystem(scene, camera, this.player, this.inputManager!);
+        this.combatSystem = new CombatSystem(scene, this.player, this.effectsManager, this.audioManager);
+      }
       
       // Create input manager
       this.inputManager = new InputManager(this.sceneManager.getRenderer().domElement);
@@ -237,22 +248,34 @@ export class GameEngine {
     
     switch (inputType) {
       case 'moveForward':
-        this.movementSystem.setInput('forward', true);
+        if (this.movementSystem && this.movementSystem.setInput) {
+          this.movementSystem.setInput('forward', true);
+        }
         break;
       case 'moveBackward':
-        this.movementSystem.setInput('backward', true);
+        if (this.movementSystem && this.movementSystem.setInput) {
+          this.movementSystem.setInput('backward', true);
+        }
         break;
       case 'moveLeft':
-        this.movementSystem.setInput('left', true);
+        if (this.movementSystem && this.movementSystem.setInput) {
+          this.movementSystem.setInput('left', true);
+        }
         break;
       case 'moveRight':
-        this.movementSystem.setInput('right', true);
+        if (this.movementSystem && this.movementSystem.setInput) {
+          this.movementSystem.setInput('right', true);
+        }
         break;
       case 'sprint':
-        this.movementSystem.setInput('sprint', true);
+        if (this.movementSystem && this.movementSystem.setInput) {
+          this.movementSystem.setInput('sprint', true);
+        }
         break;
       case 'jump':
-        this.movementSystem.setInput('jump', true);
+        if (this.movementSystem && this.movementSystem.setInput) {
+          this.movementSystem.setInput('jump', true);
+        }
         break;
       case 'attack':
         // CRITICAL ADDITION: Additional safety check for attack input
@@ -373,11 +396,11 @@ export class GameEngine {
     this.gameState.timeElapsed += deltaTime;
     
     // Update systems
-    if (this.movementSystem && this.player) {
-      this.movementSystem.update(this.player, deltaTime);
+    if (this.movementSystem && this.movementSystem.update && this.player) {
+      this.movementSystem.update(deltaTime);
     }
     
-    if (this.combatSystem) {
+    if (this.combatSystem && this.combatSystem.update) {
       this.combatSystem.update(deltaTime);
     }
     
@@ -387,12 +410,12 @@ export class GameEngine {
     }
     
     // Update audio
-    if (this.audioManager) {
+    if (this.audioManager && this.audioManager.update) {
       this.audioManager.update(deltaTime);
     }
     
     // Update effects
-    if (this.effectsManager) {
+    if (this.effectsManager && this.effectsManager.update) {
       this.effectsManager.update(deltaTime);
     }
   }
@@ -449,7 +472,7 @@ export class GameEngine {
       this.sceneManager.dispose();
     }
     
-    if (this.audioManager) {
+    if (this.audioManager && this.audioManager.dispose) {
       this.audioManager.dispose();
     }
     
