@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface Vector3 {
@@ -371,10 +372,7 @@ export interface PerformanceStats {
 }
 
 export interface Gold {
-  mesh: THREE.Group;
+  mesh: THREE.Mesh;
   value: number;
-  collected: boolean;
-  collectTime: number;
-  collectionRadius: number;
-  bobOffset: number;
+  rotationSpeed: number;
 }

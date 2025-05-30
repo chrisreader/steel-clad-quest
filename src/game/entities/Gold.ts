@@ -61,145 +61,102 @@ export class Gold {
     // Add coin details
     this.addCoinDetails(coinMesh, 0.18 * sizeMultiplier);
     
-    // Create group for the complete gold coin
-    const goldGroup = new THREE.Group();
-    goldGroup.add(coinMesh);
-    
     // Set position
-    goldGroup.position.copy(position);
-    goldGroup.position.y = position.y + 0.18;
+    coinMesh.position.copy(position);
+    coinMesh.position.y = position.y + 0.18; // Float slightly above ground
     
-    // Enable shadows
+    // Rotate coin to display properly
+    coinMesh.rotation.x = Math.PI / 2;
+    
+    // Add shadows
     coinMesh.castShadow = true;
     coinMesh.receiveShadow = true;
-    edgeMesh.castShadow = true;
-    edgeMesh.receiveShadow = true;
     
+    // Set rotation speed based on value
+    const rotSpeed = 1 + (value / 50); // Higher value coins rotate faster
+    
+    // Return gold interface
     return {
-      mesh: goldGroup,
+      mesh: coinMesh,
       value: value,
-      collected: false,
-      collectTime: 0,
-      collectionRadius: 1.5,
-      bobOffset: Math.random() * Math.PI * 2 // Random phase offset for varied bobbing
+      rotationSpeed: rotSpeed
     };
   }
   
   private addCoinDetails(coinMesh: THREE.Mesh, radius: number): void {
-    // Add small decorative elements to make it look more like a coin
-    const starGeometry = new THREE.RingGeometry(radius * 0.3, radius * 0.4, 6);
-    const starMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0xffed4e,
-      shininess: 150,
-      emissive: 0x443300,
-      emissiveIntensity: 0.05
+    // Create a texture for the coin face
+    const canvas = document.createElement('canvas');
+    const size = 128;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Draw gold background
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(0, 0, size, size);
+    
+    // Draw coin rim
+    ctx.strokeStyle = '#DAA520';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(size/2, size/2, size/2 - 10, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Draw simple crown symbol
+    ctx.fillStyle = '#DAA520';
+    
+    // Crown base
+    ctx.fillRect(size/4, size/2 - size/10, size/2, size/5);
+    
+    // Crown points
+    for (let i = 0; i < 3; i++) {
+      const x = size/4 + (i * size/6);
+      ctx.beginPath();
+      ctx.moveTo(x, size/2 - size/10);
+      ctx.lineTo(x + size/12, size/2 - size/4);
+      ctx.lineTo(x + size/6, size/2 - size/10);
+      ctx.fill();
+    }
+    
+    // Create texture
+    const texture = new THREE.CanvasTexture(canvas);
+    
+    // Create coin face details
+    const faceGeometry = new THREE.CircleGeometry(radius * 0.9, 16);
+    const faceMaterial = new THREE.MeshPhongMaterial({
+      map: texture,
+      specular: 0xffffff,
+      shininess: 100
     });
     
-    // Front star
-    const frontStar = new THREE.Mesh(starGeometry, starMaterial);
-    frontStar.position.z = 0.026;
-    frontStar.rotation.z = Math.PI / 6;
-    coinMesh.add(frontStar);
+    // Create front face
+    const frontFace = new THREE.Mesh(faceGeometry, faceMaterial);
+    frontFace.position.set(0, 0, 0.03);
+    frontFace.rotation.x = -Math.PI / 2;
+    coinMesh.add(frontFace);
     
-    // Back star
-    const backStar = new THREE.Mesh(starGeometry, starMaterial.clone());
-    backStar.position.z = -0.026;
-    backStar.rotation.z = -Math.PI / 6;
-    coinMesh.add(backStar);
-    
-    // Add center dot
-    const dotGeometry = new THREE.CylinderGeometry(radius * 0.1, radius * 0.1, 0.01, 8);
-    const dotMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0xffed4e,
-      shininess: 200
-    });
-    
-    const frontDot = new THREE.Mesh(dotGeometry, dotMaterial);
-    frontDot.position.z = 0.03;
-    coinMesh.add(frontDot);
-    
-    const backDot = new THREE.Mesh(dotGeometry, dotMaterial.clone());
-    backDot.position.z = -0.03;
-    coinMesh.add(backDot);
+    // Create back face
+    const backFace = new THREE.Mesh(faceGeometry, faceMaterial.clone());
+    backFace.position.set(0, 0, -0.03);
+    backFace.rotation.x = Math.PI / 2;
+    coinMesh.add(backFace);
   }
   
   public update(deltaTime: number): void {
-    if (this.gold.collected) {
-      this.updateCollectionAnimation(deltaTime);
-      return;
-    }
-    
-    // Update time for animations
-    this.time += deltaTime;
+    // Update time
+    this.time += deltaTime * this.bobSpeed;
     
     // Bobbing animation
-    const bobOffset = Math.sin(this.time * this.bobSpeed + this.gold.bobOffset) * this.bobHeight;
-    this.gold.mesh.position.y = this.originalY + bobOffset;
-    
-    // Rotation animation
-    this.gold.mesh.rotation.y += this.rotationSpeed * deltaTime;
-    
-    // Gentle side-to-side sway
-    this.gold.mesh.rotation.z = Math.sin(this.time * this.bobSpeed * 0.5 + this.gold.bobOffset) * 0.1;
-    
-    // Subtle scale pulsing for attraction
-    const scalePulse = 1 + Math.sin(this.time * 4) * 0.05;
-    this.gold.mesh.scale.setScalar(scalePulse);
-  }
-  
-  private updateCollectionAnimation(deltaTime: number): void {
-    const elapsed = Date.now() - this.gold.collectTime;
-    const duration = 500; // Animation duration in ms
-    
-    if (elapsed < duration) {
-      const progress = elapsed / duration;
+    if (this.gold.mesh) {
+      this.gold.mesh.position.y = this.originalY + Math.sin(this.time) * this.bobHeight;
       
-      // Scale up and fade out
-      const scale = 1 + progress * 2;
-      this.gold.mesh.scale.setScalar(scale);
-      
-      // Move upward
-      this.gold.mesh.position.y = this.originalY + progress * 2;
-      
-      // Fade out
-      this.gold.mesh.traverse((child) => {
-        if (child instanceof THREE.Mesh && child.material) {
-          const material = child.material as THREE.MeshPhongMaterial;
-          material.transparent = true;
-          material.opacity = 1 - progress;
-        }
-      });
-      
-      // Spin faster
-      this.gold.mesh.rotation.y += this.rotationSpeed * deltaTime * 5;
+      // Spinning animation
+      this.gold.mesh.rotation.y += deltaTime * this.rotationSpeed;
     }
   }
   
-  public checkCollision(playerPosition: THREE.Vector3): boolean {
-    if (this.gold.collected) return false;
-    
-    const distance = this.gold.mesh.position.distanceTo(playerPosition);
-    return distance <= this.gold.collectionRadius;
-  }
-  
-  public collect(): number {
-    if (this.gold.collected) return 0;
-    
-    this.gold.collected = true;
-    this.gold.collectTime = Date.now();
-    
-    return this.gold.value;
-  }
-  
-  public isCollected(): boolean {
-    return this.gold.collected;
-  }
-  
-  public isReadyForRemoval(): boolean {
-    if (!this.gold.collected) return false;
-    
-    const elapsed = Date.now() - this.gold.collectTime;
-    return elapsed > 500; // Remove after animation completes
+  public isInRange(playerPosition: THREE.Vector3, range: number): boolean {
+    return this.gold.mesh.position.distanceTo(playerPosition) <= range;
   }
   
   public getValue(): number {
@@ -210,8 +167,30 @@ export class Gold {
     return this.gold.mesh.position.clone();
   }
   
-  public getMesh(): THREE.Group {
+  public getMesh(): THREE.Mesh {
     return this.gold.mesh;
+  }
+  
+  public static createGoldDrop(
+    scene: THREE.Scene, 
+    position: THREE.Vector3, 
+    baseValue: number = 10,
+    randomness: number = 0.5
+  ): Gold {
+    // Add some randomness to value
+    const randomFactor = 1 - randomness + Math.random() * randomness * 2;
+    const value = Math.round(baseValue * randomFactor);
+    
+    // Add some randomness to position
+    const randomOffset = new THREE.Vector3(
+      (Math.random() - 0.5) * 0.5,
+      0,
+      (Math.random() - 0.5) * 0.5
+    );
+    
+    const goldPosition = position.clone().add(randomOffset);
+    
+    return new Gold(scene, goldPosition, value);
   }
   
   public dispose(): void {
@@ -234,22 +213,5 @@ export class Gold {
         }
       }
     });
-  }
-  
-  public static createRandomGold(
-    scene: THREE.Scene,
-    position: THREE.Vector3,
-    baseValue: number = 10
-  ): Gold {
-    // Random value variation (±25%)
-    const valueVariation = 0.75 + Math.random() * 0.5;
-    const value = Math.round(baseValue * valueVariation);
-    
-    // Small random position offset
-    const offsetPosition = position.clone();
-    offsetPosition.x += (Math.random() - 0.5) * 2;
-    offsetPosition.z += (Math.random() - 0.5) * 2;
-    
-    return new Gold(scene, offsetPosition, value);
   }
 }
