@@ -1,20 +1,349 @@
 
 import * as THREE from 'three';
+import { TextureGenerator } from '../utils/TextureGenerator';
+import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 
 export class SceneManager {
   private scene: THREE.Scene;
-  private currentLevel: string = '';
-
-  constructor(scene: THREE.Scene) {
-    this.scene = scene;
-    console.log('Scene Manager initialized');
+  private camera: THREE.PerspectiveCamera;
+  private renderer: THREE.WebGLRenderer;
+  private clock: THREE.Clock;
+  private width: number;
+  private height: number;
+  
+  // Lighting
+  private ambientLight: THREE.AmbientLight;
+  private directionalLight: THREE.DirectionalLight;
+  private tavernLight: THREE.PointLight;
+  private rimLight: THREE.DirectionalLight;
+  
+  // Environment
+  private currentLevel: Level | null = null;
+  private skybox: THREE.Mesh | null = null;
+  private fog: THREE.Fog | null = null;
+  private ground: THREE.Mesh | null = null;
+  
+  // Time of day
+  private timeOfDay: number = 0.5; // 0-1, 0 = midnight, 0.5 = noon
+  private dayNightCycleEnabled: boolean = false;
+  private dayNightCycleSpeed: number = 0.001; // How quickly time passes
+  
+  constructor(mountElement: HTMLDivElement) {
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+    this.clock = new THREE.Clock();
+    
+    // Create scene
+    this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.Fog(0xB0E0E6, 50, 150); // Lighter blue fog
+    this.fog = this.scene.fog;
+    
+    // Create camera
+    this.camera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
+    this.camera.position.set(0, 2.2, 0);
+    
+    // Create renderer
+    this.renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance",
+      stencil: false,
+      depth: true
+    });
+    this.renderer.setSize(this.width, this.height);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.setClearColor(0xB0E0E6); // Lighter sky blue
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.8; // Much brighter exposure
+    
+    // Add renderer to DOM
+    mountElement.appendChild(this.renderer.domElement);
+    
+    // Setup basic lighting
+    this.setupLighting();
+    
+    // Handle window resize
+    window.addEventListener('resize', this.handleResize.bind(this));
   }
-
+  
+  private setupLighting(): void {
+    // Ambient light
+    this.ambientLight = new THREE.AmbientLight(0x404040, 1.2);
+    this.scene.add(this.ambientLight);
+    
+    // Directional light (sun)
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    this.directionalLight.position.set(15, 20, 10);
+    this.directionalLight.castShadow = true;
+    this.directionalLight.shadow.mapSize.width = 2048;
+    this.directionalLight.shadow.mapSize.height = 2048;
+    this.directionalLight.shadow.camera.left = -50;
+    this.directionalLight.shadow.camera.right = 50;
+    this.directionalLight.shadow.camera.top = 50;
+    this.directionalLight.shadow.camera.bottom = -50;
+    this.directionalLight.shadow.camera.far = 100;
+    this.directionalLight.shadow.bias = -0.0005;
+    this.directionalLight.shadow.normalBias = 0.02;
+    this.scene.add(this.directionalLight);
+    
+    // Tavern light (warm)
+    this.tavernLight = new THREE.PointLight(0xffa500, 1.0, 25);
+    this.tavernLight.position.set(0, 6, 0);
+    this.tavernLight.castShadow = true;
+    this.tavernLight.shadow.mapSize.width = 512;
+    this.tavernLight.shadow.mapSize.height = 512;
+    this.scene.add(this.tavernLight);
+    
+    // Rim light for atmosphere
+    this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.6);
+    this.rimLight.position.set(-10, 5, -10);
+    this.scene.add(this.rimLight);
+  }
+  
+  public createDefaultWorld(): void {
+    console.log('Creating default world...');
+    
+    // Create terrain
+    this.createTerrain();
+    
+    // Create tavern
+    this.createTavern();
+    
+    // Create forest
+    this.createForest();
+    
+    // Create rocks
+    this.createRocks();
+    
+    // Create bushes
+    this.createBushes();
+    
+    // Create skybox
+    this.createSkybox();
+  }
+  
+  private createTerrain(): void {
+    const groundGeometry = new THREE.PlaneGeometry(100, 100, 50, 50);
+    const groundMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x5FAD5F,
+      map: TextureGenerator.createGrassTexture(),
+      transparent: false
+    });
+    
+    // Add height variation
+    const positions = groundGeometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < positions.length; i += 3) {
+      positions[i + 2] = Math.random() * 0.3 - 0.15;
+    }
+    groundGeometry.attributes.position.needsUpdate = true;
+    groundGeometry.computeVertexNormals();
+    
+    this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    this.ground.rotation.x = -Math.PI / 2;
+    this.ground.receiveShadow = true;
+    this.scene.add(this.ground);
+  }
+  
+  private createTavern(): void {
+    const tavernGroup = new THREE.Group();
+    
+    // Tavern floor
+    const tavernFloorGeometry = new THREE.PlaneGeometry(12, 12);
+    const tavernFloorMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xDEB887,
+      map: TextureGenerator.createWoodTexture()
+    });
+    const tavernFloor = new THREE.Mesh(tavernFloorGeometry, tavernFloorMaterial);
+    tavernFloor.rotation.x = -Math.PI / 2;
+    tavernFloor.position.y = 0.01;
+    tavernFloor.receiveShadow = true;
+    tavernGroup.add(tavernFloor);
+    
+    // Tavern walls
+    const wallMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x8B7355,
+      map: TextureGenerator.createStoneTexture()
+    });
+    const wallHeight = 6;
+    
+    // Back wall
+    const backWallGeometry = new THREE.BoxGeometry(12, wallHeight, 0.3);
+    const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+    backWall.position.set(0, wallHeight/2, -6);
+    backWall.castShadow = true;
+    backWall.receiveShadow = true;
+    tavernGroup.add(backWall);
+    
+    // Left wall
+    const leftWallGeometry = new THREE.BoxGeometry(0.3, wallHeight, 12);
+    const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial.clone());
+    leftWall.position.set(-6, wallHeight/2, 0);
+    leftWall.castShadow = true;
+    leftWall.receiveShadow = true;
+    tavernGroup.add(leftWall);
+    
+    // Right wall
+    const rightWall = new THREE.Mesh(leftWallGeometry, wallMaterial.clone());
+    rightWall.position.set(6, wallHeight/2, 0);
+    rightWall.castShadow = true;
+    rightWall.receiveShadow = true;
+    tavernGroup.add(rightWall);
+    
+    // Front walls with door
+    const frontWallLeft = new THREE.Mesh(new THREE.BoxGeometry(3, wallHeight, 0.3), wallMaterial.clone());
+    frontWallLeft.position.set(-3, wallHeight/2, 6);
+    frontWallLeft.castShadow = true;
+    frontWallLeft.receiveShadow = true;
+    tavernGroup.add(frontWallLeft);
+    
+    const frontWallRight = new THREE.Mesh(new THREE.BoxGeometry(3, wallHeight, 0.3), wallMaterial.clone());
+    frontWallRight.position.set(3, wallHeight/2, 6);
+    frontWallRight.castShadow = true;
+    frontWallRight.receiveShadow = true;
+    tavernGroup.add(frontWallRight);
+    
+    // Roof
+    const roofGeometry = new THREE.ConeGeometry(9, 3, 8);
+    const roofMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xCD5C5C,
+      map: TextureGenerator.createStoneTexture()
+    });
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.set(0, wallHeight + 1.5, 0);
+    roof.rotation.y = Math.PI / 8;
+    roof.castShadow = true;
+    tavernGroup.add(roof);
+    
+    // Furniture
+    const tableMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xDEB887,
+      map: TextureGenerator.createWoodTexture()
+    });
+    const table = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 1.5), tableMaterial);
+    table.position.set(-2, 1, -2);
+    table.castShadow = true;
+    table.receiveShadow = true;
+    tavernGroup.add(table);
+    
+    // Table legs
+    const legMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xCD853F,
+      map: TextureGenerator.createWoodTexture()
+    });
+    
+    const legGeometry = new THREE.CylinderGeometry(0.05, 0.08, 0.8, 8);
+    
+    for (let x = -1; x <= 1; x += 2) {
+      for (let z = -0.5; z <= 0.5; z += 1) {
+        const leg = new THREE.Mesh(legGeometry, legMaterial.clone());
+        leg.position.set(-2 + x, 0.5, -2 + z);
+        leg.castShadow = true;
+        tavernGroup.add(leg);
+      }
+    }
+    
+    this.scene.add(tavernGroup);
+  }
+  
+  private createForest(): void {
+    for (let i = 0; i < 80; i++) {
+      // Tree trunk
+      const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.6, 8, 12);
+      const trunkMaterial = new THREE.MeshLambertMaterial({ 
+        color: 0x8B7355,
+        map: TextureGenerator.createWoodTexture()
+      });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      
+      let x, z;
+      do {
+        x = (Math.random() - 0.5) * 160;
+        z = (Math.random() - 0.5) * 160;
+      } while (Math.sqrt(x * x + z * z) < 20 || (Math.abs(x) < 15 && Math.abs(z) < 15));
+      
+      trunk.position.set(x, 4, z);
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      this.scene.add(trunk);
+      
+      // Tree leaves
+      for (let layer = 0; layer < 3; layer++) {
+        const leavesGeometry = new THREE.ConeGeometry(2.5 - layer * 0.3, 4, 8);
+        const leavesColor = new THREE.Color().setHSL(0.3, 0.7, 0.5 + Math.random() * 0.3);
+        const leavesMaterial = new THREE.MeshLambertMaterial({ 
+          color: leavesColor,
+          transparent: true,
+          opacity: 0.9
+        });
+        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+        leaves.position.set(x, 7 + layer * 1.5, z);
+        leaves.castShadow = true;
+        leaves.receiveShadow = true;
+        this.scene.add(leaves);
+      }
+    }
+  }
+  
+  private createRocks(): void {
+    for (let i = 0; i < 40; i++) {
+      const rockGeometry = new THREE.DodecahedronGeometry(Math.random() * 0.6 + 0.3, 1);
+      const rockMaterial = new THREE.MeshLambertMaterial({ 
+        color: new THREE.Color().setHSL(0, 0, 0.5 + Math.random() * 0.4),
+        map: TextureGenerator.createStoneTexture()
+      });
+      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+      
+      let x, z;
+      do {
+        x = (Math.random() - 0.5) * 120;
+        z = (Math.random() - 0.5) * 120;
+      } while (Math.abs(x) < 10 && Math.abs(z) < 10);
+      
+      rock.position.set(x, Math.random() * 0.3 + 0.2, z);
+      rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      rock.castShadow = true;
+      rock.receiveShadow = true;
+      this.scene.add(rock);
+    }
+  }
+  
+  private createBushes(): void {
+    for (let i = 0; i < 30; i++) {
+      const bushGeometry = new THREE.SphereGeometry(0.5 + Math.random() * 0.3, 8, 6);
+      const bushMaterial = new THREE.MeshLambertMaterial({ 
+        color: new THREE.Color().setHSL(0.25, 0.6, 0.45 + Math.random() * 0.3)
+      });
+      const bush = new THREE.Mesh(bushGeometry, bushMaterial);
+      
+      let x, z;
+      do {
+        x = (Math.random() - 0.5) * 100;
+        z = (Math.random() - 0.5) * 100;
+      } while (Math.abs(x) < 12 && Math.abs(z) < 12);
+      
+      bush.position.set(x, 0.4, z);
+      bush.scale.y = 0.6;
+      bush.castShadow = true;
+      bush.receiveShadow = true;
+      this.scene.add(bush);
+    }
+  }
+  
+  private createSkybox(): void {
+    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+    const skyMaterial = new THREE.MeshBasicMaterial({
+      map: TextureGenerator.createSkyTexture(this.timeOfDay),
+      side: THREE.BackSide
+    });
+    this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
+    this.scene.add(this.skybox);
+  }
+  
+  // Legacy compatibility methods
   public loadLevel(levelName: string): void {
     console.log(`Loading level: ${levelName}`);
     this.clearScene();
-    this.currentLevel = levelName;
-
+    
     switch (levelName) {
       case 'tavern':
         this.loadTavernLevel();
@@ -41,7 +370,10 @@ export class SceneManager {
   private loadTavernLevel(): void {
     // Create a simple tavern environment
     const floorGeometry = new THREE.PlaneGeometry(20, 20);
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const floorMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x8B4513,
+      map: TextureGenerator.createWoodTexture()
+    });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
@@ -54,7 +386,10 @@ export class SceneManager {
   private loadForestLevel(): void {
     // Create forest environment
     const floorGeometry = new THREE.PlaneGeometry(50, 50);
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+    const floorMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x228B22,
+      map: TextureGenerator.createGrassTexture()
+    });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
@@ -67,7 +402,10 @@ export class SceneManager {
   private loadDefaultLevel(): void {
     // Create a basic ground plane
     const floorGeometry = new THREE.PlaneGeometry(30, 30);
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
+    const floorMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x90EE90,
+      map: TextureGenerator.createGrassTexture()
+    });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
@@ -77,7 +415,10 @@ export class SceneManager {
   private addTavernFurniture(): void {
     // Add table
     const tableGeometry = new THREE.BoxGeometry(2, 0.1, 1);
-    const tableMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const tableMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x8B4513,
+      map: TextureGenerator.createWoodTexture()
+    });
     const table = new THREE.Mesh(tableGeometry, tableMaterial);
     table.position.set(3, 0.5, 0);
     table.castShadow = true;
@@ -86,7 +427,10 @@ export class SceneManager {
     // Add chairs
     for (let i = 0; i < 4; i++) {
       const chairGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
-      const chairMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+      const chairMaterial = new THREE.MeshLambertMaterial({ 
+        color: 0x654321,
+        map: TextureGenerator.createWoodTexture()
+      });
       const chair = new THREE.Mesh(chairGeometry, chairMaterial);
       const angle = (i / 4) * Math.PI * 2;
       chair.position.set(3 + Math.cos(angle) * 1.5, 0.5, Math.sin(angle) * 1.5);
@@ -99,7 +443,10 @@ export class SceneManager {
     for (let i = 0; i < 20; i++) {
       // Tree trunk
       const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.3, 3);
-      const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+      const trunkMaterial = new THREE.MeshLambertMaterial({ 
+        color: 0x8B4513,
+        map: TextureGenerator.createWoodTexture()
+      });
       const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
 
       // Tree leaves
@@ -125,6 +472,37 @@ export class SceneManager {
   }
 
   public getCurrentLevel(): string {
-    return this.currentLevel;
+    return this.currentLevel?.name || 'default';
+  }
+  
+  // Utility methods
+  public getScene(): THREE.Scene {
+    return this.scene;
+  }
+  
+  public getCamera(): THREE.PerspectiveCamera {
+    return this.camera;
+  }
+  
+  public getRenderer(): THREE.WebGLRenderer {
+    return this.renderer;
+  }
+  
+  public render(): void {
+    this.renderer.render(this.scene, this.camera);
+  }
+  
+  private handleResize = (): void => {
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+    
+    this.camera.aspect = this.width / this.height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(this.width, this.height);
+  }
+  
+  public dispose(): void {
+    window.removeEventListener('resize', this.handleResize);
+    this.renderer.dispose();
   }
 }

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface Vector3 {
@@ -19,6 +18,57 @@ export interface PlayerStats {
   attack: number;
   defense: number;
   speed: number;
+}
+
+// Level and terrain interfaces
+export interface Level {
+  name: string;
+  description: string;
+  terrain: TerrainConfig;
+  lighting: LightingConfig;
+  spawns: {
+    player: Vector3;
+    enemies: Array<{
+      type: Enemy['type'];
+      position: Vector3;
+    }>;
+  };
+}
+
+export interface TerrainConfig {
+  type: 'forest' | 'dungeon' | 'cave' | 'lava';
+  size: { width: number; length: number };
+  heightVariation: number;
+  heightMap?: number[][];
+  features: TerrainFeature[];
+}
+
+export interface TerrainFeature {
+  type: 'tree' | 'rock' | 'bush' | 'building' | 'water';
+  position: Vector3;
+  scale: Vector3;
+  rotation: Vector3;
+  properties?: Record<string, any>;
+}
+
+export interface LightingConfig {
+  ambient: {
+    color: number;
+    intensity: number;
+  };
+  directional: Array<{
+    color: number;
+    intensity: number;
+    position: Vector3;
+    castShadows: boolean;
+  }>;
+  point: Array<{
+    color: number;
+    intensity: number;
+    position: Vector3;
+    distance: number;
+    castShadows: boolean;
+  }>;
 }
 
 // First-person specific interfaces
@@ -178,37 +228,6 @@ export interface MouseInput {
   deltaX: number;
   deltaY: number;
   isLocked: boolean;
-}
-
-// Level and environment interfaces
-export interface LevelData {
-  name: string;
-  description: string;
-  backgroundMusic: string;
-  lighting: {
-    ambient: number;
-    directional: number;
-  };
-  spawns: {
-    player: Vector3;
-    enemies: Array<{
-      type: Enemy['type'];
-      position: Vector3;
-    }>;
-  };
-  environment: {
-    floor: {
-      size: { width: number; height: number };
-      texture: string;
-      color: number;
-    };
-    objects: Array<{
-      type: string;
-      position?: Vector3;
-      count?: number;
-      randomPosition?: boolean;
-    }>;
-  };
 }
 
 // Sound system interfaces
