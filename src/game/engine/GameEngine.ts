@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { SceneManager } from './SceneManager';
 import { InputManager } from './InputManager';
@@ -32,6 +33,7 @@ export class GameEngine {
   private onUpdateScore?: (score: number) => void;
   private onGameOver?: (score: number) => void;
   private onLocationChange?: (isInTavern: boolean) => void;
+  private onLoadingProgress?: (progress: { stage: string; progress: number; total: number }) => void;
   
   // Camera control variables
   private pitch: number = 0;
@@ -63,19 +65,23 @@ export class GameEngine {
     console.log('[GameEngine] Initialization complete');
   }
   
+  public setLoadingProgressCallback(callback: (progress: { stage: string; progress: number; total: number }) => void): void {
+    this.onLoadingProgress = callback;
+    // Forward the callback to SceneManager
+    this.sceneManager.setLoadingProgressCallback(callback);
+  }
+  
   public async initialize(): Promise<void> {
     console.log('[GameEngine] Starting initialization...');
     
     try {
-      // Set up loading progress callback
-      this.sceneManager.setLoadingProgressCallback((progress) => {
-        console.log(`Loading progress: ${progress.stage} (${progress.progress}/${progress.total})`);
-      });
+      // Notify initial progress
+      if (this.onLoadingProgress) {
+        this.onLoadingProgress({ stage: 'Initializing game engine...', progress: 0, total: 6 });
+      }
       
       // Create the world (this is now async and shows progress)
       await this.sceneManager.createWorld();
-      
-      // Add player to scene - player is already added in constructor
       
       // Set up input handling with proper debugging
       this.setupInputHandling();
@@ -98,6 +104,10 @@ export class GameEngine {
       
     } catch (error) {
       console.error('[GameEngine] Initialization failed:', error);
+      // Still notify completion to prevent hanging UI
+      if (this.onLoadingProgress) {
+        this.onLoadingProgress({ stage: 'Error occurred, continuing...', progress: 6, total: 6 });
+      }
       throw error;
     }
   }

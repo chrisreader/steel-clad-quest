@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { GameEngine } from '../../game/engine/GameEngine';
 
@@ -10,6 +9,7 @@ interface GameEngineControllerProps {
   onGameOver: (score: number) => void;
   onLocationChange: (isInTavern: boolean) => void;
   onLoadingComplete: () => void;
+  onLoadingProgress?: (progress: { stage: string; progress: number; total: number }) => void;
   mountElement: HTMLDivElement | null;
 }
 
@@ -29,6 +29,7 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
     onGameOver,
     onLocationChange,
     onLoadingComplete,
+    onLoadingProgress,
     mountElement
   }, ref) => {
     const engineRef = useRef<GameEngine | null>(null);
@@ -58,6 +59,12 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
           engine.setOnUpdateScore(onUpdateScore);
           engine.setOnGameOver(onGameOver);
           engine.setOnLocationChange(onLocationChange);
+          
+          // Set loading progress callback if provided
+          if (onLoadingProgress) {
+            engine.setLoadingProgressCallback(onLoadingProgress);
+          }
+          
           console.log('[GameEngineController] Engine callbacks configured');
           
           console.log('[GameEngineController] Calling engine.initialize()...');
@@ -100,7 +107,7 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
         document.removeEventListener('gameInput', handleGameInput);
         console.log('[GameEngineController] Event listeners removed');
       };
-    }, [mountElement, onUpdateHealth, onUpdateGold, onUpdateStamina, onUpdateScore, onGameOver, onLocationChange, onLoadingComplete]);
+    }, [mountElement, onUpdateHealth, onUpdateGold, onUpdateStamina, onUpdateScore, onGameOver, onLocationChange, onLoadingComplete, onLoadingProgress]);
     
     // Handle game input events
     const handleGameInput = useCallback((event: Event) => {

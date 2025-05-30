@@ -87,6 +87,12 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }
   }, []);
 
+  // Handler for loading progress updates
+  const handleLoadingProgress = useCallback((progress: LoadingProgress) => {
+    console.log('[KnightGame] Loading progress:', progress);
+    setLoadingProgress(progress);
+  }, []);
+
   // Handler for engine loading completion
   const handleEngineLoadingComplete = useCallback(() => {
     console.log('Engine loading completed, setting engineReady to true');
@@ -288,6 +294,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           onGameOver={handleGameOver}
           onLocationChange={handleLocationChange}
           onLoadingComplete={handleEngineLoadingComplete}
+          onLoadingProgress={handleLoadingProgress}
           mountElement={mountRef.current}
         />
       )}

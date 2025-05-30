@@ -1,6 +1,4 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { TextureGenerator } from '../utils/TextureGenerator';
 
 interface LoadingProgress {
@@ -15,9 +13,6 @@ export class SceneManager {
   private renderer: THREE.WebGLRenderer;
   private mountElement: HTMLDivElement;
   private loadingProgressCallback?: (progress: LoadingProgress) => void;
-  private progressBarDiv: HTMLDivElement;
-  private progressLabelDiv: HTMLDivElement;
-  private loadingManager: THREE.LoadingManager;
   private terrain: THREE.Mesh | null = null;
   
   constructor(mountElement: HTMLDivElement) {
@@ -46,55 +41,6 @@ export class SceneManager {
     // Add renderer to DOM
     mountElement.appendChild(this.renderer.domElement);
     
-    // Loading progress bar
-    this.progressBarDiv = document.createElement('div');
-    this.progressBarDiv.style.position = 'absolute';
-    this.progressBarDiv.style.top = '50%';
-    this.progressBarDiv.style.left = '50%';
-    this.progressBarDiv.style.transform = 'translate(-50%, -50%)';
-    this.progressBarDiv.style.width = '50%';
-    this.progressBarDiv.style.height = '20px';
-    this.progressBarDiv.style.backgroundColor = '#333';
-    this.progressBarDiv.style.borderRadius = '10px';
-    this.progressBarDiv.style.overflow = 'hidden';
-    this.progressBarDiv.style.zIndex = '1000';
-    
-    const progressInnerDiv = document.createElement('div');
-    progressInnerDiv.style.width = '0%';
-    progressInnerDiv.style.height = '100%';
-    progressInnerDiv.style.backgroundColor = '#4CAF50';
-    progressInnerDiv.style.borderRadius = '10px';
-    progressInnerDiv.id = 'progressInner';
-    this.progressBarDiv.appendChild(progressInnerDiv);
-    
-    this.progressLabelDiv = document.createElement('div');
-    this.progressLabelDiv.style.position = 'absolute';
-    this.progressLabelDiv.style.top = 'calc(50% - 30px)';
-    this.progressLabelDiv.style.left = '50%';
-    this.progressLabelDiv.style.transform = 'translateX(-50%)';
-    this.progressLabelDiv.style.color = 'white';
-    this.progressLabelDiv.style.fontSize = '16px';
-    this.progressLabelDiv.style.zIndex = '1001';
-    this.progressLabelDiv.id = 'progressLabel';
-    this.mountElement.appendChild(this.progressLabelDiv);
-    
-    this.mountElement.appendChild(this.progressBarDiv);
-    
-    // Loading manager
-    this.loadingManager = new THREE.LoadingManager();
-    this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-      const progress = (itemsLoaded / itemsTotal) * 100;
-      this.updateProgressBar(progress);
-    };
-    
-    this.loadingManager.onLoad = () => {
-      this.hideProgressBar();
-    };
-    
-    this.loadingManager.onError = (url) => {
-      console.error('Error loading: ' + url);
-    };
-    
     // Handle window resize
     window.addEventListener('resize', this.handleResize.bind(this));
     
@@ -118,22 +64,9 @@ export class SceneManager {
   }
   
   private updateProgress(stage: string, progress: number, total: number): void {
+    console.log(`[SceneManager] Progress: ${stage} (${progress}/${total})`);
     if (this.loadingProgressCallback) {
       this.loadingProgressCallback({ stage, progress, total });
-    }
-  }
-  
-  private updateProgressBar(progress: number): void {
-    const progressInner = document.getElementById('progressInner') as HTMLDivElement;
-    if (progressInner) {
-      progressInner.style.width = `${progress}%`;
-    }
-  }
-  
-  private hideProgressBar(): void {
-    if (this.progressBarDiv && this.progressLabelDiv) {
-      this.mountElement.removeChild(this.progressBarDiv);
-      this.mountElement.removeChild(this.progressLabelDiv);
     }
   }
   
@@ -174,12 +107,14 @@ export class SceneManager {
   }
   
   private setupLighting(): void {
+    console.log('[SceneManager] Setting up lighting...');
+    
     // Ambient light
-    const ambientLight = new THREE.AmbientLight(0x404040);
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
     this.scene.add(ambientLight);
     
     // Directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(5, 10, 5);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 1024;
@@ -187,29 +122,24 @@ export class SceneManager {
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = 50;
     this.scene.add(directionalLight);
+    
+    console.log('[SceneManager] Lighting setup complete');
   }
   
   private async createTerrain(): Promise<void> {
-    console.log('[SceneManager] Creating terrain...');
+    console.log('[SceneManager] Creating procedural terrain...');
     
-    // Load heightmap
-    const textureLoader = new THREE.TextureLoader(this.loadingManager);
-    const heightMap = await textureLoader.loadAsync('/heightmap.png');
-    
-    // Create geometry from heightmap
-    const geometry = new THREE.PlaneGeometry(200, 200, 256, 256);
+    // Create simple procedural terrain without external heightmap
+    const geometry = new THREE.PlaneGeometry(200, 200, 64, 64);
     const vertices = geometry.attributes.position.array as Float32Array;
     
-    const canvas = document.createElement('canvas');
-    canvas.width = heightMap.image.width;
-    canvas.height = heightMap.image.height;
-    const ctx = canvas.getContext('2d');
-    ctx!.drawImage(heightMap.image, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx!.getImageData(0, 0, canvas.width, canvas.height).data;
-    
-    for (let i = 0, j = 0, l = vertices.length; i < l; i += 3, j += 4) {
-      // Set height based on red channel value
-      vertices[i + 1] = imageData[j] / 8;
+    // Generate procedural height variation
+    for (let i = 0; i < vertices.length; i += 3) {
+      const x = vertices[i];
+      const z = vertices[i + 2];
+      // Simple noise-like height variation
+      vertices[i + 1] = Math.sin(x * 0.01) * Math.cos(z * 0.01) * 2 + 
+                        Math.sin(x * 0.02) * Math.cos(z * 0.03) * 1;
     }
     
     geometry.computeVertexNormals();
@@ -229,7 +159,7 @@ export class SceneManager {
     this.terrain.receiveShadow = true;
     this.scene.add(this.terrain);
     
-    console.log('[SceneManager] Terrain created');
+    console.log('[SceneManager] Procedural terrain created');
   }
   
   private isPositionTooClose(position: THREE.Vector3, existingPositions: THREE.Vector3[], minDistance: number): boolean {
@@ -241,7 +171,7 @@ export class SceneManager {
     return false;
   }
   
-  private async createTrees(count: number = 10): Promise<void> {
+  private async createTrees(count: number = 8): Promise<void> {
     console.log(`[SceneManager] Creating ${count} trees...`);
     
     const treePositions: THREE.Vector3[] = [];
@@ -250,79 +180,67 @@ export class SceneManager {
       // Generate valid position
       let position: THREE.Vector3;
       let attempts = 0;
-      const maxAttempts = 50;
+      const maxAttempts = 20;
       
       do {
         position = new THREE.Vector3(
-          (Math.random() - 0.5) * 200,
+          (Math.random() - 0.5) * 100,
           0,
-          (Math.random() - 0.5) * 200
+          (Math.random() - 0.5) * 100
         );
         attempts++;
-      } while (attempts < maxAttempts && this.isPositionTooClose(position, treePositions, 5));
+      } while (attempts < maxAttempts && this.isPositionTooClose(position, treePositions, 8));
       
       treePositions.push(position);
       
       // Create tree geometry
-      const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 12);
-      const trunkMaterial = new THREE.MeshLambertMaterial({ 
-        color: new THREE.Color(0x8B4513).multiplyScalar(0.7 + Math.random() * 0.3)
-      });
+      const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 3, 8);
+      const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
       const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
       trunk.position.copy(position);
-      trunk.position.y = 1;
+      trunk.position.y = 1.5;
       trunk.castShadow = true;
       trunk.receiveShadow = true;
       this.scene.add(trunk);
       
       // Create leaves geometry
-      const leavesGeometry = new THREE.SphereGeometry(1 + Math.random() * 0.5, 12, 8);
-      const leavesMaterial = new THREE.MeshLambertMaterial({ 
-        color: new THREE.Color(0x228B22).multiplyScalar(0.7 + Math.random() * 0.3)
-      });
+      const leavesGeometry = new THREE.SphereGeometry(1.2, 8, 6);
+      const leavesMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
       const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
       leaves.position.copy(position);
-      leaves.position.y = 3;
+      leaves.position.y = 3.5;
       leaves.castShadow = true;
       leaves.receiveShadow = true;
       this.scene.add(leaves);
-      
-      // Yield control occasionally for async behavior
-      if (i % 5 === 0) {
-        await new Promise(resolve => setTimeout(resolve, 1));
-      }
     }
     
     console.log(`[SceneManager] Created ${treePositions.length} trees`);
   }
   
-  private async createRocks(count: number = 10): Promise<void> {
+  private async createRocks(count: number = 6): Promise<void> {
     console.log(`[SceneManager] Creating ${count} rocks...`);
     
     const rockPositions: THREE.Vector3[] = [];
     
     for (let i = 0; i < count; i++) {
-      // Generate valid position
       let position: THREE.Vector3;
       let attempts = 0;
-      const maxAttempts = 50;
+      const maxAttempts = 20;
       
       do {
         position = new THREE.Vector3(
-          (Math.random() - 0.5) * 200,
+          (Math.random() - 0.5) * 120,
           0,
-          (Math.random() - 0.5) * 200
+          (Math.random() - 0.5) * 120
         );
         attempts++;
-      } while (attempts < maxAttempts && this.isPositionTooClose(position, rockPositions, 2));
+      } while (attempts < maxAttempts && this.isPositionTooClose(position, rockPositions, 5));
       
       rockPositions.push(position);
       
       // Create rock geometry
-      const rockGeometry = new THREE.DodecahedronGeometry(0.5 + Math.random() * 0.5);
-      const rockMaterial = new THREE.MeshLambertMaterial({ 
-        color: new THREE.Color(0x808080).multiplyScalar(0.7 + Math.random() * 0.3)
-      });
+      const rockGeometry = new THREE.DodecahedronGeometry(0.8 + Math.random() * 0.4);
+      const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
       const rock = new THREE.Mesh(rockGeometry, rockMaterial);
       rock.position.copy(position);
       rock.position.y = rockGeometry.parameters.radius * 0.6;
@@ -330,103 +248,47 @@ export class SceneManager {
       rock.receiveShadow = true;
       
       this.scene.add(rock);
-      
-      // Yield control occasionally for async behavior
-      if (i % 5 === 0) {
-        await new Promise(resolve => setTimeout(resolve, 1));
-      }
     }
     
     console.log(`[SceneManager] Created ${rockPositions.length} rocks`);
   }
   
-  private async createBushes(count: number = 10): Promise<void> {
-    console.log(`[SceneManager] Creating ${count} bushes...`);
+  private async createSimpleTavern(): Promise<void> {
+    console.log('[SceneManager] Creating simple geometric tavern...');
     
-    const bushPositions: THREE.Vector3[] = [];
+    // Create tavern base
+    const baseGeometry = new THREE.BoxGeometry(8, 4, 6);
+    const baseMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    base.position.set(0, 2, -10);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    this.scene.add(base);
     
-    for (let i = 0; i < count; i++) {
-      // Generate valid position
-      let position: THREE.Vector3;
-      let attempts = 0;
-      const maxAttempts = 50;
-      
-      do {
-        position = new THREE.Vector3(
-          (Math.random() - 0.5) * 200,
-          0,
-          (Math.random() - 0.5) * 200
-        );
-        attempts++;
-      } while (attempts < maxAttempts && this.isPositionTooClose(position, [...bushPositions], 3));
-      
-      bushPositions.push(position);
-      
-      // Create bush geometry
-      const bushGeometry = new THREE.SphereGeometry(
-        0.8 + Math.random() * 0.4,
-        12,
-        8
-      );
-      
-      const bushMaterial = new THREE.MeshLambertMaterial({ 
-        color: new THREE.Color(0x228B22).multiplyScalar(0.7 + Math.random() * 0.3)
-      });
-      
-      const bush = new THREE.Mesh(bushGeometry, bushMaterial);
-      bush.position.copy(position);
-      bush.position.y = bushGeometry.parameters.radius * 0.7;
-      bush.castShadow = true;
-      bush.receiveShadow = true;
-      
-      this.scene.add(bush);
-      
-      // Yield control occasionally for async behavior
-      if (i % 5 === 0) {
-        await new Promise(resolve => setTimeout(resolve, 1));
-      }
-    }
+    // Create roof
+    const roofGeometry = new THREE.ConeGeometry(6, 3, 4);
+    const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.set(0, 5.5, -10);
+    roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true;
+    this.scene.add(roof);
     
-    console.log(`[SceneManager] Created ${bushPositions.length} bushes`);
-  }
-  
-  private async createTavern(): Promise<void> {
-    console.log('[SceneManager] Creating tavern...');
+    // Create door
+    const doorGeometry = new THREE.BoxGeometry(1.5, 3, 0.2);
+    const doorMaterial = new THREE.MeshLambertMaterial({ color: 0x4A4A4A });
+    const door = new THREE.Mesh(doorGeometry, doorMaterial);
+    door.position.set(0, 1.5, -6.9);
+    this.scene.add(door);
     
-    const gltfLoader = new GLTFLoader(this.loadingManager);
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('/draco/');
-    gltfLoader.setDRACOLoader(dracoLoader);
-    
-    gltfLoader.load(
-      '/tavern.glb',
-      (gltf) => {
-        const tavern = gltf.scene;
-        tavern.position.set(0, 0, 0);
-        tavern.scale.set(0.02, 0.02, 0.02);
-        tavern.traverse((node: any) => {
-          if (node.isMesh) {
-            node.castShadow = true;
-            node.receiveShadow = true;
-          }
-        });
-        this.scene.add(tavern);
-        console.log('[SceneManager] Tavern loaded and added to scene');
-      },
-      (xhr) => {
-        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-      },
-      (error) => {
-        console.error('An error happened', error);
-      }
-    );
+    console.log('[SceneManager] Simple tavern created');
   }
   
   private createSkybox(): void {
     console.log('[SceneManager] Creating skybox...');
     
     const skyTexture = TextureGenerator.createSkyTexture();
-    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+    const skyGeometry = new THREE.SphereGeometry(400, 16, 16);
     const skyMaterial = new THREE.MeshBasicMaterial({
       map: skyTexture,
       side: THREE.BackSide
@@ -440,28 +302,31 @@ export class SceneManager {
   public async createWorld(): Promise<void> {
     console.log('[SceneManager] Creating world...');
     
-    this.updateProgress('Setting up lighting...', 1, 7);
-    this.setupLighting();
-    
-    this.updateProgress('Creating skybox...', 2, 7);
-    this.createSkybox();
-    
-    this.updateProgress('Creating terrain...', 3, 7);
-    await this.createTerrain();
-    
-    this.updateProgress('Creating trees...', 4, 7);
-    await this.createTrees(12);
-    
-    this.updateProgress('Creating rocks...', 5, 7);
-    await this.createRocks(10);
-    
-    this.updateProgress('Creating bushes...', 6, 7);
-    await this.createBushes(10);
-    
-    this.updateProgress('Creating tavern...', 7, 7);
-    await this.createTavern();
-    
-    console.log('[SceneManager] World creation complete');
+    try {
+      this.updateProgress('Setting up lighting...', 1, 6);
+      this.setupLighting();
+      
+      this.updateProgress('Creating skybox...', 2, 6);
+      this.createSkybox();
+      
+      this.updateProgress('Creating terrain...', 3, 6);
+      await this.createTerrain();
+      
+      this.updateProgress('Creating trees...', 4, 6);
+      await this.createTrees(8);
+      
+      this.updateProgress('Creating rocks...', 5, 6);
+      await this.createRocks(6);
+      
+      this.updateProgress('Creating tavern...', 6, 6);
+      await this.createSimpleTavern();
+      
+      console.log('[SceneManager] World creation complete');
+      
+    } catch (error) {
+      console.error('[SceneManager] World creation failed:', error);
+      this.updateProgress('World creation failed, continuing...', 6, 6);
+    }
   }
   
   public render(): void {
