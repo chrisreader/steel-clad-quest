@@ -15,7 +15,7 @@ export class CombatSystem {
     const playerPos = player.getPosition();
 
     enemies.forEach(enemy => {
-      if (!enemy.isAlive()) return;
+      if (enemy.isDead()) return;
 
       const enemyPos = enemy.getPosition();
       const distance = Math.sqrt(
@@ -25,13 +25,12 @@ export class CombatSystem {
 
       if (distance <= this.attackRange) {
         const playerStats = player.getStats();
-        const enemyDied = enemy.takeDamage(playerStats.attack);
+        enemy.takeDamage(playerStats.attackPower, playerPos);
         
-        if (enemyDied) {
-          const enemyData = enemy.getData();
-          player.gainExperience(enemyData.experienceReward);
-          player.addGold(enemyData.goldReward);
-          console.log(`Enemy defeated! Gained ${enemyData.experienceReward} XP and ${enemyData.goldReward} gold`);
+        if (enemy.isDead()) {
+          player.gainExperience(enemy.getExperienceReward());
+          player.addGold(enemy.getGoldReward());
+          console.log(`Enemy defeated! Gained ${enemy.getExperienceReward()} XP and ${enemy.getGoldReward()} gold`);
         }
         
         hitEnemies.push(enemy);
@@ -45,7 +44,7 @@ export class CombatSystem {
     const playerPos = player.getPosition();
 
     enemies.forEach(enemy => {
-      if (!enemy.isAlive()) return;
+      if (enemy.isDead()) return;
 
       const enemyPos = enemy.getPosition();
       const distance = Math.sqrt(
@@ -54,7 +53,7 @@ export class CombatSystem {
       );
 
       if (distance <= this.attackRange) {
-        const damage = enemy.attack();
+        const damage = enemy.getEnemy().damage;
         if (damage > 0) {
           player.takeDamage(damage);
         }

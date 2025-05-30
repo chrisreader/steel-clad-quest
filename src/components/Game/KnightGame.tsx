@@ -23,7 +23,8 @@ export const KnightGame: React.FC = () => {
     gold: 0,
     attack: 10,
     defense: 5,
-    speed: 5
+    speed: 5,
+    attackPower: 10
   });
   const [gameTime, setGameTime] = useState(0);
   const [isGameOver, setIsGameOver] = useState(false);
@@ -111,7 +112,8 @@ export const KnightGame: React.FC = () => {
         gold: 0,
         attack: 10,
         defense: 5,
-        speed: 5
+        speed: 5,
+        attackPower: 10
       });
       startGame();
     }

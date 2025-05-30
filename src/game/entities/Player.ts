@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { PlayerBody, SwordSwingAnimation, PlayerStats } from '../../types/GameTypes';
@@ -68,7 +67,8 @@ export class Player {
       level: 1,
       attack: 20,
       defense: 5,
-      speed: 5
+      speed: 5,
+      attackPower: 20
     };
   }
   
@@ -490,7 +490,7 @@ export class Player {
   }
   
   public getAttackPower(): number {
-    return this.stats.attack;
+    return this.stats.attackPower;
   }
   
   public addEnemy(enemy: any): void {
@@ -545,6 +545,7 @@ export class Player {
     this.stats.maxHealth += 10;
     this.stats.health = this.stats.maxHealth;
     this.stats.attack += 2;
+    this.stats.attackPower += 2;
     this.stats.defense += 1;
     
     // Increase experience requirement for next level
