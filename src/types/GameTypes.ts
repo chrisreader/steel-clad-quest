@@ -51,6 +51,35 @@ export interface EquippedItems {
   offhand: Item | null;
 }
 
+// Weapon system interfaces
+export interface WeaponStats {
+  damage: number;
+  attackSpeed: number;
+  range: number;
+  durability: number;
+  weight: number;
+}
+
+export interface WeaponConfig {
+  id: string;
+  name: string;
+  type: 'sword' | 'axe' | 'mace' | 'bow';
+  stats: WeaponStats;
+  swingAnimation: {
+    duration: number;
+    phases: {
+      windup: number;
+      slash: number;
+      recovery: number;
+    };
+    rotations: {
+      neutral: { x: number; y: number; z: number };
+      windup: { x: number; y: number; z: number };
+      slash: { x: number; y: number; z: number };
+    };
+  };
+}
+
 // Enhanced Item interface
 export interface Item {
   id: string;
@@ -64,6 +93,7 @@ export interface Item {
   equipmentSlot?: EquipmentSlotType;
   icon?: string; // For UI display
   tier?: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  weaponId?: string; // Links to weapon system
 }
 
 // Enemy types enum
@@ -193,7 +223,8 @@ export interface PlayerHands {
   isVisible: boolean;
 }
 
-export interface SwordSwingAnimation {
+// Updated SwordSwingAnimation to WeaponSwingAnimation
+export interface WeaponSwingAnimation {
   isActive: boolean;
   mixer: THREE.AnimationMixer | null;
   action: THREE.AnimationAction | null;
@@ -215,6 +246,9 @@ export interface SwordSwingAnimation {
   cameraShakeIntensity: number;
   wristSnapIntensity: number;
 }
+
+// Legacy alias for backward compatibility
+export type SwordSwingAnimation = WeaponSwingAnimation;
 
 export interface Item {
   id: string;

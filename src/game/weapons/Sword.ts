@@ -1,0 +1,95 @@
+
+import * as THREE from 'three';
+import { BaseWeapon, WeaponConfig } from './BaseWeapon';
+import { TextureGenerator } from '../utils/TextureGenerator';
+
+export class Sword extends BaseWeapon {
+  private bladeMesh: THREE.Mesh | null = null;
+
+  constructor(config: WeaponConfig) {
+    super(config);
+  }
+
+  public createMesh(): THREE.Group {
+    const swordGroup = new THREE.Group();
+    swordGroup.rotation.order = 'XYZ';
+
+    const metalTexture = TextureGenerator.createMetalTexture();
+    const woodTexture = TextureGenerator.createWoodTexture();
+
+    // Handle
+    const handleGeometry = new THREE.CylinderGeometry(0.04, 0.05, 0.6, 12);
+    const handleMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0xCD853F,
+      shininess: 30,
+      map: woodTexture,
+      normalScale: new THREE.Vector2(0.3, 0.3)
+    });
+    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+    handle.position.set(0, 0, 0);
+    handle.rotation.x = Math.PI / 2;
+    handle.castShadow = true;
+    swordGroup.add(handle);
+
+    // Cross guard
+    const guardGeometry = new THREE.BoxGeometry(0.3, 0.08, 0.08);
+    const guardMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x9A9A9A,
+      shininess: 100,
+      specular: 0xffffff,
+      map: metalTexture
+    });
+    const guard = new THREE.Mesh(guardGeometry, guardMaterial);
+    guard.position.set(0, 0, -0.3);
+    guard.castShadow = true;
+    swordGroup.add(guard);
+
+    // Blade
+    const bladeGeometry = new THREE.BoxGeometry(0.05, 0.02, 1.8);
+    const bladeMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0xFFFFFF,
+      shininess: 150,
+      specular: 0xffffff,
+      reflectivity: 0.8,
+      map: metalTexture
+    });
+    const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+    blade.position.set(0, 0, -1.2);
+    blade.castShadow = true;
+    swordGroup.add(blade);
+
+    // Store blade reference
+    this.bladeMesh = blade;
+
+    // Pommel
+    const pommelGeometry = new THREE.SphereGeometry(0.06, 12, 8);
+    const pommelMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0xCD853F,
+      shininess: 80,
+      map: woodTexture
+    });
+    const pommel = new THREE.Mesh(pommelGeometry, pommelMaterial);
+    pommel.position.set(0, 0, 0.3);
+    pommel.castShadow = true;
+    swordGroup.add(pommel);
+
+    swordGroup.position.set(0, -0.5, -0.1);
+    swordGroup.rotation.x = -Math.PI / 12;
+
+    this.mesh = swordGroup;
+    return swordGroup;
+  }
+
+  public createHitBox(): THREE.Mesh {
+    const swordHitBoxGeometry = new THREE.BoxGeometry(3.5, 3.5, 4);
+    const swordHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    return new THREE.Mesh(swordHitBoxGeometry, swordHitBoxMaterial);
+  }
+
+  public getBladeReference(): THREE.Mesh {
+    if (!this.bladeMesh) {
+      throw new Error('Blade mesh not created. Call createMesh() first.');
+    }
+    return this.bladeMesh;
+  }
+}

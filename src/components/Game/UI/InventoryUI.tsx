@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Item, EquippedItems, InventorySlot as IInventorySlot, EquipmentSlotType } from '../../../types/GameTypes';
 import { EquipmentSlot } from './EquipmentSlot';
@@ -9,13 +8,17 @@ interface InventoryUIProps {
   isOpen: boolean;
   onClose: () => void;
   onUseItem: (item: Item) => void;
+  onEquipWeapon?: (item: Item) => void;
+  onUnequipWeapon?: () => void;
 }
 
 export const InventoryUI: React.FC<InventoryUIProps> = ({
   items,
   isOpen,
   onClose,
-  onUseItem
+  onUseItem,
+  onEquipWeapon,
+  onUnequipWeapon
 }) => {
   // Initialize equipment slots
   const [equippedItems, setEquippedItems] = useState<EquippedItems>({
@@ -64,9 +67,13 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
     if (!canEquip) return;
 
     if (draggedItem.source === 'inventory') {
-      // Move from inventory to equipment
       const sourceSlotId = draggedItem.sourceId as number;
       const currentEquipped = equippedItems[targetSlotType];
+      
+      // Handle weapon equipping
+      if (targetSlotType === 'mainhand' && draggedItem.item.weaponId && onEquipWeapon) {
+        onEquipWeapon(draggedItem.item);
+      }
       
       setEquippedItems(prev => ({
         ...prev,
@@ -82,6 +89,11 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
       // Swap equipment slots
       const sourceSlotType = draggedItem.sourceId as EquipmentSlotType;
       const targetItem = equippedItems[targetSlotType];
+      
+      // Handle weapon swapping
+      if (targetSlotType === 'mainhand' && draggedItem.item.weaponId && onEquipWeapon) {
+        onEquipWeapon(draggedItem.item);
+      }
       
       setEquippedItems(prev => ({
         ...prev,
@@ -138,6 +150,11 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
   const handleUnequip = (slotType: EquipmentSlotType) => {
     const item = equippedItems[slotType];
     if (!item) return;
+
+    // Handle weapon unequipping
+    if (slotType === 'mainhand' && item.weaponId && onUnequipWeapon) {
+      onUnequipWeapon();
+    }
 
     // Find empty inventory slot
     const emptySlotIndex = inventorySlots.findIndex(slot => slot.isEmpty);

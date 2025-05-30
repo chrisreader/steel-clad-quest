@@ -17,6 +17,8 @@ export interface GameControllerRef {
   handleUpgradeSkill: (skill: Skill) => void;
   handleCraft: (recipe: any) => void;
   initializeSampleData: () => void;
+  handleEquipWeapon: (item: Item) => void;
+  handleUnequipWeapon: () => void;
   inventory: Item[];
   quests: Quest[];
   skills: Skill[];
@@ -29,7 +31,7 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
     const [skills, setSkills] = useState<Skill[]>([]);
 
     const initializeSampleData = useCallback(() => {
-      // Enhanced sample inventory with equipment
+      // Enhanced sample inventory with weapon IDs
       setInventory([
         { 
           id: '1', 
@@ -51,7 +53,36 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
           equipmentSlot: 'mainhand',
           stats: { attack: 10 },
           tier: 'common',
-          icon: 'sword'
+          icon: 'sword',
+          weaponId: 'iron_sword' // Links to weapon system
+        },
+        { 
+          id: '8', 
+          name: 'Wooden Sword', 
+          type: 'weapon', 
+          subtype: 'sword',
+          value: 25, 
+          description: 'A basic wooden sword (+5 attack)', 
+          quantity: 1,
+          equipmentSlot: 'mainhand',
+          stats: { attack: 5 },
+          tier: 'common',
+          icon: 'sword',
+          weaponId: 'wooden_sword'
+        },
+        { 
+          id: '9', 
+          name: 'Steel Sword', 
+          type: 'weapon', 
+          subtype: 'sword',
+          value: 200, 
+          description: 'A powerful steel sword (+15 attack)', 
+          quantity: 1,
+          equipmentSlot: 'mainhand',
+          stats: { attack: 15 },
+          tier: 'uncommon',
+          icon: 'sword',
+          weaponId: 'steel_sword'
         },
         { 
           id: '3', 
@@ -207,6 +238,43 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
       console.log(`Crafted ${recipe.name}`);
     }, []);
 
+    const handleEquipWeapon = useCallback((item: Item) => {
+      if (gameEngine && item.weaponId) {
+        const player = gameEngine.getPlayer();
+        const success = player.equipWeapon(item.weaponId);
+        
+        if (success) {
+          console.log(`Successfully equipped ${item.name}`);
+          // Update player stats based on weapon
+          if (item.stats) {
+            const currentStats = player.getStats();
+            const updatedStats = {
+              ...currentStats,
+              attack: currentStats.attack + (item.stats.attack || 0),
+              attackPower: currentStats.attackPower + (item.stats.attack || 0)
+            };
+            onStatsUpdate(updatedStats);
+          }
+        } else {
+          console.error(`Failed to equip ${item.name}`);
+        }
+      }
+    }, [gameEngine, onStatsUpdate]);
+
+    const handleUnequipWeapon = useCallback(() => {
+      if (gameEngine) {
+        const player = gameEngine.getPlayer();
+        const success = player.unequipWeapon();
+        
+        if (success) {
+          console.log('Weapon unequipped');
+          // Reset player stats
+          const currentStats = player.getStats();
+          onStatsUpdate(currentStats);
+        }
+      }
+    }, [gameEngine, onStatsUpdate]);
+
     // Expose methods to parent component
     React.useImperativeHandle(ref, () => ({
       restartGame,
@@ -215,10 +283,12 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
       handleUpgradeSkill,
       handleCraft,
       initializeSampleData,
+      handleEquipWeapon,
+      handleUnequipWeapon,
       inventory,
       quests,
       skills
-    }), [restartGame, goToMainMenu, handleUseItem, handleUpgradeSkill, handleCraft, initializeSampleData, inventory, quests, skills]);
+    }), [restartGame, goToMainMenu, handleUseItem, handleUpgradeSkill, handleCraft, initializeSampleData, handleEquipWeapon, handleUnequipWeapon, inventory, quests, skills]);
 
     return null; // This component only manages state, no UI
   }

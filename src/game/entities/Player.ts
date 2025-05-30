@@ -1,16 +1,21 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
-import { PlayerBody, SwordSwingAnimation, PlayerStats } from '../../types/GameTypes';
+import { PlayerBody, WeaponSwingAnimation, PlayerStats } from '../../types/GameTypes';
 import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { EffectsManager } from '../engine/EffectsManager';
+import { BaseWeapon } from '../weapons/BaseWeapon';
+import { WeaponManager } from '../weapons/WeaponManager';
 
 export class Player {
   // THREE.js objects
   private group: THREE.Group;
   private playerBody: PlayerBody;
-  private sword: THREE.Group;
+  private scene: THREE.Scene;
+  
+  // Weapon system
+  private equippedWeapon: BaseWeapon | null = null;
+  private weaponManager: WeaponManager;
   private swordHitBox: THREE.Mesh;
-  private bladeMesh: THREE.Mesh; // Reference to the actual blade for precise tip tracking
   
   // Game state
   private stats: PlayerStats;
@@ -28,20 +33,22 @@ export class Player {
   private armSwingIntensity: number = 0.1;
   private legSwingIntensity: number = 0.25;
   private animationReturnSpeed: number = 3;
-  private swordSwing: SwordSwingAnimation;
+  private weaponSwing: WeaponSwingAnimation;
   
   // External managers
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   
-  // Sword trail tracking
-  private swordTipPositions: THREE.Vector3[] = [];
+  // Weapon trail tracking
+  private weaponTipPositions: THREE.Vector3[] = [];
   private maxTrailLength: number = 15;
   private swooshEffectCreated: boolean = false;
   
   constructor(scene: THREE.Scene, effectsManager: EffectsManager, audioManager: AudioManager) {
+    this.scene = scene;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    this.weaponManager = new WeaponManager();
     
     // Create player group
     this.group = new THREE.Group();
@@ -51,17 +58,17 @@ export class Player {
     
     console.log("Player group created and added to scene at position:", this.group.position);
     
-    // Create player body
+    // Create player body (without hardcoded sword)
     this.playerBody = this.createPlayerBody();
     
-    // Create sword hitbox for collision detection
-    const swordHitBoxGeometry = new THREE.BoxGeometry(3.5, 3.5, 4);
-    const swordHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
-    this.swordHitBox = new THREE.Mesh(swordHitBoxGeometry, swordHitBoxMaterial);
+    // Create fallback hitbox for when no weapon is equipped
+    const fallbackHitBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const fallbackHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    this.swordHitBox = new THREE.Mesh(fallbackHitBoxGeometry, fallbackHitBoxMaterial);
     scene.add(this.swordHitBox);
     
-    // Initialize sword swing animation
-    this.swordSwing = this.initializeSwordSwing();
+    // Initialize weapon swing animation
+    this.weaponSwing = this.initializeWeaponSwing();
     
     // Initialize player stats
     this.stats = {
@@ -87,7 +94,6 @@ export class Player {
     
     // Create metal texture
     const metalTexture = TextureGenerator.createMetalTexture();
-    const woodTexture = TextureGenerator.createWoodTexture();
     
     // Body
     const bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.3);
@@ -134,7 +140,7 @@ export class Player {
     leftArmGroup.add(leftArm);
     leftArmGroup.position.set(-0.6, 1.4, -0.3);
     leftArmGroup.rotation.x = Math.PI / 8;
-    leftArmGroup.visible = true; // Keep arms visible for immersion
+    leftArmGroup.visible = true;
     playerBodyGroup.add(leftArmGroup);
     
     // Left hand
@@ -149,7 +155,7 @@ export class Player {
     leftHand.castShadow = true;
     leftArmGroup.add(leftHand);
     
-    // Right arm
+    // Right arm (weapon-holding arm)
     const rightArmGroup = new THREE.Group();
     const rightArm = new THREE.Mesh(armGeometry, armMaterial.clone());
     rightArm.position.y = -0.4;
@@ -158,7 +164,7 @@ export class Player {
     rightArmGroup.position.set(0.6, 1.4, -0.2);
     rightArmGroup.rotation.order = 'XYZ';
     rightArmGroup.rotation.set(Math.PI / 8, 0, 0);
-    rightArmGroup.visible = true; // Keep arms visible for immersion
+    rightArmGroup.visible = true;
     playerBodyGroup.add(rightArmGroup);
     
     // Right hand
@@ -167,70 +173,7 @@ export class Player {
     rightHand.castShadow = true;
     rightArmGroup.add(rightHand);
     
-    // SWORD
-    const swordGroup = new THREE.Group();
-    swordGroup.rotation.order = 'XYZ';
-    
-    // Handle
-    const handleGeometry = new THREE.CylinderGeometry(0.04, 0.05, 0.6, 12);
-    const handleMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0xCD853F,
-      shininess: 30,
-      map: woodTexture,
-      normalScale: new THREE.Vector2(0.3, 0.3)
-    });
-    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
-    handle.position.set(0, 0, 0);
-    handle.rotation.x = Math.PI / 2;
-    handle.castShadow = true;
-    swordGroup.add(handle);
-    
-    // Cross guard
-    const guardGeometry = new THREE.BoxGeometry(0.3, 0.08, 0.08);
-    const guardMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0x9A9A9A,
-      shininess: 100,
-      specular: 0xffffff,
-      map: metalTexture
-    });
-    const guard = new THREE.Mesh(guardGeometry, guardMaterial);
-    guard.position.set(0, 0, -0.3);
-    guard.castShadow = true;
-    swordGroup.add(guard);
-    
-    // Blade - Store reference for tip tracking
-    const bladeGeometry = new THREE.BoxGeometry(0.05, 0.02, 1.8);
-    const bladeMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0xFFFFFF,
-      shininess: 150,
-      specular: 0xffffff,
-      reflectivity: 0.8,
-      map: metalTexture
-    });
-    const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
-    blade.position.set(0, 0, -1.2);
-    blade.castShadow = true;
-    swordGroup.add(blade);
-    
-    // Store blade reference for tip tracking
-    this.bladeMesh = blade;
-    
-    // Pommel
-    const pommelGeometry = new THREE.SphereGeometry(0.06, 12, 8);
-    const pommelMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0xCD853F,
-      shininess: 80,
-      map: woodTexture
-    });
-    const pommel = new THREE.Mesh(pommelGeometry, pommelMaterial);
-    pommel.position.set(0, 0, 0.3);
-    pommel.castShadow = true;
-    swordGroup.add(pommel);
-    
-    swordGroup.position.set(0, -0.5, -0.1);
-    swordGroup.rotation.x = -Math.PI / 12;
-    rightArmGroup.add(swordGroup);
-    this.sword = swordGroup;
+    // NO HARDCODED SWORD - weapons are now conditional
     
     // Legs
     const legGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
@@ -243,13 +186,13 @@ export class Player {
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
     leftLeg.position.set(-0.2, -1.2, 0);
     leftLeg.castShadow = true;
-    leftLeg.visible = false; // Hide legs in first-person
+    leftLeg.visible = false;
     playerBodyGroup.add(leftLeg);
     
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
     rightLeg.position.set(0.2, -1.2, 0);
     rightLeg.castShadow = true;
-    rightLeg.visible = false; // Hide legs in first-person
+    rightLeg.visible = false;
     playerBodyGroup.add(rightLeg);
     
     this.group.add(playerBodyGroup);
@@ -265,7 +208,71 @@ export class Player {
     };
   }
   
-  private initializeSwordSwing(): SwordSwingAnimation {
+  public equipWeapon(weaponId: string): boolean {
+    console.log(`🗡️ [Player] Equipping weapon: ${weaponId}`);
+    
+    // Unequip current weapon if any
+    if (this.equippedWeapon) {
+      this.unequipWeapon();
+    }
+    
+    // Create new weapon
+    const weapon = this.weaponManager.createWeapon(weaponId);
+    if (!weapon) {
+      console.error(`Failed to create weapon: ${weaponId}`);
+      return false;
+    }
+    
+    // Equip the weapon
+    weapon.equip(this.scene);
+    this.equippedWeapon = weapon;
+    
+    // Attach weapon to right arm
+    this.playerBody.rightArm.add(weapon.getMesh());
+    
+    // Update swing animation with weapon config
+    const weaponConfig = weapon.getConfig();
+    this.weaponSwing.duration = weaponConfig.swingAnimation.duration;
+    this.weaponSwing.phases = weaponConfig.swingAnimation.phases;
+    this.weaponSwing.rotations = weaponConfig.swingAnimation.rotations;
+    
+    // Update hitbox reference
+    this.swordHitBox = weapon.getHitBox();
+    
+    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name}`);
+    return true;
+  }
+  
+  public unequipWeapon(): boolean {
+    if (!this.equippedWeapon) {
+      return false;
+    }
+    
+    console.log(`🗡️ [Player] Unequipping weapon: ${this.equippedWeapon.getConfig().name}`);
+    
+    // Remove weapon from arm
+    this.playerBody.rightArm.remove(this.equippedWeapon.getMesh());
+    
+    // Unequip weapon
+    this.equippedWeapon.unequip(this.scene);
+    this.equippedWeapon.dispose();
+    this.equippedWeapon = null;
+    
+    // Reset to default hitbox
+    const fallbackHitBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const fallbackHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    this.swordHitBox = new THREE.Mesh(fallbackHitBoxGeometry, fallbackHitBoxMaterial);
+    this.scene.add(this.swordHitBox);
+    
+    console.log(`🗡️ [Player] Weapon unequipped`);
+    return true;
+  }
+  
+  public getEquippedWeapon(): BaseWeapon | null {
+    return this.equippedWeapon;
+  }
+  
+  private initializeWeaponSwing(): WeaponSwingAnimation {
     const duration = 0.64;
     
     return {
@@ -300,14 +307,198 @@ export class Player {
     };
   }
   
+  public startSwordSwing(): void {
+    // Only allow attack if weapon is equipped
+    if (!this.equippedWeapon) {
+      console.log("🗡️ [Player] Cannot attack - no weapon equipped");
+      return;
+    }
+    
+    if (this.weaponSwing.isActive) {
+      console.log("🗡️ [Player] Weapon swing blocked - already attacking");
+      return;
+    }
+    
+    const now = Date.now();
+    if (now - this.lastAttackTime < this.weaponSwing.duration * 1000) {
+      console.log("🗡️ [Player] Weapon swing blocked - player cooldown active");
+      return;
+    }
+    
+    console.log("🗡️ [Player] Starting weapon swing animation");
+    this.weaponSwing.isActive = true;
+    this.weaponSwing.startTime = this.weaponSwing.clock.getElapsedTime();
+    this.lastAttackTime = now;
+    
+    // Clear hit enemies set for new swing
+    this.hitEnemiesThisSwing.clear();
+    
+    // Reset weapon trail tracking
+    this.weaponTipPositions = [];
+    this.swooshEffectCreated = false;
+    
+    // Play weapon swing sound
+    this.audioManager.play('sword_swing');
+    
+    // Initialize trail points
+    this.weaponSwing.trailPoints = [];
+    for (let i = 0; i < 15; i++) {
+      this.weaponSwing.trailPoints.push(new THREE.Vector3());
+    }
+    
+    console.log("🗡️ [Player] Weapon swing animation started successfully");
+  }
+  
+  private updateSwordSwing(): void {
+    if (!this.weaponSwing.isActive || !this.equippedWeapon) return;
+    
+    const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
+    const { phases, rotations, duration } = this.weaponSwing;
+    
+    let currentRotation = { x: 0, y: 0, z: 0 };
+    let weaponWristRotation = 0;
+    
+    if (elapsed < phases.windup) {
+      // WIND-UP PHASE
+      const t = elapsed / phases.windup;
+      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
+      
+      currentRotation.x = THREE.MathUtils.lerp(rotations.neutral.x, rotations.windup.x, easedT);
+      currentRotation.y = THREE.MathUtils.lerp(rotations.neutral.y, rotations.windup.y, easedT);
+      
+    } else if (elapsed < phases.windup + phases.slash) {
+      // SLASH PHASE
+      const t = (elapsed - phases.windup) / phases.slash;
+      const easedT = t * t * (3 - 2 * t);
+      
+      currentRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
+      currentRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
+      
+      // Wrist snap
+      if (t >= 0.2 && t <= 0.8) {
+        const wristT = (t - 0.2) / 0.6;
+        weaponWristRotation = Math.sin(wristT * Math.PI) * this.weaponSwing.wristSnapIntensity;
+      }
+      
+      // Track weapon tip for trail effect
+      this.trackWeaponTip();
+      
+      // Create enhanced swoosh effect once during mid-slash
+      if (t >= 0.3 && t <= 0.5 && !this.swooshEffectCreated) {
+        this.createEnhancedSwooshEffect();
+        this.swooshEffectCreated = true;
+      }
+      
+    } else if (elapsed < duration) {
+      // RECOVERY PHASE
+      const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
+      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
+      
+      currentRotation.x = THREE.MathUtils.lerp(rotations.slash.x, rotations.neutral.x, easedT);
+      currentRotation.y = THREE.MathUtils.lerp(rotations.slash.y, rotations.neutral.y, easedT);
+      
+    } else {
+      // ANIMATION COMPLETE
+      currentRotation = rotations.neutral;
+      this.weaponSwing.isActive = false;
+      
+      // Create weapon trail if we have enough positions
+      if (this.weaponTipPositions.length > 5) {
+        this.createWeaponTrailEffect();
+      }
+      
+      return;
+    }
+    
+    // Apply rotations to right arm
+    this.playerBody.rightArm.rotation.set(currentRotation.x, currentRotation.y, currentRotation.z, 'XYZ');
+    
+    // Apply wrist snap to weapon
+    if (this.equippedWeapon) {
+      this.equippedWeapon.getMesh().rotation.z = weaponWristRotation;
+    }
+  }
+  
+  private trackWeaponTip(): void {
+    if (!this.equippedWeapon) return;
+    
+    try {
+      // Get weapon tip position using blade reference
+      const bladeReference = this.equippedWeapon.getBladeReference();
+      const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
+      
+      // Transform to world coordinates
+      const worldTipPosition = bladeLocalTip.clone();
+      bladeReference.localToWorld(worldTipPosition);
+      
+      // Add to trail positions
+      this.weaponTipPositions.push(worldTipPosition.clone());
+      
+      // Limit trail length
+      if (this.weaponTipPositions.length > this.maxTrailLength) {
+        this.weaponTipPositions.shift();
+      }
+    } catch (error) {
+      console.warn("Could not track weapon tip:", error);
+    }
+  }
+  
+  private createEnhancedSwooshEffect(): void {
+    if (!this.equippedWeapon || this.weaponTipPositions.length === 0) return;
+    
+    const tipPosition = this.weaponTipPositions[this.weaponTipPositions.length - 1];
+    let direction = new THREE.Vector3(1, 0, 0);
+    
+    if (this.weaponTipPositions.length >= 2) {
+      const recent = this.weaponTipPositions[this.weaponTipPositions.length - 1];
+      const previous = this.weaponTipPositions[this.weaponTipPositions.length - 2];
+      direction = recent.clone().sub(previous).normalize();
+    }
+    
+    this.effectsManager.createSwooshEffect(tipPosition, direction);
+  }
+  
+  private createWeaponTrailEffect(): void {
+    if (this.weaponTipPositions.length < 2) return;
+    
+    const trail = this.effectsManager.createSwordTrail(this.weaponTipPositions);
+    if (trail) {
+      console.log("⚡ [Player] Weapon trail created with", this.weaponTipPositions.length, "positions");
+    }
+  }
+  
+  private updateSwordHitBox(): void {
+    if (!this.weaponSwing.isActive || !this.equippedWeapon) return;
+    
+    try {
+      // Update hitbox position using weapon's tip
+      const bladeReference = this.equippedWeapon.getBladeReference();
+      const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
+      
+      const worldTipPosition = bladeLocalTip.clone();
+      bladeReference.localToWorld(worldTipPosition);
+      
+      this.swordHitBox.position.copy(worldTipPosition);
+    } catch (error) {
+      console.warn("Could not update weapon hitbox:", error);
+    }
+  }
+  
+  public getAttackPower(): number {
+    if (this.equippedWeapon) {
+      return this.stats.attackPower + this.equippedWeapon.getStats().damage;
+    }
+    return this.stats.attackPower;
+  }
+  
   public update(deltaTime: number, isMoving?: boolean): void {
     const isActuallyMoving = isMoving ?? false;
     
-    // Update sword swing animation
+    // Update weapon swing animation
     this.updateSwordSwing();
     
     // Update walking animation
-    if (isActuallyMoving && !this.swordSwing.isActive) {
+    if (isActuallyMoving && !this.weaponSwing.isActive) {
       // Update walk cycle
       const walkCycleMultiplier = this.isSprinting ? 2 : 1;
       this.walkCycle += deltaTime * this.walkCycleSpeed * walkCycleMultiplier;
@@ -320,7 +511,7 @@ export class Player {
       // Animate arms if not attacking
       const armSwing = Math.sin(this.walkCycle) * this.armSwingIntensity;
       this.playerBody.leftArm.rotation.x = Math.PI / 8 - armSwing;
-      if (!this.swordSwing.isActive) {
+      if (!this.weaponSwing.isActive) {
         this.playerBody.rightArm.rotation.x = Math.PI / 8 + armSwing;
       }
       
@@ -331,7 +522,7 @@ export class Player {
         this.audioManager.play('footstep');
       }
     } 
-    else if (!isActuallyMoving && !this.swordSwing.isActive) {
+    else if (!isActuallyMoving && !this.weaponSwing.isActive) {
       // Return to idle pose
       const returnSpeed = deltaTime * this.animationReturnSpeed;
       
@@ -346,7 +537,7 @@ export class Player {
         this.playerBody.leftArm.rotation.x, Math.PI / 8, returnSpeed
       );
       
-      if (!this.swordSwing.isActive) {
+      if (!this.weaponSwing.isActive) {
         this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
           this.playerBody.rightArm.rotation.x, Math.PI / 8, returnSpeed
         );
@@ -378,217 +569,44 @@ export class Player {
       }
     }
     
-    // Update sword hitbox position
+    // Update weapon hitbox position
     this.updateSwordHitBox();
   }
   
   public startSwordSwing(): void {
-    if (this.swordSwing.isActive) {
-      console.log("🗡️ [Player] Sword swing blocked - already attacking");
+    if (this.weaponSwing.isActive) {
+      console.log("🗡️ [Player] Weapon swing blocked - already attacking");
       return;
     }
     
     const now = Date.now();
     if (now - this.lastAttackTime < 640) {
-      console.log("🗡️ [Player] Sword swing blocked - player cooldown active");
+      console.log("🗡️ [Player] Weapon swing blocked - player cooldown active");
       return;
     }
     
     console.log("🗡️ [Player] Starting sword swing animation");
-    this.swordSwing.isActive = true;
-    this.swordSwing.startTime = this.swordSwing.clock.getElapsedTime();
+    this.weaponSwing.isActive = true;
+    this.weaponSwing.startTime = this.weaponSwing.clock.getElapsedTime();
     this.lastAttackTime = now;
     
     // Clear hit enemies set for new swing
     this.hitEnemiesThisSwing.clear();
     
     // Reset sword trail tracking
-    this.swordTipPositions = [];
+    this.weaponTipPositions = [];
     this.swooshEffectCreated = false;
     
     // Play sword swing sound
     this.audioManager.play('sword_swing');
     
     // Initialize trail points
-    this.swordSwing.trailPoints = [];
+    this.weaponSwing.trailPoints = [];
     for (let i = 0; i < 15; i++) {
-      this.swordSwing.trailPoints.push(new THREE.Vector3());
+      this.weaponSwing.trailPoints.push(new THREE.Vector3());
     }
     
     console.log("🗡️ [Player] Sword swing animation started successfully");
-  }
-  
-  private updateSwordSwing(): void {
-    if (!this.swordSwing.isActive) return;
-    
-    const elapsed = this.swordSwing.clock.getElapsedTime() - this.swordSwing.startTime;
-    const { phases, rotations, duration } = this.swordSwing;
-    
-    let currentRotation = { x: 0, y: 0, z: 0 };
-    let swordWristRotation = 0;
-    let isSlashPhase = false;
-    
-    if (elapsed < phases.windup) {
-      // WIND-UP PHASE: UP and RIGHT
-      const t = elapsed / phases.windup;
-      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
-      
-      currentRotation.x = THREE.MathUtils.lerp(rotations.neutral.x, rotations.windup.x, easedT);
-      currentRotation.y = THREE.MathUtils.lerp(rotations.neutral.y, rotations.windup.y, easedT);
-      
-    } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: DOWN and LEFT
-      const t = (elapsed - phases.windup) / phases.slash;
-      const easedT = t * t * (3 - 2 * t);
-      
-      currentRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
-      currentRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
-      
-      // Wrist snap
-      if (t >= 0.2 && t <= 0.8) {
-        const wristT = (t - 0.2) / 0.6;
-        swordWristRotation = Math.sin(wristT * Math.PI) * this.swordSwing.wristSnapIntensity;
-      }
-      
-      isSlashPhase = true;
-      
-      // Track sword tip for trail effect more frequently during slash
-      this.trackSwordTip();
-      
-      // Create enhanced swoosh effect once during mid-slash
-      if (t >= 0.3 && t <= 0.5 && !this.swooshEffectCreated) {
-        this.createEnhancedSwooshEffect();
-        this.swooshEffectCreated = true;
-      }
-      
-    } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to neutral
-      const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
-      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
-      
-      currentRotation.x = THREE.MathUtils.lerp(rotations.slash.x, rotations.neutral.x, easedT);
-      currentRotation.y = THREE.MathUtils.lerp(rotations.slash.y, rotations.neutral.y, easedT);
-      
-    } else {
-      // ANIMATION COMPLETE
-      currentRotation = rotations.neutral;
-      this.swordSwing.isActive = false;
-      
-      // Create sword trail if we have enough positions
-      if (this.swordTipPositions.length > 5) {
-        this.createSwordTrailEffect();
-      }
-      
-      // Clean up trail
-      if (this.swordSwing.trail) {
-        this.swordSwing.trail = null;
-      }
-      
-      return;
-    }
-    
-    // Apply rotations to right arm
-    this.playerBody.rightArm.rotation.set(currentRotation.x, currentRotation.y, currentRotation.z, 'XYZ');
-    
-    // Apply wrist snap to sword
-    if (this.sword) {
-      this.sword.rotation.z = swordWristRotation;
-    }
-  }
-  
-  private trackSwordTip(): void {
-    // Get the actual sword tip position using blade mesh world position
-    const swordTipPosition = new THREE.Vector3();
-    
-    // Create a local position at the blade tip (blade extends 1.8 units, so tip is at -0.9 from center)
-    const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
-    
-    // Transform to world coordinates using the blade's world matrix
-    const worldTipPosition = bladeLocalTip.clone();
-    this.bladeMesh.localToWorld(worldTipPosition);
-    
-    swordTipPosition.copy(worldTipPosition);
-    
-    // Add to trail positions
-    this.swordTipPositions.push(swordTipPosition.clone());
-    
-    // Limit trail length
-    if (this.swordTipPositions.length > this.maxTrailLength) {
-      this.swordTipPositions.shift();
-    }
-    
-    console.log("🗡️ [Player] Tracking sword tip at:", swordTipPosition);
-  }
-  
-  private createEnhancedSwooshEffect(): void {
-    // Get actual sword tip position using the proper world transformation
-    const swordTipPosition = new THREE.Vector3();
-    const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
-    
-    // Transform to world coordinates
-    const worldTipPosition = bladeLocalTip.clone();
-    this.bladeMesh.localToWorld(worldTipPosition);
-    swordTipPosition.copy(worldTipPosition);
-    
-    // Calculate sword direction based on recent tip positions
-    let swordDirection = new THREE.Vector3(1, 0, 0); // Default direction
-    if (this.swordTipPositions.length >= 2) {
-      const recent = this.swordTipPositions[this.swordTipPositions.length - 1];
-      const previous = this.swordTipPositions[this.swordTipPositions.length - 2];
-      swordDirection = recent.clone().sub(previous).normalize();
-    }
-    
-    // Create only the swoosh effect - no flashing squares or dust
-    this.effectsManager.createSwooshEffect(swordTipPosition, swordDirection);
-    
-    console.log("🌪️ [Player] Enhanced swoosh effect created at sword tip:", swordTipPosition);
-  }
-  
-  private createSwordTrailEffect(): void {
-    if (this.swordTipPositions.length < 2) return;
-    
-    // Create sword trail using the tracked positions
-    const trail = this.effectsManager.createSwordTrail(this.swordTipPositions);
-    
-    if (trail) {
-      console.log("⚡ [Player] Sword trail created with", this.swordTipPositions.length, "positions");
-    }
-  }
-  
-  private updateSwordHitBox(): void {
-    if (!this.swordSwing.isActive) return;
-    
-    // Use actual sword tip position for combat hitbox
-    const swordTipPosition = new THREE.Vector3();
-    const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
-    
-    // Transform to world coordinates
-    const worldTipPosition = bladeLocalTip.clone();
-    this.bladeMesh.localToWorld(worldTipPosition);
-    swordTipPosition.copy(worldTipPosition);
-    
-    // Update sword hitbox position
-    this.swordHitBox.position.copy(swordTipPosition);
-  }
-  
-  public getSwordHitBox(): THREE.Mesh {
-    return this.swordHitBox;
-  }
-  
-  public isAttacking(): boolean {
-    return this.swordSwing.isActive;
-  }
-  
-  public getAttackPower(): number {
-    return this.stats.attackPower;
-  }
-  
-  public addEnemy(enemy: any): void {
-    this.hitEnemiesThisSwing.add(enemy);
-  }
-  
-  public hasHitEnemy(enemy: any): boolean {
-    return this.hitEnemiesThisSwing.has(enemy);
   }
   
   public startSprint(): void {
@@ -706,19 +724,12 @@ export class Player {
     return this.playerBody;
   }
   
-  public getSwordSwing(): SwordSwingAnimation {
-    return this.swordSwing;
+  public getSwordSwing(): WeaponSwingAnimation {
+    return this.weaponSwing;
   }
   
-  // Legacy methods for backwards compatibility
   public attack(): boolean {
-    if (this.swordSwing.isActive) return false;
-    
-    const now = Date.now();
-    if (now - this.lastAttackTime < 640) return false; // Attack cooldown
-    
-    this.startSwordSwing();
-    return true;
+    return this.startSwordSwing() !== undefined;
   }
   
   public move(direction: any, deltaTime: number): void {

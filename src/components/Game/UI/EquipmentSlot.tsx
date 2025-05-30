@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Item, EquipmentSlotType } from '../../../types/GameTypes';
 import { Sword, Shield } from 'lucide-react';
@@ -33,11 +32,20 @@ export const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
   };
 
   const getSlotIcon = (type: EquipmentSlotType) => {
-    if (item && item.subtype === 'sword') {
-      return <Sword className="w-6 h-6 text-gray-400" />;
-    }
-    if (item && item.subtype === 'shield') {
-      return <Shield className="w-6 h-6 text-gray-400" />;
+    if (item) {
+      // Show specific weapon icons based on weapon type
+      if (item.subtype === 'sword') {
+        return <Sword className="w-6 h-6 text-yellow-400" />;
+      }
+      if (item.subtype === 'shield') {
+        return <Shield className="w-6 h-6 text-gray-400" />;
+      }
+      // For other equipped items, show first letter
+      return (
+        <div className="w-6 h-6 bg-gray-600 rounded flex items-center justify-center text-xs font-bold text-white">
+          {item.name.charAt(0).toUpperCase()}
+        </div>
+      );
     }
     
     // Default empty slot placeholders
