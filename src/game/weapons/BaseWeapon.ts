@@ -46,6 +46,14 @@ export abstract class BaseWeapon {
   abstract createHitBox(): THREE.Mesh;
   abstract getBladeReference(): THREE.Mesh;
 
+  // Bow-specific methods with default implementations
+  public updateCharge?(deltaTime: number): void;
+  public startDrawing?(): void;
+  public stopDrawing?(): void;
+  public getChargeLevel?(): number;
+  public getChargeDamage?(): number;
+  public getArrowSpeed?(): number;
+
   public getMesh(): THREE.Group {
     return this.mesh;
   }

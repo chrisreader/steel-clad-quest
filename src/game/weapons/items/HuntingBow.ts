@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig, WeaponStats } from '../BaseWeapon';
 
@@ -63,7 +64,7 @@ export class HuntingBow extends BaseWeapon {
     const handle = new THREE.Mesh(handleGeometry, handleMaterial);
     bowGroup.add(handle);
     
-    // Bow string
+    // Bow string (using mesh instead of line)
     this.createBowString(bowGroup);
     
     // Scale and position for first-person view
@@ -75,18 +76,12 @@ export class HuntingBow extends BaseWeapon {
   }
 
   private createBowString(bowGroup: THREE.Group): void {
-    const stringGeometry = new THREE.BufferGeometry();
-    const stringMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+    // Create a thin cylinder mesh for the bow string
+    const stringGeometry = new THREE.CylinderGeometry(0.002, 0.002, 1.2);
+    const stringMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
     
-    // Create string line from top to bottom of bow
-    const points = [
-      new THREE.Vector3(0, 0.6, 0),
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0, -0.6, 0)
-    ];
-    
-    stringGeometry.setFromPoints(points);
-    this.bowString = new THREE.Line(stringGeometry, stringMaterial);
+    this.bowString = new THREE.Mesh(stringGeometry, stringMaterial);
+    this.bowString.position.set(0, 0, 0);
     bowGroup.add(this.bowString);
   }
 
@@ -102,13 +97,12 @@ export class HuntingBow extends BaseWeapon {
   }
 
   public getBladeReference(): THREE.Mesh {
-    // For bow, return the first child as reference, but cast as Mesh
-    const firstChild = this.mesh.children[0];
-    if (firstChild instanceof THREE.Mesh) {
-      return firstChild;
+    // Return the bow string as the blade reference
+    if (this.bowString) {
+      return this.bowString;
     }
     
-    // Fallback: create a simple mesh if no suitable child found
+    // Fallback: create a simple mesh if no bow string found
     const fallbackGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
     const fallbackMaterial = new THREE.MeshBasicMaterial({ visible: false });
     return new THREE.Mesh(fallbackGeometry, fallbackMaterial);
@@ -142,14 +136,7 @@ export class HuntingBow extends BaseWeapon {
     if (!this.bowString) return;
     
     const pullback = this.chargeLevel * 0.3; // Maximum pullback distance
-    
-    const points = [
-      new THREE.Vector3(0, 0.6, 0),
-      new THREE.Vector3(-pullback, 0, 0), // String pulls back
-      new THREE.Vector3(0, -0.6, 0)
-    ];
-    
-    this.bowString.geometry.setFromPoints(points);
+    this.bowString.position.x = -pullback;
   }
 
   public getChargeLevel(): number {

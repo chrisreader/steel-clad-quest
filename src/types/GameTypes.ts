@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface Vector3 {
@@ -85,7 +86,7 @@ export interface Item {
   id: string;
   name: string;
   type: 'weapon' | 'armor' | 'potion' | 'material';
-  subtype?: 'helmet' | 'chestplate' | 'leggings' | 'boots' | 'sword' | 'shield';
+  subtype?: 'helmet' | 'chestplate' | 'leggings' | 'boots' | 'sword' | 'shield' | 'bow';
   value: number;
   stats?: Partial<PlayerStats>;
   description: string;
