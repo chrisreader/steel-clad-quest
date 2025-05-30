@@ -589,42 +589,6 @@ export class Player {
     this.updateSwordHitBox();
   }
   
-  public startSwordSwing(): void {
-    if (this.weaponSwing.isActive) {
-      console.log("🗡️ [Player] Weapon swing blocked - already attacking");
-      return;
-    }
-    
-    const now = Date.now();
-    if (now - this.lastAttackTime < 640) {
-      console.log("🗡️ [Player] Weapon swing blocked - player cooldown active");
-      return;
-    }
-    
-    console.log("🗡️ [Player] Starting sword swing animation");
-    this.weaponSwing.isActive = true;
-    this.weaponSwing.startTime = this.weaponSwing.clock.getElapsedTime();
-    this.lastAttackTime = now;
-    
-    // Clear hit enemies set for new swing
-    this.hitEnemiesThisSwing.clear();
-    
-    // Reset sword trail tracking
-    this.weaponTipPositions = [];
-    this.swooshEffectCreated = false;
-    
-    // Play sword swing sound
-    this.audioManager.play('sword_swing');
-    
-    // Initialize trail points
-    this.weaponSwing.trailPoints = [];
-    for (let i = 0; i < 15; i++) {
-      this.weaponSwing.trailPoints.push(new THREE.Vector3());
-    }
-    
-    console.log("🗡️ [Player] Sword swing animation started successfully");
-  }
-  
   public startSprint(): void {
     if (this.sprintStamina >= 50) { // Need at least 50 stamina to sprint
       this.isSprinting = true;
