@@ -4,11 +4,6 @@ import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../type
 
 export class SceneManager {
   private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
-  private clock: THREE.Clock;
-  private width: number;
-  private height: number;
   
   // Lighting
   private ambientLight: THREE.AmbientLight;
@@ -27,44 +22,17 @@ export class SceneManager {
   private dayNightCycleEnabled: boolean = false;
   private dayNightCycleSpeed: number = 0.001; // How quickly time passes
   
-  constructor(mountElement: HTMLDivElement) {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
-    this.clock = new THREE.Clock();
+  constructor(scene: THREE.Scene) {
+    this.scene = scene;
     
-    // Create scene
-    this.scene = new THREE.Scene();
+    // Setup fog
     this.scene.fog = new THREE.Fog(0xB0E0E6, 50, 150); // Lighter blue fog
     this.fog = this.scene.fog;
     
-    // Create camera with proper initial position
-    this.camera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
-    this.camera.position.set(0, 5, 8); // Better initial position
-    console.log("Camera created at position:", this.camera.position);
-    
-    // Create renderer
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: "high-performance",
-      stencil: false,
-      depth: true
-    });
-    this.renderer.setSize(this.width, this.height);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setClearColor(0xB0E0E6); // Lighter sky blue
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.8; // Much brighter exposure
-    
-    // Add renderer to DOM
-    mountElement.appendChild(this.renderer.domElement);
-    console.log("Renderer added to DOM, canvas size:", this.width, "x", this.height);
+    console.log("SceneManager initialized with existing scene");
     
     // Setup basic lighting
     this.setupLighting();
-    
-    // Handle window resize
-    window.addEventListener('resize', this.handleResize.bind(this));
   }
   
   private setupLighting(): void {
@@ -493,29 +461,8 @@ export class SceneManager {
     return this.scene;
   }
   
-  public getCamera(): THREE.PerspectiveCamera {
-    return this.camera;
-  }
-  
-  public getRenderer(): THREE.WebGLRenderer {
-    return this.renderer;
-  }
-  
-  public render(): void {
-    this.renderer.render(this.scene, this.camera);
-  }
-  
-  private handleResize = (): void => {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
-    
-    this.camera.aspect = this.width / this.height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.width, this.height);
-  }
-  
   public dispose(): void {
-    window.removeEventListener('resize', this.handleResize);
-    this.renderer.dispose();
+    // The scene is managed by RenderEngine, so we don't dispose it here
+    console.log("SceneManager disposed");
   }
 }

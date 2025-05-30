@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -59,8 +58,8 @@ export class GameEngine {
       // Initialize render engine
       this.renderEngine.initialize();
       
-      // Create the scene manager using render engine components
-      this.sceneManager = new SceneManager(this.mountElement);
+      // Create the scene manager using the render engine's scene
+      this.sceneManager = new SceneManager(this.renderEngine.getScene());
       
       // Create default world
       this.sceneManager.createDefaultWorld();
