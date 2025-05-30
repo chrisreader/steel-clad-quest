@@ -247,7 +247,7 @@ export class Player {
   
   private initializeBowAnimationPositions(): void {
     // FIXED: Match left shoulder to right shoulder level and adjust hand position
-    // Left hand positioned to naturally extend from matched shoulder level
+    // Left hand positioned to naturally extend from matched shoulder level extension
     this.bowDrawAnimation.leftHandRestPosition.set(-0.3, 1.6, -0.5); // Lowered to match shoulder level extension
     this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.6, -0.2); // Close to string position
     
@@ -255,7 +255,7 @@ export class Player {
     const baseShoulder = Math.PI / 8; // Natural shoulder position
     
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder * 1.3, // Pushed back more to hide cylinder top from first-person view
+      baseShoulder * 1.95, // Pushed back 50% more to hide cylinder top from first-person view
       -0.6, // Extended outward horizontally to reach bow handle
       0.3   // Upward angle for proper grip positioning
     );
@@ -272,7 +272,7 @@ export class Player {
     
     // Enhanced arm rotations during draw - both shoulders at same level
     this.bowDrawAnimation.leftArmDrawRotation.set(
-      baseShoulder * 1.3, // Left arm stays pushed back more
+      baseShoulder * 1.95, // Left arm stays pushed back 50% more
       -0.6, // Maintain horizontal extension
       0.3   // Maintain grip angle
     );
@@ -287,7 +287,7 @@ export class Player {
     this.bowDrawAnimation.bowRestRotation.set(0, Math.PI / 2, 0);
     this.bowDrawAnimation.bowDrawRotation.set(0, Math.PI / 2, 0);
     
-    console.log("🏹 [Player] FIXED: Left shoulder pushed back more (1.3x) to hide cylinder top from first-person view");
+    console.log("🏹 [Player] FIXED: Left shoulder pushed back 50% more (1.95x) to hide cylinder top from first-person view");
   }
   
   public equipWeapon(weaponId: string): boolean {
