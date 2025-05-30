@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { TextureGenerator } from '../utils/TextureGenerator';
 
 interface LoadingProgress {
@@ -198,7 +198,7 @@ export class SceneManager {
     
     // Create geometry from heightmap
     const geometry = new THREE.PlaneGeometry(200, 200, 256, 256);
-    const vertices = geometry.attributes.position.array as Array<number>;
+    const vertices = geometry.attributes.position.array as Float32Array;
     
     const canvas = document.createElement('canvas');
     canvas.width = heightMap.image.width;
@@ -207,9 +207,9 @@ export class SceneManager {
     ctx!.drawImage(heightMap.image, 0, 0, canvas.width, canvas.height);
     const imageData = ctx!.getImageData(0, 0, canvas.width, canvas.height).data;
     
-    for (let i = 0, j = 0, l = vertices.length; i < l; i++, j += 4) {
+    for (let i = 0, j = 0, l = vertices.length; i < l; i += 3, j += 4) {
       // Set height based on red channel value
-      vertices[i * 3 + 1] = imageData[j] / 8;
+      vertices[i + 1] = imageData[j] / 8;
     }
     
     geometry.computeVertexNormals();
@@ -435,6 +435,33 @@ export class SceneManager {
     this.scene.add(skybox);
     
     console.log('[SceneManager] Skybox created');
+  }
+  
+  public async createWorld(): Promise<void> {
+    console.log('[SceneManager] Creating world...');
+    
+    this.updateProgress('Setting up lighting...', 1, 7);
+    this.setupLighting();
+    
+    this.updateProgress('Creating skybox...', 2, 7);
+    this.createSkybox();
+    
+    this.updateProgress('Creating terrain...', 3, 7);
+    await this.createTerrain();
+    
+    this.updateProgress('Creating trees...', 4, 7);
+    await this.createTrees(12);
+    
+    this.updateProgress('Creating rocks...', 5, 7);
+    await this.createRocks(10);
+    
+    this.updateProgress('Creating bushes...', 6, 7);
+    await this.createBushes(10);
+    
+    this.updateProgress('Creating tavern...', 7, 7);
+    await this.createTavern();
+    
+    console.log('[SceneManager] World creation complete');
   }
   
   public render(): void {

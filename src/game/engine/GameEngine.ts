@@ -49,7 +49,7 @@ export class GameEngine {
     this.audioManager = new AudioManager();
     
     // Initialize player with required parameters
-    this.player = new Player(this.sceneManager.getScene(), this.effectsManager, this.audioManager);
+    this.player = new Player(this.sceneManager.getScene(), this.effectsManager);
     
     // Initialize game state
     this.gameState = {
@@ -72,11 +72,8 @@ export class GameEngine {
         console.log(`Loading progress: ${progress.stage} (${progress.progress}/${progress.total})`);
       });
       
-      // Initialize audio (non-blocking)
-      // this.audioManager.initialize();
-      
       // Create the world (this is now async and shows progress)
-      await this.sceneManager.createDefaultWorld();
+      await this.sceneManager.createWorld();
       
       // Add player to scene - player is already added in constructor
       
@@ -307,7 +304,7 @@ export class GameEngine {
       this.enemies.forEach(enemy => enemy.update(1/60, this.player.getPosition()));
       
       // Update effects
-      this.effectsManager.update();
+      this.effectsManager.update(1/60);
       
       // Check for collisions, etc.
     }

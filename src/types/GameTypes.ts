@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface Vector3 {
@@ -206,12 +205,11 @@ export interface Quest {
 }
 
 export interface GameState {
-  isPlaying: boolean;
-  isPaused: boolean;
-  isGameOver: boolean;
-  currentLevel: string;
   score: number;
   timeElapsed: number;
+  enemiesDefeated: number;
+  goldCollected: number;
+  isInTavern: boolean;
 }
 
 export interface Skill {
