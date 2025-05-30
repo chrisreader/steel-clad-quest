@@ -7,9 +7,10 @@ import { StaminaBar } from './StaminaBar';
 interface GameHUDProps {
   playerStats: PlayerStats;
   gameTime: number;
+  isInTavern?: boolean;
 }
 
-export const GameHUD: React.FC<GameHUDProps> = ({ playerStats, gameTime }) => {
+export const GameHUD: React.FC<GameHUDProps> = ({ playerStats, gameTime, isInTavern = false }) => {
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
@@ -56,6 +57,15 @@ export const GameHUD: React.FC<GameHUDProps> = ({ playerStats, gameTime }) => {
 
         <div className="mt-4 text-sm text-gray-300">
           Time: {formatTime(gameTime)}
+        </div>
+
+        <div className="mt-4">
+          <div className="text-sm text-gray-300">Location: {isInTavern ? 'Tavern' : 'Forest'}</div>
+          {isInTavern ? (
+            <div className="text-yellow-400 text-xs mt-1">You're safe in the tavern. Walk outside to face enemies!</div>
+          ) : (
+            <div className="text-red-400 text-xs mt-1">Click to attack, WASD to move, double-tap W to sprint (needs 50+ stamina, lasts 5 sec)!</div>
+          )}
         </div>
       </div>
     </div>
