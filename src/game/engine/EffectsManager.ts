@@ -57,10 +57,12 @@ export class EffectsManager {
           if (effect.userData.type === 'slash') {
             const progress = effect.userData.age / effect.userData.duration;
             effect.scale.x = 1 + progress * 2;
-            (effect as THREE.Mesh).material.opacity = 0.9 * (1 - progress);
+            const material = (effect as THREE.Mesh).material as THREE.MeshBasicMaterial;
+            material.opacity = 0.9 * (1 - progress);
           } else if (effect.userData.type === 'swoosh') {
             const progress = effect.userData.age / effect.userData.duration;
-            (effect as THREE.Line).material.opacity = 0.8 * (1 - progress);
+            const material = (effect as THREE.Line).material as THREE.LineBasicMaterial;
+            material.opacity = 0.8 * (1 - progress);
             effect.scale.setScalar(1 + progress * 0.5);
           } else if (effect.userData.type === 'damage_particle' && effect.userData.update) {
             effect.userData.update(deltaTime);
