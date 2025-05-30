@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class TextureGenerator {
@@ -411,7 +410,6 @@ export class TextureGenerator {
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.transparent = true;
     return texture;
   }
 }
