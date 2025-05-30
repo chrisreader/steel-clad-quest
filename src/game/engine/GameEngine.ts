@@ -42,6 +42,10 @@ export class GameEngine {
   private maxPitch: number = Math.PI / 2 - 0.1; // Prevent over-rotation
   private pointerLockRequested: boolean = false;
   
+  // Debug state
+  private renderCount: number = 0;
+  private lastRenderTime: number = 0;
+  
   // Callbacks
   private onUpdateHealth: (health: number) => void;
   private onUpdateGold: (gold: number) => void;
@@ -76,115 +80,184 @@ export class GameEngine {
   public async initialize(): Promise<void> {
     if (this.isInitialized) return;
     
-    console.log("Initializing game engine...");
+    console.log("🎮 [GameEngine] Starting initialization...");
+    console.log("🎮 [GameEngine] Mount element:", this.mountElement);
+    console.log("🎮 [GameEngine] Mount element dimensions:", {
+      width: this.mountElement.clientWidth,
+      height: this.mountElement.clientHeight,
+      offsetWidth: this.mountElement.offsetWidth,
+      offsetHeight: this.mountElement.offsetHeight
+    });
     
     try {
       // Create the scene manager
-      console.log("Creating SceneManager...");
-      try {
-        this.sceneManager = new SceneManager(this.mountElement);
-        this.scene = this.sceneManager.getScene();
-        this.camera = this.sceneManager.getCamera();
-        this.renderer = this.sceneManager.getRenderer();
-        console.log("SceneManager created successfully");
-        console.log("Scene created with", this.scene.children.length, "initial children");
-        console.log("Camera position:", this.camera.position);
-        console.log("Renderer size:", this.renderer.getSize(new THREE.Vector2()));
-      } catch (sceneError) {
-        console.error("Failed to create SceneManager:", sceneError);
-        throw new Error("Scene initialization failed: " + sceneError.message);
+      console.log("🎮 [GameEngine] Creating SceneManager...");
+      this.sceneManager = new SceneManager(this.mountElement);
+      this.scene = this.sceneManager.getScene();
+      this.camera = this.sceneManager.getCamera();
+      this.renderer = this.sceneManager.getRenderer();
+      
+      console.log("🎮 [GameEngine] SceneManager created successfully");
+      
+      // Verify canvas is properly attached
+      const canvas = this.renderer.domElement;
+      console.log("🎮 [GameEngine] Canvas verification:");
+      console.log("🎮 [GameEngine] - Canvas element:", canvas);
+      console.log("🎮 [GameEngine] - Canvas parent:", canvas.parentElement);
+      console.log("🎮 [GameEngine] - Mount element children:", this.mountElement.children.length);
+      console.log("🎮 [GameEngine] - Canvas in DOM:", document.contains(canvas));
+      
+      // Force canvas attachment if not properly attached
+      if (!document.contains(canvas) || canvas.parentElement !== this.mountElement) {
+        console.log("🎮 [GameEngine] Re-attaching canvas to mount element...");
+        this.mountElement.appendChild(canvas);
       }
       
-      // Create default world
-      console.log("Creating default world...");
-      this.sceneManager.createDefaultWorld();
-      console.log("Default world created, scene now has", this.scene.children.length, "children");
+      // Set canvas style to ensure visibility
+      canvas.style.display = 'block';
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.outline = 'none';
       
-      // Add a debug cube to verify rendering is working
-      const debugGeometry = new THREE.BoxGeometry(2, 2, 2);
-      const debugMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+      console.log("🎮 [GameEngine] Canvas style applied:", {
+        display: canvas.style.display,
+        width: canvas.style.width,
+        height: canvas.style.height,
+        position: canvas.style.position
+      });
+      
+      console.log("🎮 [GameEngine] Renderer canvas:", this.renderer.domElement);
+      console.log("🎮 [GameEngine] Canvas parent:", this.renderer.domElement.parentElement);
+      console.log("🎮 [GameEngine] Canvas size:", this.renderer.getSize(new THREE.Vector2()));
+      console.log("🎮 [GameEngine] Canvas style:", {
+        width: this.renderer.domElement.style.width,
+        height: this.renderer.domElement.style.height,
+        display: this.renderer.domElement.style.display,
+        position: this.renderer.domElement.style.position
+      });
+      
+      // Create default world
+      console.log("🎮 [GameEngine] Creating default world...");
+      this.sceneManager.createDefaultWorld();
+      console.log("🎮 [GameEngine] Scene children after world creation:", this.scene.children.length);
+      
+      // Add multiple large, bright debug objects to verify rendering
+      console.log("🎮 [GameEngine] Adding debug objects...");
+      
+      // Large bright cube right in front of camera
+      const debugGeometry = new THREE.BoxGeometry(4, 4, 4);
+      const debugMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000, 
+        wireframe: false,
+        transparent: true,
+        opacity: 0.8
+      });
       const debugCube = new THREE.Mesh(debugGeometry, debugMaterial);
-      debugCube.position.set(0, 1, -5);
+      debugCube.position.set(0, 2, -8);
       debugCube.userData.isDebugCube = true;
       this.scene.add(debugCube);
-      console.log("Debug cube added at position (0, 1, -5)");
+      
+      // Bright green sphere
+      const sphereGeometry = new THREE.SphereGeometry(2, 16, 16);
+      const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const debugSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+      debugSphere.position.set(-6, 3, -10);
+      debugSphere.userData.isDebugSphere = true;
+      this.scene.add(debugSphere);
+      
+      // Bright yellow plane as ground
+      const planeGeometry = new THREE.PlaneGeometry(20, 20);
+      const planeMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffff00, 
+        side: THREE.DoubleSide 
+      });
+      const debugPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+      debugPlane.rotation.x = -Math.PI / 2;
+      debugPlane.position.y = -2;
+      debugPlane.userData.isDebugPlane = true;
+      this.scene.add(debugPlane);
+      
+      console.log("🎮 [GameEngine] Debug objects added. Scene children:", this.scene.children.length);
       
       // Create the input manager
-      console.log("Creating InputManager...");
+      console.log("🎮 [GameEngine] Creating InputManager...");
       this.inputManager = new InputManager();
       this.inputManager.initialize(this.renderer);
-      console.log("InputManager created");
       
       // Setup mouse look controls immediately
       this.setupMouseLookControls();
       
       // Create the effects manager
-      console.log("Creating EffectsManager...");
+      console.log("🎮 [GameEngine] Creating EffectsManager...");
       this.effectsManager = new EffectsManager(this.scene, this.camera);
-      console.log("EffectsManager created");
       
       // Create the audio manager
-      console.log("Creating AudioManager...");
+      console.log("🎮 [GameEngine] Creating AudioManager...");
       this.audioManager = new AudioManager(this.camera, this.scene);
-      console.log("AudioManager created");
       
-      console.log("Preloading audio...");
+      // Preload audio (with error handling)
       try {
         await this.preloadAudio();
-        console.log("Audio preloaded successfully");
+        console.log("🎮 [GameEngine] Audio preloaded successfully");
       } catch (audioError) {
-        console.warn("Audio preloading failed, continuing without audio:", audioError);
-        // Continue without audio
+        console.warn("🎮 [GameEngine] Audio preloading failed, continuing:", audioError);
       }
       
       // Create the player
-      console.log("Creating Player...");
+      console.log("🎮 [GameEngine] Creating Player...");
       this.player = new Player(this.scene, this.effectsManager, this.audioManager);
-      console.log("Player created at position:", this.player.getPosition());
+      console.log("🎮 [GameEngine] Player created at position:", this.player.getPosition());
       
-      // Don't hide the entire player group for first-person view
-      // Instead, only specific parts are hidden in the Player constructor
+      // Make player arms/sword visible for first-person immersion
+      const playerBody = this.player.getBody();
+      if (playerBody.leftArm) playerBody.leftArm.visible = true;
+      if (playerBody.rightArm) playerBody.rightArm.visible = true;
       
       // Create game systems
-      console.log("Creating CombatSystem...");
+      console.log("🎮 [GameEngine] Creating CombatSystem...");
       this.combatSystem = new CombatSystem(this.scene, this.player, this.effectsManager, this.audioManager);
-      console.log("CombatSystem created");
       
       // Create MovementSystem
-      console.log("Creating MovementSystem...");
+      console.log("🎮 [GameEngine] Creating MovementSystem...");
       this.movementSystem = new MovementSystem(this.scene, this.camera, this.player, this.inputManager);
-      console.log("MovementSystem created");
       
-      // Set first-person camera position
+      // Set first-person camera position with detailed logging
       this.setupFirstPersonCamera();
       
-      // Log final scene children to verify scene content
-      console.log("Final scene has", this.scene.children.length, "children");
-      console.log("Scene children types:", this.scene.children.map(child => child.type));
-      console.log("Scene children userData:", this.scene.children.map(child => Object.keys(child.userData)));
+      // Log final scene state
+      console.log("🎮 [GameEngine] Final scene state:");
+      console.log("🎮 [GameEngine] - Children count:", this.scene.children.length);
+      console.log("🎮 [GameEngine] - Camera position:", this.camera.position);
+      console.log("🎮 [GameEngine] - Camera rotation:", this.camera.rotation);
+      console.log("🎮 [GameEngine] - Renderer size:", this.renderer.getSize(new THREE.Vector2()));
+      
+      // Test render immediately
+      console.log("🎮 [GameEngine] Testing immediate render...");
+      this.renderer.render(this.scene, this.camera);
+      console.log("🎮 [GameEngine] Immediate render completed");
       
       // Set game as initialized
       this.isInitialized = true;
-      
-      console.log("Game engine initialized successfully!");
+      console.log("🎮 [GameEngine] Initialization complete!");
       
       // Start the game
-      console.log("Starting game...");
       this.start();
-      console.log("Game started");
     } catch (error) {
-      console.error("Error initializing game engine:", error);
-      // Don't rethrow the error - mark as initialized with issues
-      this.isInitialized = true; // Still mark as initialized so loading completes
-      console.warn("Game initialized with errors - some features may not work");
+      console.error("🎮 [GameEngine] Initialization error:", error);
+      this.isInitialized = true; // Still mark as initialized
     }
   }
   
   private setupFirstPersonCamera(): void {
     const playerPosition = this.player.getPosition();
     
-    // Position camera at player's eye level
+    // Position camera at player's eye level with detailed logging
     this.camera.position.set(playerPosition.x, playerPosition.y + 1.7, playerPosition.z);
+    
+    console.log("🎮 [GameEngine] Camera setup:");
+    console.log("🎮 [GameEngine] - Player position:", playerPosition);
+    console.log("🎮 [GameEngine] - Camera position:", this.camera.position);
+    console.log("🎮 [GameEngine] - Camera looking at:", this.camera.getWorldDirection(new THREE.Vector3()));
     
     // Reset camera rotation
     this.cameraRotation.pitch = 0;
@@ -193,8 +266,14 @@ export class GameEngine {
     // Apply initial rotation
     this.updateCameraRotation();
     
-    console.log("First-person camera set up at:", this.camera.position);
-    console.log("Camera looking at direction:", this.camera.getWorldDirection(new THREE.Vector3()));
+    // Test that objects are in view
+    const cameraDirection = this.camera.getWorldDirection(new THREE.Vector3());
+    console.log("🎮 [GameEngine] Camera direction:", cameraDirection);
+    
+    // Calculate distance to debug objects
+    const debugCubePos = new THREE.Vector3(0, 2, -8);
+    const distanceToCube = this.camera.position.distanceTo(debugCubePos);
+    console.log("🎮 [GameEngine] Distance to debug cube:", distanceToCube);
   }
   
   private setupMouseLookControls(): void {
@@ -333,37 +412,46 @@ export class GameEngine {
   
   public start(): void {
     if (!this.isInitialized) {
-      console.error("Cannot start game: engine not initialized");
+      console.error("🎮 [GameEngine] Cannot start: not initialized");
       return;
     }
     
-    console.log("Starting game...");
+    console.log("🎮 [GameEngine] Starting game...");
     
     // Start game loop
     this.gameState.isPlaying = true;
     this.gameState.isPaused = false;
     this.clock.start();
     
-    // Log initial render state
-    console.log("Starting render loop...");
-    console.log("Game state:", this.gameState);
-    console.log("Scene children count:", this.scene.children.length);
-    console.log("Camera position:", this.camera.position);
-    console.log("Renderer info:", {
-      domElement: !!this.renderer.domElement,
-      size: this.renderer.getSize(new THREE.Vector2()),
-      pixelRatio: this.renderer.getPixelRatio()
-    });
+    console.log("🎮 [GameEngine] Game state:", this.gameState);
+    console.log("🎮 [GameEngine] Starting render loop...");
     
     // Start the render loop
     this.animate();
     
-    console.log("Game started!");
+    console.log("🎮 [GameEngine] Game started successfully!");
   }
   
   private animate = (): void => {
+    this.renderCount++;
+    const now = performance.now();
+    
+    // Log every 60 frames (roughly 1 second)
+    if (this.renderCount % 60 === 0) {
+      const fps = this.renderCount / ((now - this.lastRenderTime) / 1000) * 60;
+      console.log("🎮 [GameEngine] Render loop active:", {
+        frame: this.renderCount,
+        fps: fps.toFixed(1),
+        playing: this.gameState.isPlaying,
+        paused: this.gameState.isPaused,
+        cameraPos: this.camera.position,
+        sceneChildren: this.scene.children.length
+      });
+      this.lastRenderTime = now;
+    }
+    
     if (!this.isInitialized || !this.gameState.isPlaying) {
-      console.log("Animation stopped - initialized:", this.isInitialized, "playing:", this.gameState.isPlaying);
+      console.log("🎮 [GameEngine] Animation stopped - initialized:", this.isInitialized, "playing:", this.gameState.isPlaying);
       return;
     }
     
@@ -376,15 +464,10 @@ export class GameEngine {
     }
     
     // Calculate delta time
-    const deltaTime = Math.min(this.clock.getDelta(), 0.1); // Cap at 100ms to prevent large jumps
+    const deltaTime = Math.min(this.clock.getDelta(), 0.1);
     
     // Update total elapsed time
     this.gameState.timeElapsed += deltaTime;
-    
-    // Debug logging every 60 frames (roughly 1 second)
-    if (Math.floor(this.gameState.timeElapsed * 60) % 60 === 0) {
-      console.log("Render loop active - time:", this.gameState.timeElapsed.toFixed(2), "camera pos:", this.camera.position, "scene children:", this.scene.children.length);
-    }
     
     // Update game systems
     this.update(deltaTime);
@@ -403,14 +486,15 @@ export class GameEngine {
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
     
-    // Log movement input for debugging
-    if (this.isMoving) {
-      console.log("Movement detected:", {
+    // Log movement input every 60 frames when moving
+    if (this.isMoving && this.renderCount % 60 === 0) {
+      console.log("🎮 [GameEngine] Movement active:", {
         forward: this.inputManager.isActionPressed('moveForward'),
         backward: this.inputManager.isActionPressed('moveBackward'),
         left: this.inputManager.isActionPressed('moveLeft'),
         right: this.inputManager.isActionPressed('moveRight'),
-        playerPos: this.player.getPosition()
+        playerPos: this.player.getPosition(),
+        cameraPos: this.camera.position
       });
     }
     

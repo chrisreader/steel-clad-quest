@@ -1,5 +1,3 @@
-
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -10,6 +8,7 @@ export class MovementSystem {
   private player: Player;
   private inputManager: InputManager;
   private isSprintEnabled: boolean = false;
+  private frameCount: number = 0;
   
   constructor(
     scene: THREE.Scene,
@@ -22,10 +21,21 @@ export class MovementSystem {
     this.player = player;
     this.inputManager = inputManager;
     
-    console.log("MovementSystem initialized with player at:", this.player.getPosition());
+    console.log("🏃 [MovementSystem] Initialized with player at:", this.player.getPosition());
+    console.log("🏃 [MovementSystem] InputManager available:", !!this.inputManager);
     
     // Set up sprint input handler
     this.setupSprintHandler();
+    
+    // Test input manager immediately
+    this.testInputManager();
+  }
+  
+  private testInputManager(): void {
+    console.log("🏃 [MovementSystem] Testing input manager:");
+    console.log("🏃 [MovementSystem] - isActionPressed method:", typeof this.inputManager.isActionPressed);
+    console.log("🏃 [MovementSystem] - moveForward test:", this.inputManager.isActionPressed('moveForward'));
+    console.log("🏃 [MovementSystem] - Available key bindings:", this.inputManager.getKeyBindings());
   }
   
   private setupSprintHandler(): void {
@@ -35,53 +45,76 @@ export class MovementSystem {
       const { type } = customEvent.detail;
       
       if (type === 'doubleTapForward') {
-        console.log("Double tap forward detected - starting sprint");
+        console.log("🏃 [MovementSystem] Double tap forward detected - starting sprint");
         this.player.startSprint();
       }
     });
   }
   
   public update(deltaTime: number): void {
-    // Handle movement input using the correct InputManager API
+    this.frameCount++;
+    
+    // Handle movement input using the InputManager API
     const moveDirection = new THREE.Vector3();
     let hasMovementInput = false;
     
-    if (this.inputManager.isActionPressed('moveForward')) {
+    // Check each movement key individually with logging
+    const forwardPressed = this.inputManager.isActionPressed('moveForward');
+    const backwardPressed = this.inputManager.isActionPressed('moveBackward');
+    const leftPressed = this.inputManager.isActionPressed('moveLeft');
+    const rightPressed = this.inputManager.isActionPressed('moveRight');
+    
+    if (forwardPressed) {
       moveDirection.z -= 1;
       hasMovementInput = true;
     }
-    if (this.inputManager.isActionPressed('moveBackward')) {
+    if (backwardPressed) {
       moveDirection.z += 1;
       hasMovementInput = true;
     }
-    if (this.inputManager.isActionPressed('moveLeft')) {
+    if (leftPressed) {
       moveDirection.x -= 1;
       hasMovementInput = true;
     }
-    if (this.inputManager.isActionPressed('moveRight')) {
+    if (rightPressed) {
       moveDirection.x += 1;
       hasMovementInput = true;
     }
     
-    // Debug log movement input
+    // Log input state every 60 frames
+    if (this.frameCount % 60 === 0) {
+      console.log("🏃 [MovementSystem] Input state:", {
+        forward: forwardPressed,
+        backward: backwardPressed,
+        left: leftPressed,
+        right: rightPressed,
+        hasInput: hasMovementInput,
+        moveDirection: moveDirection,
+        playerPos: this.player.getPosition()
+      });
+    }
+    
+    // Debug log movement input when detected
     if (hasMovementInput) {
-      console.log("Movement input detected:", {
+      console.log("🏃 [MovementSystem] Movement input detected:", {
         direction: moveDirection,
         playerPos: this.player.getPosition(),
-        deltaTime: deltaTime
+        deltaTime: deltaTime,
+        frame: this.frameCount
       });
     }
     
     // Check for sprint
-    if (this.inputManager.isActionPressed('sprint')) {
+    const sprintPressed = this.inputManager.isActionPressed('sprint');
+    if (sprintPressed) {
       if (!this.isSprintEnabled) {
-        console.log("Sprint started");
+        console.log("🏃 [MovementSystem] Sprint started");
         this.player.startSprint();
         this.isSprintEnabled = true;
       }
     } else {
       if (this.isSprintEnabled) {
-        console.log("Sprint stopped");
+        console.log("🏃 [MovementSystem] Sprint stopped");
         this.player.stopSprint();
         this.isSprintEnabled = false;
       }
@@ -113,21 +146,27 @@ export class MovementSystem {
       // Store previous position for debugging
       const previousPosition = this.player.getPosition().clone();
       
-      // Move player in world space
+      // Move player in world space with enhanced logging
+      console.log("🏃 [MovementSystem] Executing player movement:", {
+        worldDirection: worldMoveDirection,
+        speed: speed,
+        deltaTime: deltaTime,
+        previousPos: previousPosition
+      });
+      
       this.player.move(worldMoveDirection, deltaTime);
       
       // Log movement result
       const newPosition = this.player.getPosition();
       const actualMovement = newPosition.clone().sub(previousPosition);
       
-      if (actualMovement.length() > 0.001) {
-        console.log("Player moved:", {
-          from: previousPosition,
-          to: newPosition,
-          movement: actualMovement,
-          distance: actualMovement.length()
-        });
-      }
+      console.log("🏃 [MovementSystem] Movement result:", {
+        from: previousPosition,
+        to: newPosition,
+        movement: actualMovement,
+        distance: actualMovement.length(),
+        success: actualMovement.length() > 0.001
+      });
     }
   }
   
@@ -150,4 +189,3 @@ export class MovementSystem {
     // Cleanup if needed
   }
 }
-

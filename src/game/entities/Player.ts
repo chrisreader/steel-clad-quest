@@ -622,26 +622,33 @@ export class Player {
     const speed = this.stats.speed * deltaTime * (this.isSprinting ? 1.5 : 1);
     const previousPosition = this.group.position.clone();
     
+    console.log("🚶 [Player] Move called:", {
+      direction: direction,
+      speed: speed,
+      deltaTime: deltaTime,
+      currentPos: previousPosition,
+      isSprinting: this.isSprinting
+    });
+    
+    // Apply movement
     this.group.position.x += direction.x * speed;
     this.group.position.z += direction.z * speed;
     
     const actualMovement = this.group.position.clone().sub(previousPosition);
     
-    if (actualMovement.length() > 0.001) {
-      console.log("Player.move() executed:", {
-        direction: direction,
-        speed: speed,
-        deltaTime: deltaTime,
-        previousPos: previousPosition,
-        newPos: this.group.position.clone(),
-        actualMovement: actualMovement
-      });
-    }
+    console.log("🚶 [Player] Move executed:", {
+      previousPos: previousPosition,
+      newPos: this.group.position.clone(),
+      actualMovement: actualMovement,
+      movementMagnitude: actualMovement.length(),
+      wasSuccessful: actualMovement.length() > 0.001
+    });
     
     // Face movement direction
     if (direction.x !== 0 || direction.z !== 0) {
       const angle = Math.atan2(direction.x, direction.z);
       this.group.rotation.y = angle;
+      console.log("🚶 [Player] Rotation updated to:", angle);
     }
   }
   
