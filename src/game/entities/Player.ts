@@ -267,7 +267,7 @@ export class Player {
     this.bowDrawAnimation.rightHandDrawRotation.set(0, 0, 0); // Right hand stays neutral
     
     // Updated realistic arm positions for enhanced archery stance
-    this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.6, -0.6); // Match the raised arm position
+    this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.8, -0.4); // Updated Z to -0.4
     this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.5, -0.3); // Right arm ready position
     
     const baseShoulder = Math.PI / 8;
@@ -287,7 +287,7 @@ export class Player {
     );
     
     // Drawing positions - left arm stays steady, right arm pulls back
-    this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.6, -0.6); // Left hand stays in place
+    this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.8, -0.4); // Updated Z to -0.4
     this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.5, -0.2);  // Right hand pulls back
     
     // Drawing arm rotations with enhanced visibility
@@ -368,7 +368,7 @@ export class Player {
   
   private setArcheryStance(): void {
     // Set arms to proper archery positions with enhanced visibility
-    this.playerBody.leftArm.position.set(-0.4, 1.6, -0.6);  // Raised and more visible position
+    this.playerBody.leftArm.position.set(-0.4, 1.8, -0.4);  // Updated Z to -0.4
     this.playerBody.rightArm.position.set(0.3, 1.4, -0.2);  // Ready to draw position
     
     // Set arm rotations for archery stance with better field of view
