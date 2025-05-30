@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameCanvas } from './GameCanvas';
 import { GameHUD } from './UI/GameHUD';
@@ -18,6 +17,14 @@ import { PlayerStats, Item, Quest, Skill } from '../../types/GameTypes';
 
 interface KnightGameProps {
   onLoadingComplete?: () => void;
+}
+
+// Add interface for GameEngineController ref
+interface GameEngineControllerRef {
+  restart: () => void;
+  pause: () => void;
+  resume: () => void;
+  getEngine: () => GameEngine | null;
 }
 
 export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => {
@@ -51,6 +58,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const [showCrafting, setShowCrafting] = useState(false);
 
   const gameControllerRef = useRef<GameControllerRef>(null);
+  const engineControllerRef = useRef<GameEngineControllerRef>(null);
   const mountRef = useRef<HTMLDivElement>(null);
 
   // Handler for engine loading completion
@@ -97,6 +105,30 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     engine.setOnLocationChange(handleLocationChange);
   }, [handleUpdateHealth, handleUpdateGold, handleUpdateStamina, handleGameOver, handleLocationChange]);
 
+  // Enhanced item use handler that connects both controllers
+  const handleUseItem = useCallback((item: Item) => {
+    // Call GameController method for game logic
+    gameControllerRef.current?.handleUseItem(item);
+    
+    // Play sound effect through GameEngine
+    if (gameEngine) {
+      if (item.type === 'potion') {
+        gameEngine.handleInput('playSound', { soundName: 'item_use' });
+      }
+    }
+  }, [gameEngine]);
+
+  // Enhanced skill upgrade handler
+  const handleUpgradeSkill = useCallback((skill: Skill) => {
+    // Call GameController method for skill logic
+    gameControllerRef.current?.handleUpgradeSkill(skill);
+    
+    // Play upgrade sound effect
+    if (gameEngine) {
+      gameEngine.handleInput('playSound', { soundName: 'skill_upgrade' });
+    }
+  }, [gameEngine]);
+
   const startGame = useCallback(() => {
     if (gameEngine) {
       console.log('Starting knight adventure...');
@@ -116,7 +148,10 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, [gameEngine, isPaused]);
 
   const restartGame = useCallback(() => {
+    // Restart both controllers
     gameControllerRef.current?.restartGame();
+    engineControllerRef.current?.restart();
+    
     setGameStarted(true);
     setIsGameOver(false);
     setIsPaused(false);
@@ -124,10 +159,13 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   const goToMainMenu = useCallback(() => {
     gameControllerRef.current?.goToMainMenu();
+    if (gameEngine) {
+      gameEngine.pause();
+    }
     setGameStarted(false);
     setIsGameOver(false);
     setIsPaused(false);
-  }, []);
+  }, [gameEngine]);
 
   // Handle keyboard input
   useEffect(() => {
@@ -207,6 +245,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       
       {/* Engine Controller - handles the THREE.js game engine */}
       <GameEngineController
+        ref={engineControllerRef}
         onUpdateHealth={handleUpdateHealth}
         onUpdateGold={handleUpdateGold}
         onUpdateStamina={handleUpdateStamina}
@@ -264,14 +303,14 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         items={gameControllerRef.current?.inventory || []}
         isOpen={showInventory}
         onClose={() => setShowInventory(false)}
-        onUseItem={gameControllerRef.current?.handleUseItem || (() => {})}
+        onUseItem={handleUseItem}
       />
 
       <SkillTreeUI
         skills={gameControllerRef.current?.skills || []}
         isOpen={showSkillTree}
         onClose={() => setShowSkillTree(false)}
-        onUpgradeSkill={gameControllerRef.current?.handleUpgradeSkill || (() => {})}
+        onUpgradeSkill={handleUpgradeSkill}
         availablePoints={playerStats.level - 1}
       />
 
