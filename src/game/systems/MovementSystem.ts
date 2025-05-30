@@ -23,22 +23,27 @@ export class MovementSystem {
   }
   
   public update(deltaTime: number): void {
-    // Handle movement input
-    const inputState = this.inputManager.getInputState();
-    
+    // Handle movement input using the correct InputManager API
     const moveDirection = new THREE.Vector3();
     
-    if (inputState.forward) {
+    if (this.inputManager.isActionPressed('moveForward')) {
       moveDirection.z -= 1;
     }
-    if (inputState.backward) {
+    if (this.inputManager.isActionPressed('moveBackward')) {
       moveDirection.z += 1;
     }
-    if (inputState.left) {
+    if (this.inputManager.isActionPressed('moveLeft')) {
       moveDirection.x -= 1;
     }
-    if (inputState.right) {
+    if (this.inputManager.isActionPressed('moveRight')) {
       moveDirection.x += 1;
+    }
+    
+    // Check for sprint
+    if (this.inputManager.isActionPressed('sprint')) {
+      this.isSprintEnabled = true;
+    } else {
+      this.isSprintEnabled = false;
     }
     
     // Normalize movement

@@ -98,7 +98,7 @@ export const KnightGame: React.FC = () => {
 
   const restartGame = () => {
     if (gameEngine) {
-      gameEngine.stop();
+      gameEngine.restart();
       setGameTime(0);
       setIsGameOver(false);
       setPlayerStats({
@@ -121,7 +121,7 @@ export const KnightGame: React.FC = () => {
 
   const goToMainMenu = () => {
     if (gameEngine) {
-      gameEngine.stop();
+      gameEngine.pause();
     }
     setGameStarted(false);
     setIsGameOver(false);

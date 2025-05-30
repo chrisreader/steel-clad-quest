@@ -7,14 +7,14 @@ interface GameCanvasProps {
 }
 
 export const GameCanvas: React.FC<GameCanvasProps> = ({ onGameEngineReady }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const gameEngineRef = useRef<GameEngine | null>(null);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!containerRef.current) return;
 
     console.log('Initializing game canvas...');
-    const gameEngine = new GameEngine(canvasRef.current);
+    const gameEngine = new GameEngine(containerRef.current);
     gameEngineRef.current = gameEngine;
     onGameEngineReady(gameEngine);
 
@@ -26,8 +26,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({ onGameEngineReady }) => 
   }, [onGameEngineReady]);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
+      ref={containerRef}
       className="w-full h-full block"
       style={{ background: 'linear-gradient(to bottom, #87CEEB, #98FB98)' }}
     />
