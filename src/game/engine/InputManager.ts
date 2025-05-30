@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 interface KeyBindings {
@@ -20,7 +19,7 @@ export class InputManager {
   private keys: { [key: string]: boolean } = {};
   private mouse: { x: number; y: number; buttons: number } = { x: 0, y: 0, buttons: 0 };
   private previousMouse: { x: number; y: number } = { x: 0, y: 0 };
-  private isPointerLocked: boolean = false;
+  private pointerLocked: boolean = false;
   private mouseSensitivity: number = 0.002;
   private lastMouseDown: number = 0;
   private doubleClickThreshold: number = 300;
@@ -160,7 +159,7 @@ export class InputManager {
     this.mouse.y = event.clientY;
     
     // Calculate movement if pointer is locked
-    if (this.isPointerLocked) {
+    if (this.pointerLocked) {
       this.mouseMovement.x = event.movementX || 0;
       this.mouseMovement.y = event.movementY || 0;
       
@@ -196,7 +195,7 @@ export class InputManager {
     // Handle specific buttons
     switch (event.button) {
       case 0: // Left mouse button
-        if (!this.isPointerLocked && this.renderer) {
+        if (!this.pointerLocked && this.renderer) {
           this.renderer.domElement.requestPointerLock();
         }
         this.dispatchInputEvent('attack');
@@ -231,8 +230,8 @@ export class InputManager {
   }
   
   private handlePointerLockChange(): void {
-    this.isPointerLocked = document.pointerLockElement === this.renderer?.domElement;
-    this.dispatchInputEvent('pointerLockChange', { locked: this.isPointerLocked });
+    this.pointerLocked = document.pointerLockElement === this.renderer?.domElement;
+    this.dispatchInputEvent('pointerLockChange', { locked: this.pointerLocked });
   }
   
   private handleTouchStart(event: TouchEvent): void {
@@ -474,17 +473,17 @@ export class InputManager {
   }
   
   public isPointerLocked(): boolean {
-    return this.isPointerLocked;
+    return this.pointerLocked;
   }
   
   public requestPointerLock(): void {
-    if (this.renderer && !this.isPointerLocked) {
+    if (this.renderer && !this.pointerLocked) {
       this.renderer.domElement.requestPointerLock();
     }
   }
   
   public exitPointerLock(): void {
-    if (this.isPointerLocked) {
+    if (this.pointerLocked) {
       document.exitPointerLock();
     }
   }
