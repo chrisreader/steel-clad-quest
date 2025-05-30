@@ -129,55 +129,11 @@ export class GameEngine {
       console.log("🎮 [GameEngine] Renderer canvas:", this.renderer.domElement);
       console.log("🎮 [GameEngine] Canvas parent:", this.renderer.domElement.parentElement);
       console.log("🎮 [GameEngine] Canvas size:", this.renderer.getSize(new THREE.Vector2()));
-      console.log("🎮 [GameEngine] Canvas style:", {
-        width: this.renderer.domElement.style.width,
-        height: this.renderer.domElement.style.height,
-        display: this.renderer.domElement.style.display,
-        position: this.renderer.domElement.style.position
-      });
       
       // Create default world
       console.log("🎮 [GameEngine] Creating default world...");
       this.sceneManager.createDefaultWorld();
       console.log("🎮 [GameEngine] Scene children after world creation:", this.scene.children.length);
-      
-      // Add multiple large, bright debug objects to verify rendering
-      console.log("🎮 [GameEngine] Adding debug objects...");
-      
-      // Large bright cube right in front of camera
-      const debugGeometry = new THREE.BoxGeometry(4, 4, 4);
-      const debugMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xff0000, 
-        wireframe: false,
-        transparent: true,
-        opacity: 0.8
-      });
-      const debugCube = new THREE.Mesh(debugGeometry, debugMaterial);
-      debugCube.position.set(0, 2, -8);
-      debugCube.userData.isDebugCube = true;
-      this.scene.add(debugCube);
-      
-      // Bright green sphere
-      const sphereGeometry = new THREE.SphereGeometry(2, 16, 16);
-      const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-      const debugSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-      debugSphere.position.set(-6, 3, -10);
-      debugSphere.userData.isDebugSphere = true;
-      this.scene.add(debugSphere);
-      
-      // Bright yellow plane as ground
-      const planeGeometry = new THREE.PlaneGeometry(20, 20);
-      const planeMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xffff00, 
-        side: THREE.DoubleSide 
-      });
-      const debugPlane = new THREE.Mesh(planeGeometry, planeMaterial);
-      debugPlane.rotation.x = -Math.PI / 2;
-      debugPlane.position.y = -2;
-      debugPlane.userData.isDebugPlane = true;
-      this.scene.add(debugPlane);
-      
-      console.log("🎮 [GameEngine] Debug objects added. Scene children:", this.scene.children.length);
       
       // Create the input manager
       console.log("🎮 [GameEngine] Creating InputManager...");
