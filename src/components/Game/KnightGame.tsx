@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -148,20 +149,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }
   }, [gameEngine, isPaused, setIsPaused]);
 
-  // Use input handling hook
-  useInputHandling({
-    gameStarted,
-    gameEngine,
-    isAnyUIOpen,
-    toggleInventory,
-    toggleSkillTree,
-    toggleQuestLog,
-    toggleCrafting,
-    toggleStatsPanel,
-    closeAllUIs,
-    togglePause
-  });
-
   // Notify GameEngine about UI state changes and manage cursor
   useEffect(() => {
     if (!gameEngine) return;
@@ -237,49 +224,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       }
     }
   }, [gameEngine]);
-
-  // Direct weapon equip handler (simplified)
-  const handleEquipWeapon = useCallback((item: Item) => {
-    console.log('[KnightGame] Equipping weapon:', item.name);
-    
-    if (gameEngine && item.weaponId) {
-      const player = gameEngine.getPlayer();
-      const success = player.equipWeapon(item.weaponId);
-      
-      if (success) {
-        console.log(`Successfully equipped ${item.name}`);
-        // Update player stats based on weapon
-        if (item.stats) {
-          const currentStats = player.getStats();
-          const updatedStats = {
-            ...currentStats,
-            attack: currentStats.attack + (item.stats.attack || 0),
-            attackPower: currentStats.attackPower + (item.stats.attack || 0)
-          };
-          setPlayerStats(updatedStats);
-        }
-      } else {
-        console.error(`Failed to equip ${item.name}`);
-      }
-    }
-  }, [gameEngine, setPlayerStats]);
-
-  // Direct weapon unequip handler (simplified)
-  const handleUnequipWeapon = useCallback(() => {
-    console.log('[KnightGame] Unequipping weapon');
-    
-    if (gameEngine) {
-      const player = gameEngine.getPlayer();
-      const success = player.unequipWeapon();
-      
-      if (success) {
-        console.log('Weapon unequipped');
-        // Reset player stats
-        const currentStats = player.getStats();
-        setPlayerStats(currentStats);
-      }
-    }
-  }, [gameEngine, setPlayerStats]);
 
   const startGame = useCallback(() => {
     console.log('Starting knight adventure...');
