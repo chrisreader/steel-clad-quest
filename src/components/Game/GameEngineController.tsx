@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
 import { GameEngine } from '../../game/engine/GameEngine';
 
@@ -101,10 +100,10 @@ const GameEngineController: React.FC<GameEngineControllerProps> = ({
     }
   }, []);
   
-  // Resume the game
+  // Resume the game (use pause method since it toggles)
   const resumeGame = useCallback(() => {
     if (engineRef.current) {
-      engineRef.current.resume();
+      engineRef.current.pause();
     }
   }, []);
   
