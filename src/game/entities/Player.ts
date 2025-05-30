@@ -249,7 +249,7 @@ export class Player {
     // FIXED: Match left shoulder to right shoulder level and adjust hand position
     // Left hand positioned to naturally extend from matched shoulder level extension
     this.bowDrawAnimation.leftHandRestPosition.set(-0.6, 1.6, -0.5); // Changed from -0.5 to -0.6 units to the left
-    this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.6, -0.2); // Close to string position
+    this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.6, -0.5); // Moved back 50% from -0.2 to -0.5
     
     // FIXED: Match left shoulder level to right shoulder level
     const baseShoulder = Math.PI / 8; // Natural shoulder position
@@ -261,14 +261,14 @@ export class Player {
     );
     
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder * 0.7, // Slightly lowered shoulder
+      baseShoulder * 1.4375, // Pushed back 50% more (was 0.7, now 0.7 * 2.05 ≈ 1.4375)
       0.2,  // Inward toward string
       -0.1  // Ready position
     );
     
     // Enhanced draw positions with matched shoulder levels
     this.bowDrawAnimation.leftHandDrawPosition.set(-0.6, 1.6, -0.5); // Changed from -0.5 to -0.6 - Left hand stays steady on bow
-    this.bowDrawAnimation.rightHandDrawPosition.set(0.9, 1.6, 0.3); // Right hand to anchor point (more dramatic)
+    this.bowDrawAnimation.rightHandDrawPosition.set(0.9, 1.6, -0.15); // Right hand moved back 50% from 0.3 to -0.15
     
     // Enhanced arm rotations during draw - both shoulders at same level
     this.bowDrawAnimation.leftArmDrawRotation.set(
@@ -278,7 +278,7 @@ export class Player {
     );
     
     this.bowDrawAnimation.rightArmDrawRotation.set(
-      baseShoulder + 0.4, // More pronounced pull back
+      baseShoulder + 0.6, // More pronounced pull back (increased from 0.4 by 50%)
       1.2,  // Significant rotation toward face
       -0.6  // Elbow back and up
     );
@@ -287,7 +287,7 @@ export class Player {
     this.bowDrawAnimation.bowRestRotation.set(0, Math.PI / 2, 0);
     this.bowDrawAnimation.bowDrawRotation.set(0, Math.PI / 2, 0);
     
-    console.log("🏹 [Player] FIXED: Left arm positioned 0.6 units to the left and pushed back 50% more (2.925x) to hide cylinder top from first-person view");
+    console.log("🏹 [Player] FIXED: Left arm positioned 0.6 units to the left and both arms pushed back 50% more to hide cylinder tops from first-person view");
   }
   
   public equipWeapon(weaponId: string): boolean {
