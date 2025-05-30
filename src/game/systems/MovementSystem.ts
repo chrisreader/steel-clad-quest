@@ -105,17 +105,19 @@ export class MovementSystem {
       });
     }
     
-    // Check for sprint
+    // Check for sprint - FIXED: Only allow sprint when moving forward
     const sprintPressed = this.inputManager.isActionPressed('sprint');
-    if (sprintPressed) {
+    const canSprint = sprintPressed && forwardPressed && !backwardPressed;
+    
+    if (canSprint) {
       if (!this.isSprintEnabled) {
-        console.log("🏃 [MovementSystem] Sprint started");
+        console.log("🏃 [MovementSystem] Sprint started - forward movement detected");
         this.player.startSprint();
         this.isSprintEnabled = true;
       }
     } else {
       if (this.isSprintEnabled) {
-        console.log("🏃 [MovementSystem] Sprint stopped");
+        console.log("🏃 [MovementSystem] Sprint stopped - no forward movement or sprint key released");
         this.player.stopSprint();
         this.isSprintEnabled = false;
       }
@@ -125,8 +127,11 @@ export class MovementSystem {
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
-      // Apply sprint multiplier if sprinting
-      const speed = this.player.getSprinting() ? 1.5 : 1.0;
+      // Apply sprint multiplier ONLY if sprinting AND moving forward
+      let speed = 1.0;
+      if (this.player.getSprinting() && forwardPressed && !backwardPressed) {
+        speed = 1.5;
+      }
       moveDirection.multiplyScalar(speed);
       
       // Transform movement direction relative to camera rotation (first-person)
@@ -152,7 +157,9 @@ export class MovementSystem {
         worldDirection: worldMoveDirection,
         speed: speed,
         deltaTime: deltaTime,
-        previousPos: previousPosition
+        previousPos: previousPosition,
+        sprinting: this.player.getSprinting(),
+        forwardPressed: forwardPressed
       });
       
       // FIXED: Movement no longer affects visual rotation
