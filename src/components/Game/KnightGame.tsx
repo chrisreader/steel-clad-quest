@@ -36,23 +36,46 @@ export const KnightGame: React.FC = () => {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [gameStarted, setGameStarted] = useState(false);
+  const [isInTavern, setIsInTavern] = useState(true);
 
   const handleGameEngineReady = useCallback((engine: GameEngine) => {
     console.log('Game engine ready!');
     setGameEngine(engine);
+    
+    // Set up engine callbacks
+    engine.setOnUpdateHealth((health: number) => {
+      setPlayerStats(prev => ({ ...prev, health }));
+    });
+    
+    engine.setOnUpdateGold((gold: number) => {
+      setPlayerStats(prev => ({ ...prev, gold }));
+    });
+    
+    engine.setOnUpdateStamina((stamina: number) => {
+      setPlayerStats(prev => ({ ...prev, stamina }));
+    });
+    
+    engine.setOnGameOver((score: number) => {
+      setIsGameOver(true);
+    });
+    
+    engine.setOnLocationChange((inTavern: boolean) => {
+      setIsInTavern(inTavern);
+    });
   }, []);
 
-  const startGame = () => {
+  const startGame = useCallback(() => {
     if (gameEngine) {
       console.log('Starting knight adventure...');
-      gameEngine.start();
-      setGameStarted(true);
-      setIsGameOver(false);
-      
-      // Initialize sample data
-      initializeSampleData();
+      gameEngine.initialize().then(() => {
+        setGameStarted(true);
+        setIsGameOver(false);
+        
+        // Initialize sample data
+        initializeSampleData();
+      });
     }
-  };
+  }, [gameEngine]);
 
   const initializeSampleData = () => {
     // Sample inventory items
@@ -96,11 +119,12 @@ export const KnightGame: React.FC = () => {
     ]);
   };
 
-  const restartGame = () => {
+  const restartGame = useCallback(() => {
     if (gameEngine) {
       gameEngine.restart();
       setGameTime(0);
       setIsGameOver(false);
+      setIsInTavern(true);
       setPlayerStats({
         health: 100,
         maxHealth: 100,
@@ -115,45 +139,31 @@ export const KnightGame: React.FC = () => {
         speed: 5,
         attackPower: 10
       });
-      startGame();
+      setGameStarted(true);
     }
-  };
+  }, [gameEngine]);
 
-  const goToMainMenu = () => {
+  const goToMainMenu = useCallback(() => {
     if (gameEngine) {
       gameEngine.pause();
     }
     setGameStarted(false);
     setIsGameOver(false);
-  };
+  }, [gameEngine]);
 
+  // Handle keyboard input
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (!gameStarted || !gameEngine) return;
 
-      const player = gameEngine.getPlayer();
-      const gameState = gameEngine.getGameState();
+      // Prevent default for game controls
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+        event.preventDefault();
+      }
 
       switch (event.code) {
-        case 'KeyW':
-        case 'ArrowUp':
-          player.move({ x: 0, y: 0, z: -1 }, 1/60);
-          break;
-        case 'KeyS':
-        case 'ArrowDown':
-          player.move({ x: 0, y: 0, z: 1 }, 1/60);
-          break;
-        case 'KeyA':
-        case 'ArrowLeft':
-          player.move({ x: -1, y: 0, z: 0 }, 1/60);
-          break;
-        case 'KeyD':
-        case 'ArrowRight':
-          player.move({ x: 1, y: 0, z: 0 }, 1/60);
-          break;
         case 'Space':
-          event.preventDefault();
-          player.attack();
+          gameEngine.handleInput('attack');
           break;
         case 'KeyI':
           setShowInventory(!showInventory);
@@ -174,7 +184,7 @@ export const KnightGame: React.FC = () => {
             setShowQuestLog(false);
             setShowCrafting(false);
           } else {
-            gameEngine.pause();
+            gameEngine.handleInput('pause');
           }
           break;
       }
@@ -184,18 +194,21 @@ export const KnightGame: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameStarted, gameEngine, showInventory, showSkillTree, showQuestLog, showCrafting]);
 
+  // Update game state from engine
   useEffect(() => {
     if (!gameStarted || !gameEngine) return;
 
     const updateInterval = setInterval(() => {
-      const player = gameEngine.getPlayer();
-      const gameState = gameEngine.getGameState();
-      
-      setPlayerStats(player.getStats());
-      setGameTime(gameState.timeElapsed);
-      
-      if (!player.isAlive()) {
-        setIsGameOver(true);
+      if (gameEngine.isRunning() && !gameEngine.isPaused()) {
+        const player = gameEngine.getPlayer();
+        const gameState = gameEngine.getGameState();
+        
+        setPlayerStats(player.getStats());
+        setGameTime(gameState.timeElapsed);
+        
+        if (!player.isAlive()) {
+          setIsGameOver(true);
+        }
       }
     }, 100);
 
@@ -204,14 +217,26 @@ export const KnightGame: React.FC = () => {
 
   const handleUseItem = (item: Item) => {
     if (item.type === 'potion' && item.name === 'Health Potion') {
-      // Use health potion logic would go here
       console.log(`Used ${item.name}`);
+      // Apply health potion effect
+      if (gameEngine) {
+        const player = gameEngine.getPlayer();
+        player.heal(item.value);
+      }
     }
   };
 
   const handleUpgradeSkill = (skill: Skill) => {
     if (skill.level < skill.maxLevel) {
       console.log(`Upgraded ${skill.name}`);
+      // Apply skill upgrade
+      setSkills(prevSkills => 
+        prevSkills.map(s => 
+          s.id === skill.id 
+            ? { ...s, level: s.level + 1 }
+            : s
+        )
+      );
     }
   };
 
@@ -245,7 +270,11 @@ export const KnightGame: React.FC = () => {
       <GameCanvas onGameEngineReady={handleGameEngineReady} />
       
       {gameStarted && !isGameOver && (
-        <GameHUD playerStats={playerStats} gameTime={gameTime} />
+        <GameHUD 
+          playerStats={playerStats} 
+          gameTime={gameTime} 
+          isInTavern={isInTavern}
+        />
       )}
 
       <InventoryUI
