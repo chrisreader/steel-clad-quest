@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -16,7 +15,7 @@ export class CombatSystem {
   
   // Combat parameters
   private pickupRange: number = 2; // Range for gold pickup
-  private attackCooldown: number = 0.64; // Seconds between attacks
+  private attackCooldownMs: number = 640; // Milliseconds between attacks
   private lastAttackTime: number = 0;
   
   constructor(
@@ -29,6 +28,7 @@ export class CombatSystem {
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    console.log("⚔️ [CombatSystem] Initialized with cooldown:", this.attackCooldownMs, "ms");
   }
   
   public update(deltaTime: number): void {
@@ -149,12 +149,31 @@ export class CombatSystem {
   }
   
   public startPlayerAttack(): void {
-    // Check cooldown
-    if (this.lastAttackTime < this.attackCooldown) return;
+    const now = Date.now();
+    const timeSinceLastAttack = now - this.lastAttackTime;
+    
+    console.log("⚔️ [CombatSystem] Attack requested:", {
+      now: now,
+      lastAttackTime: this.lastAttackTime,
+      timeSinceLastAttack: timeSinceLastAttack,
+      cooldownMs: this.attackCooldownMs,
+      canAttack: timeSinceLastAttack >= this.attackCooldownMs
+    });
+    
+    // Check cooldown - FIXED: now checking if enough time has passed
+    if (timeSinceLastAttack < this.attackCooldownMs) {
+      console.log("⚔️ [CombatSystem] Attack blocked by cooldown");
+      return;
+    }
+    
+    console.log("⚔️ [CombatSystem] Starting player attack!");
+    
+    // Update last attack time
+    this.lastAttackTime = now;
     
     // Start attack
     this.player.startSwordSwing();
-    this.lastAttackTime = 0;
+    console.log("⚔️ [CombatSystem] Player sword swing initiated");
   }
   
   public addEnemy(enemy: Enemy): void {

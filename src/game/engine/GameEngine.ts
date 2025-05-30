@@ -544,41 +544,77 @@ export class GameEngine {
     console.log("Game restarted!");
   }
   
-  public handleInput(inputType: string, data?: any): void {
+  public handleInput(type: string, data?: any): void {
     if (!this.isInitialized || !this.gameState.isPlaying || this.gameState.isPaused) {
       console.log("🎮 [GameEngine] Input ignored - not ready. Initialized:", this.isInitialized, "Playing:", this.gameState.isPlaying, "Paused:", this.gameState.isPaused);
       return;
     }
     
-    console.log("🎮 [GameEngine] Handling input:", inputType, data);
+    console.log("🎮 [GameEngine] Input received:", { type, data });
     
-    switch (inputType) {
+    switch (type) {
       case 'attack':
-        this.combatSystem.startPlayerAttack();
+        console.log("🎮 [GameEngine] Processing attack input");
+        if (this.combatSystem) {
+          this.combatSystem.startPlayerAttack();
+        } else {
+          console.warn("🎮 [GameEngine] No combat system available for attack");
+        }
         break;
-      
-      case 'pause':
-        this.pause();
+        
+      case 'look':
+        if (this.movementSystem && data) {
+          this.movementSystem.handleLook(data.x, data.y);
+        }
         break;
-      
-      case 'doubleTapForward':
-        // Start sprinting
-        this.player.startSprint();
-        break;
-      
-      // Movement inputs - these need to be forwarded to the input manager
+        
       case 'moveForward':
+        if (this.movementSystem) {
+          this.movementSystem.setForward(true);
+        }
+        break;
+        
       case 'moveBackward':
+        if (this.movementSystem) {
+          this.movementSystem.setBackward(true);
+        }
+        break;
+        
       case 'moveLeft':
+        if (this.movementSystem) {
+          this.movementSystem.setLeft(true);
+        }
+        break;
+        
       case 'moveRight':
+        if (this.movementSystem) {
+          this.movementSystem.setRight(true);
+        }
+        break;
+        
       case 'sprint':
-        console.log("🎮 [GameEngine] Movement input received:", inputType);
-        // The movement is now handled by the InputManager and MovementSystem
-        // But we can trigger immediate feedback here if needed
+        if (this.player) {
+          this.player.startSprint();
+        }
+        break;
+        
+      case 'doubleTapForward':
+        if (this.player) {
+          this.player.startSprint();
+        }
+        break;
+        
+      case 'pointerLockChange':
+        if (data && data.locked) {
+          console.log("🎮 [GameEngine] Pointer locked - game controls active");
+        } else {
+          console.log("🎮 [GameEngine] Pointer unlocked - game controls inactive");
+        }
         break;
         
       default:
-        console.log("🎮 [GameEngine] Unknown input type:", inputType);
+        // Handle other input types
+        break;
     }
   }
   

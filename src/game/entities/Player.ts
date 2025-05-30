@@ -374,12 +374,18 @@ export class Player {
   }
   
   public startSwordSwing(): void {
-    if (this.swordSwing.isActive) return;
+    if (this.swordSwing.isActive) {
+      console.log("🗡️ [Player] Sword swing blocked - already attacking");
+      return;
+    }
     
     const now = Date.now();
-    if (now - this.lastAttackTime < 640) return; // Attack cooldown
+    if (now - this.lastAttackTime < 640) {
+      console.log("🗡️ [Player] Sword swing blocked - player cooldown active");
+      return;
+    }
     
-    console.log("Starting sword swing animation");
+    console.log("🗡️ [Player] Starting sword swing animation");
     this.swordSwing.isActive = true;
     this.swordSwing.startTime = this.swordSwing.clock.getElapsedTime();
     this.lastAttackTime = now;
@@ -395,6 +401,8 @@ export class Player {
     for (let i = 0; i < 15; i++) {
       this.swordSwing.trailPoints.push(new THREE.Vector3());
     }
+    
+    console.log("🗡️ [Player] Sword swing animation started successfully");
   }
   
   private updateSwordSwing(): void {
