@@ -90,6 +90,43 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     onLoadingComplete?.(); // Forward to parent to hide loading screen
   }, [onLoadingComplete]);
 
+  // Check if any UI panel is currently open
+  const isAnyUIOpen = useCallback(() => {
+    return showInventory || showSkillTree || showQuestLog || showCrafting || showStatsPanel || isPaused;
+  }, [showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, isPaused]);
+
+  // Pointer lock management - release cursor when UI opens, lock when closed
+  useEffect(() => {
+    if (!gameEngine || !gameStarted) return;
+
+    const anyUIOpen = isAnyUIOpen();
+    console.log('[KnightGame] UI state changed - any UI open:', anyUIOpen);
+
+    // Get the input manager from the game engine
+    const inputManager = gameEngine.getRenderer()?.domElement ? 
+      gameEngine : null; // We'll access through handleInput method
+
+    if (anyUIOpen) {
+      // Release pointer lock when any UI opens
+      console.log('[KnightGame] UI opened - releasing pointer lock');
+      if (inputManager) {
+        // Use handleInput to communicate with the engine's input manager
+        gameEngine.handleInput('requestPointerUnlock');
+      }
+    } else {
+      // Request pointer lock when all UIs are closed (with small delay for smooth transition)
+      console.log('[KnightGame] All UIs closed - requesting pointer lock');
+      setTimeout(() => {
+        if (!isAnyUIOpen() && gameStarted && !isGameOver) {
+          console.log('[KnightGame] Re-locking pointer after UI close');
+          if (inputManager) {
+            gameEngine.handleInput('requestPointerLock');
+          }
+        }
+      }, 100);
+    }
+  }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen]);
+
   // Update handlers for engine integration
   const handleUpdateHealth = useCallback((health: number) => {
     setPlayerStats(prev => ({ ...prev, health }));
@@ -184,43 +221,56 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     setIsPaused(false);
   }, [gameEngine]);
 
-  // Handle keyboard input
+  // Enhanced keyboard input handler with improved UI management
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (!gameStarted || !gameEngine) return;
 
       console.log('Key pressed:', event.code, 'Game running:', gameEngine.isRunning());
 
-      // Prevent default for game controls
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+      // Prevent default for game controls only when no UI is open
+      const anyUIOpen = isAnyUIOpen();
+      if (!anyUIOpen && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
         event.preventDefault();
       }
 
       switch (event.code) {
         case 'Space':
-          console.log('Space pressed - attacking');
-          gameEngine.handleInput('attack');
+          if (!anyUIOpen) {
+            console.log('Space pressed - attacking');
+            gameEngine.handleInput('attack');
+          }
           break;
         case 'KeyW':
-          console.log('W pressed - move forward');
-          gameEngine.handleInput('moveForward');
+          if (!anyUIOpen) {
+            console.log('W pressed - move forward');
+            gameEngine.handleInput('moveForward');
+          }
           break;
         case 'KeyS':
-          console.log('S pressed - move backward');
-          gameEngine.handleInput('moveBackward');
+          if (!anyUIOpen) {
+            console.log('S pressed - move backward');
+            gameEngine.handleInput('moveBackward');
+          }
           break;
         case 'KeyA':
-          console.log('A pressed - move left');
-          gameEngine.handleInput('moveLeft');
+          if (!anyUIOpen) {
+            console.log('A pressed - move left');
+            gameEngine.handleInput('moveLeft');
+          }
           break;
         case 'KeyD':
-          console.log('D pressed - move right');
-          gameEngine.handleInput('moveRight');
+          if (!anyUIOpen) {
+            console.log('D pressed - move right');
+            gameEngine.handleInput('moveRight');
+          }
           break;
         case 'ShiftLeft':
         case 'ShiftRight':
-          console.log('Shift pressed - sprint');
-          gameEngine.handleInput('sprint');
+          if (!anyUIOpen) {
+            console.log('Shift pressed - sprint');
+            gameEngine.handleInput('sprint');
+          }
           break;
         case 'KeyI':
           setShowInventory(!showInventory);
@@ -239,12 +289,14 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           break;
         case 'Escape':
           if (showInventory || showSkillTree || showQuestLog || showCrafting || showStatsPanel) {
+            // Close all UIs
             setShowInventory(false);
             setShowSkillTree(false);
             setShowQuestLog(false);
             setShowCrafting(false);
             setShowStatsPanel(false);
           } else {
+            // Toggle pause menu
             togglePause();
           }
           break;
@@ -253,12 +305,16 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameStarted, gameEngine, showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, togglePause]);
+  }, [gameStarted, gameEngine, showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, togglePause, isAnyUIOpen]);
 
   // Also handle keyup events for movement
   useEffect(() => {
     const handleKeyUp = (event: KeyboardEvent) => {
       if (!gameStarted || !gameEngine) return;
+
+      // Only handle movement keys when no UI is open
+      const anyUIOpen = isAnyUIOpen();
+      if (anyUIOpen) return;
 
       // Handle key releases for movement (this ensures movement stops when key is released)
       switch (event.code) {
@@ -276,7 +332,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
     window.addEventListener('keyup', handleKeyUp);
     return () => window.removeEventListener('keyup', handleKeyUp);
-  }, [gameStarted, gameEngine]);
+  }, [gameStarted, gameEngine, isAnyUIOpen]);
 
   // Update game state from engine
   useEffect(() => {

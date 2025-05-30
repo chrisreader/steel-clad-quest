@@ -545,8 +545,26 @@ export class GameEngine {
   }
   
   public handleInput(type: string, data?: any): void {
-    if (!this.isInitialized || !this.gameState.isPlaying || this.gameState.isPaused) {
-      console.log("🎮 [GameEngine] Input ignored - not ready. Initialized:", this.isInitialized, "Playing:", this.gameState.isPlaying, "Paused:", this.gameState.isPaused);
+    if (!this.isInitialized) {
+      console.log("🎮 [GameEngine] Input ignored - not initialized");
+      return;
+    }
+    
+    // Handle pointer lock requests even when game is paused (for UI management)
+    if (type === 'requestPointerLock' || type === 'requestPointerUnlock') {
+      console.log("🎮 [GameEngine] Pointer lock request:", type);
+      
+      if (type === 'requestPointerLock') {
+        this.inputManager.requestPointerLock();
+      } else if (type === 'requestPointerUnlock') {
+        this.inputManager.exitPointerLock();
+      }
+      return;
+    }
+    
+    // For other inputs, check if game is playing and not paused
+    if (!this.gameState.isPlaying || this.gameState.isPaused) {
+      console.log("🎮 [GameEngine] Input ignored - not ready. Playing:", this.gameState.isPlaying, "Paused:", this.gameState.isPaused);
       return;
     }
     
