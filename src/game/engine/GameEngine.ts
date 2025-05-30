@@ -81,39 +81,30 @@ export class GameEngine {
     try {
       // Create the scene manager
       console.log("Creating SceneManager...");
-      this.sceneManager = new SceneManager(this.mountElement);
-      this.scene = this.sceneManager.getScene();
-      this.camera = this.sceneManager.getCamera();
-      this.renderer = this.sceneManager.getRenderer();
-      console.log("SceneManager created successfully");
-      
-      // Ensure camera is in a good initial state
-      console.log("Setting up initial camera position...");
-      this.camera.position.set(0, 2, 5);
-      this.camera.lookAt(0, 0, 0);
-      console.log("Camera positioned at:", this.camera.position);
-      console.log("Camera looking at origin");
+      try {
+        this.sceneManager = new SceneManager(this.mountElement);
+        this.scene = this.sceneManager.getScene();
+        this.camera = this.sceneManager.getCamera();
+        this.renderer = this.sceneManager.getRenderer();
+        console.log("SceneManager created successfully");
+      } catch (sceneError) {
+        console.error("Failed to create SceneManager:", sceneError);
+        throw new Error("Scene initialization failed: " + sceneError.message);
+      }
       
       // Create default world
       console.log("Creating default world...");
       this.sceneManager.createDefaultWorld();
       console.log("Default world created");
       
-      // Create the input manager and initialize it properly
+      // Create the input manager
       console.log("Creating InputManager...");
       this.inputManager = new InputManager();
-      
-      // Wait a bit to ensure renderer is fully ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
       this.inputManager.initialize(this.renderer);
-      console.log("InputManager created and initialized");
+      console.log("InputManager created");
       
-      // Setup mouse look controls after a short delay to ensure everything is ready
-      setTimeout(() => {
-        this.setupMouseLookControls();
-        console.log("Mouse look controls set up");
-      }, 200);
+      // Setup mouse look controls (do this after renderer is ready)
+      this.setupMouseLookControls();
       
       // Create the effects manager
       console.log("Creating EffectsManager...");
@@ -131,6 +122,7 @@ export class GameEngine {
         console.log("Audio preloaded successfully");
       } catch (audioError) {
         console.warn("Audio preloading failed, continuing without audio:", audioError);
+        // Continue without audio
       }
       
       // Create the player
@@ -151,17 +143,12 @@ export class GameEngine {
       this.movementSystem = new MovementSystem(this.scene, this.camera, this.player, this.inputManager);
       console.log("MovementSystem created");
       
-      // Set first-person camera position properly
+      // Set first-person camera position
       this.setupFirstPersonCamera();
       
-      // Verify scene setup
+      // Log scene children to verify scene content
       console.log("Scene has", this.scene.children.length, "children");
       console.log("Scene children types:", this.scene.children.map(child => child.type));
-      
-      // Force an initial render to make sure everything is visible
-      console.log("Performing initial render...");
-      this.sceneManager.render();
-      console.log("Initial render complete");
       
       // Set game as initialized
       this.isInitialized = true;
@@ -174,7 +161,8 @@ export class GameEngine {
       console.log("Game started");
     } catch (error) {
       console.error("Error initializing game engine:", error);
-      this.isInitialized = true;
+      // Don't rethrow the error - mark as initialized with issues
+      this.isInitialized = true; // Still mark as initialized so loading completes
       console.warn("Game initialized with errors - some features may not work");
     }
   }
@@ -185,7 +173,7 @@ export class GameEngine {
     // Position camera at player's eye level
     this.camera.position.set(playerPosition.x, playerPosition.y + 1.7, playerPosition.z);
     
-    // Reset camera rotation to face forward
+    // Reset camera rotation
     this.cameraRotation.pitch = 0;
     this.cameraRotation.yaw = 0;
     
@@ -193,7 +181,6 @@ export class GameEngine {
     this.updateCameraRotation();
     
     console.log("First-person camera set up at:", this.camera.position);
-    console.log("Camera rotation reset - Pitch:", this.cameraRotation.pitch, "Yaw:", this.cameraRotation.yaw);
   }
   
   private setupMouseLookControls(): void {
@@ -205,12 +192,14 @@ export class GameEngine {
       const { type, data } = customEvent.detail;
       
       if (type === 'look') {
+        console.log("Look input received:", data);
         this.handleMouseLook(data.x, data.y);
       }
       
       if (type === 'pointerLockChange') {
         console.log("Pointer lock changed:", data.locked);
         if (!data.locked && this.pointerLockRequested) {
+          // Pointer lock was lost, try to request it again
           setTimeout(() => {
             this.requestPointerLockSafely();
           }, 100);
@@ -218,26 +207,21 @@ export class GameEngine {
       }
     });
     
-    // Request pointer lock on canvas click
+    // Request pointer lock on canvas click with better error handling
     const handleCanvasClick = () => {
       console.log("Canvas clicked, requesting pointer lock...");
       this.requestPointerLockSafely();
     };
     
-    // Add click listener with better timing
+    // Wait a bit to ensure renderer is fully ready
     setTimeout(() => {
       if (this.renderer && this.renderer.domElement) {
         this.renderer.domElement.addEventListener('click', handleCanvasClick);
-        console.log("Canvas click listener added successfully");
-        
-        // Make canvas focusable and focus it
-        this.renderer.domElement.tabIndex = 0;
-        this.renderer.domElement.focus();
-        console.log("Canvas focused for input");
+        console.log("Canvas click listener added");
       } else {
-        console.error("Renderer or canvas not ready for pointer lock setup");
+        console.warn("Renderer or canvas not ready for pointer lock setup");
       }
-    }, 300);
+    }, 500);
   }
   
   private requestPointerLockSafely(): void {
@@ -246,6 +230,7 @@ export class GameEngine {
       return;
     }
     
+    // Check if element is still in DOM
     if (!document.contains(this.renderer.domElement)) {
       console.warn("Cannot request pointer lock: canvas element not in DOM");
       return;
@@ -253,8 +238,8 @@ export class GameEngine {
     
     try {
       this.pointerLockRequested = true;
-      console.log("Requesting pointer lock on element:", this.renderer.domElement);
       this.renderer.domElement.requestPointerLock();
+      console.log("Pointer lock requested successfully");
     } catch (error) {
       console.error("Failed to request pointer lock:", error);
       this.pointerLockRequested = false;
@@ -262,16 +247,16 @@ export class GameEngine {
   }
   
   private handleMouseLook(deltaX: number, deltaY: number): void {
-    // Apply sensitivity scaling to prevent wild camera movement
-    const scaledDeltaX = deltaX * 0.5;
-    const scaledDeltaY = deltaY * 0.5;
+    console.log("Handling mouse look:", deltaX, deltaY);
     
     // Update yaw (left/right rotation)
-    this.cameraRotation.yaw -= scaledDeltaX;
+    this.cameraRotation.yaw -= deltaX * this.mouseSensitivity;
     
     // Update pitch (up/down rotation) with clamping
-    this.cameraRotation.pitch -= scaledDeltaY;
+    this.cameraRotation.pitch -= deltaY * this.mouseSensitivity;
     this.cameraRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.cameraRotation.pitch));
+    
+    console.log("Camera rotation updated - Pitch:", this.cameraRotation.pitch, "Yaw:", this.cameraRotation.yaw);
     
     // Apply rotation to camera
     this.updateCameraRotation();
@@ -290,9 +275,12 @@ export class GameEngine {
     
     // Update player rotation to match camera yaw for movement
     this.player.setRotation(this.cameraRotation.yaw);
+    
+    console.log("Camera quaternion updated:", this.camera.quaternion);
   }
   
   private async preloadAudio(): Promise<void> {
+    // Use Promise.allSettled instead of Promise.all to handle individual failures
     const preloadPromises = [
       this.loadAudioWithFallback('sword_swing'),
       this.loadAudioWithFallback('sword_hit'),
@@ -312,14 +300,17 @@ export class GameEngine {
 
   private async loadAudioWithFallback(id: string): Promise<void> {
     try {
+      // Try to load from assets/sounds first
       await this.audioManager.loadSound(`assets/sounds/${id}.mp3`, id, SoundCategory.SFX);
       console.log(`Loaded audio: ${id}`);
     } catch (e) {
       try {
+        // Try alternate location
         await this.audioManager.loadSound(`/sounds/${id}.mp3`, id, SoundCategory.SFX);
         console.log(`Loaded audio from alternate path: ${id}`);
       } catch (e2) {
         console.warn(`Failed to load audio: ${id} - game will continue without this sound`);
+        // Don't rethrow, just continue without this audio
       }
     }
   }
@@ -346,20 +337,22 @@ export class GameEngine {
   private animate = (): void => {
     if (!this.isInitialized || !this.gameState.isPlaying) return;
     
+    // Request next frame
     requestAnimationFrame(this.animate);
     
-    if (this.gameState.isPaused) return;
+    // Skip update if paused
+    if (this.gameState.isPaused) {
+      return;
+    }
     
-    const deltaTime = Math.min(this.clock.getDelta(), 0.1);
+    // Calculate delta time
+    const deltaTime = Math.min(this.clock.getDelta(), 0.1); // Cap at 100ms to prevent large jumps
+    
+    // Update total elapsed time
     this.gameState.timeElapsed += deltaTime;
     
     // Update game systems
     this.update(deltaTime);
-    
-    // Debug camera state occasionally
-    if (Math.floor(this.gameState.timeElapsed * 10) % 50 === 0) {
-      console.log("Camera pos:", this.camera.position, "rot:", this.cameraRotation);
-    }
     
     // Render the scene
     this.sceneManager.render();
@@ -402,6 +395,8 @@ export class GameEngine {
     
     // Keep camera at player's eye level
     this.camera.position.set(playerPosition.x, playerPosition.y + 1.7, playerPosition.z);
+    
+    // Camera rotation is handled by mouse look controls
   }
   
   private checkLocationChanges(): void {
@@ -424,9 +419,11 @@ export class GameEngine {
     this.gameState.isPaused = !this.gameState.isPaused;
     
     if (this.gameState.isPaused) {
+      // Pause audio
       this.audioManager.pause('game_music');
       this.audioManager.pause('tavern_ambience');
     } else {
+      // Resume audio
       this.audioManager.resume('game_music');
       this.audioManager.resume('tavern_ambience');
     }
@@ -437,19 +434,25 @@ export class GameEngine {
     
     console.log("Restarting game...");
     
+    // Reset game state
     this.gameState.isGameOver = false;
     this.gameState.isPaused = false;
     this.gameState.timeElapsed = 0;
     this.gameState.score = 0;
     
+    // Reset player
     this.player.setPosition(new THREE.Vector3(0, 0, 2));
     
+    // Clear enemies and gold
     this.combatSystem.clear();
     
+    // Reset first-person camera
     this.setupFirstPersonCamera();
     
+    // Restart clock
     this.clock.start();
     
+    // Start ambient sounds
     this.audioManager.play('tavern_ambience', true);
     this.audioManager.play('game_music', true);
     
@@ -471,16 +474,22 @@ export class GameEngine {
         break;
       
       case 'doubleTapForward':
+        // Start sprinting
         this.player.startSprint();
         break;
       
+      // Movement inputs - forward these to the movement system
       case 'moveForward':
       case 'moveBackward':
       case 'moveLeft':
       case 'moveRight':
       case 'sprint':
+        // These are handled by the InputManager and MovementSystem automatically
         console.log("Movement input:", inputType);
         break;
+        
+      // Movement inputs are handled by the MovementSystem through InputManager
+      // but we can add special cases here if needed
     }
   }
   
@@ -545,13 +554,25 @@ export class GameEngine {
   public dispose(): void {
     console.log("Disposing game engine...");
     
+    // Stop the game
     this.gameState.isPlaying = false;
     
+    // Dispose movement system
     this.movementSystem.dispose();
+    
+    // Dispose audio
     this.audioManager.dispose();
+    
+    // Dispose combat system
     this.combatSystem.dispose();
+    
+    // Dispose effects
     this.effectsManager.dispose();
+    
+    // Dispose input manager
     this.inputManager.dispose();
+    
+    // Dispose scene manager
     this.sceneManager.dispose();
     
     console.log("Game engine disposed!");
