@@ -562,36 +562,6 @@ export class GameEngine {
         }
         break;
         
-      case 'look':
-        if (this.movementSystem && data) {
-          this.movementSystem.handleLook(data.x, data.y);
-        }
-        break;
-        
-      case 'moveForward':
-        if (this.movementSystem) {
-          this.movementSystem.setForward(true);
-        }
-        break;
-        
-      case 'moveBackward':
-        if (this.movementSystem) {
-          this.movementSystem.setBackward(true);
-        }
-        break;
-        
-      case 'moveLeft':
-        if (this.movementSystem) {
-          this.movementSystem.setLeft(true);
-        }
-        break;
-        
-      case 'moveRight':
-        if (this.movementSystem) {
-          this.movementSystem.setRight(true);
-        }
-        break;
-        
       case 'sprint':
         if (this.player) {
           this.player.startSprint();
