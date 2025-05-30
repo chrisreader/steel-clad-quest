@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -114,44 +115,23 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     gameEngine.setUIState(anyUIOpen);
   }, [gameEngine, isAnyUIOpen]);
 
-  // Enhanced pointer lock management with better debugging and fallbacks
+  // Pointer lock management with UI state awareness
   useEffect(() => {
     if (!gameEngine || !gameStarted) return;
 
     const anyUIOpen = isAnyUIOpen();
     console.log('[KnightGame] Pointer lock management - UI open:', anyUIOpen);
-    console.log('[KnightGame] Current pointer lock state:', document.pointerLockElement !== null);
 
     if (anyUIOpen) {
       // Release pointer lock when any UI opens
       console.log('[KnightGame] UI opened - releasing pointer lock');
+      gameEngine.handleInput('requestPointerUnlock');
       
-      // Direct fallback method
-      if (document.pointerLockElement) {
-        console.log('[KnightGame] Directly calling document.exitPointerLock()');
-        document.exitPointerLock();
-      }
-      
-      // Also try through game engine
-      if (gameEngine) {
-        gameEngine.handleInput('requestPointerUnlock');
-      }
-      
-      // Force cursor visibility with CSS
+      // Force cursor to be visible and usable
       document.body.style.cursor = 'auto';
       if (mountRef.current) {
         mountRef.current.style.cursor = 'auto';
       }
-      
-      // Add retry mechanism for stubborn pointer locks
-      setTimeout(() => {
-        if (document.pointerLockElement && anyUIOpen) {
-          console.log('[KnightGame] Retry: Force releasing pointer lock');
-          document.exitPointerLock();
-          document.body.style.cursor = 'auto';
-        }
-      }, 50);
-      
     } else {
       // Request pointer lock when all UIs are closed (with small delay for smooth transition)
       console.log('[KnightGame] All UIs closed - preparing to request pointer lock');
@@ -159,15 +139,12 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         // Double-check UI state hasn't changed
         if (!isAnyUIOpen() && gameStarted && !isGameOver) {
           console.log('[KnightGame] Re-locking pointer after UI close');
+          gameEngine.handleInput('requestPointerLock');
           
           // Reset cursor style
           document.body.style.cursor = '';
           if (mountRef.current) {
             mountRef.current.style.cursor = '';
-          }
-          
-          if (gameEngine) {
-            gameEngine.handleInput('requestPointerLock');
           }
         } else {
           console.log('[KnightGame] Skipping pointer lock - UI state changed or game not active');
