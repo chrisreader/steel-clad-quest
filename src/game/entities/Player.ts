@@ -349,6 +349,22 @@ export class Player {
     console.log("🗡️ [Player] Weapon swing animation started successfully");
   }
   
+  public isAttacking(): boolean {
+    return this.weaponSwing.isActive;
+  }
+  
+  public getSwordHitBox(): THREE.Mesh {
+    return this.swordHitBox;
+  }
+  
+  public hasHitEnemy(enemy: any): boolean {
+    return this.hitEnemiesThisSwing.has(enemy);
+  }
+  
+  public addEnemy(enemy: any): void {
+    this.hitEnemiesThisSwing.add(enemy);
+  }
+  
   private updateSwordSwing(): void {
     if (!this.weaponSwing.isActive || !this.equippedWeapon) return;
     

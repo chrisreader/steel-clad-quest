@@ -179,6 +179,16 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
           unlocked: true
         }
       ]);
+
+      // Equip default weapon when game starts
+      if (gameEngine) {
+        const player = gameEngine.getPlayer();
+        if (player) {
+          // Equip iron sword as default weapon
+          player.equipWeapon('iron_sword');
+          console.log("Default weapon equipped: Iron Sword");
+        }
+      }
     }, []);
 
     const restartGame = useCallback(() => {

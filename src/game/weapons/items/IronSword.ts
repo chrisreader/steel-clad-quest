@@ -1,4 +1,5 @@
 
+import * as THREE from 'three';
 import { Sword } from '../Sword';
 import { WeaponConfig } from '../BaseWeapon';
 
