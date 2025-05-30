@@ -38,7 +38,6 @@ export class GameEngine {
   
   // First-person camera controls
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
-  private mouseSensitivity: number = 0.002;
   private maxPitch: number = Math.PI / 2 - 0.1; // Prevent over-rotation
   private pointerLockRequested: boolean = false;
   
@@ -249,11 +248,12 @@ export class GameEngine {
   private handleMouseLook(deltaX: number, deltaY: number): void {
     console.log("Handling mouse look:", deltaX, deltaY);
     
-    // Update yaw (left/right rotation)
-    this.cameraRotation.yaw -= deltaX * this.mouseSensitivity;
+    // Use the already-scaled input values directly (no additional scaling)
+    // InputManager already applies mouseSensitivity, so we don't scale again
+    this.cameraRotation.yaw -= deltaX;
     
     // Update pitch (up/down rotation) with clamping
-    this.cameraRotation.pitch -= deltaY * this.mouseSensitivity;
+    this.cameraRotation.pitch -= deltaY;
     this.cameraRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.cameraRotation.pitch));
     
     console.log("Camera rotation updated - Pitch:", this.cameraRotation.pitch, "Yaw:", this.cameraRotation.yaw);
@@ -576,5 +576,11 @@ export class GameEngine {
     this.sceneManager.dispose();
     
     console.log("Game engine disposed!");
+  }
+  
+  // Add method to adjust mouse sensitivity if needed
+  public setMouseSensitivity(sensitivity: number): void {
+    this.inputManager.setMouseSensitivity(sensitivity);
+    console.log("Mouse sensitivity set to:", sensitivity);
   }
 }
