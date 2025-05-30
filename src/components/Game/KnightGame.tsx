@@ -1,5 +1,5 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { GameCanvas } from './GameCanvas';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
 import { GameMenu } from './UI/GameMenu';
@@ -63,8 +63,10 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Handler for engine loading completion
   const handleEngineLoadingComplete = useCallback(() => {
+    console.log('Engine loading completed, setting engineReady to true');
     setEngineReady(true);
-    onLoadingComplete?.(); // Forward to parent if needed
+    setGameEngine(engineControllerRef.current?.getEngine() || null);
+    onLoadingComplete?.(); // Forward to parent to hide loading screen
   }, [onLoadingComplete]);
 
   // Update handlers for engine integration
@@ -93,18 +95,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     setIsInTavern(isInTavern);
   }, []);
 
-  const handleGameEngineReady = useCallback((engine: GameEngine) => {
-    console.log('Game engine ready!');
-    setGameEngine(engine);
-    
-    // Set up engine callbacks
-    engine.setOnUpdateHealth(handleUpdateHealth);
-    engine.setOnUpdateGold(handleUpdateGold);
-    engine.setOnUpdateStamina(handleUpdateStamina);
-    engine.setOnGameOver(handleGameOver);
-    engine.setOnLocationChange(handleLocationChange);
-  }, [handleUpdateHealth, handleUpdateGold, handleUpdateStamina, handleGameOver, handleLocationChange]);
-
   // Enhanced item use handler that connects both controllers
   const handleUseItem = useCallback((item: Item) => {
     // Call GameController method for game logic
@@ -130,15 +120,11 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, [gameEngine]);
 
   const startGame = useCallback(() => {
-    if (gameEngine) {
-      console.log('Starting knight adventure...');
-      gameEngine.initialize().then(() => {
-        setGameStarted(true);
-        setIsGameOver(false);
-        gameControllerRef.current?.initializeSampleData();
-      });
-    }
-  }, [gameEngine]);
+    console.log('Starting knight adventure...');
+    setGameStarted(true);
+    setIsGameOver(false);
+    gameControllerRef.current?.initializeSampleData();
+  }, []);
 
   const togglePause = useCallback(() => {
     if (gameEngine) {
@@ -235,7 +221,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     return () => clearInterval(updateInterval);
   }, [gameStarted, gameEngine]);
 
-  if (!gameStarted) {
+  // Show game menu until user clicks start
+  if (!gameStarted && engineReady) {
     return <GameMenu onStartGame={startGame} />;
   }
 
@@ -256,8 +243,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         mountElement={mountRef.current}
       />
       
-      <GameCanvas onGameEngineReady={handleGameEngineReady} />
-      
       <GameController
         ref={gameControllerRef}
         gameEngine={gameEngine}
@@ -276,21 +261,25 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       )}
 
       {/* Stats Panel Toggle Button */}
-      <button 
-        onClick={() => setShowStatsPanel(!showStatsPanel)}
-        className="absolute left-4 top-28 z-10 bg-black bg-opacity-50 text-white p-2 rounded-lg hover:bg-opacity-70 transition-colors"
-        title="Press T to toggle stats panel"
-      >
-        Stats
-      </button>
+      {gameStarted && (
+        <button 
+          onClick={() => setShowStatsPanel(!showStatsPanel)}
+          className="absolute left-4 top-28 z-10 bg-black bg-opacity-50 text-white p-2 rounded-lg hover:bg-opacity-70 transition-colors"
+          title="Press T to toggle stats panel"
+        >
+          Stats
+        </button>
+      )}
 
       {/* New Game Control Panel */}
-      <GameControlPanel
-        isPaused={isPaused}
-        onPauseToggle={togglePause}
-        onRestart={restartGame}
-        isGameOver={isGameOver}
-      />
+      {gameStarted && (
+        <GameControlPanel
+          isPaused={isPaused}
+          onPauseToggle={togglePause}
+          onRestart={restartGame}
+          isGameOver={isGameOver}
+        />
+      )}
 
       {/* New Player Stats Panel */}
       <PlayerStatsPanel
