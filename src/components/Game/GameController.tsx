@@ -8,6 +8,7 @@ interface GameControllerProps {
   onGameTimeUpdate: (time: number) => void;
   onGameOverChange: (isGameOver: boolean) => void;
   onLocationChange: (isInTavern: boolean) => void;
+  onInventoryUpdate?: (inventory: Item[]) => void;
 }
 
 export interface GameControllerRef {
@@ -25,14 +26,20 @@ export interface GameControllerRef {
 }
 
 export const GameController = React.forwardRef<GameControllerRef, GameControllerProps>(
-  ({ gameEngine, onStatsUpdate, onGameTimeUpdate, onGameOverChange, onLocationChange }, ref) => {
+  ({ gameEngine, onStatsUpdate, onGameTimeUpdate, onGameOverChange, onLocationChange, onInventoryUpdate }, ref) => {
     const [inventory, setInventory] = useState<Item[]>([]);
     const [quests, setQuests] = useState<Quest[]>([]);
     const [skills, setSkills] = useState<Skill[]>([]);
 
+    const updateInventory = useCallback((newInventory: Item[]) => {
+      console.log('GameController: Updating inventory:', newInventory);
+      setInventory(newInventory);
+      onInventoryUpdate?.(newInventory);
+    }, [onInventoryUpdate]);
+
     const initializeSampleData = useCallback(() => {
       // Steel Sword first (slot 1)
-      setInventory([
+      const initialInventory = [
         { 
           id: '9', 
           name: 'Steel Sword', 
@@ -144,7 +151,9 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
           stats: { defense: 5 },
           tier: 'common'
         }
-      ]);
+      ];
+
+      updateInventory(initialInventory);
 
       // Sample quests
       setQuests([
@@ -181,7 +190,7 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
       ]);
 
       console.log("Steel Sword spawned in inventory slot 1 (index 0)");
-    }, []);
+    }, [updateInventory]);
 
     const restartGame = useCallback(() => {
       if (gameEngine) {

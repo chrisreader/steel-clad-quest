@@ -73,6 +73,9 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   const [mountReady, setMountReady] = useState(false);
+  
+  // Add inventory state to sync with GameController
+  const [inventory, setInventory] = useState<Item[]>([]);
 
   const gameControllerRef = useRef<GameControllerRef>(null);
   const engineControllerRef = useRef<GameEngineControllerRef>(null);
@@ -82,6 +85,12 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     gameEngine,
     isAnyUIOpen
   });
+
+  // Callback to handle inventory updates from GameController
+  const handleInventoryUpdate = useCallback((newInventory: Item[]) => {
+    console.log('KnightGame: Received inventory update:', newInventory);
+    setInventory(newInventory);
+  }, []);
 
   // Wait for mount element to be ready
   useEffect(() => {
@@ -303,6 +312,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         onGameTimeUpdate={setGameTime}
         onGameOverChange={setIsGameOver}
         onLocationChange={setIsInTavern}
+        onInventoryUpdate={handleInventoryUpdate}
       />
       
       {gameStarted && !isGameOver && (
@@ -342,7 +352,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       />
 
       <InventoryUI
-        items={gameControllerRef.current?.inventory || []}
+        items={inventory}
         isOpen={showInventory}
         onClose={toggleInventory}
         onUseItem={handleUseItem}
@@ -366,7 +376,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
       <CraftingUI
         recipes={[]}
-        inventory={gameControllerRef.current?.inventory || []}
+        inventory={inventory}
         isOpen={showCrafting}
         onClose={toggleCrafting}
         onCraft={gameControllerRef.current?.handleCraft || (() => {})}
