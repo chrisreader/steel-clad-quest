@@ -10,6 +10,7 @@ export class Player {
   private playerBody: PlayerBody;
   private sword: THREE.Group;
   private swordHitBox: THREE.Mesh;
+  private bladeMesh: THREE.Mesh; // Reference to the actual blade for precise tip tracking
   
   // Game state
   private stats: PlayerStats;
@@ -197,7 +198,7 @@ export class Player {
     guard.castShadow = true;
     swordGroup.add(guard);
     
-    // Blade
+    // Blade - Store reference for tip tracking
     const bladeGeometry = new THREE.BoxGeometry(0.05, 0.02, 1.8);
     const bladeMaterial = new THREE.MeshPhongMaterial({ 
       color: 0xFFFFFF,
@@ -210,6 +211,9 @@ export class Player {
     blade.position.set(0, 0, -1.2);
     blade.castShadow = true;
     swordGroup.add(blade);
+    
+    // Store blade reference for tip tracking
+    this.bladeMesh = blade;
     
     // Pommel
     const pommelGeometry = new THREE.SphereGeometry(0.06, 12, 8);
@@ -448,18 +452,13 @@ export class Player {
       
       isSlashPhase = true;
       
-      // Track sword tip for trail effect
+      // Track sword tip for trail effect more frequently during slash
       this.trackSwordTip();
       
       // Create enhanced swoosh effect once during mid-slash
       if (t >= 0.3 && t <= 0.5 && !this.swooshEffectCreated) {
         this.createEnhancedSwooshEffect();
         this.swooshEffectCreated = true;
-      }
-      
-      // Create camera shake during slash
-      if (t >= 0.4 && t <= 0.6) {
-        this.effectsManager.shakeCamera(0.03);
       }
       
     } else if (elapsed < duration) {
@@ -498,41 +497,53 @@ export class Player {
   }
   
   private trackSwordTip(): void {
-    // Calculate sword tip position
-    const armWorldPosition = new THREE.Vector3();
-    this.playerBody.rightArm.getWorldPosition(armWorldPosition);
+    // Get the actual sword tip position using blade mesh world position
+    const bladeTipPosition = new THREE.Vector3();
     
-    const armDirection = new THREE.Vector3(0, -2.2, 0);
-    armDirection.applyQuaternion(this.playerBody.rightArm.quaternion);
-    const swordTipPosition = armWorldPosition.clone().add(armDirection);
+    // The blade extends 1.8 units in the -Z direction from its center
+    // So the tip is at the blade's position + half the blade length in local -Z
+    const bladeLocalTip = new THREE.Vector3(0, 0, -0.9); // Half of 1.8 blade length
+    
+    // Transform to world coordinates
+    this.bladeMesh.localToWorld(bladeLocalTip.clone());
+    bladeTipPosition.copy(bladeLocalTip);
     
     // Add to trail positions
-    this.swordTipPositions.push(swordTipPosition.clone());
+    this.swordTipPositions.push(bladeTipPosition.clone());
     
     // Limit trail length
     if (this.swordTipPositions.length > this.maxTrailLength) {
       this.swordTipPositions.shift();
     }
+    
+    console.log("🗡️ [Player] Tracking sword tip at:", bladeTipPosition);
   }
   
   private createEnhancedSwooshEffect(): void {
-    // Get sword position and direction
-    const armWorldPosition = new THREE.Vector3();
-    this.playerBody.rightArm.getWorldPosition(armWorldPosition);
+    // Get actual sword tip position
+    const swordTipPosition = new THREE.Vector3();
+    const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
+    this.bladeMesh.localToWorld(bladeLocalTip.clone());
+    swordTipPosition.copy(bladeLocalTip);
     
-    const armDirection = new THREE.Vector3(0, -2.2, 0);
-    armDirection.applyQuaternion(this.playerBody.rightArm.quaternion);
+    // Calculate sword direction based on recent tip positions
+    let swordDirection = new THREE.Vector3(1, 0, 0); // Default direction
+    if (this.swordTipPositions.length >= 2) {
+      const recent = this.swordTipPositions[this.swordTipPositions.length - 1];
+      const previous = this.swordTipPositions[this.swordTipPositions.length - 2];
+      swordDirection = recent.clone().sub(previous).normalize();
+    }
     
     // Create multiple swoosh effects for better visibility
-    this.effectsManager.createSwooshEffect(armWorldPosition, armDirection);
+    this.effectsManager.createSwooshEffect(swordTipPosition, swordDirection);
     
-    // Create additional attack effect
-    this.effectsManager.createAttackEffect(armWorldPosition, 0xFFFFFF);
+    // Create additional attack effect at tip
+    this.effectsManager.createAttackEffect(swordTipPosition, 0xFFFFFF);
     
     // Create dust cloud at sword position
-    this.effectsManager.createDustCloud(armWorldPosition);
+    this.effectsManager.createDustCloud(swordTipPosition);
     
-    console.log("🌪️ [Player] Enhanced swoosh effect created at:", armWorldPosition);
+    console.log("🌪️ [Player] Enhanced swoosh effect created at sword tip:", swordTipPosition);
   }
   
   private createSwordTrailEffect(): void {
@@ -549,13 +560,11 @@ export class Player {
   private updateSwordHitBox(): void {
     if (!this.swordSwing.isActive) return;
     
-    // Calculate sword tip position for combat
-    const armWorldPosition = new THREE.Vector3();
-    this.playerBody.rightArm.getWorldPosition(armWorldPosition);
-    
-    const armDirection = new THREE.Vector3(0, -2.2, 0);
-    armDirection.applyQuaternion(this.playerBody.rightArm.quaternion);
-    const swordTipPosition = armWorldPosition.clone().add(armDirection);
+    // Use actual sword tip position for combat hitbox
+    const swordTipPosition = new THREE.Vector3();
+    const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
+    this.bladeMesh.localToWorld(bladeLocalTip.clone());
+    swordTipPosition.copy(bladeLocalTip);
     
     // Update sword hitbox position
     this.swordHitBox.position.copy(swordTipPosition);
@@ -598,9 +607,8 @@ export class Player {
     // Play hurt sound
     this.audioManager.play('player_hurt');
     
-    // Create damage effect
+    // Create damage effect (no camera shake)
     this.effectsManager.createDamageEffect(this.group.position.clone());
-    this.effectsManager.shakeCamera(0.1);
   }
   
   public addGold(amount: number): void {
