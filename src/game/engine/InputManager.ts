@@ -20,7 +20,6 @@ export class InputManager {
   private mouse: { x: number; y: number; buttons: number } = { x: 0, y: 0, buttons: 0 };
   private previousMouse: { x: number; y: number } = { x: 0, y: 0 };
   private pointerLocked: boolean = false;
-  private mouseSensitivity: number = 0.002;
   private lastMouseDown: number = 0;
   private doubleClickThreshold: number = 300;
   private doubleClickDistance: number = 10;
@@ -86,10 +85,7 @@ export class InputManager {
   }
   
   private detectDeviceType(): void {
-    // Detect touch device
     this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    
-    // Detect mobile device
     this.isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     console.log(`Device detection: Touch: ${this.isTouchDevice}, Mobile: ${this.isMobileDevice}`);
@@ -124,7 +120,6 @@ export class InputManager {
   }
   
   private handleKeyDown(event: KeyboardEvent): void {
-    // Prevent handling repeated keydown events (key held down)
     if (event.repeat) return;
     
     this.keys[event.code] = true;
@@ -135,7 +130,6 @@ export class InputManager {
       const timeSinceLastPress = now - this.lastWKeyPress;
       
       if (timeSinceLastPress < this.doubleTapWindow && timeSinceLastPress > 50) {
-        // Double-tap W detected
         this.dispatchInputEvent('doubleTapForward');
       }
       
@@ -159,18 +153,17 @@ export class InputManager {
     this.mouse.x = event.clientX;
     this.mouse.y = event.clientY;
     
-    // Calculate movement
+    // Calculate movement (use raw movement values without scaling here)
     this.mouseMovement.x = event.movementX || 0;
     this.mouseMovement.y = event.movementY || 0;
     
-    // Always dispatch look event if there's movement, regardless of pointer lock
+    // Dispatch look event with unscaled movement (scaling will be done in GameEngine)
     if (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0) {
       console.log("Mouse movement detected:", this.mouseMovement.x, this.mouseMovement.y);
       
-      // Dispatch look event with scaled movement
       this.dispatchInputEvent('look', {
-        x: this.mouseMovement.x * this.mouseSensitivity,
-        y: this.mouseMovement.y * this.mouseSensitivity
+        x: this.mouseMovement.x,
+        y: this.mouseMovement.y
       });
     }
   }
@@ -201,15 +194,6 @@ export class InputManager {
     // Handle specific buttons
     switch (event.button) {
       case 0: // Left mouse button
-        // Only request pointer lock if we have a valid renderer and element
-        if (!this.pointerLocked && this.renderer && this.renderer.domElement && document.contains(this.renderer.domElement)) {
-          try {
-            console.log("Requesting pointer lock from mouse down");
-            this.renderer.domElement.requestPointerLock();
-          } catch (error) {
-            console.warn("Failed to request pointer lock on mouse down:", error);
-          }
-        }
         this.dispatchInputEvent('attack');
         break;
       case 2: // Right mouse button
@@ -253,14 +237,12 @@ export class InputManager {
   private handleTouchStart(event: TouchEvent): void {
     event.preventDefault();
     
-    // Store first touch info for swipe detection
     if (event.touches.length === 1) {
       const touch = event.touches[0];
       this.touchStartPosition.x = touch.clientX;
       this.touchStartPosition.y = touch.clientY;
       this.touchStartTime = Date.now();
       
-      // If touch is on the left side of screen, activate virtual joystick
       if (touch.clientX < window.innerWidth / 2) {
         this.virtualJoystick.active = true;
         this.virtualJoystick.center.x = touch.clientX;
@@ -271,11 +253,9 @@ export class InputManager {
         
         this.dispatchInputEvent('joystickStart');
       } else {
-        // Touch on right side - camera look or attack
         this.dispatchInputEvent('attack');
       }
     } else if (event.touches.length === 2) {
-      // Two finger touch - could be used for pinch zoom or other actions
       this.dispatchInputEvent('twoFingerTouch');
     }
   }
@@ -283,7 +263,6 @@ export class InputManager {
   private handleTouchMove(event: TouchEvent): void {
     event.preventDefault();
     
-    // Handle joystick movement
     if (this.virtualJoystick.active) {
       for (let i = 0; i < event.touches.length; i++) {
         const touch = event.touches[i];
@@ -292,15 +271,12 @@ export class InputManager {
           this.virtualJoystick.current.x = touch.clientX;
           this.virtualJoystick.current.y = touch.clientY;
           
-          // Calculate joystick direction and magnitude
           const deltaX = this.virtualJoystick.current.x - this.virtualJoystick.center.x;
           const deltaY = this.virtualJoystick.current.y - this.virtualJoystick.center.y;
           const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
           
-          // Normalize and clamp distance
           const normalizedDistance = Math.min(distance, this.virtualJoystick.maxDistance) / this.virtualJoystick.maxDistance;
           
-          // Calculate direction
           let angle = Math.atan2(deltaY, deltaX);
           
           this.dispatchInputEvent('joystickMove', {
@@ -315,16 +291,14 @@ export class InputManager {
       }
     }
     
-    // Handle right side touch for camera control
     for (let i = 0; i < event.touches.length; i++) {
       const touch = event.touches[i];
       
       if (touch.clientX > window.innerWidth / 2) {
-        // Calculate delta from center of right half
         const centerX = window.innerWidth * 0.75;
         const centerY = window.innerHeight * 0.5;
-        const deltaX = (touch.clientX - centerX) * this.mouseSensitivity * 0.5;
-        const deltaY = (touch.clientY - centerY) * this.mouseSensitivity * 0.5;
+        const deltaX = (touch.clientX - centerX) * 0.001;
+        const deltaY = (touch.clientY - centerY) * 0.001;
         
         this.dispatchInputEvent('look', { x: deltaX, y: deltaY });
       }
@@ -334,16 +308,13 @@ export class InputManager {
   private handleTouchEnd(event: TouchEvent): void {
     event.preventDefault();
     
-    // Check if all touches are gone
     if (event.touches.length === 0) {
-      // End joystick movement
       if (this.virtualJoystick.active) {
         this.virtualJoystick.active = false;
         this.virtualJoystick.id = null;
         this.dispatchInputEvent('joystickEnd');
       }
       
-      // Check for tap (quick touch)
       const touchDuration = Date.now() - this.touchStartTime;
       if (touchDuration < this.touchTapThreshold) {
         this.dispatchInputEvent('tap', {
@@ -353,12 +324,10 @@ export class InputManager {
         });
       }
       
-      // End attack if on right side
       if (this.touchStartPosition.x > window.innerWidth / 2) {
         this.dispatchInputEvent('attackEnd');
       }
     } else {
-      // Check if joystick touch ended but other touches remain
       let joystickTouchFound = false;
       
       for (let i = 0; i < event.touches.length; i++) {
@@ -378,7 +347,6 @@ export class InputManager {
   
   private handleVisibilityChange(): void {
     if (document.hidden) {
-      // Page is hidden, reset all inputs
       this.resetAllInputs();
       this.dispatchInputEvent('visibilityChange', { visible: false });
     } else {
@@ -387,23 +355,19 @@ export class InputManager {
   }
   
   private resetAllInputs(): void {
-    // Reset all keys
     for (const key in this.keys) {
       this.keys[key] = false;
     }
     
-    // Reset mouse
     this.mouse.buttons = 0;
     this.mouseMovement.x = 0;
     this.mouseMovement.y = 0;
     
-    // Reset joystick
     this.virtualJoystick.active = false;
     this.virtualJoystick.id = null;
   }
   
   private checkActionBindings(keyCode: string): void {
-    // Check for matches with key bindings
     for (const [action, keyCodes] of Object.entries(this.keyBindings)) {
       if (keyCodes.includes(keyCode)) {
         this.dispatchInputEvent(action);
@@ -477,7 +441,7 @@ export class InputManager {
   }
   
   public setMouseSensitivity(sensitivity: number): void {
-    this.mouseSensitivity = sensitivity;
+    console.log("Mouse sensitivity setting moved to GameEngine");
   }
   
   public setKeyBindings(bindings: Partial<KeyBindings>): void {
@@ -524,7 +488,6 @@ export class InputManager {
   }
   
   public dispose(): void {
-    // Clean up event listeners
     document.removeEventListener('keydown', this.handleKeyDown);
     document.removeEventListener('keyup', this.handleKeyUp);
     document.removeEventListener('mousemove', this.handleMouseMove);
