@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig, WeaponStats } from '../BaseWeapon';
 
@@ -62,73 +61,63 @@ export class HuntingBow extends BaseWeapon {
   public createMesh(): THREE.Group {
     const bowGroup = new THREE.Group();
     
-    // Create enhanced bow components
-    this.createBowLimbs(bowGroup);
-    this.createBowHandle(bowGroup);
-    this.createBowString(bowGroup);
+    // Create enhanced bow components with realistic geometry
+    this.createEnhancedBowLimbs(bowGroup);
+    this.createDetailedBowHandle(bowGroup);
+    this.createRealisticBowString(bowGroup);
     this.createArrowRest(bowGroup);
+    this.addBowTips(bowGroup);
     
-    // Position for optimal first-person view
-    bowGroup.scale.set(1.2, 1.2, 1.2);
-    bowGroup.position.set(0.4, -0.3, -0.8);
-    bowGroup.rotation.set(0, Math.PI / 2 + 0.2, 0.1);
+    // Optimized positioning for first-person view
+    bowGroup.scale.set(1.4, 1.4, 1.4);
+    bowGroup.position.set(0.5, -0.4, -1.0);
+    bowGroup.rotation.set(-0.1, Math.PI / 2 + 0.3, 0.15);
     
     return bowGroup;
   }
 
-  private createBowLimbs(bowGroup: THREE.Group): void {
-    // Create curved geometry for more realistic bow limbs
-    const limbCurve = new THREE.QuadraticBezierCurve3(
+  private createEnhancedBowLimbs(bowGroup: THREE.Group): void {
+    // Create more realistic curved bow limbs using QuadraticBezierCurve3
+    const upperLimbCurve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.1, 0.4, 0),
-      new THREE.Vector3(0, 0.8, 0)
+      new THREE.Vector3(0.15, 0.35, 0.05),
+      new THREE.Vector3(0.08, 0.75, 0.02)
     );
     
-    const limbGeometry = new THREE.TubeGeometry(limbCurve, 20, 0.025, 8, false);
+    const lowerLimbCurve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0.15, -0.35, 0.05),
+      new THREE.Vector3(0.08, -0.75, 0.02)
+    );
+    
+    // Enhanced limb geometry with better detail
+    const limbGeometry = new THREE.TubeGeometry(upperLimbCurve, 24, 0.03, 8, false);
     const limbMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x5d4037,
-      emissive: 0x3e2723,
+      color: 0x4a3f35,
+      emissive: 0x2d1f17,
       emissiveIntensity: 0.1
     });
     
-    // Upper limb
+    // Upper limb with enhanced positioning
     this.upperLimb = new THREE.Mesh(limbGeometry, limbMaterial);
-    this.upperLimb.position.set(0, 0.2, 0);
+    this.upperLimb.position.set(0, 0.15, 0);
     this.upperLimb.rotation.z = this.originalUpperLimbRotation;
     bowGroup.add(this.upperLimb);
     
-    // Lower limb (mirrored)
-    this.lowerLimb = new THREE.Mesh(limbGeometry, limbMaterial);
-    this.lowerLimb.position.set(0, -0.2, 0);
+    // Lower limb (using separate geometry for different curve)
+    const lowerLimbGeometry = new THREE.TubeGeometry(lowerLimbCurve, 24, 0.03, 8, false);
+    this.lowerLimb = new THREE.Mesh(lowerLimbGeometry, limbMaterial.clone());
+    this.lowerLimb.position.set(0, -0.15, 0);
     this.lowerLimb.rotation.z = this.originalLowerLimbRotation;
-    this.lowerLimb.rotation.x = Math.PI;
     bowGroup.add(this.lowerLimb);
-    
-    // Add bow tips (nocks)
-    this.createBowTips(bowGroup);
   }
 
-  private createBowTips(bowGroup: THREE.Group): void {
-    const tipGeometry = new THREE.SphereGeometry(0.03, 8, 6);
-    const tipMaterial = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
-    
-    // Upper tip
-    const upperTip = new THREE.Mesh(tipGeometry, tipMaterial);
-    upperTip.position.set(0, 0.9, 0);
-    bowGroup.add(upperTip);
-    
-    // Lower tip
-    const lowerTip = new THREE.Mesh(tipGeometry, tipMaterial);
-    lowerTip.position.set(0, -0.9, 0);
-    bowGroup.add(lowerTip);
-  }
-
-  private createBowHandle(bowGroup: THREE.Group): void {
-    // Main handle
-    const handleGeometry = new THREE.CylinderGeometry(0.045, 0.045, 0.35);
+  private createDetailedBowHandle(bowGroup: THREE.Group): void {
+    // Main handle with enhanced proportions
+    const handleGeometry = new THREE.CylinderGeometry(0.055, 0.055, 0.4);
     const handleMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x6d4c41,
-      emissive: 0x5d4037,
+      color: 0x6b4e3d,
+      emissive: 0x4a3529,
       emissiveIntensity: 0.05
     });
     
@@ -136,23 +125,35 @@ export class HuntingBow extends BaseWeapon {
     this.handle.position.set(0, 0, 0);
     bowGroup.add(this.handle);
     
-    // Grip wrapping details
-    for (let i = 0; i < 5; i++) {
-      const wrapGeometry = new THREE.TorusGeometry(0.048, 0.008, 6, 12);
-      const wrapMaterial = new THREE.MeshLambertMaterial({ color: 0x4e342e });
+    // Enhanced grip wrapping with more detail
+    for (let i = 0; i < 6; i++) {
+      const wrapGeometry = new THREE.TorusGeometry(0.058, 0.009, 6, 12);
+      const wrapMaterial = new THREE.MeshLambertMaterial({ 
+        color: 0x3e2723,
+        emissive: 0x1c1410,
+        emissiveIntensity: 0.02
+      });
       const wrap = new THREE.Mesh(wrapGeometry, wrapMaterial);
-      wrap.position.set(0, -0.15 + (i * 0.06), 0);
+      wrap.position.set(0, -0.18 + (i * 0.06), 0);
       wrap.rotation.x = Math.PI / 2;
       bowGroup.add(wrap);
     }
+    
+    // Add sight window
+    const sightGeometry = new THREE.RingGeometry(0.06, 0.07, 8);
+    const sightMaterial = new THREE.MeshLambertMaterial({ color: 0x2c1810 });
+    const sight = new THREE.Mesh(sightGeometry, sightMaterial);
+    sight.position.set(-0.08, 0.05, 0);
+    sight.rotation.y = Math.PI / 2;
+    bowGroup.add(sight);
   }
 
-  private createBowString(bowGroup: THREE.Group): void {
-    // Create bow string as a thin cylinder
-    const stringGeometry = new THREE.CylinderGeometry(0.003, 0.003, 1.8);
-    const stringMaterial = new THREE.MeshBasicMaterial({ 
+  private createRealisticBowString(bowGroup: THREE.Group): void {
+    // Create bow string with proper material (fixed: using MeshLambertMaterial instead of MeshBasicMaterial)
+    const stringGeometry = new THREE.CylinderGeometry(0.004, 0.004, 1.5);
+    const stringMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xf5f5dc,
-      emissive: 0x333333,
+      emissive: 0x332211,
       emissiveIntensity: 0.1
     });
     
@@ -162,12 +163,56 @@ export class HuntingBow extends BaseWeapon {
   }
 
   private createArrowRest(bowGroup: THREE.Group): void {
-    const restGeometry = new THREE.BoxGeometry(0.02, 0.02, 0.08);
-    const restMaterial = new THREE.MeshLambertMaterial({ color: 0x8d6e63 });
+    // Enhanced arrow rest design
+    const restGeometry = new THREE.BoxGeometry(0.025, 0.025, 0.1);
+    const restMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x8d6e63,
+      emissive: 0x3e2723,
+      emissiveIntensity: 0.03
+    });
     
     this.arrowRest = new THREE.Mesh(restGeometry, restMaterial);
-    this.arrowRest.position.set(-0.06, 0.02, 0);
+    this.arrowRest.position.set(-0.08, 0.03, 0);
     bowGroup.add(this.arrowRest);
+    
+    // Add small notch detail
+    const notchGeometry = new THREE.SphereGeometry(0.008, 6, 4);
+    const notch = new THREE.Mesh(notchGeometry, restMaterial.clone());
+    notch.position.set(-0.08, 0.03, 0.05);
+    bowGroup.add(notch);
+  }
+
+  private addBowTips(bowGroup: THREE.Group): void {
+    // Enhanced bow tips (nocks) with better detail
+    const tipGeometry = new THREE.ConeGeometry(0.025, 0.06, 8);
+    const tipMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xa0826d,
+      emissive: 0x2d1f17,
+      emissiveIntensity: 0.02
+    });
+    
+    // Upper tip
+    const upperTip = new THREE.Mesh(tipGeometry, tipMaterial);
+    upperTip.position.set(0.08, 0.8, 0.02);
+    upperTip.rotation.x = Math.PI;
+    bowGroup.add(upperTip);
+    
+    // Lower tip
+    const lowerTip = new THREE.Mesh(tipGeometry, tipMaterial.clone());
+    lowerTip.position.set(0.08, -0.8, 0.02);
+    bowGroup.add(lowerTip);
+    
+    // Add string attachment points
+    const attachGeometry = new THREE.SphereGeometry(0.008, 6, 6);
+    const attachMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+    
+    const upperAttach = new THREE.Mesh(attachGeometry, attachMaterial);
+    upperAttach.position.set(0.08, 0.75, 0.02);
+    bowGroup.add(upperAttach);
+    
+    const lowerAttach = new THREE.Mesh(attachGeometry, attachMaterial.clone());
+    lowerAttach.position.set(0.08, -0.75, 0.02);
+    bowGroup.add(lowerAttach);
   }
 
   public createHitBox(): THREE.Mesh {
@@ -192,6 +237,7 @@ export class HuntingBow extends BaseWeapon {
     this.isDrawing = true;
     this.chargeLevel = 0;
     this.updateDrawStage();
+    console.log('🏹 [HuntingBow] Started drawing bow');
   }
 
   public stopDrawing(): void {
@@ -200,6 +246,7 @@ export class HuntingBow extends BaseWeapon {
     this.currentDrawStage = DrawStage.IDLE;
     this.shakeIntensity = 0;
     this.updateBowVisuals();
+    console.log('🏹 [HuntingBow] Stopped drawing bow');
   }
 
   public updateCharge(deltaTime: number): void {
@@ -209,11 +256,11 @@ export class HuntingBow extends BaseWeapon {
     this.updateDrawStage();
     this.updateBowVisuals();
     
-    // Handle overcharged shake
+    // Handle overcharged shake with enhanced effect
     if (this.chargeLevel >= 1.0) {
-      this.shakeTime += deltaTime * 10;
-      this.shakeIntensity = 0.008 + Math.sin(this.shakeTime) * 0.003;
-      this.applyShakeEffect();
+      this.shakeTime += deltaTime * 12;
+      this.shakeIntensity = 0.01 + Math.sin(this.shakeTime) * 0.005;
+      this.applyEnhancedShakeEffect();
     }
   }
 
@@ -222,9 +269,9 @@ export class HuntingBow extends BaseWeapon {
     
     if (this.chargeLevel === 0) {
       this.currentDrawStage = DrawStage.IDLE;
-    } else if (this.chargeLevel < 0.33) {
+    } else if (this.chargeLevel < 0.25) {
       this.currentDrawStage = DrawStage.EARLY_DRAW;
-    } else if (this.chargeLevel < 0.67) {
+    } else if (this.chargeLevel < 0.6) {
       this.currentDrawStage = DrawStage.MID_DRAW;
     } else if (this.chargeLevel < 1.0) {
       this.currentDrawStage = DrawStage.FULL_DRAW;
@@ -233,63 +280,92 @@ export class HuntingBow extends BaseWeapon {
     }
     
     if (prevStage !== this.currentDrawStage) {
-      console.log(`🏹 [HuntingBow] Draw stage changed: ${prevStage} -> ${this.currentDrawStage}`);
+      console.log(`🏹 [HuntingBow] Draw stage: ${prevStage} -> ${this.currentDrawStage} (${Math.round(this.chargeLevel * 100)}%)`);
     }
   }
 
   private updateBowVisuals(): void {
     if (!this.bowString || !this.upperLimb || !this.lowerLimb) return;
     
-    const pullback = this.chargeLevel * 0.4; // Maximum pullback distance
-    const limbBend = this.chargeLevel * 0.3; // Maximum limb bend
+    // Enhanced draw mechanics with smooth easing
+    const pullback = this.easeInOutQuad(this.chargeLevel) * 0.5;
+    const limbBend = this.easeInOutQuad(this.chargeLevel) * 0.4;
     
-    // Update string position
+    // Update string position with curve
     this.bowString.position.x = -pullback;
+    this.bowString.scale.y = 1 + (this.chargeLevel * 0.1);
     
-    // Update limb bending based on charge level
+    // Enhanced limb bending with realistic physics
     const upperLimbRotation = this.originalUpperLimbRotation + limbBend;
     const lowerLimbRotation = this.originalLowerLimbRotation - limbBend;
     
     this.upperLimb.rotation.z = upperLimbRotation;
     this.lowerLimb.rotation.z = lowerLimbRotation;
     
-    // Add visual strain effects for high charge
-    if (this.chargeLevel > 0.8) {
-      const strainIntensity = (this.chargeLevel - 0.8) * 5;
+    // Advanced visual strain effects
+    this.updateStrainEffects();
+  }
+
+  private updateStrainEffects(): void {
+    if (!this.upperLimb || !this.lowerLimb) return;
+    
+    // Add visual strain effects for high charge with proper type checking
+    if (this.chargeLevel > 0.7) {
+      const strainIntensity = (this.chargeLevel - 0.7) * 3.33; // Normalize to 0-1
       const strainColor = new THREE.Color().lerpColors(
-        new THREE.Color(0x5d4037),
+        new THREE.Color(0x4a3f35),
         new THREE.Color(0x8d6e63),
         strainIntensity
       );
       
-      if (this.upperLimb.material instanceof THREE.MeshLambertMaterial) {
-        this.upperLimb.material.color = strainColor;
-        this.lowerLimb.material.color = strainColor;
+      // Fixed: Proper type checking for material color access
+      const upperMaterial = this.upperLimb.material;
+      const lowerMaterial = this.lowerLimb.material;
+      
+      if (upperMaterial instanceof THREE.MeshLambertMaterial) {
+        upperMaterial.color.copy(strainColor);
+      }
+      if (lowerMaterial instanceof THREE.MeshLambertMaterial) {
+        lowerMaterial.color.copy(strainColor);
       }
     } else {
-      // Reset to normal color
-      if (this.upperLimb.material instanceof THREE.MeshLambertMaterial) {
-        this.upperLimb.material.color.setHex(0x5d4037);
-        this.lowerLimb.material.color.setHex(0x5d4037);
+      // Reset to normal color with proper type checking
+      const upperMaterial = this.upperLimb.material;
+      const lowerMaterial = this.lowerLimb.material;
+      
+      if (upperMaterial instanceof THREE.MeshLambertMaterial) {
+        upperMaterial.color.setHex(0x4a3f35);
+      }
+      if (lowerMaterial instanceof THREE.MeshLambertMaterial) {
+        lowerMaterial.color.setHex(0x4a3f35);
       }
     }
   }
 
-  private applyShakeEffect(): void {
+  private applyEnhancedShakeEffect(): void {
     if (!this.mesh || this.shakeIntensity === 0) return;
     
-    // Multi-axis shake for more realistic effect
-    const shakeX = Math.sin(this.shakeTime * 1.3) * this.shakeIntensity;
-    const shakeY = Math.sin(this.shakeTime * 1.7) * this.shakeIntensity * 0.7;
-    const shakeZ = Math.sin(this.shakeTime * 2.1) * this.shakeIntensity * 0.5;
+    // Enhanced multi-axis shake with realistic tremor
+    const shakeX = Math.sin(this.shakeTime * 1.5) * this.shakeIntensity;
+    const shakeY = Math.sin(this.shakeTime * 2.1) * this.shakeIntensity * 0.8;
+    const shakeZ = Math.sin(this.shakeTime * 1.7) * this.shakeIntensity * 0.6;
     
     this.mesh.position.x += shakeX;
     this.mesh.position.y += shakeY;
     this.mesh.position.z += shakeZ;
     
-    // Add slight rotation shake
-    const rotShake = Math.sin(this.shakeTime * 1.5) * this.shakeIntensity * 0.3;
-    this.mesh.rotation.z += rotShake;
+    // Enhanced rotation shake
+    const rotShakeX = Math.sin(this.shakeTime * 1.3) * this.shakeIntensity * 0.4;
+    const rotShakeY = Math.sin(this.shakeTime * 1.9) * this.shakeIntensity * 0.3;
+    const rotShakeZ = Math.sin(this.shakeTime * 1.6) * this.shakeIntensity * 0.5;
+    
+    this.mesh.rotation.x += rotShakeX;
+    this.mesh.rotation.y += rotShakeY;
+    this.mesh.rotation.z += rotShakeZ;
+  }
+
+  private easeInOutQuad(t: number): number {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   }
 
   public getChargeLevel(): number {
