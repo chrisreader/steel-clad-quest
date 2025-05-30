@@ -9,9 +9,7 @@ import { Player } from '../entities/Player';
 import { GameState, Enemy } from '../../types/GameTypes';
 
 export class GameEngine {
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
+  private canvas: HTMLCanvasElement;
   private clock: THREE.Clock;
   
   private inputManager: InputManager;
@@ -29,20 +27,23 @@ export class GameEngine {
   constructor(canvas: HTMLCanvasElement) {
     console.log('Initializing Game Engine...');
     
-    // Initialize Three.js core
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.canvas = canvas;
     this.clock = new THREE.Clock();
     
-    this.setupRenderer();
-    this.setupCamera();
-    this.setupLighting();
+    // Create a div element to mount the scene manager
+    const mountDiv = document.createElement('div');
+    mountDiv.style.width = '100%';
+    mountDiv.style.height = '100%';
+    
+    // Replace the canvas with our mount div
+    if (canvas.parentElement) {
+      canvas.parentElement.replaceChild(mountDiv, canvas);
+    }
     
     // Initialize managers
     this.inputManager = new InputManager();
-    this.sceneManager = new SceneManager(this.scene);
-    this.effectsManager = new EffectsManager(this.scene);
+    this.sceneManager = new SceneManager(mountDiv);
+    this.effectsManager = new EffectsManager(this.sceneManager.getScene());
     this.audioManager = new AudioManager();
     this.physicsManager = new PhysicsManager();
     
@@ -61,47 +62,18 @@ export class GameEngine {
     console.log('Game Engine initialized successfully!');
   }
 
-  private setupRenderer(): void {
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setClearColor(0x87CEEB);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  }
-
-  private setupCamera(): void {
-    this.camera.position.set(0, 10, 10);
-    this.camera.lookAt(0, 0, 0);
-  }
-
-  private setupLighting(): void {
-    // Ambient light for overall illumination
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
-    this.scene.add(ambientLight);
-    
-    // Directional light for shadows
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(50, 50, 25);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    this.scene.add(directionalLight);
-  }
-
   private setupEventListeners(): void {
-    window.addEventListener('resize', this.handleResize.bind(this));
-  }
-
-  private handleResize(): void {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    // Window resize is now handled by SceneManager
   }
 
   public start(): void {
     console.log('Starting game...');
     this.isRunning = true;
     this.gameState.isPlaying = true;
-    this.sceneManager.loadLevel('tavern');
+    
+    // Create the default world instead of loading a specific level
+    this.sceneManager.createDefaultWorld();
+    
     this.gameLoop();
   }
 
@@ -135,8 +107,8 @@ export class GameEngine {
     // Update camera to follow player
     this.updateCamera();
     
-    // Render the scene
-    this.renderer.render(this.scene, this.camera);
+    // Render the scene using SceneManager
+    this.sceneManager.render();
   }
 
   private updateEnemies(deltaTime: number): void {
@@ -147,9 +119,10 @@ export class GameEngine {
 
   private updateCamera(): void {
     const playerPosition = this.player.getPosition();
-    this.camera.position.x = playerPosition.x;
-    this.camera.position.z = playerPosition.z + 10;
-    this.camera.lookAt(playerPosition.x, playerPosition.y, playerPosition.z);
+    const camera = this.sceneManager.getCamera();
+    camera.position.x = playerPosition.x;
+    camera.position.z = playerPosition.z + 10;
+    camera.lookAt(playerPosition.x, playerPosition.y, playerPosition.z);
   }
 
   public getPlayer(): Player {
@@ -161,12 +134,12 @@ export class GameEngine {
   }
 
   public getScene(): THREE.Scene {
-    return this.scene;
+    return this.sceneManager.getScene();
   }
 
   public dispose(): void {
     this.stop();
-    this.renderer.dispose();
+    this.sceneManager.dispose();
     this.audioManager.dispose();
   }
 }
