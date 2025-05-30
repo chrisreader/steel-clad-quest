@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -92,36 +93,76 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Check if any UI panel is currently open
   const isAnyUIOpen = useCallback(() => {
-    return showInventory || showSkillTree || showQuestLog || showCrafting || showStatsPanel || isPaused;
+    const uiOpen = showInventory || showSkillTree || showQuestLog || showCrafting || showStatsPanel || isPaused;
+    console.log('[KnightGame] UI state check:', {
+      showInventory,
+      showSkillTree,
+      showQuestLog,
+      showCrafting,
+      showStatsPanel,
+      isPaused,
+      anyOpen: uiOpen
+    });
+    return uiOpen;
   }, [showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, isPaused]);
 
-  // Pointer lock management - release cursor when UI opens, lock when closed
+  // Enhanced pointer lock management with better debugging and fallbacks
   useEffect(() => {
     if (!gameEngine || !gameStarted) return;
 
     const anyUIOpen = isAnyUIOpen();
-    console.log('[KnightGame] UI state changed - any UI open:', anyUIOpen);
-
-    // Get the input manager from the game engine
-    const inputManager = gameEngine.getRenderer()?.domElement ? 
-      gameEngine : null; // We'll access through handleInput method
+    console.log('[KnightGame] Pointer lock management - UI open:', anyUIOpen);
+    console.log('[KnightGame] Current pointer lock state:', document.pointerLockElement !== null);
 
     if (anyUIOpen) {
       // Release pointer lock when any UI opens
       console.log('[KnightGame] UI opened - releasing pointer lock');
-      if (inputManager) {
-        // Use handleInput to communicate with the engine's input manager
+      
+      // Direct fallback method
+      if (document.pointerLockElement) {
+        console.log('[KnightGame] Directly calling document.exitPointerLock()');
+        document.exitPointerLock();
+      }
+      
+      // Also try through game engine
+      if (gameEngine) {
         gameEngine.handleInput('requestPointerUnlock');
       }
+      
+      // Force cursor visibility with CSS
+      document.body.style.cursor = 'auto';
+      if (mountRef.current) {
+        mountRef.current.style.cursor = 'auto';
+      }
+      
+      // Add retry mechanism for stubborn pointer locks
+      setTimeout(() => {
+        if (document.pointerLockElement && anyUIOpen) {
+          console.log('[KnightGame] Retry: Force releasing pointer lock');
+          document.exitPointerLock();
+          document.body.style.cursor = 'auto';
+        }
+      }, 50);
+      
     } else {
       // Request pointer lock when all UIs are closed (with small delay for smooth transition)
-      console.log('[KnightGame] All UIs closed - requesting pointer lock');
+      console.log('[KnightGame] All UIs closed - preparing to request pointer lock');
       setTimeout(() => {
+        // Double-check UI state hasn't changed
         if (!isAnyUIOpen() && gameStarted && !isGameOver) {
           console.log('[KnightGame] Re-locking pointer after UI close');
-          if (inputManager) {
+          
+          // Reset cursor style
+          document.body.style.cursor = '';
+          if (mountRef.current) {
+            mountRef.current.style.cursor = '';
+          }
+          
+          if (gameEngine) {
             gameEngine.handleInput('requestPointerLock');
           }
+        } else {
+          console.log('[KnightGame] Skipping pointer lock - UI state changed or game not active');
         }
       }, 100);
     }
@@ -273,23 +314,29 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           }
           break;
         case 'KeyI':
+          console.log('[KnightGame] I key pressed - toggling inventory');
           setShowInventory(!showInventory);
           break;
         case 'KeyK':
+          console.log('[KnightGame] K key pressed - toggling skill tree');
           setShowSkillTree(!showSkillTree);
           break;
         case 'KeyQ':
+          console.log('[KnightGame] Q key pressed - toggling quest log');
           setShowQuestLog(!showQuestLog);
           break;
         case 'KeyC':
+          console.log('[KnightGame] C key pressed - toggling crafting');
           setShowCrafting(!showCrafting);
           break;
         case 'KeyT':
+          console.log('[KnightGame] T key pressed - toggling stats panel');
           setShowStatsPanel(!showStatsPanel);
           break;
         case 'Escape':
           if (showInventory || showSkillTree || showQuestLog || showCrafting || showStatsPanel) {
             // Close all UIs
+            console.log('[KnightGame] Escape pressed - closing all UIs');
             setShowInventory(false);
             setShowSkillTree(false);
             setShowQuestLog(false);
@@ -297,6 +344,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
             setShowStatsPanel(false);
           } else {
             // Toggle pause menu
+            console.log('[KnightGame] Escape pressed - toggling pause');
             togglePause();
           }
           break;
