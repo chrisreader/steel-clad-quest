@@ -91,7 +91,7 @@ export class Player {
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = -0.4;
     body.castShadow = true;
-    body.visible = true; // Make body visible
+    body.visible = false; // Hide body in first-person
     playerBodyGroup.add(body);
     
     // Head
@@ -104,7 +104,7 @@ export class Player {
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 0.4;
     head.castShadow = true;
-    head.visible = true; // Make head visible
+    head.visible = false; // Hide head in first-person
     playerBodyGroup.add(head);
     
     // Arms
@@ -124,6 +124,7 @@ export class Player {
     leftArmGroup.add(leftArm);
     leftArmGroup.position.set(-0.6, 1.4, -0.3);
     leftArmGroup.rotation.x = Math.PI / 8;
+    leftArmGroup.visible = true; // Keep arms visible for immersion
     playerBodyGroup.add(leftArmGroup);
     
     // Left hand
@@ -147,6 +148,7 @@ export class Player {
     rightArmGroup.position.set(0.6, 1.4, -0.2);
     rightArmGroup.rotation.order = 'XYZ';
     rightArmGroup.rotation.set(Math.PI / 8, 0, 0);
+    rightArmGroup.visible = true; // Keep arms visible for immersion
     playerBodyGroup.add(rightArmGroup);
     
     // Right hand
@@ -228,13 +230,13 @@ export class Player {
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
     leftLeg.position.set(-0.2, -1.2, 0);
     leftLeg.castShadow = true;
-    leftLeg.visible = true; // Make left leg visible
+    leftLeg.visible = false; // Hide legs in first-person
     playerBodyGroup.add(leftLeg);
     
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
     rightLeg.position.set(0.2, -1.2, 0);
     rightLeg.castShadow = true;
-    rightLeg.visible = true; // Make right leg visible
+    rightLeg.visible = false; // Hide legs in first-person
     playerBodyGroup.add(rightLeg);
     
     this.group.add(playerBodyGroup);
@@ -573,6 +575,7 @@ export class Player {
   
   public setRotation(rotation: number): void {
     this.group.rotation.y = rotation;
+    console.log("Player rotation set to:", rotation);
   }
   
   public getStats(): PlayerStats {

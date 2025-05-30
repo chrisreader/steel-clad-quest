@@ -103,7 +103,7 @@ export class GameEngine {
       this.inputManager.initialize(this.renderer);
       console.log("InputManager created");
       
-      // Setup mouse look controls (do this after renderer is ready)
+      // Setup mouse look controls immediately
       this.setupMouseLookControls();
       
       // Create the effects manager
@@ -130,8 +130,8 @@ export class GameEngine {
       this.player = new Player(this.scene, this.effectsManager, this.audioManager);
       console.log("Player created at position:", this.player.getPosition());
       
-      // Hide player model for first-person view
-      this.player.getGroup().visible = false;
+      // Don't hide the entire player group for first-person view
+      // Instead, only specific parts are hidden in the Player constructor
       
       // Create game systems
       console.log("Creating CombatSystem...");
@@ -207,21 +207,19 @@ export class GameEngine {
       }
     });
     
-    // Request pointer lock on canvas click with better error handling
+    // Request pointer lock on canvas click immediately
     const handleCanvasClick = () => {
       console.log("Canvas clicked, requesting pointer lock...");
       this.requestPointerLockSafely();
     };
     
-    // Wait a bit to ensure renderer is fully ready
-    setTimeout(() => {
-      if (this.renderer && this.renderer.domElement) {
-        this.renderer.domElement.addEventListener('click', handleCanvasClick);
-        console.log("Canvas click listener added");
-      } else {
-        console.warn("Renderer or canvas not ready for pointer lock setup");
-      }
-    }, 500);
+    // Set up click listener immediately if renderer is ready
+    if (this.renderer && this.renderer.domElement) {
+      this.renderer.domElement.addEventListener('click', handleCanvasClick);
+      console.log("Canvas click listener added immediately");
+    } else {
+      console.warn("Renderer or canvas not ready for pointer lock setup");
+    }
   }
   
   private requestPointerLockSafely(): void {
@@ -273,8 +271,12 @@ export class GameEngine {
     // Apply rotation to camera
     this.camera.quaternion.copy(finalQuaternion);
     
-    // Update player rotation to match camera yaw for movement
-    this.player.setRotation(this.cameraRotation.yaw);
+    // Update player rotation to match camera yaw for movement (only if player exists)
+    if (this.player && typeof this.player.setRotation === 'function') {
+      this.player.setRotation(this.cameraRotation.yaw);
+    } else {
+      console.warn("Player setRotation method not available");
+    }
     
     console.log("Camera quaternion updated:", this.camera.quaternion);
   }
