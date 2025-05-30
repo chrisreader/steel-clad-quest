@@ -343,6 +343,99 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     return <GameMenu onStartGame={startGame} />;
   }
 
+  // Add weapon slot state
+  const [activeWeaponSlot, setActiveWeaponSlot] = useState<1 | 2>(1);
+  const [equippedWeapons, setEquippedWeapons] = useState<{
+    mainhand: Item | null;
+    offhand: Item | null;
+  }>({
+    mainhand: null,
+    offhand: null
+  });
+
+  // Add weapon slot selection handler
+  const handleWeaponSlotSelect = useCallback((slot: 1 | 2) => {
+    console.log(`[KnightGame] Switching to weapon slot ${slot}`);
+    setActiveWeaponSlot(slot);
+    
+    if (gameEngine) {
+      // Switch to the weapon in the selected slot
+      const targetWeapon = slot === 1 ? equippedWeapons.mainhand : equippedWeapons.offhand;
+      if (targetWeapon && targetWeapon.weaponId) {
+        const player = gameEngine.getPlayer();
+        player.equipWeapon(targetWeapon.weaponId);
+      }
+    }
+  }, [gameEngine, equippedWeapons]);
+
+  // Enhanced weapon equip handler that updates equipped weapons state
+  const handleEquipWeapon = useCallback((item: Item) => {
+    console.log('[KnightGame] Equipping weapon:', item.name);
+    
+    if (gameEngine && item.weaponId) {
+      const player = gameEngine.getPlayer();
+      const success = player.equipWeapon(item.weaponId);
+      
+      if (success) {
+        console.log(`Successfully equipped ${item.name}`);
+        
+        // Update equipped weapons state based on item's equipment slot
+        if (item.equipmentSlot === 'mainhand') {
+          setEquippedWeapons(prev => ({ ...prev, mainhand: item }));
+        } else if (item.equipmentSlot === 'offhand') {
+          setEquippedWeapons(prev => ({ ...prev, offhand: item }));
+        }
+        
+        // Update player stats based on weapon
+        if (item.stats) {
+          const currentStats = player.getStats();
+          const updatedStats = {
+            ...currentStats,
+            attack: currentStats.attack + (item.stats.attack || 0),
+            attackPower: currentStats.attackPower + (item.stats.attack || 0)
+          };
+          setPlayerStats(updatedStats);
+        }
+      } else {
+        console.error(`Failed to equip ${item.name}`);
+      }
+    }
+  }, [gameEngine, setPlayerStats]);
+
+  // Enhanced weapon unequip handler
+  const handleUnequipWeapon = useCallback(() => {
+    console.log('[KnightGame] Unequipping weapon');
+    
+    if (gameEngine) {
+      const player = gameEngine.getPlayer();
+      const success = player.unequipWeapon();
+      
+      if (success) {
+        console.log('Weapon unequipped');
+        // Clear the mainhand weapon (assuming unequip affects active weapon)
+        setEquippedWeapons(prev => ({ ...prev, mainhand: null }));
+        // Reset player stats
+        const currentStats = player.getStats();
+        setPlayerStats(currentStats);
+      }
+    }
+  }, [gameEngine, setPlayerStats]);
+
+  // Use input handling hook with weapon slot selection
+  useInputHandling({
+    gameStarted,
+    gameEngine,
+    isAnyUIOpen,
+    toggleInventory,
+    toggleSkillTree,
+    toggleQuestLog,
+    toggleCrafting,
+    toggleStatsPanel,
+    closeAllUIs,
+    togglePause,
+    onWeaponSlotSelect: handleWeaponSlotSelect
+  });
+
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black">
       <div ref={mountRef} className="w-full h-full" />
@@ -377,6 +470,10 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           playerStats={playerStats} 
           gameTime={gameTime} 
           isInTavern={isInTavern}
+          mainHandWeapon={equippedWeapons.mainhand}
+          offHandWeapon={equippedWeapons.offhand}
+          activeWeaponSlot={activeWeaponSlot}
+          onWeaponSlotSelect={handleWeaponSlotSelect}
         />
       )}
 

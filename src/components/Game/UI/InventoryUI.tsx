@@ -52,6 +52,34 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
 
   const [draggedItem, setDraggedItem] = useState<{ item: Item; source: 'inventory' | 'equipment'; sourceId: number | EquipmentSlotType } | null>(null);
 
+  // Helper function to check if an item can be equipped in a specific slot
+  const canEquipInSlot = (item: Item, slotType: EquipmentSlotType): boolean => {
+    if (item.type !== 'weapon' && item.type !== 'armor') return false;
+    
+    // Weapon-specific restrictions
+    if (item.type === 'weapon') {
+      // Swords can only go in main hand
+      if (item.subtype === 'sword' && slotType !== 'mainhand') {
+        return false;
+      }
+      // Shields can only go in off hand
+      if (item.subtype === 'shield' && slotType !== 'offhand') {
+        return false;
+      }
+      // General weapon slots check
+      if (slotType !== 'mainhand' && slotType !== 'offhand') {
+        return false;
+      }
+    }
+    
+    // Armor-specific restrictions
+    if (item.type === 'armor') {
+      return item.equipmentSlot === slotType;
+    }
+    
+    return item.equipmentSlot === slotType;
+  };
+
   // Sync inventory slots with items prop
   useEffect(() => {
     console.log('InventoryUI: Syncing with items prop:', items);
@@ -157,9 +185,13 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
     event.preventDefault();
     if (!draggedItem) return;
 
-    // Check if item can be equipped in this slot
-    const canEquip = draggedItem.item.equipmentSlot === targetSlotType;
-    if (!canEquip) return;
+    // Check if item can be equipped in this slot with new restrictions
+    const canEquip = canEquipInSlot(draggedItem.item, targetSlotType);
+    if (!canEquip) {
+      console.log(`Cannot equip ${draggedItem.item.name} in ${targetSlotType} slot`);
+      setDraggedItem(null);
+      return;
+    }
 
     if (draggedItem.source === 'inventory') {
       const sourceSlotId = draggedItem.sourceId as number;
@@ -181,9 +213,16 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
           : slot
       ));
     } else if (draggedItem.source === 'equipment') {
-      // Swap equipment slots
+      // Swap equipment slots - also check if the target item can go to source slot
       const sourceSlotType = draggedItem.sourceId as EquipmentSlotType;
       const targetItem = equippedItems[targetSlotType];
+      
+      // If there's a target item, check if it can go to the source slot
+      if (targetItem && !canEquipInSlot(targetItem, sourceSlotType)) {
+        console.log(`Cannot swap: ${targetItem.name} cannot go to ${sourceSlotType} slot`);
+        setDraggedItem(null);
+        return;
+      }
       
       // Handle weapon swapping
       if (targetSlotType === 'mainhand' && draggedItem.item.weaponId && onEquipWeapon) {

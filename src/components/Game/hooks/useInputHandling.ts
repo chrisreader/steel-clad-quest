@@ -1,4 +1,3 @@
-
 import { useEffect, useCallback } from 'react';
 import { GameEngine } from '../../../game/engine/GameEngine';
 
@@ -13,6 +12,7 @@ interface UseInputHandlingProps {
   toggleStatsPanel: () => void;
   closeAllUIs: () => void;
   togglePause: () => void;
+  onWeaponSlotSelect?: (slot: 1 | 2) => void;
 }
 
 export const useInputHandling = ({
@@ -25,7 +25,8 @@ export const useInputHandling = ({
   toggleCrafting,
   toggleStatsPanel,
   closeAllUIs,
-  togglePause
+  togglePause,
+  onWeaponSlotSelect
 }: UseInputHandlingProps) => {
 
   // Enhanced keyboard input handler
@@ -37,7 +38,7 @@ export const useInputHandling = ({
 
       // Prevent default for game controls only when no UI is open
       const anyUIOpen = isAnyUIOpen();
-      if (!anyUIOpen && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+      if (!anyUIOpen && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Digit1', 'Digit2'].includes(event.code)) {
         event.preventDefault();
       }
 
@@ -79,6 +80,18 @@ export const useInputHandling = ({
             gameEngine.handleInput('sprint');
           }
           break;
+        case 'Digit1':
+          if (!anyUIOpen && onWeaponSlotSelect) {
+            console.log('1 pressed - selecting weapon slot 1');
+            onWeaponSlotSelect(1);
+          }
+          break;
+        case 'Digit2':
+          if (!anyUIOpen && onWeaponSlotSelect) {
+            console.log('2 pressed - selecting weapon slot 2');
+            onWeaponSlotSelect(2);
+          }
+          break;
         case 'KeyI':
           console.log('[useInputHandling] I key pressed - toggling inventory');
           toggleInventory();
@@ -113,7 +126,7 @@ export const useInputHandling = ({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameStarted, gameEngine, isAnyUIOpen, toggleInventory, toggleSkillTree, toggleQuestLog, toggleCrafting, toggleStatsPanel, closeAllUIs, togglePause]);
+  }, [gameStarted, gameEngine, isAnyUIOpen, toggleInventory, toggleSkillTree, toggleQuestLog, toggleCrafting, toggleStatsPanel, closeAllUIs, togglePause, onWeaponSlotSelect]);
 
   // Handle keyup events for movement
   useEffect(() => {
