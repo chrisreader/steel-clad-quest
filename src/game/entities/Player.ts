@@ -316,15 +316,15 @@ export class Player {
       // Attach bow to left arm for proper archery grip
       this.playerBody.leftArm.add(weapon.getMesh());
       
-      // Position bow for realistic archery stance - horizontal from start
-      weapon.getMesh().position.set(0, -0.2, -0.3); // Forward and down from left hand
-      weapon.getMesh().rotation.set(0, Math.PI / 2, 0); // Horizontal, pointing forward
+      // Position bow vertically with handle in left hand
+      weapon.getMesh().position.set(0, -0.4, 0); // Handle positioned in left hand
+      weapon.getMesh().rotation.set(0, 0, 0); // Vertical orientation (straight up and down)
       weapon.getMesh().scale.set(1.0, 1.0, 1.0); // Natural size
       
       // Set initial archery stance positions
       this.setArcheryStance();
       
-      console.log(`🏹 [Player] Bow equipped with realistic archery positioning`);
+      console.log(`🏹 [Player] Bow equipped vertically with handle in left hand`);
     } else {
       // Attach melee weapon to right arm
       this.playerBody.rightArm.add(weapon.getMesh());
@@ -990,11 +990,11 @@ export class Player {
       );
     }
     
-    // Bow stays horizontal and pointing forward throughout
+    // Keep bow vertical and straight up and down throughout
     if (this.equippedWeapon) {
       const bowMesh = this.equippedWeapon.getMesh();
       bowMesh.rotation.x = THREE.MathUtils.lerp(bowMesh.rotation.x, 0, lerpSpeed);
-      bowMesh.rotation.y = THREE.MathUtils.lerp(bowMesh.rotation.y, Math.PI / 2, lerpSpeed);
+      bowMesh.rotation.y = THREE.MathUtils.lerp(bowMesh.rotation.y, 0, lerpSpeed);
       bowMesh.rotation.z = THREE.MathUtils.lerp(bowMesh.rotation.z, 0, lerpSpeed);
     }
   }
