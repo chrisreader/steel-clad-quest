@@ -12,7 +12,8 @@ import PlayerStatsPanel from './UI/PlayerStatsPanel';
 import GameEngineController from './GameEngineController';
 import GameController, { GameControllerRef } from './GameController';
 import { GameEngine } from '../../game/engine/GameEngine';
-import { PlayerStats, Item, Quest, Skill } from '../../types/GameTypes';
+import { Item, Quest, Skill } from '../../types/GameTypes';
+import { useGameState } from './hooks/useGameState';
 
 interface KnightGameProps {
   onLoadingComplete?: () => void;
@@ -27,26 +28,29 @@ interface GameEngineControllerRef {
 }
 
 export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => {
+  // Use the new game state hook
+  const {
+    playerStats,
+    gameTime,
+    isGameOver,
+    gameStarted,
+    isInTavern,
+    isPaused,
+    setPlayerStats,
+    setGameTime,
+    setIsGameOver,
+    setGameStarted,
+    setIsInTavern,
+    setIsPaused,
+    handleUpdateHealth,
+    handleUpdateGold,
+    handleUpdateStamina,
+    handleUpdateScore,
+    handleGameOver,
+    handleLocationChange
+  } = useGameState();
+
   const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);
-  const [playerStats, setPlayerStats] = useState<PlayerStats>({
-    health: 100,
-    maxHealth: 100,
-    stamina: 100,
-    maxStamina: 100,
-    level: 1,
-    experience: 0,
-    experienceToNext: 100,
-    gold: 0,
-    attack: 10,
-    defense: 5,
-    speed: 5,
-    attackPower: 10
-  });
-  const [gameTime, setGameTime] = useState(0);
-  const [isGameOver, setIsGameOver] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
-  const [isInTavern, setIsInTavern] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
   const [engineReady, setEngineReady] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [mountReady, setMountReady] = useState(false);
@@ -271,32 +275,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }
   }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen, forceCursorVisible]);
 
-  // Update handlers for engine integration
-  const handleUpdateHealth = useCallback((health: number) => {
-    setPlayerStats(prev => ({ ...prev, health }));
-  }, []);
-
-  const handleUpdateGold = useCallback((gold: number) => {
-    setPlayerStats(prev => ({ ...prev, gold }));
-  }, []);
-
-  const handleUpdateStamina = useCallback((stamina: number) => {
-    setPlayerStats(prev => ({ ...prev, stamina }));
-  }, []);
-
-  const handleUpdateScore = useCallback((score: number) => {
-    // Handle score updates if needed
-    console.log('Score updated:', score);
-  }, []);
-
-  const handleGameOver = useCallback((score: number) => {
-    setIsGameOver(true);
-  }, []);
-
-  const handleLocationChange = useCallback((isInTavern: boolean) => {
-    setIsInTavern(isInTavern);
-  }, []);
-
   // Enhanced item use handler that connects both controllers
   const handleUseItem = useCallback((item: Item) => {
     // Call GameController method for game logic
@@ -336,14 +314,14 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     setGameStarted(true);
     setIsGameOver(false);
     gameControllerRef.current?.initializeSampleData();
-  }, [gameEngine]);
+  }, [gameEngine, setGameStarted, setIsGameOver]);
 
   const togglePause = useCallback(() => {
     if (gameEngine) {
       gameEngine.pause();
       setIsPaused(!isPaused);
     }
-  }, [gameEngine, isPaused]);
+  }, [gameEngine, isPaused, setIsPaused]);
 
   const restartGame = useCallback(() => {
     // Restart both controllers
@@ -353,7 +331,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     setGameStarted(true);
     setIsGameOver(false);
     setIsPaused(false);
-  }, []);
+  }, [setGameStarted, setIsGameOver, setIsPaused]);
 
   const goToMainMenu = useCallback(() => {
     gameControllerRef.current?.goToMainMenu();
@@ -363,7 +341,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     setGameStarted(false);
     setIsGameOver(false);
     setIsPaused(false);
-  }, [gameEngine]);
+  }, [gameEngine, setGameStarted, setIsGameOver, setIsPaused]);
 
   // Enhanced keyboard input handler with improved UI management
   useEffect(() => {
@@ -504,7 +482,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }, 100);
 
     return () => clearInterval(updateInterval);
-  }, [gameStarted, gameEngine]);
+  }, [gameStarted, gameEngine, setPlayerStats, setGameTime, setIsGameOver]);
 
   // Show game menu until user clicks start
   if (!gameStarted && engineReady) {
