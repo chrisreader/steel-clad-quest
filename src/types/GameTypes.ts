@@ -18,6 +18,7 @@ export interface PlayerStats {
   attack: number;
   defense: number;
   speed: number;
+  attackPower: number;
 }
 
 export interface PlayerBody {
@@ -28,6 +29,51 @@ export interface PlayerBody {
   rightLeg: THREE.Mesh;
   body: THREE.Mesh;
   head: THREE.Mesh;
+}
+
+// Enemy types enum
+export enum EnemyType {
+  GOBLIN = 'goblin',
+  ORC = 'orc',
+  SKELETON = 'skeleton',
+  BOSS = 'boss'
+}
+
+// Enemy interface for the game entity
+export interface Enemy {
+  mesh: THREE.Group;
+  health: number;
+  maxHealth: number;
+  speed: number;
+  damage: number;
+  goldReward: number;
+  experienceReward: number;
+  lastAttackTime: number;
+  isDead: boolean;
+  deathTime: number;
+  type: EnemyType;
+  leftArm: THREE.Mesh;
+  rightArm: THREE.Mesh;
+  leftLeg: THREE.Mesh;
+  rightLeg: THREE.Mesh;
+  walkTime: number;
+  hitBox: THREE.Mesh;
+  originalMaterials: THREE.Material[];
+  isHit: boolean;
+  hitTime: number;
+  deathAnimation: {
+    falling: boolean;
+    rotationSpeed: number;
+    fallSpeed: number;
+  };
+  weapon: THREE.Group;
+  body: THREE.Mesh;
+  head: THREE.Mesh;
+  attackRange: number;
+  damageRange: number;
+  attackCooldown: number;
+  points: number;
+  idleTime: number;
 }
 
 // Level and terrain interfaces
@@ -133,20 +179,6 @@ export interface SwordSwingAnimation {
   trailPoints: THREE.Vector3[];
   cameraShakeIntensity: number;
   wristSnapIntensity: number;
-}
-
-export interface Enemy {
-  id: string;
-  type: 'goblin' | 'orc' | 'skeleton' | 'boss';
-  position: Vector3;
-  health: number;
-  maxHealth: number;
-  attack: number;
-  defense: number;
-  speed: number;
-  goldReward: number;
-  experienceReward: number;
-  isAlive: boolean;
 }
 
 export interface Item {
