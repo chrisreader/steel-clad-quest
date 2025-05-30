@@ -6,7 +6,24 @@ import { GameEngine } from '../../../game/engine/GameEngine';
 export const useGameManager = () => {
   const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
-  const [inventory, setInventory] = useState<Item[]>([]);
+  
+  // Initialize inventory with hunting bow
+  const [inventory, setInventory] = useState<Item[]>([
+    {
+      id: '2',
+      name: 'Hunting Bow',
+      type: 'weapon' as const,
+      subtype: 'bow' as const,
+      value: 150,
+      description: 'A well-crafted hunting bow made from flexible yew wood. Draw and release to shoot arrows with varying power based on draw time. Perfect for ranged combat (+8 attack)',
+      quantity: 1,
+      equipmentSlot: 'mainhand' as const,
+      stats: { attack: 8 },
+      tier: 'common' as const,
+      icon: 'bow',
+      weaponId: 'hunting_bow'
+    }
+  ]);
 
   const handleEngineReady = useCallback((engine: GameEngine) => {
     console.log('[useGameManager] Engine ready');

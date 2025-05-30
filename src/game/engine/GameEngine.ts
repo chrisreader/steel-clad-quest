@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -34,6 +35,9 @@ export class GameEngine {
   
   // Movement state
   private isMoving: boolean = false;
+  
+  // Attack state tracking
+  private isAttackPressed: boolean = false;
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -179,6 +183,11 @@ export class GameEngine {
     const preloadPromises = [
       this.loadAudioWithFallback('sword_swing'),
       this.loadAudioWithFallback('sword_hit'),
+      this.loadAudioWithFallback('bow_draw'),
+      this.loadAudioWithFallback('bow_release'),
+      this.loadAudioWithFallback('arrow_shoot'),
+      this.loadAudioWithFallback('arrow_hit'),
+      this.loadAudioWithFallback('arrow_impact'),
       this.loadAudioWithFallback('player_hurt'),
       this.loadAudioWithFallback('enemy_hurt'),
       this.loadAudioWithFallback('enemy_death'),
@@ -346,8 +355,16 @@ export class GameEngine {
     
     switch (type) {
       case 'attack':
-        if (this.combatSystem) {
+        if (!this.isAttackPressed && this.combatSystem) {
+          this.isAttackPressed = true;
           this.combatSystem.startPlayerAttack();
+        }
+        break;
+        
+      case 'attackEnd':
+        if (this.isAttackPressed && this.combatSystem) {
+          this.isAttackPressed = false;
+          this.combatSystem.stopPlayerAttack();
         }
         break;
         

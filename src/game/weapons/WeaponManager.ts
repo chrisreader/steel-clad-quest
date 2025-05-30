@@ -4,6 +4,7 @@ import { BaseWeapon } from './BaseWeapon';
 import { IronSword } from './items/IronSword';
 import { WoodenSword } from './items/WoodenSword';
 import { SteelSword } from './items/SteelSword';
+import { HuntingBow } from './items/HuntingBow';
 
 export class WeaponManager {
   private weapons: Map<string, () => BaseWeapon> = new Map();
@@ -16,6 +17,7 @@ export class WeaponManager {
     this.weapons.set('iron_sword', () => new IronSword());
     this.weapons.set('wooden_sword', () => new WoodenSword());
     this.weapons.set('steel_sword', () => new SteelSword());
+    this.weapons.set('hunting_bow', () => new HuntingBow());
   }
 
   public createWeapon(weaponId: string): BaseWeapon | null {

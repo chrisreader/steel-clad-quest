@@ -4,6 +4,7 @@ import { Enemy } from '../entities/Enemy';
 import { Gold } from '../entities/Gold';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
+import { ProjectileSystem } from './ProjectileSystem';
 
 export class CombatSystem {
   private player: Player;
@@ -12,11 +13,16 @@ export class CombatSystem {
   private scene: THREE.Scene;
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
+  private projectileSystem: ProjectileSystem;
   
   // Combat parameters
   private pickupRange: number = 2; // Range for gold pickup
   private attackCooldownMs: number = 640; // Milliseconds between attacks
   private lastAttackTime: number = 0;
+  
+  // Bow mechanics
+  private isDrawingBow: boolean = false;
+  private bowDrawStartTime: number = 0;
   
   constructor(
     scene: THREE.Scene,
@@ -28,7 +34,8 @@ export class CombatSystem {
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
-    console.log("⚔️ [CombatSystem] Initialized with cooldown:", this.attackCooldownMs, "ms");
+    this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
+    console.log("⚔️ [CombatSystem] Initialized with bow support");
   }
   
   public update(deltaTime: number): void {
@@ -38,8 +45,17 @@ export class CombatSystem {
     // Update time since last attack
     this.lastAttackTime += deltaTime;
     
-    // Check sword collision with enemies
-    if (this.player.isAttacking()) {
+    // Update projectile system
+    this.projectileSystem.setEnemies(this.enemies);
+    this.projectileSystem.update(deltaTime);
+    
+    // Update bow drawing if active
+    if (this.isDrawingBow) {
+      this.updateBowDrawing(deltaTime);
+    }
+    
+    // Check sword collision with enemies (for melee weapons)
+    if (this.player.isAttacking() && !this.isDrawingBow) {
       this.checkPlayerAttacks();
     }
     
@@ -48,6 +64,101 @@ export class CombatSystem {
     
     // Clean up dead enemies and gold
     this.cleanupEntities();
+  }
+  
+  private updateBowDrawing(deltaTime: number): void {
+    const currentWeapon = this.player.getCurrentWeapon();
+    if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
+      // Update bow charge
+      if (typeof currentWeapon.updateCharge === 'function') {
+        currentWeapon.updateCharge(deltaTime);
+      }
+    }
+  }
+  
+  public startPlayerAttack(): void {
+    const currentWeapon = this.player.getCurrentWeapon();
+    
+    if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
+      this.startBowDraw();
+    } else {
+      this.startMeleeAttack();
+    }
+  }
+  
+  public stopPlayerAttack(): void {
+    const currentWeapon = this.player.getCurrentWeapon();
+    
+    if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.isDrawingBow) {
+      this.releaseBowString();
+    }
+  }
+  
+  private startBowDraw(): void {
+    console.log("🏹 [CombatSystem] Starting bow draw");
+    this.isDrawingBow = true;
+    this.bowDrawStartTime = Date.now();
+    
+    const currentWeapon = this.player.getCurrentWeapon();
+    if (currentWeapon && typeof currentWeapon.startDrawing === 'function') {
+      currentWeapon.startDrawing();
+    }
+    
+    // Play bow draw sound
+    this.audioManager.play('bow_draw');
+  }
+  
+  private releaseBowString(): void {
+    console.log("🏹 [CombatSystem] Releasing bow string");
+    this.isDrawingBow = false;
+    
+    const currentWeapon = this.player.getCurrentWeapon();
+    if (!currentWeapon || currentWeapon.getConfig().type !== 'bow') return;
+    
+    // Get charge level and calculate damage/speed
+    const chargeLevel = typeof currentWeapon.getChargeLevel === 'function' 
+      ? currentWeapon.getChargeLevel() 
+      : 0;
+    
+    const damage = typeof currentWeapon.getChargeDamage === 'function'
+      ? currentWeapon.getChargeDamage()
+      : currentWeapon.getStats().damage;
+    
+    const speed = typeof currentWeapon.getArrowSpeed === 'function'
+      ? currentWeapon.getArrowSpeed()
+      : 20;
+    
+    // Calculate arrow direction (forward from player)
+    const playerPosition = this.player.getPosition();
+    const cameraDirection = this.player.getCameraDirection();
+    
+    // Shoot arrow
+    const arrowStartPos = playerPosition.clone().add(new THREE.Vector3(0, 1.5, 0));
+    this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
+    
+    // Stop drawing animation
+    if (typeof currentWeapon.stopDrawing === 'function') {
+      currentWeapon.stopDrawing();
+    }
+    
+    // Play bow release sound
+    this.audioManager.play('bow_release');
+    
+    console.log(`🏹 [CombatSystem] Arrow shot - Charge: ${chargeLevel.toFixed(2)}, Damage: ${damage}, Speed: ${speed}`);
+  }
+  
+  private startMeleeAttack(): void {
+    const now = Date.now();
+    const timeSinceLastAttack = now - this.lastAttackTime;
+    
+    if (timeSinceLastAttack < this.attackCooldownMs) {
+      console.log("⚔️ [CombatSystem] Attack blocked by cooldown");
+      return;
+    }
+    
+    console.log("⚔️ [CombatSystem] Starting melee attack");
+    this.lastAttackTime = now;
+    this.player.startSwordSwing();
   }
   
   private checkPlayerAttacks(): void {
@@ -148,34 +259,6 @@ export class CombatSystem {
     }
   }
   
-  public startPlayerAttack(): void {
-    const now = Date.now();
-    const timeSinceLastAttack = now - this.lastAttackTime;
-    
-    console.log("⚔️ [CombatSystem] Attack requested:", {
-      now: now,
-      lastAttackTime: this.lastAttackTime,
-      timeSinceLastAttack: timeSinceLastAttack,
-      cooldownMs: this.attackCooldownMs,
-      canAttack: timeSinceLastAttack >= this.attackCooldownMs
-    });
-    
-    // Check cooldown - FIXED: now checking if enough time has passed
-    if (timeSinceLastAttack < this.attackCooldownMs) {
-      console.log("⚔️ [CombatSystem] Attack blocked by cooldown");
-      return;
-    }
-    
-    console.log("⚔️ [CombatSystem] Starting player attack!");
-    
-    // Update last attack time
-    this.lastAttackTime = now;
-    
-    // Start attack
-    this.player.startSwordSwing();
-    console.log("⚔️ [CombatSystem] Player sword swing initiated");
-  }
-  
   public addEnemy(enemy: Enemy): void {
     this.enemies.push(enemy);
   }
@@ -204,6 +287,9 @@ export class CombatSystem {
     // Remove all gold
     this.gold.forEach(gold => gold.dispose());
     this.gold = [];
+    
+    // Clear projectile system
+    this.projectileSystem.clear();
   }
   
   public spawnRandomEnemies(count: number, playerPosition: THREE.Vector3, difficulty: number = 1): void {
@@ -247,5 +333,6 @@ export class CombatSystem {
   
   public dispose(): void {
     this.clear();
+    this.projectileSystem.dispose();
   }
 }

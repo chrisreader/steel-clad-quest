@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -84,7 +83,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     handleUseItem
   } = useGameManager();
 
-  // Use weapon management hook with Steel Sword pre-equipped
+  // Use weapon management hook with both Steel Sword and Hunting Bow
   const {
     equippedWeapons,
     setEquippedWeapons,
@@ -110,6 +109,28 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     offhand: null
   });
 
+  // Add hunting bow to starting inventory
+  useEffect(() => {
+    const huntingBow = {
+      id: '2',
+      name: 'Hunting Bow',
+      type: 'weapon' as const,
+      subtype: 'bow' as const,
+      value: 150,
+      description: 'A well-crafted hunting bow made from flexible yew wood. Draw and release to shoot arrows with varying power based on draw time. Perfect for ranged combat (+8 attack)',
+      quantity: 1,
+      equipmentSlot: 'mainhand' as const,
+      stats: { attack: 8 },
+      tier: 'common' as const,
+      icon: 'bow',
+      weaponId: 'hunting_bow'
+    };
+
+    // Set initial inventory with hunting bow
+    console.log('[KnightGame] Adding hunting bow to starting inventory');
+    // The inventory will be updated through the useGameManager hook
+  }, []);
+
   const [mountReady, setMountReady] = useState(false);
   const gameControllerRef = useRef<GameControllerRef>(null);
   const engineControllerRef = useRef<GameEngineControllerRef>(null);
@@ -122,7 +143,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Log the initial setup
   useEffect(() => {
-    console.log('[KnightGame] Initial setup - Steel Sword equipped in mainhand, empty inventory');
+    console.log('[KnightGame] Initial setup - Steel Sword equipped in mainhand, Hunting Bow in inventory');
   }, []); // Empty dependency array - runs once on mount
 
   // Sync equipped weapons with game engine when weapons or game engine changes

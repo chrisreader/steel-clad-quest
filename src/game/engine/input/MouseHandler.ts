@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class MouseHandler {
@@ -28,19 +27,15 @@ export class MouseHandler {
   }
   
   private handleMouseMove(event: MouseEvent): void {
-    // Store previous position
     this.previousMouse.x = this.mouse.x;
     this.previousMouse.y = this.mouse.y;
     
-    // Update current position
     this.mouse.x = event.clientX;
     this.mouse.y = event.clientY;
     
-    // Calculate movement (use raw movement values without scaling here)
     this.mouseMovement.x = event.movementX || 0;
     this.mouseMovement.y = event.movementY || 0;
     
-    // CRITICAL FIX: Only dispatch look events when pointer is actually locked
     if (this.isPointerLocked && (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0)) {
       console.log("🖱️ [MouseHandler] Mouse movement dispatched (pointer locked):", this.mouseMovement.x, this.mouseMovement.y);
       
@@ -48,18 +43,14 @@ export class MouseHandler {
         x: this.mouseMovement.x,
         y: this.mouseMovement.y
       });
-    } else if (!this.isPointerLocked && (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0)) {
-      console.log("🖱️ [MouseHandler] Mouse movement ignored (pointer not locked):", this.mouseMovement.x, this.mouseMovement.y);
     }
   }
   
   private handleMouseDown(event: MouseEvent): void {
-    // Update mouse buttons state
     this.mouse.buttons |= (1 << event.button);
     
     console.log("Mouse button pressed:", event.button);
     
-    // Check for double click
     const now = Date.now();
     const timeSinceLastClick = now - this.lastMouseDown;
     const distanceFromLastClick = Math.sqrt(
@@ -76,7 +67,6 @@ export class MouseHandler {
     
     this.lastMouseDown = now;
     
-    // Handle specific buttons
     switch (event.button) {
       case 0: // Left mouse button
         this.eventDispatcher('attack');
@@ -91,10 +81,8 @@ export class MouseHandler {
   }
   
   private handleMouseUp(event: MouseEvent): void {
-    // Update mouse buttons state
     this.mouse.buttons &= ~(1 << event.button);
     
-    // Handle specific buttons
     switch (event.button) {
       case 0: // Left mouse button
         this.eventDispatcher('attackEnd');
