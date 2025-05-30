@@ -76,7 +76,7 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
           type: 'weapon', 
           subtype: 'sword',
           value: 200, 
-          description: 'A powerful steel sword (+15 attack)', 
+          description: 'A masterfully forged steel blade with razor-sharp edges. This superior weapon offers exceptional balance and deadly precision in combat (+15 attack)', 
           quantity: 1,
           equipmentSlot: 'mainhand',
           stats: { attack: 15 },
@@ -180,15 +180,8 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
         }
       ]);
 
-      // Equip default weapon when game starts
-      if (gameEngine) {
-        const player = gameEngine.getPlayer();
-        if (player) {
-          // Equip iron sword as default weapon
-          player.equipWeapon('iron_sword');
-          console.log("Default weapon equipped: Iron Sword");
-        }
-      }
+      // Player starts with no weapon equipped - all weapons are in inventory for drag-and-drop
+      console.log("Player spawned with all weapons available in inventory for manual equipping");
     }, []);
 
     const restartGame = useCallback(() => {
