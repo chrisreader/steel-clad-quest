@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Item, EquippedItems, InventorySlot as IInventorySlot, EquipmentSlotType } from '../../../types/GameTypes';
 import { EquipmentSlot } from './EquipmentSlot';
 import { InventorySlot } from './InventorySlot';
@@ -43,6 +43,15 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
     return slots;
   });
 
+  // Selection state for click-to-move functionality
+  const [selectedItem, setSelectedItem] = useState<{
+    item: Item;
+    slotId: number;
+    source: 'inventory' | 'equipment';
+  } | null>(null);
+
+  const [draggedItem, setDraggedItem] = useState<{ item: Item; source: 'inventory' | 'equipment'; sourceId: number | EquipmentSlotType } | null>(null);
+
   // Sync inventory slots with items prop
   useEffect(() => {
     console.log('InventoryUI: Syncing with items prop:', items);
@@ -71,9 +80,68 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
     });
   }, [items]);
 
-  const [draggedItem, setDraggedItem] = useState<{ item: Item; source: 'inventory' | 'equipment'; sourceId: number | EquipmentSlotType } | null>(null);
+  // Keyboard support
+  useEffect(() => {
+    if (!isOpen) return;
 
-  if (!isOpen) return null;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedItem(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  const handleItemClick = (item: Item, slotId: number) => {
+    if (selectedItem) {
+      // If we have a selected item, try to move it to this slot
+      if (selectedItem.slotId === slotId && selectedItem.source === 'inventory') {
+        // Clicking the same item deselects it
+        setSelectedItem(null);
+      } else {
+        // Move the selected item to this slot
+        moveSelectedItemToSlot(slotId);
+      }
+    } else {
+      // Select the item
+      setSelectedItem({
+        item,
+        slotId,
+        source: 'inventory'
+      });
+    }
+  };
+
+  const handleSlotClick = (slotId: number) => {
+    if (selectedItem) {
+      // Move selected item to this empty slot
+      moveSelectedItemToSlot(slotId);
+    }
+  };
+
+  const moveSelectedItemToSlot = useCallback((targetSlotId: number) => {
+    if (!selectedItem) return;
+
+    if (selectedItem.source === 'inventory') {
+      // Moving within inventory
+      const sourceSlotId = selectedItem.slotId;
+      const sourceSlot = inventorySlots[sourceSlotId];
+      const targetSlot = inventorySlots[targetSlotId];
+      
+      setInventorySlots(prev => prev.map(slot => {
+        if (slot.id === sourceSlotId) {
+          return { ...slot, item: targetSlot.item, isEmpty: !targetSlot.item };
+        } else if (slot.id === targetSlotId) {
+          return { ...slot, item: sourceSlot.item, isEmpty: !sourceSlot.item };
+        }
+        return slot;
+      }));
+    }
+
+    setSelectedItem(null);
+  }, [selectedItem, inventorySlots]);
 
   const handleEquipmentDragStart = (event: React.DragEvent, item: Item, slotType: EquipmentSlotType) => {
     setDraggedItem({ item, source: 'equipment', sourceId: slotType });
@@ -170,10 +238,6 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
     setDraggedItem(null);
   };
 
-  const handleItemClick = (item: Item, slotId: number) => {
-    onUseItem(item);
-  };
-
   const handleUnequip = (slotType: EquipmentSlotType) => {
     const item = equippedItems[slotType];
     if (!item) return;
@@ -199,6 +263,8 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
       <div className="bg-gray-900 rounded-lg p-6 text-white max-w-4xl w-full mx-4 border-2 border-gray-700">
@@ -211,6 +277,15 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
             ×
           </button>
         </div>
+        
+        {selectedItem && (
+          <div className="mb-4 p-3 bg-blue-900 bg-opacity-50 rounded-lg border border-blue-500">
+            <p className="text-sm text-blue-300">
+              <span className="font-semibold">{selectedItem.item.name}</span> selected. 
+              Click another slot to move it there, or press ESC to cancel.
+            </p>
+          </div>
+        )}
         
         <div className="flex gap-8">
           {/* Equipment Panel */}
@@ -275,7 +350,9 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
                   key={slot.id}
                   slotId={slot.id}
                   item={slot.item}
+                  isSelected={selectedItem?.slotId === slot.id && selectedItem?.source === 'inventory'}
                   onItemClick={handleItemClick}
+                  onSlotClick={handleSlotClick}
                   onDragStart={handleInventoryDragStart}
                   onDrop={handleInventoryDrop}
                 />
