@@ -554,14 +554,14 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       <InventoryUI
         items={gameControllerRef.current?.inventory || []}
         isOpen={showInventory}
-        onClose={() => setShowInventory(false)}
+        onClose={() => toggleInventory()}
         onUseItem={handleUseItem}
       />
 
       <SkillTreeUI
         skills={gameControllerRef.current?.skills || []}
         isOpen={showSkillTree}
-        onClose={() => setShowSkillTree(false)}
+        onClose={() => toggleSkillTree()}
         onUpgradeSkill={handleUpgradeSkill}
         availablePoints={playerStats.level - 1}
       />
@@ -569,14 +569,14 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       <QuestLogUI
         quests={gameControllerRef.current?.quests || []}
         isOpen={showQuestLog}
-        onClose={() => setShowQuestLog(false)}
+        onClose={() => toggleQuestLog()}
       />
 
       <CraftingUI
         recipes={[]}
         inventory={gameControllerRef.current?.inventory || []}
         isOpen={showCrafting}
-        onClose={() => setShowCrafting(false)}
+        onClose={() => toggleCrafting()}
         onCraft={gameControllerRef.current?.handleCraft || (() => {})}
       />
 
