@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { PlayerBody, WeaponSwingAnimation, PlayerStats } from '../../types/GameTypes';
@@ -251,23 +250,23 @@ export class Player {
     this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.6, -0.4); // Higher, more forward
     this.bowDrawAnimation.rightHandRestPosition.set(0.4, 1.5, -0.3); // Higher, near string
     
-    // Arm rotations for archery stance
-    this.bowDrawAnimation.leftArmRestRotation.set(-0.2, -0.5, 0.2); // Extended forward
-    this.bowDrawAnimation.rightArmRestRotation.set(-0.1, 0.3, -0.1); // Ready to draw
+    // Natural arm rotations for archery stance - starting from shoulder position
+    this.bowDrawAnimation.leftArmRestRotation.set(Math.PI / 8 - 0.1, -0.3, 0.1); // Forward reach with slight outward angle
+    this.bowDrawAnimation.rightArmRestRotation.set(Math.PI / 8, 0.1, -0.05); // Slight forward and inward ready position
     
     // Draw positions - right hand pulls back to anchor point
     this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.6, -0.4); // Left hand stays steady
     this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.5, 0.2); // Right hand to anchor point
     
-    // Arm rotations during draw
-    this.bowDrawAnimation.leftArmDrawRotation.set(-0.2, -0.5, 0.2); // Left arm steady
-    this.bowDrawAnimation.rightArmDrawRotation.set(0.1, 0.8, -0.3); // Right arm drawn back
+    // Arm rotations during draw - left arm minimal change, right arm pulls back
+    this.bowDrawAnimation.leftArmDrawRotation.set(Math.PI / 8 - 0.1, -0.3, 0.1); // Left arm stays steady
+    this.bowDrawAnimation.rightArmDrawRotation.set(Math.PI / 8 + 0.1, 0.8, -0.3); // Right arm drawn back
     
     // Bow orientations - horizontal from start
     this.bowDrawAnimation.bowRestRotation.set(0, Math.PI / 2, 0); // Horizontal, pointing forward
     this.bowDrawAnimation.bowDrawRotation.set(0, Math.PI / 2, 0); // Stays horizontal
     
-    console.log("🏹 [Player] Bow animation positions initialized for realistic archery stance");
+    console.log("🏹 [Player] Bow animation positions initialized with natural arm positioning");
   }
   
   public equipWeapon(weaponId: string): boolean {
