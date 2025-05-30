@@ -198,7 +198,7 @@ export class Player {
     rightArm.position.y = -0.4;
     rightArm.castShadow = true;
     rightArmGroup.add(rightArm);
-    rightArmGroup.position.set(0.6, 1.4, -0.2);
+    rightArmGroup.position.set(0.8, 1.4, -0.2); // Changed from 0.6 to 0.8 units to the right
     rightArmGroup.rotation.order = 'XYZ';
     rightArmGroup.rotation.set(Math.PI / 8, 0, 0);
     rightArmGroup.visible = true;
@@ -366,7 +366,7 @@ export class Player {
   private resetToNormalStance(): void {
     // Reset arms to normal positions for non-bow weapons
     this.playerBody.leftArm.position.set(-0.6, 1.4, -0.3);
-    this.playerBody.rightArm.position.set(0.6, 1.4, -0.2);
+    this.playerBody.rightArm.position.set(0.8, 1.4, -0.2); // Updated to match new right arm position
     
     // Reset arm rotations
     this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
