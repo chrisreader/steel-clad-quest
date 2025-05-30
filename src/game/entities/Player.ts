@@ -367,9 +367,9 @@ export class Player {
   }
   
   private setArcheryStance(): void {
-    // Set arms to proper archery positions with enhanced visibility
-    this.playerBody.leftArm.position.set(-0.4, 1.4, -0.4);  // Updated Y to 1.4
-    this.playerBody.rightArm.position.set(0.3, 1.4, -0.2);  // Ready to draw position
+    // Set arms to proper archery positions with enhanced visibility - raised 20% higher
+    this.playerBody.leftArm.position.set(-0.4, 1.68, -0.4);  // Raised Y by 20% (1.4 * 1.2)
+    this.playerBody.rightArm.position.set(0.3, 1.68, -0.2);  // Raised Y by 20% (1.4 * 1.2)
     
     // Set arm rotations for archery stance with better field of view
     this.playerBody.leftArm.rotation.copy(this.bowDrawAnimation.leftArmRestRotation);
