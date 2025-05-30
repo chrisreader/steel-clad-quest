@@ -44,7 +44,7 @@ export class GameEngine {
     this.inputManager = new InputManager();
     this.sceneManager = new SceneManager(mountDiv);
     this.effectsManager = new EffectsManager(this.sceneManager.getScene(), this.sceneManager.getCamera());
-    this.audioManager = new AudioManager();
+    this.audioManager = new AudioManager(this.sceneManager.getCamera(), this.sceneManager.getScene());
     this.physicsManager = new PhysicsManager();
     
     // Initialize game objects
@@ -103,6 +103,7 @@ export class GameEngine {
     this.updateEnemies(deltaTime);
     this.physicsManager.update(deltaTime);
     this.effectsManager.update(deltaTime);
+    this.audioManager.update();
     
     // Update camera to follow player
     this.updateCamera();
