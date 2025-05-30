@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -77,6 +78,16 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   
   // Moved inventory state management to KnightGame (top level)
   const [inventory, setInventory] = useState<Item[]>([]);
+
+  // Add weapon slot state - moved to top to avoid hooks order issues
+  const [activeWeaponSlot, setActiveWeaponSlot] = useState<1 | 2>(1);
+  const [equippedWeapons, setEquippedWeapons] = useState<{
+    mainhand: Item | null;
+    offhand: Item | null;
+  }>({
+    mainhand: null,
+    offhand: null
+  });
 
   const gameControllerRef = useRef<GameControllerRef>(null);
   const engineControllerRef = useRef<GameEngineControllerRef>(null);
@@ -225,78 +236,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }
   }, [gameEngine]);
 
-  const startGame = useCallback(() => {
-    console.log('Starting knight adventure...');
-    console.log('GameEngine available:', !!gameEngine);
-    console.log('Inventory ready with', inventory.length, 'items');
-    
-    if (gameEngine) {
-      console.log('Starting GameEngine...');
-      gameEngine.start();
-      console.log('GameEngine started, isRunning:', gameEngine.isRunning());
-    } else {
-      console.error('GameEngine not available when trying to start game');
-    }
-    
-    setGameStarted(true);
-    setIsGameOver(false);
-  }, [gameEngine, inventory.length, setGameStarted, setIsGameOver]);
-
-  const restartGame = useCallback(() => {
-    gameControllerRef.current?.restartGame();
-    engineControllerRef.current?.restart();
-    
-    setGameStarted(true);
-    setIsGameOver(false);
-    setIsPaused(false);
-  }, [setGameStarted, setIsGameOver, setIsPaused]);
-
-  const goToMainMenu = useCallback(() => {
-    gameControllerRef.current?.goToMainMenu();
-    if (gameEngine) {
-      gameEngine.pause();
-    }
-    setGameStarted(false);
-    setIsGameOver(false);
-    setIsPaused(false);
-  }, [gameEngine, setGameStarted, setIsGameOver, setIsPaused]);
-
-  // Update game state from engine
-  useEffect(() => {
-    if (!gameStarted || !gameEngine) return;
-
-    const updateInterval = setInterval(() => {
-      if (gameEngine.isRunning() && !gameEngine.isPaused()) {
-        const player = gameEngine.getPlayer();
-        const gameState = gameEngine.getGameState();
-        
-        setPlayerStats(player.getStats());
-        setGameTime(gameState.timeElapsed);
-        
-        if (!player.isAlive()) {
-          setIsGameOver(true);
-        }
-      }
-    }, 100);
-
-    return () => clearInterval(updateInterval);
-  }, [gameStarted, gameEngine, setPlayerStats, setGameTime, setIsGameOver]);
-
-  // Show game menu until user clicks start
-  if (!gameStarted && engineReady) {
-    return <GameMenu onStartGame={startGame} />;
-  }
-
-  // Add weapon slot state
-  const [activeWeaponSlot, setActiveWeaponSlot] = useState<1 | 2>(1);
-  const [equippedWeapons, setEquippedWeapons] = useState<{
-    mainhand: Item | null;
-    offhand: Item | null;
-  }>({
-    mainhand: null,
-    offhand: null
-  });
-
   // Add weapon slot selection handler
   const handleWeaponSlotSelect = useCallback((slot: 1 | 2) => {
     console.log(`[KnightGame] Switching to weapon slot ${slot}`);
@@ -365,6 +304,63 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }
   }, [gameEngine, setPlayerStats]);
 
+  const startGame = useCallback(() => {
+    console.log('Starting knight adventure...');
+    console.log('GameEngine available:', !!gameEngine);
+    console.log('Inventory ready with', inventory.length, 'items');
+    
+    if (gameEngine) {
+      console.log('Starting GameEngine...');
+      gameEngine.start();
+      console.log('GameEngine started, isRunning:', gameEngine.isRunning());
+    } else {
+      console.error('GameEngine not available when trying to start game');
+    }
+    
+    setGameStarted(true);
+    setIsGameOver(false);
+  }, [gameEngine, inventory.length, setGameStarted, setIsGameOver]);
+
+  const restartGame = useCallback(() => {
+    gameControllerRef.current?.restartGame();
+    engineControllerRef.current?.restart();
+    
+    setGameStarted(true);
+    setIsGameOver(false);
+    setIsPaused(false);
+  }, [setGameStarted, setIsGameOver, setIsPaused]);
+
+  const goToMainMenu = useCallback(() => {
+    gameControllerRef.current?.goToMainMenu();
+    if (gameEngine) {
+      gameEngine.pause();
+    }
+    setGameStarted(false);
+    setIsGameOver(false);
+    setIsPaused(false);
+  }, [gameEngine, setGameStarted, setIsGameOver, setIsPaused]);
+
+  // Update game state from engine
+  useEffect(() => {
+    if (!gameStarted || !gameEngine) return;
+
+    const updateInterval = setInterval(() => {
+      if (gameEngine.isRunning() && !gameEngine.isPaused()) {
+        const player = gameEngine.getPlayer();
+        const gameState = gameEngine.getGameState();
+        
+        setPlayerStats(player.getStats());
+        setGameTime(gameState.timeElapsed);
+        
+        if (!player.isAlive()) {
+          setIsGameOver(true);
+        }
+      }
+    }, 100);
+
+    return () => clearInterval(updateInterval);
+  }, [gameStarted, gameEngine, setPlayerStats, setGameTime, setIsGameOver]);
+
   // Use input handling hook with weapon slot selection
   useInputHandling({
     gameStarted,
@@ -379,6 +375,11 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     togglePause,
     onWeaponSlotSelect: handleWeaponSlotSelect
   });
+
+  // Show game menu until user clicks start
+  if (!gameStarted && engineReady) {
+    return <GameMenu onStartGame={startGame} />;
+  }
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black">
@@ -496,3 +497,4 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     </div>
   );
 };
+
