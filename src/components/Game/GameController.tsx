@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useRef } from 'react';
 import { GameEngine } from '../../game/engine/GameEngine';
 import { PlayerStats, Item, Quest, Skill } from '../../types/GameTypes';
@@ -72,7 +73,7 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
 
     const restartGame = useCallback(() => {
       if (gameEngine) {
-        gameEngine.restart(); // Fixed: use restart instead of restart
+        gameEngine.restart();
         onGameTimeUpdate(0);
         onGameOverChange(false);
         onLocationChange(true);

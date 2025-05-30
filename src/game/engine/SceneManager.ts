@@ -505,7 +505,7 @@ export class SceneManager {
     this.renderer.render(this.scene, this.camera);
   }
   
-  public handleResize(): void {
+  private handleResize = (): void => {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     

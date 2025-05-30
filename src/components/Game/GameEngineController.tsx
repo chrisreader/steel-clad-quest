@@ -47,7 +47,7 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
         
         try {
           console.log('[GameEngineController] Creating GameEngine instance...');
-          // Create game engine with mount element
+          // Create game engine
           const engine = new GameEngine(mountElement);
           console.log('[GameEngineController] GameEngine created successfully:', engine);
           
