@@ -91,7 +91,7 @@ export class Player {
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = -0.4;
     body.castShadow = true;
-    body.visible = false;
+    body.visible = true; // Make body visible
     playerBodyGroup.add(body);
     
     // Head
@@ -104,7 +104,7 @@ export class Player {
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 0.4;
     head.castShadow = true;
-    head.visible = false;
+    head.visible = true; // Make head visible
     playerBodyGroup.add(head);
     
     // Arms
@@ -228,13 +228,13 @@ export class Player {
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
     leftLeg.position.set(-0.2, -1.2, 0);
     leftLeg.castShadow = true;
-    leftLeg.visible = false;
+    leftLeg.visible = true; // Make left leg visible
     playerBodyGroup.add(leftLeg);
     
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
     rightLeg.position.set(0.2, -1.2, 0);
     rightLeg.castShadow = true;
-    rightLeg.visible = false;
+    rightLeg.visible = true; // Make right leg visible
     playerBodyGroup.add(rightLeg);
     
     this.group.add(playerBodyGroup);

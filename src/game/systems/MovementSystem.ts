@@ -20,6 +20,21 @@ export class MovementSystem {
     this.camera = camera;
     this.player = player;
     this.inputManager = inputManager;
+    
+    // Set up sprint input handler
+    this.setupSprintHandler();
+  }
+  
+  private setupSprintHandler(): void {
+    // Listen for double-tap forward sprint activation
+    document.addEventListener('gameInput', (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { type } = customEvent.detail;
+      
+      if (type === 'doubleTapForward') {
+        this.player.startSprint();
+      }
+    });
   }
   
   public update(deltaTime: number): void {
@@ -41,17 +56,23 @@ export class MovementSystem {
     
     // Check for sprint
     if (this.inputManager.isActionPressed('sprint')) {
-      this.isSprintEnabled = true;
+      if (!this.isSprintEnabled) {
+        this.player.startSprint();
+        this.isSprintEnabled = true;
+      }
     } else {
-      this.isSprintEnabled = false;
+      if (this.isSprintEnabled) {
+        this.player.stopSprint();
+        this.isSprintEnabled = false;
+      }
     }
     
     // Normalize movement
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
-      // Apply sprint multiplier
-      const speed = this.isSprintEnabled ? 1.5 : 1.0;
+      // Apply sprint multiplier if sprinting
+      const speed = this.player.getSprinting() ? 1.5 : 1.0;
       moveDirection.multiplyScalar(speed);
       
       // Move player
@@ -61,6 +82,11 @@ export class MovementSystem {
   
   public setSprintEnabled(enabled: boolean): void {
     this.isSprintEnabled = enabled;
+    if (enabled) {
+      this.player.startSprint();
+    } else {
+      this.player.stopSprint();
+    }
   }
   
   public checkInTavern(): boolean {

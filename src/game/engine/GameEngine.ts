@@ -33,6 +33,9 @@ export class GameEngine {
   private isInitialized: boolean = false;
   private mountElement: HTMLDivElement;
   
+  // Movement state
+  private isMoving: boolean = false;
+  
   // Callbacks
   private onUpdateHealth: (health: number) => void;
   private onUpdateGold: (gold: number) => void;
@@ -91,6 +94,7 @@ export class GameEngine {
       // Create the input manager
       console.log("Creating InputManager...");
       this.inputManager = new InputManager();
+      this.inputManager.initialize(this.renderer);
       console.log("InputManager created");
       
       // Create the effects manager
@@ -121,6 +125,15 @@ export class GameEngine {
       console.log("Creating CombatSystem...");
       this.combatSystem = new CombatSystem(this.scene, this.player, this.effectsManager, this.audioManager);
       console.log("CombatSystem created");
+      
+      // Create MovementSystem
+      console.log("Creating MovementSystem...");
+      this.movementSystem = new MovementSystem(this.scene, this.camera, this.player, this.inputManager);
+      console.log("MovementSystem created");
+      
+      // Set initial camera position to better view the player
+      this.camera.position.set(0, 5, 8);
+      this.camera.lookAt(0, 0, 0);
       
       // Set game as initialized
       this.isInitialized = true;
@@ -219,6 +232,15 @@ export class GameEngine {
   };
   
   private update(deltaTime: number): void {
+    // Update movement system first
+    this.movementSystem.update(deltaTime);
+    
+    // Check if player is moving for animation purposes
+    this.isMoving = this.inputManager.isActionPressed('moveForward') ||
+                   this.inputManager.isActionPressed('moveBackward') ||
+                   this.inputManager.isActionPressed('moveLeft') ||
+                   this.inputManager.isActionPressed('moveRight');
+    
     // Update combat system
     this.combatSystem.update(deltaTime);
     
@@ -228,11 +250,14 @@ export class GameEngine {
     // Update audio
     this.audioManager.update();
     
-    // Update player
-    this.player.update(deltaTime);
+    // Update player with movement information
+    this.player.update(deltaTime, this.isMoving);
     
     // Update camera to follow player
     this.updateCamera();
+    
+    // Check location changes
+    this.checkLocationChanges();
     
     // Check for game over
     this.checkGameOver();
@@ -240,9 +265,24 @@ export class GameEngine {
   
   private updateCamera(): void {
     const playerPosition = this.player.getPosition();
-    this.camera.position.x = playerPosition.x;
-    this.camera.position.z = playerPosition.z + 10;
-    this.camera.lookAt(playerPosition.x, playerPosition.y, playerPosition.z);
+    
+    // Follow player with some offset
+    const targetX = playerPosition.x;
+    const targetZ = playerPosition.z + 8;
+    const targetY = 5;
+    
+    // Smooth camera following
+    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetX, 0.1);
+    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetZ, 0.1);
+    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetY, 0.1);
+    
+    // Look at player
+    this.camera.lookAt(playerPosition.x, playerPosition.y + 1, playerPosition.z);
+  }
+  
+  private checkLocationChanges(): void {
+    const isInTavern = this.movementSystem.checkInTavern();
+    this.onLocationChange(isInTavern);
   }
   
   private checkGameOver(): void {
@@ -287,9 +327,9 @@ export class GameEngine {
     // Clear enemies and gold
     this.combatSystem.clear();
     
-    // Reset camera position and rotation
-    this.camera.position.set(0, 2.2, 2);
-    this.camera.rotation.set(0, 0, 0);
+    // Reset camera position
+    this.camera.position.set(0, 5, 8);
+    this.camera.lookAt(0, 0, 0);
     
     // Restart clock
     this.clock.start();
@@ -312,6 +352,14 @@ export class GameEngine {
       case 'pause':
         this.pause();
         break;
+      
+      case 'doubleTapForward':
+        // Start sprinting
+        this.player.startSprint();
+        break;
+        
+      // Movement inputs are handled by the MovementSystem through InputManager
+      // but we can add special cases here if needed
     }
   }
   
@@ -379,6 +427,9 @@ export class GameEngine {
     // Stop the game
     this.gameState.isPlaying = false;
     
+    // Dispose movement system
+    this.movementSystem.dispose();
+    
     // Dispose audio
     this.audioManager.dispose();
     
@@ -387,6 +438,9 @@ export class GameEngine {
     
     // Dispose effects
     this.effectsManager.dispose();
+    
+    // Dispose input manager
+    this.inputManager.dispose();
     
     // Dispose scene manager
     this.sceneManager.dispose();
