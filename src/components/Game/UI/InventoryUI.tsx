@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Item, EquippedItems, InventorySlot as IInventorySlot, EquipmentSlotType } from '../../../types/GameTypes';
 import { EquipmentSlot } from './EquipmentSlot';
@@ -20,25 +21,25 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
   onEquipWeapon,
   onUnequipWeapon
 }) => {
-  // Initialize equipment slots
+  // Initialize equipment slots - all empty by default
   const [equippedItems, setEquippedItems] = useState<EquippedItems>({
     helmet: null,
     chestplate: null,
     leggings: null,
     boots: null,
-    mainhand: items.find(item => item.subtype === 'sword') || null, // Auto-equip sword
+    mainhand: null,
     offhand: null,
   });
 
-  // Initialize 9 inventory slots
+  // Initialize 9 inventory slots with all items (including swords)
   const [inventorySlots, setInventorySlots] = useState<IInventorySlot[]>(() => {
     const slots: IInventorySlot[] = [];
     for (let i = 0; i < 9; i++) {
       const item = items[i] || null;
       slots.push({
         id: i,
-        item: item && item.subtype !== 'sword' ? item : null, // Don't show sword in inventory if equipped
-        isEmpty: !item || item.subtype === 'sword'
+        item: item,
+        isEmpty: !item
       });
     }
     return slots;
