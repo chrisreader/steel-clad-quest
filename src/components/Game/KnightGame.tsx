@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -347,6 +346,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         isOpen={showInventory}
         onClose={toggleInventory}
         onUseItem={handleUseItem}
+        onEquipWeapon={gameControllerRef.current?.handleEquipWeapon}
+        onUnequipWeapon={gameControllerRef.current?.handleUnequipWeapon}
       />
 
       <SkillTreeUI
