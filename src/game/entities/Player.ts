@@ -272,18 +272,18 @@ export class Player {
     
     const baseShoulder = Math.PI / 8;
     
-    // Left arm: Extended forward for bow holding with better visibility
+    // Left arm: Extended forward for bow holding with upward angle
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder + 0.3, // Slight upward angle for visibility
-      -0.6, // Less extreme angle across body for better view
-      0.1   // Slight outward rotation
+      baseShoulder - 0.4, // Angled upward (negative X rotation)
+      -0.6, // Across body angle for bow holding
+      0.3   // More outward rotation for forward pointing
     );
     
-    // Right arm: Ready to draw position
+    // Right arm: Ready to draw position with upward angle
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder + 0.2, // Slightly raised
-      0.1,  // Forward position
-      -0.1  // Slight inward rotation
+      baseShoulder - 0.3, // Angled upward (negative X rotation)
+      0.3,  // Forward position with more outward angle
+      -0.2  // Slight inward rotation
     );
     
     // Drawing positions - left arm stays steady, right arm pulls back
@@ -371,7 +371,23 @@ export class Player {
     this.playerBody.leftArm.position.set(-0.4, 1.512, -0.4);  // Lowered Y by 10% (1.68 * 0.9)
     this.playerBody.rightArm.position.set(0.3, 1.512, -0.2);  // Lowered Y by 10% (1.68 * 0.9)
     
-    // Set arm rotations for archery stance with better field of view
+    // Set arm rotations for archery stance with upward angled arms pointing outward and forward
+    const baseShoulder = Math.PI / 8;
+    
+    // Left arm: Extended forward for bow holding with upward angle
+    this.bowDrawAnimation.leftArmRestRotation.set(
+      baseShoulder - 0.4, // Angled upward (negative X rotation)
+      -0.6, // Across body angle for bow holding
+      0.3   // More outward rotation for forward pointing
+    );
+    
+    // Right arm: Ready to draw position with upward angle
+    this.bowDrawAnimation.rightArmRestRotation.set(
+      baseShoulder - 0.3, // Angled upward (negative X rotation)
+      0.3,  // Forward position with more outward angle
+      -0.2  // Slight inward rotation
+    );
+    
     this.playerBody.leftArm.rotation.copy(this.bowDrawAnimation.leftArmRestRotation);
     this.playerBody.rightArm.rotation.copy(this.bowDrawAnimation.rightArmRestRotation);
     
@@ -384,7 +400,7 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] Enhanced archery stance with improved visibility and hand positioning");
+    console.log("🏹 [Player] Enhanced archery stance with upward angled arms pointing outward and forward");
   }
   
   private resetToNormalStance(): void {
