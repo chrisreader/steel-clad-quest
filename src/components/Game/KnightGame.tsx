@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -106,6 +105,72 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     return uiOpen;
   }, [showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, isPaused]);
 
+  // CRITICAL ADDITION: Force cursor visibility immediately when UI opens
+  const forceCursorVisible = useCallback(() => {
+    console.log('🖱️ [KnightGame] Forcing cursor to be visible and usable');
+    
+    // Apply multiple CSS properties to ensure cursor visibility
+    const cursorStyles = {
+      cursor: 'auto !important',
+      pointerEvents: 'auto !important'
+    };
+    
+    // Apply to body
+    Object.assign(document.body.style, cursorStyles);
+    
+    // Apply to mount element
+    if (mountRef.current) {
+      Object.assign(mountRef.current.style, cursorStyles);
+    }
+    
+    // Apply to canvas if it exists
+    if (gameEngine) {
+      const renderer = gameEngine.getRenderer();
+      if (renderer && renderer.domElement) {
+        Object.assign(renderer.domElement.style, cursorStyles);
+      }
+    }
+    
+    // Force immediate pointer lock exit as fallback
+    try {
+      if (document.pointerLockElement) {
+        console.log('🖱️ [KnightGame] Forcing document.exitPointerLock() as fallback');
+        document.exitPointerLock();
+      }
+    } catch (error) {
+      console.warn('🖱️ [KnightGame] Fallback pointer lock exit failed:', error);
+    }
+    
+    // Log current computed cursor style for debugging
+    setTimeout(() => {
+      const computedStyle = window.getComputedStyle(document.body);
+      console.log('🖱️ [KnightGame] Current cursor style:', computedStyle.cursor);
+      console.log('🖱️ [KnightGame] Current pointer events:', computedStyle.pointerEvents);
+    }, 100);
+  }, [gameEngine]);
+
+  const resetCursorForGame = useCallback(() => {
+    console.log('🖱️ [KnightGame] Resetting cursor for game mode');
+    
+    // Reset cursor styles for game mode
+    document.body.style.cursor = '';
+    document.body.style.pointerEvents = '';
+    
+    if (mountRef.current) {
+      mountRef.current.style.cursor = '';
+      mountRef.current.style.pointerEvents = '';
+    }
+    
+    // Reset canvas cursor if it exists
+    if (gameEngine) {
+      const renderer = gameEngine.getRenderer();
+      if (renderer && renderer.domElement) {
+        renderer.domElement.style.cursor = '';
+        renderer.domElement.style.pointerEvents = '';
+      }
+    }
+  }, [gameEngine]);
+
   // CRITICAL ADDITION: Notify GameEngine about UI state changes
   useEffect(() => {
     if (!gameEngine) return;
@@ -113,7 +178,14 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     const anyUIOpen = isAnyUIOpen();
     console.log(`🎮 [KnightGame] Notifying GameEngine - UI state: ${anyUIOpen ? 'OPEN' : 'CLOSED'}`);
     gameEngine.setUIState(anyUIOpen);
-  }, [gameEngine, isAnyUIOpen]);
+    
+    // IMMEDIATE cursor forcing when UI opens
+    if (anyUIOpen) {
+      forceCursorVisible();
+    } else {
+      resetCursorForGame();
+    }
+  }, [gameEngine, isAnyUIOpen, forceCursorVisible, resetCursorForGame]);
 
   // Listen for pointer lock changes to apply cursor styles at the right time
   useEffect(() => {
@@ -124,22 +196,16 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       if (!isLocked) {
         // Pointer was released - ensure cursor is visible
         console.log('🔒 [KnightGame] Pointer unlocked - making cursor visible');
-        document.body.style.cursor = 'auto';
-        document.body.style.pointerEvents = 'auto';
-        if (mountRef.current) {
-          mountRef.current.style.cursor = 'auto';
-          mountRef.current.style.pointerEvents = 'auto';
-        }
+        forceCursorVisible();
       } else {
         // Pointer was locked - hide cursor (if no UI is open)
         if (!isAnyUIOpen()) {
           console.log('🔒 [KnightGame] Pointer locked and no UI open - hiding cursor');
-          document.body.style.cursor = '';
-          document.body.style.pointerEvents = '';
-          if (mountRef.current) {
-            mountRef.current.style.cursor = '';
-            mountRef.current.style.pointerEvents = '';
-          }
+          resetCursorForGame();
+        } else {
+          // UI is open but pointer got locked somehow - force cursor visible
+          console.log('🔒 [KnightGame] Pointer locked but UI is open - forcing cursor visible');
+          forceCursorVisible();
         }
       }
     };
@@ -149,7 +215,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     return () => {
       document.removeEventListener('pointerlockchange', handlePointerLockChange);
     };
-  }, [isAnyUIOpen]);
+  }, [isAnyUIOpen, forceCursorVisible, resetCursorForGame]);
 
   // Pointer lock management with UI state awareness
   useEffect(() => {
@@ -162,6 +228,34 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       // Release pointer lock when any UI opens
       console.log('[KnightGame] UI opened - releasing pointer lock');
       gameEngine.handleInput('requestPointerUnlock');
+      
+      // Add retry mechanism for stubborn pointer locks
+      setTimeout(() => {
+        if (document.pointerLockElement) {
+          console.log('[KnightGame] Retry: forcing pointer lock exit');
+          try {
+            document.exitPointerLock();
+          } catch (error) {
+            console.warn('[KnightGame] Retry pointer lock exit failed:', error);
+          }
+        }
+        // Force cursor visible regardless
+        forceCursorVisible();
+      }, 50);
+      
+      // Second retry
+      setTimeout(() => {
+        if (document.pointerLockElement) {
+          console.log('[KnightGame] Second retry: forcing pointer lock exit');
+          try {
+            document.exitPointerLock();
+          } catch (error) {
+            console.warn('[KnightGame] Second retry pointer lock exit failed:', error);
+          }
+        }
+        // Force cursor visible regardless
+        forceCursorVisible();
+      }, 200);
     } else {
       // Request pointer lock when all UIs are closed (with small delay for smooth transition)
       console.log('[KnightGame] All UIs closed - preparing to request pointer lock');
@@ -175,7 +269,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         }
       }, 100);
     }
-  }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen]);
+  }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen, forceCursorVisible]);
 
   // Update handlers for engine integration
   const handleUpdateHealth = useCallback((health: number) => {

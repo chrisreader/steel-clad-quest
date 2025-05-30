@@ -461,12 +461,14 @@ export class InputManager {
   }
   
   public requestPointerLock(): void {
-    if (this.renderer && this.renderer.domElement && !this.pointerLocked && document.contains(this.renderer.domElement)) {
+    console.log("🔒 [InputManager] Requesting pointer lock...");
+    
+    if (this.renderer && this.renderer.domElement && document.contains(this.renderer.domElement)) {
       try {
-        console.log("🔒 [InputManager] Requesting pointer lock");
+        console.log("🔒 [InputManager] Attempting to request pointer lock");
         this.renderer.domElement.requestPointerLock();
       } catch (error) {
-        console.warn("Failed to request pointer lock:", error);
+        console.warn("🔒 [InputManager] Failed to request pointer lock:", error);
       }
     } else {
       console.warn("🔒 [InputManager] Cannot request pointer lock:", {
@@ -479,12 +481,30 @@ export class InputManager {
   }
   
   public exitPointerLock(): void {
-    if (this.pointerLocked) {
-      console.log("🔒 [InputManager] Exiting pointer lock");
-      document.exitPointerLock();
-    } else {
-      console.log("🔒 [InputManager] Cannot exit pointer lock - not currently locked");
+    console.log("🔒 [InputManager] Exit pointer lock requested - current state:", this.pointerLocked);
+    
+    // CRITICAL FIX: Always try to exit pointer lock, regardless of our state tracking
+    // Sometimes the state tracking gets out of sync
+    try {
+      if (document.pointerLockElement) {
+        console.log("🔒 [InputManager] Document has pointer lock element - calling exitPointerLock()");
+        document.exitPointerLock();
+      } else {
+        console.log("🔒 [InputManager] No pointer lock element found in document");
+      }
+    } catch (error) {
+      console.warn("🔒 [InputManager] Failed to exit pointer lock:", error);
     }
+    
+    // Also try to update our internal state immediately
+    setTimeout(() => {
+      const actualState = document.pointerLockElement !== null;
+      if (this.pointerLocked !== actualState) {
+        console.log("🔒 [InputManager] State mismatch detected, correcting:", this.pointerLocked, "->", actualState);
+        this.pointerLocked = actualState;
+        this.dispatchInputEvent('pointerLockChange', { locked: this.pointerLocked });
+      }
+    }, 50);
   }
   
   public isMobile(): boolean {
