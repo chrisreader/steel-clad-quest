@@ -38,6 +38,7 @@ export class GameEngine {
   
   // First-person camera controls
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
+  private mouseSensitivity: number = 0.5; // Reduced sensitivity for GameEngine scaling
   private maxPitch: number = Math.PI / 2 - 0.1; // Prevent over-rotation
   private pointerLockRequested: boolean = false;
   
@@ -167,12 +168,18 @@ export class GameEngine {
   }
   
   private setupFirstPersonCamera(): void {
+    // Ensure we have a valid player before setting up camera
+    if (!this.player) {
+      console.error("Cannot setup camera: player not initialized");
+      return;
+    }
+    
     const playerPosition = this.player.getPosition();
     
     // Position camera at player's eye level
     this.camera.position.set(playerPosition.x, playerPosition.y + 1.7, playerPosition.z);
     
-    // Reset camera rotation
+    // Reset camera rotation to known good state
     this.cameraRotation.pitch = 0;
     this.cameraRotation.yaw = 0;
     
@@ -180,6 +187,8 @@ export class GameEngine {
     this.updateCameraRotation();
     
     console.log("First-person camera set up at:", this.camera.position);
+    console.log("Camera rotation:", this.camera.rotation);
+    console.log("Camera quaternion:", this.camera.quaternion);
   }
   
   private setupMouseLookControls(): void {
@@ -248,12 +257,18 @@ export class GameEngine {
   private handleMouseLook(deltaX: number, deltaY: number): void {
     console.log("Handling mouse look:", deltaX, deltaY);
     
-    // Use the already-scaled input values directly (no additional scaling)
-    // InputManager already applies mouseSensitivity, so we don't scale again
-    this.cameraRotation.yaw -= deltaX;
+    // Check if player exists before updating rotation
+    if (!this.player) {
+      console.warn("Cannot handle mouse look: player not initialized");
+      return;
+    }
+    
+    // Apply additional scaling to make mouse movement feel natural
+    // InputManager applies initial scaling, we apply final tuning here
+    this.cameraRotation.yaw -= deltaX * this.mouseSensitivity;
     
     // Update pitch (up/down rotation) with clamping
-    this.cameraRotation.pitch -= deltaY;
+    this.cameraRotation.pitch -= deltaY * this.mouseSensitivity;
     this.cameraRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.cameraRotation.pitch));
     
     console.log("Camera rotation updated - Pitch:", this.cameraRotation.pitch, "Yaw:", this.cameraRotation.yaw);
@@ -273,10 +288,13 @@ export class GameEngine {
     // Apply rotation to camera
     this.camera.quaternion.copy(finalQuaternion);
     
-    // Update player rotation to match camera yaw for movement
-    this.player.setRotation(this.cameraRotation.yaw);
+    // Update player rotation to match camera yaw for movement (only if player exists)
+    if (this.player) {
+      this.player.setRotation(this.cameraRotation.yaw);
+    }
     
     console.log("Camera quaternion updated:", this.camera.quaternion);
+    console.log("Camera position:", this.camera.position);
   }
   
   private async preloadAudio(): Promise<void> {
@@ -391,6 +409,11 @@ export class GameEngine {
   }
   
   private updateFirstPersonCamera(): void {
+    // Ensure player exists before updating camera
+    if (!this.player) {
+      return;
+    }
+    
     const playerPosition = this.player.getPosition();
     
     // Keep camera at player's eye level
@@ -578,9 +601,11 @@ export class GameEngine {
     console.log("Game engine disposed!");
   }
   
-  // Add method to adjust mouse sensitivity if needed
+  // Add method to adjust mouse sensitivity
   public setMouseSensitivity(sensitivity: number): void {
-    this.inputManager.setMouseSensitivity(sensitivity);
+    // Update both InputManager and GameEngine sensitivity
+    this.inputManager.setMouseSensitivity(sensitivity * 0.002); // Base scaling for InputManager
+    this.mouseSensitivity = sensitivity; // Direct scaling for GameEngine
     console.log("Mouse sensitivity set to:", sensitivity);
   }
 }
