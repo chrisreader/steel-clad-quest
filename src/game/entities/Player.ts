@@ -579,8 +579,28 @@ export class Player {
   }
   
   public setRotation(rotation: number): void {
-    this.group.rotation.y = rotation;
-    console.log("Player rotation set to:", rotation);
+    // This is used by MovementSystem for movement direction calculation only
+    // It doesn't rotate the visual components (arms, sword, etc.)
+    console.log("Player movement rotation set to:", rotation);
+  }
+  
+  public setVisualRotation(yaw: number, pitch: number): void {
+    // Only rotate the player's visual components based on camera look direction
+    // This keeps arms and sword pointing where the player is looking
+    
+    // Apply yaw rotation to the entire player body group for first-person feel
+    this.group.rotation.y = yaw;
+    
+    // Apply subtle pitch rotation to arms for looking up/down
+    if (this.playerBody.leftArm && this.playerBody.rightArm) {
+      const pitchInfluence = pitch * 0.3; // Reduced influence for subtle effect
+      
+      // Adjust arm rotations based on pitch
+      this.playerBody.leftArm.rotation.x = Math.PI / 8 + pitchInfluence;
+      this.playerBody.rightArm.rotation.x = Math.PI / 8 + pitchInfluence;
+    }
+    
+    console.log("Player visual rotation updated - Yaw:", yaw, "Pitch:", pitch);
   }
   
   public getStats(): PlayerStats {
@@ -644,12 +664,8 @@ export class Player {
       wasSuccessful: actualMovement.length() > 0.001
     });
     
-    // Face movement direction
-    if (direction.x !== 0 || direction.z !== 0) {
-      const angle = Math.atan2(direction.x, direction.z);
-      this.group.rotation.y = angle;
-      console.log("🚶 [Player] Rotation updated to:", angle);
-    }
+    // FIXED: Don't rotate visual components during movement
+    // Visual rotation is now handled by setVisualRotation() from camera look
   }
   
   public getMesh(): THREE.Group {

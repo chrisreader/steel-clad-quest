@@ -364,11 +364,10 @@ export class GameEngine {
     // Apply rotation to camera
     this.camera.quaternion.copy(finalQuaternion);
     
-    // Update player rotation to match camera yaw for movement (only if player exists)
-    if (this.player && typeof this.player.setRotation === 'function') {
-      this.player.setRotation(this.cameraRotation.yaw);
-    } else {
-      console.warn("Player setRotation method not available");
+    // FIXED: Only update player visual rotation when looking around, not during movement
+    // This keeps the arms/sword locked to cursor direction
+    if (this.player && typeof this.player.setVisualRotation === 'function') {
+      this.player.setVisualRotation(this.cameraRotation.yaw, this.cameraRotation.pitch);
     }
     
     console.log("Camera quaternion updated:", this.camera.quaternion);

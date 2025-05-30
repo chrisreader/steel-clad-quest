@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -154,6 +155,7 @@ export class MovementSystem {
         previousPos: previousPosition
       });
       
+      // FIXED: Movement no longer affects visual rotation
       this.player.move(worldMoveDirection, deltaTime);
       
       // Log movement result
