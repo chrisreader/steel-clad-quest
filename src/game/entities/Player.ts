@@ -246,27 +246,46 @@ export class Player {
   }
   
   private initializeBowAnimationPositions(): void {
-    // Enhanced rest positions for proper archery stance
-    this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.6, -0.4); // Higher, more forward
-    this.bowDrawAnimation.rightHandRestPosition.set(0.4, 1.5, -0.3); // Higher, near string
+    // Enhanced rest positions for proper archery stance - fixing shoulder and hand positioning
+    this.bowDrawAnimation.leftHandRestPosition.set(-0.3, 1.8, -0.5); // More forward and up for bow grip
+    this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.6, -0.2); // Close to string position
     
-    // Natural arm rotations for archery stance - starting from shoulder position
-    this.bowDrawAnimation.leftArmRestRotation.set(Math.PI / 8 - 0.1, -0.3, 0.1); // Forward reach with slight outward angle
-    this.bowDrawAnimation.rightArmRestRotation.set(Math.PI / 8, 0.1, -0.05); // Slight forward and inward ready position
+    // FIXED: Lower shoulder by 50% and raise hand position for proper bow grip
+    const baseShoulder = Math.PI / 8; // Natural shoulder position
+    this.bowDrawAnimation.leftArmRestRotation.set(
+      (baseShoulder - 0.1) * 0.5, // Shoulder down 50%
+      -0.4, // Extended outward to reach bow
+      0.2   // Slight upward angle for hand to grip bow handle
+    );
     
-    // Draw positions - right hand pulls back to anchor point
-    this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.6, -0.4); // Left hand stays steady
-    this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.5, 0.2); // Right hand to anchor point
+    this.bowDrawAnimation.rightArmRestRotation.set(
+      baseShoulder * 0.7, // Slightly lowered shoulder
+      0.2,  // Inward toward string
+      -0.1  // Ready position
+    );
     
-    // Arm rotations during draw - left arm minimal change, right arm pulls back
-    this.bowDrawAnimation.leftArmDrawRotation.set(Math.PI / 8 - 0.1, -0.3, 0.1); // Left arm stays steady
-    this.bowDrawAnimation.rightArmDrawRotation.set(Math.PI / 8 + 0.1, 0.8, -0.3); // Right arm drawn back
+    // Enhanced draw positions with more dramatic movement
+    this.bowDrawAnimation.leftHandDrawPosition.set(-0.3, 1.8, -0.5); // Left hand stays steady on bow
+    this.bowDrawAnimation.rightHandDrawPosition.set(0.9, 1.6, 0.3); // Right hand to anchor point (more dramatic)
+    
+    // Enhanced arm rotations during draw - more pronounced movement
+    this.bowDrawAnimation.leftArmDrawRotation.set(
+      (baseShoulder - 0.1) * 0.5, // Left arm stays steady
+      -0.4,
+      0.2
+    );
+    
+    this.bowDrawAnimation.rightArmDrawRotation.set(
+      baseShoulder + 0.3, // More pronounced pull back
+      1.0,  // Significant rotation toward face
+      -0.5  // Elbow back and up
+    );
     
     // Bow orientations - horizontal from start
-    this.bowDrawAnimation.bowRestRotation.set(0, Math.PI / 2, 0); // Horizontal, pointing forward
-    this.bowDrawAnimation.bowDrawRotation.set(0, Math.PI / 2, 0); // Stays horizontal
+    this.bowDrawAnimation.bowRestRotation.set(0, Math.PI / 2, 0);
+    this.bowDrawAnimation.bowDrawRotation.set(0, Math.PI / 2, 0);
     
-    console.log("🏹 [Player] Bow animation positions initialized with natural arm positioning");
+    console.log("🏹 [Player] Enhanced bow animation positions initialized with corrected arm positioning");
   }
   
   public equipWeapon(weaponId: string): boolean {
@@ -895,27 +914,29 @@ export class Player {
     if (!this.isBowEquipped || !this.equippedWeapon) return;
     
     const chargeLevel = this.equippedWeapon.getChargeLevel ? this.equippedWeapon.getChargeLevel() : 0;
-    const lerpSpeed = deltaTime * 6; // Smooth animation speed
+    const lerpSpeed = deltaTime * 8; // Faster animation speed for more responsive feel
+    
+    console.log(`🏹 [Player] Bow animation update - Active: ${this.bowDrawAnimation.isActive}, Charge: ${chargeLevel.toFixed(2)}`);
     
     if (this.bowDrawAnimation.isActive) {
-      // Enhanced progressive draw animation
-      const drawProgress = Math.min(chargeLevel, 1.0);
+      // Enhanced progressive draw animation with more dramatic movement
+      const drawProgress = Math.min(chargeLevel * 1.2, 1.0); // Amplify the effect
       
       // Left arm: Stays steady holding the bow (minimal movement)
       const leftArmRotation = new THREE.Euler(
-        this.bowDrawAnimation.leftArmRestRotation.x - (drawProgress * 0.1), // Slight adjustment
-        this.bowDrawAnimation.leftArmRestRotation.y,
-        this.bowDrawAnimation.leftArmRestRotation.z
+        this.bowDrawAnimation.leftArmRestRotation.x - (drawProgress * 0.05), // Minimal adjustment
+        this.bowDrawAnimation.leftArmRestRotation.y - (drawProgress * 0.1),  // Slight grip adjustment
+        this.bowDrawAnimation.leftArmRestRotation.z + (drawProgress * 0.05)  // Stabilizing movement
       );
       
-      // Right arm: Major movement - pulls string back to anchor point
+      // Right arm: Major movement - pulls string back dramatically
       const rightArmRotation = new THREE.Euler(
-        this.bowDrawAnimation.rightArmRestRotation.x + (drawProgress * 0.6), // Pull up and back
-        this.bowDrawAnimation.rightArmRestRotation.y + (drawProgress * 0.5), // Rotate toward face
-        this.bowDrawAnimation.rightArmRestRotation.z - (drawProgress * 0.4)  // Adjust angle
+        this.bowDrawAnimation.rightArmRestRotation.x + (drawProgress * 0.8), // Significant pull up and back
+        this.bowDrawAnimation.rightArmRestRotation.y + (drawProgress * 0.8), // Rotate toward face dramatically
+        this.bowDrawAnimation.rightArmRestRotation.z - (drawProgress * 0.6)  // Elbow positioning
       );
       
-      // Smooth interpolation to target rotations
+      // Smooth interpolation to target rotations with enhanced movement
       this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
         this.playerBody.leftArm.rotation.x, leftArmRotation.x, lerpSpeed
       );
@@ -936,15 +957,16 @@ export class Player {
         this.playerBody.rightArm.rotation.z, rightArmRotation.z, lerpSpeed
       );
       
-      // Add slight shake at full draw
+      // Enhanced shake at full draw
       if (drawProgress >= 1.0) {
-        const shakeAmount = 0.02 * Math.sin(Date.now() * 0.01);
+        const shakeAmount = 0.03 * Math.sin(Date.now() * 0.015);
         this.playerBody.rightArm.rotation.x += shakeAmount;
-        this.playerBody.rightArm.rotation.y += shakeAmount * 0.5;
+        this.playerBody.rightArm.rotation.y += shakeAmount * 0.7;
+        console.log("🏹 [Player] Full draw shake effect active");
       }
       
     } else {
-      // Return to archery rest stance (not normal stance)
+      // Return to archery rest stance smoothly
       this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
         this.playerBody.leftArm.rotation.x, this.bowDrawAnimation.leftArmRestRotation.x, lerpSpeed
       );
@@ -981,12 +1003,15 @@ export class Player {
       return;
     }
     
-    console.log("🏹 [Player] Starting enhanced bow draw animation");
+    console.log("🏹 [Player] Starting enhanced bow draw animation with debug info");
     this.bowDrawAnimation.isActive = true;
     
     // Start weapon draw
     if (this.equippedWeapon.startDrawing) {
       this.equippedWeapon.startDrawing();
+      console.log("🏹 [Player] Weapon draw started on equipped weapon");
+    } else {
+      console.warn("🏹 [Player] Equipped weapon does not support startDrawing method");
     }
   }
   
@@ -995,12 +1020,15 @@ export class Player {
       return;
     }
     
-    console.log("🏹 [Player] Stopping bow draw animation");
+    console.log("🏹 [Player] Stopping bow draw animation with debug info");
     this.bowDrawAnimation.isActive = false;
     
     // Stop weapon draw
     if (this.equippedWeapon.stopDrawing) {
       this.equippedWeapon.stopDrawing();
+      console.log("🏹 [Player] Weapon draw stopped on equipped weapon");
+    } else {
+      console.warn("🏹 [Player] Equipped weapon does not support stopDrawing method");
     }
   }
 }

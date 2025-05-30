@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig, WeaponStats } from '../BaseWeapon';
 
@@ -60,6 +59,7 @@ export class HuntingBow extends BaseWeapon {
     };
     
     super(config);
+    console.log("🏹 [HuntingBow] Initialized with enhanced charging system");
   }
 
   public createMesh(): THREE.Group {
@@ -244,7 +244,7 @@ export class HuntingBow extends BaseWeapon {
     this.isDrawing = true;
     this.chargeLevel = 0;
     this.updateDrawStage();
-    console.log('🏹 [HuntingBow] Started drawing bow with enhanced string pullback');
+    console.log('🏹 [HuntingBow] Started drawing bow with enhanced charging and debug');
   }
 
   public stopDrawing(): void {
@@ -253,20 +253,28 @@ export class HuntingBow extends BaseWeapon {
     this.currentDrawStage = DrawStage.IDLE;
     this.shakeIntensity = 0;
     this.updateBowVisuals();
-    console.log('🏹 [HuntingBow] Stopped drawing bow');
+    console.log('🏹 [HuntingBow] Stopped drawing bow and reset charge');
   }
 
   public updateCharge(deltaTime: number): void {
     if (!this.isDrawing) return;
     
-    this.chargeLevel = Math.min(this.chargeLevel + (deltaTime / this.maxChargeTime), 1.0);
+    // Enhanced charge calculation with better timing
+    const chargeRate = 1.0 / this.maxChargeTime; // Charge per second
+    this.chargeLevel = Math.min(this.chargeLevel + (deltaTime * chargeRate), 1.2); // Allow slight overcharge
+    
     this.updateDrawStage();
     this.updateBowVisuals();
     
+    // Debug charging
+    if (this.chargeLevel > 0.1) {
+      console.log(`🏹 [HuntingBow] Charging: ${(this.chargeLevel * 100).toFixed(1)}% (Stage: ${this.currentDrawStage})`);
+    }
+    
     // Handle overcharged shake with enhanced effect
     if (this.chargeLevel >= 1.0) {
-      this.shakeTime += deltaTime * 12;
-      this.shakeIntensity = 0.01 + Math.sin(this.shakeTime) * 0.005;
+      this.shakeTime += deltaTime * 15; // Faster shake
+      this.shakeIntensity = 0.015 + Math.sin(this.shakeTime) * 0.008; // More intense shake
       this.applyEnhancedShakeEffect();
     }
   }
@@ -294,15 +302,15 @@ export class HuntingBow extends BaseWeapon {
   private updateBowVisuals(): void {
     if (!this.bowString || !this.upperLimb || !this.lowerLimb) return;
     
-    // Enhanced draw mechanics with realistic string pullback
-    const pullback = this.easeInOutQuad(this.chargeLevel) * 0.6; // Increased pullback
-    const limbBend = this.easeInOutQuad(this.chargeLevel) * 0.4;
+    // Enhanced draw mechanics with more dramatic string pullback
+    const pullback = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.8; // Increased pullback distance
+    const limbBend = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.5; // More limb bend
     
     // Update string position with enhanced pullback - moves toward player (positive X)
     this.bowString.position.x = this.originalStringPosition + pullback;
-    this.bowString.scale.y = 1 + (this.chargeLevel * 0.08); // Slight stretch
+    this.bowString.scale.y = 1 + (this.chargeLevel * 0.12); // More visible stretch
     
-    // Enhanced limb bending with realistic physics
+    // Enhanced limb bending with more dramatic physics
     const upperLimbRotation = this.originalUpperLimbRotation + limbBend;
     const lowerLimbRotation = this.originalLowerLimbRotation - limbBend;
     
@@ -311,6 +319,8 @@ export class HuntingBow extends BaseWeapon {
     
     // Advanced visual strain effects
     this.updateStrainEffects();
+    
+    console.log(`🏹 [HuntingBow] Visual update - Pullback: ${pullback.toFixed(2)}, Limb bend: ${limbBend.toFixed(2)}`);
   }
 
   private updateStrainEffects(): void {
@@ -376,7 +386,7 @@ export class HuntingBow extends BaseWeapon {
   }
 
   public getChargeLevel(): number {
-    return this.chargeLevel;
+    return Math.min(this.chargeLevel, 1.0); // Cap at 1.0 for external systems
   }
 
   public isFullyCharged(): boolean {
@@ -385,13 +395,18 @@ export class HuntingBow extends BaseWeapon {
 
   public getChargeDamage(): number {
     const baseDamage = this.config.stats.damage;
-    const chargeMultiplier = Math.max(0.3, this.chargeLevel);
-    return Math.floor(baseDamage * chargeMultiplier);
+    const chargeMultiplier = Math.max(0.3, Math.min(this.chargeLevel, 1.0)); // Minimum 30% damage
+    const damage = Math.floor(baseDamage * chargeMultiplier);
+    console.log(`🏹 [HuntingBow] Damage calculation - Base: ${baseDamage}, Multiplier: ${chargeMultiplier.toFixed(2)}, Final: ${damage}`);
+    return damage;
   }
 
   public getArrowSpeed(): number {
-    const baseSpeed = 20;
-    return baseSpeed * (0.5 + this.chargeLevel * 0.5);
+    const baseSpeed = 25; // Increased base speed
+    const chargeMultiplier = 0.5 + (Math.min(this.chargeLevel, 1.0) * 0.5);
+    const speed = baseSpeed * chargeMultiplier;
+    console.log(`🏹 [HuntingBow] Speed calculation - Base: ${baseSpeed}, Multiplier: ${chargeMultiplier.toFixed(2)}, Final: ${speed.toFixed(1)}`);
+    return speed;
   }
 
   public getCurrentDrawStage(): DrawStage {
