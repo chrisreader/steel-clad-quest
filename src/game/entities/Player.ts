@@ -249,7 +249,7 @@ export class Player {
     // FIXED: Match left shoulder to right shoulder level and adjust hand position
     // Left hand positioned to naturally extend from matched shoulder level extension
     this.bowDrawAnimation.leftHandRestPosition.set(-0.6, 1.6, -0.5); // Changed from -0.5 to -0.6 units to the left
-    this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.6, -1.0); // Changed from -0.5 to -1.0 (1 unit back from center)
+    this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.6, -2.0); // Changed from -1.0 to -2.0 (2 units back from center)
     
     // FIXED: Match left shoulder level to right shoulder level
     const baseShoulder = Math.PI / 8; // Natural shoulder position
@@ -287,7 +287,7 @@ export class Player {
     this.bowDrawAnimation.bowRestRotation.set(0, Math.PI / 2, 0);
     this.bowDrawAnimation.bowDrawRotation.set(0, Math.PI / 2, 0);
     
-    console.log("🏹 [Player] FIXED: Right hand rest position moved to 1 unit back from center");
+    console.log("🏹 [Player] FIXED: Right hand rest position moved to 2 units back from center");
   }
   
   public equipWeapon(weaponId: string): boolean {
