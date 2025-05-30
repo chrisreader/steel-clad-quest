@@ -423,7 +423,7 @@ export class GameEngine {
     this.gameState.isPaused = false;
     this.clock.start();
     
-    console.log("🎮 [GameEngine] Game state:", this.gameState);
+    console.log("🎮 [GameEngine] Game state after start:", this.gameState);
     console.log("🎮 [GameEngine] Starting render loop...");
     
     // Start the render loop
@@ -590,9 +590,12 @@ export class GameEngine {
   }
   
   public handleInput(inputType: string, data?: any): void {
-    if (!this.isInitialized || !this.gameState.isPlaying || this.gameState.isPaused) return;
+    if (!this.isInitialized || !this.gameState.isPlaying || this.gameState.isPaused) {
+      console.log("🎮 [GameEngine] Input ignored - not ready. Initialized:", this.isInitialized, "Playing:", this.gameState.isPlaying, "Paused:", this.gameState.isPaused);
+      return;
+    }
     
-    console.log("Game input received:", inputType, data);
+    console.log("🎮 [GameEngine] Handling input:", inputType, data);
     
     switch (inputType) {
       case 'attack':
@@ -608,18 +611,19 @@ export class GameEngine {
         this.player.startSprint();
         break;
       
-      // Movement inputs - forward these to the movement system
+      // Movement inputs - these need to be forwarded to the input manager
       case 'moveForward':
       case 'moveBackward':
       case 'moveLeft':
       case 'moveRight':
       case 'sprint':
-        // These are handled by the InputManager and MovementSystem automatically
-        console.log("Movement input:", inputType);
+        console.log("🎮 [GameEngine] Movement input received:", inputType);
+        // The movement is now handled by the InputManager and MovementSystem
+        // But we can trigger immediate feedback here if needed
         break;
         
-      // Movement inputs are handled by the MovementSystem through InputManager
-      // but we can add special cases here if needed
+      default:
+        console.log("🎮 [GameEngine] Unknown input type:", inputType);
     }
   }
   

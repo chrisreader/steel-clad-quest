@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -85,7 +84,9 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const handleEngineLoadingComplete = useCallback(() => {
     console.log('Engine loading completed, setting engineReady to true');
     setEngineReady(true);
-    setGameEngine(engineControllerRef.current?.getEngine() || null);
+    const engine = engineControllerRef.current?.getEngine();
+    setGameEngine(engine || null);
+    console.log('GameEngine instance set:', !!engine);
     onLoadingComplete?.(); // Forward to parent to hide loading screen
   }, [onLoadingComplete]);
 
@@ -141,10 +142,20 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   const startGame = useCallback(() => {
     console.log('Starting knight adventure...');
+    console.log('GameEngine available:', !!gameEngine);
+    
+    if (gameEngine) {
+      console.log('Starting GameEngine...');
+      gameEngine.start(); // THIS WAS MISSING - start the actual game engine
+      console.log('GameEngine started, isRunning:', gameEngine.isRunning());
+    } else {
+      console.error('GameEngine not available when trying to start game');
+    }
+    
     setGameStarted(true);
     setIsGameOver(false);
     gameControllerRef.current?.initializeSampleData();
-  }, []);
+  }, [gameEngine]);
 
   const togglePause = useCallback(() => {
     if (gameEngine) {
@@ -178,6 +189,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     const handleKeyPress = (event: KeyboardEvent) => {
       if (!gameStarted || !gameEngine) return;
 
+      console.log('Key pressed:', event.code, 'Game running:', gameEngine.isRunning());
+
       // Prevent default for game controls
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
         event.preventDefault();
@@ -185,7 +198,29 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
       switch (event.code) {
         case 'Space':
+          console.log('Space pressed - attacking');
           gameEngine.handleInput('attack');
+          break;
+        case 'KeyW':
+          console.log('W pressed - move forward');
+          gameEngine.handleInput('moveForward');
+          break;
+        case 'KeyS':
+          console.log('S pressed - move backward');
+          gameEngine.handleInput('moveBackward');
+          break;
+        case 'KeyA':
+          console.log('A pressed - move left');
+          gameEngine.handleInput('moveLeft');
+          break;
+        case 'KeyD':
+          console.log('D pressed - move right');
+          gameEngine.handleInput('moveRight');
+          break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          console.log('Shift pressed - sprint');
+          gameEngine.handleInput('sprint');
           break;
         case 'KeyI':
           setShowInventory(!showInventory);
@@ -219,6 +254,29 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameStarted, gameEngine, showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, togglePause]);
+
+  // Also handle keyup events for movement
+  useEffect(() => {
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (!gameStarted || !gameEngine) return;
+
+      // Handle key releases for movement (this ensures movement stops when key is released)
+      switch (event.code) {
+        case 'KeyW':
+        case 'KeyS':
+        case 'KeyA':
+        case 'KeyD':
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          console.log('Key released:', event.code);
+          // The InputManager will handle the key release automatically
+          break;
+      }
+    };
+
+    window.addEventListener('keyup', handleKeyUp);
+    return () => window.removeEventListener('keyup', handleKeyUp);
+  }, [gameStarted, gameEngine]);
 
   // Update game state from engine
   useEffect(() => {
