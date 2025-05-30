@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { Item, EquippedItems, InventorySlot as IInventorySlot, EquipmentSlotType } from '../../../types/GameTypes';
+import { Item, InventorySlot as IInventorySlot, EquipmentSlotType } from '../../../types/GameTypes';
 import { EquipmentSlot } from './EquipmentSlot';
 import { InventorySlot } from './InventorySlot';
 
@@ -10,6 +11,11 @@ interface InventoryUIProps {
   onUseItem: (item: Item) => void;
   onEquipWeapon?: (item: Item) => void;
   onUnequipWeapon?: () => void;
+  equippedWeapons?: {
+    mainhand: Item | null;
+    offhand: Item | null;
+  };
+  onEquippedWeaponsChange?: (weapons: { mainhand: Item | null; offhand: Item | null; }) => void;
 }
 
 export const InventoryUI: React.FC<InventoryUIProps> = ({
@@ -18,17 +24,19 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
   onClose,
   onUseItem,
   onEquipWeapon,
-  onUnequipWeapon
+  onUnequipWeapon,
+  equippedWeapons = { mainhand: null, offhand: null },
+  onEquippedWeaponsChange
 }) => {
-  // Initialize equipment slots - all empty by default
-  const [equippedItems, setEquippedItems] = useState<EquippedItems>({
+  // Use equipped weapons from props instead of internal state
+  const equippedItems = {
     helmet: null,
     chestplate: null,
     leggings: null,
     boots: null,
-    mainhand: null,
-    offhand: null,
-  });
+    mainhand: equippedWeapons.mainhand,
+    offhand: equippedWeapons.offhand,
+  };
 
   // Initialize 9 inventory slots
   const [inventorySlots, setInventorySlots] = useState<IInventorySlot[]>(() => {
@@ -183,7 +191,7 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
 
   const handleEquipmentDrop = (event: React.DragEvent, targetSlotType: EquipmentSlotType) => {
     event.preventDefault();
-    if (!draggedItem) return;
+    if (!draggedItem || !onEquippedWeaponsChange) return;
 
     // Check if item can be equipped in this slot with new restrictions
     const canEquip = canEquipInSlot(draggedItem.item, targetSlotType);
@@ -202,10 +210,13 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
         onEquipWeapon(draggedItem.item);
       }
       
-      setEquippedItems(prev => ({
-        ...prev,
-        [targetSlotType]: draggedItem.item
-      }));
+      // Update equipped weapons through callback
+      if (targetSlotType === 'mainhand' || targetSlotType === 'offhand') {
+        onEquippedWeaponsChange({
+          ...equippedWeapons,
+          [targetSlotType]: draggedItem.item
+        });
+      }
 
       setInventorySlots(prev => prev.map(slot => 
         slot.id === sourceSlotId 
@@ -229,11 +240,15 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
         onEquipWeapon(draggedItem.item);
       }
       
-      setEquippedItems(prev => ({
-        ...prev,
-        [targetSlotType]: draggedItem.item,
-        [sourceSlotType]: targetItem
-      }));
+      // Update equipped weapons through callback for weapon slots
+      if ((targetSlotType === 'mainhand' || targetSlotType === 'offhand') &&
+          (sourceSlotType === 'mainhand' || sourceSlotType === 'offhand')) {
+        onEquippedWeaponsChange({
+          ...equippedWeapons,
+          [targetSlotType]: draggedItem.item,
+          [sourceSlotType]: targetItem
+        });
+      }
     }
 
     setDraggedItem(null);
@@ -241,7 +256,7 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
 
   const handleInventoryDrop = (event: React.DragEvent, targetSlotId: number) => {
     event.preventDefault();
-    if (!draggedItem) return;
+    if (!draggedItem || !onEquippedWeaponsChange) return;
 
     if (draggedItem.source === 'equipment') {
       // Move from equipment to inventory
@@ -254,10 +269,13 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
           : slot
       ));
 
-      setEquippedItems(prev => ({
-        ...prev,
-        [sourceSlotType]: targetSlot.item
-      }));
+      // Update equipped weapons through callback for weapon slots
+      if (sourceSlotType === 'mainhand' || sourceSlotType === 'offhand') {
+        onEquippedWeaponsChange({
+          ...equippedWeapons,
+          [sourceSlotType]: targetSlot.item
+        });
+      }
     } else if (draggedItem.source === 'inventory') {
       // Swap inventory slots
       const sourceSlotId = draggedItem.sourceId as number;
@@ -279,7 +297,7 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
 
   const handleUnequip = (slotType: EquipmentSlotType) => {
     const item = equippedItems[slotType];
-    if (!item) return;
+    if (!item || !onEquippedWeaponsChange) return;
 
     // Handle weapon unequipping
     if (slotType === 'mainhand' && item.weaponId && onUnequipWeapon) {
@@ -295,10 +313,13 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
           : slot
       ));
 
-      setEquippedItems(prev => ({
-        ...prev,
-        [slotType]: null
-      }));
+      // Update equipped weapons through callback for weapon slots
+      if (slotType === 'mainhand' || slotType === 'offhand') {
+        onEquippedWeaponsChange({
+          ...equippedWeapons,
+          [slotType]: null
+        });
+      }
     }
   };
 

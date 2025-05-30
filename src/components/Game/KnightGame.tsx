@@ -456,7 +456,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         onClose={() => setShowStatsPanel(false)}
       />
 
-      {/* Direct inventory management - no more complex callbacks */}
+      {/* Updated inventory with equipped weapons sync */}
       <InventoryUI
         items={inventory}
         isOpen={showInventory}
@@ -464,6 +464,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         onUseItem={handleUseItem}
         onEquipWeapon={handleEquipWeapon}
         onUnequipWeapon={handleUnequipWeapon}
+        equippedWeapons={equippedWeapons}
+        onEquippedWeaponsChange={setEquippedWeapons}
       />
 
       <SkillTreeUI
