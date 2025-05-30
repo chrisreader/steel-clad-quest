@@ -8,7 +8,7 @@ export class MovementSystem {
   private camera: THREE.PerspectiveCamera;
   private player: Player;
   private inputManager: InputManager;
-  private isSprintEnabled: boolean = false;
+  private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
   
   constructor(
@@ -47,6 +47,7 @@ export class MovementSystem {
       
       if (type === 'doubleTapForward') {
         console.log("🏃 [MovementSystem] Double tap forward detected - starting sprint");
+        this.isSprintActivatedByDoubleTap = true;
         this.player.startSprint();
       }
     });
@@ -105,21 +106,19 @@ export class MovementSystem {
       });
     }
     
-    // Check for sprint - FIXED: Only allow sprint when moving forward
-    const sprintPressed = this.inputManager.isActionPressed('sprint');
-    const canSprint = sprintPressed && forwardPressed && !backwardPressed;
-    
-    if (canSprint) {
-      if (!this.isSprintEnabled) {
-        console.log("🏃 [MovementSystem] Sprint started - forward movement detected");
-        this.player.startSprint();
-        this.isSprintEnabled = true;
-      }
-    } else {
-      if (this.isSprintEnabled) {
-        console.log("🏃 [MovementSystem] Sprint stopped - no forward movement or sprint key released");
+    // Handle sprint logic - FIXED: Double-tap W activation, stop when W released
+    if (this.isSprintActivatedByDoubleTap) {
+      // Sprint continues only while W is held after double-tap activation
+      if (forwardPressed && !backwardPressed) {
+        if (!this.player.getSprinting()) {
+          console.log("🏃 [MovementSystem] Continuing sprint - W still held after double-tap");
+          this.player.startSprint();
+        }
+      } else {
+        // Stop sprint if W is released or moving backward
+        console.log("🏃 [MovementSystem] Sprint stopped - W released or moving backward");
+        this.isSprintActivatedByDoubleTap = false;
         this.player.stopSprint();
-        this.isSprintEnabled = false;
       }
     }
     
@@ -159,7 +158,8 @@ export class MovementSystem {
         deltaTime: deltaTime,
         previousPos: previousPosition,
         sprinting: this.player.getSprinting(),
-        forwardPressed: forwardPressed
+        forwardPressed: forwardPressed,
+        sprintActivatedByDoubleTap: this.isSprintActivatedByDoubleTap
       });
       
       // FIXED: Movement no longer affects visual rotation
@@ -180,7 +180,7 @@ export class MovementSystem {
   }
   
   public setSprintEnabled(enabled: boolean): void {
-    this.isSprintEnabled = enabled;
+    this.isSprintActivatedByDoubleTap = enabled;
     if (enabled) {
       this.player.startSprint();
     } else {
