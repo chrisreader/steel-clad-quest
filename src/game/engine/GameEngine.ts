@@ -46,7 +46,7 @@ export class GameEngine {
     this.inputManager = new InputManager();
     this.physicsManager = new PhysicsManager();
     this.effectsManager = new EffectsManager(this.sceneManager.getScene());
-    this.audioManager = new AudioManager(this.sceneManager.getScene(), this.sceneManager.getCamera());
+    this.audioManager = new AudioManager(this.sceneManager.getCamera(), this.sceneManager.getScene());
     
     // Initialize player with required parameters
     this.player = new Player(this.sceneManager.getScene(), this.effectsManager, this.audioManager);
