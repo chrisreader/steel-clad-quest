@@ -50,6 +50,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const [isPaused, setIsPaused] = useState(false);
   const [engineReady, setEngineReady] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
+  const [mountReady, setMountReady] = useState(false);
 
   // UI state
   const [showInventory, setShowInventory] = useState(false);
@@ -60,6 +61,25 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const gameControllerRef = useRef<GameControllerRef>(null);
   const engineControllerRef = useRef<GameEngineControllerRef>(null);
   const mountRef = useRef<HTMLDivElement>(null);
+
+  // Wait for mount element to be ready
+  useEffect(() => {
+    console.log('[KnightGame] Checking if mount element is ready...');
+    if (mountRef.current) {
+      console.log('[KnightGame] Mount element is ready, setting mountReady to true');
+      setMountReady(true);
+    } else {
+      console.log('[KnightGame] Mount element not ready yet');
+      // Try again on next tick if not ready
+      const timer = setTimeout(() => {
+        if (mountRef.current) {
+          console.log('[KnightGame] Mount element ready on retry');
+          setMountReady(true);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Handler for engine loading completion
   const handleEngineLoadingComplete = useCallback(() => {
@@ -230,18 +250,20 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     <div className="relative w-full h-screen overflow-hidden bg-black">
       <div ref={mountRef} className="w-full h-full" />
       
-      {/* Engine Controller - handles the THREE.js game engine */}
-      <GameEngineController
-        ref={engineControllerRef}
-        onUpdateHealth={handleUpdateHealth}
-        onUpdateGold={handleUpdateGold}
-        onUpdateStamina={handleUpdateStamina}
-        onUpdateScore={handleUpdateScore}
-        onGameOver={handleGameOver}
-        onLocationChange={handleLocationChange}
-        onLoadingComplete={handleEngineLoadingComplete}
-        mountElement={mountRef.current}
-      />
+      {/* Only render Engine Controller when mount element is ready */}
+      {mountReady && (
+        <GameEngineController
+          ref={engineControllerRef}
+          onUpdateHealth={handleUpdateHealth}
+          onUpdateGold={handleUpdateGold}
+          onUpdateStamina={handleUpdateStamina}
+          onUpdateScore={handleUpdateScore}
+          onGameOver={handleGameOver}
+          onLocationChange={handleLocationChange}
+          onLoadingComplete={handleEngineLoadingComplete}
+          mountElement={mountRef.current}
+        />
+      )}
       
       <GameController
         ref={gameControllerRef}
