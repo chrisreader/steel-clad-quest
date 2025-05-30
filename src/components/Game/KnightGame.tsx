@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameCanvas } from './GameCanvas';
 import { GameHUD } from './UI/GameHUD';
@@ -13,7 +12,11 @@ import GameController, { GameControllerRef } from './GameController';
 import { GameEngine } from '../../game/engine/GameEngine';
 import { PlayerStats, Item, Quest, Skill } from '../../types/GameTypes';
 
-export const KnightGame: React.FC = () => {
+interface KnightGameProps {
+  onLoadingComplete?: () => void;
+}
+
+export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => {
   const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerStats>({
     health: 100,
@@ -47,6 +50,11 @@ export const KnightGame: React.FC = () => {
     console.log('Game engine ready!');
     setGameEngine(engine);
     
+    // Call onLoadingComplete when engine is ready
+    if (onLoadingComplete) {
+      onLoadingComplete();
+    }
+    
     // Set up engine callbacks
     engine.setOnUpdateHealth((health: number) => {
       setPlayerStats(prev => ({ ...prev, health }));
@@ -67,7 +75,7 @@ export const KnightGame: React.FC = () => {
     engine.setOnLocationChange((inTavern: boolean) => {
       setIsInTavern(inTavern);
     });
-  }, []);
+  }, [onLoadingComplete]);
 
   const startGame = useCallback(() => {
     if (gameEngine) {
