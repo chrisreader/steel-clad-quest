@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -121,8 +119,35 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     ];
 
     setInventory(initialInventory);
-    console.log('[KnightGame] Inventory initialized with Steel Sword only');
+    
+    // Automatically equip the starting weapon in slot 1
+    setEquippedWeapons({
+      mainhand: initialInventory[0],
+      offhand: null
+    });
+    setActiveWeaponSlot(1);
+    
+    console.log('[KnightGame] Inventory initialized with Steel Sword equipped in mainhand');
   }, []); // Empty dependency array - runs once on mount
+
+  // Sync equipped weapons with game engine when weapons or game engine changes
+  useEffect(() => {
+    if (!gameEngine || !gameStarted) return;
+
+    console.log('[KnightGame] Syncing equipped weapons with game engine');
+    const player = gameEngine.getPlayer();
+    
+    // Get the weapon for the currently active slot
+    const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.mainhand : equippedWeapons.offhand;
+    
+    if (activeWeapon && activeWeapon.weaponId) {
+      console.log(`[KnightGame] Equipping weapon: ${activeWeapon.name} in slot ${activeWeaponSlot}`);
+      player.equipWeapon(activeWeapon.weaponId);
+    } else {
+      console.log(`[KnightGame] Unequipping weapon - slot ${activeWeaponSlot} is empty`);
+      player.unequipWeapon();
+    }
+  }, [gameEngine, gameStarted, equippedWeapons, activeWeaponSlot]);
 
   // Wait for mount element to be ready
   useEffect(() => {
@@ -236,17 +261,23 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }
   }, [gameEngine]);
 
-  // Add weapon slot selection handler
+  // Enhanced weapon slot selection handler
   const handleWeaponSlotSelect = useCallback((slot: 1 | 2) => {
     console.log(`[KnightGame] Switching to weapon slot ${slot}`);
     setActiveWeaponSlot(slot);
     
     if (gameEngine) {
-      // Switch to the weapon in the selected slot
+      const player = gameEngine.getPlayer();
+      
+      // Get the weapon for the selected slot
       const targetWeapon = slot === 1 ? equippedWeapons.mainhand : equippedWeapons.offhand;
+      
       if (targetWeapon && targetWeapon.weaponId) {
-        const player = gameEngine.getPlayer();
+        console.log(`[KnightGame] Equipping weapon: ${targetWeapon.name} from slot ${slot}`);
         player.equipWeapon(targetWeapon.weaponId);
+      } else {
+        console.log(`[KnightGame] Slot ${slot} is empty - unequipping current weapon`);
+        player.unequipWeapon();
       }
     }
   }, [gameEngine, equippedWeapons]);
@@ -257,52 +288,43 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     
     if (gameEngine && item.weaponId) {
       const player = gameEngine.getPlayer();
-      const success = player.equipWeapon(item.weaponId);
       
-      if (success) {
-        console.log(`Successfully equipped ${item.name}`);
-        
-        // Update equipped weapons state based on item's equipment slot
-        if (item.equipmentSlot === 'mainhand') {
-          setEquippedWeapons(prev => ({ ...prev, mainhand: item }));
-        } else if (item.equipmentSlot === 'offhand') {
-          setEquippedWeapons(prev => ({ ...prev, offhand: item }));
-        }
-        
-        // Update player stats based on weapon
-        if (item.stats) {
-          const currentStats = player.getStats();
-          const updatedStats = {
-            ...currentStats,
-            attack: currentStats.attack + (item.stats.attack || 0),
-            attackPower: currentStats.attackPower + (item.stats.attack || 0)
-          };
-          setPlayerStats(updatedStats);
-        }
-      } else {
-        console.error(`Failed to equip ${item.name}`);
-      }
+      // Determine which slot to equip to based on item's equipment slot
+      const targetSlot = item.equipmentSlot === 'offhand' ? 2 : 1;
+      
+      // Update equipped weapons state
+      setEquippedWeapons(prev => ({
+        ...prev,
+        [item.equipmentSlot]: item
+      }));
+      
+      // Set the active slot to the newly equipped weapon's slot
+      setActiveWeaponSlot(targetSlot);
+      
+      // The useEffect will handle the actual equipping in the game engine
+      
+      console.log(`Successfully equipped ${item.name} in ${item.equipmentSlot} slot`);
     }
-  }, [gameEngine, setPlayerStats]);
+  }, [gameEngine]);
 
   // Enhanced weapon unequip handler
   const handleUnequipWeapon = useCallback(() => {
-    console.log('[KnightGame] Unequipping weapon');
+    console.log('[KnightGame] Unequipping weapon from active slot');
     
     if (gameEngine) {
       const player = gameEngine.getPlayer();
-      const success = player.unequipWeapon();
       
-      if (success) {
-        console.log('Weapon unequipped');
-        // Clear the mainhand weapon (assuming unequip affects active weapon)
+      // Unequip from the currently active slot
+      if (activeWeaponSlot === 1) {
         setEquippedWeapons(prev => ({ ...prev, mainhand: null }));
-        // Reset player stats
-        const currentStats = player.getStats();
-        setPlayerStats(currentStats);
+      } else {
+        setEquippedWeapons(prev => ({ ...prev, offhand: null }));
       }
+      
+      // The useEffect will handle the actual unequipping in the game engine
+      console.log(`Weapon unequipped from slot ${activeWeaponSlot}`);
     }
-  }, [gameEngine, setPlayerStats]);
+  }, [gameEngine, activeWeaponSlot]);
 
   const startGame = useCallback(() => {
     console.log('Starting knight adventure...');
@@ -497,4 +519,3 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     </div>
   );
 };
-
