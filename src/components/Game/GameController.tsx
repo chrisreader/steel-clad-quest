@@ -17,6 +17,10 @@ export interface GameControllerRef {
   handleUseItem: (item: Item) => void;
   handleUpgradeSkill: (skill: Skill) => void;
   handleCraft: (recipe: any) => void;
+  initializeSampleData: () => void;
+  inventory: Item[];
+  quests: Quest[];
+  skills: Skill[];
 }
 
 export const GameController = React.forwardRef<GameControllerRef, GameControllerProps>(
