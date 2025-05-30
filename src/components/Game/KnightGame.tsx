@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -91,10 +90,10 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   useEffect(() => {
     console.log('[KnightGame] Initializing inventory on mount...');
     
-    // Steel Sword first (slot 1) - Initialize immediately
+    // Only the Steel Sword - the player's starting weapon
     const initialInventory: Item[] = [
       { 
-        id: '9', 
+        id: '1', 
         name: 'Steel Sword', 
         type: 'weapon' as const, 
         subtype: 'sword' as const,
@@ -106,109 +105,11 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         tier: 'uncommon' as const,
         icon: 'sword',
         weaponId: 'steel_sword'
-      },
-      { 
-        id: '1', 
-        name: 'Health Potion', 
-        type: 'potion' as const, 
-        value: 50, 
-        description: 'Restores 50 health', 
-        quantity: 3,
-        icon: 'potion'
-      },
-      { 
-        id: '2', 
-        name: 'Iron Sword', 
-        type: 'weapon' as const, 
-        subtype: 'sword' as const,
-        value: 100, 
-        description: 'A sturdy iron sword (+10 attack)', 
-        quantity: 1,
-        equipmentSlot: 'mainhand' as const,
-        stats: { attack: 10 },
-        tier: 'common' as const,
-        icon: 'sword',
-        weaponId: 'iron_sword'
-      },
-      { 
-        id: '8', 
-        name: 'Wooden Sword', 
-        type: 'weapon' as const, 
-        subtype: 'sword' as const,
-        value: 25, 
-        description: 'A basic wooden sword (+5 attack)', 
-        quantity: 1,
-        equipmentSlot: 'mainhand' as const,
-        stats: { attack: 5 },
-        tier: 'common' as const,
-        icon: 'sword',
-        weaponId: 'wooden_sword'
-      },
-      { 
-        id: '3', 
-        name: 'Leather Helmet', 
-        type: 'armor' as const, 
-        subtype: 'helmet' as const,
-        value: 25, 
-        description: 'Basic leather protection (+2 defense)', 
-        quantity: 1,
-        equipmentSlot: 'helmet' as const,
-        stats: { defense: 2 },
-        tier: 'common' as const
-      },
-      { 
-        id: '4', 
-        name: 'Iron Chestplate', 
-        type: 'armor' as const, 
-        subtype: 'chestplate' as const,
-        value: 150, 
-        description: 'Strong iron armor (+8 defense)', 
-        quantity: 1,
-        equipmentSlot: 'chestplate' as const,
-        stats: { defense: 8 },
-        tier: 'uncommon' as const
-      },
-      { 
-        id: '5', 
-        name: 'Chain Leggings', 
-        type: 'armor' as const, 
-        subtype: 'leggings' as const,
-        value: 75, 
-        description: 'Flexible chain mail (+4 defense)', 
-        quantity: 1,
-        equipmentSlot: 'leggings' as const,
-        stats: { defense: 4 },
-        tier: 'common' as const
-      },
-      { 
-        id: '6', 
-        name: 'Steel Boots', 
-        type: 'armor' as const, 
-        subtype: 'boots' as const,
-        value: 60, 
-        description: 'Sturdy steel boots (+3 defense)', 
-        quantity: 1,
-        equipmentSlot: 'boots' as const,
-        stats: { defense: 3 },
-        tier: 'common' as const
-      },
-      { 
-        id: '7', 
-        name: 'Wooden Shield', 
-        type: 'weapon' as const, 
-        subtype: 'shield' as const,
-        value: 40, 
-        description: 'Basic wooden shield (+5 defense)', 
-        quantity: 1,
-        equipmentSlot: 'offhand' as const,
-        stats: { defense: 5 },
-        tier: 'common' as const
       }
     ];
 
     setInventory(initialInventory);
-    console.log('[KnightGame] Inventory initialized with', initialInventory.length, 'items');
-    console.log('[KnightGame] Steel Sword loaded in slot 1:', initialInventory[0].name);
+    console.log('[KnightGame] Inventory initialized with Steel Sword only');
   }, []); // Empty dependency array - runs once on mount
 
   // Wait for mount element to be ready
