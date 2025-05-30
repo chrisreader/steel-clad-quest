@@ -20,6 +20,16 @@ export interface PlayerStats {
   speed: number;
 }
 
+export interface PlayerBody {
+  group: THREE.Group;
+  leftArm: THREE.Group;
+  rightArm: THREE.Group;
+  leftLeg: THREE.Mesh;
+  rightLeg: THREE.Mesh;
+  body: THREE.Mesh;
+  head: THREE.Mesh;
+}
+
 // Level and terrain interfaces
 export interface Level {
   name: string;

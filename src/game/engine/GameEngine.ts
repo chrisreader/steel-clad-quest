@@ -47,8 +47,8 @@ export class GameEngine {
     this.audioManager = new AudioManager(this.sceneManager.getCamera(), this.sceneManager.getScene());
     this.physicsManager = new PhysicsManager();
     
-    // Initialize game objects
-    this.player = new Player();
+    // Initialize game objects - pass required arguments to Player constructor
+    this.player = new Player(this.sceneManager.getScene(), this.effectsManager, this.audioManager);
     this.gameState = {
       isPlaying: false,
       isPaused: false,
