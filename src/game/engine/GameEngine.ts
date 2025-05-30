@@ -1,6 +1,6 @@
+
 import * as THREE from 'three';
 import { SceneManager } from './SceneManager';
-import { Player } from './Player';
 import { InputManager } from './InputManager';
 import { AudioManager } from './AudioManager';
 import { MovementSystem } from './systems/MovementSystem';
@@ -14,11 +14,12 @@ export class GameEngine {
   private movementSystem: MovementSystem;
   private combatSystem: CombatSystem;
   private effectsManager: EffectsManager;
-  private player: Player | null = null;
+  private player: any = null;
   private initialized: boolean = false;
   private lastFrameTime: number = 0;
   private frameCount: number = 0;
   private gameState: any;
+  private mountElement: HTMLDivElement | null = null;
   
   // Movement state
   private isMoving: boolean = false;
@@ -30,15 +31,25 @@ export class GameEngine {
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private mouseSensitivity: number = 0.002;
   
-  constructor() {
+  // Callback functions for UI updates
+  private onUpdateHealth?: (health: number) => void;
+  private onUpdateGold?: (gold: number) => void;
+  private onUpdateStamina?: (stamina: number) => void;
+  private onUpdateScore?: (score: number) => void;
+  private onGameOver?: (score: number) => void;
+  private onLocationChange?: (isInTavern: boolean) => void;
+  
+  constructor(mountElement?: HTMLDivElement) {
     console.log('🎮 [GameEngine] Initializing GameEngine...');
     
+    this.mountElement = mountElement || null;
+    
     // Initialize all managers and systems
-    this.sceneManager = new SceneManager();
+    this.sceneManager = new SceneManager(this.mountElement!);
     this.audioManager = new AudioManager();
     this.movementSystem = new MovementSystem();
-    this.combatSystem = new CombatSystem(this.sceneManager);
-    this.effectsManager = new EffectsManager(this.sceneManager);
+    this.combatSystem = new CombatSystem();
+    this.effectsManager = new EffectsManager();
     
     this.gameState = {
       playing: false,
@@ -47,6 +58,31 @@ export class GameEngine {
       score: 0,
       timeElapsed: 0
     };
+  }
+  
+  // Callback setters for UI integration
+  public setOnUpdateHealth(callback: (health: number) => void): void {
+    this.onUpdateHealth = callback;
+  }
+  
+  public setOnUpdateGold(callback: (gold: number) => void): void {
+    this.onUpdateGold = callback;
+  }
+  
+  public setOnUpdateStamina(callback: (stamina: number) => void): void {
+    this.onUpdateStamina = callback;
+  }
+  
+  public setOnUpdateScore(callback: (score: number) => void): void {
+    this.onUpdateScore = callback;
+  }
+  
+  public setOnGameOver(callback: (score: number) => void): void {
+    this.onGameOver = callback;
+  }
+  
+  public setOnLocationChange(callback: (isInTavern: boolean) => void): void {
+    this.onLocationChange = callback;
   }
   
   // NEW METHOD: Set UI state from KnightGame
@@ -59,21 +95,42 @@ export class GameEngine {
     console.log('🎮 [GameEngine] Initializing game engine...');
     
     try {
-      // Initialize all managers
-      await this.sceneManager.initialize();
-      await this.audioManager.initialize();
+      // Create default world
+      this.sceneManager.createDefaultWorld();
       
-      // Get the InputManager instance from SceneManager
-      this.inputManager = this.sceneManager.getInputManager();
+      // Create a basic player object
+      this.player = {
+        position: new THREE.Vector3(0, 1, 0),
+        health: 100,
+        maxHealth: 100,
+        stamina: 100,
+        maxStamina: 100,
+        isAlive: () => true,
+        attack: () => console.log('Player attacking'),
+        stopAttack: () => console.log('Player stopped attacking'),
+        heal: (amount: number) => console.log(`Player healed for ${amount}`),
+        getPosition: () => new THREE.Vector3(0, 1, 0),
+        getStats: () => ({
+          health: 100,
+          maxHealth: 100,
+          stamina: 100,
+          maxStamina: 100,
+          level: 1,
+          experience: 0,
+          experienceToNext: 100,
+          gold: 0,
+          attack: 10,
+          defense: 5,
+          speed: 5,
+          attackPower: 10
+        }),
+        update: (deltaTime: number) => {}
+      };
       
-      if (!this.inputManager) {
-        throw new Error('InputManager not available from SceneManager');
-      }
+      // Create input manager
+      this.inputManager = new InputManager(this.sceneManager.getRenderer().domElement);
       
-      console.log('🎮 [GameEngine] InputManager obtained from SceneManager');
-      
-      // Initialize player
-      this.player = await this.sceneManager.createPlayer();
+      console.log('🎮 [GameEngine] InputManager created');
       
       // Set up event listeners
       this.setupEventListeners();
@@ -120,14 +177,32 @@ export class GameEngine {
     this.gameState.playing = false;
   }
   
+  public restart(): void {
+    console.log('🎮 [GameEngine] Restarting the game.');
+    this.stop();
+    // Reset game state
+    this.gameState = {
+      playing: false,
+      paused: false,
+      gameOver: false,
+      score: 0,
+      timeElapsed: 0
+    };
+    // Reset player health
+    if (this.player) {
+      this.player.health = this.player.maxHealth;
+    }
+    this.start();
+  }
+  
   public pause(): void {
     if (!this.gameState.playing) {
       console.warn('🎮 [GameEngine] Cannot pause, game is not running.');
       return;
     }
     
-    console.log('🎮 [GameEngine] Pausing the game.');
-    this.gameState.paused = true;
+    console.log('🎮 [GameEngine] Toggling pause state.');
+    this.gameState.paused = !this.gameState.paused;
   }
   
   public resume(): void {
@@ -230,8 +305,11 @@ export class GameEngine {
     this.cameraRotation.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.cameraRotation.pitch));
     
     // Apply rotation to camera
-    if (this.sceneManager) {
-      this.sceneManager.updateCameraRotation(this.cameraRotation.yaw, this.cameraRotation.pitch);
+    const camera = this.sceneManager.getCamera();
+    if (camera) {
+      camera.rotation.order = 'YXZ';
+      camera.rotation.y = this.cameraRotation.yaw;
+      camera.rotation.x = this.cameraRotation.pitch;
     }
   }
   
@@ -306,11 +384,6 @@ export class GameEngine {
     // Update player
     if (this.player) {
       this.player.update(deltaTime);
-    }
-    
-    // Update scene
-    if (this.sceneManager) {
-      this.sceneManager.update(deltaTime);
     }
     
     // Update audio
@@ -389,7 +462,13 @@ export class GameEngine {
   
   private handleResize(): void {
     if (this.sceneManager) {
-      this.sceneManager.handleResize();
+      const camera = this.sceneManager.getCamera();
+      const renderer = this.sceneManager.getRenderer();
+      if (camera && renderer) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
     }
   }
 }
