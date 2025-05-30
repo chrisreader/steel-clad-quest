@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 interface ParticleOptions {
@@ -9,7 +8,7 @@ interface ParticleOptions {
   sizeVariation?: number;
   speed?: number;
   speedVariation?: number;
-  color?: THREE.Color | string;
+  color?: THREE.Color | string | number;
   colorVariation?: number;
   gravity?: number;
   texture?: THREE.Texture;
@@ -289,7 +288,7 @@ export class ParticleSystem {
   
   // Create various pre-defined particle effects
   
-  static createExplosion(scene: THREE.Scene, position: THREE.Vector3, color: THREE.Color | string = 0xFF5500, scale: number = 1): ParticleSystem {
+  static createExplosion(scene: THREE.Scene, position: THREE.Vector3, color: THREE.Color | string | number = 0xFF5500, scale: number = 1): ParticleSystem {
     return new ParticleSystem(scene, {
       position: position,
       count: 100 * scale,
