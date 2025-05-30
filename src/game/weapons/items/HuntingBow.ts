@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig, WeaponStats } from '../BaseWeapon';
 
@@ -27,6 +28,9 @@ export class HuntingBow extends BaseWeapon {
   // Original limb rotations for reset
   private originalUpperLimbRotation: number = 0.15;
   private originalLowerLimbRotation: number = -0.15;
+  
+  // Original string position for pullback animation
+  private originalStringPosition: number = 0;
 
   constructor() {
     const config: WeaponConfig = {
@@ -68,8 +72,8 @@ export class HuntingBow extends BaseWeapon {
     this.createArrowRest(bowGroup);
     this.addBowTips(bowGroup);
     
-    // Optimized positioning for two-handed first-person view
-    bowGroup.scale.set(1.0, 1.0, 1.0);
+    // Optimized positioning for realistic archery hold
+    bowGroup.scale.set(1.2, 1.2, 1.2); // Slightly larger for visibility
     bowGroup.position.set(0, 0, 0); // Will be positioned by Player class
     bowGroup.rotation.set(0, 0, 0); // Will be rotated by Player class
     
@@ -149,8 +153,8 @@ export class HuntingBow extends BaseWeapon {
   }
 
   private createRealisticBowString(bowGroup: THREE.Group): void {
-    // Create bow string with proper material (fixed: using MeshLambertMaterial instead of MeshBasicMaterial)
-    const stringGeometry = new THREE.CylinderGeometry(0.004, 0.004, 1.5);
+    // Create bow string with proper material and enhanced pullback capability
+    const stringGeometry = new THREE.CylinderGeometry(0.003, 0.003, 1.5);
     const stringMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xf5f5dc,
       emissive: 0x332211,
@@ -159,6 +163,7 @@ export class HuntingBow extends BaseWeapon {
     
     this.bowString = new THREE.Mesh(stringGeometry, stringMaterial);
     this.bowString.position.set(0, 0, 0);
+    this.originalStringPosition = this.bowString.position.x; // Store original position
     bowGroup.add(this.bowString);
   }
 
@@ -239,7 +244,7 @@ export class HuntingBow extends BaseWeapon {
     this.isDrawing = true;
     this.chargeLevel = 0;
     this.updateDrawStage();
-    console.log('🏹 [HuntingBow] Started drawing bow');
+    console.log('🏹 [HuntingBow] Started drawing bow with enhanced string pullback');
   }
 
   public stopDrawing(): void {
@@ -289,13 +294,13 @@ export class HuntingBow extends BaseWeapon {
   private updateBowVisuals(): void {
     if (!this.bowString || !this.upperLimb || !this.lowerLimb) return;
     
-    // Enhanced draw mechanics with smooth easing
-    const pullback = this.easeInOutQuad(this.chargeLevel) * 0.5;
+    // Enhanced draw mechanics with realistic string pullback
+    const pullback = this.easeInOutQuad(this.chargeLevel) * 0.6; // Increased pullback
     const limbBend = this.easeInOutQuad(this.chargeLevel) * 0.4;
     
-    // Update string position with curve
-    this.bowString.position.x = -pullback;
-    this.bowString.scale.y = 1 + (this.chargeLevel * 0.1);
+    // Update string position with enhanced pullback - moves toward player (positive X)
+    this.bowString.position.x = this.originalStringPosition + pullback;
+    this.bowString.scale.y = 1 + (this.chargeLevel * 0.08); // Slight stretch
     
     // Enhanced limb bending with realistic physics
     const upperLimbRotation = this.originalUpperLimbRotation + limbBend;
