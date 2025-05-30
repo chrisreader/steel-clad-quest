@@ -33,6 +33,11 @@ export class Player {
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   
+  // Sword trail tracking
+  private swordTipPositions: THREE.Vector3[] = [];
+  private maxTrailLength: number = 15;
+  private swooshEffectCreated: boolean = false;
+  
   constructor(scene: THREE.Scene, effectsManager: EffectsManager, audioManager: AudioManager) {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
@@ -393,6 +398,10 @@ export class Player {
     // Clear hit enemies set for new swing
     this.hitEnemiesThisSwing.clear();
     
+    // Reset sword trail tracking
+    this.swordTipPositions = [];
+    this.swooshEffectCreated = false;
+    
     // Play sword swing sound
     this.audioManager.play('sword_swing');
     
@@ -439,15 +448,18 @@ export class Player {
       
       isSlashPhase = true;
       
-      // Create swoosh effect at mid-slash
+      // Track sword tip for trail effect
+      this.trackSwordTip();
+      
+      // Create enhanced swoosh effect once during mid-slash
+      if (t >= 0.3 && t <= 0.5 && !this.swooshEffectCreated) {
+        this.createEnhancedSwooshEffect();
+        this.swooshEffectCreated = true;
+      }
+      
+      // Create camera shake during slash
       if (t >= 0.4 && t <= 0.6) {
-        const armWorldPosition = new THREE.Vector3();
-        this.playerBody.rightArm.getWorldPosition(armWorldPosition);
-        
-        const armDirection = new THREE.Vector3(0, -2.2, 0);
-        armDirection.applyQuaternion(this.playerBody.rightArm.quaternion);
-        
-        this.effectsManager.createSwooshEffect(armWorldPosition, armDirection);
+        this.effectsManager.shakeCamera(0.03);
       }
       
     } else if (elapsed < duration) {
@@ -463,6 +475,11 @@ export class Player {
       currentRotation = rotations.neutral;
       this.swordSwing.isActive = false;
       
+      // Create sword trail if we have enough positions
+      if (this.swordTipPositions.length > 5) {
+        this.createSwordTrailEffect();
+      }
+      
       // Clean up trail
       if (this.swordSwing.trail) {
         this.swordSwing.trail = null;
@@ -477,6 +494,55 @@ export class Player {
     // Apply wrist snap to sword
     if (this.sword) {
       this.sword.rotation.z = swordWristRotation;
+    }
+  }
+  
+  private trackSwordTip(): void {
+    // Calculate sword tip position
+    const armWorldPosition = new THREE.Vector3();
+    this.playerBody.rightArm.getWorldPosition(armWorldPosition);
+    
+    const armDirection = new THREE.Vector3(0, -2.2, 0);
+    armDirection.applyQuaternion(this.playerBody.rightArm.quaternion);
+    const swordTipPosition = armWorldPosition.clone().add(armDirection);
+    
+    // Add to trail positions
+    this.swordTipPositions.push(swordTipPosition.clone());
+    
+    // Limit trail length
+    if (this.swordTipPositions.length > this.maxTrailLength) {
+      this.swordTipPositions.shift();
+    }
+  }
+  
+  private createEnhancedSwooshEffect(): void {
+    // Get sword position and direction
+    const armWorldPosition = new THREE.Vector3();
+    this.playerBody.rightArm.getWorldPosition(armWorldPosition);
+    
+    const armDirection = new THREE.Vector3(0, -2.2, 0);
+    armDirection.applyQuaternion(this.playerBody.rightArm.quaternion);
+    
+    // Create multiple swoosh effects for better visibility
+    this.effectsManager.createSwooshEffect(armWorldPosition, armDirection);
+    
+    // Create additional attack effect
+    this.effectsManager.createAttackEffect(armWorldPosition, 0xFFFFFF);
+    
+    // Create dust cloud at sword position
+    this.effectsManager.createDustCloud(armWorldPosition);
+    
+    console.log("🌪️ [Player] Enhanced swoosh effect created at:", armWorldPosition);
+  }
+  
+  private createSwordTrailEffect(): void {
+    if (this.swordTipPositions.length < 2) return;
+    
+    // Create sword trail using the tracked positions
+    const trail = this.effectsManager.createSwordTrail(this.swordTipPositions);
+    
+    if (trail) {
+      console.log("⚡ [Player] Sword trail created with", this.swordTipPositions.length, "positions");
     }
   }
   
