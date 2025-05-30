@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { SceneManager } from './SceneManager';
 import { InputManager } from './InputManager';
