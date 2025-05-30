@@ -44,6 +44,32 @@ export class Player {
   private maxTrailLength: number = 15;
   private swooshEffectCreated: boolean = false;
   
+  // New bow animation properties
+  private isBowEquipped: boolean = false;
+  private bowDrawAnimation: {
+    isActive: boolean;
+    leftHandRestPosition: THREE.Vector3;
+    rightHandRestPosition: THREE.Vector3;
+    leftHandDrawPosition: THREE.Vector3;
+    rightHandDrawPosition: THREE.Vector3;
+    bowRestRotation: THREE.Euler;
+    bowDrawRotation: THREE.Euler;
+    leftHandTarget: THREE.Vector3;
+    rightHandTarget: THREE.Vector3;
+    bowRotationTarget: THREE.Euler;
+  } = {
+    isActive: false,
+    leftHandRestPosition: new THREE.Vector3(0, 0, 0),
+    rightHandRestPosition: new THREE.Vector3(0, 0, 0),
+    leftHandDrawPosition: new THREE.Vector3(0, 0, 0),
+    rightHandDrawPosition: new THREE.Vector3(0, 0, 0),
+    bowRestRotation: new THREE.Euler(0, 0, 0),
+    bowDrawRotation: new THREE.Euler(0, 0, 0),
+    leftHandTarget: new THREE.Vector3(0, 0, 0),
+    rightHandTarget: new THREE.Vector3(0, 0, 0),
+    bowRotationTarget: new THREE.Euler(0, 0, 0)
+  };
+  
   constructor(scene: THREE.Scene, effectsManager: EffectsManager, audioManager: AudioManager) {
     this.scene = scene;
     this.effectsManager = effectsManager;
@@ -208,6 +234,18 @@ export class Player {
     };
   }
   
+  private initializeBowAnimationPositions(): void {
+    // Rest positions
+    this.bowDrawAnimation.leftHandRestPosition.set(-0.6, 1.4, -0.3);
+    this.bowDrawAnimation.rightHandRestPosition.set(0.6, 1.4, -0.2);
+    this.bowDrawAnimation.bowRestRotation.set(-0.1, Math.PI / 2 + 0.3, 0.15);
+    
+    // Draw positions
+    this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.2, -0.6);
+    this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.3, 0.2);
+    this.bowDrawAnimation.bowDrawRotation.set(0, Math.PI / 2, 0);
+  }
+  
   public equipWeapon(weaponId: string): boolean {
     console.log(`🗡️ [Player] Equipping weapon: ${weaponId}`);
     
@@ -227,8 +265,23 @@ export class Player {
     weapon.equip(this.scene);
     this.equippedWeapon = weapon;
     
-    // Attach weapon to right arm
-    this.playerBody.rightArm.add(weapon.getMesh());
+    // Check if weapon is a bow
+    this.isBowEquipped = weapon.getConfig().type === 'bow';
+    
+    if (this.isBowEquipped) {
+      // Attach bow to left arm for two-handed grip
+      this.playerBody.leftArm.add(weapon.getMesh());
+      
+      // Position bow for proper grip
+      weapon.getMesh().position.set(0, -0.3, -0.2);
+      weapon.getMesh().rotation.set(-0.1, Math.PI / 2 + 0.3, 0.15);
+      weapon.getMesh().scale.set(1.2, 1.2, 1.2);
+      
+      console.log(`🏹 [Player] Bow equipped in left hand for two-handed use`);
+    } else {
+      // Attach melee weapon to right arm
+      this.playerBody.rightArm.add(weapon.getMesh());
+    }
     
     // Update swing animation with weapon config
     const weaponConfig = weapon.getConfig();
@@ -250,13 +303,16 @@ export class Player {
     
     console.log(`🗡️ [Player] Unequipping weapon: ${this.equippedWeapon.getConfig().name}`);
     
-    // Remove weapon from arm
-    this.playerBody.rightArm.remove(this.equippedWeapon.getMesh());
+    // Remove weapon from appropriate arm
+    if (this.isBowEquipped) {
+      this.playerBody.leftArm.remove(this.equippedWeapon.getMesh());
+    } else {
+      this.playerBody.rightArm.remove(this.equippedWeapon.getMesh());
+    }
     
-    // Unequip weapon
-    this.equippedWeapon.unequip(this.scene);
-    this.equippedWeapon.dispose();
-    this.equippedWeapon = null;
+    // Reset bow state
+    this.isBowEquipped = false;
+    this.bowDrawAnimation.isActive = false;
     
     // Reset to default hitbox
     const fallbackHitBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -308,9 +364,14 @@ export class Player {
   }
   
   public startSwordSwing(): void {
-    // Only allow attack if weapon is equipped
+    // Only allow attack if weapon is equipped and not a bow
     if (!this.equippedWeapon) {
       console.log("🗡️ [Player] Cannot attack - no weapon equipped");
+      return;
+    }
+    
+    if (this.isBowEquipped) {
+      console.log("🏹 [Player] Cannot melee attack with bow - use bow draw instead");
       return;
     }
     
@@ -510,11 +571,18 @@ export class Player {
   public update(deltaTime: number, isMoving?: boolean): void {
     const isActuallyMoving = isMoving ?? false;
     
-    // Update weapon swing animation
-    this.updateSwordSwing();
+    // Update weapon swing animation (for melee weapons)
+    if (!this.isBowEquipped) {
+      this.updateSwordSwing();
+    }
+    
+    // Update bow animation (for bow weapons)
+    if (this.isBowEquipped) {
+      this.updateBowAnimation(deltaTime);
+    }
     
     // Update walking animation
-    if (isActuallyMoving && !this.weaponSwing.isActive) {
+    if (isActuallyMoving && !this.weaponSwing.isActive && !this.bowDrawAnimation.isActive) {
       // Update walk cycle
       const walkCycleMultiplier = this.isSprinting ? 2 : 1;
       this.walkCycle += deltaTime * this.walkCycleSpeed * walkCycleMultiplier;
@@ -538,7 +606,7 @@ export class Player {
         this.audioManager.play('footstep');
       }
     } 
-    else if (!isActuallyMoving && !this.weaponSwing.isActive) {
+    else if (!isActuallyMoving && !this.weaponSwing.isActive && !this.bowDrawAnimation.isActive) {
       // Return to idle pose
       const returnSpeed = deltaTime * this.animationReturnSpeed;
       
@@ -757,5 +825,144 @@ export class Player {
   
   public dispose(): void {
     // Clean up resources
+  }
+  
+  private updateBowAnimation(deltaTime: number): void {
+    if (!this.isBowEquipped || !this.equippedWeapon) return;
+    
+    const chargeLevel = this.equippedWeapon.getChargeLevel ? this.equippedWeapon.getChargeLevel() : 0;
+    const lerpSpeed = deltaTime * 8; // Animation speed
+    
+    if (this.bowDrawAnimation.isActive) {
+      // Calculate progressive draw positions based on charge level
+      const drawProgress = Math.min(chargeLevel, 1.0);
+      
+      // Left hand (bow holder) - minimal movement, slight forward positioning
+      const leftTargetPos = this.bowDrawAnimation.leftHandRestPosition.clone();
+      leftTargetPos.z -= drawProgress * 0.3; // Move slightly forward
+      leftTargetPos.y -= drawProgress * 0.1; // Move slightly down
+      this.bowDrawAnimation.leftHandTarget.lerp(leftTargetPos, lerpSpeed);
+      
+      // Right hand (string puller) - major movement
+      const rightTargetPos = this.bowDrawAnimation.rightHandRestPosition.clone();
+      rightTargetPos.x += drawProgress * 0.4; // Pull back
+      rightTargetPos.y += drawProgress * 0.2; // Raise slightly
+      rightTargetPos.z += drawProgress * 0.5; // Move toward face
+      this.bowDrawAnimation.rightHandTarget.lerp(rightTargetPos, lerpSpeed);
+      
+      // Bow rotation - rotate to horizontal aiming position
+      const targetRotation = this.bowDrawAnimation.bowRestRotation.clone();
+      targetRotation.x = -0.1 + (drawProgress * 0.15); // Tilt forward slightly
+      targetRotation.y = (Math.PI / 2 + 0.3) - (drawProgress * 0.3); // Rotate toward horizontal
+      targetRotation.z = 0.15 - (drawProgress * 0.15); // Level out
+      this.bowDrawAnimation.bowRotationTarget.set(targetRotation.x, targetRotation.y, targetRotation.z);
+      
+      // Apply arm rotations for draw stance
+      const leftArmRotation = new THREE.Euler(
+        Math.PI / 8 - (drawProgress * 0.2),
+        -drawProgress * 0.4,
+        drawProgress * 0.3
+      );
+      
+      const rightArmRotation = new THREE.Euler(
+        Math.PI / 8 + (drawProgress * 0.5),
+        drawProgress * 0.6,
+        -drawProgress * 0.2
+      );
+      
+      // Smooth interpolation to target rotations
+      this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
+        this.playerBody.leftArm.rotation.x, leftArmRotation.x, lerpSpeed
+      );
+      this.playerBody.leftArm.rotation.y = THREE.MathUtils.lerp(
+        this.playerBody.leftArm.rotation.y, leftArmRotation.y, lerpSpeed
+      );
+      this.playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
+        this.playerBody.leftArm.rotation.z, leftArmRotation.z, lerpSpeed
+      );
+      
+      this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
+        this.playerBody.rightArm.rotation.x, rightArmRotation.x, lerpSpeed
+      );
+      this.playerBody.rightArm.rotation.y = THREE.MathUtils.lerp(
+        this.playerBody.rightArm.rotation.y, rightArmRotation.y, lerpSpeed
+      );
+      this.playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
+        this.playerBody.rightArm.rotation.z, rightArmRotation.z, lerpSpeed
+      );
+      
+    } else {
+      // Return to rest positions
+      this.bowDrawAnimation.leftHandTarget.lerp(this.bowDrawAnimation.leftHandRestPosition, lerpSpeed);
+      this.bowDrawAnimation.rightHandTarget.lerp(this.bowDrawAnimation.rightHandRestPosition, lerpSpeed);
+      this.bowDrawAnimation.bowRotationTarget.set(
+        this.bowDrawAnimation.bowRestRotation.x,
+        this.bowDrawAnimation.bowRestRotation.y,
+        this.bowDrawAnimation.bowRestRotation.z
+      );
+      
+      // Return arms to rest positions
+      this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
+        this.playerBody.leftArm.rotation.x, Math.PI / 8, lerpSpeed
+      );
+      this.playerBody.leftArm.rotation.y = THREE.MathUtils.lerp(
+        this.playerBody.leftArm.rotation.y, 0, lerpSpeed
+      );
+      this.playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
+        this.playerBody.leftArm.rotation.z, 0, lerpSpeed
+      );
+      
+      this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
+        this.playerBody.rightArm.rotation.x, Math.PI / 8, lerpSpeed
+      );
+      this.playerBody.rightArm.rotation.y = THREE.MathUtils.lerp(
+        this.playerBody.rightArm.rotation.y, 0, lerpSpeed
+      );
+      this.playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
+        this.playerBody.rightArm.rotation.z, 0, lerpSpeed
+      );
+    }
+    
+    // Apply bow rotation if equipped
+    if (this.equippedWeapon) {
+      const currentBowRotation = this.equippedWeapon.getMesh().rotation;
+      currentBowRotation.x = THREE.MathUtils.lerp(currentBowRotation.x, this.bowDrawAnimation.bowRotationTarget.x, lerpSpeed);
+      currentBowRotation.y = THREE.MathUtils.lerp(currentBowRotation.y, this.bowDrawAnimation.bowRotationTarget.y, lerpSpeed);
+      currentBowRotation.z = THREE.MathUtils.lerp(currentBowRotation.z, this.bowDrawAnimation.bowRotationTarget.z, lerpSpeed);
+    }
+  }
+  
+  public startBowDraw(): void {
+    if (!this.isBowEquipped || !this.equippedWeapon) {
+      console.log("🏹 [Player] Cannot draw bow - no bow equipped");
+      return;
+    }
+    
+    console.log("🏹 [Player] Starting bow draw animation");
+    this.bowDrawAnimation.isActive = true;
+    
+    // Start weapon draw
+    if (this.equippedWeapon.startDrawing) {
+      this.equippedWeapon.startDrawing();
+    }
+  }
+  
+  public stopBowDraw(): void {
+    if (!this.isBowEquipped || !this.equippedWeapon) {
+      return;
+    }
+    
+    console.log("🏹 [Player] Stopping bow draw animation");
+    this.bowDrawAnimation.isActive = false;
+    
+    // Stop weapon draw
+    if (this.equippedWeapon.stopDrawing) {
+      this.equippedWeapon.stopDrawing();
+    }
+    
+    // Reset to rest positions
+    this.bowDrawAnimation.leftHandTarget.copy(this.bowDrawAnimation.leftHandRestPosition);
+    this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
+    this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
   }
 }

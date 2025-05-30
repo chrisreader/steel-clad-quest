@@ -99,10 +99,8 @@ export class CombatSystem {
     this.isDrawingBow = true;
     this.bowDrawStartTime = Date.now();
     
-    const currentWeapon = this.player.getEquippedWeapon();
-    if (currentWeapon && currentWeapon.startDrawing) {
-      currentWeapon.startDrawing();
-    }
+    // Use new player bow draw method
+    this.player.startBowDraw();
     
     // Play bow draw sound
     this.audioManager.play('bow_draw');
@@ -128,10 +126,8 @@ export class CombatSystem {
     const arrowStartPos = playerPosition.clone().add(new THREE.Vector3(0, 1.5, 0));
     this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
     
-    // Stop drawing animation with type safety
-    if (currentWeapon.stopDrawing) {
-      currentWeapon.stopDrawing();
-    }
+    // Use new player bow draw stop method
+    this.player.stopBowDraw();
     
     // Play bow release sound
     this.audioManager.play('bow_release');

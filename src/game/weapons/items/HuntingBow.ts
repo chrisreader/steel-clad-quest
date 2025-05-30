@@ -68,10 +68,10 @@ export class HuntingBow extends BaseWeapon {
     this.createArrowRest(bowGroup);
     this.addBowTips(bowGroup);
     
-    // Optimized positioning for first-person view
-    bowGroup.scale.set(1.4, 1.4, 1.4);
-    bowGroup.position.set(0.5, -0.4, -1.0);
-    bowGroup.rotation.set(-0.1, Math.PI / 2 + 0.3, 0.15);
+    // Optimized positioning for two-handed first-person view
+    bowGroup.scale.set(1.0, 1.0, 1.0);
+    bowGroup.position.set(0, 0, 0); // Will be positioned by Player class
+    bowGroup.rotation.set(0, 0, 0); // Will be rotated by Player class
     
     return bowGroup;
   }
@@ -216,7 +216,8 @@ export class HuntingBow extends BaseWeapon {
   }
 
   public createHitBox(): THREE.Mesh {
-    const hitBoxGeometry = new THREE.BoxGeometry(0.1, 1.5, 0.1);
+    // Smaller hitbox for bow (not used for combat, just reference)
+    const hitBoxGeometry = new THREE.BoxGeometry(0.05, 1.2, 0.05);
     const hitBoxMaterial = new THREE.MeshBasicMaterial({
       color: 0xff0000,
       transparent: true,
@@ -227,8 +228,9 @@ export class HuntingBow extends BaseWeapon {
   }
 
   public getBladeReference(): THREE.Mesh {
+    // For bows, return the bow string as the reference for effects
     return this.bowString || new THREE.Mesh(
-      new THREE.BoxGeometry(0.1, 1, 0.1),
+      new THREE.BoxGeometry(0.05, 1, 0.05),
       new THREE.MeshBasicMaterial({ visible: false })
     );
   }
