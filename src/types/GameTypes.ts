@@ -369,3 +369,12 @@ export interface PerformanceStats {
   triangles: number;
   memoryUsage: number;
 }
+
+export interface Gold {
+  mesh: THREE.Group;
+  value: number;
+  collected: boolean;
+  collectTime: number;
+  collectionRadius: number;
+  bobOffset: number;
+}
