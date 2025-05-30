@@ -105,13 +105,21 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     return uiOpen;
   }, [showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, isPaused]);
 
-  // CRITICAL ADDITION: Notify GameEngine about UI state changes
+  // CRITICAL ADDITION: Notify both GameEngine and InputManager about UI state changes
   useEffect(() => {
     if (!gameEngine) return;
     
     const anyUIOpen = isAnyUIOpen();
-    console.log(`🎮 [KnightGame] Notifying GameEngine - UI state: ${anyUIOpen ? 'OPEN' : 'CLOSED'}`);
+    console.log(`🎮 [KnightGame] Notifying GameEngine and InputManager - UI state: ${anyUIOpen ? 'OPEN' : 'CLOSED'}`);
+    
+    // Notify GameEngine
     gameEngine.setUIState(anyUIOpen);
+    
+    // Notify InputManager
+    const inputManager = gameEngine.getInputManager();
+    if (inputManager) {
+      inputManager.setUIState(anyUIOpen);
+    }
   }, [gameEngine, isAnyUIOpen]);
 
   // Enhanced pointer lock management with better debugging and fallbacks

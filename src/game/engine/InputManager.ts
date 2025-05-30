@@ -34,6 +34,9 @@ export class InputManager {
   private isTouchDevice: boolean = false;
   private isMobileDevice: boolean = false;
   
+  // UI state tracking - CRITICAL ADDITION
+  private isUIOpen: boolean = false;
+  
   // Virtual joystick for mobile
   private virtualJoystick: {
     active: boolean;
@@ -82,6 +85,12 @@ export class InputManager {
   public initialize(renderer: THREE.WebGLRenderer): void {
     this.renderer = renderer;
     console.log('InputManager initialized with renderer');
+  }
+  
+  // NEW METHOD: Set UI state from KnightGame
+  public setUIState(isUIOpen: boolean): void {
+    console.log(`🎮 [InputManager] UI state changed to: ${isUIOpen ? 'OPEN' : 'CLOSED'}`);
+    this.isUIOpen = isUIOpen;
   }
   
   private detectDeviceType(): void {
@@ -193,16 +202,25 @@ export class InputManager {
     
     this.lastMouseDown = now;
     
-    // Handle specific buttons
+    // Handle specific buttons - CRITICAL FIX: Only dispatch when pointer is locked and no UI is open
     switch (event.button) {
       case 0: // Left mouse button
-        this.dispatchInputEvent('attack');
+        if (this.pointerLocked && !this.isUIOpen) {
+          console.log("🗡️ [InputManager] Attack dispatched (pointer locked, no UI)");
+          this.dispatchInputEvent('attack');
+        } else {
+          console.log(`🚫 [InputManager] Attack ignored - pointer locked: ${this.pointerLocked}, UI open: ${this.isUIOpen}`);
+        }
         break;
       case 2: // Right mouse button
-        this.dispatchInputEvent('secondaryAction');
+        if (this.pointerLocked && !this.isUIOpen) {
+          this.dispatchInputEvent('secondaryAction');
+        }
         break;
       case 1: // Middle mouse button
-        this.dispatchInputEvent('tertiaryAction');
+        if (this.pointerLocked && !this.isUIOpen) {
+          this.dispatchInputEvent('tertiaryAction');
+        }
         break;
     }
   }
@@ -211,13 +229,17 @@ export class InputManager {
     // Update mouse buttons state
     this.mouse.buttons &= ~(1 << event.button);
     
-    // Handle specific buttons
+    // Handle specific buttons - only when pointer is locked and no UI is open
     switch (event.button) {
       case 0: // Left mouse button
-        this.dispatchInputEvent('attackEnd');
+        if (this.pointerLocked && !this.isUIOpen) {
+          this.dispatchInputEvent('attackEnd');
+        }
         break;
       case 2: // Right mouse button
-        this.dispatchInputEvent('secondaryActionEnd');
+        if (this.pointerLocked && !this.isUIOpen) {
+          this.dispatchInputEvent('secondaryActionEnd');
+        }
         break;
     }
   }
