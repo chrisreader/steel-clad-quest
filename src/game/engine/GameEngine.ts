@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { SceneManager } from './SceneManager';
 import { InputManager } from './InputManager';
@@ -46,10 +47,10 @@ export class GameEngine {
     this.inputManager = new InputManager();
     this.physicsManager = new PhysicsManager();
     this.effectsManager = new EffectsManager(this.sceneManager.getScene());
-    this.audioManager = new AudioManager();
+    this.audioManager = new AudioManager(this.sceneManager.getScene(), this.sceneManager.getCamera());
     
     // Initialize player with required parameters
-    this.player = new Player(this.sceneManager.getScene(), this.effectsManager);
+    this.player = new Player(this.sceneManager.getScene(), this.effectsManager, this.audioManager);
     
     // Initialize game state
     this.gameState = {
