@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef } from 'react';
 import { GameEngine } from '../../game/engine/GameEngine';
 import { PlayerStats, Item, Quest, Skill } from '../../types/GameTypes';
@@ -30,10 +29,90 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
     const [skills, setSkills] = useState<Skill[]>([]);
 
     const initializeSampleData = useCallback(() => {
-      // Sample inventory items
+      // Enhanced sample inventory with equipment
       setInventory([
-        { id: '1', name: 'Health Potion', type: 'potion', value: 50, description: 'Restores 50 health', quantity: 3 },
-        { id: '2', name: 'Iron Sword', type: 'weapon', value: 100, description: 'A sturdy iron sword', quantity: 1 },
+        { 
+          id: '1', 
+          name: 'Health Potion', 
+          type: 'potion', 
+          value: 50, 
+          description: 'Restores 50 health', 
+          quantity: 3,
+          icon: 'potion'
+        },
+        { 
+          id: '2', 
+          name: 'Iron Sword', 
+          type: 'weapon', 
+          subtype: 'sword',
+          value: 100, 
+          description: 'A sturdy iron sword (+10 attack)', 
+          quantity: 1,
+          equipmentSlot: 'mainhand',
+          stats: { attack: 10 },
+          tier: 'common',
+          icon: 'sword'
+        },
+        { 
+          id: '3', 
+          name: 'Leather Helmet', 
+          type: 'armor', 
+          subtype: 'helmet',
+          value: 25, 
+          description: 'Basic leather protection (+2 defense)', 
+          quantity: 1,
+          equipmentSlot: 'helmet',
+          stats: { defense: 2 },
+          tier: 'common'
+        },
+        { 
+          id: '4', 
+          name: 'Iron Chestplate', 
+          type: 'armor', 
+          subtype: 'chestplate',
+          value: 150, 
+          description: 'Strong iron armor (+8 defense)', 
+          quantity: 1,
+          equipmentSlot: 'chestplate',
+          stats: { defense: 8 },
+          tier: 'uncommon'
+        },
+        { 
+          id: '5', 
+          name: 'Chain Leggings', 
+          type: 'armor', 
+          subtype: 'leggings',
+          value: 75, 
+          description: 'Flexible chain mail (+4 defense)', 
+          quantity: 1,
+          equipmentSlot: 'leggings',
+          stats: { defense: 4 },
+          tier: 'common'
+        },
+        { 
+          id: '6', 
+          name: 'Steel Boots', 
+          type: 'armor', 
+          subtype: 'boots',
+          value: 60, 
+          description: 'Sturdy steel boots (+3 defense)', 
+          quantity: 1,
+          equipmentSlot: 'boots',
+          stats: { defense: 3 },
+          tier: 'common'
+        },
+        { 
+          id: '7', 
+          name: 'Wooden Shield', 
+          type: 'weapon', 
+          subtype: 'shield',
+          value: 40, 
+          description: 'Basic wooden shield (+5 defense)', 
+          quantity: 1,
+          equipmentSlot: 'offhand',
+          stats: { defense: 5 },
+          tier: 'common'
+        }
       ]);
 
       // Sample quests

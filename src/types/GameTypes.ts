@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface Vector3 {
@@ -30,6 +29,41 @@ export interface PlayerBody {
   rightLeg: THREE.Mesh;
   body: THREE.Mesh;
   head: THREE.Mesh;
+}
+
+// Equipment slot types
+export type EquipmentSlotType = 'helmet' | 'chestplate' | 'leggings' | 'boots' | 'mainhand' | 'offhand';
+
+// Inventory slot interface
+export interface InventorySlot {
+  id: number;
+  item: Item | null;
+  isEmpty: boolean;
+}
+
+// Equipment slots interface
+export interface EquippedItems {
+  helmet: Item | null;
+  chestplate: Item | null;
+  leggings: Item | null;
+  boots: Item | null;
+  mainhand: Item | null;
+  offhand: Item | null;
+}
+
+// Enhanced Item interface
+export interface Item {
+  id: string;
+  name: string;
+  type: 'weapon' | 'armor' | 'potion' | 'material';
+  subtype?: 'helmet' | 'chestplate' | 'leggings' | 'boots' | 'sword' | 'shield';
+  value: number;
+  stats?: Partial<PlayerStats>;
+  description: string;
+  quantity: number;
+  equipmentSlot?: EquipmentSlotType;
+  icon?: string; // For UI display
+  tier?: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 }
 
 // Enemy types enum
