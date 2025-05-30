@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
@@ -38,9 +37,10 @@ export class SceneManager {
     this.scene.fog = new THREE.Fog(0xB0E0E6, 50, 150); // Lighter blue fog
     this.fog = this.scene.fog;
     
-    // Create camera
+    // Create camera with proper initial position
     this.camera = new THREE.PerspectiveCamera(75, this.width / this.height, 0.1, 1000);
-    this.camera.position.set(0, 2.2, 0);
+    this.camera.position.set(0, 5, 8); // Better initial position
+    console.log("Camera created at position:", this.camera.position);
     
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({
@@ -58,6 +58,7 @@ export class SceneManager {
     
     // Add renderer to DOM
     mountElement.appendChild(this.renderer.domElement);
+    console.log("Renderer added to DOM, canvas size:", this.width, "x", this.height);
     
     // Setup basic lighting
     this.setupLighting();
@@ -67,12 +68,13 @@ export class SceneManager {
   }
   
   private setupLighting(): void {
-    // Ambient light
-    this.ambientLight = new THREE.AmbientLight(0x404040, 1.2);
+    // Ambient light - increased intensity for better visibility
+    this.ambientLight = new THREE.AmbientLight(0x404040, 1.5);
     this.scene.add(this.ambientLight);
+    console.log("Ambient light added with intensity 1.5");
     
-    // Directional light (sun)
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    // Directional light (sun) - increased intensity
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
     this.directionalLight.position.set(15, 20, 10);
     this.directionalLight.castShadow = true;
     this.directionalLight.shadow.mapSize.width = 2048;
@@ -85,6 +87,7 @@ export class SceneManager {
     this.directionalLight.shadow.bias = -0.0005;
     this.directionalLight.shadow.normalBias = 0.02;
     this.scene.add(this.directionalLight);
+    console.log("Directional light added at position:", this.directionalLight.position);
     
     // Tavern light (warm)
     this.tavernLight = new THREE.PointLight(0xffa500, 1.0, 25);
@@ -93,11 +96,13 @@ export class SceneManager {
     this.tavernLight.shadow.mapSize.width = 512;
     this.tavernLight.shadow.mapSize.height = 512;
     this.scene.add(this.tavernLight);
+    console.log("Tavern light added");
     
     // Rim light for atmosphere
     this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.6);
     this.rimLight.position.set(-10, 5, -10);
     this.scene.add(this.rimLight);
+    console.log("Rim light added");
   }
   
   public createDefaultWorld(): void {
@@ -105,21 +110,29 @@ export class SceneManager {
     
     // Create terrain
     this.createTerrain();
+    console.log('Terrain created');
     
     // Create tavern
     this.createTavern();
+    console.log('Tavern created');
     
     // Create forest
     this.createForest();
+    console.log('Forest created');
     
     // Create rocks
     this.createRocks();
+    console.log('Rocks created');
     
     // Create bushes
     this.createBushes();
+    console.log('Bushes created');
     
     // Create skybox
     this.createSkybox();
+    console.log('Skybox created');
+    
+    console.log('Default world creation complete. Total scene children:', this.scene.children.length);
   }
   
   private createTerrain(): void {

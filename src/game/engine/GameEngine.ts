@@ -119,7 +119,7 @@ export class GameEngine {
       // Create the player
       console.log("Creating Player...");
       this.player = new Player(this.scene, this.effectsManager, this.audioManager);
-      console.log("Player created");
+      console.log("Player created at position:", this.player.getPosition());
       
       // Create game systems
       console.log("Creating CombatSystem...");
@@ -131,9 +131,16 @@ export class GameEngine {
       this.movementSystem = new MovementSystem(this.scene, this.camera, this.player, this.inputManager);
       console.log("MovementSystem created");
       
-      // Set initial camera position to better view the player
-      this.camera.position.set(0, 5, 8);
-      this.camera.lookAt(0, 0, 0);
+      // Set proper initial camera position for third-person view
+      const playerPosition = this.player.getPosition();
+      this.camera.position.set(playerPosition.x, playerPosition.y + 5, playerPosition.z + 8);
+      this.camera.lookAt(playerPosition.x, playerPosition.y + 1, playerPosition.z);
+      console.log("Camera positioned at:", this.camera.position);
+      console.log("Camera looking at:", playerPosition.x, playerPosition.y + 1, playerPosition.z);
+      
+      // Log scene children to verify scene content
+      console.log("Scene has", this.scene.children.length, "children");
+      console.log("Scene children types:", this.scene.children.map(child => child.type));
       
       // Set game as initialized
       this.isInitialized = true;
@@ -266,17 +273,17 @@ export class GameEngine {
   private updateCamera(): void {
     const playerPosition = this.player.getPosition();
     
-    // Follow player with some offset
+    // Follow player with some offset - adjusted for better third-person view
     const targetX = playerPosition.x;
     const targetZ = playerPosition.z + 8;
-    const targetY = 5;
+    const targetY = playerPosition.y + 5;
     
     // Smooth camera following
     this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetX, 0.1);
     this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetZ, 0.1);
     this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetY, 0.1);
     
-    // Look at player
+    // Look at player (slightly above player position)
     this.camera.lookAt(playerPosition.x, playerPosition.y + 1, playerPosition.z);
   }
   
@@ -344,6 +351,8 @@ export class GameEngine {
   public handleInput(inputType: string, data?: any): void {
     if (!this.isInitialized || !this.gameState.isPlaying || this.gameState.isPaused) return;
     
+    console.log("Game input received:", inputType, data);
+    
     switch (inputType) {
       case 'attack':
         this.combatSystem.startPlayerAttack();
@@ -356,6 +365,16 @@ export class GameEngine {
       case 'doubleTapForward':
         // Start sprinting
         this.player.startSprint();
+        break;
+      
+      // Movement inputs - forward these to the movement system
+      case 'moveForward':
+      case 'moveBackward':
+      case 'moveLeft':
+      case 'moveRight':
+      case 'sprint':
+        // These are handled by the InputManager and MovementSystem automatically
+        console.log("Movement input:", inputType);
         break;
         
       // Movement inputs are handled by the MovementSystem through InputManager
