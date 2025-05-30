@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameCanvas } from './GameCanvas';
 import { GameHUD } from './UI/GameHUD';
@@ -8,6 +9,9 @@ import { InventoryUI } from './UI/InventoryUI';
 import { SkillTreeUI } from './UI/SkillTreeUI';
 import { QuestLogUI } from './UI/QuestLogUI';
 import { CraftingUI } from './UI/CraftingUI';
+import GameControlPanel from './UI/GameControlPanel';
+import PlayerStatsPanel from './UI/PlayerStatsPanel';
+import GameEngineController from './GameEngineController';
 import GameController, { GameControllerRef } from './GameController';
 import { GameEngine } from '../../game/engine/GameEngine';
 import { PlayerStats, Item, Quest, Skill } from '../../types/GameTypes';
@@ -37,6 +41,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const [gameStarted, setGameStarted] = useState(false);
   const [isInTavern, setIsInTavern] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [engineReady, setEngineReady] = useState(false);
+  const [showStatsPanel, setShowStatsPanel] = useState(false);
 
   // UI state
   const [showInventory, setShowInventory] = useState(false);
@@ -45,37 +51,51 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const [showCrafting, setShowCrafting] = useState(false);
 
   const gameControllerRef = useRef<GameControllerRef>(null);
+  const mountRef = useRef<HTMLDivElement>(null);
+
+  // Handler for engine loading completion
+  const handleEngineLoadingComplete = useCallback(() => {
+    setEngineReady(true);
+    onLoadingComplete?.(); // Forward to parent if needed
+  }, [onLoadingComplete]);
+
+  // Update handlers for engine integration
+  const handleUpdateHealth = useCallback((health: number) => {
+    setPlayerStats(prev => ({ ...prev, health }));
+  }, []);
+
+  const handleUpdateGold = useCallback((gold: number) => {
+    setPlayerStats(prev => ({ ...prev, gold }));
+  }, []);
+
+  const handleUpdateStamina = useCallback((stamina: number) => {
+    setPlayerStats(prev => ({ ...prev, stamina }));
+  }, []);
+
+  const handleUpdateScore = useCallback((score: number) => {
+    // Handle score updates if needed
+    console.log('Score updated:', score);
+  }, []);
+
+  const handleGameOver = useCallback((score: number) => {
+    setIsGameOver(true);
+  }, []);
+
+  const handleLocationChange = useCallback((isInTavern: boolean) => {
+    setIsInTavern(isInTavern);
+  }, []);
 
   const handleGameEngineReady = useCallback((engine: GameEngine) => {
     console.log('Game engine ready!');
     setGameEngine(engine);
     
-    // Call onLoadingComplete when engine is ready
-    if (onLoadingComplete) {
-      onLoadingComplete();
-    }
-    
     // Set up engine callbacks
-    engine.setOnUpdateHealth((health: number) => {
-      setPlayerStats(prev => ({ ...prev, health }));
-    });
-    
-    engine.setOnUpdateGold((gold: number) => {
-      setPlayerStats(prev => ({ ...prev, gold }));
-    });
-    
-    engine.setOnUpdateStamina((stamina: number) => {
-      setPlayerStats(prev => ({ ...prev, stamina }));
-    });
-    
-    engine.setOnGameOver((score: number) => {
-      setIsGameOver(true);
-    });
-    
-    engine.setOnLocationChange((inTavern: boolean) => {
-      setIsInTavern(inTavern);
-    });
-  }, [onLoadingComplete]);
+    engine.setOnUpdateHealth(handleUpdateHealth);
+    engine.setOnUpdateGold(handleUpdateGold);
+    engine.setOnUpdateStamina(handleUpdateStamina);
+    engine.setOnGameOver(handleGameOver);
+    engine.setOnLocationChange(handleLocationChange);
+  }, [handleUpdateHealth, handleUpdateGold, handleUpdateStamina, handleGameOver, handleLocationChange]);
 
   const startGame = useCallback(() => {
     if (gameEngine) {
@@ -88,7 +108,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }
   }, [gameEngine]);
 
-  const handlePause = useCallback(() => {
+  const togglePause = useCallback(() => {
     if (gameEngine) {
       gameEngine.pause();
       setIsPaused(!isPaused);
@@ -98,12 +118,15 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const restartGame = useCallback(() => {
     gameControllerRef.current?.restartGame();
     setGameStarted(true);
+    setIsGameOver(false);
+    setIsPaused(false);
   }, []);
 
   const goToMainMenu = useCallback(() => {
     gameControllerRef.current?.goToMainMenu();
     setGameStarted(false);
     setIsGameOver(false);
+    setIsPaused(false);
   }, []);
 
   // Handle keyboard input
@@ -132,14 +155,18 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         case 'KeyC':
           setShowCrafting(!showCrafting);
           break;
+        case 'KeyT':
+          setShowStatsPanel(!showStatsPanel);
+          break;
         case 'Escape':
-          if (showInventory || showSkillTree || showQuestLog || showCrafting) {
+          if (showInventory || showSkillTree || showQuestLog || showCrafting || showStatsPanel) {
             setShowInventory(false);
             setShowSkillTree(false);
             setShowQuestLog(false);
             setShowCrafting(false);
+            setShowStatsPanel(false);
           } else {
-            handlePause();
+            togglePause();
           }
           break;
       }
@@ -147,7 +174,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameStarted, gameEngine, showInventory, showSkillTree, showQuestLog, showCrafting, handlePause]);
+  }, [gameStarted, gameEngine, showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, togglePause]);
 
   // Update game state from engine
   useEffect(() => {
@@ -175,7 +202,21 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }
 
   return (
-    <div className="relative w-full h-screen overflow-hidden">
+    <div className="relative w-full h-screen overflow-hidden bg-black">
+      <div ref={mountRef} className="w-full h-full" />
+      
+      {/* Engine Controller - handles the THREE.js game engine */}
+      <GameEngineController
+        onUpdateHealth={handleUpdateHealth}
+        onUpdateGold={handleUpdateGold}
+        onUpdateStamina={handleUpdateStamina}
+        onUpdateScore={handleUpdateScore}
+        onGameOver={handleGameOver}
+        onLocationChange={handleLocationChange}
+        onLoadingComplete={handleEngineLoadingComplete}
+        mountElement={mountRef.current}
+      />
+      
       <GameCanvas onGameEngineReady={handleGameEngineReady} />
       
       <GameController
@@ -194,6 +235,30 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           isInTavern={isInTavern}
         />
       )}
+
+      {/* Stats Panel Toggle Button */}
+      <button 
+        onClick={() => setShowStatsPanel(!showStatsPanel)}
+        className="absolute left-4 top-28 z-10 bg-black bg-opacity-50 text-white p-2 rounded-lg hover:bg-opacity-70 transition-colors"
+        title="Press T to toggle stats panel"
+      >
+        Stats
+      </button>
+
+      {/* New Game Control Panel */}
+      <GameControlPanel
+        isPaused={isPaused}
+        onPauseToggle={togglePause}
+        onRestart={restartGame}
+        isGameOver={isGameOver}
+      />
+
+      {/* New Player Stats Panel */}
+      <PlayerStatsPanel
+        playerStats={playerStats}
+        isVisible={showStatsPanel}
+        onClose={() => setShowStatsPanel(false)}
+      />
 
       <InventoryUI
         items={gameControllerRef.current?.inventory || []}
@@ -223,21 +288,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         onClose={() => setShowCrafting(false)}
         onCraft={gameControllerRef.current?.handleCraft || (() => {})}
       />
-
-      {isPaused && !isGameOver && (
-        <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-20">
-          <div className="text-center text-white">
-            <h1 className="text-4xl font-bold mb-4">PAUSED</h1>
-            <p className="text-lg mb-6">Press ESC to resume</p>
-            <GameControls
-              isPaused={isPaused}
-              onPause={handlePause}
-              onRestart={restartGame}
-              className="justify-center"
-            />
-          </div>
-        </div>
-      )}
 
       {isGameOver && (
         <GameOverScreen
