@@ -379,12 +379,16 @@ export class Player {
     this.playerBody.leftHand.rotation.copy(this.bowDrawAnimation.leftHandRestRotation);
     this.playerBody.rightHand.rotation.copy(this.bowDrawAnimation.rightHandRestRotation);
     
+    // Raise hands 20% higher for more forward outward arm extension
+    this.playerBody.leftHand.position.set(0, -0.48, 0); // Raised from -0.6 to -0.48 (20% increase in Y)
+    this.playerBody.rightHand.position.set(0, -0.4, 0);  // Raised from -0.5 to -0.4 (20% increase in Y)
+    
     // Initialize targets
     this.bowDrawAnimation.leftHandTarget.copy(this.bowDrawAnimation.leftHandRestPosition);
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] Enhanced archery stance with improved visibility and hand positioning");
+    console.log("🏹 [Player] Enhanced archery stance with raised hands for better forward arm extension");
   }
   
   private resetToNormalStance(): void {
