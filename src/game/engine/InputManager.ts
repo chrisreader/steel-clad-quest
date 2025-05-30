@@ -82,6 +82,7 @@ export class InputManager {
   
   public initialize(renderer: THREE.WebGLRenderer): void {
     this.renderer = renderer;
+    console.log('InputManager initialized with renderer');
   }
   
   private detectDeviceType(): void {
@@ -158,10 +159,13 @@ export class InputManager {
     this.mouse.x = event.clientX;
     this.mouse.y = event.clientY;
     
-    // Calculate movement if pointer is locked
-    if (this.pointerLocked) {
-      this.mouseMovement.x = event.movementX || 0;
-      this.mouseMovement.y = event.movementY || 0;
+    // Calculate movement
+    this.mouseMovement.x = event.movementX || 0;
+    this.mouseMovement.y = event.movementY || 0;
+    
+    // Always dispatch look event if there's movement, regardless of pointer lock
+    if (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0) {
+      console.log("Mouse movement detected:", this.mouseMovement.x, this.mouseMovement.y);
       
       // Dispatch look event with scaled movement
       this.dispatchInputEvent('look', {
@@ -174,6 +178,8 @@ export class InputManager {
   private handleMouseDown(event: MouseEvent): void {
     // Update mouse buttons state
     this.mouse.buttons |= (1 << event.button);
+    
+    console.log("Mouse button pressed:", event.button);
     
     // Check for double click
     const now = Date.now();
@@ -195,8 +201,14 @@ export class InputManager {
     // Handle specific buttons
     switch (event.button) {
       case 0: // Left mouse button
-        if (!this.pointerLocked && this.renderer) {
-          this.renderer.domElement.requestPointerLock();
+        // Only request pointer lock if we have a valid renderer and element
+        if (!this.pointerLocked && this.renderer && this.renderer.domElement && document.contains(this.renderer.domElement)) {
+          try {
+            console.log("Requesting pointer lock from mouse down");
+            this.renderer.domElement.requestPointerLock();
+          } catch (error) {
+            console.warn("Failed to request pointer lock on mouse down:", error);
+          }
         }
         this.dispatchInputEvent('attack');
         break;
@@ -230,7 +242,11 @@ export class InputManager {
   }
   
   private handlePointerLockChange(): void {
+    const wasLocked = this.pointerLocked;
     this.pointerLocked = document.pointerLockElement === this.renderer?.domElement;
+    
+    console.log("Pointer lock state changed from", wasLocked, "to", this.pointerLocked);
+    
     this.dispatchInputEvent('pointerLockChange', { locked: this.pointerLocked });
   }
   
@@ -477,8 +493,15 @@ export class InputManager {
   }
   
   public requestPointerLock(): void {
-    if (this.renderer && !this.pointerLocked) {
-      this.renderer.domElement.requestPointerLock();
+    if (this.renderer && this.renderer.domElement && !this.pointerLocked && document.contains(this.renderer.domElement)) {
+      try {
+        console.log("Requesting pointer lock");
+        this.renderer.domElement.requestPointerLock();
+      } catch (error) {
+        console.warn("Failed to request pointer lock:", error);
+      }
+    } else {
+      console.warn("Cannot request pointer lock - renderer, element missing, already locked, or element not in DOM");
     }
   }
   

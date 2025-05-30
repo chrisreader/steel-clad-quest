@@ -40,6 +40,7 @@ export class GameEngine {
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private mouseSensitivity: number = 0.002;
   private maxPitch: number = Math.PI / 2 - 0.1; // Prevent over-rotation
+  private pointerLockRequested: boolean = false;
   
   // Callbacks
   private onUpdateHealth: (health: number) => void;
@@ -102,7 +103,7 @@ export class GameEngine {
       this.inputManager.initialize(this.renderer);
       console.log("InputManager created");
       
-      // Setup mouse look controls
+      // Setup mouse look controls (do this after renderer is ready)
       this.setupMouseLookControls();
       
       // Create the effects manager
@@ -183,35 +184,79 @@ export class GameEngine {
   }
   
   private setupMouseLookControls(): void {
+    console.log("Setting up mouse look controls...");
+    
     // Listen for mouse look input
     document.addEventListener('gameInput', (event: Event) => {
       const customEvent = event as CustomEvent;
       const { type, data } = customEvent.detail;
       
-      if (type === 'look' && this.inputManager.isPointerLocked()) {
+      if (type === 'look') {
+        console.log("Look input received:", data);
         this.handleMouseLook(data.x, data.y);
       }
       
       if (type === 'pointerLockChange') {
         console.log("Pointer lock changed:", data.locked);
+        if (!data.locked && this.pointerLockRequested) {
+          // Pointer lock was lost, try to request it again
+          setTimeout(() => {
+            this.requestPointerLockSafely();
+          }, 100);
+        }
       }
     });
     
-    // Request pointer lock on canvas click
-    this.renderer.domElement.addEventListener('click', () => {
-      if (!this.inputManager.isPointerLocked()) {
-        this.inputManager.requestPointerLock();
+    // Request pointer lock on canvas click with better error handling
+    const handleCanvasClick = () => {
+      console.log("Canvas clicked, requesting pointer lock...");
+      this.requestPointerLockSafely();
+    };
+    
+    // Wait a bit to ensure renderer is fully ready
+    setTimeout(() => {
+      if (this.renderer && this.renderer.domElement) {
+        this.renderer.domElement.addEventListener('click', handleCanvasClick);
+        console.log("Canvas click listener added");
+      } else {
+        console.warn("Renderer or canvas not ready for pointer lock setup");
       }
-    });
+    }, 500);
+  }
+  
+  private requestPointerLockSafely(): void {
+    if (!this.renderer || !this.renderer.domElement) {
+      console.warn("Cannot request pointer lock: renderer or canvas not available");
+      return;
+    }
+    
+    // Check if element is still in DOM
+    if (!document.contains(this.renderer.domElement)) {
+      console.warn("Cannot request pointer lock: canvas element not in DOM");
+      return;
+    }
+    
+    try {
+      this.pointerLockRequested = true;
+      this.renderer.domElement.requestPointerLock();
+      console.log("Pointer lock requested successfully");
+    } catch (error) {
+      console.error("Failed to request pointer lock:", error);
+      this.pointerLockRequested = false;
+    }
   }
   
   private handleMouseLook(deltaX: number, deltaY: number): void {
+    console.log("Handling mouse look:", deltaX, deltaY);
+    
     // Update yaw (left/right rotation)
     this.cameraRotation.yaw -= deltaX * this.mouseSensitivity;
     
     // Update pitch (up/down rotation) with clamping
     this.cameraRotation.pitch -= deltaY * this.mouseSensitivity;
     this.cameraRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.cameraRotation.pitch));
+    
+    console.log("Camera rotation updated - Pitch:", this.cameraRotation.pitch, "Yaw:", this.cameraRotation.yaw);
     
     // Apply rotation to camera
     this.updateCameraRotation();
@@ -230,6 +275,8 @@ export class GameEngine {
     
     // Update player rotation to match camera yaw for movement
     this.player.setRotation(this.cameraRotation.yaw);
+    
+    console.log("Camera quaternion updated:", this.camera.quaternion);
   }
   
   private async preloadAudio(): Promise<void> {
