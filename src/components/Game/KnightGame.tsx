@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -74,7 +75,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const [engineReady, setEngineReady] = useState(false);
   const [mountReady, setMountReady] = useState(false);
   
-  // Add inventory state to sync with GameController
+  // Moved inventory state management to KnightGame (top level)
   const [inventory, setInventory] = useState<Item[]>([]);
 
   const gameControllerRef = useRef<GameControllerRef>(null);
@@ -86,11 +87,129 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     isAnyUIOpen
   });
 
-  // Callback to handle inventory updates from GameController
-  const handleInventoryUpdate = useCallback((newInventory: Item[]) => {
-    console.log('KnightGame: Received inventory update:', newInventory);
-    setInventory(newInventory);
-  }, []);
+  // Initialize inventory immediately on component mount (like normal games)
+  useEffect(() => {
+    console.log('[KnightGame] Initializing inventory on mount...');
+    
+    // Steel Sword first (slot 1) - Initialize immediately
+    const initialInventory: Item[] = [
+      { 
+        id: '9', 
+        name: 'Steel Sword', 
+        type: 'weapon' as const, 
+        subtype: 'sword' as const,
+        value: 200, 
+        description: 'A masterfully forged steel blade with razor-sharp edges. This superior weapon offers exceptional balance and deadly precision in combat (+15 attack)', 
+        quantity: 1,
+        equipmentSlot: 'mainhand' as const,
+        stats: { attack: 15 },
+        tier: 'uncommon' as const,
+        icon: 'sword',
+        weaponId: 'steel_sword'
+      },
+      { 
+        id: '1', 
+        name: 'Health Potion', 
+        type: 'potion' as const, 
+        value: 50, 
+        description: 'Restores 50 health', 
+        quantity: 3,
+        icon: 'potion'
+      },
+      { 
+        id: '2', 
+        name: 'Iron Sword', 
+        type: 'weapon' as const, 
+        subtype: 'sword' as const,
+        value: 100, 
+        description: 'A sturdy iron sword (+10 attack)', 
+        quantity: 1,
+        equipmentSlot: 'mainhand' as const,
+        stats: { attack: 10 },
+        tier: 'common' as const,
+        icon: 'sword',
+        weaponId: 'iron_sword'
+      },
+      { 
+        id: '8', 
+        name: 'Wooden Sword', 
+        type: 'weapon' as const, 
+        subtype: 'sword' as const,
+        value: 25, 
+        description: 'A basic wooden sword (+5 attack)', 
+        quantity: 1,
+        equipmentSlot: 'mainhand' as const,
+        stats: { attack: 5 },
+        tier: 'common' as const,
+        icon: 'sword',
+        weaponId: 'wooden_sword'
+      },
+      { 
+        id: '3', 
+        name: 'Leather Helmet', 
+        type: 'armor' as const, 
+        subtype: 'helmet' as const,
+        value: 25, 
+        description: 'Basic leather protection (+2 defense)', 
+        quantity: 1,
+        equipmentSlot: 'helmet' as const,
+        stats: { defense: 2 },
+        tier: 'common' as const
+      },
+      { 
+        id: '4', 
+        name: 'Iron Chestplate', 
+        type: 'armor' as const, 
+        subtype: 'chestplate' as const,
+        value: 150, 
+        description: 'Strong iron armor (+8 defense)', 
+        quantity: 1,
+        equipmentSlot: 'chestplate' as const,
+        stats: { defense: 8 },
+        tier: 'uncommon' as const
+      },
+      { 
+        id: '5', 
+        name: 'Chain Leggings', 
+        type: 'armor' as const, 
+        subtype: 'leggings' as const,
+        value: 75, 
+        description: 'Flexible chain mail (+4 defense)', 
+        quantity: 1,
+        equipmentSlot: 'leggings' as const,
+        stats: { defense: 4 },
+        tier: 'common' as const
+      },
+      { 
+        id: '6', 
+        name: 'Steel Boots', 
+        type: 'armor' as const, 
+        subtype: 'boots' as const,
+        value: 60, 
+        description: 'Sturdy steel boots (+3 defense)', 
+        quantity: 1,
+        equipmentSlot: 'boots' as const,
+        stats: { defense: 3 },
+        tier: 'common' as const
+      },
+      { 
+        id: '7', 
+        name: 'Wooden Shield', 
+        type: 'weapon' as const, 
+        subtype: 'shield' as const,
+        value: 40, 
+        description: 'Basic wooden shield (+5 defense)', 
+        quantity: 1,
+        equipmentSlot: 'offhand' as const,
+        stats: { defense: 5 },
+        tier: 'common' as const
+      }
+    ];
+
+    setInventory(initialInventory);
+    console.log('[KnightGame] Inventory initialized with', initialInventory.length, 'items');
+    console.log('[KnightGame] Steel Sword loaded in slot 1:', initialInventory[0].name);
+  }, []); // Empty dependency array - runs once on mount
 
   // Wait for mount element to be ready
   useEffect(() => {
@@ -204,29 +323,67 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }
   }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen, forceCursorVisible]);
 
-  // Enhanced item use handler
+  // Direct item use handler (simplified)
   const handleUseItem = useCallback((item: Item) => {
-    gameControllerRef.current?.handleUseItem(item);
+    console.log('[KnightGame] Using item:', item.name);
     
-    if (gameEngine) {
-      if (item.type === 'potion') {
+    if (item.type === 'potion' && item.name === 'Health Potion') {
+      console.log(`Used ${item.name}`);
+      if (gameEngine) {
+        const player = gameEngine.getPlayer();
+        player.heal(item.value);
         gameEngine.handleInput('playSound', { soundName: 'item_use' });
       }
     }
   }, [gameEngine]);
 
-  // Enhanced skill upgrade handler
-  const handleUpgradeSkill = useCallback((skill: Skill) => {
-    gameControllerRef.current?.handleUpgradeSkill(skill);
+  // Direct weapon equip handler (simplified)
+  const handleEquipWeapon = useCallback((item: Item) => {
+    console.log('[KnightGame] Equipping weapon:', item.name);
+    
+    if (gameEngine && item.weaponId) {
+      const player = gameEngine.getPlayer();
+      const success = player.equipWeapon(item.weaponId);
+      
+      if (success) {
+        console.log(`Successfully equipped ${item.name}`);
+        // Update player stats based on weapon
+        if (item.stats) {
+          const currentStats = player.getStats();
+          const updatedStats = {
+            ...currentStats,
+            attack: currentStats.attack + (item.stats.attack || 0),
+            attackPower: currentStats.attackPower + (item.stats.attack || 0)
+          };
+          setPlayerStats(updatedStats);
+        }
+      } else {
+        console.error(`Failed to equip ${item.name}`);
+      }
+    }
+  }, [gameEngine, setPlayerStats]);
+
+  // Direct weapon unequip handler (simplified)
+  const handleUnequipWeapon = useCallback(() => {
+    console.log('[KnightGame] Unequipping weapon');
     
     if (gameEngine) {
-      gameEngine.handleInput('playSound', { soundName: 'skill_upgrade' });
+      const player = gameEngine.getPlayer();
+      const success = player.unequipWeapon();
+      
+      if (success) {
+        console.log('Weapon unequipped');
+        // Reset player stats
+        const currentStats = player.getStats();
+        setPlayerStats(currentStats);
+      }
     }
-  }, [gameEngine]);
+  }, [gameEngine, setPlayerStats]);
 
   const startGame = useCallback(() => {
     console.log('Starting knight adventure...');
     console.log('GameEngine available:', !!gameEngine);
+    console.log('Inventory ready with', inventory.length, 'items');
     
     if (gameEngine) {
       console.log('Starting GameEngine...');
@@ -238,8 +395,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     
     setGameStarted(true);
     setIsGameOver(false);
-    gameControllerRef.current?.initializeSampleData();
-  }, [gameEngine, setGameStarted, setIsGameOver]);
+  }, [gameEngine, inventory.length, setGameStarted, setIsGameOver]);
 
   const restartGame = useCallback(() => {
     gameControllerRef.current?.restartGame();
@@ -305,6 +461,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         />
       )}
       
+      {/* Simplified GameController - no longer manages inventory */}
       <GameController
         ref={gameControllerRef}
         gameEngine={gameEngine}
@@ -312,7 +469,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         onGameTimeUpdate={setGameTime}
         onGameOverChange={setIsGameOver}
         onLocationChange={setIsInTavern}
-        onInventoryUpdate={handleInventoryUpdate}
       />
       
       {gameStarted && !isGameOver && (
@@ -351,20 +507,21 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         onClose={() => setShowStatsPanel(false)}
       />
 
+      {/* Direct inventory management - no more complex callbacks */}
       <InventoryUI
         items={inventory}
         isOpen={showInventory}
         onClose={toggleInventory}
         onUseItem={handleUseItem}
-        onEquipWeapon={gameControllerRef.current?.handleEquipWeapon}
-        onUnequipWeapon={gameControllerRef.current?.handleUnequipWeapon}
+        onEquipWeapon={handleEquipWeapon}
+        onUnequipWeapon={handleUnequipWeapon}
       />
 
       <SkillTreeUI
         skills={gameControllerRef.current?.skills || []}
         isOpen={showSkillTree}
         onClose={toggleSkillTree}
-        onUpgradeSkill={handleUpgradeSkill}
+        onUpgradeSkill={gameControllerRef.current?.handleUpgradeSkill || (() => {})}
         availablePoints={playerStats.level - 1}
       />
 
