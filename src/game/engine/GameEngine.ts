@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -18,15 +19,15 @@ export class GameEngine {
   private uiIntegrationManager: UIIntegrationManager;
   
   // Game systems
-  private sceneManager: SceneManager;
-  private inputManager: InputManager;
-  private effectsManager: EffectsManager;
-  private audioManager: AudioManager;
-  private combatSystem: CombatSystem;
-  private movementSystem: MovementSystem;
+  private sceneManager: SceneManager | null = null;
+  private inputManager: InputManager | null = null;
+  private effectsManager: EffectsManager | null = null;
+  private audioManager: AudioManager | null = null;
+  private combatSystem: CombatSystem | null = null;
+  private movementSystem: MovementSystem | null = null;
   
   // Game entities
-  private player: Player;
+  private player: Player | null = null;
   
   // State
   private isInitialized: boolean = false;
@@ -60,9 +61,6 @@ export class GameEngine {
       
       // Create the scene manager using render engine components
       this.sceneManager = new SceneManager(this.mountElement);
-      this.sceneManager.setScene(this.renderEngine.getScene());
-      this.sceneManager.setCamera(this.renderEngine.getCamera());
-      this.sceneManager.setRenderer(this.renderEngine.getRenderer());
       
       // Create default world
       this.sceneManager.createDefaultWorld();
@@ -197,6 +195,8 @@ export class GameEngine {
   }
 
   private async loadAudioWithFallback(id: string): Promise<void> {
+    if (!this.audioManager) return;
+    
     try {
       await this.audioManager.loadSound(`assets/sounds/${id}.mp3`, id, SoundCategory.SFX);
       console.log(`🎮 [GameEngine] Loaded audio: ${id}`);
@@ -240,6 +240,10 @@ export class GameEngine {
   };
   
   private update(deltaTime: number): void {
+    if (!this.movementSystem || !this.inputManager || !this.combatSystem || !this.effectsManager || !this.audioManager || !this.player) {
+      return;
+    }
+    
     // Update movement system first
     this.movementSystem.update(deltaTime);
     
@@ -279,12 +283,14 @@ export class GameEngine {
     
     this.stateManager.pause();
     
-    if (this.stateManager.isPaused()) {
-      this.audioManager.pause('game_music');
-      this.audioManager.pause('tavern_ambience');
-    } else {
-      this.audioManager.resume('game_music');
-      this.audioManager.resume('tavern_ambience');
+    if (this.audioManager) {
+      if (this.stateManager.isPaused()) {
+        this.audioManager.pause('game_music');
+        this.audioManager.pause('tavern_ambience');
+      } else {
+        this.audioManager.resume('game_music');
+        this.audioManager.resume('tavern_ambience');
+      }
     }
   }
   
@@ -295,17 +301,25 @@ export class GameEngine {
     this.stateManager.restart();
     
     // Reset player
-    this.player.setPosition(new THREE.Vector3(0, 0, 2));
+    if (this.player) {
+      this.player.setPosition(new THREE.Vector3(0, 0, 2));
+    }
     
     // Clear enemies and gold
-    this.combatSystem.clear();
+    if (this.combatSystem) {
+      this.combatSystem.clear();
+    }
     
     // Reset first-person camera
-    this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
+    if (this.player) {
+      this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
+    }
     
     // Start ambient sounds
-    this.audioManager.play('tavern_ambience', true);
-    this.audioManager.play('game_music', true);
+    if (this.audioManager) {
+      this.audioManager.play('tavern_ambience', true);
+      this.audioManager.play('game_music', true);
+    }
     
     console.log("🎮 [GameEngine] Game restarted!");
   }
@@ -318,9 +332,9 @@ export class GameEngine {
     
     // Handle pointer lock requests even when game is paused
     if (type === 'requestPointerLock' || type === 'requestPointerUnlock') {
-      if (type === 'requestPointerLock') {
+      if (type === 'requestPointerLock' && this.inputManager) {
         this.inputManager.requestPointerLock();
-      } else if (type === 'requestPointerUnlock') {
+      } else if (type === 'requestPointerUnlock' && this.inputManager) {
         this.inputManager.exitPointerLock();
       }
       return;
@@ -395,7 +409,7 @@ export class GameEngine {
     return this.renderEngine.getRenderer();
   }
   
-  public getPlayer(): Player {
+  public getPlayer(): Player | null {
     return this.player;
   }
   
@@ -414,51 +428,31 @@ export class GameEngine {
   public dispose(): void {
     console.log("🎮 [GameEngine] Disposing game engine...");
     
-    // Dispose managers
+    // Dispose managers (check for null to avoid runtime errors)
     this.stateManager.dispose();
     this.uiIntegrationManager.dispose();
     this.renderEngine.dispose();
     
-    // Dispose systems
-    this.movementSystem.dispose();
-    this.audioManager.dispose();
-    this.combatSystem.dispose();
-    this.effectsManager.dispose();
-    this.inputManager.dispose();
-    this.sceneManager.dispose();
+    // Dispose systems (check for null to avoid runtime errors)
+    if (this.movementSystem) {
+      this.movementSystem.dispose();
+    }
+    if (this.audioManager) {
+      this.audioManager.dispose();
+    }
+    if (this.combatSystem) {
+      this.combatSystem.dispose();
+    }
+    if (this.effectsManager) {
+      this.effectsManager.dispose();
+    }
+    if (this.inputManager) {
+      this.inputManager.dispose();
+    }
+    if (this.sceneManager) {
+      this.sceneManager.dispose();
+    }
     
     console.log("🎮 [GameEngine] Game engine disposed!");
-  }
-  
-  private async preloadAudio(): Promise<void> {
-    const preloadPromises = [
-      this.loadAudioWithFallback('sword_swing'),
-      this.loadAudioWithFallback('sword_hit'),
-      this.loadAudioWithFallback('player_hurt'),
-      this.loadAudioWithFallback('enemy_hurt'),
-      this.loadAudioWithFallback('enemy_death'),
-      this.loadAudioWithFallback('gold_pickup'),
-      this.loadAudioWithFallback('footstep'),
-      this.loadAudioWithFallback('tavern_ambience'),
-      this.loadAudioWithFallback('forest_ambience'),
-      this.loadAudioWithFallback('game_music')
-    ];
-    
-    await Promise.allSettled(preloadPromises);
-    console.log("🎮 [GameEngine] Audio preloading complete");
-  }
-
-  private async loadAudioWithFallback(id: string): Promise<void> {
-    try {
-      await this.audioManager.loadSound(`assets/sounds/${id}.mp3`, id, SoundCategory.SFX);
-      console.log(`🎮 [GameEngine] Loaded audio: ${id}`);
-    } catch (e) {
-      try {
-        await this.audioManager.loadSound(`/sounds/${id}.mp3`, id, SoundCategory.SFX);
-        console.log(`🎮 [GameEngine] Loaded audio from alternate path: ${id}`);
-      } catch (e2) {
-        console.warn(`🎮 [GameEngine] Failed to load audio: ${id} - continuing without sound`);
-      }
-    }
   }
 }
