@@ -33,15 +33,16 @@ export class TextureGenerator {
     });
   }
   
-  public static createWoodTexture(): THREE.Texture {
-    return this.cache.getTexture('wood', () => {
+  public static createWoodTexture(color?: number): THREE.Texture {
+    const baseColor = color || 0x8B4513;
+    return this.cache.getTexture(`wood_${baseColor}`, () => {
       const canvas = document.createElement('canvas');
       canvas.width = 256;
       canvas.height = 256;
       const ctx = canvas.getContext('2d')!;
       
       // Simple wood texture
-      ctx.fillStyle = '#8B4513';
+      ctx.fillStyle = `#${baseColor.toString(16).padStart(6, '0')}`;
       ctx.fillRect(0, 0, 256, 256);
       
       // Wood grain lines
@@ -51,6 +52,36 @@ export class TextureGenerator {
         ctx.beginPath();
         ctx.moveTo(0, i * 12);
         ctx.lineTo(256, i * 12 + Math.random() * 20 - 10);
+        ctx.stroke();
+      }
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      return texture;
+    });
+  }
+  
+  public static createMetalTexture(color?: number): THREE.Texture {
+    const baseColor = color || 0x888888;
+    return this.cache.getTexture(`metal_${baseColor}`, () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d')!;
+      
+      // Simple metal texture
+      ctx.fillStyle = `#${baseColor.toString(16).padStart(6, '0')}`;
+      ctx.fillRect(0, 0, 256, 256);
+      
+      // Metal scratches and highlights
+      for (let i = 0; i < 30; i++) {
+        const alpha = Math.random() * 0.3 + 0.1;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.lineWidth = Math.random() * 2 + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(Math.random() * 256, Math.random() * 256);
+        ctx.lineTo(Math.random() * 256, Math.random() * 256);
         ctx.stroke();
       }
       

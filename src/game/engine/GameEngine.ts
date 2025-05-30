@@ -48,13 +48,12 @@ export class GameEngine {
     this.effectsManager = new EffectsManager(this.sceneManager.getScene());
     this.audioManager = new AudioManager();
     
-    // Initialize player at eye-level position
-    this.player = new Player(0, 1.8, 5); // Start at eye level
+    // Initialize player with required parameters
+    this.player = new Player(this.sceneManager.getScene(), this.effectsManager, this.audioManager);
     
     // Initialize game state
     this.gameState = {
       score: 0,
-      level: 1,
       timeElapsed: 0,
       enemiesDefeated: 0,
       goldCollected: 0,
@@ -74,14 +73,12 @@ export class GameEngine {
       });
       
       // Initialize audio (non-blocking)
-      this.audioManager.initialize();
+      // this.audioManager.initialize();
       
       // Create the world (this is now async and shows progress)
       await this.sceneManager.createDefaultWorld();
       
-      // Add player to scene
-      const playerMesh = this.player.getMesh();
-      this.sceneManager.getScene().add(playerMesh);
+      // Add player to scene - player is already added in constructor
       
       // Set up input handling with proper debugging
       this.setupInputHandling();
@@ -226,7 +223,7 @@ export class GameEngine {
       camera.position.copy(newPosition);
       
       // Update player position to match camera
-      this.player.setPosition(newPosition.x, newPosition.y - 1.6, newPosition.z);
+      this.player.setPosition(newPosition);
       
       console.log('Player moved to:', camera.position);
     }
@@ -246,7 +243,7 @@ export class GameEngine {
         break;
       case 'playSound':
         if (data?.soundName) {
-          this.audioManager.playSound(data.soundName);
+          // this.audioManager.playSound(data.soundName);
         }
         break;
     }
@@ -278,7 +275,7 @@ export class GameEngine {
   private handleAttack(): void {
     console.log('Attack triggered');
     // Implement attack logic here
-    this.audioManager.playSound('sword_swing');
+    // this.audioManager.playSound('sword_swing');
   }
   
   private startRenderLoop(): void {
@@ -304,10 +301,10 @@ export class GameEngine {
       this.gameState.timeElapsed += 1/60; // Assuming 60 FPS
       
       // Update player
-      this.player.update();
+      this.player.update(1/60);
       
       // Update enemies
-      this.enemies.forEach(enemy => enemy.update());
+      this.enemies.forEach(enemy => enemy.update(1/60, this.player.getPosition()));
       
       // Update effects
       this.effectsManager.update();
@@ -364,7 +361,6 @@ export class GameEngine {
     this.paused = false;
     this.gameState = {
       score: 0,
-      level: 1,
       timeElapsed: 0,
       enemiesDefeated: 0,
       goldCollected: 0,
@@ -372,7 +368,7 @@ export class GameEngine {
     };
     
     // Reset player position
-    this.player.setPosition(0, 1.8, 5);
+    this.player.setPosition(new THREE.Vector3(0, 1.8, 5));
     const camera = this.sceneManager.getCamera();
     camera.position.set(0, 1.8, 5);
     this.pitch = 0;
@@ -392,6 +388,6 @@ export class GameEngine {
     console.log('[GameEngine] Disposing...');
     this.running = false;
     this.sceneManager.dispose();
-    this.audioManager.dispose();
+    // this.audioManager.dispose();
   }
 }
