@@ -498,33 +498,37 @@ export class Player {
   
   private trackSwordTip(): void {
     // Get the actual sword tip position using blade mesh world position
-    const bladeTipPosition = new THREE.Vector3();
+    const swordTipPosition = new THREE.Vector3();
     
-    // The blade extends 1.8 units in the -Z direction from its center
-    // So the tip is at the blade's position + half the blade length in local -Z
-    const bladeLocalTip = new THREE.Vector3(0, 0, -0.9); // Half of 1.8 blade length
+    // Create a local position at the blade tip (blade extends 1.8 units, so tip is at -0.9 from center)
+    const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
     
-    // Transform to world coordinates
-    this.bladeMesh.localToWorld(bladeLocalTip.clone());
-    bladeTipPosition.copy(bladeLocalTip);
+    // Transform to world coordinates using the blade's world matrix
+    const worldTipPosition = bladeLocalTip.clone();
+    this.bladeMesh.localToWorld(worldTipPosition);
+    
+    swordTipPosition.copy(worldTipPosition);
     
     // Add to trail positions
-    this.swordTipPositions.push(bladeTipPosition.clone());
+    this.swordTipPositions.push(swordTipPosition.clone());
     
     // Limit trail length
     if (this.swordTipPositions.length > this.maxTrailLength) {
       this.swordTipPositions.shift();
     }
     
-    console.log("🗡️ [Player] Tracking sword tip at:", bladeTipPosition);
+    console.log("🗡️ [Player] Tracking sword tip at:", swordTipPosition);
   }
   
   private createEnhancedSwooshEffect(): void {
-    // Get actual sword tip position
+    // Get actual sword tip position using the proper world transformation
     const swordTipPosition = new THREE.Vector3();
     const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
-    this.bladeMesh.localToWorld(bladeLocalTip.clone());
-    swordTipPosition.copy(bladeLocalTip);
+    
+    // Transform to world coordinates
+    const worldTipPosition = bladeLocalTip.clone();
+    this.bladeMesh.localToWorld(worldTipPosition);
+    swordTipPosition.copy(worldTipPosition);
     
     // Calculate sword direction based on recent tip positions
     let swordDirection = new THREE.Vector3(1, 0, 0); // Default direction
@@ -534,14 +538,8 @@ export class Player {
       swordDirection = recent.clone().sub(previous).normalize();
     }
     
-    // Create multiple swoosh effects for better visibility
+    // Create only the swoosh effect - no flashing squares or dust
     this.effectsManager.createSwooshEffect(swordTipPosition, swordDirection);
-    
-    // Create additional attack effect at tip
-    this.effectsManager.createAttackEffect(swordTipPosition, 0xFFFFFF);
-    
-    // Create dust cloud at sword position
-    this.effectsManager.createDustCloud(swordTipPosition);
     
     console.log("🌪️ [Player] Enhanced swoosh effect created at sword tip:", swordTipPosition);
   }
@@ -563,8 +561,11 @@ export class Player {
     // Use actual sword tip position for combat hitbox
     const swordTipPosition = new THREE.Vector3();
     const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
-    this.bladeMesh.localToWorld(bladeLocalTip.clone());
-    swordTipPosition.copy(bladeLocalTip);
+    
+    // Transform to world coordinates
+    const worldTipPosition = bladeLocalTip.clone();
+    this.bladeMesh.localToWorld(worldTipPosition);
+    swordTipPosition.copy(worldTipPosition);
     
     // Update sword hitbox position
     this.swordHitBox.position.copy(swordTipPosition);
