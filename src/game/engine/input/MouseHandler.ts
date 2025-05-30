@@ -1,0 +1,141 @@
+
+import * as THREE from 'three';
+
+export class MouseHandler {
+  private mouse: { x: number; y: number; buttons: number } = { x: 0, y: 0, buttons: 0 };
+  private previousMouse: { x: number; y: number } = { x: 0, y: 0 };
+  private mouseMovement: { x: number; y: number } = { x: 0, y: 0 };
+  private lastMouseDown: number = 0;
+  private doubleClickThreshold: number = 300;
+  private doubleClickDistance: number = 10;
+  private isDoubleClick: boolean = false;
+  private wheelDelta: number = 0;
+  private isPointerLocked: boolean = false;
+  
+  private eventDispatcher: (type: string, data?: any) => void;
+  
+  constructor(eventDispatcher: (type: string, data?: any) => void) {
+    this.eventDispatcher = eventDispatcher;
+    this.setupEventListeners();
+  }
+  
+  private setupEventListeners(): void {
+    document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    document.addEventListener('mousedown', this.handleMouseDown.bind(this));
+    document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    document.addEventListener('wheel', this.handleMouseWheel.bind(this));
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  
+  private handleMouseMove(event: MouseEvent): void {
+    // Store previous position
+    this.previousMouse.x = this.mouse.x;
+    this.previousMouse.y = this.mouse.y;
+    
+    // Update current position
+    this.mouse.x = event.clientX;
+    this.mouse.y = event.clientY;
+    
+    // Calculate movement (use raw movement values without scaling here)
+    this.mouseMovement.x = event.movementX || 0;
+    this.mouseMovement.y = event.movementY || 0;
+    
+    // CRITICAL FIX: Only dispatch look events when pointer is actually locked
+    if (this.isPointerLocked && (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0)) {
+      console.log("🖱️ [MouseHandler] Mouse movement dispatched (pointer locked):", this.mouseMovement.x, this.mouseMovement.y);
+      
+      this.eventDispatcher('look', {
+        x: this.mouseMovement.x,
+        y: this.mouseMovement.y
+      });
+    } else if (!this.isPointerLocked && (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0)) {
+      console.log("🖱️ [MouseHandler] Mouse movement ignored (pointer not locked):", this.mouseMovement.x, this.mouseMovement.y);
+    }
+  }
+  
+  private handleMouseDown(event: MouseEvent): void {
+    // Update mouse buttons state
+    this.mouse.buttons |= (1 << event.button);
+    
+    console.log("Mouse button pressed:", event.button);
+    
+    // Check for double click
+    const now = Date.now();
+    const timeSinceLastClick = now - this.lastMouseDown;
+    const distanceFromLastClick = Math.sqrt(
+      Math.pow(this.mouse.x - this.previousMouse.x, 2) +
+      Math.pow(this.mouse.y - this.previousMouse.y, 2)
+    );
+    
+    if (timeSinceLastClick < this.doubleClickThreshold && distanceFromLastClick < this.doubleClickDistance) {
+      this.isDoubleClick = true;
+      this.eventDispatcher('doubleClick', { button: event.button });
+    } else {
+      this.isDoubleClick = false;
+    }
+    
+    this.lastMouseDown = now;
+    
+    // Handle specific buttons
+    switch (event.button) {
+      case 0: // Left mouse button
+        this.eventDispatcher('attack');
+        break;
+      case 2: // Right mouse button
+        this.eventDispatcher('secondaryAction');
+        break;
+      case 1: // Middle mouse button
+        this.eventDispatcher('tertiaryAction');
+        break;
+    }
+  }
+  
+  private handleMouseUp(event: MouseEvent): void {
+    // Update mouse buttons state
+    this.mouse.buttons &= ~(1 << event.button);
+    
+    // Handle specific buttons
+    switch (event.button) {
+      case 0: // Left mouse button
+        this.eventDispatcher('attackEnd');
+        break;
+      case 2: // Right mouse button
+        this.eventDispatcher('secondaryActionEnd');
+        break;
+    }
+  }
+  
+  private handleMouseWheel(event: WheelEvent): void {
+    this.wheelDelta = Math.sign(event.deltaY);
+    this.eventDispatcher('scroll', { delta: this.wheelDelta });
+  }
+  
+  public getMousePosition(): { x: number; y: number } {
+    return { ...this.mouse };
+  }
+  
+  public getMouseDelta(): { x: number; y: number } {
+    return { ...this.mouseMovement };
+  }
+  
+  public resetMouseDelta(): void {
+    this.mouseMovement.x = 0;
+    this.mouseMovement.y = 0;
+  }
+  
+  public isButtonPressed(button: number): boolean {
+    return !!(this.mouse.buttons & (1 << button));
+  }
+  
+  public setPointerLocked(locked: boolean): void {
+    this.isPointerLocked = locked;
+  }
+  
+  public dispose(): void {
+    document.removeEventListener('mousemove', this.handleMouseMove);
+    document.removeEventListener('mousedown', this.handleMouseDown);
+    document.removeEventListener('mouseup', this.handleMouseUp);
+    document.removeEventListener('wheel', this.handleMouseWheel);
+    document.removeEventListener('contextmenu', (e) => e.preventDefault());
+  }
+}
