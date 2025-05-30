@@ -588,13 +588,6 @@ export class GameEngine {
     switch (type) {
       case 'attack':
         console.log("🎮 [GameEngine] Processing attack input");
-        
-        // CRITICAL FIX: Ignore attack when UI is open
-        if (this.isUIOpen) {
-          console.log(`🚫 [GameEngine] Attack ignored - UI is open`);
-          return;
-        }
-        
         if (this.combatSystem) {
           this.combatSystem.startPlayerAttack();
         } else {

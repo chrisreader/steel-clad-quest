@@ -60,140 +60,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const gameControllerRef = useRef<GameControllerRef>(null);
   const engineControllerRef = useRef<GameEngineControllerRef>(null);
   const mountRef = useRef<HTMLDivElement>(null);
-  
-  // NEW: Refs for cursor management
-  const cursorIntervalRef = useRef<number | null>(null);
-  const pointerLockChangeListenerRef = useRef<(() => void) | null>(null);
-
-  // ENHANCED: More aggressive cursor visibility function
-  const forceCursorVisible = useCallback(() => {
-    console.log('[KnightGame] 🔧 Forcing cursor visible with enhanced strategy...');
-    
-    // Strategy 1: Remove any existing overrides first
-    const existing = document.getElementById('knight-game-cursor-override');
-    if (existing) existing.remove();
-    
-    // Strategy 2: Create comprehensive CSS override with maximum specificity
-    const style = document.createElement('style');
-    style.id = 'knight-game-cursor-override';
-    style.textContent = `
-      body, html { cursor: auto !important; }
-      body *, html * { cursor: auto !important; }
-      #root, #root * { cursor: auto !important; }
-      .game-mount, .game-mount * { cursor: auto !important; }
-      canvas, canvas * { cursor: auto !important; }
-      [style*="cursor"] { cursor: auto !important; }
-      div[style*="cursor"] { cursor: auto !important; }
-    `;
-    document.head.appendChild(style);
-    
-    // Strategy 3: Direct style application with retries
-    const applyDirectStyles = () => {
-      document.body.style.setProperty('cursor', 'auto', 'important');
-      document.documentElement.style.setProperty('cursor', 'auto', 'important');
-      
-      if (mountRef.current) {
-        mountRef.current.style.setProperty('cursor', 'auto', 'important');
-        
-        // Apply to canvas and all children
-        const canvas = mountRef.current.querySelector('canvas');
-        if (canvas) {
-          canvas.style.setProperty('cursor', 'auto', 'important');
-        }
-        
-        // Apply to all child elements
-        const allElements = mountRef.current.querySelectorAll('*');
-        allElements.forEach(el => {
-          (el as HTMLElement).style.setProperty('cursor', 'auto', 'important');
-        });
-      }
-    };
-    
-    // Apply immediately
-    applyDirectStyles();
-    
-    // Strategy 4: Retry with delays to override any async style changes
-    [10, 50, 100, 200].forEach(delay => {
-      setTimeout(applyDirectStyles, delay);
-    });
-    
-    console.log('[KnightGame] ✅ Enhanced cursor visibility applied');
-  }, []);
-
-  // NEW: Start continuous cursor enforcement when UI is open
-  const startCursorEnforcement = useCallback(() => {
-    console.log('[KnightGame] 🚀 Starting continuous cursor enforcement');
-    
-    // Clear any existing interval
-    if (cursorIntervalRef.current) {
-      clearInterval(cursorIntervalRef.current);
-    }
-    
-    // Force cursor visible immediately
-    forceCursorVisible();
-    
-    // Set up continuous enforcement every 100ms while UI is open
-    cursorIntervalRef.current = window.setInterval(() => {
-      if (isAnyUIOpen()) {
-        forceCursorVisible();
-      } else {
-        // Stop enforcement when no UI is open
-        if (cursorIntervalRef.current) {
-          clearInterval(cursorIntervalRef.current);
-          cursorIntervalRef.current = null;
-        }
-      }
-    }, 100);
-  }, [forceCursorVisible]);
-
-  // NEW: Stop cursor enforcement and clean up
-  const stopCursorEnforcement = useCallback(() => {
-    console.log('[KnightGame] 🛑 Stopping cursor enforcement');
-    
-    if (cursorIntervalRef.current) {
-      clearInterval(cursorIntervalRef.current);
-      cursorIntervalRef.current = null;
-    }
-    
-    // Remove CSS override
-    const existing = document.getElementById('knight-game-cursor-override');
-    if (existing) existing.remove();
-    
-    // Reset cursor styles
-    document.body.style.cursor = '';
-    document.documentElement.style.cursor = '';
-    if (mountRef.current) {
-      mountRef.current.style.cursor = '';
-      
-      const canvas = mountRef.current.querySelector('canvas');
-      if (canvas) {
-        canvas.style.cursor = '';
-      }
-    }
-  }, []);
-
-  // NEW: Enhanced pointer lock change listener
-  const setupPointerLockListener = useCallback(() => {
-    if (pointerLockChangeListenerRef.current) {
-      document.removeEventListener('pointerlockchange', pointerLockChangeListenerRef.current);
-    }
-    
-    const handlePointerLockChange = () => {
-      const isLocked = document.pointerLockElement !== null;
-      console.log('[KnightGame] 🔒 Pointer lock changed:', isLocked ? 'LOCKED' : 'UNLOCKED');
-      
-      if (!isLocked && isAnyUIOpen()) {
-        // Pointer lock was released and UI is open - ensure cursor is visible
-        console.log('[KnightGame] 👆 Pointer unlocked with UI open - forcing cursor visible');
-        setTimeout(() => {
-          forceCursorVisible();
-        }, 10);
-      }
-    };
-    
-    pointerLockChangeListenerRef.current = handlePointerLockChange;
-    document.addEventListener('pointerlockchange', handlePointerLockChange);
-  }, [forceCursorVisible, isAnyUIOpen]);
 
   // Wait for mount element to be ready
   useEffect(() => {
@@ -201,7 +67,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     if (mountRef.current) {
       console.log('[KnightGame] Mount element is ready, setting mountReady to true');
       setMountReady(true);
-      setupPointerLockListener(); // Set up pointer lock listener when mount is ready
     } else {
       console.log('[KnightGame] Mount element not ready yet');
       // Try again on next tick if not ready
@@ -209,12 +74,11 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         if (mountRef.current) {
           console.log('[KnightGame] Mount element ready on retry');
           setMountReady(true);
-          setupPointerLockListener();
         }
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [setupPointerLockListener]);
+  }, []);
 
   // Handler for engine loading completion
   const handleEngineLoadingComplete = useCallback(() => {
@@ -250,38 +114,57 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     gameEngine.setUIState(anyUIOpen);
   }, [gameEngine, isAnyUIOpen]);
 
-  // ENHANCED: Improved cursor management with immediate enforcement
+  // Enhanced pointer lock management with better debugging and fallbacks
   useEffect(() => {
     if (!gameEngine || !gameStarted) return;
 
     const anyUIOpen = isAnyUIOpen();
-    console.log('[KnightGame] 🎯 Cursor management - UI open:', anyUIOpen);
+    console.log('[KnightGame] Pointer lock management - UI open:', anyUIOpen);
+    console.log('[KnightGame] Current pointer lock state:', document.pointerLockElement !== null);
 
     if (anyUIOpen) {
-      // IMMEDIATE: Start aggressive cursor enforcement
-      console.log('[KnightGame] 🚨 UI opened - starting cursor enforcement');
-      startCursorEnforcement();
+      // Release pointer lock when any UI opens
+      console.log('[KnightGame] UI opened - releasing pointer lock');
       
-      // Release pointer lock
-      console.log('[KnightGame] 🔓 Releasing pointer lock');
+      // Direct fallback method
       if (document.pointerLockElement) {
+        console.log('[KnightGame] Directly calling document.exitPointerLock()');
         document.exitPointerLock();
       }
       
-      // Also notify game engine
+      // Also try through game engine
       if (gameEngine) {
         gameEngine.handleInput('requestPointerUnlock');
       }
       
-    } else {
-      // Stop cursor enforcement and request pointer lock when all UIs are closed
-      console.log('[KnightGame] 🔒 All UIs closed - stopping cursor enforcement');
-      stopCursorEnforcement();
+      // Force cursor visibility with CSS
+      document.body.style.cursor = 'auto';
+      if (mountRef.current) {
+        mountRef.current.style.cursor = 'auto';
+      }
       
+      // Add retry mechanism for stubborn pointer locks
+      setTimeout(() => {
+        if (document.pointerLockElement && anyUIOpen) {
+          console.log('[KnightGame] Retry: Force releasing pointer lock');
+          document.exitPointerLock();
+          document.body.style.cursor = 'auto';
+        }
+      }, 50);
+      
+    } else {
+      // Request pointer lock when all UIs are closed (with small delay for smooth transition)
+      console.log('[KnightGame] All UIs closed - preparing to request pointer lock');
       setTimeout(() => {
         // Double-check UI state hasn't changed
         if (!isAnyUIOpen() && gameStarted && !isGameOver) {
           console.log('[KnightGame] Re-locking pointer after UI close');
+          
+          // Reset cursor style
+          document.body.style.cursor = '';
+          if (mountRef.current) {
+            mountRef.current.style.cursor = '';
+          }
           
           if (gameEngine) {
             gameEngine.handleInput('requestPointerLock');
@@ -291,20 +174,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         }
       }, 100);
     }
-  }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen, startCursorEnforcement, stopCursorEnforcement]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (cursorIntervalRef.current) {
-        clearInterval(cursorIntervalRef.current);
-      }
-      if (pointerLockChangeListenerRef.current) {
-        document.removeEventListener('pointerlockchange', pointerLockChangeListenerRef.current);
-      }
-      stopCursorEnforcement();
-    };
-  }, [stopCursorEnforcement]);
+  }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen]);
 
   // Update handlers for engine integration
   const handleUpdateHealth = useCallback((health: number) => {
@@ -400,7 +270,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     setIsPaused(false);
   }, [gameEngine]);
 
-  // ENHANCED: Improved keyboard input handler with immediate cursor enforcement
+  // Enhanced keyboard input handler with improved UI management
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (!gameStarted || !gameEngine) return;
@@ -453,48 +323,23 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           break;
         case 'KeyI':
           console.log('[KnightGame] I key pressed - toggling inventory');
-          const newInventoryState = !showInventory;
-          setShowInventory(newInventoryState);
-          // Start cursor enforcement immediately when opening inventory
-          if (newInventoryState) {
-            startCursorEnforcement();
-          }
+          setShowInventory(!showInventory);
           break;
         case 'KeyK':
           console.log('[KnightGame] K key pressed - toggling skill tree');
-          const newSkillTreeState = !showSkillTree;
-          setShowSkillTree(newSkillTreeState);
-          // Start cursor enforcement immediately when opening skill tree
-          if (newSkillTreeState) {
-            startCursorEnforcement();
-          }
+          setShowSkillTree(!showSkillTree);
           break;
         case 'KeyQ':
           console.log('[KnightGame] Q key pressed - toggling quest log');
-          const newQuestLogState = !showQuestLog;
-          setShowQuestLog(newQuestLogState);
-          // Start cursor enforcement immediately when opening quest log
-          if (newQuestLogState) {
-            startCursorEnforcement();
-          }
+          setShowQuestLog(!showQuestLog);
           break;
         case 'KeyC':
           console.log('[KnightGame] C key pressed - toggling crafting');
-          const newCraftingState = !showCrafting;
-          setShowCrafting(newCraftingState);
-          // Start cursor enforcement immediately when opening crafting
-          if (newCraftingState) {
-            startCursorEnforcement();
-          }
+          setShowCrafting(!showCrafting);
           break;
         case 'KeyT':
           console.log('[KnightGame] T key pressed - toggling stats panel');
-          const newStatsState = !showStatsPanel;
-          setShowStatsPanel(newStatsState);
-          // Start cursor enforcement immediately when opening stats panel
-          if (newStatsState) {
-            startCursorEnforcement();
-          }
+          setShowStatsPanel(!showStatsPanel);
           break;
         case 'Escape':
           if (showInventory || showSkillTree || showQuestLog || showCrafting || showStatsPanel) {
@@ -516,7 +361,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [gameStarted, gameEngine, showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, togglePause, isAnyUIOpen, startCursorEnforcement]);
+  }, [gameStarted, gameEngine, showInventory, showSkillTree, showQuestLog, showCrafting, showStatsPanel, togglePause, isAnyUIOpen]);
 
   // Also handle keyup events for movement
   useEffect(() => {
@@ -610,11 +455,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       {/* Stats Panel Toggle Button */}
       {gameStarted && (
         <button 
-          onClick={() => {
-            const newState = !showStatsPanel;
-            setShowStatsPanel(newState);
-            if (newState) startCursorEnforcement();
-          }}
+          onClick={() => setShowStatsPanel(!showStatsPanel)}
           className="absolute left-4 top-28 z-10 bg-black bg-opacity-50 text-white p-2 rounded-lg hover:bg-opacity-70 transition-colors"
           title="Press T to toggle stats panel"
         >
