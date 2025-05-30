@@ -246,16 +246,19 @@ export class Player {
   }
   
   private initializeBowAnimationPositions(): void {
-    // Enhanced rest positions for proper archery stance - fixing shoulder and hand positioning
-    this.bowDrawAnimation.leftHandRestPosition.set(-0.3, 1.8, -0.5); // More forward and up for bow grip
+    // FIXED: Centered shoulder and hand positioning for proper bow grip
+    // Left hand centered horizontally from player's perspective to grip bow handle
+    this.bowDrawAnimation.leftHandRestPosition.set(-0.3, 2.7, -0.5); // Raised hand by 50% to 2.7
     this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.6, -0.2); // Close to string position
     
-    // FIXED: Lower shoulder by 50% and raise hand position for proper bow grip
+    // FIXED: Dramatically lowered shoulder position - centered at player's perspective
     const baseShoulder = Math.PI / 8; // Natural shoulder position
+    const centeredShoulder = ((baseShoulder - 0.1) * 0.5) * 0.5; // Reduced by another 50%
+    
     this.bowDrawAnimation.leftArmRestRotation.set(
-      (baseShoulder - 0.1) * 0.5, // Shoulder down 50%
-      -0.4, // Extended outward to reach bow
-      0.2   // Slight upward angle for hand to grip bow handle
+      centeredShoulder, // Much lower shoulder, centered at player perspective
+      -0.6, // Extended outward horizontally to reach bow handle
+      0.3   // Upward angle for proper grip positioning
     );
     
     this.bowDrawAnimation.rightArmRestRotation.set(
@@ -265,27 +268,27 @@ export class Player {
     );
     
     // Enhanced draw positions with more dramatic movement
-    this.bowDrawAnimation.leftHandDrawPosition.set(-0.3, 1.8, -0.5); // Left hand stays steady on bow
+    this.bowDrawAnimation.leftHandDrawPosition.set(-0.3, 2.7, -0.5); // Left hand stays steady on bow
     this.bowDrawAnimation.rightHandDrawPosition.set(0.9, 1.6, 0.3); // Right hand to anchor point (more dramatic)
     
     // Enhanced arm rotations during draw - more pronounced movement
     this.bowDrawAnimation.leftArmDrawRotation.set(
-      (baseShoulder - 0.1) * 0.5, // Left arm stays steady
-      -0.4,
-      0.2
+      centeredShoulder, // Left arm stays at centered shoulder position
+      -0.6, // Maintain horizontal extension
+      0.3   // Maintain grip angle
     );
     
     this.bowDrawAnimation.rightArmDrawRotation.set(
-      baseShoulder + 0.3, // More pronounced pull back
-      1.0,  // Significant rotation toward face
-      -0.5  // Elbow back and up
+      baseShoulder + 0.4, // More pronounced pull back
+      1.2,  // Significant rotation toward face
+      -0.6  // Elbow back and up
     );
     
     // Bow orientations - horizontal from start
     this.bowDrawAnimation.bowRestRotation.set(0, Math.PI / 2, 0);
     this.bowDrawAnimation.bowDrawRotation.set(0, Math.PI / 2, 0);
     
-    console.log("🏹 [Player] Enhanced bow animation positions initialized with corrected arm positioning");
+    console.log("🏹 [Player] FIXED: Bow animation positions with centered shoulder and raised hand for proper grip");
   }
   
   public equipWeapon(weaponId: string): boolean {
