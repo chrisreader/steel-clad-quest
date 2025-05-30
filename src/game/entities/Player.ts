@@ -258,51 +258,56 @@ export class Player {
   }
   
   private initializeBowAnimationPositions(): void {
-    // Initialize hand rotation for bow holding (vertical bow orientation)
-    this.bowDrawAnimation.leftHandRestRotation.set(0, 0, 0); // Keep hand neutral for vertical bow
-    this.bowDrawAnimation.rightHandRestRotation.set(0, 0, 0); // Keep hand neutral
+    // Set proper hand rotations for vertical bow holding
+    this.bowDrawAnimation.leftHandRestRotation.set(-Math.PI / 6, 0, Math.PI / 2); // Rotate hand to grip vertical bow handle
+    this.bowDrawAnimation.rightHandRestRotation.set(0, 0, 0); // Keep right hand neutral
     
-    // Hand rotations during draw
-    this.bowDrawAnimation.leftHandDrawRotation.set(0, 0, 0); // Left hand stays steady
+    // Hand rotations during draw - left hand stays gripping, right hand pulls
+    this.bowDrawAnimation.leftHandDrawRotation.set(-Math.PI / 6, 0, Math.PI / 2); // Maintain grip orientation
     this.bowDrawAnimation.rightHandDrawRotation.set(0, 0, 0); // Right hand stays neutral
     
-    // ... keep existing code (arm positioning logic)
-    this.bowDrawAnimation.leftHandRestPosition.set(-0.6, 1.6, -0.4);
-    this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.6, -0.2);
+    // Set realistic arm positions for archery stance
+    this.bowDrawAnimation.leftHandRestPosition.set(-0.8, 1.6, -0.5); // Left arm extended forward
+    this.bowDrawAnimation.rightHandRestPosition.set(0.2, 1.5, -0.3); // Right arm ready position
     
     const baseShoulder = Math.PI / 8;
     
+    // Left arm: Extended forward for bow holding
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder * 2.925,
-      -0.6,
-      0.3
+      baseShoulder + 0.4, // Slight upward angle
+      -0.8, // Angled across body
+      0.2   // Slight outward rotation
     );
     
+    // Right arm: Ready to draw position
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder * 1.4375,
-      0.2,
-      -0.1
+      baseShoulder + 0.2, // Slightly raised
+      0.1,  // Forward position
+      -0.1  // Slight inward rotation
     );
     
-    this.bowDrawAnimation.leftHandDrawPosition.set(-0.6, 1.6, -0.4);
-    this.bowDrawAnimation.rightHandDrawPosition.set(0.9, 1.6, -0.15);
+    // Drawing positions - left arm stays steady, right arm pulls back
+    this.bowDrawAnimation.leftHandDrawPosition.set(-0.8, 1.6, -0.5); // Left hand stays in place
+    this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.5, -0.2);  // Right hand pulls back
     
+    // Drawing arm rotations
     this.bowDrawAnimation.leftArmDrawRotation.set(
-      baseShoulder * 2.925,
-      -0.6,
-      0.3
+      baseShoulder + 0.4, // Maintain bow holding angle
+      -0.8, // Keep extended position
+      0.2   // Maintain outward rotation
     );
     
     this.bowDrawAnimation.rightArmDrawRotation.set(
-      baseShoulder + 0.6,
-      1.2,
-      -0.6
+      baseShoulder + 0.7, // Pull back higher
+      1.0,  // Pulled back position
+      -0.5  // More inward rotation when drawing
     );
     
+    // Bow rotations - keep vertical throughout
     this.bowDrawAnimation.bowRestRotation.set(0, 0, 0); // Vertical bow
-    this.bowDrawAnimation.bowDrawRotation.set(0, 0, 0); // Keep vertical
+    this.bowDrawAnimation.bowDrawRotation.set(0, 0, 0); // Stay vertical
     
-    console.log("🏹 [Player] Bow animation initialized with vertical orientation and hand control");
+    console.log("🏹 [Player] Bow animation initialized with realistic hand gripping rotations");
   }
   
   public equipWeapon(weaponId: string): boolean {
@@ -331,15 +336,15 @@ export class Player {
       // Attach bow to left HAND for proper control
       this.playerBody.leftHand.add(weapon.getMesh());
       
-      // Position bow vertically with handle at hand center
-      weapon.getMesh().position.set(0, 0, 0); // Centered in hand
+      // Position bow handle in the palm/grip area of the hand
+      weapon.getMesh().position.set(0, -0.1, 0.05); // Slightly forward and down for grip
       weapon.getMesh().rotation.set(0, 0, 0); // Vertical orientation
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
       // Set initial archery stance positions
       this.setArcheryStance();
       
-      console.log(`🏹 [Player] Bow equipped vertically in left hand with independent hand control`);
+      console.log(`🏹 [Player] Bow equipped vertically in left hand with realistic grip positioning`);
     } else {
       // Attach melee weapon to right hand
       this.playerBody.rightHand.add(weapon.getMesh());
@@ -362,15 +367,15 @@ export class Player {
   }
   
   private setArcheryStance(): void {
-    // Set both arms to archery ready position
-    this.playerBody.leftArm.position.copy(this.bowDrawAnimation.leftHandRestPosition);
-    this.playerBody.rightArm.position.copy(this.bowDrawAnimation.rightHandRestPosition);
+    // Set arms to proper archery positions (not hand positions!)
+    this.playerBody.leftArm.position.set(-0.8, 1.4, -0.3);  // Extended forward for bow holding
+    this.playerBody.rightArm.position.set(0.3, 1.4, -0.2);  // Ready to draw position
     
     // Set arm rotations for archery stance
     this.playerBody.leftArm.rotation.copy(this.bowDrawAnimation.leftArmRestRotation);
     this.playerBody.rightArm.rotation.copy(this.bowDrawAnimation.rightArmRestRotation);
     
-    // Set hand rotations for vertical bow holding
+    // Set hand rotations for realistic bow gripping
     this.playerBody.leftHand.rotation.copy(this.bowDrawAnimation.leftHandRestRotation);
     this.playerBody.rightHand.rotation.copy(this.bowDrawAnimation.rightHandRestRotation);
     
@@ -379,7 +384,7 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] Set to archery stance with vertical bow in left hand");
+    console.log("🏹 [Player] Set to realistic archery stance with proper hand gripping");
   }
   
   private resetToNormalStance(): void {
@@ -947,10 +952,10 @@ export class Player {
       // Enhanced progressive draw animation with hand control
       const drawProgress = Math.min(chargeLevel * 1.2, 1.0);
       
-      // Left arm: Stays steady holding the bow
+      // Left arm: Stays steady holding the bow with slight adjustment
       const leftArmRotation = new THREE.Euler(
-        this.bowDrawAnimation.leftArmRestRotation.x - (drawProgress * 0.05),
-        this.bowDrawAnimation.leftArmRestRotation.y - (drawProgress * 0.1),
+        this.bowDrawAnimation.leftArmRestRotation.x + (drawProgress * 0.1), // Slight lift
+        this.bowDrawAnimation.leftArmRestRotation.y - (drawProgress * 0.1), // Minor angle adjustment
         this.bowDrawAnimation.leftArmRestRotation.z + (drawProgress * 0.05)
       );
       
@@ -961,9 +966,18 @@ export class Player {
         this.bowDrawAnimation.rightArmRestRotation.z - (drawProgress * 0.6)
       );
       
-      // Hand rotations - keep hands neutral to maintain vertical bow
-      const leftHandRotation = new THREE.Euler(0, 0, 0); // Keep left hand steady for vertical grip
-      const rightHandRotation = new THREE.Euler(0, 0, 0); // Keep right hand neutral
+      // Hand rotations - left hand maintains grip, right hand adjusts for string pull
+      const leftHandRotation = new THREE.Euler(
+        this.bowDrawAnimation.leftHandRestRotation.x + (drawProgress * 0.05), // Slight grip adjustment
+        this.bowDrawAnimation.leftHandRestRotation.y,
+        this.bowDrawAnimation.leftHandRestRotation.z
+      );
+      
+      const rightHandRotation = new THREE.Euler(
+        drawProgress * 0.2, // Slight curl for string grip
+        0,
+        drawProgress * -0.3 // Rotate for pulling motion
+      );
       
       // Smooth interpolation for arms
       this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
@@ -986,7 +1000,7 @@ export class Player {
         this.playerBody.rightArm.rotation.z, rightArmRotation.z, lerpSpeed
       );
       
-      // Smooth interpolation for hands - maintain vertical bow orientation
+      // Smooth interpolation for hands - maintain realistic gripping
       this.playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
         this.playerBody.leftHand.rotation.x, leftHandRotation.x, lerpSpeed
       );
@@ -1037,7 +1051,7 @@ export class Player {
         this.playerBody.rightArm.rotation.z, this.bowDrawAnimation.rightArmRestRotation.z, lerpSpeed
       );
       
-      // Return hands to rest position (maintaining vertical bow)
+      // Return hands to rest gripping position
       this.playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
         this.playerBody.leftHand.rotation.x, this.bowDrawAnimation.leftHandRestRotation.x, lerpSpeed
       );
@@ -1059,7 +1073,7 @@ export class Player {
       );
     }
     
-    // Keep bow vertical and straight up and down throughout (now controlled by hand orientation)
+    // Keep bow vertical and straight up and down throughout
     if (this.equippedWeapon) {
       const bowMesh = this.equippedWeapon.getMesh();
       bowMesh.rotation.x = THREE.MathUtils.lerp(bowMesh.rotation.x, 0, lerpSpeed);
