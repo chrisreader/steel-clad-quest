@@ -11,7 +11,7 @@ export enum SoundCategory {
 interface Sound {
   id: string;
   audio: THREE.Audio | THREE.PositionalAudio;
-  buffer: THREE.AudioBuffer;
+  buffer: AudioBuffer;
   category: SoundCategory;
   volume: number;
   isLooping: boolean;
