@@ -19,12 +19,17 @@ interface KnightGameProps {
   onLoadingComplete?: () => void;
 }
 
-// Add interface for GameEngineController ref
 interface GameEngineControllerRef {
   restart: () => void;
   pause: () => void;
   resume: () => void;
   getEngine: () => GameEngine | null;
+}
+
+interface LoadingProgress {
+  stage: string;
+  progress: number;
+  total: number;
 }
 
 export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => {
@@ -51,6 +56,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const [engineReady, setEngineReady] = useState(false);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [mountReady, setMountReady] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // UI state
   const [showInventory, setShowInventory] = useState(false);
@@ -70,7 +77,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       setMountReady(true);
     } else {
       console.log('[KnightGame] Mount element not ready yet');
-      // Try again on next tick if not ready
       const timer = setTimeout(() => {
         if (mountRef.current) {
           console.log('[KnightGame] Mount element ready on retry');
@@ -85,8 +91,10 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const handleEngineLoadingComplete = useCallback(() => {
     console.log('Engine loading completed, setting engineReady to true');
     setEngineReady(true);
+    setIsLoading(false);
+    setLoadingProgress(null);
     setGameEngine(engineControllerRef.current?.getEngine() || null);
-    onLoadingComplete?.(); // Forward to parent to hide loading screen
+    onLoadingComplete?.();
   }, [onLoadingComplete]);
 
   // Update handlers for engine integration
@@ -103,7 +111,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, []);
 
   const handleUpdateScore = useCallback((score: number) => {
-    // Handle score updates if needed
     console.log('Score updated:', score);
   }, []);
 
@@ -117,10 +124,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Enhanced item use handler that connects both controllers
   const handleUseItem = useCallback((item: Item) => {
-    // Call GameController method for game logic
     gameControllerRef.current?.handleUseItem(item);
     
-    // Play sound effect through GameEngine
     if (gameEngine) {
       if (item.type === 'potion') {
         gameEngine.handleInput('playSound', { soundName: 'item_use' });
@@ -130,10 +135,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Enhanced skill upgrade handler
   const handleUpgradeSkill = useCallback((skill: Skill) => {
-    // Call GameController method for skill logic
     gameControllerRef.current?.handleUpgradeSkill(skill);
     
-    // Play upgrade sound effect
     if (gameEngine) {
       gameEngine.handleInput('playSound', { soundName: 'skill_upgrade' });
     }
@@ -143,6 +146,8 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     console.log('Starting knight adventure...');
     setGameStarted(true);
     setIsGameOver(false);
+    setIsLoading(true);
+    setLoadingProgress({ stage: 'Initializing...', progress: 0, total: 6 });
     gameControllerRef.current?.initializeSampleData();
   }, []);
 
@@ -154,7 +159,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, [gameEngine, isPaused]);
 
   const restartGame = useCallback(() => {
-    // Restart both controllers
     gameControllerRef.current?.restartGame();
     engineControllerRef.current?.restart();
     
@@ -250,6 +254,29 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     <div className="relative w-full h-screen overflow-hidden bg-black">
       <div ref={mountRef} className="w-full h-full" />
       
+      {/* Loading Screen with Progress */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black z-50">
+          <div className="text-center text-white">
+            <h1 className="text-4xl font-bold mb-4">Knight's Quest</h1>
+            {loadingProgress && (
+              <>
+                <p className="mb-4">{loadingProgress.stage}</p>
+                <div className="w-64 h-3 bg-gray-800 rounded-full overflow-hidden mb-2">
+                  <div 
+                    className="h-full bg-blue-500 transition-all duration-300 rounded-full"
+                    style={{ width: `${(loadingProgress.progress / loadingProgress.total) * 100}%` }}
+                  ></div>
+                </div>
+                <p className="text-sm text-gray-400">
+                  {loadingProgress.progress} / {loadingProgress.total}
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      
       {/* Only render Engine Controller when mount element is ready */}
       {mountReady && (
         <GameEngineController
@@ -274,7 +301,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         onLocationChange={setIsInTavern}
       />
       
-      {gameStarted && !isGameOver && (
+      {gameStarted && !isGameOver && !isLoading && (
         <GameHUD 
           playerStats={playerStats} 
           gameTime={gameTime} 
@@ -283,7 +310,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       )}
 
       {/* Stats Panel Toggle Button */}
-      {gameStarted && (
+      {gameStarted && !isLoading && (
         <button 
           onClick={() => setShowStatsPanel(!showStatsPanel)}
           className="absolute left-4 top-28 z-10 bg-black bg-opacity-50 text-white p-2 rounded-lg hover:bg-opacity-70 transition-colors"
@@ -294,7 +321,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       )}
 
       {/* New Game Control Panel */}
-      {gameStarted && (
+      {gameStarted && !isLoading && (
         <GameControlPanel
           isPaused={isPaused}
           onPauseToggle={togglePause}
