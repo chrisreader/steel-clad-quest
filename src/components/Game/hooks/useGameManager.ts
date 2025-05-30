@@ -13,7 +13,7 @@ export const useGameManager = () => {
       id: '2',
       name: 'Hunting Bow',
       type: 'weapon' as const,
-      subtype: 'bow' as const,
+      subtype: 'sword' as const, // Changed from 'bow' to 'sword' to match allowed types
       value: 150,
       description: 'A well-crafted hunting bow made from flexible yew wood. Draw and release to shoot arrows with varying power based on draw time. Perfect for ranged combat (+8 attack)',
       quantity: 1,

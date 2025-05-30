@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig, WeaponStats } from '../BaseWeapon';
 
@@ -103,8 +102,16 @@ export class HuntingBow extends BaseWeapon {
   }
 
   public getBladeReference(): THREE.Mesh {
-    // For bow, return the first child as reference
-    return this.mesh.children[0] as THREE.Mesh;
+    // For bow, return the first child as reference, but cast as Mesh
+    const firstChild = this.mesh.children[0];
+    if (firstChild instanceof THREE.Mesh) {
+      return firstChild;
+    }
+    
+    // Fallback: create a simple mesh if no suitable child found
+    const fallbackGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+    const fallbackMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    return new THREE.Mesh(fallbackGeometry, fallbackMaterial);
   }
 
   public startDrawing(): void {

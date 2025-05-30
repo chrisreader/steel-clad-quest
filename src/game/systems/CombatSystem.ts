@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -67,7 +68,7 @@ export class CombatSystem {
   }
   
   private updateBowDrawing(deltaTime: number): void {
-    const currentWeapon = this.player.getCurrentWeapon();
+    const currentWeapon = this.player.getEquippedWeapon(); // Changed from getCurrentWeapon
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
       // Update bow charge
       if (typeof currentWeapon.updateCharge === 'function') {
@@ -77,7 +78,7 @@ export class CombatSystem {
   }
   
   public startPlayerAttack(): void {
-    const currentWeapon = this.player.getCurrentWeapon();
+    const currentWeapon = this.player.getEquippedWeapon(); // Changed from getCurrentWeapon
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
       this.startBowDraw();
@@ -87,7 +88,7 @@ export class CombatSystem {
   }
   
   public stopPlayerAttack(): void {
-    const currentWeapon = this.player.getCurrentWeapon();
+    const currentWeapon = this.player.getEquippedWeapon(); // Changed from getCurrentWeapon
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.isDrawingBow) {
       this.releaseBowString();
@@ -99,7 +100,7 @@ export class CombatSystem {
     this.isDrawingBow = true;
     this.bowDrawStartTime = Date.now();
     
-    const currentWeapon = this.player.getCurrentWeapon();
+    const currentWeapon = this.player.getEquippedWeapon(); // Changed from getCurrentWeapon
     if (currentWeapon && typeof currentWeapon.startDrawing === 'function') {
       currentWeapon.startDrawing();
     }
@@ -112,7 +113,7 @@ export class CombatSystem {
     console.log("🏹 [CombatSystem] Releasing bow string");
     this.isDrawingBow = false;
     
-    const currentWeapon = this.player.getCurrentWeapon();
+    const currentWeapon = this.player.getEquippedWeapon(); // Changed from getCurrentWeapon
     if (!currentWeapon || currentWeapon.getConfig().type !== 'bow') return;
     
     // Get charge level and calculate damage/speed
@@ -130,7 +131,7 @@ export class CombatSystem {
     
     // Calculate arrow direction (forward from player)
     const playerPosition = this.player.getPosition();
-    const cameraDirection = this.player.getCameraDirection();
+    const cameraDirection = new THREE.Vector3(0, 0, -1); // Simple forward direction for now
     
     // Shoot arrow
     const arrowStartPos = playerPosition.clone().add(new THREE.Vector3(0, 1.5, 0));

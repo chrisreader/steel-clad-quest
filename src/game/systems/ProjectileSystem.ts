@@ -83,8 +83,9 @@ export class ProjectileSystem {
         // Play hit sound
         this.audioManager.play('arrow_hit');
         
-        // Create hit effect
-        this.effectsManager.createBloodEffect(arrowPosition);
+        // Create blood effect with direction - added missing direction parameter
+        const direction = new THREE.Vector3(0, 0, 1); // Simple forward direction
+        this.effectsManager.createBloodEffect(arrowPosition, direction);
         
         // Remove arrow
         arrow.dispose();

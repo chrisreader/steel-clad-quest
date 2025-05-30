@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
@@ -170,8 +169,8 @@ export class Arrow {
     // Play impact sound
     this.audioManager.play('arrow_impact');
     
-    // Create small dust effect
-    this.effectsManager.createDustEffect(this.position);
+    // Create small dust effect - changed from createDustEffect to createDustCloud
+    this.effectsManager.createDustCloud(this.position);
   }
 
   public getPosition(): THREE.Vector3 {
