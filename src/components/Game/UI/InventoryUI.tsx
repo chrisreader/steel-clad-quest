@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Item, EquippedItems, InventorySlot as IInventorySlot, EquipmentSlotType } from '../../../types/GameTypes';
 import { EquipmentSlot } from './EquipmentSlot';
 import { InventorySlot } from './InventorySlot';
@@ -31,19 +30,46 @@ export const InventoryUI: React.FC<InventoryUIProps> = ({
     offhand: null,
   });
 
-  // Initialize 9 inventory slots with all items (including swords)
+  // Initialize 9 inventory slots
   const [inventorySlots, setInventorySlots] = useState<IInventorySlot[]>(() => {
     const slots: IInventorySlot[] = [];
     for (let i = 0; i < 9; i++) {
-      const item = items[i] || null;
       slots.push({
         id: i,
-        item: item,
-        isEmpty: !item
+        item: null,
+        isEmpty: true
       });
     }
     return slots;
   });
+
+  // Sync inventory slots with items prop
+  useEffect(() => {
+    console.log('InventoryUI: Syncing with items prop:', items);
+    setInventorySlots(prevSlots => {
+      const newSlots = [...prevSlots];
+      
+      // Clear all slots first
+      newSlots.forEach(slot => {
+        slot.item = null;
+        slot.isEmpty = true;
+      });
+      
+      // Fill slots with items from prop
+      items.forEach((item, index) => {
+        if (index < 9) { // Only fill up to 9 slots
+          newSlots[index] = {
+            id: index,
+            item: item,
+            isEmpty: false
+          };
+        }
+      });
+      
+      console.log('InventoryUI: Updated slots:', newSlots);
+      return newSlots;
+    });
+  }, [items]);
 
   const [draggedItem, setDraggedItem] = useState<{ item: Item; source: 'inventory' | 'equipment'; sourceId: number | EquipmentSlotType } | null>(null);
 

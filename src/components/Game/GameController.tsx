@@ -31,8 +31,22 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
     const [skills, setSkills] = useState<Skill[]>([]);
 
     const initializeSampleData = useCallback(() => {
-      // Enhanced sample inventory with weapon IDs
+      // Steel Sword first (slot 1)
       setInventory([
+        { 
+          id: '9', 
+          name: 'Steel Sword', 
+          type: 'weapon', 
+          subtype: 'sword',
+          value: 200, 
+          description: 'A masterfully forged steel blade with razor-sharp edges. This superior weapon offers exceptional balance and deadly precision in combat (+15 attack)', 
+          quantity: 1,
+          equipmentSlot: 'mainhand',
+          stats: { attack: 15 },
+          tier: 'uncommon',
+          icon: 'sword',
+          weaponId: 'steel_sword'
+        },
         { 
           id: '1', 
           name: 'Health Potion', 
@@ -54,7 +68,7 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
           stats: { attack: 10 },
           tier: 'common',
           icon: 'sword',
-          weaponId: 'iron_sword' // Links to weapon system
+          weaponId: 'iron_sword'
         },
         { 
           id: '8', 
@@ -69,20 +83,6 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
           tier: 'common',
           icon: 'sword',
           weaponId: 'wooden_sword'
-        },
-        { 
-          id: '9', 
-          name: 'Steel Sword', 
-          type: 'weapon', 
-          subtype: 'sword',
-          value: 200, 
-          description: 'A masterfully forged steel blade with razor-sharp edges. This superior weapon offers exceptional balance and deadly precision in combat (+15 attack)', 
-          quantity: 1,
-          equipmentSlot: 'mainhand',
-          stats: { attack: 15 },
-          tier: 'uncommon',
-          icon: 'sword',
-          weaponId: 'steel_sword'
         },
         { 
           id: '3', 
@@ -180,8 +180,7 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
         }
       ]);
 
-      // Player starts with no weapon equipped - all weapons are in inventory for drag-and-drop
-      console.log("Player spawned with all weapons available in inventory for manual equipping");
+      console.log("Steel Sword spawned in inventory slot 1 (index 0)");
     }, []);
 
     const restartGame = useCallback(() => {
