@@ -30,23 +30,23 @@ export class BowWalkAnimation {
     
     // BOW READY STANCE: Left arm raised for bow, right arm at side
     
-    // Left arm - WEAPON ARM: raised bow-holding position with reduced swing
-    const leftArmBaseX = Math.PI / 4;   // 45° raised position
-    const leftArmBaseY = 0;             // FIXED: NO Y rotation - keep natural like empty hands
-    const leftArmBaseZ = -Math.PI / 6;  // Forward angle for better POV visibility
+    // Left arm - WEAPON ARM: raised bow-holding position at 40 degrees with reduced swing
+    const leftArmBaseX = Math.PI * 40 / 180;   // FIXED: 40° raised position (40 degrees converted to radians)
+    const leftArmBaseY = 0;                    // NO Y rotation - keep natural like empty hands
+    const leftArmBaseZ = -Math.PI / 6;         // Forward angle for better POV visibility
     
     // Reduced swing for bow-holding arm to maintain control
     playerBody.leftArm.rotation.x = leftArmBaseX - (armSwing * 0.3);
-    playerBody.leftArm.rotation.y = leftArmBaseY; // FIXED: Always 0 - no inward rotation
+    playerBody.leftArm.rotation.y = leftArmBaseY; // NO Y rotation
     playerBody.leftArm.rotation.z = leftArmBaseZ;
     
     // Right arm - normal side position with walking movement (will be adjusted by draw animation)
     const rightArmBaseX = Math.PI / 6;  // Moderate upward angle
-    const rightArmBaseY = 0;            // FIXED: NO Y rotation - keep natural like empty hands
+    const rightArmBaseY = 0;            // NO Y rotation - keep natural like empty hands
     const rightArmBaseZ = -Math.PI / 8; // Forward angle for better POV visibility
     
     playerBody.rightArm.rotation.x = rightArmBaseX + (armSwing * 0.5);
-    playerBody.rightArm.rotation.y = rightArmBaseY; // FIXED: Always 0 - no inward rotation
+    playerBody.rightArm.rotation.y = rightArmBaseY; // NO Y rotation
     playerBody.rightArm.rotation.z = rightArmBaseZ;
     
     // Elbows - natural movement for bow stance
@@ -80,16 +80,16 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    console.log(`🏹 [BowWalkAnimation] FIXED - Left arm raised with NO Y rotation - Sprint: ${isSprinting}`);
+    console.log(`🏹 [BowWalkAnimation] FIXED - Left arm raised to 40° with NO Y rotation - Sprint: ${isSprinting}`);
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to BOW READY STANCE (not empty hands stance)
+    // Reset to BOW READY STANCE with 40 degree positioning
     
-    // FIXED: Left arm: Raised bow-holding position - NO Y rotation
-    playerBody.leftArm.rotation.set(Math.PI / 4, 0, -Math.PI / 6);
+    // Left arm: Raised bow-holding position at 40 degrees - NO Y rotation
+    playerBody.leftArm.rotation.set(Math.PI * 40 / 180, 0, -Math.PI / 6);
     
-    // FIXED: Right arm: Ready position - NO Y rotation
+    // Right arm: Ready position - NO Y rotation
     playerBody.rightArm.rotation.set(Math.PI / 6, 0, -Math.PI / 8);
     
     if (playerBody.leftElbow) {
@@ -106,6 +106,6 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] FIXED reset - Left arm raised upward/forward with NO Y rotation');
+    console.log('🏹 [BowWalkAnimation] FIXED reset - Left arm raised to 40° upward/forward with NO Y rotation');
   }
 }
