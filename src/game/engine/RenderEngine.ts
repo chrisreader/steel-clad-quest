@@ -32,7 +32,8 @@ export class RenderEngine {
     
     // Create scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x87CEEB);
+    // Remove hardcoded background to allow skybox to be visible
+    this.scene.background = null;
     
     // Create camera
     this.camera = new THREE.PerspectiveCamera(
@@ -62,7 +63,7 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    console.log("🎨 [RenderEngine] Initialized with enhanced mouse smoothing");
+    console.log("🎨 [RenderEngine] Initialized with skybox background support");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
