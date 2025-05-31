@@ -18,7 +18,7 @@ export class Player {
   private position: THREE.Vector3;
   private velocity: THREE.Vector3;
   private isSprinting: boolean = false;
-  private isAttacking: boolean = false;
+  private isAttackingState: boolean = false;
   private health: number = 100;
   private maxHealth: number = 100;
   private stamina: number = 100;
@@ -69,7 +69,6 @@ export class Player {
         slash: { x: 0, y: 0, z: 0 }
       },
       trail: null,
-      currentPhase: 'neutral',
       progress: 0
     };
     
@@ -149,16 +148,16 @@ export class Player {
     
     // Store references in playerBody
     this.playerBody = {
-      body: body,
-      head: head,
-      leftArm: leftArm,
-      rightArm: rightArm,
-      leftElbow: leftElbow,
-      rightElbow: rightElbow,
-      leftWrist: leftWrist,
-      rightWrist: rightWrist,
-      leftLeg: leftLeg,
-      rightLeg: rightLeg
+      body: body as any,
+      head: head as any,
+      leftArm: leftArm as any,
+      rightArm: rightArm as any,
+      leftElbow: leftElbow as any,
+      rightElbow: rightElbow as any,
+      leftWrist: leftWrist as any,
+      rightWrist: rightWrist as any,
+      leftLeg: leftLeg as any,
+      rightLeg: rightLeg as any
     };
     
     console.log('🏃 [Player] Player body created with articulated joints');
@@ -187,7 +186,7 @@ export class Player {
     this.weaponSwing.duration = weaponConfig.swingAnimation.duration;
     this.weaponSwing.phases = weaponConfig.swingAnimation.phases;
     this.weaponSwing.rotations = weaponConfig.swingAnimation.rotations;
-    this.isAttacking = true;
+    this.isAttackingState = true;
     this.hitEnemies.clear();
     
     // Create new sword swing animation instance
@@ -207,7 +206,7 @@ export class Player {
       
       // Check if animation is complete
       if (!this.weaponSwing.isActive) {
-        this.isAttacking = false;
+        this.isAttackingState = false;
         this.swordSwingAnimation = null;
         console.log('🗡️ [Player] Sword swing animation completed');
       }
@@ -237,11 +236,11 @@ export class Player {
   }
   
   public isAttacking(): boolean {
-    return this.isAttacking;
+    return this.isAttackingState;
   }
   
   // Movement methods
-  public move(direction: THREE.Vector3): void {
+  public move(direction: THREE.Vector3, deltaTime?: number): void {
     this.velocity.copy(direction);
     this.group.position.add(direction);
     this.position.copy(this.group.position);
@@ -256,7 +255,7 @@ export class Player {
     return this.position.clone();
   }
   
-  public setVisualRotation(rotation: number): void {
+  public setVisualRotation(rotation: number, speed?: number): void {
     this.group.rotation.y = rotation;
   }
   
@@ -296,6 +295,10 @@ export class Player {
   // Weapon methods
   public equipWeapon(weaponId: string): void {
     this.weaponManager.equipWeapon(weaponId, this.playerBody.rightWrist);
+  }
+  
+  public unequipWeapon(): void {
+    this.weaponManager.unequipWeapon();
   }
   
   public getEquippedWeapon(): BaseWeapon | null {
