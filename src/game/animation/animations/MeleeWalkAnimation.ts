@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -16,10 +17,6 @@ export class MeleeWalkAnimation {
     isSprinting: boolean,
     isAttacking: boolean = false
   ): void {
-    // RESTORED: Keep original walking physics - shoulder angle and elbow positions that were working
-    const shoulderAngle = Math.PI / 36; // 5° forward shoulder angle  
-    const walkingElbowAngle = 0.05; // RESTORED: Original small positive elbow bend for walking
-    
     // Legs - normal walking animation
     const legSwing = Math.sin(walkCycle) * this.config.legSwingIntensity;
     playerBody.leftLeg.rotation.x = legSwing;
@@ -28,7 +25,7 @@ export class MeleeWalkAnimation {
     // Arms - different base positions for weapon vs non-weapon arms
     const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     
-    // MELEE READY STANCE: Right arm raised and HORIZONTAL with RESTORED correct physics
+    // MELEE READY STANCE: Right arm raised and PARALLEL with body, left arm at side
     
     // Left arm - normal side position with walking swing
     const leftArmBaseX = Math.PI / 8; // Normal side position
@@ -39,47 +36,47 @@ export class MeleeWalkAnimation {
     playerBody.leftArm.rotation.y = leftArmBaseY;
     playerBody.leftArm.rotation.z = leftArmBaseZ;
     
-    // Right arm - WEAPON ARM: Perfect horizontal position with RESTORED walking physics
+    // Right arm - WEAPON ARM: raised ready position PARALLEL with body and reduced swing
     if (!isAttacking) {
-      // Apply reduced swing intensity for weapon arm to maintain ready stance
-      playerBody.rightArm.rotation.x = shoulderAngle + (armSwing * 0.3); // 5° + small walking motion
-      playerBody.rightArm.rotation.y = 0; // FIXED: Always 0 - parallel
-      playerBody.rightArm.rotation.z = 0; // FIXED: Always 0 - perfectly parallel
+      const rightArmBaseX = Math.PI / 3;   // 60° raised position - parallel with body
+      const rightArmBaseY = 0;             // FIXED: Always 0 - parallel with body
+      const rightArmBaseZ = 0;             // FIXED: Always 0 - perfectly parallel
+      
+      // Reduced swing intensity for weapon arm to maintain ready stance
+      playerBody.rightArm.rotation.x = rightArmBaseX + (armSwing * 0.3);
+      playerBody.rightArm.rotation.y = rightArmBaseY; // FIXED: Always 0 - parallel
+      playerBody.rightArm.rotation.z = rightArmBaseZ; // FIXED: Always 0 - parallel
     }
     
-    // Elbows - RESTORED correct walking physics
+    // Elbows - subtle movement during walking
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.x = Math.sin(walkCycle + Math.PI) * this.config.elbowMovement + 0.05;
     }
     if (playerBody.rightElbow && !isAttacking) {
-      // RESTORED: Original walking elbow physics that were working correctly
-      playerBody.rightElbow.rotation.x = walkingElbowAngle + (Math.sin(walkCycle) * (this.config.elbowMovement * 0.3)); // RESTORED original working values
+      // FIXED: DOWNWARD elbow movement for weapon arm to maintain horizontal blade
+      playerBody.rightElbow.rotation.x = Math.sin(walkCycle) * (this.config.elbowMovement * 0.5) - 0.05; // NEGATIVE downward bend
     }
     
-    console.log(`⚔️ [MeleeWalkAnimation] RESTORED walking physics - Shoulder: +${(shoulderAngle * 180 / Math.PI).toFixed(1)}°, Elbow: ${(walkingElbowAngle * 180 / Math.PI).toFixed(1)}° - Attacking: ${isAttacking}`);
+    console.log(`⚔️ [MeleeWalkAnimation] FIXED - Right arm raised PARALLEL with body, DOWNWARD elbow - Attacking: ${isAttacking}`);
   }
   
   public reset(playerBody: PlayerBody): void {
-    // RESTORED: Original correct reset positioning that was working
-    const shoulderAngle = Math.PI / 36; // 5° forward shoulder angle  
-    const restElbowAngle = 0.05; // RESTORED: Original small positive elbow bend for rest position
-    
-    // Reset to MELEE READY STANCE with RESTORED correct physics
+    // Reset to MELEE READY STANCE (not empty hands stance)
     
     // Left arm: Normal side position
     playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
     
-    // RESTORED: Right arm at correct horizontal position with original working elbow
-    playerBody.rightArm.rotation.set(shoulderAngle, 0, 0); // Exactly 5° forward
+    // FIXED: Right arm: Raised ready position PARALLEL with body
+    playerBody.rightArm.rotation.set(Math.PI / 3, 0, 0); // 60° up, parallel with body
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0, 0, 0);
     }
     if (playerBody.rightElbow) {
-      // RESTORED: Original working elbow position for rest stance
-      playerBody.rightElbow.rotation.set(restElbowAngle, 0, 0); // RESTORED original working value
+      // FIXED: DOWNWARD elbow bend for horizontal blade positioning
+      playerBody.rightElbow.rotation.set(-0.05, 0, 0); // NEGATIVE downward bend
     }
     
-    console.log(`⚔️ [MeleeWalkAnimation] RESTORED reset positioning - Shoulder: +${(shoulderAngle * 180 / Math.PI).toFixed(1)}°, Elbow: ${(restElbowAngle * 180 / Math.PI).toFixed(1)}°`);
+    console.log('⚔️ [MeleeWalkAnimation] FIXED reset - Right arm raised PARALLEL with body, DOWNWARD elbow');
   }
 }
