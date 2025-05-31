@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
@@ -40,21 +41,34 @@ export class WeaponAnimationSystem {
     isAttacking: boolean = false,
     isBowDrawing: boolean = false
   ): void {
-    if (isMoving && !isAttacking && !isBowDrawing) {
-      // Apply weapon-specific walking animation
-      switch (this.currentWeaponType) {
-        case 'bow':
-          this.bowWalkAnimation.update(playerBody, walkCycle, deltaTime, isSprinting);
-          break;
-        case 'melee':
-          this.meleeWalkAnimation.update(playerBody, walkCycle, deltaTime, isSprinting, isAttacking);
-          break;
-        case 'emptyHands':
-          this.emptyHandsWalkAnimation.update(playerBody, walkCycle, deltaTime, isSprinting);
-          break;
+    console.log(`🎭 [WeaponAnimationSystem] Update: moving=${isMoving}, weapon=${this.currentWeaponType}, attacking=${isAttacking}, bowDrawing=${isBowDrawing}`);
+    
+    if (isMoving) {
+      // FIXED: Always allow walking animation when moving, regardless of weapon state
+      // Only block walking animation during melee attacks, not during bow drawing
+      const shouldBlockWalkAnimation = isAttacking && this.currentWeaponType === 'melee';
+      
+      if (!shouldBlockWalkAnimation) {
+        // Apply weapon-specific walking animation
+        switch (this.currentWeaponType) {
+          case 'bow':
+            this.bowWalkAnimation.update(playerBody, walkCycle, deltaTime, isSprinting);
+            console.log('🏹 [WeaponAnimationSystem] Applied bow walking animation');
+            break;
+          case 'melee':
+            this.meleeWalkAnimation.update(playerBody, walkCycle, deltaTime, isSprinting, isAttacking);
+            console.log('⚔️ [WeaponAnimationSystem] Applied melee walking animation');
+            break;
+          case 'emptyHands':
+            this.emptyHandsWalkAnimation.update(playerBody, walkCycle, deltaTime, isSprinting);
+            console.log('✋ [WeaponAnimationSystem] Applied empty hands walking animation');
+            break;
+        }
+      } else {
+        console.log('🚫 [WeaponAnimationSystem] Walking animation blocked due to melee attack');
       }
     } else if (!isMoving && !isAttacking && !isBowDrawing) {
-      // Return to idle pose
+      // Return to idle pose only when completely idle
       this.returnToIdlePose(playerBody, deltaTime);
     }
   }
