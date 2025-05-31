@@ -56,7 +56,7 @@ export class SwordSwingAnimation {
     const weaponConfig = this.equippedWeapon.getConfig();
     const configRotations = weaponConfig.swingAnimation.rotations;
     
-    console.log('🗡️ [SwordSwingAnimation] Using CLEAN HORIZONTAL angles for right-to-left sweep:', configRotations);
+    console.log('🗡️ [SwordSwingAnimation] Using STRAIGHT DIAGONAL slash for direct movement:', configRotations);
     
     // Initialize rotations from weapon config
     let shoulderRotation = { 
@@ -84,7 +84,7 @@ export class SwordSwingAnimation {
       elbowRotation.x = THREE.MathUtils.lerp(0.05, -0.1, easedT);
       elbowRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 6, easedT); // Slight outward for right position
       
-      // WRIST: Position for horizontal strike
+      // WRIST: Position for diagonal strike
       wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 8, easedT);
       wristRotation.z = THREE.MathUtils.lerp(0, configRotations.windup.z, easedT);
       
@@ -95,35 +95,29 @@ export class SwordSwingAnimation {
       console.log(`🗡️ [SwordSwingAnimation] Shoulder Y angle: ${THREE.MathUtils.radToDeg(shoulderRotation.y).toFixed(1)}°`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: HORIZONTAL SWEEP from RIGHT to LEFT
+      // SLASH PHASE: STRAIGHT DIAGONAL LINE from RIGHT to LEFT-DOWN
       const t = (elapsed - phases.windup) / phases.slash;
       
-      // AGGRESSIVE EASING for fast horizontal slash
-      const aggressiveT = t * t * (3 - 2 * t);
+      // LINEAR interpolation for straight diagonal movement
+      const linearT = t; // No easing for perfectly straight line
       
-      // SHOULDER: Clean horizontal sweep using weapon config angles
-      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.windup.x, configRotations.slash.x, aggressiveT);
-      shoulderRotation.y = THREE.MathUtils.lerp(configRotations.windup.y, configRotations.slash.y, aggressiveT);
-      shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, aggressiveT);
+      // SHOULDER: Direct linear movement from windup to slash position
+      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.windup.x, configRotations.slash.x, linearT);
+      shoulderRotation.y = THREE.MathUtils.lerp(configRotations.windup.y, configRotations.slash.y, linearT);
+      shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, linearT);
       
-      // ELBOW: Support horizontal sweep
-      elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.15, aggressiveT);
-      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 4, aggressiveT); // Sweep across body
+      // ELBOW: Linear movement to support straight diagonal
+      elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.15, linearT);
+      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 4, linearT); // Direct movement across body
       
-      // WRIST: Add snap effect during middle of slash
-      let wristSnapMultiplier = 1.0;
-      if (t >= 0.3 && t <= 0.7) {
-        const snapProgress = (t - 0.3) / 0.4;
-        wristSnapMultiplier = 1.0 + Math.sin(snapProgress * Math.PI) * 0.6;
-      }
+      // WRIST: Linear movement with minimal snap for straight line
+      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 5, linearT);
+      wristRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, linearT);
       
-      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 5 * wristSnapMultiplier, aggressiveT);
-      wristRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, aggressiveT);
+      // TORSO: Linear rotation to support diagonal movement
+      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.5, linearT);
       
-      // TORSO: Uncoil and rotate to support horizontal sweep
-      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.5, aggressiveT);
-      
-      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - HORIZONTAL SWEEP`);
+      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - STRAIGHT DIAGONAL LINE`);
       console.log(`🗡️ [SwordSwingAnimation] Shoulder angles: X=${THREE.MathUtils.radToDeg(shoulderRotation.x).toFixed(1)}° Y=${THREE.MathUtils.radToDeg(shoulderRotation.y).toFixed(1)}°`);
       
     } else if (elapsed < duration) {
@@ -157,7 +151,7 @@ export class SwordSwingAnimation {
     }
     
     // Apply the coordinated arm and sword movement
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING COORDINATED MOVEMENT *** - Arm and sword moving together`);
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING COORDINATED MOVEMENT *** - Arm and sword moving in straight diagonal`);
     this.applyCoordinatedMovement(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
   }
   
@@ -167,24 +161,24 @@ export class SwordSwingAnimation {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    console.log(`🗡️ [SwordSwingAnimation] *** COORDINATED MOVEMENT *** - Arm segments moving together for horizontal sweep`);
+    console.log(`🗡️ [SwordSwingAnimation] *** COORDINATED MOVEMENT *** - Arm segments moving together for straight diagonal slash`);
     
     if (!this.playerBody || !this.playerBody.rightArm) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - playerBody or rightArm is null');
       return;
     }
     
-    // Apply SHOULDER rotations - Primary driver of horizontal sweep
+    // Apply SHOULDER rotations - Primary driver of diagonal slash
     this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
     console.log(`🗡️ [SwordSwingAnimation] SHOULDER: x=${THREE.MathUtils.radToDeg(shoulderRotation.x).toFixed(1)}°, y=${THREE.MathUtils.radToDeg(shoulderRotation.y).toFixed(1)}°, z=${shoulderRotation.z.toFixed(2)}`);
     
-    // Apply ELBOW rotations - Support horizontal motion
+    // Apply ELBOW rotations - Support diagonal motion
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
       console.log(`🗡️ [SwordSwingAnimation] ELBOW: x=${elbowRotation.x.toFixed(2)}, y=${elbowRotation.y.toFixed(2)}, z=${elbowRotation.z.toFixed(2)}`);
     }
     
-    // Apply WRIST rotations - Add snap effect
+    // Apply WRIST rotations - Support straight line movement
     if (this.playerBody.rightWrist) {
       this.playerBody.rightWrist.rotation.set(wristRotation.x, wristRotation.y, wristRotation.z);
       console.log(`🗡️ [SwordSwingAnimation] WRIST: x=${wristRotation.x.toFixed(2)}, y=${wristRotation.y.toFixed(2)}, z=${wristRotation.z.toFixed(2)}`);
