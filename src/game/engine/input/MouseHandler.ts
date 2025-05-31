@@ -79,7 +79,8 @@ export class MouseHandler {
     this.lastMouseDown = now;
     
     switch (event.button) {
-      case 0: // Left mouse button
+      case 0: // Left mouse button - CRITICAL for bow drawing
+        console.log("🏹 [MouseHandler] Left mouse button DOWN - dispatching attack event");
         this.eventDispatcher('attack');
         break;
       case 2: // Right mouse button
@@ -95,7 +96,8 @@ export class MouseHandler {
     this.mouse.buttons &= ~(1 << event.button);
     
     switch (event.button) {
-      case 0: // Left mouse button
+      case 0: // Left mouse button - CRITICAL for bow release
+        console.log("🏹 [MouseHandler] Left mouse button UP - dispatching attackEnd event");
         this.eventDispatcher('attackEnd');
         break;
       case 2: // Right mouse button
