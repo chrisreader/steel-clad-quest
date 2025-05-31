@@ -25,11 +25,11 @@ export class SceneManager {
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     
-    // Setup fog
-    this.scene.fog = new THREE.Fog(0xB0E0E6, 50, 150); // Lighter blue fog
+    // Setup fog with realistic blue color that matches the sky
+    this.scene.fog = new THREE.Fog(0x87CEEB, 50, 150); // Sky blue color
     this.fog = this.scene.fog;
     
-    console.log("SceneManager initialized with existing scene");
+    console.log("SceneManager initialized with existing scene and realistic blue fog");
     
     // Setup basic lighting
     this.setupLighting();
