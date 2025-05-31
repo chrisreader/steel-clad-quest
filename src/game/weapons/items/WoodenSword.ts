@@ -26,14 +26,14 @@ export class WoodenSword extends Sword {
         rotations: {
           neutral: { x: Math.PI / 3, y: 0, z: 0 }, // 60° proper ready position
           windup: { 
-            x: Math.PI * 5 / 12, // 75° upper position for proper arc windup
-            y: THREE.MathUtils.degToRad(45), // 45° right position
+            x: Math.PI / 3 + THREE.MathUtils.degToRad(30), // 90° overhead position
+            y: THREE.MathUtils.degToRad(-60),               // Increased from -30° for wider swing
             z: 0
           },
           slash: { 
-            x: Math.PI / 6, // 30° lower position for follow-through arc
-            y: THREE.MathUtils.degToRad(-45), // 45° left position completing the diagonal arc
-            z: 0
+            x: THREE.MathUtils.degToRad(50),                // 50° reasonable end position
+            y: THREE.MathUtils.degToRad(75),                // Increased from 45° for wider swing
+            z: THREE.MathUtils.degToRad(-12)                // Wrist snap
           }
         }
       }
