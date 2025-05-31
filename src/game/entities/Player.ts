@@ -851,7 +851,7 @@ export class Player {
     let elbowRotation = { x: 0, y: 0, z: 0 };
     let weaponWristRotation = 0;
     
-    // PARALLEL base position for weapon swings - NO inward rotation
+    // PARALLEL base position for weapon swings
     const parallelAngleBase = Math.PI / 3; // 60° upward angle, parallel with body
     
     if (elapsed < phases.windup) {
@@ -860,8 +860,8 @@ export class Player {
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
       shoulderRotation.x = THREE.MathUtils.lerp(parallelAngleBase, rotations.windup.x, easedT);
-      shoulderRotation.y = 0; // FIXED: Always 0 - keep parallel with body
-      shoulderRotation.z = 0; // FIXED: Always 0 - keep perfectly parallel
+      shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT); // Use weapon config Y rotation
+      shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT); // Use weapon config Z rotation
       
       // Elbow bends during windup
       elbowRotation.x = THREE.MathUtils.lerp(0, 0.8, easedT);
@@ -872,8 +872,8 @@ export class Player {
       const easedT = t * t * (3 - 2 * t);
       
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
-      shoulderRotation.y = 0; // FIXED: Always 0 - keep parallel with body during slash
-      shoulderRotation.z = 0; // FIXED: Always 0 - keep perfectly parallel
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT); // Use weapon config Y rotation
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT); // Use weapon config Z rotation
       
       // Elbow extends during slash
       elbowRotation.x = THREE.MathUtils.lerp(0.8, 0.2, easedT);
@@ -894,22 +894,22 @@ export class Player {
       }
       
     } else if (elapsed < duration) {
-      // FIXED: RECOVERY PHASE - return to PARALLEL base position
+      // RECOVERY PHASE - return to PARALLEL base position
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, parallelAngleBase, easedT);
-      shoulderRotation.y = 0; // FIXED: Always 0 - return to parallel position
-      shoulderRotation.z = 0; // FIXED: Always 0 - keep perfectly parallel
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT); // Return to parallel position (Y=0)
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.slash.z, 0, easedT); // Return to parallel position (Z=0)
       
       // Elbow returns to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.2, 0, easedT);
       
     } else {
-      // FIXED: ANIMATION COMPLETE - return to PARALLEL base position
+      // ANIMATION COMPLETE - return to PARALLEL base position
       shoulderRotation.x = parallelAngleBase;
-      shoulderRotation.y = 0; // FIXED: Ensure Y rotation is 0 - parallel with body
-      shoulderRotation.z = 0; // FIXED: Ensure Z rotation is 0 - perfectly parallel
+      shoulderRotation.y = 0; // Ensure Y rotation is 0 - parallel with body
+      shoulderRotation.z = 0; // Ensure Z rotation is 0 - perfectly parallel
       elbowRotation = { x: 0, y: 0, z: 0 };
       this.weaponSwing.isActive = false;
       

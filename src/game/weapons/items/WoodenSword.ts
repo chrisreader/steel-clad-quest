@@ -24,16 +24,16 @@ export class WoodenSword extends Sword {
           recovery: 0.159
         },
         rotations: {
-          neutral: { x: Math.PI / 3, y: 0, z: 0 }, // FIXED: Parallel base position
+          neutral: { x: Math.PI / 3, y: 0, z: 0 }, // Parallel base position
           windup: { 
             x: Math.PI / 3 + THREE.MathUtils.degToRad(45),
-            y: 0, // FIXED: NO Y rotation - keep parallel
-            z: 0  // FIXED: NO Z rotation - keep parallel
+            y: THREE.MathUtils.degToRad(-25), // Added Y rotation for windup
+            z: THREE.MathUtils.degToRad(12)   // Added Z rotation for natural movement
           },
           slash: { 
             x: Math.PI / 3 + THREE.MathUtils.degToRad(-10),
-            y: 0, // FIXED: NO Y rotation - keep parallel
-            z: 0  // FIXED: NO Z rotation - keep parallel
+            y: THREE.MathUtils.degToRad(40),  // Added Y rotation for slash across body
+            z: THREE.MathUtils.degToRad(-8)   // Added Z rotation for wrist snap
           }
         }
       }
