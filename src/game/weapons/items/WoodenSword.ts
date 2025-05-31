@@ -31,7 +31,7 @@ export class WoodenSword extends Sword {
             z: 0
           },
           slash: { 
-            x: THREE.MathUtils.degToRad(35),           // 35° slight downward follow-through
+            x: THREE.MathUtils.degToRad(60),           // 60° sweep to left side, down follow-through
             y: THREE.MathUtils.degToRad(60),           // 60° left side sweep end
             z: THREE.MathUtils.degToRad(-10)           // Wrist snap
           }
