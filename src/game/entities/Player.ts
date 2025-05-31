@@ -516,14 +516,14 @@ export class Player {
       // Left arm: Normal side position (like empty hands)
       this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
       
-      // FIXED: Right arm: Raised ready position - UPWARD and PARALLEL with body (NO inward rotation)
+      // FIXED: Right arm: Raised ready position - UPWARD and PARALLEL with body (MATCHES WALKING STANCE)
       this.playerBody.rightArm.rotation.set(
-        Math.PI / 3,   // 60° upward angle (more raised for better sword positioning)
+        Math.PI / 3,   // 60° upward angle (SAME AS WALKING STANCE - no more lowering when idle)
         0,             // FIXED: NO Y rotation - keep parallel with body
         0              // FIXED: NO Z rotation - keep perfectly parallel with body
       );
       
-      console.log("🗡️ [Player] FIXED MELEE ready stance - Right arm raised upward and PARALLEL with body");
+      console.log("🗡️ [Player] FIXED MELEE ready stance - Right arm raised to 60° (MATCHES WALKING STANCE) and PARALLEL with body");
       
     } else if (weaponType === 'bow') {
       // BOW READY STANCE: Left arm raised up PARALLEL with body, right arm at side
