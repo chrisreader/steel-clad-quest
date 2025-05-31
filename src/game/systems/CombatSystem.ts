@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -197,7 +198,7 @@ export class CombatSystem {
     const swordBox = new THREE.Box3().setFromObject(swordHitBox);
     
     // Get attack power
-    const attackPower = this.player.getStats().attackPower;
+    const attackPower = this.player.getAttackPower();
     
     // Check each enemy
     this.enemies.forEach(enemy => {

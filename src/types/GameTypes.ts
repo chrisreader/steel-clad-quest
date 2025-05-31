@@ -19,10 +19,6 @@ export interface PlayerStats {
   defense: number;
   speed: number;
   attackPower: number;
-  movementSpeed: number;
-  attackDamage: number;
-  inventorySize: number;
-  initialLevel: number;
 }
 
 export interface PlayerBody {
@@ -462,6 +458,3 @@ export interface Gold {
   value: number;
   rotationSpeed: number;
 }
-
-// Add WeaponType definition for animation system
-export type WeaponType = 'melee' | 'bow' | 'empty';
