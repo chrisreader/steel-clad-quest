@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { MouseHandler } from './input/MouseHandler';
 import { KeyboardHandler } from './input/KeyboardHandler';

@@ -47,6 +47,7 @@ export class GameEngine {
     this.uiIntegrationManager = new UIIntegrationManager();
   }
   
+  // NEW METHOD: Set UI state from KnightGame
   public setUIState(isUIOpen: boolean): void {
     this.uiIntegrationManager.setUIState(isUIOpen);
   }
@@ -70,9 +71,8 @@ export class GameEngine {
       this.inputManager = new InputManager();
       this.inputManager.initialize(this.renderEngine.getRenderer());
       
-      // Setup mouse look controls and bow input handling
+      // Setup mouse look controls
       this.setupMouseLookControls();
-      this.setupBowInputHandling();
       
       // Create the effects manager
       this.effectsManager = new EffectsManager(this.renderEngine.getScene(), this.renderEngine.getCamera());
@@ -87,10 +87,10 @@ export class GameEngine {
         console.warn("🎮 [GameEngine] Audio preloading failed, continuing:", audioError);
       }
       
-      // Create the player
-      console.log("🎮 [GameEngine] Creating player...");
+      // CRITICAL: Create the player with extensive debugging
+      console.log("🎮 [GameEngine] Creating player with NEW ARM POSITIONING...");
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
-      console.log("🎮 [GameEngine] Player created successfully");
+      console.log("🎮 [GameEngine] Player created successfully with new arm positioning");
       
       // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
@@ -102,11 +102,11 @@ export class GameEngine {
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager);
       
       // Set first-person camera position
-      this.renderEngine.setupFirstPersonCamera(this.player.position);
+      this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete!");
+      console.log("🎮 [GameEngine] Initialization complete with NEW ARM POSITIONING!");
       
       // Start the game
       this.start();
@@ -114,34 +114,6 @@ export class GameEngine {
       console.error("🎮 [GameEngine] Initialization error:", error);
       this.isInitialized = true; // Still mark as initialized
     }
-  }
-
-  private setupBowInputHandling(): void {
-    console.log("🏹 [GameEngine] Setting up bow input handling for hold-to-draw...");
-    
-    // Listen for bow-specific input events
-    document.addEventListener('gameInput', (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { type, data } = customEvent.detail;
-      
-      if (type === 'attack' && this.player) {
-        console.log("🏹 [GameEngine] Attack event received - checking for bow");
-        const equippedWeapon = this.player.getEquippedWeapon();
-        if (equippedWeapon && equippedWeapon.getConfig().type === 'bow') {
-          console.log("🏹 [GameEngine] Starting bow draw");
-          this.player.startBowDraw();
-        }
-      }
-      
-      if (type === 'attackEnd' && this.player) {
-        console.log("🏹 [GameEngine] Attack end event received - checking for bow");
-        const equippedWeapon = this.player.getEquippedWeapon();
-        if (equippedWeapon && equippedWeapon.getConfig().type === 'bow') {
-          console.log("🏹 [GameEngine] Stopping bow draw");
-          this.player.stopBowDraw();
-        }
-      }
-    });
   }
   
   private setupMouseLookControls(): void {
@@ -253,10 +225,10 @@ export class GameEngine {
       return;
     }
     
-    console.log("🎮 [GameEngine] Starting game...");
+    console.log("🎮 [GameEngine] Starting game with NEW ARM POSITIONING...");
     this.stateManager.start();
     this.animate();
-    console.log("🎮 [GameEngine] Game started successfully!");
+    console.log("🎮 [GameEngine] Game started successfully with NEW ARM POSITIONING!");
   }
   
   private animate = (): void => {
@@ -299,11 +271,11 @@ export class GameEngine {
     // Update audio
     this.audioManager.update();
     
-    // Update player - CRITICAL: Pass bow charge to animation system
-    this.updatePlayerWithBowCharge(deltaTime);
+    // Update player
+    this.player.update(deltaTime, this.isMoving);
     
     // Update camera to follow player
-    this.renderEngine.updateFirstPersonCamera(this.player.position);
+    this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
     // Check location changes
     const isInTavern = this.movementSystem.checkInTavern();
@@ -312,28 +284,6 @@ export class GameEngine {
     // Check for game over
     if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
       this.stateManager.setGameOver(this.stateManager.getScore());
-    }
-  }
-
-  private updatePlayerWithBowCharge(deltaTime: number): void {
-    if (!this.player) return;
-    
-    // Update player normally
-    this.player.update(deltaTime, this.isMoving);
-    
-    // Get bow charge level and pass to animation system
-    const equippedWeapon = this.player.getEquippedWeapon();
-    let bowChargeLevel = 0;
-    
-    if (equippedWeapon && equippedWeapon.getConfig().type === 'bow') {
-      if (equippedWeapon.getChargeLevel) {
-        bowChargeLevel = equippedWeapon.getChargeLevel();
-      }
-    }
-    
-    // Update weapon animation system with bow charge
-    if (this.player.weaponAnimationSystem && typeof this.player.weaponAnimationSystem.updateWithBowCharge === 'function') {
-      this.player.weaponAnimationSystem.updateWithBowCharge(deltaTime, this.isMoving, bowChargeLevel);
     }
   }
   
@@ -356,19 +306,21 @@ export class GameEngine {
   public restart(): void {
     if (!this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Restarting game...");
+    console.log("🎮 [GameEngine] Restarting game and RECREATING PLAYER with NEW ARM POSITIONING...");
     this.stateManager.restart();
     
-    // Recreate player
+    // CRITICAL: Recreate player to ensure new arm positioning takes effect
     if (this.effectsManager && this.audioManager) {
       // Dispose old player
       if (this.player) {
         this.player.dispose();
-        this.renderEngine.getScene().remove(this.player.group);
+        this.renderEngine.getScene().remove(this.player.getGroup());
       }
       
-      // Create new player
+      // Create new player with updated positioning
+      console.log("🔄 [GameEngine] Creating NEW player instance with updated arm positioning...");
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
+      console.log("🔄 [GameEngine] NEW player instance created with updated arm positioning");
       
       // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
@@ -388,7 +340,7 @@ export class GameEngine {
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager!);
       
       // Reset first-person camera
-      this.renderEngine.setupFirstPersonCamera(this.player.position);
+      this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
     }
     
     // Start ambient sounds
@@ -397,7 +349,7 @@ export class GameEngine {
       this.audioManager.play('game_music', true);
     }
     
-    console.log("🎮 [GameEngine] Game restarted!");
+    console.log("🎮 [GameEngine] Game restarted with NEW PLAYER and ARM POSITIONING!");
   }
   
   public handleInput(type: string, data?: any): void {
@@ -512,12 +464,12 @@ export class GameEngine {
   public dispose(): void {
     console.log("🎮 [GameEngine] Disposing game engine...");
     
-    // Dispose managers
+    // Dispose managers (check for null to avoid runtime errors)
     this.stateManager.dispose();
     this.uiIntegrationManager.dispose();
     this.renderEngine.dispose();
     
-    // Dispose systems
+    // Dispose systems (check for null to avoid runtime errors)
     if (this.movementSystem) {
       this.movementSystem.dispose();
     }

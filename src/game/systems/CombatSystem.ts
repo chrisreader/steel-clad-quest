@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -55,7 +56,7 @@ export class CombatSystem {
     }
     
     // Check sword collision with enemies (for melee weapons)
-    if (this.player.isAttacking && !this.isDrawingBow) {
+    if (this.player.isAttacking() && !this.isDrawingBow) {
       this.checkPlayerAttacks();
     }
     
@@ -90,6 +91,8 @@ export class CombatSystem {
     const currentWeapon = this.player.getEquippedWeapon();
     
     console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK CALLED *** - weapon type:", currentWeapon?.getConfig().type || 'none');
+    console.log("⚔️ [CombatSystem] Player object exists:", !!this.player);
+    console.log("⚔️ [CombatSystem] Player startSwordSwing method exists:", typeof this.player.startSwordSwing);
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
       console.log("⚔️ [CombatSystem] Starting bow attack");
@@ -144,7 +147,7 @@ export class CombatSystem {
     // Only shoot if there's some charge
     if (chargeLevel > 0.1) {
       // Calculate arrow direction (forward from player)
-      const playerPosition = this.player.position;
+      const playerPosition = this.player.getPosition();
       const cameraDirection = new THREE.Vector3(0, 0, -1); // Simple forward direction for now
       
       // Shoot arrow with enhanced positioning
@@ -177,32 +180,25 @@ export class CombatSystem {
     console.log("⚔️ [CombatSystem] *** COOLDOWN PASSED *** - calling player.startSwordSwing()");
     this.lastAttackTime = now;
     
+    // Add debugging before calling player method
+    console.log("⚔️ [CombatSystem] About to call this.player.startSwordSwing()");
+    console.log("⚔️ [CombatSystem] Player method type:", typeof this.player.startSwordSwing);
+    
     try {
-      if (this.player.startSwordSwing) {
-        this.player.startSwordSwing();
-        console.log("⚔️ [CombatSystem] *** PLAYER.STARTSWORDSWING() CALLED SUCCESSFULLY ***");
-      } else {
-        console.warn("⚔️ [CombatSystem] Player.startSwordSwing method not available");
-      }
+      this.player.startSwordSwing();
+      console.log("⚔️ [CombatSystem] *** PLAYER.STARTSWORDSWING() CALLED SUCCESSFULLY ***");
     } catch (error) {
       console.error("⚔️ [CombatSystem] *** ERROR CALLING PLAYER.STARTSWORDSWING() ***", error);
     }
   }
   
   private checkPlayerAttacks(): void {
-    // Get sword hitbox - using alternative method if getSwordHitBox not available
-    let swordHitBox;
-    if (this.player.getSwordHitBox) {
-      swordHitBox = this.player.getSwordHitBox();
-    } else {
-      // Fallback to player position for basic collision
-      swordHitBox = this.player.group;
-    }
-    
+    // Get sword hitbox
+    const swordHitBox = this.player.getSwordHitBox();
     const swordBox = new THREE.Box3().setFromObject(swordHitBox);
     
     // Get attack power
-    const attackPower = this.player.getAttackPower ? this.player.getAttackPower() : this.player.stats.attackPower;
+    const attackPower = this.player.getAttackPower();
     
     // Check each enemy
     this.enemies.forEach(enemy => {
@@ -210,7 +206,7 @@ export class CombatSystem {
       if (enemy.isDead()) return;
       
       // Skip enemies already hit by this swing
-      if (this.player.hasHitEnemy && this.player.hasHitEnemy(enemy)) return;
+      if (this.player.hasHitEnemy(enemy)) return;
       
       // Get enemy hitbox
       const enemyMesh = enemy.getMesh();
@@ -219,12 +215,10 @@ export class CombatSystem {
       // Check collision
       if (swordBox.intersectsBox(enemyBox)) {
         // Hit enemy
-        enemy.takeDamage(attackPower, this.player.position);
+        enemy.takeDamage(attackPower, this.player.getPosition());
         
         // Mark enemy as hit by this swing
-        if (this.player.addEnemy) {
-          this.player.addEnemy(enemy);
-        }
+        this.player.addEnemy(enemy);
         
         // Play hit sound
         this.audioManager.play('sword_hit');
@@ -235,26 +229,20 @@ export class CombatSystem {
           this.spawnGold(enemy.getPosition(), enemy.getGoldReward());
           
           // Add experience
-          if (this.player.addExperience) {
-            this.player.addExperience(enemy.getExperienceReward());
-          }
+          this.player.addExperience(enemy.getExperienceReward());
         }
       }
     });
   }
   
   private checkGoldPickups(): void {
-    const playerPosition = this.player.position;
+    const playerPosition = this.player.getPosition();
     
     // Check each gold
     this.gold.forEach(gold => {
       if (gold.isInRange(playerPosition, this.pickupRange)) {
         // Pickup gold
-        if (this.player.addGold) {
-          this.player.addGold(gold.getValue());
-        } else {
-          this.player.stats.gold += gold.getValue();
-        }
+        this.player.addGold(gold.getValue());
         
         // Mark for removal
         gold.dispose();
@@ -272,20 +260,26 @@ export class CombatSystem {
       }
       return true;
     });
+    
+    // No need to clean up gold, as it's removed when picked up
   }
   
   private spawnGold(position: THREE.Vector3, value: number): void {
     // Create gold drop based on value
+    // For larger values, split into multiple smaller coins
     if (value <= 25) {
+      // Single small coin
       const gold = Gold.createGoldDrop(this.scene, position, value);
       this.gold.push(gold);
     } else if (value <= 50) {
+      // Two medium coins
       const halfValue = Math.floor(value / 2);
       for (let i = 0; i < 2; i++) {
         const gold = Gold.createGoldDrop(this.scene, position, halfValue);
         this.gold.push(gold);
       }
     } else {
+      // Multiple coins for high values
       const coinCount = Math.min(5, Math.ceil(value / 20));
       const coinValue = Math.floor(value / coinCount);
       
@@ -317,12 +311,15 @@ export class CombatSystem {
   }
   
   public clear(): void {
+    // Remove all enemies
     this.enemies.forEach(enemy => enemy.dispose());
     this.enemies = [];
     
+    // Remove all gold
     this.gold.forEach(gold => gold.dispose());
     this.gold = [];
     
+    // Clear projectile system
     this.projectileSystem.clear();
   }
   
@@ -340,9 +337,11 @@ export class CombatSystem {
   }
   
   public getClosestEnemy(position: THREE.Vector3): Enemy | null {
+    // Filter alive enemies
     const aliveEnemies = this.enemies.filter(enemy => !enemy.isDead());
     if (aliveEnemies.length === 0) return null;
     
+    // Find closest
     let closest = aliveEnemies[0];
     let closestDistance = closest.getPosition().distanceTo(position);
     

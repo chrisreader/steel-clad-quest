@@ -19,10 +19,6 @@ export interface PlayerStats {
   defense: number;
   speed: number;
   attackPower: number;
-  movementSpeed: number;
-  attackDamage: number;
-  inventorySize: number;
-  initialLevel: number;
 }
 
 export interface PlayerBody {
@@ -35,6 +31,7 @@ export interface PlayerBody {
   rightLeg: THREE.Mesh;
   body: THREE.Mesh;
   head: THREE.Mesh;
+  // New realistic arm components
   leftUpperArm?: THREE.Mesh;
   rightUpperArm?: THREE.Mesh;
   leftForearm?: THREE.Mesh;
@@ -43,6 +40,7 @@ export interface PlayerBody {
   rightElbow?: THREE.Group;
   leftWrist?: THREE.Group;
   rightWrist?: THREE.Group;
+  // Add foot properties for complete body representation
   leftFoot?: THREE.Mesh;
   rightFoot?: THREE.Mesh;
 }
@@ -76,12 +74,10 @@ export interface WeaponStats {
   weight: number;
 }
 
-export type WeaponType = 'sword' | 'axe' | 'mace' | 'bow';
-
 export interface WeaponConfig {
   id: string;
   name: string;
-  type: WeaponType;
+  type: 'sword' | 'axe' | 'mace' | 'bow';
   stats: WeaponStats;
   swingAnimation: {
     duration: number;
