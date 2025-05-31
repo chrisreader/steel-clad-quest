@@ -1,329 +1,494 @@
-
 import * as THREE from 'three';
-import { InputManager } from './InputManager';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
+import { InputManager } from './InputManager';
+import { EffectsManager } from './EffectsManager';
+import { AudioManager, SoundCategory } from './AudioManager';
+import { CombatSystem } from '../systems/CombatSystem';
+import { MovementSystem } from '../systems/MovementSystem';
 import { RenderEngine } from './RenderEngine';
 import { StateManager } from './StateManager';
 import { UIIntegrationManager } from './UIIntegrationManager';
-import { AudioManager } from './AudioManager';
-import { EffectsManager } from './EffectsManager';
-import { PhysicsManager } from './PhysicsManager';
+import { GameState, EnemyType } from '../../types/GameTypes';
 
 export class GameEngine {
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
+  // Core managers
   private renderEngine: RenderEngine;
-  private sceneManager: SceneManager;
-  private inputManager: InputManager;
   private stateManager: StateManager;
   private uiIntegrationManager: UIIntegrationManager;
-  private audioManager: AudioManager;
-  private effectsManager: EffectsManager;
-  private physicsManager: PhysicsManager;
-  private player: Player | null = null;
-  private gameRunning: boolean = false;
-  private isPausedState: boolean = false;
-  private lastTime: number = 0;
-  private animationFrameId: number | null = null;
   
-  // Callback functions
-  private onUpdateHealth?: (health: number) => void;
-  private onUpdateGold?: (gold: number) => void;
-  private onUpdateStamina?: (stamina: number) => void;
-  private onUpdateScore?: (score: number) => void;
-  private onGameOver?: (score: number) => void;
-  private onLocationChange?: (isInTavern: boolean) => void;
-
+  // Game systems
+  private sceneManager: SceneManager | null = null;
+  private inputManager: InputManager | null = null;
+  private effectsManager: EffectsManager | null = null;
+  private audioManager: AudioManager | null = null;
+  private combatSystem: CombatSystem | null = null;
+  private movementSystem: MovementSystem | null = null;
+  
+  // Game entities
+  private player: Player | null = null;
+  
+  // State
+  private isInitialized: boolean = false;
+  private mountElement: HTMLDivElement;
+  
+  // Movement state
+  private isMoving: boolean = false;
+  
+  // Attack state tracking
+  private isAttackPressed: boolean = false;
+  
   constructor(mountElement: HTMLDivElement) {
-    console.log('[GameEngine] Constructor called with mountElement:', mountElement);
-    
-    // Initialize Three.js scene
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    
-    // Configure renderer
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setClearColor(0x87CEEB);
-    
-    // Mount to DOM
-    mountElement.appendChild(this.renderer.domElement);
-    console.log('[GameEngine] Renderer mounted to DOM element');
+    this.mountElement = mountElement;
     
     // Initialize managers
-    this.renderEngine = new RenderEngine(this.scene, this.camera, this.renderer);
-    this.sceneManager = new SceneManager(this.scene, this.camera, this.renderer);
-    this.inputManager = new InputManager();
+    this.renderEngine = new RenderEngine(mountElement);
     this.stateManager = new StateManager();
     this.uiIntegrationManager = new UIIntegrationManager();
-    this.audioManager = new AudioManager();
-    this.effectsManager = new EffectsManager(this.scene);
-    this.physicsManager = new PhysicsManager();
-    
-    // Initialize input manager with renderer
-    this.inputManager.initialize(this.renderer);
-    
-    console.log('[GameEngine] All managers initialized');
-    
-    // Handle window resize
-    this.handleResize = this.handleResize.bind(this);
-    window.addEventListener('resize', this.handleResize);
   }
-
+  
+  // NEW METHOD: Set UI state from KnightGame
+  public setUIState(isUIOpen: boolean): void {
+    this.uiIntegrationManager.setUIState(isUIOpen);
+  }
+  
   public async initialize(): Promise<void> {
-    console.log('[GameEngine] Starting initialization...');
+    if (this.isInitialized) return;
+    
+    console.log("🎮 [GameEngine] Starting initialization...");
     
     try {
-      // Initialize scene
-      await this.sceneManager.initialize();
-      console.log('[GameEngine] Scene initialized');
+      // Initialize render engine
+      this.renderEngine.initialize();
       
-      // Create player
-      this.player = new Player(this.scene, this.camera, this.renderer);
-      await this.player.initialize();
-      console.log('[GameEngine] Player created and initialized');
+      // Create the scene manager using the render engine's scene
+      this.sceneManager = new SceneManager(this.renderEngine.getScene());
       
-      // Initialize other managers
-      await this.renderEngine.initialize();
-      await this.physicsManager.initialize();
+      // Create default world
+      this.sceneManager.createDefaultWorld();
       
-      console.log('[GameEngine] Initialization completed successfully');
+      // Create the input manager
+      this.inputManager = new InputManager();
+      this.inputManager.initialize(this.renderEngine.getRenderer());
+      
+      // Setup mouse look controls
+      this.setupMouseLookControls();
+      
+      // Create the effects manager
+      this.effectsManager = new EffectsManager(this.renderEngine.getScene(), this.renderEngine.getCamera());
+      
+      // Create the audio manager
+      this.audioManager = new AudioManager(this.renderEngine.getCamera(), this.renderEngine.getScene());
+      
+      // Preload audio
+      try {
+        await this.preloadAudio();
+      } catch (audioError) {
+        console.warn("🎮 [GameEngine] Audio preloading failed, continuing:", audioError);
+      }
+      
+      // CRITICAL: Create the player with extensive debugging
+      console.log("🎮 [GameEngine] Creating player with NEW ARM POSITIONING...");
+      this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
+      console.log("🎮 [GameEngine] Player created successfully with new arm positioning");
+      
+      // Make player arms/sword visible for first-person immersion
+      const playerBody = this.player.getBody();
+      if (playerBody.leftArm) playerBody.leftArm.visible = true;
+      if (playerBody.rightArm) playerBody.rightArm.visible = true;
+      
+      // Create game systems
+      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager);
+      this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager);
+      
+      // Set first-person camera position
+      this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
+      
+      // Set game as initialized
+      this.isInitialized = true;
+      console.log("🎮 [GameEngine] Initialization complete with NEW ARM POSITIONING!");
+      
+      // Start the game
+      this.start();
     } catch (error) {
-      console.error('[GameEngine] Initialization failed:', error);
-      throw error;
+      console.error("🎮 [GameEngine] Initialization error:", error);
+      this.isInitialized = true; // Still mark as initialized
     }
   }
-
-  public start(): void {
-    if (this.gameRunning) {
-      console.log('[GameEngine] Already running');
+  
+  private setupMouseLookControls(): void {
+    console.log("🎮 [GameEngine] Setting up mouse look controls...");
+    
+    // Listen for mouse look input
+    document.addEventListener('gameInput', (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { type, data } = customEvent.detail;
+      
+      if (type === 'look') {
+        this.handleMouseLook(data.x, data.y);
+      }
+      
+      if (type === 'pointerLockChange') {
+        this.uiIntegrationManager.handlePointerLockChange(data.locked);
+        if (!data.locked && this.uiIntegrationManager.isPointerLockRequested()) {
+          setTimeout(() => {
+            this.requestPointerLockSafely();
+          }, 100);
+        }
+      }
+    });
+    
+    // Request pointer lock on canvas click
+    const handleCanvasClick = () => {
+      this.requestPointerLockSafely();
+    };
+    
+    if (this.renderEngine.getRenderer()?.domElement) {
+      this.renderEngine.getRenderer().domElement.addEventListener('click', handleCanvasClick);
+    }
+  }
+  
+  private requestPointerLockSafely(): void {
+    const renderer = this.renderEngine.getRenderer();
+    if (!renderer?.domElement || !document.contains(renderer.domElement)) {
+      console.warn("🎮 [GameEngine] Cannot request pointer lock: canvas not available");
       return;
     }
     
-    console.log('[GameEngine] Starting game engine...');
-    this.gameRunning = true;
-    this.isPausedState = false;
-    this.lastTime = performance.now();
-    this.gameLoop();
+    try {
+      this.uiIntegrationManager.setPointerLockRequested(true);
+      renderer.domElement.requestPointerLock();
+      console.log("🎮 [GameEngine] Pointer lock requested successfully");
+    } catch (error) {
+      console.error("🎮 [GameEngine] Failed to request pointer lock:", error);
+      this.uiIntegrationManager.setPointerLockRequested(false);
+    }
   }
-
-  public pause(): void {
-    this.isPausedState = !this.isPausedState;
-    console.log('[GameEngine] Pause state changed to:', this.isPausedState);
-  }
-
-  public restart(): void {
-    console.log('[GameEngine] Restarting game engine - will recreate player...');
-    
-    // Stop current game loop
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
+  
+  private handleMouseLook(deltaX: number, deltaY: number): void {
+    if (!this.uiIntegrationManager.shouldProcessMouseLook(deltaX, deltaY)) {
+      return;
     }
     
-    // Dispose current player
-    if (this.player) {
-      this.player.dispose();
-      this.player = null;
+    console.log("📹 [GameEngine] Processing mouse look:", deltaX, deltaY);
+    this.renderEngine.handleMouseLook(deltaX, deltaY);
+    
+    // Update player visual rotation
+    if (this.player && typeof this.player.setVisualRotation === 'function') {
+      const cameraRotation = this.renderEngine.getCameraRotation();
+      this.player.setVisualRotation(cameraRotation.yaw, cameraRotation.pitch);
+    }
+  }
+  
+  private async preloadAudio(): Promise<void> {
+    const preloadPromises = [
+      this.loadAudioWithFallback('sword_swing'),
+      this.loadAudioWithFallback('sword_hit'),
+      this.loadAudioWithFallback('bow_draw'),
+      this.loadAudioWithFallback('bow_release'),
+      this.loadAudioWithFallback('arrow_shoot'),
+      this.loadAudioWithFallback('arrow_hit'),
+      this.loadAudioWithFallback('arrow_impact'),
+      this.loadAudioWithFallback('player_hurt'),
+      this.loadAudioWithFallback('enemy_hurt'),
+      this.loadAudioWithFallback('enemy_death'),
+      this.loadAudioWithFallback('gold_pickup'),
+      this.loadAudioWithFallback('footstep'),
+      this.loadAudioWithFallback('tavern_ambience'),
+      this.loadAudioWithFallback('forest_ambience'),
+      this.loadAudioWithFallback('game_music')
+    ];
+    
+    await Promise.allSettled(preloadPromises);
+    console.log("🎮 [GameEngine] Audio preloading complete");
+  }
+
+  private async loadAudioWithFallback(id: string): Promise<void> {
+    if (!this.audioManager) return;
+    
+    try {
+      await this.audioManager.loadSound(`assets/sounds/${id}.mp3`, id, SoundCategory.SFX);
+      console.log(`🎮 [GameEngine] Loaded audio: ${id}`);
+    } catch (e) {
+      try {
+        await this.audioManager.loadSound(`/sounds/${id}.mp3`, id, SoundCategory.SFX);
+        console.log(`🎮 [GameEngine] Loaded audio from alternate path: ${id}`);
+      } catch (e2) {
+        console.warn(`🎮 [GameEngine] Failed to load audio: ${id} - continuing without sound`);
+      }
+    }
+  }
+  
+  public start(): void {
+    if (!this.isInitialized) {
+      console.error("🎮 [GameEngine] Cannot start: not initialized");
+      return;
     }
     
-    // Reset state
-    this.gameRunning = false;
-    this.isPausedState = false;
-    
-    // Recreate player and restart
-    this.createNewPlayer().then(() => {
-      this.start();
-      console.log('[GameEngine] Restart completed with new player');
-    });
+    console.log("🎮 [GameEngine] Starting game with NEW ARM POSITIONING...");
+    this.stateManager.start();
+    this.animate();
+    console.log("🎮 [GameEngine] Game started successfully with NEW ARM POSITIONING!");
   }
-
-  private async createNewPlayer(): Promise<void> {
-    console.log('[GameEngine] Creating new player...');
-    this.player = new Player(this.scene, this.camera, this.renderer);
-    await this.player.initialize();
-    console.log('[GameEngine] New player created and initialized');
-  }
-
-  private gameLoop(): void {
-    if (!this.gameRunning) return;
-    
-    const currentTime = performance.now();
-    const deltaTime = (currentTime - this.lastTime) / 1000;
-    this.lastTime = currentTime;
-    
-    if (!this.isPausedState) {
-      this.update(deltaTime);
-      this.render();
+  
+  private animate = (): void => {
+    if (!this.isInitialized || !this.stateManager.isPlaying()) {
+      return;
     }
     
-    this.animationFrameId = requestAnimationFrame(() => this.gameLoop());
-  }
-
+    requestAnimationFrame(this.animate);
+    
+    if (this.stateManager.isPaused()) {
+      return;
+    }
+    
+    const deltaTime = this.renderEngine.getDeltaTime();
+    this.stateManager.update(deltaTime);
+    this.update(deltaTime);
+    this.renderEngine.render();
+  };
+  
   private update(deltaTime: number): void {
-    if (!this.player) return;
-    
-    // Update player with input state
-    const inputState = this.inputManager.getInputState();
-    
-    // Handle bow drawing input
-    if (inputState.bowDraw && !this.player.isBowDrawing) {
-      console.log('🎮 [GameEngine] Starting bow draw from input');
-      this.player.startBowDraw();
-    } else if (!inputState.bowDraw && this.player.isBowDrawing) {
-      console.log('🎮 [GameEngine] Stopping bow draw from input');
-      this.player.stopBowDraw();
+    if (!this.movementSystem || !this.inputManager || !this.combatSystem || !this.effectsManager || !this.audioManager || !this.player) {
+      return;
     }
     
-    // Handle movement
-    if (inputState.moveForward) {
-      this.player.moveForward(deltaTime);
-    }
-    if (inputState.moveBackward) {
-      this.player.moveBackward(deltaTime);
-    }
-    if (inputState.moveLeft) {
-      this.player.moveLeft(deltaTime);
-    }
-    if (inputState.moveRight) {
-      this.player.moveRight(deltaTime);
-    }
+    // Update movement system first
+    this.movementSystem.update(deltaTime);
     
-    // Handle sprint
-    this.player.setSprinting(inputState.sprint);
+    // Check if player is moving
+    this.isMoving = this.inputManager.isActionPressed('moveForward') ||
+                   this.inputManager.isActionPressed('moveBackward') ||
+                   this.inputManager.isActionPressed('moveLeft') ||
+                   this.inputManager.isActionPressed('moveRight');
+    
+    // Update combat system
+    this.combatSystem.update(deltaTime);
+    
+    // Update effects
+    this.effectsManager.update(deltaTime);
+    
+    // Update audio
+    this.audioManager.update();
     
     // Update player
-    this.player.update(deltaTime);
+    this.player.update(deltaTime, this.isMoving);
     
-    // Update other systems
-    this.physicsManager.update(deltaTime);
-    this.effectsManager.update(deltaTime);
-    this.sceneManager.update(deltaTime);
+    // Update camera to follow player
+    this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // Reset mouse delta after each frame
-    this.inputManager.update();
+    // Check location changes
+    const isInTavern = this.movementSystem.checkInTavern();
+    this.stateManager.updateLocationState(isInTavern);
+    
+    // Check for game over
+    if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
+      this.stateManager.setGameOver(this.stateManager.getScore());
+    }
   }
-
-  private render(): void {
-    this.renderEngine.render();
-  }
-
-  private handleResize(): void {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+  
+  public pause(): void {
+    if (!this.isInitialized || !this.stateManager.isPlaying()) return;
     
-    this.camera.aspect = width / height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
-  }
-
-  public handleInput(action: string, data?: any): void {
-    if (!this.gameRunning) return;
+    this.stateManager.pause();
     
-    // Handle input actions
-    switch (action) {
-      case 'requestPointerLock':
+    if (this.audioManager) {
+      if (this.stateManager.isPaused()) {
+        this.audioManager.pause('game_music');
+        this.audioManager.pause('tavern_ambience');
+      } else {
+        this.audioManager.resume('game_music');
+        this.audioManager.resume('tavern_ambience');
+      }
+    }
+  }
+  
+  public restart(): void {
+    if (!this.isInitialized) return;
+    
+    console.log("🎮 [GameEngine] Restarting game and RECREATING PLAYER with NEW ARM POSITIONING...");
+    this.stateManager.restart();
+    
+    // CRITICAL: Recreate player to ensure new arm positioning takes effect
+    if (this.effectsManager && this.audioManager) {
+      // Dispose old player
+      if (this.player) {
+        this.player.dispose();
+        this.renderEngine.getScene().remove(this.player.getGroup());
+      }
+      
+      // Create new player with updated positioning
+      console.log("🔄 [GameEngine] Creating NEW player instance with updated arm positioning...");
+      this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
+      console.log("🔄 [GameEngine] NEW player instance created with updated arm positioning");
+      
+      // Make player arms/sword visible for first-person immersion
+      const playerBody = this.player.getBody();
+      if (playerBody.leftArm) playerBody.leftArm.visible = true;
+      if (playerBody.rightArm) playerBody.rightArm.visible = true;
+      
+      // Recreate combat system with new player
+      if (this.combatSystem) {
+        this.combatSystem.dispose();
+      }
+      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager);
+      
+      // Recreate movement system with new player  
+      if (this.movementSystem) {
+        this.movementSystem.dispose();
+      }
+      this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager!);
+      
+      // Reset first-person camera
+      this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
+    }
+    
+    // Start ambient sounds
+    if (this.audioManager) {
+      this.audioManager.play('tavern_ambience', true);
+      this.audioManager.play('game_music', true);
+    }
+    
+    console.log("🎮 [GameEngine] Game restarted with NEW PLAYER and ARM POSITIONING!");
+  }
+  
+  public handleInput(type: string, data?: any): void {
+    if (!this.isInitialized) {
+      console.log("🎮 [GameEngine] Input ignored - not initialized");
+      return;
+    }
+    
+    // Handle pointer lock requests even when game is paused
+    if (type === 'requestPointerLock' || type === 'requestPointerUnlock') {
+      if (type === 'requestPointerLock' && this.inputManager) {
         this.inputManager.requestPointerLock();
-        break;
-      case 'requestPointerUnlock':
+      } else if (type === 'requestPointerUnlock' && this.inputManager) {
         this.inputManager.exitPointerLock();
+      }
+      return;
+    }
+    
+    // For other inputs, check if game is ready
+    if (!this.stateManager.isPlaying() || this.stateManager.isPaused()) {
+      return;
+    }
+    
+    switch (type) {
+      case 'attack':
+        if (!this.isAttackPressed && this.combatSystem) {
+          this.isAttackPressed = true;
+          this.combatSystem.startPlayerAttack();
+        }
         break;
+        
+      case 'attackEnd':
+        if (this.isAttackPressed && this.combatSystem) {
+          this.isAttackPressed = false;
+          this.combatSystem.stopPlayerAttack();
+        }
+        break;
+        
+      case 'sprint':
+      case 'doubleTapForward':
+        if (this.player) {
+          this.player.startSprint();
+        }
+        break;
+        
+      case 'pointerLockChange':
+        break;
+        
       default:
-        // Let input manager handle other inputs
         break;
     }
   }
-
-  // Getters for external access
+  
+  // Callback setters - delegate to state manager
+  public setOnUpdateHealth(callback: (health: number) => void): void {
+    this.stateManager.setOnUpdateHealth(callback);
+  }
+  
+  public setOnUpdateGold(callback: (gold: number) => void): void {
+    this.stateManager.setOnUpdateGold(callback);
+  }
+  
+  public setOnUpdateStamina(callback: (stamina: number) => void): void {
+    this.stateManager.setOnUpdateStamina(callback);
+  }
+  
+  public setOnUpdateScore(callback: (score: number) => void): void {
+    this.stateManager.setOnUpdateScore(callback);
+  }
+  
+  public setOnGameOver(callback: (score: number) => void): void {
+    this.stateManager.setOnGameOver(callback);
+  }
+  
+  public setOnLocationChange(callback: (isInTavern: boolean) => void): void {
+    this.stateManager.setOnLocationChange(callback);
+  }
+  
+  // Getters - delegate to appropriate managers
+  public getGameState(): GameState {
+    return this.stateManager.getGameState();
+  }
+  
+  public getScene(): THREE.Scene {
+    return this.renderEngine.getScene();
+  }
+  
+  public getCamera(): THREE.PerspectiveCamera {
+    return this.renderEngine.getCamera();
+  }
+  
+  public getRenderer(): THREE.WebGLRenderer {
+    return this.renderEngine.getRenderer();
+  }
+  
   public getPlayer(): Player | null {
     return this.player;
   }
-
-  public getRenderer(): THREE.WebGLRenderer {
-    return this.renderer;
-  }
-
-  public getGameState(): any {
-    return {
-      timeElapsed: performance.now() / 1000,
-      isRunning: this.gameRunning,
-      isPaused: this.isPausedState
-    };
-  }
-
+  
   public isRunning(): boolean {
-    return this.gameRunning;
+    return this.stateManager.isPlaying();
   }
-
+  
   public isPaused(): boolean {
-    return this.isPausedState;
+    return this.stateManager.isPaused();
   }
-
-  public setUIState(uiOpen: boolean): void {
-    // Handle UI state changes
-    if (uiOpen) {
-      this.inputManager.exitPointerLock();
-    }
+  
+  public isGameOver(): boolean {
+    return this.stateManager.isGameOver();
   }
-
-  // Callback setters
-  public setOnUpdateHealth(callback: (health: number) => void): void {
-    this.onUpdateHealth = callback;
-  }
-
-  public setOnUpdateGold(callback: (gold: number) => void): void {
-    this.onUpdateGold = callback;
-  }
-
-  public setOnUpdateStamina(callback: (stamina: number) => void): void {
-    this.onUpdateStamina = callback;
-  }
-
-  public setOnUpdateScore(callback: (score: number) => void): void {
-    this.onUpdateScore = callback;
-  }
-
-  public setOnGameOver(callback: (score: number) => void): void {
-    this.onGameOver = callback;
-  }
-
-  public setOnLocationChange(callback: (isInTavern: boolean) => void): void {
-    this.onLocationChange = callback;
-  }
-
+  
   public dispose(): void {
-    console.log('[GameEngine] Disposing...');
+    console.log("🎮 [GameEngine] Disposing game engine...");
     
-    // Stop game loop
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-    }
-    
-    // Remove event listeners
-    window.removeEventListener('resize', this.handleResize);
-    
-    // Dispose managers
-    this.inputManager.dispose();
-    this.sceneManager.dispose();
+    // Dispose managers (check for null to avoid runtime errors)
+    this.stateManager.dispose();
+    this.uiIntegrationManager.dispose();
     this.renderEngine.dispose();
-    this.effectsManager.dispose();
-    this.physicsManager.dispose();
     
-    // Dispose player
-    if (this.player) {
-      this.player.dispose();
+    // Dispose systems (check for null to avoid runtime errors)
+    if (this.movementSystem) {
+      this.movementSystem.dispose();
+    }
+    if (this.audioManager) {
+      this.audioManager.dispose();
+    }
+    if (this.combatSystem) {
+      this.combatSystem.dispose();
+    }
+    if (this.effectsManager) {
+      this.effectsManager.dispose();
+    }
+    if (this.inputManager) {
+      this.inputManager.dispose();
+    }
+    if (this.sceneManager) {
+      this.sceneManager.dispose();
     }
     
-    // Remove renderer from DOM
-    if (this.renderer.domElement.parentNode) {
-      this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
-    }
-    
-    this.gameRunning = false;
-    console.log('[GameEngine] Disposed');
+    console.log("🎮 [GameEngine] Game engine disposed!");
   }
 }

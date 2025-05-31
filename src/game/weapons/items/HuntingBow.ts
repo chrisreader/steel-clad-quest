@@ -260,14 +260,16 @@ export class HuntingBow extends BaseWeapon {
     if (!this.isDrawing) return;
     
     // Enhanced charge calculation with better timing
-    const chargeRate = 1.0 / this.maxChargeTime; // Charge per second (1.0 over 4 seconds)
+    const chargeRate = 1.0 / this.maxChargeTime; // Charge per second
     this.chargeLevel = Math.min(this.chargeLevel + (deltaTime * chargeRate), 1.2); // Allow slight overcharge
     
     this.updateDrawStage();
     this.updateBowVisuals();
     
-    // Debug charging with stage information
-    console.log(`🏹 [HuntingBow] Charging: ${(this.chargeLevel * 100).toFixed(1)}% (Stage: ${this.currentDrawStage}) - Time: ${(this.chargeLevel * this.maxChargeTime).toFixed(1)}s`);
+    // Debug charging
+    if (this.chargeLevel > 0.1) {
+      console.log(`🏹 [HuntingBow] Charging: ${(this.chargeLevel * 100).toFixed(1)}% (Stage: ${this.currentDrawStage})`);
+    }
     
     // Handle overcharged shake with enhanced effect
     if (this.chargeLevel >= 1.0) {

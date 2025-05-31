@@ -19,30 +19,6 @@ export interface PlayerStats {
   defense: number;
   speed: number;
   attackPower: number;
-  movementSpeed: number;
-  attackDamage: number;
-  inventorySize: number;
-  initialLevel: number;
-}
-
-export interface PlayerConfig {
-  modelPath: string;
-  stats: PlayerStats;
-  settings: PlayerSettings;
-  animations: {
-    idle: string;
-    walk: string;
-    run: string;
-    attack: string;
-    die: string;
-  };
-}
-
-export interface PlayerSettings {
-  mouseSensitivity: number;
-  walkSpeed: number;
-  runSpeed: number;
-  jumpHeight: number;
 }
 
 export interface PlayerBody {
@@ -55,7 +31,7 @@ export interface PlayerBody {
   rightLeg: THREE.Mesh;
   body: THREE.Mesh;
   head: THREE.Mesh;
-  // Optional enhanced components
+  // New realistic arm components
   leftUpperArm?: THREE.Mesh;
   rightUpperArm?: THREE.Mesh;
   leftForearm?: THREE.Mesh;
@@ -64,17 +40,9 @@ export interface PlayerBody {
   rightElbow?: THREE.Group;
   leftWrist?: THREE.Group;
   rightWrist?: THREE.Group;
+  // Add foot properties for complete body representation
   leftFoot?: THREE.Mesh;
   rightFoot?: THREE.Mesh;
-}
-
-export interface PlayerEquipment {
-  head: WeaponConfig | null;
-  body: WeaponConfig | null;
-  legs: WeaponConfig | null;
-  feet: WeaponConfig | null;
-  mainHand: WeaponConfig | null;
-  offHand: WeaponConfig | null;
 }
 
 // Equipment slot types
@@ -137,9 +105,9 @@ export interface Item {
   description: string;
   quantity: number;
   equipmentSlot?: EquipmentSlotType;
-  icon?: string;
+  icon?: string; // For UI display
   tier?: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-  weaponId?: string;
+  weaponId?: string; // Links to weapon system
 }
 
 // Enemy types enum

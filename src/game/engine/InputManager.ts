@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { MouseHandler } from './input/MouseHandler';
 import { KeyboardHandler } from './input/KeyboardHandler';
@@ -20,83 +19,86 @@ interface KeyBindings {
   pause: string[];
 }
 
-interface InputState {
-  moveForward: boolean;
-  moveBackward: boolean;
-  moveLeft: boolean;
-  moveRight: boolean;
-  attack: boolean;
-  bowDraw: boolean;
-  sprint: boolean;
-}
-
 export class InputManager {
   private mouseHandler: MouseHandler;
   private keyboardHandler: KeyboardHandler;
   private touchHandler: TouchHandler;
   private pointerLockManager: PointerLockManager;
-  private inputState: InputState;
   
   constructor() {
-    console.log('🎮 [InputManager] Initializing...');
+    console.log('🎮 [InputManager] Initializing with enhanced mouse smoothing...');
     
-    // Initialize pointer lock manager first
-    this.pointerLockManager = new PointerLockManager();
+    // Create event dispatcher
+    const eventDispatcher = this.dispatchInputEvent.bind(this);
     
     // Initialize handlers
-    this.mouseHandler = new MouseHandler(this, this.pointerLockManager);
-    this.keyboardHandler = new KeyboardHandler();
-    this.touchHandler = new TouchHandler();
+    this.mouseHandler = new MouseHandler(eventDispatcher);
+    this.keyboardHandler = new KeyboardHandler(eventDispatcher);
+    this.touchHandler = new TouchHandler(eventDispatcher);
+    this.pointerLockManager = new PointerLockManager(eventDispatcher);
     
-    // Initialize input state
-    this.inputState = {
-      moveForward: false,
-      moveBackward: false,
-      moveLeft: false,
-      moveRight: false,
-      attack: false,
-      bowDraw: false,
-      sprint: false
-    };
+    // Set up pointer lock state synchronization
+    this.setupPointerLockSync();
   }
   
   public initialize(renderer: THREE.WebGLRenderer): void {
     this.pointerLockManager.initialize(renderer);
-    console.log('🎮 [InputManager] Initialized');
+    console.log('🎮 [InputManager] Initialized with enhanced mouse handling');
   }
   
-  // Methods needed by MouseHandler
-  public setInputState(action: string, value: boolean): void {
-    if (action in this.inputState) {
-      (this.inputState as any)[action] = value;
-      console.log(`🎮 [InputManager] Set ${action} to ${value}`);
-    }
+  private setupPointerLockSync(): void {
+    // Listen for pointer lock changes to sync with mouse handler
+    document.addEventListener('gameInput', (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { type, data } = customEvent.detail;
+      
+      if (type === 'pointerLockChange') {
+        this.mouseHandler.setPointerLocked(data.locked);
+        console.log("🔄 [InputManager] Synchronized pointer lock state:", data.locked);
+      }
+    });
   }
   
-  public setMouseRotation(deltaX: number, deltaY: number): void {
-    // Handle mouse rotation - pass to camera system if needed
-    console.log(`🖱️ [InputManager] Mouse rotation: ${deltaX.toFixed(3)}, ${deltaY.toFixed(3)}`);
+  // Custom event system
+  private dispatchInputEvent(type: string, data?: any): void {
+    const event = new CustomEvent('gameInput', {
+      detail: {
+        type: type,
+        data: data || {}
+      }
+    });
+    
+    document.dispatchEvent(event);
   }
   
-  // Public API methods
+  // Public API - delegate to appropriate handlers
   public isKeyPressed(keyCode: string): boolean {
     return this.keyboardHandler.isKeyPressed(keyCode);
   }
   
   public isActionPressed(action: keyof KeyBindings): boolean {
-    return this.keyboardHandler.isActionPressed(action);
+    // Check keyboard first
+    const keyboardResult = this.keyboardHandler.isActionPressed(action);
+    if (keyboardResult) return true;
+    
+    // Check mouse for mouse-based actions
+    if (action === 'attack') {
+      return this.mouseHandler.isButtonPressed(0); // Left mouse button
+    }
+    
+    return false;
   }
   
   public getMousePosition(): { x: number; y: number } {
-    return { x: 0, y: 0 }; // Simplified
+    return this.mouseHandler.getMousePosition();
   }
   
   public getMouseDelta(): { x: number; y: number } {
-    return { x: 0, y: 0 }; // Simplified
+    return this.mouseHandler.getMouseDelta();
   }
   
   public resetMouseDelta(): void {
-    // Simplified
+    this.mouseHandler.resetMouseDelta();
   }
   
   public getJoystickState(): { active: boolean; x: number; y: number } {
@@ -104,7 +106,7 @@ export class InputManager {
   }
   
   public setMouseSensitivity(sensitivity: number): void {
-    this.mouseHandler.setMouseSensitivity(sensitivity);
+    console.log("Mouse sensitivity setting moved to GameEngine");
   }
   
   public setKeyBindings(bindings: Partial<KeyBindings>): void {
@@ -136,17 +138,14 @@ export class InputManager {
   }
   
   public update(): void {
-    // Update logic
+    // Reset mouse delta after each frame for smooth movement
+    this.mouseHandler.resetMouseDelta();
   }
   
   public dispose(): void {
-    this.mouseHandler.cleanup();
+    this.mouseHandler.dispose();
     this.keyboardHandler.dispose();
     this.touchHandler.dispose();
     this.pointerLockManager.dispose();
-  }
-  
-  public getInputState(): InputState {
-    return { ...this.inputState };
   }
 }
