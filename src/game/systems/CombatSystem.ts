@@ -35,7 +35,7 @@ export class CombatSystem {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] Initialized with bow support");
+    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with bow support");
   }
   
   public update(deltaTime: number): void {
@@ -90,6 +90,8 @@ export class CombatSystem {
     const currentWeapon = this.player.getEquippedWeapon();
     
     console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK CALLED *** - weapon type:", currentWeapon?.getConfig().type || 'none');
+    console.log("⚔️ [CombatSystem] Player object exists:", !!this.player);
+    console.log("⚔️ [CombatSystem] Player startSwordSwing method exists:", typeof this.player.startSwordSwing);
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
       console.log("⚔️ [CombatSystem] Starting bow attack");
@@ -167,15 +169,26 @@ export class CombatSystem {
     const now = Date.now();
     const timeSinceLastAttack = now - this.lastAttackTime;
     
+    console.log("⚔️ [CombatSystem] *** START MELEE ATTACK *** - Time since last attack:", timeSinceLastAttack, "Cooldown:", this.attackCooldownMs);
+    
     if (timeSinceLastAttack < this.attackCooldownMs) {
-      console.log("⚔️ [CombatSystem] Attack blocked by cooldown");
+      console.log("⚔️ [CombatSystem] *** ATTACK BLOCKED BY COOLDOWN ***");
       return;
     }
     
-    console.log("⚔️ [CombatSystem] *** STARTING MELEE ATTACK *** - calling player.startSwordSwing()");
+    console.log("⚔️ [CombatSystem] *** COOLDOWN PASSED *** - calling player.startSwordSwing()");
     this.lastAttackTime = now;
-    this.player.startSwordSwing();
-    console.log("⚔️ [CombatSystem] *** MELEE ATTACK *** - player.startSwordSwing() called successfully");
+    
+    // Add debugging before calling player method
+    console.log("⚔️ [CombatSystem] About to call this.player.startSwordSwing()");
+    console.log("⚔️ [CombatSystem] Player method type:", typeof this.player.startSwordSwing);
+    
+    try {
+      this.player.startSwordSwing();
+      console.log("⚔️ [CombatSystem] *** PLAYER.STARTSWORDSWING() CALLED SUCCESSFULLY ***");
+    } catch (error) {
+      console.error("⚔️ [CombatSystem] *** ERROR CALLING PLAYER.STARTSWORDSWING() ***", error);
+    }
   }
   
   private checkPlayerAttacks(): void {
