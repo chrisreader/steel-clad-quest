@@ -20,6 +20,16 @@ export class SwordSwingAnimation {
     console.log('🗡️ [SwordSwingAnimation]   - weaponSwing.duration:', weaponSwing?.duration);
   }
   
+  // Smooth easing function for more natural movement
+  private smoothEase(t: number): number {
+    return t * t * t * (t * (t * 6 - 15) + 10); // Smoothstep variant
+  }
+  
+  // Aggressive easing for faster slash phase
+  private aggressiveEase(t: number): number {
+    return 1 - Math.pow(1 - t, 3); // Cubic ease-out for fast acceleration
+  }
+  
   public update(): void {
     console.log('🗡️ [SwordSwingAnimation] *** UPDATE METHOD CALLED ***');
     console.log('🗡️ [SwordSwingAnimation] weaponSwing.isActive:', this.weaponSwing?.isActive);
@@ -55,7 +65,7 @@ export class SwordSwingAnimation {
     const weaponConfig = this.equippedWeapon.getConfig();
     const configRotations = weaponConfig.swingAnimation.rotations;
     
-    console.log('🗡️ [SwordSwingAnimation] Using STRAIGHT DIAGONAL slash for direct movement:', configRotations);
+    console.log('🗡️ [SwordSwingAnimation] Using SMOOTH FASTER slash for enhanced movement:', configRotations);
     
     // Initialize rotations from weapon config
     let shoulderRotation = { 
@@ -70,9 +80,9 @@ export class SwordSwingAnimation {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Smooth interpolation from neutral to raised position
+      // WINDUP PHASE: Ultra-smooth interpolation from neutral to raised position
       const t = elapsed / phases.windup;
-      const easedT = THREE.MathUtils.smoothstep(t, 0, 1); // Using smoothstep for natural movement
+      const easedT = this.smoothEase(t); // Enhanced smoothstep for natural movement
       
       // SHOULDER: Use weapon config windup position (right side ready)
       shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x, configRotations.windup.x, easedT);
@@ -94,43 +104,43 @@ export class SwordSwingAnimation {
       console.log(`🗡️ [SwordSwingAnimation] Shoulder Y angle: ${THREE.MathUtils.radToDeg(shoulderRotation.y).toFixed(1)}°`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: STRAIGHT DIAGONAL LINE from RIGHT to LEFT-DOWN with aggressive acceleration
+      // SLASH PHASE: ULTRA-FAST DIAGONAL LINE from RIGHT to LEFT-DOWN with smooth aggressive acceleration
       const t = (elapsed - phases.windup) / phases.slash;
       
-      // AGGRESSIVE ACCELERATION: smoothstep easing for fast diagonal sweep
-      const aggressiveT = t * t * (3 - 2 * t); // Smoothstep for aggressive acceleration
+      // SMOOTH AGGRESSIVE ACCELERATION: Enhanced easing for faster, smoother diagonal sweep
+      const aggressiveT = this.aggressiveEase(t); // Cubic ease-out for smooth fast acceleration
       
-      // NEW SLASH END POSITION: x: +15°, y: 20°, z: 0°
+      // FASTER SLASH END POSITION: x: +15°, y: 20°, z: 0°
       const slashEndRotation = {
         x: THREE.MathUtils.degToRad(15),  // +15° end position
         y: THREE.MathUtils.degToRad(20), // 20° moderate sweep to left
         z: 0 // No z rotation
       };
       
-      // SHOULDER: Aggressive movement from windup to new slash end position
+      // SHOULDER: Smooth aggressive movement from windup to new slash end position
       shoulderRotation.x = THREE.MathUtils.lerp(configRotations.windup.x, slashEndRotation.x, aggressiveT);
       shoulderRotation.y = THREE.MathUtils.lerp(configRotations.windup.y, slashEndRotation.y, aggressiveT);
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, slashEndRotation.z, aggressiveT);
       
-      // ELBOW: Aggressive movement to support fast diagonal
+      // ELBOW: Smooth aggressive movement to support fast diagonal
       elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.15, aggressiveT);
       elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 6, aggressiveT); // Moderate sweep across body
       
-      // WRIST: Aggressive movement with snap for fast diagonal line
+      // WRIST: Smooth aggressive movement with snap for fast diagonal line
       wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 10, aggressiveT);
       wristRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, 0, aggressiveT);
       
-      // TORSO: Aggressive rotation to support fast diagonal movement
+      // TORSO: Smooth aggressive rotation to support fast diagonal movement
       torsoRotation = THREE.MathUtils.lerp(-0.3, 0.25, aggressiveT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} aggressiveT=${aggressiveT.toFixed(2)} - FAST DIAGONAL SWEEP`);
+      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} aggressiveT=${aggressiveT.toFixed(2)} - SMOOTH FAST DIAGONAL SWEEP`);
       console.log(`🗡️ [SwordSwingAnimation] Target end: X=${THREE.MathUtils.radToDeg(slashEndRotation.x)}° Y=${THREE.MathUtils.radToDeg(slashEndRotation.y)}°`);
       console.log(`🗡️ [SwordSwingAnimation] Current: X=${THREE.MathUtils.radToDeg(shoulderRotation.x).toFixed(1)}° Y=${THREE.MathUtils.radToDeg(shoulderRotation.y).toFixed(1)}°`);
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to neutral position
+      // RECOVERY PHASE: Smooth return to neutral position
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
-      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
+      const easedT = this.smoothEase(t); // Enhanced smoothstep for smooth return
       
       // Return from the new slash end position to neutral
       const slashEndRotation = {
@@ -139,23 +149,23 @@ export class SwordSwingAnimation {
         z: 0
       };
       
-      // Return all joints to neutral using weapon config
+      // Return all joints to neutral using weapon config with smooth easing
       shoulderRotation.x = THREE.MathUtils.lerp(slashEndRotation.x, configRotations.neutral.x, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(slashEndRotation.y, configRotations.neutral.y, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(slashEndRotation.z, configRotations.neutral.z, easedT);
       
-      // Return elbow to neutral
+      // Return elbow to neutral smoothly
       elbowRotation.x = THREE.MathUtils.lerp(0.15, 0.05, easedT);
       elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 6, 0, easedT);
       
-      // Return wrist to neutral
+      // Return wrist to neutral smoothly
       wristRotation.y = THREE.MathUtils.lerp(Math.PI / 10, 0, easedT);
       wristRotation.z = THREE.MathUtils.lerp(0, 0, easedT);
       
-      // Torso returns to center
+      // Torso returns to center smoothly
       torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to neutral`);
+      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Smooth return to neutral`);
       
     } else {
       // ANIMATION COMPLETE
@@ -165,7 +175,7 @@ export class SwordSwingAnimation {
     }
     
     // Apply the coordinated arm and sword movement
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING COORDINATED MOVEMENT *** - Fast diagonal slash with aggressive acceleration`);
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING COORDINATED MOVEMENT *** - Smooth fast diagonal slash with enhanced easing`);
     this.applyCoordinatedMovement(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
   }
   
@@ -175,7 +185,7 @@ export class SwordSwingAnimation {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    console.log(`🗡️ [SwordSwingAnimation] *** COORDINATED MOVEMENT *** - Arm segments moving together for fast diagonal slash`);
+    console.log(`🗡️ [SwordSwingAnimation] *** COORDINATED MOVEMENT *** - Arm segments moving together for smooth fast diagonal slash`);
     
     if (!this.playerBody || !this.playerBody.rightArm) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - playerBody or rightArm is null');

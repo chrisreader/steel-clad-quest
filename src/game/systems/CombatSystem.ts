@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -16,9 +15,9 @@ export class CombatSystem {
   private audioManager: AudioManager;
   private projectileSystem: ProjectileSystem;
   
-  // Combat parameters
+  // Combat parameters - updated for faster sword attacks
   private pickupRange: number = 2; // Range for gold pickup
-  private attackCooldownMs: number = 768; // Updated to match new sword duration (0.768s)
+  private attackCooldownMs: number = 614; // Updated to match new faster sword duration (0.614s)
   private lastAttackTime: number = 0;
   
   // Bow mechanics
@@ -36,7 +35,7 @@ export class CombatSystem {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with bow support");
+    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with bow support and faster sword attacks");
   }
   
   public update(deltaTime: number): void {
