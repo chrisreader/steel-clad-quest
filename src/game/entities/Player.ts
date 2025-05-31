@@ -136,7 +136,7 @@ export class Player {
       attackPower: 20
     };
     
-    console.log("Player initialized with realistic arm system, weapon animation system, and stats:", this.stats);
+    console.log("Player initialized with realistic arm system, weapon animation system, and full visible body:", this.stats);
   }
   
   private createRealisticPlayerBody(): PlayerBody {
@@ -146,7 +146,7 @@ export class Player {
     const metalTexture = TextureGenerator.createMetalTexture();
     const skinTexture = this.createSkinTexture();
     
-    // Body - slightly wider and more realistic proportions
+    // Body - positioned to stay below camera view with strategic offset
     const bodyGeometry = new THREE.BoxGeometry(0.7, 1.4, 0.35);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
@@ -156,12 +156,13 @@ export class Player {
       normalScale: new THREE.Vector2(0.5, 0.5)
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = -0.3;
+    // Position body lower and slightly forward to stay outside FOV
+    body.position.set(0, -1.8, 0.3); // Moved down and forward
     body.castShadow = true;
-    body.visible = false; // Hide body in first-person
+    body.visible = true; // NOW VISIBLE - positioned to stay outside camera view
     playerBodyGroup.add(body);
     
-    // Head - slightly larger and better positioned
+    // Head - keep hidden since camera is at head position
     const headGeometry = new THREE.BoxGeometry(0.45, 0.45, 0.35);
     const headMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xFFDBC4,
@@ -172,7 +173,7 @@ export class Player {
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 0.5;
     head.castShadow = true;
-    head.visible = false; // Hide head in first-person
+    head.visible = false; // Keep head hidden since camera is at head level
     playerBodyGroup.add(head);
     
     // REALISTIC ARM SYSTEM - Left Arm
@@ -187,7 +188,7 @@ export class Player {
     rightArmSystem.visible = true;
     playerBodyGroup.add(rightArmSystem);
     
-    // Legs - improved proportions
+    // Legs - positioned to be visible but outside normal view range
     const legGeometry = new THREE.BoxGeometry(0.25, 0.9, 0.25);
     const legMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
@@ -196,22 +197,45 @@ export class Player {
     });
     
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-0.25, -1.15, 0);
+    // Position legs lower and slightly forward to stay outside FOV
+    leftLeg.position.set(-0.25, -2.6, 0.2); // Moved down and forward
     leftLeg.castShadow = true;
-    leftLeg.visible = false;
+    leftLeg.visible = true; // NOW VISIBLE - positioned strategically
     playerBodyGroup.add(leftLeg);
     
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
-    rightLeg.position.set(0.25, -1.15, 0);
+    rightLeg.position.set(0.25, -2.6, 0.2); // Moved down and forward
     rightLeg.castShadow = true;
-    rightLeg.visible = false;
+    rightLeg.visible = true; // NOW VISIBLE - positioned strategically
     playerBodyGroup.add(rightLeg);
+    
+    // Add feet for complete body representation
+    const footGeometry = new THREE.BoxGeometry(0.3, 0.15, 0.45);
+    const footMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2D3B5C,
+      shininess: 40,
+      map: metalTexture
+    });
+    
+    const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+    leftFoot.position.set(-0.25, -3.2, 0.35); // Below legs, forward positioned
+    leftFoot.castShadow = true;
+    leftFoot.visible = true; // NOW VISIBLE - positioned to stay outside FOV
+    playerBodyGroup.add(leftFoot);
+    
+    const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
+    rightFoot.position.set(0.25, -3.2, 0.35); // Below legs, forward positioned
+    rightFoot.castShadow = true;
+    rightFoot.visible = true; // NOW VISIBLE - positioned to stay outside FOV
+    playerBodyGroup.add(rightFoot);
     
     this.group.add(playerBodyGroup);
     
     // Get references to the arm components for the return object
     const leftArmComponents = this.getArmComponents(leftArmSystem);
     const rightArmComponents = this.getArmComponents(rightArmSystem);
+    
+    console.log("🧍 [Player] Full body created with strategic positioning - Body, legs, and feet now visible but positioned outside camera FOV");
     
     return {
       group: playerBodyGroup,
@@ -231,7 +255,10 @@ export class Player {
       leftElbow: leftArmComponents.elbow,
       rightElbow: rightArmComponents.elbow,
       leftWrist: leftArmComponents.wrist,
-      rightWrist: rightArmComponents.wrist
+      rightWrist: rightArmComponents.wrist,
+      // Add feet references for future animations
+      leftFoot,
+      rightFoot
     };
   }
   
