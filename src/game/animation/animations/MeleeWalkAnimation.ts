@@ -38,9 +38,9 @@ export class MeleeWalkAnimation {
     
     // Right arm - WEAPON ARM: raised ready position with reduced swing
     if (!isAttacking) {
-      const rightArmBaseX = Math.PI / 4;  // 45° raised position
-      const rightArmBaseY = Math.PI / 6;  // 30° outward from body
-      const rightArmBaseZ = -Math.PI / 8; // Slight forward tilt
+      const rightArmBaseX = Math.PI / 4;   // 45° raised position
+      const rightArmBaseY = -Math.PI / 6;  // 30° outward (NEGATIVE for outward rotation)
+      const rightArmBaseZ = -Math.PI / 8;  // Slight forward tilt
       
       // Reduced swing intensity for weapon arm to maintain ready stance
       playerBody.rightArm.rotation.x = rightArmBaseX + (armSwing * 0.3);
@@ -66,8 +66,8 @@ export class MeleeWalkAnimation {
     // Left arm: Normal side position
     playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
     
-    // Right arm: Raised ready position for weapon
-    playerBody.rightArm.rotation.set(Math.PI / 4, Math.PI / 6, -Math.PI / 8);
+    // Right arm: Raised ready position for weapon - OUTWARD rotation
+    playerBody.rightArm.rotation.set(Math.PI / 4, -Math.PI / 6, -Math.PI / 8);
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0, 0, 0);

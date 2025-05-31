@@ -32,7 +32,7 @@ export class BowWalkAnimation {
     
     // Left arm - WEAPON ARM: raised bow-holding position with reduced swing
     const leftArmBaseX = Math.PI / 4;   // 45° raised position
-    const leftArmBaseY = -Math.PI / 3;  // Pronounced bow angle
+    const leftArmBaseY = Math.PI / 6;   // Pronounced bow angle (POSITIVE for left arm outward)
     const leftArmBaseZ = -Math.PI / 6;  // Forward angle for better POV visibility
     
     // Reduced swing for bow-holding arm to maintain control
@@ -86,8 +86,8 @@ export class BowWalkAnimation {
   public reset(playerBody: PlayerBody): void {
     // Reset to BOW READY STANCE (not empty hands stance)
     
-    // Left arm: Raised bow-holding position
-    playerBody.leftArm.rotation.set(Math.PI / 4, -Math.PI / 3, -Math.PI / 6);
+    // Left arm: Raised bow-holding position - OUTWARD rotation
+    playerBody.leftArm.rotation.set(Math.PI / 4, Math.PI / 6, -Math.PI / 6);
     
     // Right arm: Ready position
     playerBody.rightArm.rotation.set(Math.PI / 6, Math.PI / 8, -Math.PI / 8);
@@ -106,6 +106,6 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] Reset to BOW READY STANCE - Left arm raised for bow, right arm ready');
+    console.log('🏹 [BowWalkAnimation] Reset to BOW READY STANCE - Left arm raised outward for bow, right arm ready');
   }
 }
