@@ -24,11 +24,11 @@ export class SteelSword extends Sword {
           recovery: 0.213
         },
         rotations: {
-          neutral: { x: Math.PI / 12, y: 0, z: 0 }, // Match new HORIZONTAL idle position (15°)
+          neutral: { x: Math.PI / 12, y: 0, z: 0 }, // 15° horizontal position
           windup: { 
-            x: Math.PI / 12 + THREE.MathUtils.degToRad(5), // Minimal windup to 20°
-            y: THREE.MathUtils.degToRad(-25), // Reduced Y rotation
-            z: THREE.MathUtils.degToRad(12)   // Reduced Z rotation
+            x: Math.PI / 12, // NO CHANGE - stay at horizontal position
+            y: 0,            // NO BACKWARD PULL
+            z: 0             // NO EXTRA ROTATION
           },
           slash: { 
             x: Math.PI / 12 + THREE.MathUtils.degToRad(-10), // Forward slash to 5° (horizontal)
