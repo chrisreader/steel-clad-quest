@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -64,73 +65,73 @@ export class SwordSwingAnimation {
       z: configRotations.neutral.z 
     };
     
-    // Reduced elbow rotation for straighter arm - much less bend
-    let elbowRotation = { x: 0.05, y: 0, z: 0 }; // Reduced from 0.1 to 0.05
+    // Minimal elbow rotation for straight arm
+    let elbowRotation = { x: 0.05, y: 0, z: 0 };
     let wristRotation = { x: -Math.PI / 4, y: 0, z: configRotations.neutral.z };
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Move to upper-right position using weapon config windup
+      // WINDUP PHASE: Extend upper arm to the right (positive Y) and raise up
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Use weapon config windup rotations directly for coordinated movement
+      // Upper arm extends RIGHT (positive Y rotation) and UP for realistic windup
       shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x, configRotations.windup.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(configRotations.neutral.y, configRotations.windup.y, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(configRotations.neutral.y, Math.PI / 3, easedT); // Extend to right (60°)
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.neutral.z, configRotations.windup.z, easedT);
       
-      // Much less elbow bend for straighter arm - reduced angles
-      elbowRotation.x = THREE.MathUtils.lerp(0.05, 0.15, easedT); // Reduced from 0.1->0.6 to 0.05->0.15
+      // Minimal elbow bend for straight arm
+      elbowRotation.x = THREE.MathUtils.lerp(0.05, 0.08, easedT);
       elbowRotation.y = 0;
       
       // Slight torso coiling to support the windup
-      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0, -0.2, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - Moving to upper-right (config windup), elbow minimal bend: ${elbowRotation.x.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - Upper arm extending RIGHT, Y rotation: ${shoulderRotation.y.toFixed(2)}`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Sweep from upper-right to left using weapon config slash
+      // SLASH PHASE: Sweep upper arm from right to LEFT following sword arc
       const t = (elapsed - phases.windup) / phases.slash;
       const easedT = t * t * (3 - 2 * t);
       
-      // Use weapon config slash rotations for the coordinated right-to-left sweep
+      // Upper arm sweeps from RIGHT to LEFT (positive Y to negative Y) following sword
       shoulderRotation.x = THREE.MathUtils.lerp(configRotations.windup.x, configRotations.slash.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(configRotations.windup.y, configRotations.slash.y, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 3, -Math.PI / 4, easedT); // Sweep from right to left
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, easedT);
       
-      // Minimal elbow movement for straighter arm during sweep
-      elbowRotation.x = THREE.MathUtils.lerp(0.15, 0.08, easedT); // Reduced from 0.6->0.2 to 0.15->0.08
+      // Minimal elbow extension during sweep
+      elbowRotation.x = THREE.MathUtils.lerp(0.08, 0.04, easedT);
       elbowRotation.y = 0;
       
       // Wrist snap using weapon config Z-rotation for finishing power
       wristRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, easedT);
       
-      // Torso uncoils to support the sweep
-      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.8, easedT);
+      // Torso uncoils to support the sweep from right to left
+      torsoRotation = THREE.MathUtils.lerp(-0.2, 0.3, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - Sweeping right-to-left (config slash), elbow minimal extension: ${elbowRotation.x.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - Upper arm sweeping RIGHT-to-LEFT, Y rotation: ${shoulderRotation.y.toFixed(2)}`);
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE: Return to weapon config neutral position
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return to weapon config neutral rotations for coordinated recovery
+      // Return to weapon config neutral rotations
       shoulderRotation.x = THREE.MathUtils.lerp(configRotations.slash.x, configRotations.neutral.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(configRotations.slash.y, configRotations.neutral.y, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(-Math.PI / 4, configRotations.neutral.y, easedT); // Return from left to center
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.slash.z, configRotations.neutral.z, easedT);
       
-      // Return to minimal elbow bend for straight arm
-      elbowRotation.x = THREE.MathUtils.lerp(0.08, 0.05, easedT); // Reduced from 0.2->0.1 to 0.08->0.05
+      // Return to minimal elbow bend
+      elbowRotation.x = THREE.MathUtils.lerp(0.04, 0.05, easedT);
       elbowRotation.y = 0;
       
       // Wrist returns to neutral
       wristRotation.z = THREE.MathUtils.lerp(configRotations.slash.z, configRotations.neutral.z, easedT);
       
       // Torso returns to center
-      torsoRotation = THREE.MathUtils.lerp(0.8, 0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0.3, 0, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to neutral (config neutral), elbow minimal bend: ${elbowRotation.x.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to neutral, Y rotation: ${shoulderRotation.y.toFixed(2)}`);
       
     } else {
       // ANIMATION COMPLETE
@@ -140,7 +141,7 @@ export class SwordSwingAnimation {
     }
     
     // Apply the coordinated rotations to all joints
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING COORDINATED ROTATIONS FROM WEAPON CONFIG ***`);
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING REALISTIC ARC ROTATIONS ***`);
     this.applyLocalRotations(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
   }
   
@@ -150,21 +151,21 @@ export class SwordSwingAnimation {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLY COORDINATED ROTATIONS *** - Shoulder leads, elbow follows forward`);
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLY REALISTIC ARC *** - Upper arm leads horizontal sweep`);
     
     if (!this.playerBody || !this.playerBody.rightArm) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - playerBody or rightArm is null');
       return;
     }
     
-    // Apply shoulder rotations using weapon config values - this drives the entire movement
+    // Apply shoulder rotations with realistic arc movement
     this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
-    console.log(`🗡️ [SwordSwingAnimation] Shoulder rotation (drives movement): x=${shoulderRotation.x.toFixed(2)}, y=${shoulderRotation.y.toFixed(2)}, z=${shoulderRotation.z.toFixed(2)}`);
+    console.log(`🗡️ [SwordSwingAnimation] Shoulder rotation (realistic arc): x=${shoulderRotation.x.toFixed(2)}, y=${shoulderRotation.y.toFixed(2)}, z=${shoulderRotation.z.toFixed(2)}`);
     
-    // Apply coordinated elbow rotations that follow the shoulder naturally - NOW BENDING FORWARD
+    // Apply coordinated elbow rotations for straight arm
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
-      console.log(`🗡️ [SwordSwingAnimation] Elbow rotation (follows shoulder FORWARD): x=${elbowRotation.x.toFixed(2)}, y=${elbowRotation.y.toFixed(2)}, z=${elbowRotation.z.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] Elbow rotation (straight arm): x=${elbowRotation.x.toFixed(2)}, y=${elbowRotation.y.toFixed(2)}, z=${elbowRotation.z.toFixed(2)}`);
     }
     
     // Apply wrist rotations with weapon config Z-rotation for snap
@@ -176,7 +177,7 @@ export class SwordSwingAnimation {
     // Apply supporting torso rotation
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = torsoRotation;
-      console.log(`🗡️ [SwordSwingAnimation] Torso rotation (supports movement): ${torsoRotation.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] Torso rotation (supports arc): ${torsoRotation.toFixed(2)}`);
     }
     
     // Debug weapon position if available
@@ -194,12 +195,12 @@ export class SwordSwingAnimation {
     const weaponConfig = this.equippedWeapon.getConfig();
     const neutralRotation = weaponConfig.swingAnimation.rotations.neutral;
     
-    // Reset to weapon config neutral rotations for coordinated return
+    // Reset to weapon config neutral rotations
     this.playerBody.rightArm.rotation.set(neutralRotation.x, neutralRotation.y, neutralRotation.z);
     
     // Reset elbow to minimal bend for straight arm
     if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(0.05, 0, 0); // Reduced from 0.1 to 0.05
+      this.playerBody.rightElbow.rotation.set(0.05, 0, 0);
     }
     if (this.playerBody.rightWrist) {
       this.playerBody.rightWrist.rotation.set(-Math.PI / 4, 0, neutralRotation.z);
