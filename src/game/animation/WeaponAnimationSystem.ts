@@ -1,4 +1,4 @@
-
+import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
 import { BowWalkAnimation } from './animations/BowWalkAnimation';
