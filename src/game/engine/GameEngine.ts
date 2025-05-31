@@ -78,12 +78,16 @@ export class GameEngine {
     // Initialize input manager
     this.inputManager.initialize(this.renderer);
     
-    // Load audio resources
-    await this.audioManager.loadAudio();
-    console.log('🔊 [GameEngine] Audio resources loaded.');
+    // Load audio resources if available
+    if (this.audioManager && typeof this.audioManager.loadAudio === 'function') {
+      await this.audioManager.loadAudio();
+      console.log('🔊 [GameEngine] Audio resources loaded.');
+    }
     
-    // Set up basic scene
-    this.sceneManager.setupBasicLevel();
+    // Set up basic scene if available
+    if (this.sceneManager && typeof this.sceneManager.setupBasicLevel === 'function') {
+      this.sceneManager.setupBasicLevel();
+    }
     
     // Set up input handling for bow drawing
     document.addEventListener('gameInput', (event: Event) => {

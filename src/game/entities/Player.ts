@@ -1,12 +1,10 @@
+
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { Capsule } from 'three/examples/jsm/math/Capsule';
-import { Octree } from 'three/examples/jsm/math/Octree';
 import { FirstPersonCamera, PlayerBody, PlayerStats } from '../../types/GameTypes';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
 import { BaseWeapon } from '../weapons/BaseWeapon';
-import { Sword } from '../weapons/items/Sword';
+import { Sword } from '../weapons/Sword';
 import { HuntingBow } from '../weapons/items/HuntingBow';
 import { WeaponAnimationSystem } from '../animation/WeaponAnimationSystem';
 
@@ -24,8 +22,6 @@ export class Player {
   private attackCooldown: number = 1000;
   private currentLevel: string = 'level1';
   private group: THREE.Group;
-  private collisionOctree: Octree;
-  private playerCollider: Capsule;
   private GRAVITY: number = 30;
   private JUMP_FORCE: number = 15;
   private MAX_SPEED: number = 10;
@@ -110,12 +106,6 @@ export class Player {
     this.group.position.set(0, 0, 0);
     this.scene.add(this.group);
     
-    // Initialize collision octree
-    this.collisionOctree = new Octree();
-    
-    // Initialize player collider
-    this.playerCollider = new Capsule(new THREE.Vector3(0, 0.35, 0), new THREE.Vector3(0, 1, 0), 0.35);
-    
     // Initialize raycaster
     this.raycaster = new THREE.Raycaster();
     
@@ -125,105 +115,45 @@ export class Player {
     // Initialize weapon animation system
     this.weaponAnimationSystem = new WeaponAnimationSystem();
     
-    // Load player model
-    this.loadModel().then(() => {
-      // Add camera to the head after the model is loaded
-      if (this.body.head) {
-        this.body.head.add(this.camera.camera);
-        this.camera.camera.position.set(0, 0.15, 0);
+    // Create simple sword and bow without model loading for now
+    this.createSimpleWeapons();
+  }
+  
+  private createSimpleWeapons(): void {
+    // Create a simple sword configuration
+    const swordConfig = {
+      id: 'steel_sword',
+      name: 'Steel Sword',
+      type: 'sword' as const,
+      stats: {
+        damage: 25,
+        attackSpeed: 1.5,
+        range: 2,
+        durability: 100,
+        weight: 3
       }
-      
-      // Initialize sword
-      this.sword = new Sword();
-      this.swordHitBox = this.sword.createHitBox();
-      this.body.rightHand.add(this.sword.getMesh());
-      this.body.rightHand.add(this.swordHitBox);
-      
-      // Initialize hunting bow
-      this.huntingBow = new HuntingBow();
-      this.body.leftHand.add(this.huntingBow.getMesh());
-      
-      // Set initial weapon
-      this.equipWeapon('steel_sword');
-    });
+    };
+    
+    this.sword = new Sword(swordConfig);
+    this.swordHitBox = this.sword.createHitBox();
+    
+    // Initialize hunting bow
+    this.huntingBow = new HuntingBow();
+    
+    // Set initial weapon
+    this.equipWeapon('steel_sword');
   }
   
-  private async loadModel(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const loader = new GLTFLoader();
-      loader.load('/models/player/scene.gltf', (gltf) => {
-        const model = gltf.scene;
-        
-        // Find and assign body parts
-        this.body.body = model.getObjectByName('Body') as THREE.Mesh;
-        this.body.head = model.getObjectByName('Head') as THREE.Mesh;
-        this.body.leftArm = model.getObjectByName('LeftArm') as THREE.Group;
-        this.body.rightArm = model.getObjectByName('RightArm') as THREE.Group;
-        this.body.leftHand = model.getObjectByName('LeftHand') as THREE.Group;
-        this.body.rightHand = model.getObjectByName('RightHand') as THREE.Group;
-        this.body.leftLeg = model.getObjectByName('LeftLeg') as THREE.Mesh;
-        this.body.rightLeg = model.getObjectByName('RightLeg') as THREE.Mesh;
-        
-        // Add elbow and wrist groups
-        this.body.leftElbow = model.getObjectByName('LeftElbow') as THREE.Group;
-        this.body.rightElbow = model.getObjectByName('RightElbow') as THREE.Group;
-        this.body.leftWrist = model.getObjectByName('LeftWrist') as THREE.Group;
-        this.body.rightWrist = model.getObjectByName('RightWrist') as THREE.Group;
-        
-        // Set default arm rotation
-        this.body.leftArm.rotation.set(Math.PI / 8, 0, 0);
-        this.body.rightArm.rotation.set(Math.PI / 8, 0, 0);
-        
-        // Set default hand rotation
-        this.body.leftHand.rotation.set(-Math.PI / 6, 0, Math.PI / 4);
-        this.body.rightHand.rotation.set(0, 0, 0);
-        
-        // Set default leg rotation
-        this.body.leftLeg.rotation.set(0, 0, 0);
-        this.body.rightLeg.rotation.set(0, 0, 0);
-        
-        // Enable shadows
-        model.traverse((object: any) => {
-          if (object.isMesh) {
-            object.castShadow = true;
-            object.receiveShadow = true;
-          }
-        });
-        
-        // Add model to group
-        this.group.add(model);
-        
-        // Resolve promise
-        resolve();
-      }, undefined, (error) => {
-        console.error('An error happened while loading the player model', error);
-        reject(error);
-      });
-    });
-  }
-  
-  public update(deltaTime: number, octree: Octree): void {
-    this.collisionOctree = octree;
+  public update(deltaTime: number): void {
     this.updateMovement(deltaTime);
     this.updateBobbing(deltaTime);
     this.updateCameraShake(deltaTime);
-    this.updateCollisions(deltaTime);
     this.updateWalkCycle(deltaTime);
   }
   
   private updateMovement(deltaTime: number): void {
-    if (!this.body.body) return;
-    
     // Ground check
-    this.onFloor = false;
-    const rayDirection = new THREE.Vector3(0, -1, 0);
-    const rayOrigin = new THREE.Vector3().copy(this.group.position);
-    rayOrigin.y += 0.5;
-    this.raycaster.set(rayOrigin, rayDirection);
-    const intersects = this.raycaster.intersectObjects(this.collisionOctree.triangles, false);
-    if (intersects.length > 0 && intersects[0].distance < 0.75) {
-      this.onFloor = true;
-    }
+    this.onFloor = true; // Simplified for now
     
     // Apply gravity
     if (!this.onFloor) {
@@ -280,17 +210,6 @@ export class Player {
     this.camera.camera.position.y = 1.5;
   }
   
-  private updateCollisions(deltaTime: number): void {
-    this.playerCollider.start.copy(this.group.position);
-    this.playerCollider.end.copy(this.group.position);
-    
-    const collision = this.collisionOctree.capsuleIntersect(this.playerCollider);
-    
-    if (collision) {
-      this.velocity.add(collision.normal.multiplyScalar(collision.depth).multiplyScalar(100));
-    }
-  }
-  
   private updateBobbing(deltaTime: number): void {
     if (!this.camera.bobbing.enabled || !this.isMoving || !this.onFloor) return;
     
@@ -332,9 +251,19 @@ export class Player {
     this.camera.camera.rotation.set(this.camera.pitch, this.camera.yaw, 0);
   }
   
-  public move(x: number, z: number): void {
-    this.isMoving = x !== 0 || z !== 0;
-    this.currentSpeed.set(x, 0, z);
+  public move(x: number, z: number): void;
+  public move(direction: THREE.Vector3, deltaTime: number): void;
+  public move(xOrDirection: number | THREE.Vector3, zOrDeltaTime?: number): void {
+    if (typeof xOrDirection === 'number' && typeof zOrDeltaTime === 'number') {
+      // Original signature
+      this.isMoving = xOrDirection !== 0 || zOrDeltaTime !== 0;
+      this.currentSpeed.set(xOrDirection, 0, zOrDeltaTime);
+    } else if (xOrDirection instanceof THREE.Vector3 && typeof zOrDeltaTime === 'number') {
+      // New signature for MovementSystem
+      this.isMoving = xOrDirection.length() > 0;
+      const moveSpeed = this.stats.movementSpeed * zOrDeltaTime;
+      this.group.position.add(xOrDirection.clone().multiplyScalar(moveSpeed));
+    }
   }
   
   public jump(): void {
@@ -343,6 +272,19 @@ export class Player {
   
   public sprint(sprint: boolean): void {
     this.isSprinting = sprint;
+  }
+  
+  // New sprint methods for MovementSystem
+  public getSprinting(): boolean {
+    return this.isSprinting;
+  }
+  
+  public startSprint(): void {
+    this.isSprinting = true;
+  }
+  
+  public stopSprint(): void {
+    this.isSprinting = false;
   }
   
   public startSwordSwing(): void {
@@ -452,7 +394,7 @@ export class Player {
     this.body.rightHand.remove(this.sword.getMesh());
     this.body.rightHand.remove(this.swordHitBox);
     this.body.leftHand.remove(this.huntingBow.getMesh());
-    this.weaponAnimationSystem.setWeaponType('empty');
+    this.weaponAnimationSystem.setWeaponType('melee');
     this.weaponAnimationSystem.resetToWeaponStance(this.body);
   }
   

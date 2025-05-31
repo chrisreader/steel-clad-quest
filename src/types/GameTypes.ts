@@ -462,3 +462,6 @@ export interface Gold {
   value: number;
   rotationSpeed: number;
 }
+
+// Add WeaponType definition for animation system
+export type WeaponType = 'melee' | 'bow' | 'empty';

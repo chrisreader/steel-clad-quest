@@ -83,7 +83,11 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
           attack: 10,
           defense: 5,
           speed: 5,
-          attackPower: 10
+          attackPower: 10,
+          movementSpeed: 5,
+          attackDamage: 10,
+          inventorySize: 20,
+          initialLevel: 1
         });
       }
     }, [gameEngine, onStatsUpdate, onGameTimeUpdate, onGameOverChange, onLocationChange]);
