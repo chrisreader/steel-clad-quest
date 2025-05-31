@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -17,7 +18,7 @@ export class CombatSystem {
   
   // Combat parameters
   private pickupRange: number = 2; // Range for gold pickup
-  private attackCooldownMs: number = 640; // Milliseconds between attacks
+  private attackCooldownMs: number = 768; // Updated to match new sword duration (0.768s)
   private lastAttackTime: number = 0;
   
   // Bow mechanics

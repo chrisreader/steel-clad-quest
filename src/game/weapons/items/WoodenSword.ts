@@ -17,11 +17,11 @@ export class WoodenSword extends Sword {
         weight: 2.0
       },
       swingAnimation: {
-        duration: 0.64, // Standard duration for realistic timing
+        duration: 0.768, // 20% longer than 0.64s
         phases: {
-          windup: 0.128,   // 20% of 0.64s
-          slash: 0.32,     // 50% of 0.64s  
-          recovery: 0.192  // 30% of 0.64s
+          windup: 0.154,   // 20% of 0.768s
+          slash: 0.384,    // 50% of 0.768s  
+          recovery: 0.230  // 30% of 0.768s
         },
         rotations: {
           neutral: { x: THREE.MathUtils.degToRad(20), y: 0, z: 0 }, // 20° ready position, slightly down
