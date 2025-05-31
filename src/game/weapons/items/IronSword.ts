@@ -32,7 +32,7 @@ export class IronSword extends Sword {
           },
           slash: { 
             x: THREE.MathUtils.degToRad(60),           // 60° sweep to left side, down follow-through
-            y: THREE.MathUtils.degToRad(60),           // 60° left side sweep end
+            y: THREE.MathUtils.degToRad(30),           // 30° left side sweep end
             z: THREE.MathUtils.degToRad(-12)           // Enhanced wrist snap
           }
         }
