@@ -22,23 +22,30 @@ export class MeleeWalkAnimation {
     playerBody.leftLeg.rotation.x = legSwing;
     playerBody.rightLeg.rotation.x = -legSwing;
     
-    // Arms - reduced swing when holding weapon with FORWARD-ANGLED base position
+    // Arms - different base positions for weapon vs non-weapon arms
     const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     
-    // FORWARD-ANGLED base position for melee weapons (30° upward, forward tilt)
-    const forwardAngleBase = Math.PI / 6; // 30° instead of 22.5°
-    const forwardZ = -0.3; // Forward tilt for better POV visibility
+    // MELEE READY STANCE: Right arm raised, left arm at side
     
-    // Left arm - normal walking swing with FORWARD-ANGLED base positioning
-    playerBody.leftArm.rotation.x = forwardAngleBase - armSwing;
-    playerBody.leftArm.rotation.y = 0; // Ensure symmetric positioning
-    playerBody.leftArm.rotation.z = forwardZ; // Forward angle for better visibility
+    // Left arm - normal side position with walking swing
+    const leftArmBaseX = Math.PI / 8; // Normal side position
+    const leftArmBaseY = 0;
+    const leftArmBaseZ = 0;
     
-    // Right arm - only animate if not attacking with FORWARD-ANGLED base positioning
+    playerBody.leftArm.rotation.x = leftArmBaseX - armSwing;
+    playerBody.leftArm.rotation.y = leftArmBaseY;
+    playerBody.leftArm.rotation.z = leftArmBaseZ;
+    
+    // Right arm - WEAPON ARM: raised ready position with reduced swing
     if (!isAttacking) {
-      playerBody.rightArm.rotation.x = forwardAngleBase + armSwing;
-      playerBody.rightArm.rotation.y = 0; // Ensure symmetric positioning
-      playerBody.rightArm.rotation.z = forwardZ; // Forward angle for better visibility
+      const rightArmBaseX = Math.PI / 4;  // 45° raised position
+      const rightArmBaseY = Math.PI / 6;  // 30° outward from body
+      const rightArmBaseZ = -Math.PI / 8; // Slight forward tilt
+      
+      // Reduced swing intensity for weapon arm to maintain ready stance
+      playerBody.rightArm.rotation.x = rightArmBaseX + (armSwing * 0.3);
+      playerBody.rightArm.rotation.y = rightArmBaseY;
+      playerBody.rightArm.rotation.z = rightArmBaseZ;
     }
     
     // Elbows - subtle movement during walking
@@ -46,19 +53,21 @@ export class MeleeWalkAnimation {
       playerBody.leftElbow.rotation.x = Math.sin(walkCycle + Math.PI) * this.config.elbowMovement + 0.05;
     }
     if (playerBody.rightElbow && !isAttacking) {
-      playerBody.rightElbow.rotation.x = Math.sin(walkCycle) * this.config.elbowMovement + 0.05;
+      // Less elbow movement for weapon arm to maintain control
+      playerBody.rightElbow.rotation.x = Math.sin(walkCycle) * (this.config.elbowMovement * 0.5) + 0.05;
     }
     
-    console.log(`⚔️ [MeleeWalkAnimation] Updated with FORWARD-ANGLED arms for better POV - Attacking: ${isAttacking}`);
+    console.log(`⚔️ [MeleeWalkAnimation] Updated with RIGHT ARM READY STANCE - Left at side, Right raised/outward - Attacking: ${isAttacking}`);
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to FORWARD-ANGLED weapon stance (not side stance)
-    const forwardAngleBase = Math.PI / 6; // 30° upward angle
-    const forwardZ = -0.3; // Forward tilt for better visibility
+    // Reset to MELEE READY STANCE (not empty hands stance)
     
-    playerBody.leftArm.rotation.set(forwardAngleBase, 0, forwardZ); // FORWARD-ANGLED position
-    playerBody.rightArm.rotation.set(forwardAngleBase, 0, forwardZ); // FORWARD-ANGLED position
+    // Left arm: Normal side position
+    playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
+    
+    // Right arm: Raised ready position for weapon
+    playerBody.rightArm.rotation.set(Math.PI / 4, Math.PI / 6, -Math.PI / 8);
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0, 0, 0);
@@ -67,6 +76,6 @@ export class MeleeWalkAnimation {
       playerBody.rightElbow.rotation.set(0, 0, 0);
     }
     
-    console.log('⚔️ [MeleeWalkAnimation] Reset to FORWARD-ANGLED weapon stance for better POV');
+    console.log('⚔️ [MeleeWalkAnimation] Reset to MELEE READY STANCE - Right arm raised outward, left arm at side');
   }
 }

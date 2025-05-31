@@ -25,40 +25,49 @@ export class BowWalkAnimation {
     playerBody.leftLeg.rotation.x = legSwing;
     playerBody.rightLeg.rotation.x = -legSwing;
     
-    // Arms - more natural walking movement with FORWARD-ANGLED bow positioning
+    // Arms - different base positions for bow vs non-bow arms
     const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     
-    // FORWARD-ANGLED base position for bow stance (30° upward, forward tilt)
-    const forwardAngleBase = Math.PI / 6; // 30° instead of 22.5°
+    // BOW READY STANCE: Left arm raised for bow, right arm at side
     
-    // Left arm - bow holding with walking movement and FORWARD-ANGLED base
-    playerBody.leftArm.rotation.x = forwardAngleBase - armSwing * 0.5;
-    playerBody.leftArm.rotation.y = -0.6; // Bow angle positioning
-    playerBody.leftArm.rotation.z = -0.4; // Forward angle for better POV visibility
+    // Left arm - WEAPON ARM: raised bow-holding position with reduced swing
+    const leftArmBaseX = Math.PI / 4;   // 45° raised position
+    const leftArmBaseY = -Math.PI / 3;  // Pronounced bow angle
+    const leftArmBaseZ = -Math.PI / 6;  // Forward angle for better POV visibility
     
-    // Right arm - ready-to-draw with walking movement and FORWARD-ANGLED base
-    playerBody.rightArm.rotation.x = forwardAngleBase + armSwing * 0.5;
-    playerBody.rightArm.rotation.y = 0.1; // Slight outward angle
-    playerBody.rightArm.rotation.z = -0.3; // Forward angle for better POV visibility
+    // Reduced swing for bow-holding arm to maintain control
+    playerBody.leftArm.rotation.x = leftArmBaseX - (armSwing * 0.3);
+    playerBody.leftArm.rotation.y = leftArmBaseY;
+    playerBody.leftArm.rotation.z = leftArmBaseZ;
     
-    // Elbows - more natural movement for bow stance
+    // Right arm - normal side position with walking movement (will be adjusted by draw animation)
+    const rightArmBaseX = Math.PI / 6;  // Moderate upward angle
+    const rightArmBaseY = Math.PI / 8;  // Slight outward angle
+    const rightArmBaseZ = -Math.PI / 8; // Forward angle for better POV visibility
+    
+    playerBody.rightArm.rotation.x = rightArmBaseX + (armSwing * 0.5);
+    playerBody.rightArm.rotation.y = rightArmBaseY;
+    playerBody.rightArm.rotation.z = rightArmBaseZ;
+    
+    // Elbows - natural movement for bow stance
     if (playerBody.leftElbow) {
-      const leftElbowMovement = Math.sin(walkCycle + Math.PI) * this.config.elbowMovement + 0.05;
+      // Less movement for bow-holding arm
+      const leftElbowMovement = Math.sin(walkCycle + Math.PI) * (this.config.elbowMovement * 0.5) + 0.2;
       playerBody.leftElbow.rotation.x = leftElbowMovement;
     }
     
     if (playerBody.rightElbow) {
-      const rightElbowMovement = Math.sin(walkCycle) * this.config.elbowMovement + 0.05;
+      const rightElbowMovement = Math.sin(walkCycle) * this.config.elbowMovement + 0.3;
       playerBody.rightElbow.rotation.x = rightElbowMovement;
     }
     
     // Hands - maintain grip positions with subtle movement
     const handBreathing = Math.sin(this.breathingTime * 1.2) * this.config.handMovement;
     
-    // Left hand maintains bow grip but less extreme
-    playerBody.leftHand.rotation.x = -Math.PI / 6 + handBreathing; // Reduced from -Math.PI / 4
+    // Left hand maintains bow grip
+    playerBody.leftHand.rotation.x = -Math.PI / 6 + handBreathing;
     playerBody.leftHand.rotation.y = 0;
-    playerBody.leftHand.rotation.z = Math.PI / 4; // Reduced from Math.PI / 3
+    playerBody.leftHand.rotation.z = Math.PI / 4;
     
     // Right hand ready position
     playerBody.rightHand.rotation.x = handBreathing * 0.5;
@@ -71,21 +80,23 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    console.log(`🏹 [BowWalkAnimation] Updated with FORWARD-ANGLED arms for better POV - Cycle: ${walkCycle.toFixed(2)}, Sprint: ${isSprinting}`);
+    console.log(`🏹 [BowWalkAnimation] Updated with LEFT ARM READY STANCE - Left raised for bow, right at ready - Cycle: ${walkCycle.toFixed(2)}, Sprint: ${isSprinting}`);
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to FORWARD-ANGLED archery stance
-    const forwardAngleBase = Math.PI / 6; // 30° upward angle
+    // Reset to BOW READY STANCE (not empty hands stance)
     
-    playerBody.leftArm.rotation.set(forwardAngleBase, -0.6, -0.4); // FORWARD-ANGLED bow stance
-    playerBody.rightArm.rotation.set(forwardAngleBase, 0.1, -0.3); // FORWARD-ANGLED ready stance
+    // Left arm: Raised bow-holding position
+    playerBody.leftArm.rotation.set(Math.PI / 4, -Math.PI / 3, -Math.PI / 6);
+    
+    // Right arm: Ready position
+    playerBody.rightArm.rotation.set(Math.PI / 6, Math.PI / 8, -Math.PI / 8);
     
     if (playerBody.leftElbow) {
-      playerBody.leftElbow.rotation.set(0.05, 0, 0);
+      playerBody.leftElbow.rotation.set(0.2, 0, 0);
     }
     if (playerBody.rightElbow) {
-      playerBody.rightElbow.rotation.set(0.05, 0, 0);
+      playerBody.rightElbow.rotation.set(0.3, 0, 0);
     }
     
     playerBody.leftHand.rotation.set(-Math.PI / 6, 0, Math.PI / 4);
@@ -95,6 +106,6 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] Reset to FORWARD-ANGLED archery stance for better POV');
+    console.log('🏹 [BowWalkAnimation] Reset to BOW READY STANCE - Left arm raised for bow, right arm ready');
   }
 }

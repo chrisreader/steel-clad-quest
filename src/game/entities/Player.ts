@@ -498,22 +498,45 @@ export class Player {
     console.log("🏹 [Player] Enhanced bow animation initialized with FORWARD-ANGLED arms for better POV visibility");
   }
   
-  // NEW METHOD: Set forward-angled weapon arm stance for better POV visibility
-  private setWeaponArmStance(): void {
+  // NEW METHOD: Set weapon-specific ready stance - only weapon arm raised
+  private setWeaponArmStance(weaponType: 'melee' | 'bow'): void {
     // Debug arm positions before setting weapon stance
-    this.debugArmPositions("BEFORE_WEAPON_STANCE");
+    this.debugArmPositions("BEFORE_WEAPON_READY_STANCE");
     
     // Keep arms at normal shoulder positions for proper shadow connection
     this.playerBody.leftArm.position.set(-0.3, 0.8, 0);
     this.playerBody.rightArm.position.set(0.3, 0.8, 0);
     
-    // FORWARD-ANGLED base rotations for weapon stance - more visible in POV
-    const forwardAngleBase = Math.PI / 6; // 30° upward angle
-    const forwardZ = -0.3; // Forward tilt
-    
-    // Set both arms to forward-angled position
-    this.playerBody.leftArm.rotation.set(forwardAngleBase, 0, forwardZ);
-    this.playerBody.rightArm.rotation.set(forwardAngleBase, 0, forwardZ);
+    if (weaponType === 'melee') {
+      // MELEE READY STANCE: Right arm raised up and outward, left arm at side
+      
+      // Left arm: Normal side position (like empty hands)
+      this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
+      
+      // Right arm: Raised ready position - up and outward from body
+      this.playerBody.rightArm.rotation.set(
+        Math.PI / 4,  // 45° upward angle (higher than normal)
+        Math.PI / 6,  // 30° outward angle (away from body)
+        -Math.PI / 8  // Slight forward tilt
+      );
+      
+      console.log("🗡️ [Player] Set MELEE ready stance - Right arm raised outward/up, left arm at side");
+      
+    } else if (weaponType === 'bow') {
+      // BOW READY STANCE: Left arm raised up and outward for bow holding, right arm at side
+      
+      // Left arm: Raised bow-holding position - up and outward
+      this.playerBody.leftArm.rotation.set(
+        Math.PI / 4,   // 45° upward angle
+        -Math.PI / 6,  // 30° outward angle (away from body) 
+        -Math.PI / 8   // Slight forward tilt
+      );
+      
+      // Right arm: Normal side position initially (will be adjusted by bow animation)
+      this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
+      
+      console.log("🏹 [Player] Set BOW ready stance - Left arm raised outward/up, right arm at side");
+    }
     
     // Reset elbow positions for natural arm bend
     if (this.playerBody.leftElbow) {
@@ -527,10 +550,8 @@ export class Player {
     this.playerBody.leftHand.rotation.set(0, 0, 0);
     this.playerBody.rightHand.rotation.set(0, 0, 0);
     
-    console.log("🗡️ [Player] Set FORWARD-ANGLED weapon arm stance for better POV visibility");
-    
     // Debug arm positions after setting weapon stance
-    this.debugArmPositions("AFTER_WEAPON_STANCE");
+    this.debugArmPositions("AFTER_WEAPON_READY_STANCE");
   }
   
   public equipWeapon(weaponId: string): boolean {
@@ -567,10 +588,10 @@ export class Player {
       weapon.getMesh().rotation.set(0, 0, 0);
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
-      // Set archery stance with FORWARD-ANGLED arms
-      this.setRealisticArcheryStance();
+      // Set bow ready stance - left arm raised outward
+      this.setWeaponArmStance('bow');
       
-      console.log(`🏹 [Player] Bow equipped with FORWARD-ANGLED realistic arm system for better POV`);
+      console.log(`🏹 [Player] Bow equipped with raised left arm ready stance`);
     } else {
       weaponType = 'melee';
       // Attach melee weapon to right hand with TALLER realistic positioning
@@ -580,10 +601,10 @@ export class Player {
       weapon.getMesh().position.set(0, 0, 0.1);
       weapon.getMesh().rotation.set(0, 0, 0);
       
-      // Set FORWARD-ANGLED weapon stance for melee weapons
-      this.setWeaponArmStance();
+      // Set melee ready stance - right arm raised outward
+      this.setWeaponArmStance('melee');
       
-      console.log(`🗡️ [Player] Melee weapon equipped with FORWARD-ANGLED arm stance for better POV`);
+      console.log(`🗡️ [Player] Melee weapon equipped with raised right arm ready stance`);
     }
     
     // Update animation system weapon type
@@ -598,7 +619,7 @@ export class Player {
     // Update hitbox reference
     this.swordHitBox = weapon.getHitBox();
     
-    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with FORWARD-ANGLED arm system and animation type: ${weaponType}`);
+    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with weapon-specific ready stance and animation type: ${weaponType}`);
     return true;
   }
   
@@ -610,21 +631,20 @@ export class Player {
     this.playerBody.leftArm.position.set(-0.3, 0.8, 0);
     this.playerBody.rightArm.position.set(0.3, 0.8, 0);
     
-    // Set shoulder rotations for archery stance with FORWARD-ANGLED base
-    const baseShoulder = Math.PI / 6; // FORWARD-ANGLED base (30° instead of 22.5°)
+    // Set shoulder rotations for archery stance - left arm already raised by setWeaponArmStance
     
-    // Left shoulder: Extended forward for bow holding - FORWARD-ANGLED base
+    // Left shoulder: Enhanced bow holding position (build upon the ready stance)
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder, // Use forward-angled base position
-      -0.6,
-      -0.4 // Forward angle for better POV visibility
+      Math.PI / 4,   // Keep the raised angle from ready stance
+      -Math.PI / 3,  // More pronounced bow angle
+      -Math.PI / 6   // Forward angle for better POV visibility
     );
     
-    // Right shoulder: Ready to draw position - FORWARD-ANGLED base
+    // Right shoulder: Ready to draw position
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder, // Use forward-angled base position
-      0.1,
-      -0.3 // Forward angle for better POV visibility
+      Math.PI / 6,   // Moderate upward angle
+      Math.PI / 8,   // Slight outward angle
+      -Math.PI / 8   // Forward angle for better POV visibility
     );
     
     // Apply rotations to shoulder joints (the main arm groups)
@@ -648,7 +668,7 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] FORWARD-ANGLED bow stance set for better POV visibility while maintaining proper shadows");
+    console.log("🏹 [Player] Enhanced bow stance set with raised left arm for better POV visibility");
     
     // Debug arm positions after setting archery stance
     this.debugArmPositions("AFTER_ARCHERY_STANCE");
