@@ -173,7 +173,7 @@ export class Player {
   private createTallerRealisticPlayerBody(): PlayerBody {
     const playerBodyGroup = new THREE.Group();
     
-    console.log("🏗️ [Player] CREATING TALLER REALISTIC PLAYER BODY WITH TORSO INVISIBLE TO PLAYER");
+    console.log("🏗️ [Player] CREATING TALLER REALISTIC PLAYER BODY WITH TORSO INVISIBLE TO PLAYER BUT CASTING SHADOWS");
     
     // Create enhanced metal texture for armor/clothing
     const metalTexture = TextureGenerator.createMetalTexture();
@@ -185,16 +185,16 @@ export class Player {
       color: 0xFFDBC4,
       map: skinTexture,
       transparent: true,
-      opacity: 0.95
+      opacity: 0.0 // Completely transparent to camera but still casts shadows
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.set(0, 1.2, 0); // INCREASED from 0.85 to 1.2 (proportional to height increase)
-    head.castShadow = true;
+    head.castShadow = true; // Keep shadow casting enabled
     head.receiveShadow = true;
-    head.visible = false; // Keep invisible for first-person view
+    head.visible = true; // Keep visible for shadow system
     playerBodyGroup.add(head);
     
-    console.log("👤 [Player] Head positioned at TALLER height but invisible for first-person view - position:", head.position);
+    console.log("👤 [Player] Head positioned at TALLER height, transparent to camera but casts shadows - position:", head.position);
     
     // TORSO - TALLER and WIDER for realistic proportions, INVISIBLE TO PLAYER but casts shadows
     const bodyGeometry = new THREE.BoxGeometry(0.5, 1.0, 0.25); // INCREASED height from 0.7 to 1.0
@@ -203,20 +203,22 @@ export class Player {
       shininess: 80,
       specular: 0x666666,
       map: metalTexture,
-      normalScale: new THREE.Vector2(0.5, 0.5)
+      normalScale: new THREE.Vector2(0.5, 0.5),
+      transparent: true,
+      opacity: 0.0 // Completely transparent to camera but still casts shadows
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.set(0, 0.5, 0); // INCREASED from 0.35 to 0.5 (proportional positioning)
-    body.castShadow = true; // Keep shadow casting for realism
+    body.castShadow = true; // Keep shadow casting enabled for realism
     body.receiveShadow = true;
-    body.visible = true;
+    body.visible = true; // Keep visible for shadow system
     
-    // Set torso to layer 1 (invisible to player camera but keeps shadows)
-    body.layers.set(1);
+    // Keep torso on default layer 0 but transparent
+    body.layers.set(0);
     
     playerBodyGroup.add(body);
     
-    console.log("🧍 [Player] Torso set to layer 1 - invisible to player but casts shadows - position:", body.position);
+    console.log("🧍 [Player] Torso set to transparent but keeps shadows - position:", body.position);
     
     // CRITICAL: TALLER ARM POSITIONING - MOVED TO REALISTIC TALLER SHOULDER HEIGHT
     console.log("🦾 [Player] CREATING ARMS AT NEW TALLER REALISTIC POSITION (Y=0.8 INSTEAD OF Y=0.55)");
