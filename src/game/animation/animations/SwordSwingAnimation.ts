@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -25,21 +24,21 @@ export class SwordSwingAnimation {
     let weaponWristRotation = 0;
     let torsoRotation = 0;
     
-    // HORIZONTAL positions for realistic diagonal slash (65° to 55° vertical arc)
-    const neutralShoulderX = Math.PI / 3; // 60° chest level
-    const windupShoulderX = THREE.MathUtils.degToRad(65); // 65° slightly above chest (minimal rise)
-    const slashEndShoulderX = THREE.MathUtils.degToRad(55); // 55° slightly below chest (minimal drop)
+    // REFERENCE-BASED positions for dramatic diagonal slash (72.5° to 7.5° vertical arc = 65° total)
+    const neutralShoulderX = Math.PI / 8; // 22.5° - correct neutral position from reference
+    const windupShoulderX = Math.PI / 8 + THREE.MathUtils.degToRad(50); // 72.5° high position
+    const slashEndShoulderX = Math.PI / 8 - THREE.MathUtils.degToRad(15); // 7.5° low position
     
     const neutralShoulderY = 0;
     const windupShoulderY = THREE.MathUtils.degToRad(-40); // Pull right/back
     const slashEndShoulderY = THREE.MathUtils.degToRad(70); // Sweep left
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Minimal raise for horizontal swing (20% of total time)
+      // WINDUP PHASE: Dramatic raise for proper diagonal slash (20% of total time)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Horizontal diagonal windup - minimal vertical movement
+      // Reference-based diagonal windup - from 22.5° to 72.5°
       shoulderRotation.x = THREE.MathUtils.lerp(neutralShoulderX, windupShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(neutralShoulderY, windupShoulderY, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(0, -0.2, easedT);
@@ -57,11 +56,11 @@ export class SwordSwingAnimation {
       torsoRotation = THREE.MathUtils.lerp(0, -0.4, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Horizontal diagonal sweep with minimal vertical drop (50% of total time)
+      // SLASH PHASE: Dramatic diagonal sweep from 72.5° to 7.5° (50% of total time)
       const t = (elapsed - phases.windup) / phases.slash;
       const easedT = t * t * (3 - 2 * t); // Aggressive acceleration
       
-      // HORIZONTAL diagonal sweep with only 10° vertical arc
+      // DRAMATIC diagonal sweep with full 65° vertical arc
       shoulderRotation.x = THREE.MathUtils.lerp(windupShoulderX, slashEndShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(windupShoulderY, slashEndShoulderY, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(-0.2, 0.3, easedT);
@@ -86,11 +85,11 @@ export class SwordSwingAnimation {
       }
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to neutral stance (30% of total time)
+      // RECOVERY PHASE: Return to correct neutral stance (30% of total time)
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Smooth return to neutral chest position
+      // Smooth return to correct neutral position (22.5°)
       shoulderRotation.x = THREE.MathUtils.lerp(slashEndShoulderX, neutralShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(slashEndShoulderY, neutralShoulderY, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(0.3, 0, easedT);
@@ -108,7 +107,7 @@ export class SwordSwingAnimation {
       torsoRotation = THREE.MathUtils.lerp(0.8, 0, easedT);
       
     } else {
-      // ANIMATION COMPLETE - reset to exact neutral position
+      // ANIMATION COMPLETE - reset to correct neutral position
       this.completeAnimation();
       return;
     }
@@ -117,7 +116,8 @@ export class SwordSwingAnimation {
   }
   
   private completeAnimation(): void {
-    this.playerBody.rightArm.rotation.set(Math.PI / 3, 0, 0);
+    // Set to correct neutral position (22.5° instead of 60°)
+    this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(-0.05, 0, 0);
     }
