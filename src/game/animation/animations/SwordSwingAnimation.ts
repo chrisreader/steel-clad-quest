@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -25,24 +24,24 @@ export class SwordSwingAnimation {
     let weaponWristRotation = 0;
     let torsoRotation = 0;
     
-    // Base positions for realistic diagonal slash
+    // BALANCED positions for realistic diagonal slash (80° to 40.5° vertical arc)
     const neutralShoulderX = Math.PI / 3; // 60° chest level
-    const windupShoulderX = Math.PI / 3 + THREE.MathUtils.degToRad(50); // 110° high position
-    const slashEndShoulderX = Math.PI / 8; // 22.5° low position
+    const windupShoulderX = THREE.MathUtils.degToRad(80); // 80° high position (balanced)
+    const slashEndShoulderX = THREE.MathUtils.degToRad(40.5); // 40.5° low position (balanced)
     
     const neutralShoulderY = 0;
     const windupShoulderY = THREE.MathUtils.degToRad(-40); // Pull right/back
     const slashEndShoulderY = THREE.MathUtils.degToRad(70); // Sweep left
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Raise arm high and pull back (20% of total time)
+      // WINDUP PHASE: Raise arm to balanced high position (20% of total time)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Diagonal windup - up and to the right
+      // Balanced diagonal windup - up and to the right
       shoulderRotation.x = THREE.MathUtils.lerp(neutralShoulderX, windupShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(neutralShoulderY, windupShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0, -0.2, easedT); // Slight roll for power
+      shoulderRotation.z = THREE.MathUtils.lerp(0, -0.2, easedT);
       
       // Elbow bends naturally for high position
       elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.3, easedT);
@@ -57,11 +56,11 @@ export class SwordSwingAnimation {
       torsoRotation = THREE.MathUtils.lerp(0, -0.4, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Diagonal sweep from top-right to bottom-left (50% of total time)
+      // SLASH PHASE: Balanced diagonal sweep from high-right to mid-left (50% of total time)
       const t = (elapsed - phases.windup) / phases.slash;
-      const easedT = t * t * (3 - 2 * t); // Aggressive acceleration like reference
+      const easedT = t * t * (3 - 2 * t); // Aggressive acceleration
       
-      // MASSIVE diagonal sweep - this is the key improvement
+      // BALANCED diagonal sweep with 39.5° vertical arc
       shoulderRotation.x = THREE.MathUtils.lerp(windupShoulderX, slashEndShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(windupShoulderY, slashEndShoulderY, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(-0.2, 0.3, easedT);
@@ -75,10 +74,10 @@ export class SwordSwingAnimation {
       wristRotation.y = THREE.MathUtils.lerp(-0.15, Math.PI / 4, easedT);
       wristRotation.z = THREE.MathUtils.lerp(0.1, -Math.PI / 6, easedT);
       
-      // MASSIVE torso rotation for full-body diagonal slash
+      // Strong torso rotation for full-body diagonal slash
       torsoRotation = THREE.MathUtils.lerp(-0.4, 0.8, easedT);
       
-      // Enhanced wrist snap during middle 60% of slash (like reference code)
+      // Enhanced wrist snap during middle 60% of slash
       if (t >= 0.2 && t <= 0.8) {
         const wristT = (t - 0.2) / 0.6;
         const intensity = this.weaponSwing.wristSnapIntensity || 1.0;
