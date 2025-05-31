@@ -459,16 +459,16 @@ export class Player {
     
     const baseShoulder = Math.PI / 8;
     
-    // Left arm: Extended forward for bow holding with upward angle
+    // Left arm: Extended forward for bow holding with upward angle - FIXED: Use same base position as walking animation
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder - 0.3,
+      baseShoulder, // Changed from baseShoulder - 0.3 to match walking animation
       -0.6,
       0.1
     );
     
-    // Right arm: Ready to draw position
+    // Right arm: Ready to draw position - FIXED: Use same base position as walking animation
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder - 0.2,
+      baseShoulder, // Changed from baseShoulder - 0.2 to match walking animation
       0.1,
       -0.1
     );
@@ -477,15 +477,15 @@ export class Player {
     this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.7, -0.4); // INCREASED Y from 1.4 to 1.7
     this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.8, -0.2); // INCREASED Y from 1.5 to 1.8
     
-    // Drawing arm rotations with enhanced visibility
+    // Drawing arm rotations with enhanced visibility - FIXED: Use corrected base positions
     this.bowDrawAnimation.leftArmDrawRotation.set(
-      baseShoulder - 0.3,
+      baseShoulder, // Changed from baseShoulder - 0.3 to match walking animation
       -0.6,
       0.1
     );
     
     this.bowDrawAnimation.rightArmDrawRotation.set(
-      baseShoulder + 0.7,
+      baseShoulder + 0.7, // Keep the +0.7 offset for drawing motion
       1.0,
       -0.5
     );
@@ -494,7 +494,7 @@ export class Player {
     this.bowDrawAnimation.bowRestRotation.set(0, 0, 0);
     this.bowDrawAnimation.bowDrawRotation.set(0, 0, 0);
     
-    console.log("🏹 [Player] Enhanced bow animation initialized with TALLER realistic arm system");
+    console.log("🏹 [Player] Enhanced bow animation initialized with TALLER realistic arm system and corrected base positioning");
   }
   
   public equipWeapon(weaponId: string): boolean {
@@ -572,19 +572,19 @@ export class Player {
     this.playerBody.leftArm.position.set(-0.5, 1.6, -0.4); // INCREASED Y from 1.3 to 1.6
     this.playerBody.rightArm.position.set(0.7, 1.6, -0.4); // INCREASED Y from 1.3 to 1.6
     
-    // Set shoulder rotations for archery stance
+    // Set shoulder rotations for archery stance - FIXED: Use same base position as walking animation
     const baseShoulder = Math.PI / 8;
     
-    // Left shoulder: Extended forward for bow holding
+    // Left shoulder: Extended forward for bow holding - FIXED: Use corrected base position
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder - 0.3,
+      baseShoulder, // Changed from baseShoulder - 0.3 to match walking animation
       -0.6,
       0.1
     );
     
-    // Right shoulder: Ready to draw position
+    // Right shoulder: Ready to draw position - FIXED: Use corrected base position
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder - 0.2,
+      baseShoulder, // Changed from baseShoulder - 0.2 to match walking animation
       0.1,
       -0.1
     );
@@ -610,7 +610,7 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] TALLER realistic archery stance set with proper joint control");
+    console.log("🏹 [Player] TALLER realistic archery stance set with corrected arm positioning to match walking animation");
     
     // Debug arm positions after setting archery stance
     this.debugArmPositions("AFTER_ARCHERY_STANCE");
