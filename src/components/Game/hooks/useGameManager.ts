@@ -38,7 +38,7 @@ export const useGameManager = () => {
       console.log(`Used ${item.name}`);
       if (gameEngine) {
         const player = gameEngine.getPlayer();
-        player.addHealth(item.value);
+        player.heal(item.value);
         gameEngine.handleInput('playSound', { soundName: 'item_use' });
       }
     }
