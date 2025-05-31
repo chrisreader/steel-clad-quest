@@ -53,11 +53,11 @@ export class MeleeWalkAnimation {
       playerBody.leftElbow.rotation.x = Math.sin(walkCycle + Math.PI) * this.config.elbowMovement + 0.05;
     }
     if (playerBody.rightElbow && !isAttacking) {
-      // Less elbow movement for weapon arm to maintain control
-      playerBody.rightElbow.rotation.x = Math.sin(walkCycle) * (this.config.elbowMovement * 0.5) + 0.05;
+      // FIXED: UPWARD elbow movement for weapon arm to maintain horizontal blade
+      playerBody.rightElbow.rotation.x = Math.sin(walkCycle) * (this.config.elbowMovement * 0.5) + 0.05; // POSITIVE upward bend
     }
     
-    console.log(`⚔️ [MeleeWalkAnimation] FIXED - Right arm raised PARALLEL with body - Attacking: ${isAttacking}`);
+    console.log(`⚔️ [MeleeWalkAnimation] FIXED - Right arm raised PARALLEL with body, UPWARD elbow - Attacking: ${isAttacking}`);
   }
   
   public reset(playerBody: PlayerBody): void {
@@ -73,9 +73,10 @@ export class MeleeWalkAnimation {
       playerBody.leftElbow.rotation.set(0, 0, 0);
     }
     if (playerBody.rightElbow) {
-      playerBody.rightElbow.rotation.set(0, 0, 0);
+      // FIXED: UPWARD elbow bend for horizontal blade positioning
+      playerBody.rightElbow.rotation.set(0.05, 0, 0); // POSITIVE upward bend
     }
     
-    console.log('⚔️ [MeleeWalkAnimation] FIXED reset - Right arm raised PARALLEL with body');
+    console.log('⚔️ [MeleeWalkAnimation] FIXED reset - Right arm raised PARALLEL with body, UPWARD elbow');
   }
 }
