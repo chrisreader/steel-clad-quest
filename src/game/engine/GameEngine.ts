@@ -106,7 +106,7 @@ export class GameEngine {
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete with NEW ARM POSITIONING!");
+      console.log("🎮 [GameEngine] Initialization complete with distance-based fog system!");
       
       // Start the game
       this.start();
@@ -277,9 +277,9 @@ export class GameEngine {
     // Update camera to follow player
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // Update dynamic fog to follow player
+    // Update distance-based fog (optional for dynamic adjustments)
     if (this.sceneManager) {
-      this.sceneManager.updateDynamicFog(this.player.getPosition());
+      this.sceneManager.updateDistanceFog(this.player.getPosition());
     }
     
     // Check location changes

@@ -14,14 +14,11 @@ export class SceneManager {
   // Environment
   private currentLevel: Level | null = null;
   private skybox: THREE.Mesh | null = null;
-  private fog: THREE.Fog | null = null;
   private ground: THREE.Mesh | null = null;
   
-  // Dynamic ground-level fog system
-  private dynamicFogRings: THREE.Mesh[] = [];
+  // Distance-based fog system
+  private fog: THREE.Fog;
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
-  private fogUpdateCounter: number = 0;
-  private readonly FOG_UPDATE_FREQUENCY = 5; // Update every 5 frames for performance
   
   // Time of day
   private timeOfDay: number = 0.5; // 0-1, 0 = midnight, 0.5 = noon
@@ -31,14 +28,29 @@ export class SceneManager {
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     
-    // Remove global fog to prevent skybox interference
-    this.scene.fog = null;
-    this.fog = null;
+    console.log("SceneManager initialized with distance-based fog system");
     
-    console.log("SceneManager initialized with dynamic ground-level fog system");
+    // Setup distance-based fog
+    this.setupDistanceFog();
     
     // Setup basic lighting
     this.setupLighting();
+  }
+  
+  private setupDistanceFog(): void {
+    // Create THREE.js fog for distance-based object fading
+    const fogColor = 0xB0E0E6; // Atmospheric blue-white
+    const fogNear = 35; // Start fading objects at this distance
+    const fogFar = 120; // Objects completely faded at this distance
+    
+    this.fog = new THREE.Fog(fogColor, fogNear, fogFar);
+    this.scene.fog = this.fog;
+    
+    console.log("Distance-based fog system initialized:", {
+      color: fogColor.toString(16),
+      near: fogNear,
+      far: fogFar
+    });
   }
   
   private setupLighting(): void {
@@ -79,85 +91,15 @@ export class SceneManager {
     console.log("Rim light added");
   }
   
-  private createDynamicGroundFog(playerPosition: THREE.Vector3): void {
-    // Clear existing fog rings
-    this.dynamicFogRings.forEach(ring => this.scene.remove(ring));
-    this.dynamicFogRings = [];
-    
-    // Create concentric fog rings around player position
-    const fogRingConfigs = [
-      { distance: 25, opacity: 0.08, size: 60, height: 2 },
-      { distance: 45, opacity: 0.12, size: 80, height: 3 },
-      { distance: 65, opacity: 0.16, size: 100, height: 4 },
-      { distance: 85, opacity: 0.20, size: 120, height: 5 },
-      { distance: 105, opacity: 0.25, size: 140, height: 6 },
-      { distance: 125, opacity: 0.18, size: 160, height: 7 },
-      { distance: 145, opacity: 0.12, size: 180, height: 8 }
-    ];
-    
-    fogRingConfigs.forEach((config, index) => {
-      // Create multiple rings at different angles for each distance
-      const ringsPerDistance = 8; // Number of ring segments
-      
-      for (let i = 0; i < ringsPerDistance; i++) {
-        const angle = (i / ringsPerDistance) * Math.PI * 2;
-        const ringX = playerPosition.x + Math.cos(angle) * config.distance;
-        const ringZ = playerPosition.z + Math.sin(angle) * config.distance;
-        
-        const fogGeometry = new THREE.PlaneGeometry(config.size, config.size, 1, 1);
-        const fogMaterial = new THREE.MeshBasicMaterial({
-          color: 0xB0E0E6, // Atmospheric blue-white
-          transparent: true,
-          opacity: config.opacity * (0.7 + Math.random() * 0.3), // Add some variation
-          side: THREE.DoubleSide,
-          depthWrite: false,
-          blending: THREE.NormalBlending
-        });
-        
-        const fogMesh = new THREE.Mesh(fogGeometry, fogMaterial);
-        fogMesh.position.set(
-          ringX + (Math.random() - 0.5) * 20, // Add some randomness
-          config.height + Math.random() * 2,
-          ringZ + (Math.random() - 0.5) * 20
-        );
-        fogMesh.rotation.x = -Math.PI / 2; // Make it horizontal
-        fogMesh.rotation.z = Math.random() * Math.PI * 2; // Random rotation
-        
-        this.dynamicFogRings.push(fogMesh);
-        this.scene.add(fogMesh);
-      }
-    });
-    
-    console.log(`Dynamic fog system created with ${this.dynamicFogRings.length} fog elements around player`);
-  }
-  
   /**
-   * Updates the dynamic fog system to follow the player
+   * Updates fog parameters based on player position (optional for dynamic adjustments)
    */
-  public updateDynamicFog(playerPosition: THREE.Vector3): void {
-    this.fogUpdateCounter++;
-    
-    // Only update every few frames for performance
-    if (this.fogUpdateCounter % this.FOG_UPDATE_FREQUENCY !== 0) {
-      return;
-    }
-    
-    // Check if player has moved significantly
-    const distanceMoved = this.lastPlayerPosition.distanceTo(playerPosition);
-    if (distanceMoved < 5) {
-      return; // Don't update if player hasn't moved much
-    }
-    
-    // Update fog positions to follow player
+  public updateDistanceFog(playerPosition: THREE.Vector3): void {
+    // Store player position for potential future fog adjustments
     this.lastPlayerPosition.copy(playerPosition);
     
-    // Instead of recreating all fog, smoothly move existing fog rings
-    this.moveFogTowardsPlayer(playerPosition);
-  }
-  
-  private moveFogTowardsPlayer(playerPosition: THREE.Vector3): void {
-    // Recreate fog rings at new player position
-    this.createDynamicGroundFog(playerPosition);
+    // The fog automatically works with THREE.js rendering pipeline
+    // No manual updates needed as it's built into the renderer
   }
   
   public createDefaultWorld(): void {
@@ -166,10 +108,6 @@ export class SceneManager {
     // Create terrain
     this.createTerrain();
     console.log('Terrain created');
-    
-    // Create initial ground-level fog at origin (will be updated when player position is available)
-    this.createDynamicGroundFog(new THREE.Vector3(0, 0, 0));
-    console.log('Dynamic ground fog created');
     
     // Create tavern
     this.createTavern();
@@ -195,7 +133,7 @@ export class SceneManager {
     this.updateSkybox();
     console.log('Skybox updated with realistic blue colors');
     
-    console.log('Default world creation complete. Total scene children:', this.scene.children.length);
+    console.log('Default world creation complete with distance-based fog. Total scene children:', this.scene.children.length);
   }
   
   private createTerrain(): void {
@@ -409,7 +347,8 @@ export class SceneManager {
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     const skyMaterial = new THREE.MeshBasicMaterial({
       map: TextureGenerator.createSkyTexture(this.timeOfDay),
-      side: THREE.BackSide
+      side: THREE.BackSide,
+      fog: false // Prevent fog from affecting skybox
     });
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
@@ -431,6 +370,7 @@ export class SceneManager {
       // Apply new texture
       if (this.skybox.material instanceof THREE.MeshBasicMaterial) {
         this.skybox.material.map = newSkyTexture;
+        this.skybox.material.fog = false; // Ensure skybox ignores fog
         this.skybox.material.needsUpdate = true;
       }
       
@@ -592,19 +532,10 @@ export class SceneManager {
   }
   
   public dispose(): void {
-    // Clean up dynamic fog rings
-    this.dynamicFogRings.forEach(ring => {
-      if (ring.material instanceof THREE.Material) {
-        ring.material.dispose();
-      }
-      if (ring.geometry) {
-        ring.geometry.dispose();
-      }
-      this.scene.remove(ring);
-    });
-    this.dynamicFogRings = [];
+    // Clean up fog
+    this.scene.fog = null;
     
     // The scene is managed by RenderEngine, so we don't dispose it here
-    console.log("SceneManager disposed with dynamic fog cleanup");
+    console.log("SceneManager disposed with distance-based fog cleanup");
   }
 }
