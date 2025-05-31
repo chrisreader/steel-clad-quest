@@ -163,11 +163,11 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.mainhand : equippedWeapons.offhand;
     
     if (activeWeapon && activeWeapon.weaponId) {
-      console.log(`[KnightGame] Equipping weapon: ${activeWeapon.name} in slot ${activeWeaponSlot}`);
-      player.equipWeapon(activeWeapon.weaponId);
+      console.log(`[KnightGame] Setting equipped weapon: ${activeWeapon.name} in slot ${activeWeaponSlot}`);
+      player.setEquippedWeapon(gameEngine.getWeaponManager()?.getWeapon(activeWeapon.weaponId) || null);
     } else {
-      console.log(`[KnightGame] Unequipping weapon - slot ${activeWeaponSlot} is empty`);
-      player.unequipWeapon();
+      console.log(`[KnightGame] Clearing equipped weapon - slot ${activeWeaponSlot} is empty`);
+      player.setEquippedWeapon(null);
     }
   }, [gameEngine, gameStarted, equippedWeapons, activeWeaponSlot]);
 

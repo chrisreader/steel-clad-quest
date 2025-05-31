@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
-import { Capsule } from 'three/examples/jsm/math/Capsule';
-import { Octree } from 'three/examples/jsm/math/Octree';
-import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { Capsule } from 'three/addons/math/Capsule.js';
+import { Octree } from 'three/addons/math/Octree.js';
+import { DecalGeometry } from 'three/addons/geometries/DecalGeometry.js';
 import { Enemy } from './Enemy';
 import { PlayerBody, Vector3, PlayerStats, Item, WeaponConfig } from '../../types/GameTypes';
 import { EffectsManager } from '../engine/EffectsManager';
@@ -90,6 +90,7 @@ export class Player {
   private weaponAnimationSystem: WeaponAnimationSystem;
   private isDrawingBow: boolean = false;
   private bowAnimationBridge: BowAnimationBridge;
+  private sprinting: boolean = false;
 
   constructor(scene: THREE.Scene, effectsManager: EffectsManager) {
     this.scene = scene;
@@ -371,7 +372,7 @@ export class Player {
     }
   }
 
-  public update(deltaTime: number): void {
+  public update(deltaTime: number, isMoving?: boolean): void {
     const isWalking = this.xDirectionOffset !== 0 || this.zDirectionOffset !== 0;
     const walkDirection = new THREE.Vector3(this.xDirectionOffset, 0, this.zDirectionOffset).normalize();
 
@@ -479,5 +480,62 @@ export class Player {
     } else {
       this.swordHitBox.material.dispose();
     }
+  }
+
+  public getGroup(): THREE.Group {
+    return this.playerBody.group;
+  }
+
+  public getBody(): PlayerBody {
+    return this.playerBody;
+  }
+
+  public equipWeapon(weaponId: string): void {
+    // Implementation for equipping weapon by ID
+    console.log(`Equipping weapon: ${weaponId}`);
+  }
+
+  public unequipWeapon(): void {
+    // Implementation for unequipping weapon
+    console.log('Unequipping weapon');
+  }
+
+  public isAlive(): boolean {
+    return !this.isDead && this.health > 0;
+  }
+
+  public heal(amount: number): void {
+    this.addHealth(amount);
+  }
+
+  public move(direction: THREE.Vector3, deltaTime: number): void {
+    // Apply movement
+    const moveVector = direction.clone().multiplyScalar(deltaTime * 5);
+    this.playerVelocity.add(moveVector);
+  }
+
+  public startSprint(): void {
+    this.sprinting = true;
+    this.isRunning = true;
+  }
+
+  public stopSprint(): void {
+    this.sprinting = false;
+    this.isRunning = false;
+  }
+
+  public getSprinting(): boolean {
+    return this.sprinting;
+  }
+
+  public setVisualRotation(yaw: number, pitch: number): void {
+    // Update visual rotation for first person
+    if (this.playerBody.group) {
+      this.playerBody.group.rotation.y = yaw;
+    }
+  }
+
+  public stopSwordSwing(): void {
+    this.isAttacking = false;
   }
 }
