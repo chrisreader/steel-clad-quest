@@ -17,11 +17,11 @@ export class SteelSword extends Sword {
         weight: 4.0
       },
       swingAnimation: {
-        duration: 0.614, // 20% faster (was 0.768s)
+        duration: 0.768, // 20% longer than 0.64s
         phases: {
-          windup: 0.123,   // 20% of 0.614s
-          slash: 0.307,    // 50% of 0.614s
-          recovery: 0.184  // 30% of 0.614s
+          windup: 0.154,   // 20% of 0.768s
+          slash: 0.384,    // 50% of 0.768s
+          recovery: 0.230  // 30% of 0.768s
         },
         rotations: {
           neutral: { x: THREE.MathUtils.degToRad(60), y: 0, z: 0 }, // 60° ready position, no side angle
