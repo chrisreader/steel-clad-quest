@@ -515,9 +515,9 @@ export class Player {
       
       // Right arm: Raised ready position - up and outward from body
       this.playerBody.rightArm.rotation.set(
-        Math.PI / 4,  // 45° upward angle (higher than normal)
-        Math.PI / 6,  // 30° outward angle (away from body)
-        -Math.PI / 8  // Slight forward tilt
+        Math.PI / 4,   // 45° upward angle (higher than normal)
+        -Math.PI / 6,  // 30° outward angle (NEGATIVE for outward rotation)
+        -Math.PI / 8   // Slight forward tilt
       );
       
       console.log("🗡️ [Player] Set MELEE ready stance - Right arm raised outward/up, left arm at side");
@@ -527,9 +527,9 @@ export class Player {
       
       // Left arm: Raised bow-holding position - up and outward
       this.playerBody.leftArm.rotation.set(
-        Math.PI / 4,   // 45° upward angle
-        -Math.PI / 6,  // 30° outward angle (away from body) 
-        -Math.PI / 8   // Slight forward tilt
+        Math.PI / 4,  // 45° upward angle
+        Math.PI / 6,  // 30° outward angle (POSITIVE for left arm outward rotation) 
+        -Math.PI / 8  // Slight forward tilt
       );
       
       // Right arm: Normal side position initially (will be adjusted by bow animation)
