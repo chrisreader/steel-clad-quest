@@ -25,44 +25,39 @@ export class BowWalkAnimation {
     playerBody.leftLeg.rotation.x = legSwing;
     playerBody.rightLeg.rotation.x = -legSwing;
     
-    // Left arm - maintain bow holding stance with minimal movement
-    const leftShoulderBase = Math.PI / 8 - 0.3; // Base archery stance
-    const leftShoulderSway = Math.sin(walkCycle * 0.5) * this.config.shoulderMovement;
-    const leftBreathing = Math.sin(this.breathingTime) * this.config.breathingIntensity;
+    // Arms - more natural walking movement similar to melee, but with bow positioning
+    const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     
-    playerBody.leftArm.rotation.x = leftShoulderBase + leftShoulderSway + leftBreathing;
-    playerBody.leftArm.rotation.y = -0.6 + (Math.sin(walkCycle * 0.3) * 0.01); // Minimal sway
+    // Left arm - bow holding with walking movement
+    const leftArmBase = Math.PI / 8 - 0.2; // Reduced from -0.3 for more natural position
+    playerBody.leftArm.rotation.x = leftArmBase - armSwing * 0.5; // Half the swing for bow stability
+    playerBody.leftArm.rotation.y = -0.3; // Reduced from -0.6 for more natural position
     playerBody.leftArm.rotation.z = 0.1;
     
-    // Right arm - maintain ready-to-draw stance with subtle movement
-    const rightShoulderBase = Math.PI / 8 - 0.2; // Base ready stance
-    const rightShoulderSway = Math.sin(walkCycle * 0.4) * this.config.shoulderMovement * 0.8;
-    const rightBreathing = Math.sin(this.breathingTime + Math.PI / 4) * this.config.breathingIntensity;
-    
-    playerBody.rightArm.rotation.x = rightShoulderBase + rightShoulderSway + rightBreathing;
-    playerBody.rightArm.rotation.y = 0.1 + (Math.sin(walkCycle * 0.2) * 0.008); // Very subtle movement
+    // Right arm - ready-to-draw with walking movement
+    const rightArmBase = Math.PI / 8 - 0.1; // Reduced from -0.2 for more natural position
+    playerBody.rightArm.rotation.x = rightArmBase + armSwing * 0.5; // Half the swing for bow stability
+    playerBody.rightArm.rotation.y = 0.1;
     playerBody.rightArm.rotation.z = -0.1;
     
-    // Elbows - maintain archery stance with minimal natural movement
+    // Elbows - more natural movement similar to melee
     if (playerBody.leftElbow) {
-      const leftElbowBase = 0.2; // Natural forward bend
-      const leftElbowMovement = Math.sin(walkCycle * 0.6) * this.config.elbowMovement;
-      playerBody.leftElbow.rotation.x = leftElbowBase + leftElbowMovement;
+      const leftElbowMovement = Math.sin(walkCycle + Math.PI) * this.config.elbowMovement + 0.05;
+      playerBody.leftElbow.rotation.x = leftElbowMovement;
     }
     
     if (playerBody.rightElbow) {
-      const rightElbowBase = 0.3; // Ready position
-      const rightElbowMovement = Math.sin(walkCycle * 0.5) * this.config.elbowMovement;
-      playerBody.rightElbow.rotation.x = rightElbowBase + rightElbowMovement;
+      const rightElbowMovement = Math.sin(walkCycle) * this.config.elbowMovement + 0.05;
+      playerBody.rightElbow.rotation.x = rightElbowMovement;
     }
     
-    // Hands - maintain grip positions with breathing
+    // Hands - maintain grip positions with subtle movement
     const handBreathing = Math.sin(this.breathingTime * 1.2) * this.config.handMovement;
     
-    // Left hand maintains bow grip
-    playerBody.leftHand.rotation.x = -Math.PI / 4 + handBreathing;
+    // Left hand maintains bow grip but less extreme
+    playerBody.leftHand.rotation.x = -Math.PI / 6 + handBreathing; // Reduced from -Math.PI / 4
     playerBody.leftHand.rotation.y = 0;
-    playerBody.leftHand.rotation.z = Math.PI / 3;
+    playerBody.leftHand.rotation.z = Math.PI / 4; // Reduced from Math.PI / 3
     
     // Right hand ready position
     playerBody.rightHand.rotation.x = handBreathing * 0.5;
@@ -79,24 +74,24 @@ export class BowWalkAnimation {
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to archery stance
-    playerBody.leftArm.rotation.set(Math.PI / 8 - 0.3, -0.6, 0.1);
-    playerBody.rightArm.rotation.set(Math.PI / 8 - 0.2, 0.1, -0.1);
+    // Reset to more natural archery stance
+    playerBody.leftArm.rotation.set(Math.PI / 8 - 0.2, -0.3, 0.1);
+    playerBody.rightArm.rotation.set(Math.PI / 8 - 0.1, 0.1, -0.1);
     
     if (playerBody.leftElbow) {
-      playerBody.leftElbow.rotation.set(0.2, 0, 0);
+      playerBody.leftElbow.rotation.set(0.05, 0, 0);
     }
     if (playerBody.rightElbow) {
-      playerBody.rightElbow.rotation.set(0.3, 0, 0);
+      playerBody.rightElbow.rotation.set(0.05, 0, 0);
     }
     
-    playerBody.leftHand.rotation.set(-Math.PI / 4, 0, Math.PI / 3);
+    playerBody.leftHand.rotation.set(-Math.PI / 6, 0, Math.PI / 4);
     playerBody.rightHand.rotation.set(0, 0, 0);
     
     if (playerBody.body) {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] Reset to archery stance');
+    console.log('🏹 [BowWalkAnimation] Reset to natural archery stance');
   }
 }
