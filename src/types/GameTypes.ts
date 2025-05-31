@@ -31,6 +31,15 @@ export interface PlayerBody {
   rightLeg: THREE.Mesh;
   body: THREE.Mesh;
   head: THREE.Mesh;
+  // New realistic arm components
+  leftUpperArm?: THREE.Mesh;
+  rightUpperArm?: THREE.Mesh;
+  leftForearm?: THREE.Mesh;
+  rightForearm?: THREE.Mesh;
+  leftElbow?: THREE.Group;
+  rightElbow?: THREE.Group;
+  leftWrist?: THREE.Group;
+  rightWrist?: THREE.Group;
 }
 
 // Equipment slot types

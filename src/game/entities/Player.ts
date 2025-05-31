@@ -100,8 +100,8 @@ export class Player {
     
     console.log("Player group created and added to scene at position:", this.group.position);
     
-    // Create player body with separate hand controls
-    this.playerBody = this.createPlayerBody();
+    // Create player body with realistic arm system
+    this.playerBody = this.createRealisticPlayerBody();
     
     // Create fallback hitbox for when no weapon is equipped
     const fallbackHitBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -131,17 +131,18 @@ export class Player {
       attackPower: 20
     };
     
-    console.log("Player initialized with stats:", this.stats);
+    console.log("Player initialized with realistic arm system and stats:", this.stats);
   }
   
-  private createPlayerBody(): PlayerBody {
+  private createRealisticPlayerBody(): PlayerBody {
     const playerBodyGroup = new THREE.Group();
     
-    // Create metal texture
+    // Create enhanced metal texture for armor/clothing
     const metalTexture = TextureGenerator.createMetalTexture();
+    const skinTexture = this.createSkinTexture();
     
-    // Body
-    const bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.3);
+    // Body - slightly wider and more realistic proportions
+    const bodyGeometry = new THREE.BoxGeometry(0.7, 1.4, 0.35);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
       shininess: 80,
@@ -150,80 +151,39 @@ export class Player {
       normalScale: new THREE.Vector2(0.5, 0.5)
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = -0.4;
+    body.position.y = -0.3;
     body.castShadow = true;
     body.visible = false; // Hide body in first-person
     playerBodyGroup.add(body);
     
-    // Head
-    const headGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.3);
+    // Head - slightly larger and better positioned
+    const headGeometry = new THREE.BoxGeometry(0.45, 0.45, 0.35);
     const headMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xFFDBC4,
+      map: skinTexture,
       transparent: true,
       opacity: 0.95
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = 0.4;
+    head.position.y = 0.5;
     head.castShadow = true;
     head.visible = false; // Hide head in first-person
     playerBodyGroup.add(head);
     
-    // Arms
-    const armGeometry = new THREE.CylinderGeometry(0.08, 0.12, 0.8, 12);
-    const armMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0x5A7BC8,
-      shininess: 60,
-      specular: 0x555555,
-      map: metalTexture
-    });
+    // REALISTIC ARM SYSTEM - Left Arm
+    const leftArmSystem = this.createRealisticArm('left');
+    leftArmSystem.position.set(-0.5, 1.3, -0.4); // Better positioned for first-person
+    leftArmSystem.visible = true;
+    playerBodyGroup.add(leftArmSystem);
     
-    // Left arm - positioned higher and more forward for better visibility
-    const leftArmGroup = new THREE.Group();
-    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    leftArm.position.y = -0.4;
-    leftArm.castShadow = true;
-    leftArmGroup.add(leftArm);
-    leftArmGroup.position.set(-0.4, 1.6, -0.6); // Raised Y from 1.4 to 1.6, brought closer with Z
-    leftArmGroup.rotation.x = Math.PI / 8;
-    leftArmGroup.visible = true;
-    playerBodyGroup.add(leftArmGroup);
+    // REALISTIC ARM SYSTEM - Right Arm  
+    const rightArmSystem = this.createRealisticArm('right');
+    rightArmSystem.position.set(0.7, 1.3, -0.4); // Closer and more natural
+    rightArmSystem.visible = true;
+    playerBodyGroup.add(rightArmSystem);
     
-    // Left hand - positioned at the proper end of the arm
-    const leftHandGroup = new THREE.Group();
-    const handGeometry = new THREE.SphereGeometry(0.08, 12, 8);
-    const handMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xf4c2a1,
-      transparent: true,
-      opacity: 0.95
-    });
-    const leftHandMesh = new THREE.Mesh(handGeometry, handMaterial);
-    leftHandMesh.castShadow = true;
-    leftHandGroup.add(leftHandMesh);
-    leftHandGroup.position.set(0, -0.6, 0); // Extended further down the arm to the end
-    leftArmGroup.add(leftHandGroup);
-    
-    // Right arm (weapon-holding arm)
-    const rightArmGroup = new THREE.Group();
-    const rightArm = new THREE.Mesh(armGeometry, armMaterial.clone());
-    rightArm.position.y = -0.4;
-    rightArm.castShadow = true;
-    rightArmGroup.add(rightArm);
-    rightArmGroup.position.set(1.0, 1.4, -0.2);
-    rightArmGroup.rotation.order = 'XYZ';
-    rightArmGroup.rotation.set(Math.PI / 8, 0, 0);
-    rightArmGroup.visible = true;
-    playerBodyGroup.add(rightArmGroup);
-    
-    // Right hand (separate group for independent control)
-    const rightHandGroup = new THREE.Group();
-    const rightHandMesh = new THREE.Mesh(handGeometry, handMaterial.clone());
-    rightHandMesh.castShadow = true;
-    rightHandGroup.add(rightHandMesh);
-    rightHandGroup.position.set(0, -0.5, 0);
-    rightArmGroup.add(rightHandGroup);
-    
-    // Legs
-    const legGeometry = new THREE.BoxGeometry(0.2, 0.8, 0.2);
+    // Legs - improved proportions
+    const legGeometry = new THREE.BoxGeometry(0.25, 0.9, 0.25);
     const legMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
       shininess: 60,
@@ -231,30 +191,177 @@ export class Player {
     });
     
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-0.2, -1.2, 0);
+    leftLeg.position.set(-0.25, -1.15, 0);
     leftLeg.castShadow = true;
     leftLeg.visible = false;
     playerBodyGroup.add(leftLeg);
     
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
-    rightLeg.position.set(0.2, -1.2, 0);
+    rightLeg.position.set(0.25, -1.15, 0);
     rightLeg.castShadow = true;
     rightLeg.visible = false;
     playerBodyGroup.add(rightLeg);
     
     this.group.add(playerBodyGroup);
     
+    // Get references to the arm components for the return object
+    const leftArmComponents = this.getArmComponents(leftArmSystem);
+    const rightArmComponents = this.getArmComponents(rightArmSystem);
+    
     return {
       group: playerBodyGroup,
-      leftArm: leftArmGroup,
-      rightArm: rightArmGroup,
-      leftHand: leftHandGroup,
-      rightHand: rightHandGroup,
+      leftArm: leftArmSystem, // This is now the shoulder group
+      rightArm: rightArmSystem, // This is now the shoulder group
+      leftHand: leftArmComponents.hand,
+      rightHand: rightArmComponents.hand,
       leftLeg,
       rightLeg,
       body,
-      head
+      head,
+      // Add new arm components
+      leftUpperArm: leftArmComponents.upperArm,
+      rightUpperArm: rightArmComponents.upperArm,
+      leftForearm: leftArmComponents.forearm,
+      rightForearm: rightArmComponents.forearm,
+      leftElbow: leftArmComponents.elbow,
+      rightElbow: rightArmComponents.elbow,
+      leftWrist: leftArmComponents.wrist,
+      rightWrist: rightArmComponents.wrist
     };
+  }
+  
+  private createRealisticArm(side: 'left' | 'right'): THREE.Group {
+    const armSystem = new THREE.Group();
+    armSystem.name = `${side}ArmSystem`;
+    
+    // Materials
+    const metalTexture = TextureGenerator.createMetalTexture();
+    const skinTexture = this.createSkinTexture();
+    
+    const armMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x5A7BC8,
+      shininess: 60,
+      specular: 0x555555,
+      map: metalTexture
+    });
+    
+    const skinMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xf4c2a1,
+      map: skinTexture,
+      transparent: true,
+      opacity: 0.95
+    });
+    
+    // Shoulder (connection point - invisible)
+    const shoulderGroup = new THREE.Group();
+    shoulderGroup.name = `${side}Shoulder`;
+    armSystem.add(shoulderGroup);
+    
+    // Upper Arm (60% of total arm length)
+    const upperArmLength = 0.5;
+    const upperArmGeometry = new THREE.CylinderGeometry(0.09, 0.11, upperArmLength, 12);
+    const upperArm = new THREE.Mesh(upperArmGeometry, armMaterial.clone());
+    upperArm.position.y = -upperArmLength / 2;
+    upperArm.castShadow = true;
+    upperArm.name = `${side}UpperArm`;
+    shoulderGroup.add(upperArm);
+    
+    // Elbow Joint
+    const elbowGroup = new THREE.Group();
+    elbowGroup.position.y = -upperArmLength;
+    elbowGroup.name = `${side}Elbow`;
+    shoulderGroup.add(elbowGroup);
+    
+    // Forearm (40% of total arm length)
+    const forearmLength = 0.4;
+    const forearmGeometry = new THREE.CylinderGeometry(0.07, 0.09, forearmLength, 12);
+    const forearm = new THREE.Mesh(forearmGeometry, armMaterial.clone());
+    forearm.position.y = -forearmLength / 2;
+    forearm.castShadow = true;
+    forearm.name = `${side}Forearm`;
+    elbowGroup.add(forearm);
+    
+    // Wrist Joint
+    const wristGroup = new THREE.Group();
+    wristGroup.position.y = -forearmLength;
+    wristGroup.name = `${side}Wrist`;
+    elbowGroup.add(wristGroup);
+    
+    // Enhanced Hand with basic finger representation
+    const handGroup = new THREE.Group();
+    handGroup.name = `${side}Hand`;
+    
+    // Palm
+    const palmGeometry = new THREE.BoxGeometry(0.12, 0.06, 0.18);
+    const palm = new THREE.Mesh(palmGeometry, skinMaterial.clone());
+    palm.castShadow = true;
+    handGroup.add(palm);
+    
+    // Simplified fingers
+    for (let i = 0; i < 4; i++) {
+      const fingerGeometry = new THREE.BoxGeometry(0.02, 0.04, 0.08);
+      const finger = new THREE.Mesh(fingerGeometry, skinMaterial.clone());
+      finger.position.set((i - 1.5) * 0.025, -0.02, 0.06);
+      finger.castShadow = true;
+      handGroup.add(finger);
+    }
+    
+    // Thumb
+    const thumbGeometry = new THREE.BoxGeometry(0.025, 0.04, 0.06);
+    const thumb = new THREE.Mesh(thumbGeometry, skinMaterial.clone());
+    thumb.position.set(side === 'left' ? 0.08 : -0.08, 0, 0.02);
+    thumb.rotation.z = side === 'left' ? -0.5 : 0.5;
+    thumb.castShadow = true;
+    handGroup.add(thumb);
+    
+    wristGroup.add(handGroup);
+    
+    // Store references for easy access
+    armSystem.userData = {
+      shoulder: shoulderGroup,
+      upperArm: upperArm,
+      elbow: elbowGroup,
+      forearm: forearm,
+      wrist: wristGroup,
+      hand: handGroup
+    };
+    
+    console.log(`🦾 [Player] Created realistic ${side} arm with proper joints and proportions`);
+    
+    return armSystem;
+  }
+  
+  private getArmComponents(armSystem: THREE.Group) {
+    return {
+      shoulder: armSystem.userData.shoulder,
+      upperArm: armSystem.userData.upperArm,
+      elbow: armSystem.userData.elbow,
+      forearm: armSystem.userData.forearm,
+      wrist: armSystem.userData.wrist,
+      hand: armSystem.userData.hand
+    };
+  }
+  
+  private createSkinTexture(): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d')!;
+    
+    // Create skin-like texture
+    context.fillStyle = '#f4c2a1';
+    context.fillRect(0, 0, 64, 64);
+    
+    // Add some subtle variations
+    for (let i = 0; i < 20; i++) {
+      context.fillStyle = `rgba(240, 180, 140, ${Math.random() * 0.3})`;
+      context.fillRect(Math.random() * 64, Math.random() * 64, 4, 4);
+    }
+    
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    return texture;
   }
   
   private initializeBowAnimationPositions(): void {
@@ -274,14 +381,14 @@ export class Player {
     
     // Left arm: Extended forward for bow holding with upward angle
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder + 0.3, // Slight downward angle for visibility (reversed from upward)
+      baseShoulder - 0.3, // Angled downward for better visibility
       -0.6, // Less extreme angle across body for better view
       0.1   // Slight outward rotation (reduced from 0.3)
     );
     
     // Right arm: Ready to draw position
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder + 0.2, // Slightly raised (reversed from upward angling)
+      baseShoulder - 0.2, // Angled downward (reversed from upward angling)
       0.1,  // Forward position (reduced from 0.3)
       -0.1  // Slight inward rotation (reduced from -0.2)
     );
@@ -292,7 +399,7 @@ export class Player {
     
     // Drawing arm rotations with enhanced visibility
     this.bowDrawAnimation.leftArmDrawRotation.set(
-      baseShoulder + 0.3, // Maintain bow holding angle
+      baseShoulder - 0.3, // Maintain bow holding angle
       -0.6, // Keep extended position but visible
       0.1   // Maintain outward rotation
     );
@@ -307,7 +414,7 @@ export class Player {
     this.bowDrawAnimation.bowRestRotation.set(0, 0, 0); // Vertical bow
     this.bowDrawAnimation.bowDrawRotation.set(0, 0, 0); // Stay vertical
     
-    console.log("🏹 [Player] Enhanced bow animation initialized with better visibility and hand positioning");
+    console.log("🏹 [Player] Enhanced bow animation initialized with realistic arm system");
   }
   
   public equipWeapon(weaponId: string): boolean {
@@ -333,24 +440,28 @@ export class Player {
     this.isBowEquipped = weapon.getConfig().type === 'bow';
     
     if (this.isBowEquipped) {
-      // Attach bow to left HAND for proper control
+      // Attach bow to left HAND for proper control with realistic arm system
       this.playerBody.leftHand.add(weapon.getMesh());
       
-      // Position bow handle properly in the hand for realistic grip
-      weapon.getMesh().position.set(0.05, 0, 0.1); // Adjusted for better hand positioning
+      // Position bow handle properly in the enhanced hand
+      weapon.getMesh().position.set(0.02, 0, 0.08); // Adjusted for new hand geometry
       weapon.getMesh().rotation.set(0, 0, 0); // Vertical orientation
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
-      // Set initial archery stance positions
-      this.setArcheryStance();
+      // Set initial archery stance positions with realistic arms
+      this.setRealisticArcheryStance();
       
-      console.log(`🏹 [Player] Bow equipped with improved hand positioning and visibility`);
+      console.log(`🏹 [Player] Bow equipped with realistic arm system and improved positioning`);
     } else {
-      // Attach melee weapon to right hand
+      // Attach melee weapon to right hand with realistic positioning
       this.playerBody.rightHand.add(weapon.getMesh());
       
-      // Reset to normal arm positions for melee weapons
-      this.resetToNormalStance();
+      // Better weapon positioning for enhanced hand
+      weapon.getMesh().position.set(0, 0, 0.1);
+      weapon.getMesh().rotation.set(0, 0, 0);
+      
+      // Reset to normal stance for melee weapons
+      this.resetToRealisticNormalStance();
     }
     
     // Update swing animation with weapon config
@@ -362,36 +473,45 @@ export class Player {
     // Update hitbox reference
     this.swordHitBox = weapon.getHitBox();
     
-    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name}`);
+    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with realistic arm system`);
     return true;
   }
   
-  private setArcheryStance(): void {
-    // Set arms to proper archery positions with enhanced visibility - lowered by 10% from raised position
-    this.playerBody.leftArm.position.set(-0.4, 1.512, -0.4);  // Lowered Y by 10% (1.68 * 0.9)
-    this.playerBody.rightArm.position.set(0.3, 1.512, -0.2);  // Lowered Y by 10% (1.68 * 0.9)
+  private setRealisticArcheryStance(): void {
+    // Set arms to proper archery positions with realistic joint control
+    this.playerBody.leftArm.position.set(-0.5, 1.3, -0.4);
+    this.playerBody.rightArm.position.set(0.7, 1.3, -0.4);
     
-    // Set arm rotations for archery stance with better field of view
+    // Set shoulder rotations for archery stance
     const baseShoulder = Math.PI / 8;
     
-    // Left arm: Extended forward for bow holding with better visibility
+    // Left shoulder: Extended forward for bow holding
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder + 0.3, // Slight downward angle for visibility (reversed from upward)
-      -0.6, // Less extreme angle across body for better view
-      0.1   // Slight outward rotation (reduced from 0.3)
+      baseShoulder - 0.3, // Angled downward for visibility
+      -0.6, // Across body but visible
+      0.1   // Slight outward rotation
     );
     
-    // Right arm: Ready to draw position
+    // Right shoulder: Ready to draw position
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder + 0.2, // Slightly raised (reversed from upward angling)
-      0.1,  // Forward position (reduced from 0.3)
-      -0.1  // Slight inward rotation (reduced from -0.2)
+      baseShoulder - 0.2, // Angled downward
+      0.1,  // Forward position
+      -0.1  // Slight inward rotation
     );
     
+    // Apply rotations to shoulder joints (the main arm groups)
     this.playerBody.leftArm.rotation.copy(this.bowDrawAnimation.leftArmRestRotation);
     this.playerBody.rightArm.rotation.copy(this.bowDrawAnimation.rightArmRestRotation);
     
-    // Set enhanced hand rotations for realistic bow gripping
+    // Set elbow positions for natural arm bend
+    if (this.playerBody.leftElbow) {
+      this.playerBody.leftElbow.rotation.set(-0.2, 0, 0); // Slight bend
+    }
+    if (this.playerBody.rightElbow) {
+      this.playerBody.rightElbow.rotation.set(-0.3, 0, 0); // Ready to pull
+    }
+    
+    // Set realistic hand rotations for bow gripping
     this.playerBody.leftHand.rotation.copy(this.bowDrawAnimation.leftHandRestRotation);
     this.playerBody.rightHand.rotation.copy(this.bowDrawAnimation.rightHandRestRotation);
     
@@ -400,23 +520,31 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] Enhanced archery stance with improved visibility and hand positioning");
+    console.log("🏹 [Player] Realistic archery stance set with proper joint control");
   }
   
-  private resetToNormalStance(): void {
-    // Reset arms to normal positions for non-bow weapons
-    this.playerBody.leftArm.position.set(-0.6, 1.4, -0.3);
-    this.playerBody.rightArm.position.set(1.0, 1.4, -0.2);
+  private resetToRealisticNormalStance(): void {
+    // Reset arms to normal positions with realistic joint control
+    this.playerBody.leftArm.position.set(-0.5, 1.3, -0.4);
+    this.playerBody.rightArm.position.set(0.7, 1.3, -0.4);
     
-    // Reset arm rotations
+    // Reset shoulder rotations
     this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
     this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
+    
+    // Reset elbow positions
+    if (this.playerBody.leftElbow) {
+      this.playerBody.leftElbow.rotation.set(0, 0, 0);
+    }
+    if (this.playerBody.rightElbow) {
+      this.playerBody.rightElbow.rotation.set(0, 0, 0);
+    }
     
     // Reset hand rotations
     this.playerBody.leftHand.rotation.set(0, 0, 0);
     this.playerBody.rightHand.rotation.set(0, 0, 0);
     
-    console.log("🗡️ [Player] Reset to normal stance for melee weapon");
+    console.log("🗡️ [Player] Reset to realistic normal stance for melee weapon");
   }
   
   public unequipWeapon(): boolean {
@@ -429,7 +557,7 @@ export class Player {
     // Remove weapon from appropriate hand
     if (this.isBowEquipped) {
       this.playerBody.leftHand.remove(this.equippedWeapon.getMesh());
-      this.resetToNormalStance(); // Reset stance when unequipping bow
+      this.resetToRealisticNormalStance(); // Reset stance when unequipping bow
     } else {
       this.playerBody.rightHand.remove(this.equippedWeapon.getMesh());
     }
@@ -444,7 +572,7 @@ export class Player {
     this.swordHitBox = new THREE.Mesh(fallbackHitBoxGeometry, fallbackHitBoxMaterial);
     this.scene.add(this.swordHitBox);
     
-    console.log(`🗡️ [Player] Weapon unequipped`);
+    console.log(`🗡️ [Player] Weapon unequipped from realistic arm system`);
     return true;
   }
   
@@ -510,7 +638,7 @@ export class Player {
       return;
     }
     
-    console.log("🗡️ [Player] Starting weapon swing animation");
+    console.log("🗡️ [Player] Starting realistic weapon swing animation");
     this.weaponSwing.isActive = true;
     this.weaponSwing.startTime = this.weaponSwing.clock.getElapsedTime();
     this.lastAttackTime = now;
@@ -531,7 +659,7 @@ export class Player {
       this.weaponSwing.trailPoints.push(new THREE.Vector3());
     }
     
-    console.log("🗡️ [Player] Weapon swing animation started successfully");
+    console.log("🗡️ [Player] Realistic weapon swing animation started successfully");
   }
   
   public isAttacking(): boolean {
@@ -550,32 +678,39 @@ export class Player {
     this.hitEnemiesThisSwing.add(enemy);
   }
   
-  private updateSwordSwing(): void {
+  private updateRealisticSwordSwing(): void {
     if (!this.weaponSwing.isActive || !this.equippedWeapon) return;
     
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
     const { phases, rotations, duration } = this.weaponSwing;
     
-    let currentRotation = { x: 0, y: 0, z: 0 };
+    let shoulderRotation = { x: 0, y: 0, z: 0 };
+    let elbowRotation = { x: 0, y: 0, z: 0 };
     let weaponWristRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WIND-UP PHASE
+      // WIND-UP PHASE with realistic joint movement
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      currentRotation.x = THREE.MathUtils.lerp(rotations.neutral.x, rotations.windup.x, easedT);
-      currentRotation.y = THREE.MathUtils.lerp(rotations.neutral.y, rotations.windup.y, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.neutral.x, rotations.windup.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.neutral.y, rotations.windup.y, easedT);
+      
+      // Elbow bends during windup
+      elbowRotation.x = THREE.MathUtils.lerp(0, -0.8, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE
+      // SLASH PHASE with coordinated joint movement
       const t = (elapsed - phases.windup) / phases.slash;
       const easedT = t * t * (3 - 2 * t);
       
-      currentRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
-      currentRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
       
-      // Wrist snap
+      // Elbow extends during slash
+      elbowRotation.x = THREE.MathUtils.lerp(-0.8, -0.2, easedT);
+      
+      // Wrist snap for impact
       if (t >= 0.2 && t <= 0.8) {
         const wristT = (t - 0.2) / 0.6;
         weaponWristRotation = Math.sin(wristT * Math.PI) * this.weaponSwing.wristSnapIntensity;
@@ -595,12 +730,16 @@ export class Player {
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      currentRotation.x = THREE.MathUtils.lerp(rotations.slash.x, rotations.neutral.x, easedT);
-      currentRotation.y = THREE.MathUtils.lerp(rotations.slash.y, rotations.neutral.y, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, rotations.neutral.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, rotations.neutral.y, easedT);
+      
+      // Elbow returns to neutral
+      elbowRotation.x = THREE.MathUtils.lerp(-0.2, 0, easedT);
       
     } else {
       // ANIMATION COMPLETE
-      currentRotation = rotations.neutral;
+      shoulderRotation = rotations.neutral;
+      elbowRotation = { x: 0, y: 0, z: 0 };
       this.weaponSwing.isActive = false;
       
       // Create weapon trail if we have enough positions
@@ -611,8 +750,13 @@ export class Player {
       return;
     }
     
-    // Apply rotations to right arm
-    this.playerBody.rightArm.rotation.set(currentRotation.x, currentRotation.y, currentRotation.z, 'XYZ');
+    // Apply rotations to realistic arm system
+    this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
+    
+    // Apply elbow rotation
+    if (this.playerBody.rightElbow) {
+      this.playerBody.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
+    }
     
     // Apply wrist snap to weapon
     if (this.equippedWeapon) {
@@ -695,17 +839,17 @@ export class Player {
   public update(deltaTime: number, isMoving?: boolean): void {
     const isActuallyMoving = isMoving ?? false;
     
-    // Update weapon swing animation (for melee weapons)
+    // Update weapon swing animation (for melee weapons) with realistic arm system
     if (!this.isBowEquipped) {
-      this.updateSwordSwing();
+      this.updateRealisticSwordSwing();
     }
     
-    // Update bow animation (for bow weapons)
+    // Update bow animation (for bow weapons) with realistic arm system
     if (this.isBowEquipped) {
-      this.updateBowAnimation(deltaTime);
+      this.updateRealisticBowAnimation(deltaTime);
     }
     
-    // Update walking animation
+    // Update realistic walking animation
     if (isActuallyMoving && !this.weaponSwing.isActive && !this.bowDrawAnimation.isActive) {
       // Update walk cycle
       const walkCycleMultiplier = this.isSprinting ? 2 : 1;
@@ -716,12 +860,22 @@ export class Player {
       this.playerBody.leftLeg.rotation.x = legSwing;
       this.playerBody.rightLeg.rotation.x = -legSwing;
       
-      // Animate arms if not in archery stance
+      // Animate realistic arms if not in archery stance
       if (!this.isBowEquipped) {
         const armSwing = Math.sin(this.walkCycle) * this.armSwingIntensity;
+        
+        // Apply arm swing to shoulders
         this.playerBody.leftArm.rotation.x = Math.PI / 8 - armSwing;
         if (!this.weaponSwing.isActive) {
           this.playerBody.rightArm.rotation.x = Math.PI / 8 + armSwing;
+        }
+        
+        // Add subtle elbow movement during walking
+        if (this.playerBody.leftElbow) {
+          this.playerBody.leftElbow.rotation.x = Math.sin(this.walkCycle + Math.PI) * 0.1;
+        }
+        if (this.playerBody.rightElbow && !this.weaponSwing.isActive) {
+          this.playerBody.rightElbow.rotation.x = Math.sin(this.walkCycle) * 0.1;
         }
       }
       
@@ -733,7 +887,7 @@ export class Player {
       }
     } 
     else if (!isActuallyMoving && !this.weaponSwing.isActive && !this.bowDrawAnimation.isActive) {
-      // Return to idle pose
+      // Return to idle pose with realistic arm control
       const returnSpeed = deltaTime * this.animationReturnSpeed;
       
       this.playerBody.leftLeg.rotation.x = THREE.MathUtils.lerp(
@@ -752,6 +906,18 @@ export class Player {
         if (!this.weaponSwing.isActive) {
           this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
             this.playerBody.rightArm.rotation.x, Math.PI / 8, returnSpeed
+          );
+        }
+        
+        // Return elbows to neutral
+        if (this.playerBody.leftElbow) {
+          this.playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
+            this.playerBody.leftElbow.rotation.x, 0, returnSpeed
+          );
+        }
+        if (this.playerBody.rightElbow && !this.weaponSwing.isActive) {
+          this.playerBody.rightElbow.rotation.x = THREE.MathUtils.lerp(
+            this.playerBody.rightElbow.rotation.x, 0, returnSpeed
           );
         }
       }
@@ -873,13 +1039,13 @@ export class Player {
     if (this.playerBody.leftArm && this.playerBody.rightArm && !this.isBowEquipped) {
       const pitchInfluence = pitch * 0.3; // Reduced influence for subtle effect
       
-      // Adjust arm rotations based on pitch
+      // Adjust shoulder rotations based on pitch for realistic arm system
       this.playerBody.leftArm.rotation.x = Math.PI / 8 + pitchInfluence;
       this.playerBody.rightArm.rotation.x = Math.PI / 8 + pitchInfluence;
     }
     // When bow is equipped, don't modify arm rotations - let archery stance remain intact
     
-    console.log("Player visual rotation updated - Yaw:", yaw, "Pitch:", pitch, "Bow equipped:", this.isBowEquipped);
+    console.log("Player visual rotation updated with realistic arms - Yaw:", yaw, "Pitch:", pitch, "Bow equipped:", this.isBowEquipped);
   }
   
   public getStats(): PlayerStats {
@@ -914,7 +1080,7 @@ export class Player {
     const speed = this.stats.speed * deltaTime * (this.isSprinting ? 1.5 : 1);
     const previousPosition = this.group.position.clone();
     
-    console.log("🚶 [Player] Move called:", {
+    console.log("🚶 [Player] Move called with realistic arms:", {
       direction: direction,
       speed: speed,
       deltaTime: deltaTime,
@@ -928,7 +1094,7 @@ export class Player {
     
     const actualMovement = this.group.position.clone().sub(previousPosition);
     
-    console.log("🚶 [Player] Move executed:", {
+    console.log("🚶 [Player] Move executed with realistic arms:", {
       previousPos: previousPosition,
       newPos: this.group.position.clone(),
       actualMovement: actualMovement,
@@ -957,30 +1123,43 @@ export class Player {
     // Clean up resources
   }
   
-  private updateBowAnimation(deltaTime: number): void {
+  private updateRealisticBowAnimation(deltaTime: number): void {
     if (!this.isBowEquipped || !this.equippedWeapon) return;
     
     const chargeLevel = this.equippedWeapon.getChargeLevel ? this.equippedWeapon.getChargeLevel() : 0;
     const lerpSpeed = deltaTime * 8;
     
-    console.log(`🏹 [Player] Bow animation update - Active: ${this.bowDrawAnimation.isActive}, Charge: ${chargeLevel.toFixed(2)}`);
+    console.log(`🏹 [Player] Realistic bow animation update - Active: ${this.bowDrawAnimation.isActive}, Charge: ${chargeLevel.toFixed(2)}`);
     
     if (this.bowDrawAnimation.isActive) {
-      // Enhanced progressive draw animation with hand control
+      // Enhanced progressive draw animation with realistic joint control
       const drawProgress = Math.min(chargeLevel * 1.2, 1.0);
       
-      // Left arm: Stays steady holding the bow with slight adjustment
-      const leftArmRotation = new THREE.Euler(
+      // Left shoulder: Stays steady holding the bow with slight adjustment
+      const leftShoulderRotation = new THREE.Euler(
         this.bowDrawAnimation.leftArmRestRotation.x + (drawProgress * 0.1), // Slight lift
         this.bowDrawAnimation.leftArmRestRotation.y - (drawProgress * 0.1), // Minor angle adjustment
         this.bowDrawAnimation.leftArmRestRotation.z + (drawProgress * 0.05)
       );
       
-      // Right arm: Major movement - pulls string back dramatically
-      const rightArmRotation = new THREE.Euler(
+      // Right shoulder: Major movement - pulls string back dramatically
+      const rightShoulderRotation = new THREE.Euler(
         this.bowDrawAnimation.rightArmRestRotation.x + (drawProgress * 0.8),
         this.bowDrawAnimation.rightArmRestRotation.y + (drawProgress * 0.8),
         this.bowDrawAnimation.rightArmRestRotation.z - (drawProgress * 0.6)
+      );
+      
+      // Elbow movements for realistic drawing
+      const leftElbowRotation = new THREE.Euler(
+        -0.2 + (drawProgress * 0.1), // Slight adjustment
+        0,
+        0
+      );
+      
+      const rightElbowRotation = new THREE.Euler(
+        -0.3 - (drawProgress * 0.5), // Pulls back significantly
+        0,
+        0
       );
       
       // Hand rotations - left hand maintains grip, right hand adjusts for string pull
@@ -996,26 +1175,38 @@ export class Player {
         drawProgress * -0.3 // Rotate for pulling motion
       );
       
-      // Smooth interpolation for arms
+      // Smooth interpolation for shoulders
       this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.leftArm.rotation.x, leftArmRotation.x, lerpSpeed
+        this.playerBody.leftArm.rotation.x, leftShoulderRotation.x, lerpSpeed
       );
       this.playerBody.leftArm.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.leftArm.rotation.y, leftArmRotation.y, lerpSpeed
+        this.playerBody.leftArm.rotation.y, leftShoulderRotation.y, lerpSpeed
       );
       this.playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.leftArm.rotation.z, leftArmRotation.z, lerpSpeed
+        this.playerBody.leftArm.rotation.z, leftShoulderRotation.z, lerpSpeed
       );
       
       this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.rightArm.rotation.x, rightArmRotation.x, lerpSpeed
+        this.playerBody.rightArm.rotation.x, rightShoulderRotation.x, lerpSpeed
       );
       this.playerBody.rightArm.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.rightArm.rotation.y, rightArmRotation.y, lerpSpeed
+        this.playerBody.rightArm.rotation.y, rightShoulderRotation.y, lerpSpeed
       );
       this.playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.rightArm.rotation.z, rightArmRotation.z, lerpSpeed
+        this.playerBody.rightArm.rotation.z, rightShoulderRotation.z, lerpSpeed
       );
+      
+      // Smooth interpolation for elbows
+      if (this.playerBody.leftElbow) {
+        this.playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
+          this.playerBody.leftElbow.rotation.x, leftElbowRotation.x, lerpSpeed
+        );
+      }
+      if (this.playerBody.rightElbow) {
+        this.playerBody.rightElbow.rotation.x = THREE.MathUtils.lerp(
+          this.playerBody.rightElbow.rotation.x, rightElbowRotation.x, lerpSpeed
+        );
+      }
       
       // Smooth interpolation for hands - maintain realistic gripping
       this.playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
@@ -1043,11 +1234,11 @@ export class Player {
         const shakeAmount = 0.03 * Math.sin(Date.now() * 0.015);
         this.playerBody.rightArm.rotation.x += shakeAmount;
         this.playerBody.rightArm.rotation.y += shakeAmount * 0.7;
-        console.log("🏹 [Player] Full draw shake effect active");
+        console.log("🏹 [Player] Full draw shake effect active with realistic arms");
       }
       
     } else {
-      // Return to archery rest stance smoothly
+      // Return to archery rest stance smoothly with all joints
       this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
         this.playerBody.leftArm.rotation.x, this.bowDrawAnimation.leftArmRestRotation.x, lerpSpeed
       );
@@ -1067,6 +1258,18 @@ export class Player {
       this.playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
         this.playerBody.rightArm.rotation.z, this.bowDrawAnimation.rightArmRestRotation.z, lerpSpeed
       );
+      
+      // Return elbows to rest positions
+      if (this.playerBody.leftElbow) {
+        this.playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
+          this.playerBody.leftElbow.rotation.x, -0.2, lerpSpeed
+        );
+      }
+      if (this.playerBody.rightElbow) {
+        this.playerBody.rightElbow.rotation.x = THREE.MathUtils.lerp(
+          this.playerBody.rightElbow.rotation.x, -0.3, lerpSpeed
+        );
+      }
       
       // Return hands to rest gripping position
       this.playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
@@ -1105,13 +1308,13 @@ export class Player {
       return;
     }
     
-    console.log("🏹 [Player] Starting enhanced bow draw animation with debug info");
+    console.log("🏹 [Player] Starting realistic bow draw animation with enhanced joint control");
     this.bowDrawAnimation.isActive = true;
     
     // Start weapon draw
     if (this.equippedWeapon.startDrawing) {
       this.equippedWeapon.startDrawing();
-      console.log("🏹 [Player] Weapon draw started on equipped weapon");
+      console.log("🏹 [Player] Weapon draw started on equipped weapon with realistic arms");
     } else {
       console.warn("🏹 [Player] Equipped weapon does not support startDrawing method");
     }
@@ -1122,13 +1325,13 @@ export class Player {
       return;
     }
     
-    console.log("🏹 [Player] Stopping bow draw animation with debug info");
+    console.log("🏹 [Player] Stopping realistic bow draw animation with enhanced joint control");
     this.bowDrawAnimation.isActive = false;
     
     // Stop weapon draw
     if (this.equippedWeapon.stopDrawing) {
       this.equippedWeapon.stopDrawing();
-      console.log("🏹 [Player] Weapon draw stopped on equipped weapon");
+      console.log("🏹 [Player] Weapon draw stopped on equipped weapon with realistic arms");
     } else {
       console.warn("🏹 [Player] Equipped weapon does not support stopDrawing method");
     }
