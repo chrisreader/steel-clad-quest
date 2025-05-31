@@ -5,6 +5,7 @@ import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { EffectsManager } from '../engine/EffectsManager';
 import { BaseWeapon } from '../weapons/BaseWeapon';
 import { WeaponManager } from '../weapons/WeaponManager';
+import { WeaponAnimationSystem, WeaponType } from '../animation/WeaponAnimationSystem';
 
 export class Player {
   // THREE.js objects
@@ -16,6 +17,9 @@ export class Player {
   private equippedWeapon: BaseWeapon | null = null;
   private weaponManager: WeaponManager;
   private swordHitBox: THREE.Mesh;
+  
+  // Animation system
+  private weaponAnimationSystem: WeaponAnimationSystem;
   
   // Game state
   private stats: PlayerStats;
@@ -91,6 +95,7 @@ export class Player {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     this.weaponManager = new WeaponManager();
+    this.weaponAnimationSystem = new WeaponAnimationSystem();
     
     // Create player group
     this.group = new THREE.Group();
@@ -131,7 +136,7 @@ export class Player {
       attackPower: 20
     };
     
-    console.log("Player initialized with realistic arm system and stats:", this.stats);
+    console.log("Player initialized with realistic arm system, weapon animation system, and stats:", this.stats);
   }
   
   private createRealisticPlayerBody(): PlayerBody {
@@ -417,7 +422,10 @@ export class Player {
     // Check if weapon is a bow
     this.isBowEquipped = weapon.getConfig().type === 'bow';
     
+    // Update weapon animation system
+    let weaponType: WeaponType;
     if (this.isBowEquipped) {
+      weaponType = 'bow';
       // Attach bow to left HAND for proper control with realistic arm system
       this.playerBody.leftHand.add(weapon.getMesh());
       
@@ -431,6 +439,7 @@ export class Player {
       
       console.log(`🏹 [Player] Bow equipped with realistic arm system and centered positioning`);
     } else {
+      weaponType = 'melee';
       // Attach melee weapon to right hand with realistic positioning
       this.playerBody.rightHand.add(weapon.getMesh());
       
@@ -442,6 +451,9 @@ export class Player {
       this.resetToRealisticNormalStance();
     }
     
+    // Update animation system weapon type
+    this.weaponAnimationSystem.setWeaponType(weaponType);
+    
     // Update swing animation with weapon config
     const weaponConfig = weapon.getConfig();
     this.weaponSwing.duration = weaponConfig.swingAnimation.duration;
@@ -451,7 +463,7 @@ export class Player {
     // Update hitbox reference
     this.swordHitBox = weapon.getHitBox();
     
-    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with realistic arm system`);
+    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with realistic arm system and animation type: ${weaponType}`);
     return true;
   }
   
@@ -544,13 +556,16 @@ export class Player {
     this.isBowEquipped = false;
     this.bowDrawAnimation.isActive = false;
     
+    // Update animation system to empty hands
+    this.weaponAnimationSystem.setWeaponType('emptyHands');
+    
     // Reset to default hitbox
     const fallbackHitBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
     const fallbackHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
     this.swordHitBox = new THREE.Mesh(fallbackHitBoxGeometry, fallbackHitBoxMaterial);
     this.scene.add(this.swordHitBox);
     
-    console.log(`🗡️ [Player] Weapon unequipped from realistic arm system`);
+    console.log(`🗡️ [Player] Weapon unequipped from realistic arm system, animation type set to emptyHands`);
     return true;
   }
   
@@ -827,81 +842,30 @@ export class Player {
       this.updateRealisticBowAnimation(deltaTime);
     }
     
-    // Update realistic walking animation
-    if (isActuallyMoving && !this.weaponSwing.isActive && !this.bowDrawAnimation.isActive) {
-      // Update walk cycle
+    // Update walk cycle
+    if (isActuallyMoving) {
       const walkCycleMultiplier = this.isSprinting ? 2 : 1;
-      this.walkCycle += deltaTime * this.walkCycleSpeed * walkCycleMultiplier;
-      
-      // Animate legs
-      const legSwing = Math.sin(this.walkCycle) * this.legSwingIntensity;
-      this.playerBody.leftLeg.rotation.x = legSwing;
-      this.playerBody.rightLeg.rotation.x = -legSwing;
-      
-      // Animate realistic arms if not in archery stance
-      if (!this.isBowEquipped) {
-        const armSwing = Math.sin(this.walkCycle) * this.armSwingIntensity;
-        
-        // Apply arm swing to shoulders
-        this.playerBody.leftArm.rotation.x = Math.PI / 8 - armSwing;
-        if (!this.weaponSwing.isActive) {
-          this.playerBody.rightArm.rotation.x = Math.PI / 8 + armSwing;
-        }
-        
-        // Add subtle elbow movement during walking - FIXED: Use positive values for natural movement
-        if (this.playerBody.leftElbow) {
-          this.playerBody.leftElbow.rotation.x = Math.sin(this.walkCycle + Math.PI) * 0.1 + 0.05; // Small positive offset
-        }
-        if (this.playerBody.rightElbow && !this.weaponSwing.isActive) {
-          this.playerBody.rightElbow.rotation.x = Math.sin(this.walkCycle) * 0.1 + 0.05; // Small positive offset
-        }
-      }
-      
-      this.isWalking = true;
-      
-      // Play footstep sound
-      if (Math.sin(this.walkCycle) > 0.9 && !this.audioManager.isPlaying('footstep')) {
-        this.audioManager.play('footstep');
-      }
-    } 
-    else if (!isActuallyMoving && !this.weaponSwing.isActive && !this.bowDrawAnimation.isActive) {
-      // Return to idle pose with realistic arm control
-      const returnSpeed = deltaTime * this.animationReturnSpeed;
-      
-      this.playerBody.leftLeg.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.leftLeg.rotation.x, 0, returnSpeed
-      );
-      this.playerBody.rightLeg.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.rightLeg.rotation.x, 0, returnSpeed
-      );
-      
-      // Only reset arms if not holding bow
-      if (!this.isBowEquipped) {
-        this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
-          this.playerBody.leftArm.rotation.x, Math.PI / 8, returnSpeed
-        );
-        
-        if (!this.weaponSwing.isActive) {
-          this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
-            this.playerBody.rightArm.rotation.x, Math.PI / 8, returnSpeed
-          );
-        }
-        
-        // Return elbows to neutral
-        if (this.playerBody.leftElbow) {
-          this.playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
-            this.playerBody.leftElbow.rotation.x, 0, returnSpeed
-          );
-        }
-        if (this.playerBody.rightElbow && !this.weaponSwing.isActive) {
-          this.playerBody.rightElbow.rotation.x = THREE.MathUtils.lerp(
-            this.playerBody.rightElbow.rotation.x, 0, returnSpeed
-          );
-        }
-      }
-      
-      this.isWalking = false;
+      const walkCycleSpeed = this.weaponAnimationSystem.getWalkCycleSpeed();
+      this.walkCycle += deltaTime * walkCycleSpeed * walkCycleMultiplier;
     }
+    
+    // Use weapon animation system for walking animations
+    this.weaponAnimationSystem.updateWalkAnimation(
+      this.playerBody,
+      this.walkCycle,
+      deltaTime,
+      isActuallyMoving,
+      this.isSprinting,
+      this.weaponSwing.isActive,
+      this.bowDrawAnimation.isActive
+    );
+    
+    // Play footstep sound
+    if (isActuallyMoving && Math.sin(this.walkCycle) > 0.9 && !this.audioManager.isPlaying('footstep')) {
+      this.audioManager.play('footstep');
+    }
+    
+    this.isWalking = isActuallyMoving;
     
     // Update sprint stamina
     if (this.isSprinting) {
@@ -1058,12 +1022,13 @@ export class Player {
     const speed = this.stats.speed * deltaTime * (this.isSprinting ? 1.5 : 1);
     const previousPosition = this.group.position.clone();
     
-    console.log("🚶 [Player] Move called with realistic arms:", {
+    console.log("🚶 [Player] Move called with weapon animation system:", {
       direction: direction,
       speed: speed,
       deltaTime: deltaTime,
       currentPos: previousPosition,
-      isSprinting: this.isSprinting
+      isSprinting: this.isSprinting,
+      weaponType: this.weaponAnimationSystem.getCurrentWeaponType()
     });
     
     // Apply movement
@@ -1072,12 +1037,13 @@ export class Player {
     
     const actualMovement = this.group.position.clone().sub(previousPosition);
     
-    console.log("🚶 [Player] Move executed with realistic arms:", {
+    console.log("🚶 [Player] Move executed with weapon animation system:", {
       previousPos: previousPosition,
       newPos: this.group.position.clone(),
       actualMovement: actualMovement,
       movementMagnitude: actualMovement.length(),
-      wasSuccessful: actualMovement.length() > 0.001
+      wasSuccessful: actualMovement.length() > 0.001,
+      weaponType: this.weaponAnimationSystem.getCurrentWeaponType()
     });
     
     // FIXED: Don't rotate visual components during movement
