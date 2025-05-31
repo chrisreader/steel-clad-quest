@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -117,7 +118,7 @@ export class SwordSwingAnimation {
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
         -Math.PI / 3,                                 // From windup -60°
-        Math.PI / 2.5,                               // To left sweep ~10° (updated to π/2.5)
+        Math.PI / 2.5,                               // To left sweep ~72° (increased 20% from π/3 = 60°)
         aggressiveT
       );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, aggressiveT);
