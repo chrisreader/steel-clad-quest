@@ -865,8 +865,8 @@ export class Player {
       shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT);
       
-      // Enhanced elbow coordination - deeper bend for power storage
-      elbowRotation.x = THREE.MathUtils.lerp(0, 1.2, easedT); // Increased from 0.8 to 1.2
+      // FIXED: Enhanced elbow coordination - DOWNWARD bend for horizontal sword positioning
+      elbowRotation.x = THREE.MathUtils.lerp(0, -0.05, easedT); // CHANGED: Negative (downward) bend to counteract forward shoulder
       
       // NEW: Add torso rotation for power generation
       torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT); // Rotate torso back for windup
@@ -881,8 +881,8 @@ export class Player {
       shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT);
       
-      // Enhanced elbow movement - explosive extension
-      elbowRotation.x = THREE.MathUtils.lerp(1.2, 0.1, easedT); // More dramatic extension
+      // FIXED: Enhanced elbow movement - DOWNWARD extension for horizontal blade
+      elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.1, easedT); // CHANGED: Negative (downward) extension for horizontal sword
       
       // NEW: Enhanced torso rotation - snap forward for power
       torsoRotation = THREE.MathUtils.lerp(-0.3, 0.4, easedT); // Rotate torso forward through swing
@@ -912,8 +912,8 @@ export class Player {
       shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(rotations.slash.z, 0, easedT);
       
-      // Elbow returns to neutral ready position
-      elbowRotation.x = THREE.MathUtils.lerp(0.1, 0, easedT);
+      // FIXED: Elbow returns to DOWNWARD position for horizontal blade
+      elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.05, easedT); // CHANGED: Return to downward bend for horizontal sword
       
       // NEW: Torso returns to neutral position
       torsoRotation = THREE.MathUtils.lerp(0.4, 0, easedT);
@@ -923,7 +923,7 @@ export class Player {
       shoulderRotation.x = parallelAngleBase;
       shoulderRotation.y = 0;
       shoulderRotation.z = 0;
-      elbowRotation = { x: 0, y: 0, z: 0 };
+      elbowRotation = { x: -0.05, y: 0, z: 0 }; // FIXED: DOWNWARD elbow bend for horizontal sword at rest
       torsoRotation = 0;
       this.weaponSwing.isActive = false;
       
@@ -953,7 +953,7 @@ export class Player {
       this.equippedWeapon.getMesh().rotation.z = weaponWristRotation;
     }
     
-    console.log(`⚔️ [Player] Enhanced realistic sword swing - Phase: ${elapsed < phases.windup ? 'WINDUP' : elapsed < phases.windup + phases.slash ? 'SLASH' : 'RECOVERY'}, Torso: ${torsoRotation.toFixed(2)}`);
+    console.log(`⚔️ [Player] FIXED Enhanced realistic sword swing - Phase: ${elapsed < phases.windup ? 'WINDUP' : elapsed < phases.windup + phases.slash ? 'SLASH' : 'RECOVERY'}, Elbow: ${elbowRotation.x.toFixed(3)} (DOWNWARD), Torso: ${torsoRotation.toFixed(2)}`);
   }
   
   private trackWeaponTip(): void {
