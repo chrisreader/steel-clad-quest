@@ -83,10 +83,14 @@ export class SwordSwingAnimation {
       elbowRotation.x = THREE.MathUtils.lerp(0.02, 0.04, easedT);
       elbowRotation.y = 0;
       
+      // WRIST: Point blade to the RIGHT during windup for horizontal slash setup
+      wristRotation.y = THREE.MathUtils.lerp(0, Math.PI / 3, easedT); // ~60° to point blade right
+      wristRotation.z = THREE.MathUtils.lerp(configRotations.neutral.z, configRotations.windup.z, easedT);
+      
       // Slight torso coiling to support the windup
       torsoRotation = THREE.MathUtils.lerp(0, -0.2, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - Upper arm extending FURTHER RIGHT, Y rotation: ${shoulderRotation.y.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - Blade pointing RIGHT for horizontal setup, wrist Y: ${wristRotation.y.toFixed(2)}`);
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE: Sweep upper arm from right to LEFT following sword arc
@@ -102,13 +106,14 @@ export class SwordSwingAnimation {
       elbowRotation.x = THREE.MathUtils.lerp(0.04, 0.01, easedT);
       elbowRotation.y = 0;
       
-      // Wrist snap using weapon config Z-rotation for finishing power
+      // WRIST: Horizontal slash from RIGHT to LEFT
+      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 3, -Math.PI / 3, easedT); // Sweep blade from right (~60°) to left (~-60°)
       wristRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, easedT);
       
       // Torso uncoils to support the sweep from right to left
       torsoRotation = THREE.MathUtils.lerp(-0.2, 0.3, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - Upper arm sweeping RIGHT-to-LEFT, Y rotation: ${shoulderRotation.y.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - HORIZONTAL SLASH right-to-left, wrist Y: ${wristRotation.y.toFixed(2)}`);
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE: Return to weapon config neutral position
@@ -124,13 +129,14 @@ export class SwordSwingAnimation {
       elbowRotation.x = THREE.MathUtils.lerp(0.01, 0.02, easedT);
       elbowRotation.y = 0;
       
-      // Wrist returns to neutral
+      // WRIST: Return to neutral position
+      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 3, 0, easedT); // Return blade to center
       wristRotation.z = THREE.MathUtils.lerp(configRotations.slash.z, configRotations.neutral.z, easedT);
       
       // Torso returns to center
       torsoRotation = THREE.MathUtils.lerp(0.3, 0, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to neutral, Y rotation: ${shoulderRotation.y.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning blade to center, wrist Y: ${wristRotation.y.toFixed(2)}`);
       
     } else {
       // ANIMATION COMPLETE
@@ -140,7 +146,7 @@ export class SwordSwingAnimation {
     }
     
     // Apply the coordinated rotations to all joints
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING REALISTIC ARC ROTATIONS ***`);
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING HORIZONTAL SLASH ROTATIONS ***`);
     this.applyLocalRotations(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
   }
   
@@ -150,7 +156,7 @@ export class SwordSwingAnimation {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLY REALISTIC ARC *** - Upper arm leads horizontal sweep`);
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLY HORIZONTAL SLASH *** - Blade follows horizontal arc`);
     
     if (!this.playerBody || !this.playerBody.rightArm) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - playerBody or rightArm is null');
@@ -159,7 +165,7 @@ export class SwordSwingAnimation {
     
     // Apply shoulder rotations with realistic arc movement
     this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
-    console.log(`🗡️ [SwordSwingAnimation] Shoulder rotation (realistic arc): x=${shoulderRotation.x.toFixed(2)}, y=${shoulderRotation.y.toFixed(2)}, z=${shoulderRotation.z.toFixed(2)}`);
+    console.log(`🗡️ [SwordSwingAnimation] Shoulder rotation (horizontal arc): x=${shoulderRotation.x.toFixed(2)}, y=${shoulderRotation.y.toFixed(2)}, z=${shoulderRotation.z.toFixed(2)}`);
     
     // Apply coordinated elbow rotations for straight arm
     if (this.playerBody.rightElbow) {
@@ -167,16 +173,16 @@ export class SwordSwingAnimation {
       console.log(`🗡️ [SwordSwingAnimation] Elbow rotation (straight arm): x=${elbowRotation.x.toFixed(2)}, y=${elbowRotation.y.toFixed(2)}, z=${elbowRotation.z.toFixed(2)}`);
     }
     
-    // Apply wrist rotations with weapon config Z-rotation for snap
+    // Apply wrist rotations with HORIZONTAL SLASH Y-rotation for blade direction
     if (this.playerBody.rightWrist) {
       this.playerBody.rightWrist.rotation.set(wristRotation.x, wristRotation.y, wristRotation.z);
-      console.log(`🗡️ [SwordSwingAnimation] Wrist rotation (adds snap): x=${wristRotation.x.toFixed(2)}, z=${wristRotation.z.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] Wrist rotation (HORIZONTAL SLASH): x=${wristRotation.x.toFixed(2)}, y=${wristRotation.y.toFixed(2)}, z=${wristRotation.z.toFixed(2)}`);
     }
     
     // Apply supporting torso rotation
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = torsoRotation;
-      console.log(`🗡️ [SwordSwingAnimation] Torso rotation (supports arc): ${torsoRotation.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] Torso rotation (supports horizontal slash): ${torsoRotation.toFixed(2)}`);
     }
     
     // Debug weapon position if available
