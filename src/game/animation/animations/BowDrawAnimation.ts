@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -17,8 +16,8 @@ export class BowDrawAnimation {
   ): void {
     // Draw animation - right arm pulls back while left arm holds bow steady
     
-    // Left arm maintains bow-holding position (80° chest level, parallel with body)
-    const leftArmBaseX = Math.PI * 80 / 180;  // 80° raised position
+    // Left arm maintains bow-holding position (60° chest level, parallel with body)
+    const leftArmBaseX = Math.PI * 60 / 180;  // 60° raised position
     playerBody.leftArm.rotation.x = leftArmBaseX;
     playerBody.leftArm.rotation.y = 0;  // Parallel with body
     playerBody.leftArm.rotation.z = 0;  // Parallel with body
@@ -59,8 +58,8 @@ export class BowDrawAnimation {
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to bow ready stance (80° chest level, parallel with body)
-    playerBody.leftArm.rotation.set(Math.PI * 80 / 180, 0, 0);
+    // Reset to bow ready stance (60° chest level, parallel with body)
+    playerBody.leftArm.rotation.set(Math.PI * 60 / 180, 0, 0);
     playerBody.rightArm.rotation.set(Math.PI / 6, 0, -Math.PI / 8);
     
     if (playerBody.leftElbow) {

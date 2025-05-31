@@ -97,8 +97,8 @@ export class WeaponAnimationSystem {
     // Return to weapon-appropriate idle stance
     switch (this.currentWeaponType) {
       case 'bow':
-        // BOW NATURAL READY STANCE: Left arm at 80° chest level, parallel with body
-        const bowLeftArmTargetX = Math.PI * 80 / 180;  // 80° upward angle
+        // BOW NATURAL READY STANCE: Left arm at 60° chest level, parallel with body
+        const bowLeftArmTargetX = Math.PI * 60 / 180;  // 60° upward angle
         const bowLeftArmTargetY = 0;                   // Parallel with body
         const bowLeftArmTargetZ = 0;                   // Parallel with body
         
@@ -155,7 +155,7 @@ export class WeaponAnimationSystem {
           playerBody.rightHand.rotation.z, 0, returnSpeed
         );
         
-        console.log('🏹 [WeaponAnimationSystem] Returning to bow natural ready stance - 80° chest level, parallel with body');
+        console.log('🏹 [WeaponAnimationSystem] Returning to bow natural ready stance - 60° chest level, parallel with body');
         break;
         
       case 'melee':
