@@ -76,7 +76,7 @@ export class SwordSwingAnimation {
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Moderate windup - FORWARD and slightly UP and RIGHT (increased by 20%)
+      // SHOULDER: Moderate windup - FORWARD and slightly UP and RIGHT (changed to -60°)
       shoulderRotation.x = THREE.MathUtils.lerp(
         configRotations.neutral.x,                    // Start at ~60° (π/3)
         configRotations.neutral.x + Math.PI / 6,      // End at ~90° (π/3 + π/6) - REDUCED from π/3
@@ -84,7 +84,7 @@ export class SwordSwingAnimation {
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
         configRotations.neutral.y,                    // Start at 0°
-        -Math.PI / 5,                                 // End at ~-36° (increased 20% from -π/6 = -30°)
+        -Math.PI / 3,                                 // End at -60° as requested
         easedT
       );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.neutral.z, configRotations.windup.z, easedT);
@@ -100,7 +100,7 @@ export class SwordSwingAnimation {
       // Torso coils for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.15, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - SHOULDER builds forward sweep`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - SHOULDER builds forward sweep to -60°`);
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE: SHOULDER drives FORWARD SWEEP to left side
@@ -109,14 +109,14 @@ export class SwordSwingAnimation {
       // AGGRESSIVE EASING like reference code: t * t * (3 - 2 * t)
       const aggressiveT = t * t * (3 - 2 * t);
       
-      // SHOULDER: FORWARD SWEEP movement - stays forward, sweeps to LEFT (increased by 20%)
+      // SHOULDER: FORWARD SWEEP movement - stays forward, sweeps to LEFT (from -60°)
       shoulderRotation.x = THREE.MathUtils.lerp(
         configRotations.neutral.x + Math.PI / 6,      // From windup ~90°
         configRotations.neutral.x + Math.PI / 12,     // To forward position ~75° (INCREASED from -π/12)
         aggressiveT
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
-        -Math.PI / 5,                                 // From windup ~-36° (increased 20%)
+        -Math.PI / 3,                                 // From windup -60°
         Math.PI / 2.5,                               // To left sweep ~72° (increased 20% from π/3 = 60°)
         aggressiveT
       );
