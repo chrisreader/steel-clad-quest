@@ -56,9 +56,9 @@ export class SwordSwingAnimation {
     const weaponConfig = this.equippedWeapon.getConfig();
     const configRotations = weaponConfig.swingAnimation.rotations;
     
-    console.log('🗡️ [SwordSwingAnimation] Using weapon config as base, but shoulder drives the swing:', configRotations);
+    console.log('🗡️ [SwordSwingAnimation] Using REFERENCE CODE angles for diagonal slash:', configRotations);
     
-    // SHOULDER is PRIMARY DRIVER - FORWARD-SWEEPING motion
+    // SHOULDER is PRIMARY DRIVER - DIAGONAL SLASH motion using reference angles
     let shoulderRotation = { 
       x: configRotations.neutral.x, 
       y: configRotations.neutral.y, 
@@ -73,19 +73,21 @@ export class SwordSwingAnimation {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: SHOULDER builds up for forward sweep (moderate height, right side)
+      // WINDUP PHASE: REFERENCE ANGLES - UP and RIGHT
+      // Starting: x=22.5° (π/8), y=0°
+      // Ending: x=72.2° (π/8 + 50°), y=-39.6° (-40°)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Moderate windup - FORWARD and slightly UP and RIGHT (increased to ~70°)
+      // SHOULDER: Reference windup angles - UP and RIGHT
       shoulderRotation.x = THREE.MathUtils.lerp(
-        configRotations.neutral.x,                    // Start at ~60° (π/3)
-        configRotations.neutral.x + Math.PI / 18,     // End at ~70° (π/3 + π/18) - INCREASED to 70°
+        Math.PI / 8,                                  // Start at 22.5° (reference neutral)
+        Math.PI / 8 + THREE.MathUtils.degToRad(50),   // End at 72.2° (reference windup)
         easedT
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
-        configRotations.neutral.y,                    // Start at 0°
-        -Math.PI / 3,                                 // End at -60° as requested
+        0,                                            // Start at 0° (reference neutral)
+        THREE.MathUtils.degToRad(-39.6),              // End at -39.6° (reference windup)
         easedT
       );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.neutral.z, configRotations.windup.z, easedT);
@@ -101,24 +103,27 @@ export class SwordSwingAnimation {
       // Torso coils for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.15, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - SHOULDER builds forward sweep to ~70° and -60°`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - Reference angles: UP and RIGHT to 72.2°, -39.6°`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: SHOULDER drives DRAMATIC LEFTWARD SWEEP across the screen
+      // SLASH PHASE: REFERENCE DIAGONAL SWEEP - DOWN and LEFT
+      // Peak: x=72.2°, y=-39.6°
+      // Mid-slash: x=54.2°, y=-9.1°
+      // End slash: x=7.5°, y=70.0°
       const t = (elapsed - phases.windup) / phases.slash;
       
       // AGGRESSIVE EASING like reference code: t * t * (3 - 2 * t)
       const aggressiveT = t * t * (3 - 2 * t);
       
-      // SHOULDER: DRAMATIC LEFTWARD SWEEP - goes far to the left across screen
+      // SHOULDER: REFERENCE DIAGONAL SWEEP - DOWN and LEFT
       shoulderRotation.x = THREE.MathUtils.lerp(
-        configRotations.neutral.x + Math.PI / 18,     // From windup ~70°
-        configRotations.neutral.x + Math.PI / 12,     // To forward position ~75°
+        Math.PI / 8 + THREE.MathUtils.degToRad(50),   // From windup 72.2°
+        Math.PI / 8 + THREE.MathUtils.degToRad(-15),  // To end slash 7.5° (DOWN motion)
         aggressiveT
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
-        -Math.PI / 3,                                 // From windup -60°
-        Math.PI / 1.3,                               // To DRAMATIC left sweep ~140° (much larger sweep)
+        THREE.MathUtils.degToRad(-39.6),              // From windup -39.6°
+        THREE.MathUtils.degToRad(70.0),               // To end slash 70.0° (LEFT sweep)
         aggressiveT
       );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, aggressiveT);
@@ -141,19 +146,28 @@ export class SwordSwingAnimation {
       );
       wristRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, aggressiveT);
       
-      // Torso uncoils to support dramatic slash
-      torsoRotation = THREE.MathUtils.lerp(-0.15, 0.4, aggressiveT); // Increased torso rotation
+      // Torso uncoils to support diagonal slash
+      torsoRotation = THREE.MathUtils.lerp(-0.15, 0.4, aggressiveT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - DRAMATIC LEFTWARD SWEEP to ~140°`);
+      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - Reference diagonal: DOWN to 7.5°, LEFT to 70.0°`);
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to neutral (like reference)
+      // RECOVERY PHASE: Return to reference neutral (like reference)
+      // Return to: x=22.5° (π/8), y=0°
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return all joints to neutral positions
-      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x + Math.PI / 12, configRotations.neutral.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 1.3, configRotations.neutral.y, easedT);
+      // Return all joints to reference neutral positions
+      shoulderRotation.x = THREE.MathUtils.lerp(
+        Math.PI / 8 + THREE.MathUtils.degToRad(-15),  // From end slash 7.5°
+        Math.PI / 8,                                  // To reference neutral 22.5°
+        easedT
+      );
+      shoulderRotation.y = THREE.MathUtils.lerp(
+        THREE.MathUtils.degToRad(70.0),               // From end slash 70.0°
+        0,                                            // To reference neutral 0°
+        easedT
+      );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.slash.z, configRotations.neutral.z, easedT);
       
       // Return elbow to neutral
@@ -167,7 +181,7 @@ export class SwordSwingAnimation {
       // Torso returns to center
       torsoRotation = THREE.MathUtils.lerp(0.4, 0, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to neutral`);
+      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to reference neutral 22.5°, 0°`);
       
     } else {
       // ANIMATION COMPLETE
@@ -176,8 +190,8 @@ export class SwordSwingAnimation {
       return;
     }
     
-    // Apply the SHOULDER-DRIVEN rotations
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING DRAMATIC LEFTWARD SWEEP SWORD SWING ***`);
+    // Apply the REFERENCE-BASED DIAGONAL SLASH rotations
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING REFERENCE DIAGONAL SLASH SWORD SWING ***`);
     this.applyShoulderDrivenSwing(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
   }
   
@@ -187,14 +201,14 @@ export class SwordSwingAnimation {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    console.log(`🗡️ [SwordSwingAnimation] *** SHOULDER-DRIVEN SWING *** - Forward sweep from right to left`);
+    console.log(`🗡️ [SwordSwingAnimation] *** REFERENCE-BASED DIAGONAL SLASH *** - Top-right to bottom-left`);
     
     if (!this.playerBody || !this.playerBody.rightArm) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - playerBody or rightArm is null');
       return;
     }
     
-    // Apply SHOULDER rotations - PRIMARY DRIVER of the swing
+    // Apply SHOULDER rotations - PRIMARY DRIVER of the diagonal slash
     this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
     console.log(`🗡️ [SwordSwingAnimation] SHOULDER (PRIMARY): x=${shoulderRotation.x.toFixed(2)}, y=${shoulderRotation.y.toFixed(2)}, z=${shoulderRotation.z.toFixed(2)}`);
     
@@ -225,21 +239,17 @@ export class SwordSwingAnimation {
   }
   
   private completeAnimation(): void {
-    console.log('🗡️ [SwordSwingAnimation] *** COMPLETING ANIMATION *** - Resetting to weapon config neutral rotations');
+    console.log('🗡️ [SwordSwingAnimation] *** COMPLETING ANIMATION *** - Resetting to reference neutral rotations');
     
-    // Get weapon config for neutral position
-    const weaponConfig = this.equippedWeapon.getConfig();
-    const neutralRotation = weaponConfig.swingAnimation.rotations.neutral;
-    
-    // Reset to weapon config neutral rotations
-    this.playerBody.rightArm.rotation.set(neutralRotation.x, neutralRotation.y, neutralRotation.z);
+    // Reset to reference neutral rotations: x=22.5° (π/8), y=0°
+    this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
     
     // Reset elbow to minimal bend for straight arm
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(0.05, 0, 0);
     }
     if (this.playerBody.rightWrist) {
-      this.playerBody.rightWrist.rotation.set(-Math.PI / 4, 0, neutralRotation.z);
+      this.playerBody.rightWrist.rotation.set(-Math.PI / 4, 0, 0);
     }
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = 0;
