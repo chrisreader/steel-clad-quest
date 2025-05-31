@@ -170,15 +170,15 @@ export class Player {
     head.visible = false; // Hide head in first-person
     playerBodyGroup.add(head);
     
-    // REALISTIC ARM SYSTEM - Left Arm (adjusted position to center better)
+    // REALISTIC ARM SYSTEM - Left Arm
     const leftArmSystem = this.createRealisticArm('left');
-    leftArmSystem.position.set(-0.3, 1.3, -0.4); // Changed from -0.5 to -0.3 for better centering
+    leftArmSystem.position.set(-0.5, 1.3, -0.4); // Better positioned for first-person
     leftArmSystem.visible = true;
     playerBodyGroup.add(leftArmSystem);
     
-    // REALISTIC ARM SYSTEM - Right Arm (slightly adjusted for balance)
+    // REALISTIC ARM SYSTEM - Right Arm  
     const rightArmSystem = this.createRealisticArm('right');
-    rightArmSystem.position.set(0.5, 1.3, -0.4); // Changed from 0.7 to 0.5 for better balance
+    rightArmSystem.position.set(0.7, 1.3, -0.4); // Closer and more natural
     rightArmSystem.visible = true;
     playerBodyGroup.add(rightArmSystem);
     
@@ -351,8 +351,8 @@ export class Player {
     this.bowDrawAnimation.leftHandDrawRotation.set(-Math.PI / 4, 0, Math.PI / 3); // Maintain grip orientation
     this.bowDrawAnimation.rightHandDrawRotation.set(0, 0, 0); // Right hand stays neutral
     
-    // Updated realistic arm positions for enhanced archery stance (adjusted for centered arms)
-    this.bowDrawAnimation.leftHandRestPosition.set(-0.2, 1.4, -0.4); // Updated from -0.4 to -0.2
+    // Updated realistic arm positions for enhanced archery stance
+    this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.4, -0.4); // Updated Y to 1.4
     this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.5, -0.3); // Right arm ready position
     
     const baseShoulder = Math.PI / 8;
@@ -371,9 +371,9 @@ export class Player {
       -0.1  // Slight inward rotation (reduced from -0.2)
     );
     
-    // Drawing positions - left arm stays steady, right arm pulls back (updated for centered arms)
-    this.bowDrawAnimation.leftHandDrawPosition.set(-0.2, 1.4, -0.4); // Updated from -0.4 to -0.2
-    this.bowDrawAnimation.rightHandDrawPosition.set(0.6, 1.5, -0.2);  // Right hand pulls back
+    // Drawing positions - left arm stays steady, right arm pulls back
+    this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.4, -0.4); // Updated Y to 1.4
+    this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.5, -0.2);  // Right hand pulls back
     
     // Drawing arm rotations with enhanced visibility
     this.bowDrawAnimation.leftArmDrawRotation.set(
@@ -421,8 +421,8 @@ export class Player {
       // Attach bow to left HAND for proper control with realistic arm system
       this.playerBody.leftHand.add(weapon.getMesh());
       
-      // Position bow handle properly in the centered hand - fine-tuned offset
-      weapon.getMesh().position.set(0.02, 0, 0.08); // Slight positive X to center with new arm position
+      // Position bow handle properly in the enhanced hand - compensate for leftward visual bias
+      weapon.getMesh().position.set(-0.03, 0, 0.08); // Negative X to center visually
       weapon.getMesh().rotation.set(0, 0, 0); // Vertical orientation
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
@@ -456,9 +456,9 @@ export class Player {
   }
   
   private setRealisticArcheryStance(): void {
-    // Set arms to proper archery positions with realistic joint control (updated for new arm positions)
-    this.playerBody.leftArm.position.set(-0.3, 1.3, -0.4); // Updated to match new centered position
-    this.playerBody.rightArm.position.set(0.5, 1.3, -0.4); // Updated to match new balanced position
+    // Set arms to proper archery positions with realistic joint control
+    this.playerBody.leftArm.position.set(-0.5, 1.3, -0.4);
+    this.playerBody.rightArm.position.set(0.7, 1.3, -0.4);
     
     // Set shoulder rotations for archery stance
     const baseShoulder = Math.PI / 8;
@@ -502,9 +502,9 @@ export class Player {
   }
   
   private resetToRealisticNormalStance(): void {
-    // Reset arms to normal positions with realistic joint control (updated for new arm positions)
-    this.playerBody.leftArm.position.set(-0.3, 1.3, -0.4); // Updated to match new centered position
-    this.playerBody.rightArm.position.set(0.5, 1.3, -0.4); // Updated to match new balanced position
+    // Reset arms to normal positions with realistic joint control
+    this.playerBody.leftArm.position.set(-0.5, 1.3, -0.4);
+    this.playerBody.rightArm.position.set(0.7, 1.3, -0.4);
     
     // Reset shoulder rotations
     this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
