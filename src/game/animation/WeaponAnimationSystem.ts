@@ -84,10 +84,10 @@ export class WeaponAnimationSystem {
           leftArmX: Math.PI * 95 / 180,
           leftArmY: 0,
           leftArmZ: Math.PI * 5.5 / 180, // +5.5° inward angle pointing right
-          // Right arm (string-pulling): 95° upward, with small inward angle pointing left
-          rightArmX: Math.PI * 95 / 180,
+          // Right arm: 30° upward (idle-like stance to start drawing)
+          rightArmX: Math.PI / 6, // 30°
           rightArmY: 0,
-          rightArmZ: -Math.PI * 15.5 / 180, // -15.5° inward angle pointing left
+          rightArmZ: 0, // No inward angle yet
           leftElbowX: 0.2,
           rightElbowX: 0.3
         };
@@ -98,7 +98,7 @@ export class WeaponAnimationSystem {
           leftArmX: Math.PI * 95 / 180,
           leftArmY: 0,
           leftArmZ: Math.PI * 5.5 / 180,
-          // Right arm: 90° upward, increased inward angle
+          // Right arm: 90° upward, inward angle begins
           rightArmX: Math.PI * 90 / 180, // 90°
           rightArmY: 0,
           rightArmZ: -Math.PI * 20.5 / 180, // -20.5° inward angle pointing left
