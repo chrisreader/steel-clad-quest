@@ -503,12 +503,12 @@ export class Player {
     this.playerBody.leftArm.rotation.copy(this.bowDrawAnimation.leftArmRestRotation);
     this.playerBody.rightArm.rotation.copy(this.bowDrawAnimation.rightArmRestRotation);
     
-    // Set elbow positions for natural arm bend
+    // Set elbow positions for natural arm bend - FIXED: Use positive values for forward bending
     if (this.playerBody.leftElbow) {
-      this.playerBody.leftElbow.rotation.set(-0.2, 0, 0); // Slight bend
+      this.playerBody.leftElbow.rotation.set(0.2, 0, 0); // Natural forward bend
     }
     if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(-0.3, 0, 0); // Ready to pull
+      this.playerBody.rightElbow.rotation.set(0.3, 0, 0); // Ready to pull with forward bend
     }
     
     // Set realistic hand rotations for bow gripping
@@ -696,8 +696,8 @@ export class Player {
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.neutral.x, rotations.windup.x, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(rotations.neutral.y, rotations.windup.y, easedT);
       
-      // Elbow bends during windup
-      elbowRotation.x = THREE.MathUtils.lerp(0, -0.8, easedT);
+      // Elbow bends during windup - FIXED: Use positive values for forward bending
+      elbowRotation.x = THREE.MathUtils.lerp(0, 0.8, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE with coordinated joint movement
@@ -707,8 +707,8 @@ export class Player {
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
       
-      // Elbow extends during slash
-      elbowRotation.x = THREE.MathUtils.lerp(-0.8, -0.2, easedT);
+      // Elbow extends during slash - FIXED: Use positive values for natural extension
+      elbowRotation.x = THREE.MathUtils.lerp(0.8, 0.2, easedT);
       
       // Wrist snap for impact
       if (t >= 0.2 && t <= 0.8) {
@@ -733,8 +733,8 @@ export class Player {
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, rotations.neutral.x, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, rotations.neutral.y, easedT);
       
-      // Elbow returns to neutral
-      elbowRotation.x = THREE.MathUtils.lerp(-0.2, 0, easedT);
+      // Elbow returns to neutral - FIXED: Return to neutral position (0)
+      elbowRotation.x = THREE.MathUtils.lerp(0.2, 0, easedT);
       
     } else {
       // ANIMATION COMPLETE
@@ -870,12 +870,12 @@ export class Player {
           this.playerBody.rightArm.rotation.x = Math.PI / 8 + armSwing;
         }
         
-        // Add subtle elbow movement during walking
+        // Add subtle elbow movement during walking - FIXED: Use positive values for natural movement
         if (this.playerBody.leftElbow) {
-          this.playerBody.leftElbow.rotation.x = Math.sin(this.walkCycle + Math.PI) * 0.1;
+          this.playerBody.leftElbow.rotation.x = Math.sin(this.walkCycle + Math.PI) * 0.1 + 0.05; // Small positive offset
         }
         if (this.playerBody.rightElbow && !this.weaponSwing.isActive) {
-          this.playerBody.rightElbow.rotation.x = Math.sin(this.walkCycle) * 0.1;
+          this.playerBody.rightElbow.rotation.x = Math.sin(this.walkCycle) * 0.1 + 0.05; // Small positive offset
         }
       }
       
@@ -1149,15 +1149,15 @@ export class Player {
         this.bowDrawAnimation.rightArmRestRotation.z - (drawProgress * 0.6)
       );
       
-      // Elbow movements for realistic drawing
+      // Elbow movements for realistic drawing - FIXED: Use positive values for forward bending
       const leftElbowRotation = new THREE.Euler(
-        -0.2 + (drawProgress * 0.1), // Slight adjustment
+        0.2 + (drawProgress * 0.1), // Natural forward bend with slight adjustment
         0,
         0
       );
       
       const rightElbowRotation = new THREE.Euler(
-        -0.3 - (drawProgress * 0.5), // Pulls back significantly
+        0.3 + (drawProgress * 0.5), // Natural forward bend that increases with draw
         0,
         0
       );
@@ -1259,15 +1259,15 @@ export class Player {
         this.playerBody.rightArm.rotation.z, this.bowDrawAnimation.rightArmRestRotation.z, lerpSpeed
       );
       
-      // Return elbows to rest positions
+      // Return elbows to rest positions - FIXED: Use positive values for natural forward bend
       if (this.playerBody.leftElbow) {
         this.playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
-          this.playerBody.leftElbow.rotation.x, -0.2, lerpSpeed
+          this.playerBody.leftElbow.rotation.x, 0.2, lerpSpeed
         );
       }
       if (this.playerBody.rightElbow) {
         this.playerBody.rightElbow.rotation.x = THREE.MathUtils.lerp(
-          this.playerBody.rightElbow.rotation.x, -0.3, lerpSpeed
+          this.playerBody.rightElbow.rotation.x, 0.3, lerpSpeed
         );
       }
       
