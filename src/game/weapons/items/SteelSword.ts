@@ -31,7 +31,7 @@ export class SteelSword extends Sword {
             z: 0
           },
           slash: { 
-            x: Math.PI / 6,                                 // 30° reasonable end position
+            x: THREE.MathUtils.degToRad(50),                // 50° reasonable end position
             y: THREE.MathUtils.degToRad(45),                // Controlled sweep
             z: THREE.MathUtils.degToRad(-18)                // Strong wrist snap for heavy weapon
           }

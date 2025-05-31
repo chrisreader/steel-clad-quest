@@ -28,7 +28,7 @@ export class SwordSwingAnimation {
     // CORRECTED positions for proper overhead swing
     const neutralShoulderX = Math.PI / 3; // 60° - proper ready position
     const windupShoulderX = Math.PI / 3 + THREE.MathUtils.degToRad(30); // 90° high overhead position
-    const slashEndShoulderX = Math.PI / 6; // 30° reasonable end position (not too low)
+    const slashEndShoulderX = THREE.MathUtils.degToRad(50); // 50° reasonable end position (changed from 30°)
     
     const neutralShoulderY = 0;
     const windupShoulderY = THREE.MathUtils.degToRad(-30); // Reduced pull back
@@ -57,11 +57,11 @@ export class SwordSwingAnimation {
       torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Controlled diagonal sweep from 90° to 30°
+      // SLASH PHASE: Controlled diagonal sweep from 90° to 50°
       const t = (elapsed - phases.windup) / phases.slash;
       const easedT = t * t * (3 - 2 * t); // Aggressive acceleration
       
-      // Proper diagonal sweep from 90° to 30°
+      // Proper diagonal sweep from 90° to 50°
       shoulderRotation.x = THREE.MathUtils.lerp(windupShoulderX, slashEndShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(windupShoulderY, slashEndShoulderY, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(-0.2, 0.2, easedT);
