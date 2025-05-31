@@ -421,8 +421,8 @@ export class Player {
       // Attach bow to left HAND for proper control with realistic arm system
       this.playerBody.leftHand.add(weapon.getMesh());
       
-      // Position bow handle properly in the enhanced hand - centered in hand
-      weapon.getMesh().position.set(0, 0, 0.08); // Centered X position (was 0.02)
+      // Position bow handle properly in the enhanced hand - compensate for leftward visual bias
+      weapon.getMesh().position.set(-0.03, 0, 0.08); // Negative X to center visually (was 0)
       weapon.getMesh().rotation.set(0, 0, 0); // Vertical orientation
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
