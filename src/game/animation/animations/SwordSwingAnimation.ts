@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -24,21 +25,21 @@ export class SwordSwingAnimation {
     let weaponWristRotation = 0;
     let torsoRotation = 0;
     
-    // LEVEL positions for realistic diagonal slash (70° to 50° vertical arc)
+    // HORIZONTAL positions for realistic diagonal slash (65° to 55° vertical arc)
     const neutralShoulderX = Math.PI / 3; // 60° chest level
-    const windupShoulderX = THREE.MathUtils.degToRad(70); // 70° level position (reduced)
-    const slashEndShoulderX = THREE.MathUtils.degToRad(50); // 50° level position (raised)
+    const windupShoulderX = THREE.MathUtils.degToRad(65); // 65° slightly above chest (minimal rise)
+    const slashEndShoulderX = THREE.MathUtils.degToRad(55); // 55° slightly below chest (minimal drop)
     
     const neutralShoulderY = 0;
     const windupShoulderY = THREE.MathUtils.degToRad(-40); // Pull right/back
     const slashEndShoulderY = THREE.MathUtils.degToRad(70); // Sweep left
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Raise arm to level position (20% of total time)
+      // WINDUP PHASE: Minimal raise for horizontal swing (20% of total time)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Level diagonal windup - up and to the right
+      // Horizontal diagonal windup - minimal vertical movement
       shoulderRotation.x = THREE.MathUtils.lerp(neutralShoulderX, windupShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(neutralShoulderY, windupShoulderY, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(0, -0.2, easedT);
@@ -56,11 +57,11 @@ export class SwordSwingAnimation {
       torsoRotation = THREE.MathUtils.lerp(0, -0.4, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Level diagonal sweep from shoulder-right to chest-left (50% of total time)
+      // SLASH PHASE: Horizontal diagonal sweep with minimal vertical drop (50% of total time)
       const t = (elapsed - phases.windup) / phases.slash;
       const easedT = t * t * (3 - 2 * t); // Aggressive acceleration
       
-      // LEVEL diagonal sweep with 20° vertical arc
+      // HORIZONTAL diagonal sweep with only 10° vertical arc
       shoulderRotation.x = THREE.MathUtils.lerp(windupShoulderX, slashEndShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(windupShoulderY, slashEndShoulderY, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(-0.2, 0.3, easedT);
