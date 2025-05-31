@@ -15,28 +15,8 @@ export class WoodenSword extends Sword {
         range: 1.8,
         durability: 50,
         weight: 2.0
-      },
-      swingAnimation: {
-        duration: 0.768, // 20% longer than 0.64s
-        phases: {
-          windup: 0.154,   // 20% of 0.768s
-          slash: 0.384,    // 50% of 0.768s  
-          recovery: 0.230  // 30% of 0.768s
-        },
-        rotations: {
-          neutral: { x: THREE.MathUtils.degToRad(60), y: 0, z: 0 }, // 60° ready position, no side angle
-          windup: { 
-            x: THREE.MathUtils.degToRad(70),           // 70° move to right side
-            y: THREE.MathUtils.degToRad(10),           // 10° right side position
-            z: 0
-          },
-          slash: { 
-            x: THREE.MathUtils.degToRad(60),           // 60° sweep to left side, down follow-through
-            y: THREE.MathUtils.degToRad(30),           // 30° left side sweep end
-            z: THREE.MathUtils.degToRad(-10)           // Wrist snap
-          }
-        }
       }
+      // swingAnimation removed - will use standardized animation
     };
     
     super(config);

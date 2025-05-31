@@ -15,7 +15,7 @@ export interface WeaponConfig {
   name: string;
   type: 'sword' | 'axe' | 'mace' | 'bow';
   stats: WeaponStats;
-  swingAnimation: {
+  swingAnimation?: {
     duration: number;
     phases: {
       windup: number;
