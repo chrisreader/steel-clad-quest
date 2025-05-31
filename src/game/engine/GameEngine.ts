@@ -23,7 +23,7 @@ export class GameEngine {
   private effectsManager: EffectsManager;
   private physicsManager: PhysicsManager;
   private player: Player | null = null;
-  private isRunning: boolean = false;
+  private gameRunning: boolean = false;
   private isPausedState: boolean = false;
   private lastTime: number = 0;
   private animationFrameId: number | null = null;
@@ -99,13 +99,13 @@ export class GameEngine {
   }
 
   public start(): void {
-    if (this.isRunning) {
+    if (this.gameRunning) {
       console.log('[GameEngine] Already running');
       return;
     }
     
     console.log('[GameEngine] Starting game engine...');
-    this.isRunning = true;
+    this.gameRunning = true;
     this.isPausedState = false;
     this.lastTime = performance.now();
     this.gameLoop();
@@ -132,7 +132,7 @@ export class GameEngine {
     }
     
     // Reset state
-    this.isRunning = false;
+    this.gameRunning = false;
     this.isPausedState = false;
     
     // Recreate player and restart
@@ -150,7 +150,7 @@ export class GameEngine {
   }
 
   private gameLoop(): void {
-    if (!this.isRunning) return;
+    if (!this.gameRunning) return;
     
     const currentTime = performance.now();
     const deltaTime = (currentTime - this.lastTime) / 1000;
@@ -222,7 +222,7 @@ export class GameEngine {
   }
 
   public handleInput(action: string, data?: any): void {
-    if (!this.isRunning) return;
+    if (!this.gameRunning) return;
     
     // Handle input actions
     switch (action) {
@@ -250,13 +250,13 @@ export class GameEngine {
   public getGameState(): any {
     return {
       timeElapsed: performance.now() / 1000,
-      isRunning: this.isRunning,
+      isRunning: this.gameRunning,
       isPaused: this.isPausedState
     };
   }
 
   public isRunning(): boolean {
-    return this.isRunning;
+    return this.gameRunning;
   }
 
   public isPaused(): boolean {
@@ -323,7 +323,7 @@ export class GameEngine {
       this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
     }
     
-    this.isRunning = false;
+    this.gameRunning = false;
     console.log('[GameEngine] Disposed');
   }
 }

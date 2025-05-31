@@ -1,3 +1,4 @@
+
 import { InputManager } from '../InputManager';
 import { PointerLockManager } from './PointerLockManager';
 
@@ -26,7 +27,7 @@ export class MouseHandler {
   }
 
   private handleMouseMove(event: MouseEvent): void {
-    if (!this.pointerLockManager.isLocked()) return;
+    if (!this.pointerLockManager.isPointerLocked()) return;
     
     const movementX = event.movementX || 0;
     const movementY = event.movementY || 0;
@@ -42,7 +43,7 @@ export class MouseHandler {
   }
 
   private handleMouseDown(event: MouseEvent): void {
-    if (!this.pointerLockManager.isLocked()) return;
+    if (!this.pointerLockManager.isPointerLocked()) return;
     
     console.log('🖱️ [MouseHandler] Mouse button pressed:', event.button);
     
@@ -50,7 +51,7 @@ export class MouseHandler {
       case 0: // Left mouse button
         console.log('🖱️ [MouseHandler] Left mouse button pressed - starting bow draw');
         this.inputManager.setInputState('attack', true);
-        this.inputManager.setInputState('bowDraw', true); // Add bow draw state
+        this.inputManager.setInputState('bowDraw', true);
         break;
       case 1: // Middle mouse button
         event.preventDefault();
@@ -62,7 +63,7 @@ export class MouseHandler {
   }
 
   private handleMouseUp(event: MouseEvent): void {
-    if (!this.pointerLockManager.isLocked()) return;
+    if (!this.pointerLockManager.isPointerLocked()) return;
     
     console.log('🖱️ [MouseHandler] Mouse button released:', event.button);
     
@@ -70,7 +71,7 @@ export class MouseHandler {
       case 0: // Left mouse button
         console.log('🖱️ [MouseHandler] Left mouse button released - stopping bow draw');
         this.inputManager.setInputState('attack', false);
-        this.inputManager.setInputState('bowDraw', false); // Stop bow draw
+        this.inputManager.setInputState('bowDraw', false);
         break;
       case 2: // Right mouse button
         event.preventDefault();
