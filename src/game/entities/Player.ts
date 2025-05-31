@@ -511,28 +511,33 @@ export class Player {
     this.playerBody.rightArm.position.set(0.3, 0.8, 0);
     
     if (weaponType === 'melee') {
-      // MELEE READY STANCE: Right arm raised to MUCH LOWER horizontal combat position, left arm at side
+      // MELEE READY STANCE: Right arm raised to horizontal combat position, left arm at side
       
       // Left arm: Normal side position (like empty hands)
       this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
       
-      // FIXED: Right arm: MUCH LOWER horizontal combat ready position - FORWARD-FACING for realistic sword stance
+      // Right arm: Horizontal combat ready position - FORWARD-FACING for realistic sword stance
       this.playerBody.rightArm.rotation.set(
-        Math.PI / 12,  // ~15° upward angle (MUCH LOWER than previous 36°)
-        0,             // FIXED: NO Y rotation - keep parallel with body
-        0              // FIXED: NO Z rotation - keep perfectly parallel with body
+        Math.PI / 3,  // 60° upward angle for chest-level positioning
+        0,            // NO Y rotation - keep parallel with body
+        0             // NO Z rotation - keep perfectly parallel with body
       );
       
-      console.log("🗡️ [Player] FIXED MELEE ready stance - Right arm at HORIZONTAL ~15° combat position");
+      // NEW: Set wrist for forward-pointing sword
+      if (this.playerBody.rightWrist) {
+        this.playerBody.rightWrist.rotation.set(-Math.PI / 4, 0, 0); // Angle wrist down to point sword forward
+      }
+      
+      console.log("🗡️ [Player] FIXED MELEE ready stance - Right arm at chest level with forward-pointing wrist");
       
     } else if (weaponType === 'bow') {
       // BOW READY STANCE: Left arm raised up PARALLEL with body, right arm at side
       
-      // FIXED: Left arm: Raised bow-holding position - UPWARD and PARALLEL with body
+      // Left arm: Raised bow-holding position - UPWARD and PARALLEL with body
       this.playerBody.leftArm.rotation.set(
         Math.PI / 3,  // 60° upward angle
-        0,            // FIXED: NO Y rotation - keep parallel with body
-        0             // FIXED: NO Z rotation - keep perfectly parallel with body
+        0,            // NO Y rotation - keep parallel with body
+        0             // NO Z rotation - keep perfectly parallel with body
       );
       
       // Right arm: Normal side position initially (will be adjusted by bow animation)
@@ -546,10 +551,10 @@ export class Player {
       this.playerBody.leftElbow.rotation.set(0, 0, 0);
     }
     if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(0, 0, 0);
+      this.playerBody.rightElbow.rotation.set(-0.05, 0, 0); // Slight downward bend for melee weapons
     }
     
-    // Reset hand rotations
+    // Reset hand rotations (wrist will be set above for melee weapons)
     this.playerBody.leftHand.rotation.set(0, 0, 0);
     this.playerBody.rightHand.rotation.set(0, 0, 0);
     
@@ -912,7 +917,7 @@ export class Player {
       shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(rotations.slash.z, 0, easedT);
       
-      // FIXED: Elbow returns to DOWNWARD position for horizontal blade
+      // FIXED: Elbow returns to DOWNWARD position for horizontal sword
       elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.05, easedT); // CHANGED: Return to downward bend for horizontal sword
       
       // NEW: Torso returns to neutral position
