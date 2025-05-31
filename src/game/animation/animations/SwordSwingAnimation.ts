@@ -70,9 +70,9 @@ export class SwordSwingAnimation {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Move arm and sword to RIGHT SIDE ready position
+      // WINDUP PHASE: Smooth interpolation from neutral to raised position
       const t = elapsed / phases.windup;
-      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
+      const easedT = THREE.MathUtils.smoothstep(t, 0, 1); // Using smoothstep for natural movement
       
       // SHOULDER: Use weapon config windup position (right side ready)
       shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x, configRotations.windup.x, easedT);
@@ -90,7 +90,7 @@ export class SwordSwingAnimation {
       // TORSO: Coil to the right for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - Moving to RIGHT SIDE position`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} easedT=${easedT.toFixed(2)} - Smooth interpolation to RIGHT SIDE position`);
       console.log(`🗡️ [SwordSwingAnimation] Shoulder Y angle: ${THREE.MathUtils.radToDeg(shoulderRotation.y).toFixed(1)}°`);
       
     } else if (elapsed < phases.windup + phases.slash) {
