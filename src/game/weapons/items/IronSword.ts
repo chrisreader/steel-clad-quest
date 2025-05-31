@@ -26,7 +26,7 @@ export class IronSword extends Sword {
         rotations: {
           neutral: { x: THREE.MathUtils.degToRad(30), y: 0, z: 0 }, // 30° ready position, slightly down
           windup: { 
-            x: THREE.MathUtils.degToRad(80),           // 80° move to right side
+            x: THREE.MathUtils.degToRad(40),           // 40° move to right side
             y: THREE.MathUtils.degToRad(50),           // 50° right side position
             z: 0
           },
