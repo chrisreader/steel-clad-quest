@@ -24,16 +24,16 @@ export class IronSword extends Sword {
           recovery: 0.192
         },
         rotations: {
-          neutral: { x: Math.PI / 3, y: 0, z: 0 }, // Parallel base position
+          neutral: { x: Math.PI / 3 + 0.03, y: 0, z: 0 }, // Match new idle position (61.7°)
           windup: { 
-            x: Math.PI / 3 + THREE.MathUtils.degToRad(50),
-            y: THREE.MathUtils.degToRad(-30), // Added Y rotation for windup
-            z: THREE.MathUtils.degToRad(15)   // Added Z rotation for natural movement
+            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(45), // Reduced from 50° to 45°
+            y: THREE.MathUtils.degToRad(-30), // Keep Y rotation for windup
+            z: THREE.MathUtils.degToRad(15)   // Keep Z rotation for natural movement
           },
           slash: { 
-            x: Math.PI / 3 + THREE.MathUtils.degToRad(-15),
-            y: THREE.MathUtils.degToRad(45),  // Added Y rotation for slash across body
-            z: THREE.MathUtils.degToRad(-10)  // Added Z rotation for wrist snap
+            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-20), // Increased from -15° to -20°
+            y: THREE.MathUtils.degToRad(45),  // Keep Y rotation for slash across body
+            z: THREE.MathUtils.degToRad(-10)  // Keep Z rotation for wrist snap
           }
         }
       }

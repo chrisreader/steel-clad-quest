@@ -851,8 +851,8 @@ export class Player {
     let elbowRotation = { x: 0, y: 0, z: 0 };
     let weaponWristRotation = 0;
     
-    // PARALLEL base position for weapon swings
-    const parallelAngleBase = Math.PI / 3; // 60° upward angle, parallel with body
+    // FIXED: PARALLEL base position for weapon swings - MATCH NEW IDLE ARM POSITION
+    const parallelAngleBase = Math.PI / 3 + 0.03; // 61.7° upward angle, matching new idle position
     
     if (elapsed < phases.windup) {
       // WIND-UP PHASE with realistic joint movement
@@ -894,7 +894,7 @@ export class Player {
       }
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE - return to PARALLEL base position
+      // RECOVERY PHASE - return to CORRECT PARALLEL base position (61.7°)
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
@@ -906,7 +906,7 @@ export class Player {
       elbowRotation.x = THREE.MathUtils.lerp(0.2, 0, easedT);
       
     } else {
-      // ANIMATION COMPLETE - return to PARALLEL base position
+      // ANIMATION COMPLETE - return to CORRECT PARALLEL base position (61.7°)
       shoulderRotation.x = parallelAngleBase;
       shoulderRotation.y = 0; // Ensure Y rotation is 0 - parallel with body
       shoulderRotation.z = 0; // Ensure Z rotation is 0 - perfectly parallel
