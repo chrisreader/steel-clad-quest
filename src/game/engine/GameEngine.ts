@@ -277,6 +277,11 @@ export class GameEngine {
     // Update camera to follow player
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
+    // Update dynamic fog to follow player
+    if (this.sceneManager) {
+      this.sceneManager.updateDynamicFog(this.player.getPosition());
+    }
+    
     // Check location changes
     const isInTavern = this.movementSystem.checkInTavern();
     this.stateManager.updateLocationState(isInTavern);

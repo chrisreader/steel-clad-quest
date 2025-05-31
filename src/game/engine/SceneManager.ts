@@ -17,8 +17,11 @@ export class SceneManager {
   private fog: THREE.Fog | null = null;
   private ground: THREE.Mesh | null = null;
   
-  // Ground-level fog system
-  private groundFogLayers: THREE.Mesh[] = [];
+  // Dynamic ground-level fog system
+  private dynamicFogRings: THREE.Mesh[] = [];
+  private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
+  private fogUpdateCounter: number = 0;
+  private readonly FOG_UPDATE_FREQUENCY = 5; // Update every 5 frames for performance
   
   // Time of day
   private timeOfDay: number = 0.5; // 0-1, 0 = midnight, 0.5 = noon
@@ -32,7 +35,7 @@ export class SceneManager {
     this.scene.fog = null;
     this.fog = null;
     
-    console.log("SceneManager initialized with ground-level fog system (no global fog)");
+    console.log("SceneManager initialized with dynamic ground-level fog system");
     
     // Setup basic lighting
     this.setupLighting();
@@ -76,43 +79,85 @@ export class SceneManager {
     console.log("Rim light added");
   }
   
-  private createGroundFog(): void {
-    // Clear existing fog layers
-    this.groundFogLayers.forEach(layer => this.scene.remove(layer));
-    this.groundFogLayers = [];
+  private createDynamicGroundFog(playerPosition: THREE.Vector3): void {
+    // Clear existing fog rings
+    this.dynamicFogRings.forEach(ring => this.scene.remove(ring));
+    this.dynamicFogRings = [];
     
-    // Create multiple horizontal fog layers at different heights
-    const fogLayers = [
-      { height: 1, opacity: 0.15, size: 200 },
-      { height: 3, opacity: 0.12, size: 180 },
-      { height: 5, opacity: 0.08, size: 160 },
-      { height: 8, opacity: 0.05, size: 140 },
-      { height: 10, opacity: 0.03, size: 120 }
+    // Create concentric fog rings around player position
+    const fogRingConfigs = [
+      { distance: 25, opacity: 0.08, size: 60, height: 2 },
+      { distance: 45, opacity: 0.12, size: 80, height: 3 },
+      { distance: 65, opacity: 0.16, size: 100, height: 4 },
+      { distance: 85, opacity: 0.20, size: 120, height: 5 },
+      { distance: 105, opacity: 0.25, size: 140, height: 6 },
+      { distance: 125, opacity: 0.18, size: 160, height: 7 },
+      { distance: 145, opacity: 0.12, size: 180, height: 8 }
     ];
     
-    fogLayers.forEach(layer => {
-      const fogGeometry = new THREE.PlaneGeometry(layer.size, layer.size, 1, 1);
-      const fogMaterial = new THREE.MeshBasicMaterial({
-        color: 0xB0E0E6, // Atmospheric blue-white
-        transparent: true,
-        opacity: layer.opacity,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        blending: THREE.NormalBlending
-      });
+    fogRingConfigs.forEach((config, index) => {
+      // Create multiple rings at different angles for each distance
+      const ringsPerDistance = 8; // Number of ring segments
       
-      const fogMesh = new THREE.Mesh(fogGeometry, fogMaterial);
-      fogMesh.position.set(0, layer.height, 0);
-      fogMesh.rotation.x = -Math.PI / 2; // Make it horizontal
-      
-      // Add slight randomization to prevent uniformity
-      fogMesh.rotation.z = Math.random() * Math.PI * 2;
-      
-      this.groundFogLayers.push(fogMesh);
-      this.scene.add(fogMesh);
+      for (let i = 0; i < ringsPerDistance; i++) {
+        const angle = (i / ringsPerDistance) * Math.PI * 2;
+        const ringX = playerPosition.x + Math.cos(angle) * config.distance;
+        const ringZ = playerPosition.z + Math.sin(angle) * config.distance;
+        
+        const fogGeometry = new THREE.PlaneGeometry(config.size, config.size, 1, 1);
+        const fogMaterial = new THREE.MeshBasicMaterial({
+          color: 0xB0E0E6, // Atmospheric blue-white
+          transparent: true,
+          opacity: config.opacity * (0.7 + Math.random() * 0.3), // Add some variation
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          blending: THREE.NormalBlending
+        });
+        
+        const fogMesh = new THREE.Mesh(fogGeometry, fogMaterial);
+        fogMesh.position.set(
+          ringX + (Math.random() - 0.5) * 20, // Add some randomness
+          config.height + Math.random() * 2,
+          ringZ + (Math.random() - 0.5) * 20
+        );
+        fogMesh.rotation.x = -Math.PI / 2; // Make it horizontal
+        fogMesh.rotation.z = Math.random() * Math.PI * 2; // Random rotation
+        
+        this.dynamicFogRings.push(fogMesh);
+        this.scene.add(fogMesh);
+      }
     });
     
-    console.log(`Ground fog system created with ${fogLayers.length} layers`);
+    console.log(`Dynamic fog system created with ${this.dynamicFogRings.length} fog elements around player`);
+  }
+  
+  /**
+   * Updates the dynamic fog system to follow the player
+   */
+  public updateDynamicFog(playerPosition: THREE.Vector3): void {
+    this.fogUpdateCounter++;
+    
+    // Only update every few frames for performance
+    if (this.fogUpdateCounter % this.FOG_UPDATE_FREQUENCY !== 0) {
+      return;
+    }
+    
+    // Check if player has moved significantly
+    const distanceMoved = this.lastPlayerPosition.distanceTo(playerPosition);
+    if (distanceMoved < 5) {
+      return; // Don't update if player hasn't moved much
+    }
+    
+    // Update fog positions to follow player
+    this.lastPlayerPosition.copy(playerPosition);
+    
+    // Instead of recreating all fog, smoothly move existing fog rings
+    this.moveFogTowardsPlayer(playerPosition);
+  }
+  
+  private moveFogTowardsPlayer(playerPosition: THREE.Vector3): void {
+    // Recreate fog rings at new player position
+    this.createDynamicGroundFog(playerPosition);
   }
   
   public createDefaultWorld(): void {
@@ -122,9 +167,9 @@ export class SceneManager {
     this.createTerrain();
     console.log('Terrain created');
     
-    // Create ground-level fog
-    this.createGroundFog();
-    console.log('Ground fog created');
+    // Create initial ground-level fog at origin (will be updated when player position is available)
+    this.createDynamicGroundFog(new THREE.Vector3(0, 0, 0));
+    console.log('Dynamic ground fog created');
     
     // Create tavern
     this.createTavern();
@@ -428,9 +473,9 @@ export class SceneManager {
     });
     objectsToRemove.forEach(obj => this.scene.remove(obj));
     
-    // Clear ground fog layers
-    this.groundFogLayers.forEach(layer => this.scene.remove(layer));
-    this.groundFogLayers = [];
+    // Clear dynamic fog rings
+    this.dynamicFogRings.forEach(ring => this.scene.remove(ring));
+    this.dynamicFogRings = [];
   }
 
   private loadTavernLevel(): void {
@@ -547,19 +592,19 @@ export class SceneManager {
   }
   
   public dispose(): void {
-    // Clean up ground fog layers
-    this.groundFogLayers.forEach(layer => {
-      if (layer.material instanceof THREE.Material) {
-        layer.material.dispose();
+    // Clean up dynamic fog rings
+    this.dynamicFogRings.forEach(ring => {
+      if (ring.material instanceof THREE.Material) {
+        ring.material.dispose();
       }
-      if (layer.geometry) {
-        layer.geometry.dispose();
+      if (ring.geometry) {
+        ring.geometry.dispose();
       }
-      this.scene.remove(layer);
+      this.scene.remove(ring);
     });
-    this.groundFogLayers = [];
+    this.dynamicFogRings = [];
     
     // The scene is managed by RenderEngine, so we don't dispose it here
-    console.log("SceneManager disposed with ground fog cleanup");
+    console.log("SceneManager disposed with dynamic fog cleanup");
   }
 }
