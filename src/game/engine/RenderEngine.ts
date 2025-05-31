@@ -36,6 +36,10 @@ export class RenderEngine {
       1000
     );
     
+    // Set up camera layers - ignore layer 1 (invisible to player)
+    this.camera.layers.enable(0); // Default layer - visible
+    this.camera.layers.disable(1); // Layer 1 - invisible to player (torso)
+    
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
@@ -52,7 +56,7 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    console.log("🎨 [RenderEngine] Initialized successfully");
+    console.log("🎨 [RenderEngine] Initialized with camera layer system - torso will be invisible to player");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
@@ -102,11 +106,12 @@ export class RenderEngine {
     // Log every 60 frames (roughly 1 second)
     if (this.renderCount % 60 === 0) {
       const fps = this.renderCount / ((now - this.lastRenderTime) / 1000) * 60;
-      console.log("🎨 [RenderEngine] Rendering with anti-clipping camera:", {
+      console.log("🎨 [RenderEngine] Rendering with layer-based torso hiding:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
         cameraPos: this.camera.position,
-        sceneChildren: this.scene.children.length
+        sceneChildren: this.scene.children.length,
+        cameraLayers: this.camera.layers.mask
       });
       this.lastRenderTime = now;
     }

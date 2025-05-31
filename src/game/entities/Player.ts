@@ -173,7 +173,7 @@ export class Player {
   private createTallerRealisticPlayerBody(): PlayerBody {
     const playerBodyGroup = new THREE.Group();
     
-    console.log("🏗️ [Player] CREATING TALLER REALISTIC PLAYER BODY WITH IMPROVED FIRST-PERSON VIEW");
+    console.log("🏗️ [Player] CREATING TALLER REALISTIC PLAYER BODY WITH TORSO INVISIBLE TO PLAYER");
     
     // Create enhanced metal texture for armor/clothing
     const metalTexture = TextureGenerator.createMetalTexture();
@@ -196,7 +196,7 @@ export class Player {
     
     console.log("👤 [Player] Head positioned at TALLER height but invisible for first-person view - position:", head.position);
     
-    // TORSO - TALLER and WIDER for realistic proportions
+    // TORSO - TALLER and WIDER for realistic proportions, INVISIBLE TO PLAYER but casts shadows
     const bodyGeometry = new THREE.BoxGeometry(0.5, 1.0, 0.25); // INCREASED height from 0.7 to 1.0
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
@@ -207,12 +207,16 @@ export class Player {
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.set(0, 0.5, 0); // INCREASED from 0.35 to 0.5 (proportional positioning)
-    body.castShadow = true;
+    body.castShadow = true; // Keep shadow casting for realism
     body.receiveShadow = true;
     body.visible = true;
+    
+    // Set torso to layer 1 (invisible to player camera but keeps shadows)
+    body.layers.set(1);
+    
     playerBodyGroup.add(body);
     
-    console.log("🧍 [Player] Torso positioned at TALLER height with INCREASED size - position:", body.position);
+    console.log("🧍 [Player] Torso set to layer 1 - invisible to player but casts shadows - position:", body.position);
     
     // CRITICAL: TALLER ARM POSITIONING - MOVED TO REALISTIC TALLER SHOULDER HEIGHT
     console.log("🦾 [Player] CREATING ARMS AT NEW TALLER REALISTIC POSITION (Y=0.8 INSTEAD OF Y=0.55)");
@@ -239,7 +243,7 @@ export class Player {
     console.log("   Left Arm actual position:", leftArmSystem.position);
     console.log("   Right Arm actual position:", rightArmSystem.position);
     
-    // LEGS - TALLER and positioned for realistic proportions
+    // LEGS - TALLER and positioned for realistic proportions (keep visible)
     const legGeometry = new THREE.BoxGeometry(0.15, 0.8, 0.15); // INCREASED height from 0.6 to 0.8
     const legMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
@@ -252,6 +256,7 @@ export class Player {
     leftLeg.castShadow = true;
     leftLeg.receiveShadow = true;
     leftLeg.visible = true;
+    // Keep legs on default layer 0 (visible to player)
     playerBodyGroup.add(leftLeg);
     
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
@@ -259,11 +264,12 @@ export class Player {
     rightLeg.castShadow = true;
     rightLeg.receiveShadow = true;
     rightLeg.visible = true;
+    // Keep legs on default layer 0 (visible to player)
     playerBodyGroup.add(rightLeg);
     
-    console.log("🦵 [Player] TALLER legs positioned - Left:", leftLeg.position, "Right:", rightLeg.position);
+    console.log("🦵 [Player] TALLER legs positioned and kept visible - Left:", leftLeg.position, "Right:", rightLeg.position);
     
-    // FEET - Positioned at ground level relative to TALLER body
+    // FEET - Positioned at ground level relative to TALLER body (keep visible)
     const footGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.3);
     const footMaterial = new THREE.MeshPhongMaterial({
       color: 0x2D3B5C,
@@ -276,6 +282,7 @@ export class Player {
     leftFoot.castShadow = true;
     leftFoot.receiveShadow = true;
     leftFoot.visible = true;
+    // Keep feet on default layer 0 (visible to player)
     playerBodyGroup.add(leftFoot);
     
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
@@ -283,9 +290,10 @@ export class Player {
     rightFoot.castShadow = true;
     rightFoot.receiveShadow = true;
     rightFoot.visible = true;
+    // Keep feet on default layer 0 (visible to player)
     playerBodyGroup.add(rightFoot);
     
-    console.log("👟 [Player] Feet positioned for TALLER body - Left:", leftFoot.position, "Right:", rightFoot.position);
+    console.log("👟 [Player] Feet positioned for TALLER body and kept visible - Left:", leftFoot.position, "Right:", rightFoot.position);
     
     this.group.add(playerBodyGroup);
     
@@ -396,7 +404,7 @@ export class Player {
       hand: handGroup
     };
     
-    console.log(`🦾 [Player] Created realistic ${side} arm with shadow casting enabled`);
+    console.log(`🦾 [Player] Created realistic ${side} arm with shadow casting enabled and kept visible to player`);
     
     return armSystem;
   }
