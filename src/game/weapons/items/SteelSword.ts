@@ -17,23 +17,23 @@ export class SteelSword extends Sword {
         weight: 4.0
       },
       swingAnimation: {
-        duration: 0.71,
+        duration: 0.64, // Standard duration for realistic timing
         phases: {
-          windup: 0.142,
-          slash: 0.355,
-          recovery: 0.213
+          windup: 0.128,   // 20% of 0.64s
+          slash: 0.32,     // 50% of 0.64s
+          recovery: 0.192  // 30% of 0.64s
         },
         rotations: {
           neutral: { x: Math.PI / 3, y: 0, z: 0 }, // 60° chest level position
           windup: { 
-            x: Math.PI / 3, // STAY at chest level - no vertical movement
-            y: -THREE.MathUtils.degToRad(10), // Pull back for dramatic windup
-            z: 0            // NO EXTRA ROTATION
+            x: Math.PI / 3 + THREE.MathUtils.degToRad(50), // High position (110°)
+            y: THREE.MathUtils.degToRad(-40),               // Pull right/back
+            z: 0
           },
           slash: { 
-            x: Math.PI / 3,                       // STAY at chest level throughout swing
-            y: THREE.MathUtils.degToRad(85),      // POWERFUL full-screen slash (increased from 45°)
-            z: THREE.MathUtils.degToRad(-18)      // Strong wrist snap for heavy weapon
+            x: Math.PI / 8,                           // Low position (22.5°)
+            y: THREE.MathUtils.degToRad(70),          // Sweep left
+            z: THREE.MathUtils.degToRad(-18)          // Strong wrist snap for heavy weapon
           }
         }
       }
