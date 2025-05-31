@@ -52,66 +52,77 @@ export class SwordSwingAnimation {
     console.log(`🗡️ [SwordSwingAnimation] *** ANIMATION ACTIVE *** - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
     console.log(`🗡️ [SwordSwingAnimation] Animation phases:`, phases);
     
-    // Cross-body swing using local rotations only - CORRECTED MOTION
-    let shoulderRotation = { x: Math.PI / 3, y: 0, z: 0 }; // Default ready position
-    let elbowRotation = { x: -0.05, y: 0, z: 0 };
-    let wristRotation = { x: -Math.PI / 4, y: 0, z: 0 };
+    // Get weapon configuration rotations
+    const weaponConfig = this.equippedWeapon.getConfig();
+    const rotations = weaponConfig.swingAnimation.rotations;
+    
+    console.log('🗡️ [SwordSwingAnimation] Using weapon config rotations:', rotations);
+    
+    // Initialize with neutral position from weapon config
+    let shoulderRotation = { ...rotations.neutral };
+    let elbowRotation = { x: -0.2, y: 0, z: 0 }; // Minimal natural elbow bend
+    let wristRotation = { x: 0, y: 0, z: 0 }; // Start neutral, apply weapon Z-rotation during slash
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Prepare for cross-body swing - move to upper right position
+      // WINDUP PHASE: Move from neutral to windup position using weapon config
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Shoulder rotation - preparing for strike with cross-body movement (upper right)
-      shoulderRotation.x = THREE.MathUtils.lerp(Math.PI / 3, Math.PI / 3 + THREE.MathUtils.degToRad(35), easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(0, THREE.MathUtils.degToRad(60), easedT); // CORRECTED: Positive for upper right position
-      shoulderRotation.z = THREE.MathUtils.lerp(0, -0.4, easedT);
+      // Shoulder rotation - using weapon config values
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.neutral.x, rotations.windup.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.neutral.y, rotations.windup.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.neutral.z, rotations.windup.z, easedT);
       
-      // Elbow - dramatic bend for power coiling
-      elbowRotation.x = THREE.MathUtils.lerp(-0.05, -2.4, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0, 0.6, easedT);
+      // Natural elbow bend for windup
+      elbowRotation.x = THREE.MathUtils.lerp(-0.2, -0.8, easedT);
       
-      // Torso coiling for power (rotate right for windup)
-      torsoRotation = THREE.MathUtils.lerp(0, 1.3, easedT); // CORRECTED: Positive rotation for right-side windup
+      // Minimal torso rotation for power buildup
+      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - Shoulder Y rotation: ${shoulderRotation.y.toFixed(2)} (upper right)`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - Using config rotations`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Cross-body sweep from upper right to lower left
+      // SLASH PHASE: Move from windup to slash position using weapon config
       const t = (elapsed - phases.windup) / phases.slash;
       const easedT = t * t * (3 - 2 * t); // Aggressive acceleration
       
-      // Shoulder rotation - driving the cross-body swing (upper right to lower left)
-      shoulderRotation.x = THREE.MathUtils.lerp(Math.PI / 3 + THREE.MathUtils.degToRad(35), THREE.MathUtils.degToRad(45), easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(60), THREE.MathUtils.degToRad(-60), easedT); // CORRECTED: From +60° to -60° (upper right to lower left)
-      shoulderRotation.z = THREE.MathUtils.lerp(-0.4, 0.6, easedT);
+      // Shoulder rotation - using weapon config values
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT);
       
-      // Elbow - EXPLOSIVE extension for maximum reach
-      elbowRotation.x = THREE.MathUtils.lerp(-2.4, 2.0, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0.6, -0.7, easedT);
+      // Elbow extension for striking
+      elbowRotation.x = THREE.MathUtils.lerp(-0.8, -0.1, easedT);
       
-      // Torso uncoiling with maximum power (rotate from right to left)
-      torsoRotation = THREE.MathUtils.lerp(1.3, -1.7, easedT); // CORRECTED: From +1.3 to -1.7 (right to left rotation)
+      // Wrist snap using weapon's Z-rotation value
+      wristRotation.z = THREE.MathUtils.lerp(0, rotations.slash.z, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - Shoulder Y rotation: ${shoulderRotation.y.toFixed(2)} (sweeping to lower left)`);
+      // Torso uncoiling
+      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.3, easedT);
+      
+      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - Using config rotations`);
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to center ready position
+      // RECOVERY PHASE: Return from slash to neutral position using weapon config
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return to ready positions
-      shoulderRotation.x = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(45), Math.PI / 3, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-60), 0, easedT); // Return to center from lower left
-      shoulderRotation.z = THREE.MathUtils.lerp(0.6, 0, easedT);
+      // Return to neutral positions using weapon config
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, rotations.neutral.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, rotations.neutral.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.slash.z, rotations.neutral.z, easedT);
       
-      elbowRotation.x = THREE.MathUtils.lerp(2.0, -0.05, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(-0.7, 0, easedT);
+      // Return elbow to natural position
+      elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.2, easedT);
       
-      torsoRotation = THREE.MathUtils.lerp(-1.7, 0, easedT); // Return to center from left
+      // Return wrist to neutral
+      wristRotation.z = THREE.MathUtils.lerp(rotations.slash.z, 0, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Shoulder Y rotation: ${shoulderRotation.y.toFixed(2)} (returning to center)`);
+      // Return torso to center
+      torsoRotation = THREE.MathUtils.lerp(0.3, 0, easedT);
+      
+      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to neutral`);
       
     } else {
       // ANIMATION COMPLETE
@@ -120,8 +131,8 @@ export class SwordSwingAnimation {
       return;
     }
     
-    // Apply the local rotations directly to the joints
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING LOCAL ROTATIONS ONLY ***`);
+    // Apply the rotations using weapon config values
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING WEAPON CONFIG ROTATIONS ***`);
     this.applyLocalRotations(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
   }
   
@@ -131,30 +142,30 @@ export class SwordSwingAnimation {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLY LOCAL ROTATIONS *** - No position changes, only rotations`);
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLY LOCAL ROTATIONS *** - Using weapon config values`);
     
     if (!this.playerBody || !this.playerBody.rightArm) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - playerBody or rightArm is null');
       return;
     }
     
-    // Apply shoulder rotations - this creates the cross-body swing motion
+    // Apply shoulder rotations using weapon config values
     this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
     console.log(`🗡️ [SwordSwingAnimation] Shoulder rotation applied: x=${shoulderRotation.x.toFixed(2)}, y=${shoulderRotation.y.toFixed(2)}, z=${shoulderRotation.z.toFixed(2)}`);
     
-    // Apply elbow rotations
+    // Apply natural elbow rotations
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
       console.log(`🗡️ [SwordSwingAnimation] Elbow rotation applied: x=${elbowRotation.x.toFixed(2)}, y=${elbowRotation.y.toFixed(2)}, z=${elbowRotation.z.toFixed(2)}`);
     }
     
-    // Apply wrist rotations
+    // Apply wrist rotations for blade snap effect
     if (this.playerBody.rightWrist) {
       this.playerBody.rightWrist.rotation.set(wristRotation.x, wristRotation.y, wristRotation.z);
-      console.log(`🗡️ [SwordSwingAnimation] Wrist rotation applied`);
+      console.log(`🗡️ [SwordSwingAnimation] Wrist rotation applied: z=${wristRotation.z.toFixed(2)}`);
     }
     
-    // Apply torso rotation
+    // Apply minimal torso rotation
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = torsoRotation;
       console.log(`🗡️ [SwordSwingAnimation] Torso rotation applied: ${torsoRotation.toFixed(2)}`);
@@ -169,19 +180,23 @@ export class SwordSwingAnimation {
   }
   
   private completeAnimation(): void {
-    console.log('🗡️ [SwordSwingAnimation] *** COMPLETING ANIMATION *** - Resetting to original rotations');
+    console.log('🗡️ [SwordSwingAnimation] *** COMPLETING ANIMATION *** - Resetting to weapon config neutral');
     
-    // Reset to original rotations only - no position changes
-    this.playerBody.rightArm.rotation.set(Math.PI / 3, 0, 0);
+    // Get weapon configuration rotations for proper reset
+    const weaponConfig = this.equippedWeapon.getConfig();
+    const neutralRotation = weaponConfig.swingAnimation.rotations.neutral;
+    
+    // Reset to neutral rotations from weapon config
+    this.playerBody.rightArm.rotation.set(neutralRotation.x, neutralRotation.y, neutralRotation.z);
     
     if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(-0.05, 0, 0);
+      this.playerBody.rightElbow.rotation.set(-0.2, 0, 0); // Natural resting position
     }
     if (this.playerBody.rightWrist) {
-      this.playerBody.rightWrist.rotation.set(-Math.PI / 4, 0, 0);
+      this.playerBody.rightWrist.rotation.set(0, 0, 0); // Neutral wrist
     }
     if (this.playerBody.body) {
-      this.playerBody.body.rotation.y = 0;
+      this.playerBody.body.rotation.y = 0; // Center torso
     }
     
     this.weaponSwing.isActive = false;
