@@ -24,7 +24,7 @@ export class IronSword extends Sword {
           recovery: 0.230  // 30% of 0.768s
         },
         rotations: {
-          neutral: { x: THREE.MathUtils.degToRad(20), y: 0, z: 0 }, // 20° ready position, slightly down
+          neutral: { x: THREE.MathUtils.degToRad(20), y: THREE.MathUtils.degToRad(50), z: 0 }, // 20° ready position, 50° ready stance
           windup: { 
             x: THREE.MathUtils.degToRad(70),           // 70° move to right side
             y: THREE.MathUtils.degToRad(10),           // 10° right side position
