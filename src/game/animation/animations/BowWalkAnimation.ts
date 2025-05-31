@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -30,8 +29,8 @@ export class BowWalkAnimation {
     
     // BOW READY STANCE: Left arm raised for bow, right arm at side
     
-    // Left arm - WEAPON ARM: raised bow-holding position at 40 degrees with reduced swing
-    const leftArmBaseX = Math.PI * 40 / 180;   // FIXED: 40° raised position (40 degrees converted to radians)
+    // Left arm - WEAPON ARM: raised bow-holding position at 60 degrees (chest level) with reduced swing
+    const leftArmBaseX = Math.PI / 3;          // 60° raised position (chest level)
     const leftArmBaseY = 0;                    // NO Y rotation - keep natural like empty hands
     const leftArmBaseZ = -Math.PI / 6;         // Forward angle for better POV visibility
     
@@ -80,14 +79,14 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    console.log(`🏹 [BowWalkAnimation] FIXED - Left arm raised to 40° with NO Y rotation - Sprint: ${isSprinting}`);
+    console.log(`🏹 [BowWalkAnimation] FIXED - Left arm raised to 60° (chest level) with NO Y rotation - Sprint: ${isSprinting}`);
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to BOW READY STANCE with 40 degree positioning
+    // Reset to BOW READY STANCE with 60 degree positioning (chest level)
     
-    // Left arm: Raised bow-holding position at 40 degrees - NO Y rotation
-    playerBody.leftArm.rotation.set(Math.PI * 40 / 180, 0, -Math.PI / 6);
+    // Left arm: Raised bow-holding position at 60 degrees (chest level) - NO Y rotation
+    playerBody.leftArm.rotation.set(Math.PI / 3, 0, -Math.PI / 6);
     
     // Right arm: Ready position - NO Y rotation
     playerBody.rightArm.rotation.set(Math.PI / 6, 0, -Math.PI / 8);
@@ -106,6 +105,6 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] FIXED reset - Left arm raised to 40° upward/forward with NO Y rotation');
+    console.log('🏹 [BowWalkAnimation] FIXED reset - Left arm raised to 60° (chest level) upward/forward with NO Y rotation');
   }
 }
