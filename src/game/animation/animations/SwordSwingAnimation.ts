@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -23,8 +24,8 @@ export class SwordSwingAnimation {
     let weaponWristRotation = 0;
     let torsoRotation = 0;
     
-    // FIXED: Base position matching HORIZONTAL arm position (15° instead of 36°)
-    const parallelAngleBase = Math.PI / 12; // 15° - HORIZONTAL combat position
+    // FIXED: Much lower base angle for TRUE HORIZONTAL positioning (~5° instead of 15°)
+    const parallelAngleBase = Math.PI / 36; // ~5° - TRULY HORIZONTAL combat position
     
     if (elapsed < phases.windup) {
       this.updateWindupPhase(elapsed, phases, rotations, parallelAngleBase, shoulderRotation, elbowRotation, torsoRotation);
@@ -41,14 +42,13 @@ export class SwordSwingAnimation {
   }
   
   private updateWindupPhase(elapsed: number, phases: any, rotations: any, parallelAngleBase: number, shoulderRotation: any, elbowRotation: any, torsoRotation: number): void {
-    // REMOVED: All windup motion - sword stays at forward horizontal position
-    // No upward angle addition, no backward Y rotation, no extra Z rotation
-    shoulderRotation.x = parallelAngleBase; // Stay at 15° horizontal position
-    shoulderRotation.y = 0; // No backward pull
+    // FIXED: Absolutely NO movement during windup - stay at horizontal position
+    shoulderRotation.x = parallelAngleBase; // Stay at ~5° horizontal position
+    shoulderRotation.y = 0; // Absolutely no backward pull
     shoulderRotation.z = 0; // No extra rotation
     
-    // FIXED: Keep elbow in neutral downward bend position (no movement during windup)
-    elbowRotation.x = -0.05; // Slight downward bend, no animation
+    // FIXED: Minimal elbow bend to match the horizontal shoulder position
+    elbowRotation.x = -0.02; // Very slight downward bend, no backward pull
     torsoRotation = 0; // No torso movement during windup
   }
   
@@ -56,23 +56,23 @@ export class SwordSwingAnimation {
     const t = (elapsed - phases.windup) / phases.slash;
     const easedT = t * t * (3 - 2 * t);
     
-    // FIXED: Direct slash from horizontal position - no windup to interpolate from
-    const startX = Math.PI / 12; // Start from 15° horizontal
-    const slashX = Math.PI / 12 + THREE.MathUtils.degToRad(-10); // Down to ~5° (horizontal forward slash)
+    // FIXED: True horizontal slash - from ~5° to -5° (parallel to player's perspective)
+    const startX = Math.PI / 36; // Start from ~5° horizontal
+    const slashX = Math.PI / 36 + THREE.MathUtils.degToRad(-10); // End at ~-5° (horizontal forward slash)
     
     shoulderRotation.x = THREE.MathUtils.lerp(startX, slashX, easedT);
-    shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.slash.y, easedT); // From 0 to slash Y
-    shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.slash.z, easedT); // From 0 to slash Z
+    shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.slash.y, easedT); // Right-to-left motion
+    shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.slash.z, easedT); // Wrist snap
     
-    // FIXED: Elbow animation during slash to keep sword horizontal
-    elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.2, easedT); // From neutral to more downward bend
-    torsoRotation = THREE.MathUtils.lerp(0, 0.2, easedT); // From 0 to follow-through
+    // FIXED: Minimal elbow animation to maintain horizontal blade positioning
+    elbowRotation.x = THREE.MathUtils.lerp(-0.02, -0.08, easedT); // Slight bend increase for follow-through
+    torsoRotation = THREE.MathUtils.lerp(0, 0.15, easedT); // Reduced torso rotation
     
     // Enhanced wrist rotation for proper slashing motion
     if (t >= 0.2 && t <= 0.8) {
       const wristT = (t - 0.2) / 0.6;
       const intensity = this.weaponSwing.wristSnapIntensity || 1.0;
-      weaponWristRotation = Math.sin(wristT * Math.PI) * (intensity * 2.0);
+      weaponWristRotation = Math.sin(wristT * Math.PI) * (intensity * 1.5);
     }
   }
   
@@ -84,15 +84,15 @@ export class SwordSwingAnimation {
     shoulderRotation.y = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.y, 0, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.z, 0, easedT);
     
-    // FIXED: Return to neutral elbow position (slight downward bend)
-    elbowRotation.x = THREE.MathUtils.lerp(-0.2, -0.05, easedT);
-    torsoRotation = THREE.MathUtils.lerp(0.2, 0, easedT);
+    // FIXED: Return to minimal elbow position for horizontal stance
+    elbowRotation.x = THREE.MathUtils.lerp(-0.08, -0.02, easedT);
+    torsoRotation = THREE.MathUtils.lerp(0.15, 0, easedT);
   }
   
   private completeAnimation(parallelAngleBase: number): void {
     this.playerBody.rightArm.rotation.set(parallelAngleBase, 0, 0);
     if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(-0.05, 0, 0); // Slight downward bend at rest
+      this.playerBody.rightElbow.rotation.set(-0.02, 0, 0); // Minimal downward bend at rest
     }
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = 0;

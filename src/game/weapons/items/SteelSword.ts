@@ -24,14 +24,14 @@ export class SteelSword extends Sword {
           recovery: 0.213
         },
         rotations: {
-          neutral: { x: Math.PI / 12, y: 0, z: 0 }, // 15° horizontal position
+          neutral: { x: Math.PI / 36, y: 0, z: 0 }, // ~5° horizontal position
           windup: { 
-            x: Math.PI / 12, // NO CHANGE - stay at horizontal position
+            x: Math.PI / 36, // EXACTLY same as neutral - NO MOVEMENT
             y: 0,            // NO BACKWARD PULL
             z: 0             // NO EXTRA ROTATION
           },
           slash: { 
-            x: Math.PI / 12 + THREE.MathUtils.degToRad(-10), // Forward slash to 5° (horizontal)
+            x: Math.PI / 36 + THREE.MathUtils.degToRad(-10), // Forward slash to ~-5° (horizontal)
             y: THREE.MathUtils.degToRad(45),  // Strong cross-body slash
             z: THREE.MathUtils.degToRad(-12)  // Strong wrist snap for heavy weapon
           }
