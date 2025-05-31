@@ -26,8 +26,8 @@ export class WoodenSword extends Sword {
         rotations: {
           neutral: { x: THREE.MathUtils.degToRad(30), y: 0, z: 0 }, // 30° ready position, slightly down
           windup: { 
-            x: THREE.MathUtils.degToRad(40),           // 40° move to right side
-            y: THREE.MathUtils.degToRad(50),           // 50° right side position
+            x: THREE.MathUtils.degToRad(70),           // 70° move to right side
+            y: THREE.MathUtils.degToRad(20),           // 20° right side position
             z: 0
           },
           slash: { 
