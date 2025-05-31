@@ -1,10 +1,10 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
 
 export class BowDrawAnimation {
   private config: WalkAnimationConfig;
+  private transitionSpeed: number = 4; // Speed of transition to drawing position
   
   constructor(config: WalkAnimationConfig) {
     this.config = config;
@@ -15,13 +15,31 @@ export class BowDrawAnimation {
     chargeLevel: number,
     deltaTime: number
   ): void {
-    // Draw animation - right arm pulls back while left arm holds bow steady
+    // Draw animation - right arm pulls back while left arm transitions to drawing position
     
-    // Left arm maintains bow-holding position (95° raised position, parallel with body)
-    const leftArmBaseX = Math.PI * 95 / 180;  // 95° raised position for drawing
-    playerBody.leftArm.rotation.x = leftArmBaseX;
-    playerBody.leftArm.rotation.y = 0;  // Parallel with body
-    playerBody.leftArm.rotation.z = 0;  // Parallel with body
+    // Target position for drawing (95° raised position, parallel with body)
+    const targetLeftArmX = Math.PI * 95 / 180;  // 95° raised position for drawing
+    const targetLeftArmY = 0;  // Parallel with body
+    const targetLeftArmZ = 0;  // Parallel with body
+    
+    // Smoothly transition left arm to drawing position
+    const transitionAmount = deltaTime * this.transitionSpeed;
+    
+    playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
+      playerBody.leftArm.rotation.x,
+      targetLeftArmX,
+      transitionAmount
+    );
+    playerBody.leftArm.rotation.y = THREE.MathUtils.lerp(
+      playerBody.leftArm.rotation.y,
+      targetLeftArmY,
+      transitionAmount
+    );
+    playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
+      playerBody.leftArm.rotation.z,
+      targetLeftArmZ,
+      transitionAmount
+    );
     
     // Right arm draw animation - pulls back based on charge level
     const drawAmount = this.easeInOutQuad(chargeLevel);
@@ -37,7 +55,12 @@ export class BowDrawAnimation {
     
     // Elbow adjustments for natural draw
     if (playerBody.leftElbow) {
-      playerBody.leftElbow.rotation.x = 0.2 + (drawAmount * 0.1);
+      const targetLeftElbowX = 0.2 + (drawAmount * 0.1);
+      playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
+        playerBody.leftElbow.rotation.x,
+        targetLeftElbowX,
+        transitionAmount
+      );
     }
     
     if (playerBody.rightElbow) {
@@ -45,17 +68,33 @@ export class BowDrawAnimation {
       playerBody.rightElbow.rotation.x = 0.3 + (drawAmount * 0.8);
     }
     
-    // Hand positions for drawing
-    playerBody.leftHand.rotation.x = -Math.PI / 6;
-    playerBody.leftHand.rotation.y = 0;
-    playerBody.leftHand.rotation.z = Math.PI / 4;
+    // Hand positions for drawing - also transition smoothly
+    const targetLeftHandX = -Math.PI / 6;
+    const targetLeftHandY = 0;
+    const targetLeftHandZ = Math.PI / 4;
+    
+    playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
+      playerBody.leftHand.rotation.x,
+      targetLeftHandX,
+      transitionAmount
+    );
+    playerBody.leftHand.rotation.y = THREE.MathUtils.lerp(
+      playerBody.leftHand.rotation.y,
+      targetLeftHandY,
+      transitionAmount
+    );
+    playerBody.leftHand.rotation.z = THREE.MathUtils.lerp(
+      playerBody.leftHand.rotation.z,
+      targetLeftHandZ,
+      transitionAmount
+    );
     
     // Right hand pulls string back
     playerBody.rightHand.rotation.x = drawAmount * Math.PI / 8;
     playerBody.rightHand.rotation.y = 0;
     playerBody.rightHand.rotation.z = drawAmount * Math.PI / 6;
     
-    console.log(`🏹 [BowDrawAnimation] Drawing at 95° - Charge: ${(chargeLevel * 100).toFixed(1)}%`);
+    console.log(`🏹 [BowDrawAnimation] Transitioning to 95° drawing position - Charge: ${(chargeLevel * 100).toFixed(1)}%`);
   }
   
   public reset(playerBody: PlayerBody): void {
