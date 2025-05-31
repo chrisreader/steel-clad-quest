@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -58,7 +57,7 @@ export class SwordSwingAnimation {
     
     console.log('🗡️ [SwordSwingAnimation] Using weapon config as base, but shoulder drives the swing:', configRotations);
     
-    // SHOULDER is PRIMARY DRIVER - following reference code pattern
+    // SHOULDER is PRIMARY DRIVER - FORWARD-SWEEPING motion
     let shoulderRotation = { 
       x: configRotations.neutral.x, 
       y: configRotations.neutral.y, 
@@ -73,19 +72,19 @@ export class SwordSwingAnimation {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: SHOULDER builds up the arc (like reference code)
+      // WINDUP PHASE: SHOULDER builds up for forward sweep (moderate height, right side)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Main windup movement - UP and RIGHT (like reference: 22° to 72°, 0° to -40°)
+      // SHOULDER: Moderate windup - FORWARD and slightly UP and RIGHT
       shoulderRotation.x = THREE.MathUtils.lerp(
-        configRotations.neutral.x,                    // Start at ~22° (π/8)
-        configRotations.neutral.x + Math.PI / 3,      // End at ~82° (π/8 + π/3)
+        configRotations.neutral.x,                    // Start at ~60° (π/3)
+        configRotations.neutral.x + Math.PI / 6,      // End at ~90° (π/3 + π/6) - REDUCED from π/3
         easedT
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
         configRotations.neutral.y,                    // Start at 0°
-        -Math.PI / 4.5,                               // End at ~-40° (like reference)
+        -Math.PI / 6,                                 // End at ~-30° (REDUCED from -π/4.5)
         easedT
       );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.neutral.z, configRotations.windup.z, easedT);
@@ -101,24 +100,24 @@ export class SwordSwingAnimation {
       // Torso coils for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.15, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - SHOULDER drives UP+RIGHT movement`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - SHOULDER builds forward sweep`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: SHOULDER drives diagonal sweep (like reference: aggressive motion)
+      // SLASH PHASE: SHOULDER drives FORWARD SWEEP to left side
       const t = (elapsed - phases.windup) / phases.slash;
       
       // AGGRESSIVE EASING like reference code: t * t * (3 - 2 * t)
       const aggressiveT = t * t * (3 - 2 * t);
       
-      // SHOULDER: Main diagonal slash movement - DOWN and LEFT (like reference: 72° to 7°, -40° to +70°)
+      // SHOULDER: FORWARD SWEEP movement - stays forward, sweeps to LEFT
       shoulderRotation.x = THREE.MathUtils.lerp(
-        configRotations.neutral.x + Math.PI / 3,      // From windup ~82°
-        configRotations.neutral.x - Math.PI / 12,     // To low position ~7° (π/8 - π/12)
+        configRotations.neutral.x + Math.PI / 6,      // From windup ~90°
+        configRotations.neutral.x + Math.PI / 12,     // To forward position ~75° (INCREASED from -π/12)
         aggressiveT
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
-        -Math.PI / 4.5,                               // From windup ~-40°
-        Math.PI / 2.5,                                // To sweep end ~+72° (like reference)
+        -Math.PI / 6,                                 // From windup ~-30°
+        Math.PI / 3,                                  // To left sweep ~+60° (REDUCED from π/2.5)
         aggressiveT
       );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, aggressiveT);
@@ -144,7 +143,7 @@ export class SwordSwingAnimation {
       // Torso uncoils to support slash
       torsoRotation = THREE.MathUtils.lerp(-0.15, 0.25, aggressiveT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - SHOULDER drives DOWN+LEFT diagonal sweep`);
+      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - SHOULDER drives FORWARD SWEEP to left`);
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE: Return to neutral (like reference)
@@ -152,8 +151,8 @@ export class SwordSwingAnimation {
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
       // Return all joints to neutral positions
-      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x - Math.PI / 12, configRotations.neutral.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 2.5, configRotations.neutral.y, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x + Math.PI / 12, configRotations.neutral.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 3, configRotations.neutral.y, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.slash.z, configRotations.neutral.z, easedT);
       
       // Return elbow to neutral
@@ -177,7 +176,7 @@ export class SwordSwingAnimation {
     }
     
     // Apply the SHOULDER-DRIVEN rotations
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING SHOULDER-DRIVEN SWORD SWING ***`);
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING FORWARD SWEEP SWORD SWING ***`);
     this.applyShoulderDrivenSwing(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
   }
   
@@ -187,7 +186,7 @@ export class SwordSwingAnimation {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    console.log(`🗡️ [SwordSwingAnimation] *** SHOULDER-DRIVEN SWING *** - Diagonal arc from high-right to low-left`);
+    console.log(`🗡️ [SwordSwingAnimation] *** SHOULDER-DRIVEN SWING *** - Forward sweep from right to left`);
     
     if (!this.playerBody || !this.playerBody.rightArm) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - playerBody or rightArm is null');
