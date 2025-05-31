@@ -27,12 +27,12 @@ export class SteelSword extends Sword {
           neutral: { x: THREE.MathUtils.degToRad(60), y: 0, z: 0 }, // 60° ready position, no side angle
           windup: { 
             x: THREE.MathUtils.degToRad(70),           // 70° move to right side
-            y: THREE.MathUtils.degToRad(10),           // 10° right side position
+            y: THREE.MathUtils.degToRad(50),           // 50° right side position (updated)
             z: 0
           },
           slash: { 
-            x: THREE.MathUtils.degToRad(60),           // 60° sweep to left side, down follow-through
-            y: THREE.MathUtils.degToRad(30),           // 30° left side sweep end
+            x: THREE.MathUtils.degToRad(15),           // 15° sweep end (updated)
+            y: THREE.MathUtils.degToRad(20),           // 20° left side sweep end (updated)
             z: THREE.MathUtils.degToRad(-15)           // Strong wrist snap for heavy weapon
           }
         }
