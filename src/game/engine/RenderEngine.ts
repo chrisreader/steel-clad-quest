@@ -56,18 +56,18 @@ export class RenderEngine {
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
-    // Position camera at neck level with slight backward offset for better body visibility
-    // Player head is at playerPosition.y + 0.85, neck level is at +0.75
+    // Position camera at upper neck level with backward offset for optimal body visibility
+    // Player head is at playerPosition.y + 0.85, upper neck level is at +0.78
     this.camera.position.set(
       playerPosition.x, 
-      playerPosition.y + 0.75, // Moved from 0.85 (head) to 0.75 (neck level)
-      playerPosition.z - 0.05  // Slight backward offset for better viewing angle
+      playerPosition.y + 0.78, // Moved from 0.75 to 0.78 (upper neck level)
+      playerPosition.z - 0.08  // Increased backward offset from 0.05 to 0.08
     );
     this.cameraRotation.pitch = 0;
     this.cameraRotation.yaw = 0;
     this.updateCameraRotation();
     
-    console.log("📹 [RenderEngine] First-person camera positioned at neck level for better body visibility:", this.camera.position);
+    console.log("📹 [RenderEngine] First-person camera positioned at upper neck level for clear body visibility:", this.camera.position);
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
@@ -87,11 +87,11 @@ export class RenderEngine {
   }
   
   public updateFirstPersonCamera(playerPosition: THREE.Vector3): void {
-    // Keep camera positioned at neck level with slight offset
+    // Keep camera positioned at upper neck level with backward offset
     this.camera.position.set(
       playerPosition.x, 
-      playerPosition.y + 0.75, // Maintain neck level position
-      playerPosition.z - 0.05  // Maintain slight backward offset
+      playerPosition.y + 0.78, // Maintain upper neck level position
+      playerPosition.z - 0.08  // Maintain backward offset
     );
   }
   
