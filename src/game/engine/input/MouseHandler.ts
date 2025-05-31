@@ -1,141 +1,95 @@
-
-import * as THREE from 'three';
+import { InputManager } from '../InputManager';
+import { PointerLockManager } from './PointerLockManager';
 
 export class MouseHandler {
-  private mouse: { x: number; y: number; buttons: number } = { x: 0, y: 0, buttons: 0 };
-  private previousMouse: { x: number; y: number } = { x: 0, y: 0 };
-  private mouseMovement: { x: number; y: number } = { x: 0, y: 0 };
-  private lastMouseDown: number = 0;
-  private doubleClickThreshold: number = 300;
-  private doubleClickDistance: number = 10;
-  private isDoubleClick: boolean = false;
-  private wheelDelta: number = 0;
-  private isPointerLocked: boolean = false;
-  
-  // Performance optimization
-  private lastMouseMoveTime: number = 0;
-  private mouseMoveThrottle: number = 8; // ~120fps max for mouse events
-  
-  private eventDispatcher: (type: string, data?: any) => void;
-  
-  constructor(eventDispatcher: (type: string, data?: any) => void) {
-    this.eventDispatcher = eventDispatcher;
-    this.setupEventListeners();
+  private inputManager: InputManager;
+  private pointerLockManager: PointerLockManager;
+  private mouseSensitivity: number = 0.002;
+  private lastMouseX: number = 0;
+  private lastMouseY: number = 0;
+
+  constructor(inputManager: InputManager, pointerLockManager: PointerLockManager) {
+    this.inputManager = inputManager;
+    this.pointerLockManager = pointerLockManager;
+    
+    // Bind event handlers
+    this.handleMouseMove = this.handleMouseMove.bind(this);
+    this.handleMouseDown = this.handleMouseDown.bind(this);
+    this.handleMouseUp = this.handleMouseUp.bind(this);
+    
+    // Add event listeners
+    document.addEventListener('mousemove', this.handleMouseMove);
+    document.addEventListener('mousedown', this.handleMouseDown);
+    document.addEventListener('mouseup', this.handleMouseUp);
+    
+    console.log('🖱️ [MouseHandler] Initialized');
   }
-  
-  private setupEventListeners(): void {
-    document.addEventListener('mousemove', this.handleMouseMove.bind(this));
-    document.addEventListener('mousedown', this.handleMouseDown.bind(this));
-    document.addEventListener('mouseup', this.handleMouseUp.bind(this));
-    document.addEventListener('wheel', this.handleMouseWheel.bind(this));
-    document.addEventListener('contextmenu', (e) => e.preventDefault());
-  }
-  
+
   private handleMouseMove(event: MouseEvent): void {
-    const now = performance.now();
+    if (!this.pointerLockManager.isLocked()) return;
     
-    // Throttle mouse events for better performance (but allow all when pointer locked)
-    if (!this.isPointerLocked && now - this.lastMouseMoveTime < this.mouseMoveThrottle) {
-      return;
-    }
-    this.lastMouseMoveTime = now;
+    const movementX = event.movementX || 0;
+    const movementY = event.movementY || 0;
     
-    this.previousMouse.x = this.mouse.x;
-    this.previousMouse.y = this.mouse.y;
+    this.lastMouseX += movementX;
+    this.lastMouseY += movementY;
     
-    this.mouse.x = event.clientX;
-    this.mouse.y = event.clientY;
-    
-    // Use raw movement values for better precision
-    this.mouseMovement.x = event.movementX || 0;
-    this.mouseMovement.y = event.movementY || 0;
-    
-    // Only dispatch look events when pointer is locked and there's actual movement
-    if (this.isPointerLocked && (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0)) {
-      this.eventDispatcher('look', {
-        x: this.mouseMovement.x,
-        y: this.mouseMovement.y
-      });
-    }
-  }
-  
-  private handleMouseDown(event: MouseEvent): void {
-    this.mouse.buttons |= (1 << event.button);
-    
-    const now = Date.now();
-    const timeSinceLastClick = now - this.lastMouseDown;
-    const distanceFromLastClick = Math.sqrt(
-      Math.pow(this.mouse.x - this.previousMouse.x, 2) +
-      Math.pow(this.mouse.y - this.previousMouse.y, 2)
+    // Send rotation data to the input manager
+    this.inputManager.setMouseRotation(
+      movementX * this.mouseSensitivity,
+      movementY * this.mouseSensitivity
     );
+  }
+
+  private handleMouseDown(event: MouseEvent): void {
+    if (!this.pointerLockManager.isLocked()) return;
     
-    if (timeSinceLastClick < this.doubleClickThreshold && distanceFromLastClick < this.doubleClickDistance) {
-      this.isDoubleClick = true;
-      this.eventDispatcher('doubleClick', { button: event.button });
-    } else {
-      this.isDoubleClick = false;
-    }
-    
-    this.lastMouseDown = now;
+    console.log('🖱️ [MouseHandler] Mouse button pressed:', event.button);
     
     switch (event.button) {
       case 0: // Left mouse button
-        this.eventDispatcher('attack');
-        break;
-      case 2: // Right mouse button
-        this.eventDispatcher('secondaryAction');
+        console.log('🖱️ [MouseHandler] Left mouse button pressed - starting bow draw');
+        this.inputManager.setInputState('attack', true);
+        this.inputManager.setInputState('bowDraw', true); // Add bow draw state
         break;
       case 1: // Middle mouse button
-        this.eventDispatcher('tertiaryAction');
+        event.preventDefault();
+        break;
+      case 2: // Right mouse button
+        event.preventDefault();
         break;
     }
   }
-  
+
   private handleMouseUp(event: MouseEvent): void {
-    this.mouse.buttons &= ~(1 << event.button);
+    if (!this.pointerLockManager.isLocked()) return;
+    
+    console.log('🖱️ [MouseHandler] Mouse button released:', event.button);
     
     switch (event.button) {
       case 0: // Left mouse button
-        this.eventDispatcher('attackEnd');
+        console.log('🖱️ [MouseHandler] Left mouse button released - stopping bow draw');
+        this.inputManager.setInputState('attack', false);
+        this.inputManager.setInputState('bowDraw', false); // Stop bow draw
         break;
       case 2: // Right mouse button
-        this.eventDispatcher('secondaryActionEnd');
+        event.preventDefault();
         break;
     }
   }
-  
-  private handleMouseWheel(event: WheelEvent): void {
-    this.wheelDelta = Math.sign(event.deltaY);
-    this.eventDispatcher('scroll', { delta: this.wheelDelta });
+
+  public setMouseSensitivity(sensitivity: number): void {
+    this.mouseSensitivity = sensitivity;
   }
-  
-  public getMousePosition(): { x: number; y: number } {
-    return { ...this.mouse };
+
+  public getMouseSensitivity(): number {
+    return this.mouseSensitivity;
   }
-  
-  public getMouseDelta(): { x: number; y: number } {
-    return { ...this.mouseMovement };
-  }
-  
-  public resetMouseDelta(): void {
-    this.mouseMovement.x = 0;
-    this.mouseMovement.y = 0;
-  }
-  
-  public isButtonPressed(button: number): boolean {
-    return !!(this.mouse.buttons & (1 << button));
-  }
-  
-  public setPointerLocked(locked: boolean): void {
-    this.isPointerLocked = locked;
-    console.log("🖱️ [MouseHandler] Pointer lock state updated:", locked);
-  }
-  
-  public dispose(): void {
+
+  public cleanup(): void {
     document.removeEventListener('mousemove', this.handleMouseMove);
     document.removeEventListener('mousedown', this.handleMouseDown);
     document.removeEventListener('mouseup', this.handleMouseUp);
-    document.removeEventListener('wheel', this.handleMouseWheel);
-    document.removeEventListener('contextmenu', (e) => e.preventDefault());
+    console.log('🖱️ [MouseHandler] Cleaned up event listeners');
   }
 }

@@ -19,11 +19,22 @@ interface KeyBindings {
   pause: string[];
 }
 
+interface InputState {
+  moveForward: boolean;
+  moveBackward: boolean;
+  moveLeft: boolean;
+  moveRight: boolean;
+  attack: boolean;
+  bowDraw: boolean; // Add bow draw state
+  sprint: boolean;
+}
+
 export class InputManager {
   private mouseHandler: MouseHandler;
   private keyboardHandler: KeyboardHandler;
   private touchHandler: TouchHandler;
   private pointerLockManager: PointerLockManager;
+  private inputState: InputState;
   
   constructor() {
     console.log('🎮 [InputManager] Initializing with enhanced mouse smoothing...');
@@ -39,6 +50,17 @@ export class InputManager {
     
     // Set up pointer lock state synchronization
     this.setupPointerLockSync();
+    
+    // Initialize input state
+    this.inputState = {
+      moveForward: false,
+      moveBackward: false,
+      moveLeft: false,
+      moveRight: false,
+      attack: false,
+      bowDraw: false, // Initialize bow draw state
+      sprint: false
+    };
   }
   
   public initialize(renderer: THREE.WebGLRenderer): void {
@@ -147,5 +169,9 @@ export class InputManager {
     this.keyboardHandler.dispose();
     this.touchHandler.dispose();
     this.pointerLockManager.dispose();
+  }
+  
+  public getInputState(): InputState {
+    return { ...this.inputState };
   }
 }
