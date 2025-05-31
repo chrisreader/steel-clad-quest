@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -22,15 +21,17 @@ export class MeleeWalkAnimation {
     playerBody.leftLeg.rotation.x = legSwing;
     playerBody.rightLeg.rotation.x = -legSwing;
     
-    // Arms - reduced swing when holding weapon
+    // Arms - reduced swing when holding weapon (ensure symmetric Y rotation)
     const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     
-    // Left arm - normal walking swing
+    // Left arm - normal walking swing with symmetric positioning
     playerBody.leftArm.rotation.x = Math.PI / 8 - armSwing;
+    playerBody.leftArm.rotation.y = 0; // Ensure symmetric positioning
     
-    // Right arm - only animate if not attacking
+    // Right arm - only animate if not attacking with symmetric positioning
     if (!isAttacking) {
       playerBody.rightArm.rotation.x = Math.PI / 8 + armSwing;
+      playerBody.rightArm.rotation.y = 0; // Ensure symmetric positioning
     }
     
     // Elbows - subtle movement during walking
@@ -45,8 +46,9 @@ export class MeleeWalkAnimation {
   }
   
   public reset(playerBody: PlayerBody): void {
-    playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
-    playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
+    // Reset to symmetric stance
+    playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0); // Ensure Y rotation is 0
+    playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0); // Ensure Y rotation is 0
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0, 0, 0);

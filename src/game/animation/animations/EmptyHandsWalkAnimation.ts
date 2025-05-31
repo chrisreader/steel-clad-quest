@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -21,10 +20,12 @@ export class EmptyHandsWalkAnimation {
     playerBody.leftLeg.rotation.x = legSwing;
     playerBody.rightLeg.rotation.x = -legSwing;
     
-    // Arms - full natural swing
+    // Arms - full natural swing with symmetric positioning
     const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     playerBody.leftArm.rotation.x = Math.PI / 8 - armSwing;
+    playerBody.leftArm.rotation.y = 0; // Ensure symmetric positioning
     playerBody.rightArm.rotation.x = Math.PI / 8 + armSwing;
+    playerBody.rightArm.rotation.y = 0; // Ensure symmetric positioning
     
     // Elbows - natural movement during walking
     if (playerBody.leftElbow) {
@@ -38,8 +39,9 @@ export class EmptyHandsWalkAnimation {
   }
   
   public reset(playerBody: PlayerBody): void {
-    playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
-    playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
+    // Reset to symmetric neutral stance
+    playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0); // Ensure Y rotation is 0
+    playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0); // Ensure Y rotation is 0
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0, 0, 0);
