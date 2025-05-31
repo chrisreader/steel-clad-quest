@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -76,10 +77,10 @@ export class SwordSwingAnimation {
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Moderate windup - FORWARD and slightly UP and RIGHT (reduced to ~40°)
+      // SHOULDER: Moderate windup - FORWARD and slightly UP and RIGHT (increased to ~70°)
       shoulderRotation.x = THREE.MathUtils.lerp(
         configRotations.neutral.x,                    // Start at ~60° (π/3)
-        configRotations.neutral.x - Math.PI / 9,      // End at ~40° (π/3 - π/9) - REDUCED to 40°
+        configRotations.neutral.x + Math.PI / 18,     // End at ~70° (π/3 + π/18) - INCREASED to 70°
         easedT
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
@@ -100,7 +101,7 @@ export class SwordSwingAnimation {
       // Torso coils for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.15, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - SHOULDER builds forward sweep to ~40° and -60°`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - SHOULDER builds forward sweep to ~70° and -60°`);
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE: SHOULDER drives FORWARD SWEEP to left side
@@ -111,7 +112,7 @@ export class SwordSwingAnimation {
       
       // SHOULDER: FORWARD SWEEP movement - stays forward, sweeps to LEFT (from -60°)
       shoulderRotation.x = THREE.MathUtils.lerp(
-        configRotations.neutral.x - Math.PI / 9,      // From windup ~40°
+        configRotations.neutral.x + Math.PI / 18,     // From windup ~70°
         configRotations.neutral.x + Math.PI / 12,     // To forward position ~75° (INCREASED from -π/12)
         aggressiveT
       );
