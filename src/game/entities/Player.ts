@@ -103,7 +103,7 @@ export class Player {
     this.group.userData.isPlayer = true;
     scene.add(this.group);
     
-    console.log("🧍 [Player] CONSTRUCTOR - Creating player with new arm positioning system");
+    console.log("🧍 [Player] CONSTRUCTOR - Creating player with new arm positioning system and improved first-person view");
     console.log("🧍 [Player] Player group created with natural proportions at position:", this.group.position);
     
     // Create player body with natural realistic proportions
@@ -140,7 +140,7 @@ export class Player {
       attackPower: 20
     };
     
-    console.log("🧍 [Player] CONSTRUCTOR COMPLETE - Player initialized with NEW arm positioning:", this.stats);
+    console.log("🧍 [Player] CONSTRUCTOR COMPLETE - Player initialized with improved first-person view:", this.stats);
     
     // Final verification
     this.debugArmPositions("CONSTRUCTOR_COMPLETE");
@@ -173,13 +173,13 @@ export class Player {
   private createRealisticPlayerBody(): PlayerBody {
     const playerBodyGroup = new THREE.Group();
     
-    console.log("🏗️ [Player] CREATING REALISTIC PLAYER BODY WITH NEW ARM POSITIONING");
+    console.log("🏗️ [Player] CREATING REALISTIC PLAYER BODY WITH IMPROVED FIRST-PERSON VIEW");
     
     // Create enhanced metal texture for armor/clothing
     const metalTexture = TextureGenerator.createMetalTexture();
     const skinTexture = this.createSkinTexture();
     
-    // HEAD - Natural position at top, visible but camera will be inside
+    // HEAD - Natural position at top, but INVISIBLE in first-person for better view
     const headGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.25);
     const headMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xFFDBC4,
@@ -189,12 +189,12 @@ export class Player {
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.set(0, 0.85, 0); // Natural head position at eye level
-    head.castShadow = true;
+    head.castShadow = true; // Keep shadow casting for realism
     head.receiveShadow = true;
-    head.visible = true; // Keep visible for shadows but camera will be inside
+    head.visible = false; // Make invisible in first-person to prevent view obstruction
     playerBodyGroup.add(head);
     
-    console.log("👤 [Player] Head positioned naturally at:", head.position, "- castShadow:", head.castShadow);
+    console.log("👤 [Player] Head positioned naturally but made invisible for first-person view - castShadow:", head.castShadow);
     
     // TORSO - Natural position below head
     const bodyGeometry = new THREE.BoxGeometry(0.5, 0.7, 0.25);
@@ -229,10 +229,10 @@ export class Player {
     rightArmSystem.visible = true;
     playerBodyGroup.add(rightArmSystem);
     
-    console.log("🦾 [Player] NEW ARM POSITIONS SET:");
+    console.log("🦾 [Player] NEW ARM POSITIONS SET FOR IMPROVED FIRST-PERSON VIEW:");
     console.log("   Left Arm: x=-0.3, y=0.55, z=0 (LOWERED FROM y=0.7)");
     console.log("   Right Arm: x=0.3, y=0.55, z=0 (LOWERED FROM y=0.7)");
-    console.log("   This positions arms at realistic shoulder height instead of floating high!");
+    console.log("   This positions arms at realistic shoulder height and camera at neck level for better body visibility!");
     
     // Verify positions immediately after setting
     console.log("🔍 [Player] IMMEDIATE VERIFICATION:");
@@ -293,8 +293,8 @@ export class Player {
     const leftArmComponents = this.getArmComponents(leftArmSystem);
     const rightArmComponents = this.getArmComponents(rightArmSystem);
     
-    console.log("🧍 [Player] Complete naturally proportioned body created with NEW ARM POSITIONING");
-    console.log("🔧 [Player] Body creation complete - arms should now be at realistic shoulder height");
+    console.log("🧍 [Player] Complete naturally proportioned body created with IMPROVED FIRST-PERSON VIEW");
+    console.log("🔧 [Player] Body creation complete - head invisible, camera at neck level, arms at realistic height");
     
     return {
       group: playerBodyGroup,
@@ -305,7 +305,7 @@ export class Player {
       leftLeg,
       rightLeg,
       body,
-      head, // Now visible head for shadows
+      head, // Invisible head for first-person view
       leftUpperArm: leftArmComponents.upperArm,
       rightUpperArm: rightArmComponents.upperArm,
       leftForearm: leftArmComponents.forearm,
