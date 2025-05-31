@@ -17,8 +17,8 @@ export class BowDrawAnimation {
   ): void {
     // Draw animation - right arm pulls back while left arm transitions to drawing position
     
-    // Target position for drawing (105° raised position, parallel with body)
-    const targetLeftArmX = Math.PI * 105 / 180;  // 105° raised position for drawing
+    // Target position for drawing (115° raised position, parallel with body)
+    const targetLeftArmX = Math.PI * 115 / 180;  // 115° raised position for drawing
     const targetLeftArmY = 0;  // Parallel with body
     const targetLeftArmZ = 0;  // Parallel with body
     
@@ -94,7 +94,7 @@ export class BowDrawAnimation {
     playerBody.rightHand.rotation.y = 0;
     playerBody.rightHand.rotation.z = drawAmount * Math.PI / 6;
     
-    console.log(`🏹 [BowDrawAnimation] Transitioning to 105° drawing position - Charge: ${(chargeLevel * 100).toFixed(1)}%`);
+    console.log(`🏹 [BowDrawAnimation] Transitioning to 115° drawing position - Charge: ${(chargeLevel * 100).toFixed(1)}%`);
   }
   
   public reset(playerBody: PlayerBody): void {
