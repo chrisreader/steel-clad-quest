@@ -869,16 +869,17 @@ export class Player {
     // Apply yaw rotation to the entire player body group for first-person feel
     this.group.rotation.y = yaw;
     
-    // Apply subtle pitch rotation to arms for looking up/down
-    if (this.playerBody.leftArm && this.playerBody.rightArm) {
+    // Apply subtle pitch rotation to arms for looking up/down - BUT NOT when bow is equipped
+    if (this.playerBody.leftArm && this.playerBody.rightArm && !this.isBowEquipped) {
       const pitchInfluence = pitch * 0.3; // Reduced influence for subtle effect
       
       // Adjust arm rotations based on pitch
       this.playerBody.leftArm.rotation.x = Math.PI / 8 + pitchInfluence;
       this.playerBody.rightArm.rotation.x = Math.PI / 8 + pitchInfluence;
     }
+    // When bow is equipped, don't modify arm rotations - let archery stance remain intact
     
-    console.log("Player visual rotation updated - Yaw:", yaw, "Pitch:", pitch);
+    console.log("Player visual rotation updated - Yaw:", yaw, "Pitch:", pitch, "Bow equipped:", this.isBowEquipped);
   }
   
   public getStats(): PlayerStats {
