@@ -852,40 +852,40 @@ export class Player {
     let weaponWristRotation = 0;
     let torsoRotation = 0; // New: Add torso rotation for realism
     
-    // ENHANCED: Match current idle arm position for proper swing base
-    const parallelAngleBase = Math.PI / 3 + 0.03; // 61.7° upward angle, matching current idle position
+    // PHYSICS: Shoulder is +5° forward (Math.PI/36), elbow must be -5° downward (Math.PI/36) for horizontal blade
+    const shoulderAngle = Math.PI / 36; // 5° forward shoulder angle
+    const counteractingElbowAngle = -Math.PI / 36; // -5° downward elbow angle for perfect horizontal
+    const slashElbowAngle = -Math.PI / 30; // Slightly more bend during slash motion
     
     if (elapsed < phases.windup) {
-      // ENHANCED WIND-UP PHASE with torso rotation and improved motion
+      // FIXED WIND-UP PHASE: No movement, stay at horizontal position with perfect physics
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Enhanced shoulder movement - more dramatic windup
-      shoulderRotation.x = THREE.MathUtils.lerp(parallelAngleBase, rotations.windup.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT);
+      // Keep shoulder at horizontal combat position
+      shoulderRotation.x = shoulderAngle; // Stay at 5° horizontal position
+      shoulderRotation.y = 0; // No backward pull
+      shoulderRotation.z = 0; // No extra rotation
       
-      // FIXED: Enhanced elbow coordination - DOWNWARD bend for horizontal sword positioning
-      elbowRotation.x = THREE.MathUtils.lerp(0, -0.05, easedT); // CHANGED: Negative (downward) bend to counteract forward shoulder
-      
-      // NEW: Add torso rotation for power generation
-      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT); // Rotate torso back for windup
+      // FIXED: Exact -5° elbow angle to counteract +5° shoulder for perfect horizontal blade
+      elbowRotation.x = counteractingElbowAngle; // Exactly -5° to counteract +5° shoulder
+      torsoRotation = 0; // No torso movement during windup
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // ENHANCED SLASH PHASE with coordinated body movement and forward swing
+      // ENHANCED SLASH PHASE: True horizontal slash with perfect physics
       const t = (elapsed - phases.windup) / phases.slash;
       const easedT = t * t * (3 - 2 * t); // Smooth easing for powerful swing
       
-      // Enhanced shoulder movement - dramatic forward swing
-      shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT);
+      // Enhanced shoulder movement - horizontal slash motion
+      shoulderRotation.x = THREE.MathUtils.lerp(shoulderAngle, shoulderAngle, easedT); // Keep shoulder angle constant
+      shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.slash.y, easedT); // Right-to-left motion
+      shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.slash.z, easedT); // Wrist snap
       
-      // FIXED: Enhanced elbow movement - DOWNWARD extension for horizontal blade
-      elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.1, easedT); // CHANGED: Negative (downward) extension for horizontal sword
+      // FIXED: Perfect elbow physics - maintain horizontal blade through slash
+      elbowRotation.x = THREE.MathUtils.lerp(counteractingElbowAngle, slashElbowAngle, easedT); // -5° to -6° for motion
       
-      // NEW: Enhanced torso rotation - snap forward for power
-      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.4, easedT); // Rotate torso forward through swing
+      // Enhanced torso rotation for power
+      torsoRotation = THREE.MathUtils.lerp(0, 0.15, easedT); // Reduced torso rotation
       
       // Enhanced wrist snap for impact
       if (t >= 0.15 && t <= 0.85) { // Extended wrist snap duration
@@ -903,27 +903,27 @@ export class Player {
       }
       
     } else if (elapsed < duration) {
-      // ENHANCED RECOVERY PHASE - smooth return to ready stance
+      // ENHANCED RECOVERY PHASE - smooth return to horizontal ready stance
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return to proper idle position
-      shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, parallelAngleBase, easedT);
+      // Return to horizontal combat position
+      shoulderRotation.x = THREE.MathUtils.lerp(shoulderAngle, shoulderAngle, easedT); // Stay at horizontal
       shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(rotations.slash.z, 0, easedT);
       
-      // FIXED: Elbow returns to DOWNWARD position for horizontal blade
-      elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.05, easedT); // CHANGED: Return to downward bend for horizontal sword
+      // FIXED: Return to exact -5° elbow position for perfect horizontal blade
+      elbowRotation.x = THREE.MathUtils.lerp(slashElbowAngle, counteractingElbowAngle, easedT); // Return to -5° for horizontal
       
-      // NEW: Torso returns to neutral position
-      torsoRotation = THREE.MathUtils.lerp(0.4, 0, easedT);
+      // Torso returns to neutral position
+      torsoRotation = THREE.MathUtils.lerp(0.15, 0, easedT);
       
     } else {
-      // ANIMATION COMPLETE - return to exact idle position
-      shoulderRotation.x = parallelAngleBase;
+      // ANIMATION COMPLETE - perfect horizontal position with exact physics
+      shoulderRotation.x = shoulderAngle; // 5° forward shoulder
       shoulderRotation.y = 0;
       shoulderRotation.z = 0;
-      elbowRotation = { x: -0.05, y: 0, z: 0 }; // FIXED: DOWNWARD elbow bend for horizontal sword at rest
+      elbowRotation = { x: counteractingElbowAngle, y: 0, z: 0 }; // Exactly -5° elbow for horizontal blade
       torsoRotation = 0;
       this.weaponSwing.isActive = false;
       
@@ -943,7 +943,7 @@ export class Player {
       this.playerBody.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
     }
     
-    // NEW: Apply torso rotation for realistic body movement
+    // Apply torso rotation for realistic body movement
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = torsoRotation;
     }
@@ -953,7 +953,7 @@ export class Player {
       this.equippedWeapon.getMesh().rotation.z = weaponWristRotation;
     }
     
-    console.log(`⚔️ [Player] FIXED Enhanced realistic sword swing - Phase: ${elapsed < phases.windup ? 'WINDUP' : elapsed < phases.windup + phases.slash ? 'SLASH' : 'RECOVERY'}, Elbow: ${elbowRotation.x.toFixed(3)} (DOWNWARD), Torso: ${torsoRotation.toFixed(2)}`);
+    console.log(`⚔️ [Player] PERFECT HORIZONTAL sword swing - Phase: ${elapsed < phases.windup ? 'WINDUP' : elapsed < phases.windup + phases.slash ? 'SLASH' : 'RECOVERY'}, Shoulder: +${(shoulderAngle * 180 / Math.PI).toFixed(1)}°, Elbow: ${(elbowRotation.x * 180 / Math.PI).toFixed(1)}°, Result: ${((shoulderAngle + elbowRotation.x) * 180 / Math.PI).toFixed(1)}° (0° = perfect horizontal)`);
   }
   
   private trackWeaponTip(): void {
