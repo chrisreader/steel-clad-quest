@@ -31,8 +31,8 @@ export class SwordSwingAnimation {
     const slashEndShoulderX = THREE.MathUtils.degToRad(50); // 50° reasonable end position (changed from 30°)
     
     const neutralShoulderY = 0;
-    const windupShoulderY = THREE.MathUtils.degToRad(-30); // Reduced pull back
-    const slashEndShoulderY = THREE.MathUtils.degToRad(45); // Reduced sweep to prevent going behind player
+    const windupShoulderY = THREE.MathUtils.degToRad(-60); // Increased from -30° for wider swing (further right)
+    const slashEndShoulderY = THREE.MathUtils.degToRad(75); // Increased from 45° for wider swing (further left)
     
     if (elapsed < phases.windup) {
       // WINDUP PHASE: Proper overhead raise from 60° to 90°
@@ -42,7 +42,7 @@ export class SwordSwingAnimation {
       // Proper overhead windup - from 60° to 90°
       shoulderRotation.x = THREE.MathUtils.lerp(neutralShoulderX, windupShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(neutralShoulderY, windupShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0, -0.2, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0, -0.3, easedT); // Increased shoulder lean
       
       // Elbow bends naturally for high position
       elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.3, easedT);
@@ -53,8 +53,8 @@ export class SwordSwingAnimation {
       wristRotation.y = THREE.MathUtils.lerp(0, -0.15, easedT);
       wristRotation.z = THREE.MathUtils.lerp(0, 0.1, easedT);
       
-      // Reduced torso wind up
-      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
+      // Enhanced torso wind up for wider swing
+      torsoRotation = THREE.MathUtils.lerp(0, -0.5, easedT); // Increased from -0.3
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE: Controlled diagonal sweep from 90° to 50°
@@ -64,7 +64,7 @@ export class SwordSwingAnimation {
       // Proper diagonal sweep from 90° to 50°
       shoulderRotation.x = THREE.MathUtils.lerp(windupShoulderX, slashEndShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(windupShoulderY, slashEndShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(-0.2, 0.2, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(-0.3, 0.3, easedT); // Enhanced shoulder rotation
       
       // Elbow extends during slash
       elbowRotation.x = THREE.MathUtils.lerp(-0.3, 0.1, easedT);
@@ -75,8 +75,8 @@ export class SwordSwingAnimation {
       wristRotation.y = THREE.MathUtils.lerp(-0.15, Math.PI / 6, easedT);
       wristRotation.z = THREE.MathUtils.lerp(0.1, -Math.PI / 8, easedT);
       
-      // Controlled torso rotation for diagonal slash
-      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.5, easedT);
+      // Enhanced torso rotation for wider diagonal slash
+      torsoRotation = THREE.MathUtils.lerp(-0.5, 0.8, easedT); // Increased from 0.5 to 0.8
       
       // Enhanced wrist snap during middle 60% of slash
       if (t >= 0.2 && t <= 0.8) {
@@ -93,7 +93,7 @@ export class SwordSwingAnimation {
       // Return to proper 60° ready position
       shoulderRotation.x = THREE.MathUtils.lerp(slashEndShoulderX, neutralShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(slashEndShoulderY, neutralShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0.2, 0, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0.3, 0, easedT);
       
       // Return elbow to ready position
       elbowRotation.x = THREE.MathUtils.lerp(0.1, -0.05, easedT);
@@ -105,7 +105,7 @@ export class SwordSwingAnimation {
       wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 8, 0, easedT);
       
       // Return torso to neutral
-      torsoRotation = THREE.MathUtils.lerp(0.5, 0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0.8, 0, easedT);
       
     } else {
       // ANIMATION COMPLETE - reset to 60° ready position

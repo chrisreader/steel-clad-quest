@@ -27,12 +27,12 @@ export class IronSword extends Sword {
           neutral: { x: Math.PI / 3, y: 0, z: 0 }, // 60° proper ready position
           windup: { 
             x: Math.PI / 3 + THREE.MathUtils.degToRad(30), // 90° overhead position
-            y: THREE.MathUtils.degToRad(-30),               // Reduced pull back
+            y: THREE.MathUtils.degToRad(-60),               // Increased from -30° for wider swing
             z: 0
           },
           slash: { 
             x: THREE.MathUtils.degToRad(50),                // 50° reasonable end position
-            y: THREE.MathUtils.degToRad(45),                // Controlled sweep
+            y: THREE.MathUtils.degToRad(75),                // Increased from 45° for wider swing
             z: THREE.MathUtils.degToRad(-15)                // Enhanced wrist snap
           }
         }
