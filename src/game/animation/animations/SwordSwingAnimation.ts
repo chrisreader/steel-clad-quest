@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -70,28 +71,29 @@ export class SwordSwingAnimation {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Smooth interpolation from neutral to raised position
+      // WINDUP PHASE: Smooth interpolation from neutral (60°, 0°) to windup (70°, 10°)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1); // Using smoothstep for natural movement
       
-      // SHOULDER: Use weapon config windup position (right side ready)
-      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x, configRotations.windup.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(configRotations.neutral.y, configRotations.windup.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(configRotations.neutral.z, configRotations.windup.z, easedT);
+      // SHOULDER: Interpolates from neutral (60°, 0°) to windup (70°, 10°)
+      shoulderRotation.x = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(60), THREE.MathUtils.degToRad(70), easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(0, THREE.MathUtils.degToRad(10), easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0, 0, easedT);
       
-      // ELBOW: Extend to support right position
+      // ELBOW: Extends from 0.05 to -0.1 on X, moves to -60° on Y for right positioning
       elbowRotation.x = THREE.MathUtils.lerp(0.05, -0.1, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 6, easedT); // Slight outward for right position
+      elbowRotation.y = THREE.MathUtils.lerp(0, THREE.MathUtils.degToRad(-60), easedT); // -60° for right positioning
       
       // WRIST: Position for diagonal strike
       wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 8, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0, configRotations.windup.z, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(0, 0, easedT);
       
       // TORSO: Coil to the right for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
       
       console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} easedT=${easedT.toFixed(2)} - Smooth interpolation to RIGHT SIDE position`);
-      console.log(`🗡️ [SwordSwingAnimation] Shoulder Y angle: ${THREE.MathUtils.radToDeg(shoulderRotation.y).toFixed(1)}°`);
+      console.log(`🗡️ [SwordSwingAnimation] Shoulder: X=${THREE.MathUtils.radToDeg(shoulderRotation.x).toFixed(1)}° Y=${THREE.MathUtils.radToDeg(shoulderRotation.y).toFixed(1)}°`);
+      console.log(`🗡️ [SwordSwingAnimation] Elbow: X=${elbowRotation.x.toFixed(2)} Y=${THREE.MathUtils.radToDeg(elbowRotation.y).toFixed(1)}°`);
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE: STRAIGHT DIAGONAL LINE from RIGHT to LEFT-DOWN with aggressive acceleration
@@ -108,17 +110,17 @@ export class SwordSwingAnimation {
       };
       
       // SHOULDER: Aggressive movement from windup to new slash end position
-      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.windup.x, slashEndRotation.x, aggressiveT);
-      shoulderRotation.y = THREE.MathUtils.lerp(configRotations.windup.y, slashEndRotation.y, aggressiveT);
-      shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, slashEndRotation.z, aggressiveT);
+      shoulderRotation.x = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(70), slashEndRotation.x, aggressiveT);
+      shoulderRotation.y = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(10), slashEndRotation.y, aggressiveT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0, slashEndRotation.z, aggressiveT);
       
       // ELBOW: Aggressive movement to support fast diagonal
       elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.15, aggressiveT);
-      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 6, aggressiveT); // Moderate sweep across body
+      elbowRotation.y = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-60), Math.PI / 6, aggressiveT); // Moderate sweep across body
       
       // WRIST: Aggressive movement with snap for fast diagonal line
       wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 10, aggressiveT);
-      wristRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, 0, aggressiveT);
+      wristRotation.z = THREE.MathUtils.lerp(0, 0, aggressiveT);
       
       // TORSO: Aggressive rotation to support fast diagonal movement
       torsoRotation = THREE.MathUtils.lerp(-0.3, 0.25, aggressiveT);
@@ -139,10 +141,10 @@ export class SwordSwingAnimation {
         z: 0
       };
       
-      // Return all joints to neutral using weapon config
-      shoulderRotation.x = THREE.MathUtils.lerp(slashEndRotation.x, configRotations.neutral.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(slashEndRotation.y, configRotations.neutral.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(slashEndRotation.z, configRotations.neutral.z, easedT);
+      // Return all joints to neutral (60°, 0°)
+      shoulderRotation.x = THREE.MathUtils.lerp(slashEndRotation.x, THREE.MathUtils.degToRad(60), easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(slashEndRotation.y, 0, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(slashEndRotation.z, 0, easedT);
       
       // Return elbow to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.15, 0.05, easedT);
@@ -213,14 +215,10 @@ export class SwordSwingAnimation {
   }
   
   private completeAnimation(): void {
-    console.log('🗡️ [SwordSwingAnimation] *** COMPLETING ANIMATION *** - Resetting to weapon config neutral rotations');
+    console.log('🗡️ [SwordSwingAnimation] *** COMPLETING ANIMATION *** - Resetting to neutral rotations');
     
-    // Get weapon config for neutral position
-    const weaponConfig = this.equippedWeapon.getConfig();
-    const neutralRotation = weaponConfig.swingAnimation.rotations.neutral;
-    
-    // Reset to weapon config neutral rotations
-    this.playerBody.rightArm.rotation.set(neutralRotation.x, neutralRotation.y, neutralRotation.z);
+    // Reset to neutral rotations (60°, 0°)
+    this.playerBody.rightArm.rotation.set(THREE.MathUtils.degToRad(60), 0, 0);
     
     // Reset elbow to minimal bend
     if (this.playerBody.rightElbow) {
