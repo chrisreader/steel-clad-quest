@@ -76,7 +76,7 @@ export class SwordSwingAnimation {
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Moderate windup - FORWARD and slightly UP and RIGHT
+      // SHOULDER: Moderate windup - FORWARD and slightly UP and RIGHT (increased by 20%)
       shoulderRotation.x = THREE.MathUtils.lerp(
         configRotations.neutral.x,                    // Start at ~60° (π/3)
         configRotations.neutral.x + Math.PI / 6,      // End at ~90° (π/3 + π/6) - REDUCED from π/3
@@ -84,7 +84,7 @@ export class SwordSwingAnimation {
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
         configRotations.neutral.y,                    // Start at 0°
-        -Math.PI / 6,                                 // End at ~-30° (REDUCED from -π/4.5)
+        -Math.PI / 5,                                 // End at ~-36° (increased 20% from -π/6 = -30°)
         easedT
       );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.neutral.z, configRotations.windup.z, easedT);
@@ -109,15 +109,15 @@ export class SwordSwingAnimation {
       // AGGRESSIVE EASING like reference code: t * t * (3 - 2 * t)
       const aggressiveT = t * t * (3 - 2 * t);
       
-      // SHOULDER: FORWARD SWEEP movement - stays forward, sweeps to LEFT
+      // SHOULDER: FORWARD SWEEP movement - stays forward, sweeps to LEFT (increased by 20%)
       shoulderRotation.x = THREE.MathUtils.lerp(
         configRotations.neutral.x + Math.PI / 6,      // From windup ~90°
         configRotations.neutral.x + Math.PI / 12,     // To forward position ~75° (INCREASED from -π/12)
         aggressiveT
       );
       shoulderRotation.y = THREE.MathUtils.lerp(
-        -Math.PI / 6,                                 // From windup ~-30°
-        Math.PI / 3,                                  // To left sweep ~+60° (REDUCED from π/2.5)
+        -Math.PI / 5,                                 // From windup ~-36° (increased 20%)
+        Math.PI / 2.5,                               // To left sweep ~72° (increased 20% from π/3 = 60°)
         aggressiveT
       );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, aggressiveT);
@@ -152,7 +152,7 @@ export class SwordSwingAnimation {
       
       // Return all joints to neutral positions
       shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x + Math.PI / 12, configRotations.neutral.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 3, configRotations.neutral.y, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 2.5, configRotations.neutral.y, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.slash.z, configRotations.neutral.z, easedT);
       
       // Return elbow to neutral
