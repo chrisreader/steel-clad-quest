@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { MouseHandler } from './input/MouseHandler';
 import { KeyboardHandler } from './input/KeyboardHandler';
@@ -27,7 +26,7 @@ export class InputManager {
   private pointerLockManager: PointerLockManager;
   
   constructor() {
-    console.log('Initializing Input Manager...');
+    console.log('🎮 [InputManager] Initializing with enhanced mouse smoothing...');
     
     // Create event dispatcher
     const eventDispatcher = this.dispatchInputEvent.bind(this);
@@ -44,7 +43,7 @@ export class InputManager {
   
   public initialize(renderer: THREE.WebGLRenderer): void {
     this.pointerLockManager.initialize(renderer);
-    console.log('InputManager initialized with renderer');
+    console.log('🎮 [InputManager] Initialized with enhanced mouse handling');
   }
   
   private setupPointerLockSync(): void {
@@ -55,6 +54,7 @@ export class InputManager {
       
       if (type === 'pointerLockChange') {
         this.mouseHandler.setPointerLocked(data.locked);
+        console.log("🔄 [InputManager] Synchronized pointer lock state:", data.locked);
       }
     });
   }
@@ -138,7 +138,8 @@ export class InputManager {
   }
   
   public update(): void {
-    // Update input states if needed
+    // Reset mouse delta after each frame for smooth movement
+    this.mouseHandler.resetMouseDelta();
   }
   
   public dispose(): void {

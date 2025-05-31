@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class MouseHandler {
@@ -10,6 +11,10 @@ export class MouseHandler {
   private isDoubleClick: boolean = false;
   private wheelDelta: number = 0;
   private isPointerLocked: boolean = false;
+  
+  // Performance optimization
+  private lastMouseMoveTime: number = 0;
+  private mouseMoveThrottle: number = 8; // ~120fps max for mouse events
   
   private eventDispatcher: (type: string, data?: any) => void;
   
@@ -27,18 +32,26 @@ export class MouseHandler {
   }
   
   private handleMouseMove(event: MouseEvent): void {
+    const now = performance.now();
+    
+    // Throttle mouse events for better performance (but allow all when pointer locked)
+    if (!this.isPointerLocked && now - this.lastMouseMoveTime < this.mouseMoveThrottle) {
+      return;
+    }
+    this.lastMouseMoveTime = now;
+    
     this.previousMouse.x = this.mouse.x;
     this.previousMouse.y = this.mouse.y;
     
     this.mouse.x = event.clientX;
     this.mouse.y = event.clientY;
     
+    // Use raw movement values for better precision
     this.mouseMovement.x = event.movementX || 0;
     this.mouseMovement.y = event.movementY || 0;
     
+    // Only dispatch look events when pointer is locked and there's actual movement
     if (this.isPointerLocked && (this.mouseMovement.x !== 0 || this.mouseMovement.y !== 0)) {
-      console.log("🖱️ [MouseHandler] Mouse movement dispatched (pointer locked):", this.mouseMovement.x, this.mouseMovement.y);
-      
       this.eventDispatcher('look', {
         x: this.mouseMovement.x,
         y: this.mouseMovement.y
@@ -48,8 +61,6 @@ export class MouseHandler {
   
   private handleMouseDown(event: MouseEvent): void {
     this.mouse.buttons |= (1 << event.button);
-    
-    console.log("Mouse button pressed:", event.button);
     
     const now = Date.now();
     const timeSinceLastClick = now - this.lastMouseDown;
@@ -117,6 +128,7 @@ export class MouseHandler {
   
   public setPointerLocked(locked: boolean): void {
     this.isPointerLocked = locked;
+    console.log("🖱️ [MouseHandler] Pointer lock state updated:", locked);
   }
   
   public dispose(): void {

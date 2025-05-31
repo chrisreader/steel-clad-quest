@@ -7,10 +7,16 @@ export class RenderEngine {
   private clock: THREE.Clock;
   private mountElement: HTMLDivElement;
   
-  // Camera controls
+  // Camera controls with smoothing
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
-  private mouseSensitivity: number = 0.002;
+  private targetRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
+  private mouseSensitivity: number = 0.003; // Increased from 0.002 for better responsiveness
   private maxPitch: number = Math.PI / 2 - 0.1;
+  private smoothingFactor: number = 0.15; // For exponential smoothing
+  
+  // Mouse smoothing
+  private mouseVelocity: { x: number; y: number } = { x: 0, y: 0 };
+  private smoothedMouseDelta: { x: number; y: number } = { x: 0, y: 0 };
   
   // Debug state
   private renderCount: number = 0;
@@ -56,28 +62,39 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    console.log("🎨 [RenderEngine] Initialized with camera layer system - torso will be invisible to player");
+    console.log("🎨 [RenderEngine] Initialized with enhanced mouse smoothing");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
     // Position camera at head level to avoid torso clipping
-    // Player head is at playerPosition.y + 1.2, camera positioned at same level but head is invisible
     this.camera.position.set(
       playerPosition.x, 
-      playerPosition.y + 1.2, // INCREASED from 1.05 to 1.2 to avoid torso clipping
-      playerPosition.z - 0.05  // Slight backward offset for better viewing angle
+      playerPosition.y + 1.2,
+      playerPosition.z - 0.05
     );
     this.cameraRotation.pitch = 0;
     this.cameraRotation.yaw = 0;
+    this.targetRotation.pitch = 0;
+    this.targetRotation.yaw = 0;
     this.updateCameraRotation();
     
-    console.log("📹 [RenderEngine] First-person camera positioned at head level to prevent clipping:", this.camera.position);
+    console.log("📹 [RenderEngine] First-person camera positioned with smooth controls:", this.camera.position);
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
-    this.cameraRotation.yaw -= deltaX * this.mouseSensitivity;
-    this.cameraRotation.pitch -= deltaY * this.mouseSensitivity;
-    this.cameraRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.cameraRotation.pitch));
+    // Apply mouse smoothing using exponential moving average
+    this.smoothedMouseDelta.x = this.smoothedMouseDelta.x * (1 - this.smoothingFactor) + deltaX * this.smoothingFactor;
+    this.smoothedMouseDelta.y = this.smoothedMouseDelta.y * (1 - this.smoothingFactor) + deltaY * this.smoothingFactor;
+    
+    // Update target rotation with smoothed input
+    this.targetRotation.yaw -= this.smoothedMouseDelta.x * this.mouseSensitivity;
+    this.targetRotation.pitch -= this.smoothedMouseDelta.y * this.mouseSensitivity;
+    this.targetRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.targetRotation.pitch));
+    
+    // Interpolate towards target rotation for ultra-smooth movement
+    const lerpFactor = 0.2; // Adjust for responsiveness vs smoothness
+    this.cameraRotation.yaw = THREE.MathUtils.lerp(this.cameraRotation.yaw, this.targetRotation.yaw, lerpFactor);
+    this.cameraRotation.pitch = THREE.MathUtils.lerp(this.cameraRotation.pitch, this.targetRotation.pitch, lerpFactor);
     
     this.updateCameraRotation();
   }
@@ -94,8 +111,8 @@ export class RenderEngine {
     // Keep camera positioned at head level to avoid torso clipping
     this.camera.position.set(
       playerPosition.x, 
-      playerPosition.y + 1.2, // INCREASED from 1.05 to 1.2 to prevent torso clipping
-      playerPosition.z - 0.05  // Maintain slight backward offset
+      playerPosition.y + 1.2,
+      playerPosition.z - 0.05
     );
   }
   
@@ -106,7 +123,7 @@ export class RenderEngine {
     // Log every 60 frames (roughly 1 second)
     if (this.renderCount % 60 === 0) {
       const fps = this.renderCount / ((now - this.lastRenderTime) / 1000) * 60;
-      console.log("🎨 [RenderEngine] Rendering with layer-based torso hiding:", {
+      console.log("🎨 [RenderEngine] Rendering with smooth camera controls:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
         cameraPos: this.camera.position,
