@@ -19,6 +19,10 @@ export interface PlayerStats {
   defense: number;
   speed: number;
   attackPower: number;
+  movementSpeed: number;
+  attackDamage: number;
+  inventorySize: number;
+  initialLevel: number;
 }
 
 export interface PlayerBody {
