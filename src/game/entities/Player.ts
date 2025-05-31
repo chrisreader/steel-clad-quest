@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { PlayerBody, WeaponSwingAnimation, PlayerStats } from '../../types/GameTypes';
@@ -464,37 +463,37 @@ export class Player {
     this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.7, -0.4); // INCREASED Y from 1.4 to 1.7
     this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.8, -0.3); // INCREASED Y from 1.5 to 1.8
     
-    // CRITICAL FIX: FORWARD-ANGLED base position for bow stance with NO Y ROTATION
-    const baseShoulder = Math.PI / 6; // Changed from Math.PI / 8 to Math.PI / 6 (30° instead of 22.5°)
+    // CRITICAL FIX: UPDATED to 80° chest-level position with NO Y ROTATION - matches WeaponAnimationSystem
+    const bowNaturalReady = Math.PI * 80 / 180; // 80° upward angle (chest level)
     
-    // FIXED: Left arm: Extended forward for bow holding with upward angle - NO Y ROTATION
+    // FIXED: Left arm: Natural ready stance at 80° chest level - NO Y ROTATION, parallel with body
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder, // Use forward-angled base position
-      0,            // FIXED: NO Y rotation - no inward/outward angle
-      -0.4          // Added forward angle (negative Z rotation)
+      bowNaturalReady, // 80° upward angle (chest level)
+      0,               // FIXED: NO Y rotation - parallel with body
+      0                // FIXED: NO Z rotation - parallel with body
     );
     
     // FIXED: Right arm: Ready to draw position - NO Y ROTATION
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder, // Use forward-angled base position
-      0,            // FIXED: NO Y rotation - no inward/outward angle
-      -0.3          // Added forward angle (negative Z rotation)
+      Math.PI / 6,     // Moderate upward angle
+      0,               // FIXED: NO Y rotation - parallel with body
+      -Math.PI / 8     // Forward angle for better POV visibility
     );
     
     // Drawing positions - left arm stays steady, right arm pulls back at TALLER height
     this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.7, -0.4); // INCREASED Y from 1.4 to 1.7
     this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.8, -0.2); // INCREASED Y from 1.5 to 1.8
     
-    // FIXED: Drawing arm rotations with enhanced visibility - NO Y ROTATION
+    // FIXED: Drawing arm rotations with 80° base position - NO Y ROTATION
     this.bowDrawAnimation.leftArmDrawRotation.set(
-      baseShoulder, // Use forward-angled base position
-      0,            // FIXED: NO Y rotation - no inward/outward angle
-      -0.4          // Maintain forward angle
+      bowNaturalReady, // Use 80° chest-level position as base
+      0,               // FIXED: NO Y rotation - parallel with body
+      0                // FIXED: NO Z rotation - parallel with body
     );
     
     this.bowDrawAnimation.rightArmDrawRotation.set(
-      baseShoulder + 0.7, // Keep the +0.7 offset for drawing motion
-      0,                  // FIXED: NO Y rotation - no inward/outward angle
+      Math.PI / 6 + 0.7, // Keep the +0.7 offset for drawing motion
+      0,                 // FIXED: NO Y rotation - parallel with body
       -0.5
     );
     
@@ -502,7 +501,7 @@ export class Player {
     this.bowDrawAnimation.bowRestRotation.set(0, 0, 0);
     this.bowDrawAnimation.bowDrawRotation.set(0, 0, 0);
     
-    console.log("🏹 [Player] FIXED bow animation initialized with NO Y ROTATION - arms only go upward/forward");
+    console.log("🏹 [Player] UPDATED bow animation to 80° chest-level natural ready stance - matches WeaponAnimationSystem");
   }
   
   // FIXED: Set weapon-specific ready stance - only weapon arm raised with NO Y ROTATION and PARALLEL positioning
@@ -661,20 +660,20 @@ export class Player {
     this.playerBody.leftArm.position.set(-0.3, 0.8, 0);
     this.playerBody.rightArm.position.set(0.3, 0.8, 0);
     
-    // CRITICAL FIX: Set shoulder rotations for archery stance with NO Y ROTATION
+    // CRITICAL FIX: Set shoulder rotations for archery stance with 80° chest-level position
     
-    // FIXED: Left shoulder: Enhanced bow holding position - NO Y ROTATION
+    // FIXED: Left shoulder: 80° chest-level bow holding position - NO Y ROTATION, parallel with body
     this.bowDrawAnimation.leftArmRestRotation.set(
-      Math.PI / 4,   // Keep the raised angle from ready stance
-      0,             // FIXED: NO Y rotation - no inward/outward angle
-      -Math.PI / 6   // Forward angle for better POV visibility
+      Math.PI * 80 / 180, // 80° upward angle (chest level)
+      0,                  // FIXED: NO Y rotation - parallel with body
+      0                   // FIXED: NO Z rotation - parallel with body
     );
     
     // FIXED: Right shoulder: Ready to draw position - NO Y ROTATION
     this.bowDrawAnimation.rightArmRestRotation.set(
-      Math.PI / 6,   // Moderate upward angle
-      0,             // FIXED: NO Y rotation - no inward/outward angle
-      -Math.PI / 8   // Forward angle for better POV visibility
+      Math.PI / 6,        // Moderate upward angle
+      0,                  // FIXED: NO Y rotation - parallel with body
+      -Math.PI / 8        // Forward angle for better POV visibility
     );
     
     // Apply rotations to shoulder joints (the main arm groups)
@@ -698,7 +697,7 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] FIXED archery stance set with NO Y ROTATION - arms only upward/forward");
+    console.log("🏹 [Player] UPDATED archery stance to 80° chest-level position - matches WeaponAnimationSystem");
     
     // Debug arm positions after setting archery stance
     this.debugArmPositions("AFTER_ARCHERY_STANCE");
