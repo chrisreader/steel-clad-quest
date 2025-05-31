@@ -100,6 +100,10 @@ export class SceneManager {
     this.createSkybox();
     console.log('Skybox created');
     
+    // Force update skybox to apply new realistic blue colors
+    this.updateSkybox();
+    console.log('Skybox updated with realistic blue colors');
+    
     console.log('Default world creation complete. Total scene children:', this.scene.children.length);
   }
   
@@ -318,6 +322,37 @@ export class SceneManager {
     });
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
+  }
+  
+  /**
+   * Updates the skybox texture with current time of day
+   */
+  public updateSkybox(): void {
+    if (this.skybox) {
+      // Create new sky texture with current time of day
+      const newSkyTexture = TextureGenerator.createSkyTexture(this.timeOfDay);
+      
+      // Dispose old texture to prevent memory leaks
+      if (this.skybox.material instanceof THREE.MeshBasicMaterial && this.skybox.material.map) {
+        this.skybox.material.map.dispose();
+      }
+      
+      // Apply new texture
+      if (this.skybox.material instanceof THREE.MeshBasicMaterial) {
+        this.skybox.material.map = newSkyTexture;
+        this.skybox.material.needsUpdate = true;
+      }
+      
+      console.log('Skybox texture updated with timeOfDay:', this.timeOfDay);
+    }
+  }
+  
+  /**
+   * Sets the time of day and updates the skybox
+   */
+  public setTimeOfDay(time: number): void {
+    this.timeOfDay = Math.max(0, Math.min(1, time)); // Clamp between 0 and 1
+    this.updateSkybox();
   }
   
   // Legacy compatibility methods
