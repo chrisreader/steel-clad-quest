@@ -87,8 +87,67 @@ export class WeaponAnimationSystem {
     // Return to weapon-appropriate idle stance
     switch (this.currentWeaponType) {
       case 'bow':
-        // Maintain archery stance
+        // BOW NATURAL READY STANCE: Left arm at 80° chest level, parallel with body
+        const bowLeftArmTargetX = Math.PI * 80 / 180;  // 80° upward angle
+        const bowLeftArmTargetY = 0;                   // Parallel with body
+        const bowLeftArmTargetZ = 0;                   // Parallel with body
+        
+        playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
+          playerBody.leftArm.rotation.x, bowLeftArmTargetX, returnSpeed
+        );
+        playerBody.leftArm.rotation.y = THREE.MathUtils.lerp(
+          playerBody.leftArm.rotation.y, bowLeftArmTargetY, returnSpeed
+        );
+        playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
+          playerBody.leftArm.rotation.z, bowLeftArmTargetZ, returnSpeed
+        );
+        
+        // Right arm in ready position
+        playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
+          playerBody.rightArm.rotation.x, Math.PI / 6, returnSpeed
+        );
+        playerBody.rightArm.rotation.y = THREE.MathUtils.lerp(
+          playerBody.rightArm.rotation.y, 0, returnSpeed
+        );
+        playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
+          playerBody.rightArm.rotation.z, -Math.PI / 8, returnSpeed
+        );
+        
+        // Bow-specific elbow and hand positions
+        if (playerBody.leftElbow) {
+          playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
+            playerBody.leftElbow.rotation.x, 0.2, returnSpeed
+          );
+        }
+        if (playerBody.rightElbow) {
+          playerBody.rightElbow.rotation.x = THREE.MathUtils.lerp(
+            playerBody.rightElbow.rotation.x, 0.3, returnSpeed
+          );
+        }
+        
+        playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
+          playerBody.leftHand.rotation.x, -Math.PI / 6, returnSpeed
+        );
+        playerBody.leftHand.rotation.y = THREE.MathUtils.lerp(
+          playerBody.leftHand.rotation.y, 0, returnSpeed
+        );
+        playerBody.leftHand.rotation.z = THREE.MathUtils.lerp(
+          playerBody.leftHand.rotation.z, Math.PI / 4, returnSpeed
+        );
+        
+        playerBody.rightHand.rotation.x = THREE.MathUtils.lerp(
+          playerBody.rightHand.rotation.x, 0, returnSpeed
+        );
+        playerBody.rightHand.rotation.y = THREE.MathUtils.lerp(
+          playerBody.rightHand.rotation.y, 0, returnSpeed
+        );
+        playerBody.rightHand.rotation.z = THREE.MathUtils.lerp(
+          playerBody.rightHand.rotation.z, 0, returnSpeed
+        );
+        
+        console.log('🏹 [WeaponAnimationSystem] Returning to bow natural ready stance - 80° chest level, parallel with body');
         break;
+        
       case 'melee':
       case 'emptyHands':
         // Return to neutral arm positions
