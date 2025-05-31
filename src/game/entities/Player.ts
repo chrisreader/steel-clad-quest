@@ -151,22 +151,25 @@ export class Player {
     if (this.playerBody && this.playerBody.leftArm && this.playerBody.rightArm) {
       const leftPos = this.playerBody.leftArm.position.clone();
       const rightPos = this.playerBody.rightArm.position.clone();
+      const leftRot = this.playerBody.leftArm.rotation.clone();
+      const rightRot = this.playerBody.rightArm.rotation.clone();
       
-      console.log(`🔍 [Player] ARM POSITION DEBUG [${context}]:`);
+      console.log(`🔍 [Player] ARM DEBUG [${context}]:`);
       console.log(`   Left Arm Position: x=${leftPos.x.toFixed(3)}, y=${leftPos.y.toFixed(3)}, z=${leftPos.z.toFixed(3)}`);
       console.log(`   Right Arm Position: x=${rightPos.x.toFixed(3)}, y=${rightPos.y.toFixed(3)}, z=${rightPos.z.toFixed(3)}`);
-      console.log(`   Expected Y Position: 0.8 (NEW TALLER SHOULDER HEIGHT)`);
-      console.log(`   Previous Y Position: 0.55 (OLD SHORTER HEIGHT)`);
+      console.log(`   Left Arm Rotation: x=${leftRot.x.toFixed(3)}, y=${leftRot.y.toFixed(3)}, z=${leftRot.z.toFixed(3)}`);
+      console.log(`   Right Arm Rotation: x=${rightRot.x.toFixed(3)}, y=${rightRot.y.toFixed(3)}, z=${rightRot.z.toFixed(3)}`);
+      console.log(`   Expected "CORRECT" Rotation: x=0.393 (22.5°), y=0.000, z=0.000`);
       
-      if (leftPos.y === 0.8 && rightPos.y === 0.8) {
-        console.log(`✅ [Player] ARM POSITIONS CORRECT - Arms at NEW TALLER shoulder height!`);
-      } else if (leftPos.y === 0.55 || rightPos.y === 0.55) {
-        console.log(`❌ [Player] ARM POSITIONS STILL OLD - Arms still at shorter height!`);
+      if (Math.abs(leftRot.y) < 0.01 && Math.abs(rightRot.y) < 0.01) {
+        console.log(`✅ [Player] ARM ROTATIONS CORRECT - Y rotations are 0 (no inward/outward angle)!`);
       } else {
-        console.log(`⚠️ [Player] ARM POSITIONS UNEXPECTED - Arms at unknown height!`);
+        console.log(`❌ [Player] ARM ROTATIONS HAVE INWARD ANGLE - Y rotations not zero!`);
+        console.log(`   Left Y rotation: ${leftRot.y.toFixed(3)} (should be 0.000)`);
+        console.log(`   Right Y rotation: ${rightRot.y.toFixed(3)} (should be 0.000)`);
       }
     } else {
-      console.log(`❌ [Player] ARM POSITION DEBUG [${context}] - Arms not yet created!`);
+      console.log(`❌ [Player] ARM DEBUG [${context}] - Arms not yet created!`);
     }
   }
   
@@ -445,11 +448,11 @@ export class Player {
   }
   
   private initializeBowAnimationPositions(): void {
-    // Enhanced hand rotations for proper vertical bow gripping
+    // FIXED: Enhanced hand rotations for proper vertical bow gripping - NO Y ROTATION
     this.bowDrawAnimation.leftHandRestRotation.set(-Math.PI / 4, 0, Math.PI / 3);
     this.bowDrawAnimation.rightHandRestRotation.set(0, 0, 0);
     
-    // Hand rotations during draw - left hand maintains realistic grip
+    // FIXED: Hand rotations during draw - left hand maintains realistic grip - NO Y ROTATION
     this.bowDrawAnimation.leftHandDrawRotation.set(-Math.PI / 4, 0, Math.PI / 3);
     this.bowDrawAnimation.rightHandDrawRotation.set(0, 0, 0);
     
@@ -457,37 +460,37 @@ export class Player {
     this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.7, -0.4); // INCREASED Y from 1.4 to 1.7
     this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.8, -0.3); // INCREASED Y from 1.5 to 1.8
     
-    // FORWARD-ANGLED base position for bow stance - more visible in POV
+    // CRITICAL FIX: FORWARD-ANGLED base position for bow stance with NO Y ROTATION
     const baseShoulder = Math.PI / 6; // Changed from Math.PI / 8 to Math.PI / 6 (30° instead of 22.5°)
     
-    // Left arm: Extended forward for bow holding with upward angle - FORWARD-ANGLED base
+    // FIXED: Left arm: Extended forward for bow holding with upward angle - NO Y ROTATION
     this.bowDrawAnimation.leftArmRestRotation.set(
       baseShoulder, // Use forward-angled base position
-      -0.6,
-      -0.4 // Added forward angle (negative Z rotation)
+      0,            // FIXED: NO Y rotation - no inward/outward angle
+      -0.4          // Added forward angle (negative Z rotation)
     );
     
-    // Right arm: Ready to draw position - FORWARD-ANGLED base
+    // FIXED: Right arm: Ready to draw position - NO Y ROTATION
     this.bowDrawAnimation.rightArmRestRotation.set(
       baseShoulder, // Use forward-angled base position
-      0.1,
-      -0.3 // Added forward angle (negative Z rotation)
+      0,            // FIXED: NO Y rotation - no inward/outward angle
+      -0.3          // Added forward angle (negative Z rotation)
     );
     
     // Drawing positions - left arm stays steady, right arm pulls back at TALLER height
     this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.7, -0.4); // INCREASED Y from 1.4 to 1.7
     this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.8, -0.2); // INCREASED Y from 1.5 to 1.8
     
-    // Drawing arm rotations with enhanced visibility - FORWARD-ANGLED base positions
+    // FIXED: Drawing arm rotations with enhanced visibility - NO Y ROTATION
     this.bowDrawAnimation.leftArmDrawRotation.set(
       baseShoulder, // Use forward-angled base position
-      -0.6,
-      -0.4 // Maintain forward angle
+      0,            // FIXED: NO Y rotation - no inward/outward angle
+      -0.4          // Maintain forward angle
     );
     
     this.bowDrawAnimation.rightArmDrawRotation.set(
       baseShoulder + 0.7, // Keep the +0.7 offset for drawing motion
-      1.0,
+      0,                  // FIXED: NO Y rotation - no inward/outward angle
       -0.5
     );
     
@@ -495,10 +498,10 @@ export class Player {
     this.bowDrawAnimation.bowRestRotation.set(0, 0, 0);
     this.bowDrawAnimation.bowDrawRotation.set(0, 0, 0);
     
-    console.log("🏹 [Player] Enhanced bow animation initialized with FORWARD-ANGLED arms for better POV visibility");
+    console.log("🏹 [Player] FIXED bow animation initialized with NO Y ROTATION - arms only go upward/forward");
   }
   
-  // NEW METHOD: Set weapon-specific ready stance - only weapon arm raised
+  // FIXED: Set weapon-specific ready stance - only weapon arm raised with NO Y ROTATION
   private setWeaponArmStance(weaponType: 'melee' | 'bow'): void {
     // Debug arm positions before setting weapon stance
     this.debugArmPositions("BEFORE_WEAPON_READY_STANCE");
@@ -513,29 +516,29 @@ export class Player {
       // Left arm: Normal side position (like empty hands)
       this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
       
-      // Right arm: Raised ready position - UPWARD and FORWARD only (NO Y rotation for inward/outward)
+      // FIXED: Right arm: Raised ready position - UPWARD and FORWARD only (NO Y rotation)
       this.playerBody.rightArm.rotation.set(
         Math.PI / 4,   // 45° upward angle (higher than normal)
-        0,             // NO Y rotation - keep natural like empty hands
+        0,             // FIXED: NO Y rotation - keep natural like empty hands
         -Math.PI / 8   // Slight forward tilt
       );
       
-      console.log("🗡️ [Player] Set MELEE ready stance - Right arm raised upward/forward, NO inward rotation");
+      console.log("🗡️ [Player] FIXED MELEE ready stance - Right arm raised upward/forward, NO Y rotation");
       
     } else if (weaponType === 'bow') {
       // BOW READY STANCE: Left arm raised up, right arm at side
       
-      // Left arm: Raised bow-holding position - UPWARD and FORWARD only (NO Y rotation for inward/outward)
+      // FIXED: Left arm: Raised bow-holding position - UPWARD and FORWARD only (NO Y rotation)
       this.playerBody.leftArm.rotation.set(
         Math.PI / 4,  // 45° upward angle
-        0,            // NO Y rotation - keep natural like empty hands
+        0,            // FIXED: NO Y rotation - keep natural like empty hands
         -Math.PI / 8  // Slight forward tilt
       );
       
       // Right arm: Normal side position initially (will be adjusted by bow animation)
       this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
       
-      console.log("🏹 [Player] Set BOW ready stance - Left arm raised upward/forward, NO inward rotation");
+      console.log("🏹 [Player] FIXED BOW ready stance - Left arm raised upward/forward, NO Y rotation");
     }
     
     // Reset elbow positions for natural arm bend
@@ -631,19 +634,19 @@ export class Player {
     this.playerBody.leftArm.position.set(-0.3, 0.8, 0);
     this.playerBody.rightArm.position.set(0.3, 0.8, 0);
     
-    // Set shoulder rotations for archery stance - left arm already raised by setWeaponArmStance
+    // CRITICAL FIX: Set shoulder rotations for archery stance with NO Y ROTATION
     
-    // Left shoulder: Enhanced bow holding position (build upon the ready stance)
+    // FIXED: Left shoulder: Enhanced bow holding position - NO Y ROTATION
     this.bowDrawAnimation.leftArmRestRotation.set(
       Math.PI / 4,   // Keep the raised angle from ready stance
-      -Math.PI / 3,  // More pronounced bow angle
+      0,             // FIXED: NO Y rotation - no inward/outward angle
       -Math.PI / 6   // Forward angle for better POV visibility
     );
     
-    // Right shoulder: Ready to draw position
+    // FIXED: Right shoulder: Ready to draw position - NO Y ROTATION
     this.bowDrawAnimation.rightArmRestRotation.set(
       Math.PI / 6,   // Moderate upward angle
-      Math.PI / 8,   // Slight outward angle
+      0,             // FIXED: NO Y rotation - no inward/outward angle
       -Math.PI / 8   // Forward angle for better POV visibility
     );
     
@@ -668,7 +671,7 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] Enhanced bow stance set with raised left arm for better POV visibility");
+    console.log("🏹 [Player] FIXED archery stance set with NO Y ROTATION - arms only upward/forward");
     
     // Debug arm positions after setting archery stance
     this.debugArmPositions("AFTER_ARCHERY_STANCE");
@@ -682,7 +685,7 @@ export class Player {
     this.playerBody.leftArm.position.set(-0.3, 0.8, 0); // Keep new TALLER shoulder height
     this.playerBody.rightArm.position.set(0.3, 0.8, 0); // Keep new TALLER shoulder height
     
-    // Reset shoulder rotations to SIDE-POSITIONED empty hands stance
+    // FIXED: Reset shoulder rotations to SIDE-POSITIONED empty hands stance with NO Y ROTATION
     this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0); // Back to side position (22.5°)
     this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0); // Back to side position (22.5°)
     
@@ -698,7 +701,7 @@ export class Player {
     this.playerBody.leftHand.rotation.set(0, 0, 0);
     this.playerBody.rightHand.rotation.set(0, 0, 0);
     
-    console.log("🗡️ [Player] Reset to SIDE-POSITIONED empty hands stance (arms at sides)");
+    console.log("🗡️ [Player] FIXED reset to SIDE-POSITIONED empty hands stance with NO Y ROTATION");
     
     // Debug arm positions after reset
     this.debugArmPositions("AFTER_NORMAL_STANCE_RESET");
@@ -892,21 +895,21 @@ export class Player {
       }
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE - return to FORWARD-ANGLED base
+      // FIXED: RECOVERY PHASE - return to FORWARD-ANGLED base with NO Y ROTATION
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, forwardAngleBase, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT); // FIXED: Return to Y=0
       shoulderRotation.z = THREE.MathUtils.lerp(0, forwardZ, easedT);
       
       // Elbow returns to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.2, 0, easedT);
       
     } else {
-      // ANIMATION COMPLETE - return to FORWARD-ANGLED base
+      // FIXED: ANIMATION COMPLETE - return to FORWARD-ANGLED base with NO Y ROTATION
       shoulderRotation.x = forwardAngleBase;
-      shoulderRotation.y = 0;
+      shoulderRotation.y = 0; // FIXED: Ensure Y rotation is 0
       shoulderRotation.z = forwardZ;
       elbowRotation = { x: 0, y: 0, z: 0 };
       this.weaponSwing.isActive = false;
@@ -1231,23 +1234,23 @@ export class Player {
     const chargeLevel = this.equippedWeapon.getChargeLevel ? this.equippedWeapon.getChargeLevel() : 0;
     const lerpSpeed = deltaTime * 8;
     
-    console.log(`🏹 [Player] Realistic bow animation update - Active: ${this.bowDrawAnimation.isActive}, Charge: ${chargeLevel.toFixed(2)}`);
+    console.log(`🏹 [Player] FIXED bow animation update - Active: ${this.bowDrawAnimation.isActive}, Charge: ${chargeLevel.toFixed(2)}`);
     
     if (this.bowDrawAnimation.isActive) {
-      // Enhanced progressive draw animation with FORWARD-ANGLED joint control
+      // Enhanced progressive draw animation with FIXED joint control - NO Y ROTATION
       const drawProgress = Math.min(chargeLevel * 1.2, 1.0);
       
-      // Left shoulder: Stays steady holding the bow with slight adjustment
+      // FIXED: Left shoulder: Stays steady holding the bow with slight adjustment - NO Y ROTATION
       const leftShoulderRotation = new THREE.Euler(
         this.bowDrawAnimation.leftArmRestRotation.x + (drawProgress * 0.1), // Slight lift
-        this.bowDrawAnimation.leftArmRestRotation.y - (drawProgress * 0.1), // Minor angle adjustment
+        0, // FIXED: NO Y rotation - no inward/outward angle
         this.bowDrawAnimation.leftArmRestRotation.z + (drawProgress * 0.05)
       );
       
-      // Right shoulder: Major movement - pulls string back dramatically
+      // FIXED: Right shoulder: Major movement - pulls string back dramatically - NO Y ROTATION
       const rightShoulderRotation = new THREE.Euler(
         this.bowDrawAnimation.rightArmRestRotation.x + (drawProgress * 0.8),
-        this.bowDrawAnimation.rightArmRestRotation.y + (drawProgress * 0.8),
+        0, // FIXED: NO Y rotation - no inward/outward angle
         this.bowDrawAnimation.rightArmRestRotation.z - (drawProgress * 0.6)
       );
       
@@ -1277,13 +1280,11 @@ export class Player {
         drawProgress * -0.3 // Rotate for pulling motion
       );
       
-      // Smooth interpolation for shoulders
+      // FIXED: Smooth interpolation for shoulders - ENSURE Y ROTATION STAYS 0
       this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
         this.playerBody.leftArm.rotation.x, leftShoulderRotation.x, lerpSpeed
       );
-      this.playerBody.leftArm.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.leftArm.rotation.y, leftShoulderRotation.y, lerpSpeed
-      );
+      this.playerBody.leftArm.rotation.y = 0; // FIXED: Force Y rotation to 0
       this.playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
         this.playerBody.leftArm.rotation.z, leftShoulderRotation.z, lerpSpeed
       );
@@ -1291,9 +1292,7 @@ export class Player {
       this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
         this.playerBody.rightArm.rotation.x, rightShoulderRotation.x, lerpSpeed
       );
-      this.playerBody.rightArm.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.rightArm.rotation.y, rightShoulderRotation.y, lerpSpeed
-      );
+      this.playerBody.rightArm.rotation.y = 0; // FIXED: Force Y rotation to 0
       this.playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
         this.playerBody.rightArm.rotation.z, rightShoulderRotation.z, lerpSpeed
       );
@@ -1335,18 +1334,16 @@ export class Player {
       if (drawProgress >= 1.0) {
         const shakeAmount = 0.03 * Math.sin(Date.now() * 0.015);
         this.playerBody.rightArm.rotation.x += shakeAmount;
-        this.playerBody.rightArm.rotation.y += shakeAmount * 0.7;
-        console.log("🏹 [Player] Full draw shake effect active with FORWARD-ANGLED arms");
+        this.playerBody.rightArm.rotation.z += shakeAmount * 0.5; // FIXED: Shake only X and Z, not Y
+        console.log("🏹 [Player] FIXED full draw shake effect - no Y rotation shake");
       }
       
     } else {
-      // Return to archery rest stance smoothly with all joints
+      // FIXED: Return to archery rest stance smoothly with all joints - NO Y ROTATION
       this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
         this.playerBody.leftArm.rotation.x, this.bowDrawAnimation.leftArmRestRotation.x, lerpSpeed
       );
-      this.playerBody.leftArm.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.leftArm.rotation.y, this.bowDrawAnimation.leftArmRestRotation.y, lerpSpeed
-      );
+      this.playerBody.leftArm.rotation.y = 0; // FIXED: Force Y rotation to 0
       this.playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
         this.playerBody.leftArm.rotation.z, this.bowDrawAnimation.leftArmRestRotation.z, lerpSpeed
       );
@@ -1354,9 +1351,7 @@ export class Player {
       this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
         this.playerBody.rightArm.rotation.x, this.bowDrawAnimation.rightArmRestRotation.x, lerpSpeed
       );
-      this.playerBody.rightArm.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.rightArm.rotation.y, this.bowDrawAnimation.rightArmRestRotation.y, lerpSpeed
-      );
+      this.playerBody.rightArm.rotation.y = 0; // FIXED: Force Y rotation to 0
       this.playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
         this.playerBody.rightArm.rotation.z, this.bowDrawAnimation.rightArmRestRotation.z, lerpSpeed
       );

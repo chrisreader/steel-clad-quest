@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -31,21 +32,21 @@ export class BowWalkAnimation {
     
     // Left arm - WEAPON ARM: raised bow-holding position with reduced swing
     const leftArmBaseX = Math.PI / 4;   // 45° raised position
-    const leftArmBaseY = 0;             // NO Y rotation - keep natural like empty hands
+    const leftArmBaseY = 0;             // FIXED: NO Y rotation - keep natural like empty hands
     const leftArmBaseZ = -Math.PI / 6;  // Forward angle for better POV visibility
     
     // Reduced swing for bow-holding arm to maintain control
     playerBody.leftArm.rotation.x = leftArmBaseX - (armSwing * 0.3);
-    playerBody.leftArm.rotation.y = leftArmBaseY;
+    playerBody.leftArm.rotation.y = leftArmBaseY; // FIXED: Always 0 - no inward rotation
     playerBody.leftArm.rotation.z = leftArmBaseZ;
     
     // Right arm - normal side position with walking movement (will be adjusted by draw animation)
     const rightArmBaseX = Math.PI / 6;  // Moderate upward angle
-    const rightArmBaseY = 0;            // NO Y rotation - keep natural like empty hands
+    const rightArmBaseY = 0;            // FIXED: NO Y rotation - keep natural like empty hands
     const rightArmBaseZ = -Math.PI / 8; // Forward angle for better POV visibility
     
     playerBody.rightArm.rotation.x = rightArmBaseX + (armSwing * 0.5);
-    playerBody.rightArm.rotation.y = rightArmBaseY;
+    playerBody.rightArm.rotation.y = rightArmBaseY; // FIXED: Always 0 - no inward rotation
     playerBody.rightArm.rotation.z = rightArmBaseZ;
     
     // Elbows - natural movement for bow stance
@@ -79,16 +80,16 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    console.log(`🏹 [BowWalkAnimation] Updated with LEFT ARM READY STANCE - Left raised for bow, right at ready - Cycle: ${walkCycle.toFixed(2)}, Sprint: ${isSprinting}`);
+    console.log(`🏹 [BowWalkAnimation] FIXED - Left arm raised with NO Y rotation - Sprint: ${isSprinting}`);
   }
   
   public reset(playerBody: PlayerBody): void {
     // Reset to BOW READY STANCE (not empty hands stance)
     
-    // Left arm: Raised bow-holding position - NO Y rotation
+    // FIXED: Left arm: Raised bow-holding position - NO Y rotation
     playerBody.leftArm.rotation.set(Math.PI / 4, 0, -Math.PI / 6);
     
-    // Right arm: Ready position - NO Y rotation
+    // FIXED: Right arm: Ready position - NO Y rotation
     playerBody.rightArm.rotation.set(Math.PI / 6, 0, -Math.PI / 8);
     
     if (playerBody.leftElbow) {
@@ -105,6 +106,6 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] Reset to BOW READY STANCE - Left arm raised outward for bow, right arm ready');
+    console.log('🏹 [BowWalkAnimation] FIXED reset - Left arm raised upward/forward with NO Y rotation');
   }
 }
