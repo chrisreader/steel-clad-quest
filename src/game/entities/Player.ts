@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { PlayerBody, WeaponSwingAnimation, PlayerStats } from '../../types/GameTypes';
@@ -7,6 +8,7 @@ import { BaseWeapon } from '../weapons/BaseWeapon';
 import { WeaponManager } from '../weapons/WeaponManager';
 import { WeaponAnimationSystem, WeaponType } from '../animation/WeaponAnimationSystem';
 import { SwordSwingAnimation } from '../animation/animations/SwordSwingAnimation';
+import { STANDARD_SWORD_ANIMATION } from '../animation/StandardSwordAnimation';
 
 export class Player {
   // THREE.js objects
@@ -628,11 +630,21 @@ export class Player {
     // Update animation system weapon type
     this.weaponAnimationSystem.setWeaponType(weaponType);
     
-    // Update swing animation with weapon config
+    // FIXED: Use standardized sword animation for all swords
     const weaponConfig = weapon.getConfig();
-    this.weaponSwing.duration = weaponConfig.swingAnimation.duration;
-    this.weaponSwing.phases = weaponConfig.swingAnimation.phases;
-    this.weaponSwing.rotations = weaponConfig.swingAnimation.rotations;
+    if (weaponConfig.type === 'sword') {
+      // Use standardized sword animation configuration
+      this.weaponSwing.duration = STANDARD_SWORD_ANIMATION.duration;
+      this.weaponSwing.phases = STANDARD_SWORD_ANIMATION.phases;
+      this.weaponSwing.rotations = STANDARD_SWORD_ANIMATION.rotations;
+      console.log("🗡️ [Player] Using standardized sword animation configuration");
+    } else if (weaponConfig.swingAnimation) {
+      // Use weapon-specific animation for non-sword weapons
+      this.weaponSwing.duration = weaponConfig.swingAnimation.duration;
+      this.weaponSwing.phases = weaponConfig.swingAnimation.phases;
+      this.weaponSwing.rotations = weaponConfig.swingAnimation.rotations;
+      console.log("🗡️ [Player] Using weapon-specific animation configuration");
+    }
     
     // Update hitbox reference
     this.swordHitBox = weapon.getHitBox();
