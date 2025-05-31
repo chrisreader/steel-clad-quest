@@ -26,14 +26,14 @@ export class IronSword extends Sword {
         rotations: {
           neutral: { x: Math.PI / 3 + 0.03, y: 0, z: 0 }, // Match new idle position (61.7°)
           windup: { 
-            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(60), // Increased from 45° to 60° for more dramatic windup
-            y: THREE.MathUtils.degToRad(-35), // Increased Y rotation for better side positioning
-            z: THREE.MathUtils.degToRad(20)   // Increased Z rotation for more natural windup
+            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(18), // Reduced from 60° to 18°
+            y: THREE.MathUtils.degToRad(-25), // Reduced Y rotation
+            z: THREE.MathUtils.degToRad(12)   // Reduced Z rotation
           },
           slash: { 
-            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-40), // Increased from -20° to -40° for powerful forward swing
-            y: THREE.MathUtils.degToRad(60),  // Increased Y rotation for dramatic cross-body slash
-            z: THREE.MathUtils.degToRad(-15)  // Increased Z rotation for better wrist snap
+            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-28), // Increased downward from -40° to -28°
+            y: THREE.MathUtils.degToRad(45),  // Increased cross-body slash
+            z: THREE.MathUtils.degToRad(-10)  // Moderate wrist snap
           }
         }
       }

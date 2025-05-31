@@ -24,7 +24,7 @@ export class SwordSwingAnimation {
     let weaponWristRotation = 0;
     let torsoRotation = 0;
     
-    // Enhanced base position matching current idle arm position
+    // Base position matching current idle arm position
     const parallelAngleBase = Math.PI / 3 + 0.03; // 61.7°
     
     if (elapsed < phases.windup) {
@@ -45,37 +45,37 @@ export class SwordSwingAnimation {
     const t = elapsed / phases.windup;
     const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
     
-    // Reduce the windup height by decreasing X rotation
-    const windupX = parallelAngleBase + THREE.MathUtils.degToRad(35); // Reduced from config values
+    // Drastically reduce windup height - only add 10° instead of 35°
+    const windupX = parallelAngleBase + THREE.MathUtils.degToRad(10); // Total: 71.7°
     
     shoulderRotation.x = THREE.MathUtils.lerp(parallelAngleBase, windupX, easedT);
     shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT);
     
-    elbowRotation.x = THREE.MathUtils.lerp(0, 0.8, easedT); // Reduced elbow bend
-    torsoRotation = THREE.MathUtils.lerp(0, -0.2, easedT); // Reduced torso rotation
+    elbowRotation.x = THREE.MathUtils.lerp(0, 0.5, easedT); // Reduced elbow bend
+    torsoRotation = THREE.MathUtils.lerp(0, -0.15, easedT); // Minimal torso rotation
   }
   
   private updateSlashPhase(elapsed: number, phases: any, rotations: any, shoulderRotation: any, elbowRotation: any, torsoRotation: number, weaponWristRotation: number): void {
     const t = (elapsed - phases.windup) / phases.slash;
     const easedT = t * t * (3 - 2 * t);
     
-    // Adjust slash to be more forward and across, less high
+    // Increase downward slash motion - go down to 31.7° (much lower)
     const windupX = this.playerBody.rightArm.rotation.x; // Current windup position
-    const slashX = Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-15); // Much less downward
+    const slashX = Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-30); // Down to 31.7°
     
     shoulderRotation.x = THREE.MathUtils.lerp(windupX, slashX, easedT);
     shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT);
     
-    elbowRotation.x = THREE.MathUtils.lerp(0.8, 0.2, easedT); // Extend arm during slash
-    torsoRotation = THREE.MathUtils.lerp(-0.2, 0.3, easedT);
+    elbowRotation.x = THREE.MathUtils.lerp(0.5, 0.1, easedT); // Extend arm during slash
+    torsoRotation = THREE.MathUtils.lerp(-0.15, 0.25, easedT); // More torso follow-through
     
-    // RESTORE WRIST ROTATION - This makes the sword actually slash!
+    // Enhanced wrist rotation for proper slashing motion
     if (t >= 0.2 && t <= 0.8) {
       const wristT = (t - 0.2) / 0.6;
       const intensity = this.weaponSwing.wristSnapIntensity || 1.0;
-      weaponWristRotation = Math.sin(wristT * Math.PI) * (intensity * 1.8); // Increased intensity
+      weaponWristRotation = Math.sin(wristT * Math.PI) * (intensity * 2.0); // Increased intensity
     }
   }
   
@@ -87,8 +87,8 @@ export class SwordSwingAnimation {
     shoulderRotation.y = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.y, 0, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.z, 0, easedT);
     
-    elbowRotation.x = THREE.MathUtils.lerp(0.2, 0, easedT);
-    torsoRotation = THREE.MathUtils.lerp(0.3, 0, easedT);
+    elbowRotation.x = THREE.MathUtils.lerp(0.1, 0, easedT);
+    torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT);
   }
   
   private completeAnimation(parallelAngleBase: number): void {
