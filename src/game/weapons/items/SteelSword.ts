@@ -27,7 +27,7 @@ export class SteelSword extends Sword {
           neutral: { x: THREE.MathUtils.degToRad(20), y: 0, z: 0 }, // 20° ready position, slightly down
           windup: { 
             x: THREE.MathUtils.degToRad(70),           // 70° move to right side
-            y: THREE.MathUtils.degToRad(20),           // 20° right side position
+            y: THREE.MathUtils.degToRad(10),           // 10° right side position
             z: 0
           },
           slash: { 
