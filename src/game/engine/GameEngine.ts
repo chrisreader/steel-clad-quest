@@ -1,50 +1,70 @@
+
 import * as THREE from 'three';
 import { InputManager } from './InputManager';
 import { Player } from '../entities/Player';
-import { LevelManager } from './LevelManager';
-import { UIManager } from './UIManager';
 import { CombatSystem } from '../systems/CombatSystem';
 import { EffectsManager } from './EffectsManager';
 import { AudioManager } from './AudioManager';
-import { GameSettings } from './GameSettings';
-import { SaveManager } from './SaveManager';
-import { PerformanceMonitor } from './PerformanceMonitor';
+import { RenderEngine } from './RenderEngine';
+import { SceneManager } from './SceneManager';
+import { StateManager } from './StateManager';
+import { PlayerStats } from '../../types/GameTypes';
 
 export class GameEngine {
+  private mountElement: HTMLDivElement;
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private clock: THREE.Clock;
   private inputManager: InputManager;
   private player: Player;
-  private levelManager: LevelManager;
-  private uiManager: UIManager;
   private combatSystem: CombatSystem;
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
-  private gameSettings: GameSettings;
-  private saveManager: SaveManager;
-  private performanceMonitor: PerformanceMonitor;
+  private renderEngine: RenderEngine;
+  private sceneManager: SceneManager;
+  private stateManager: StateManager;
+  private running: boolean = false;
+  private paused: boolean = false;
   
-  constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer) {
-    console.log('⚙️ [GameEngine] Initializing...');
+  // Callback functions
+  private onUpdateHealth?: (health: number) => void;
+  private onUpdateGold?: (gold: number) => void;
+  private onUpdateStamina?: (stamina: number) => void;
+  private onUpdateScore?: (score: number) => void;
+  private onGameOver?: (score: number) => void;
+  private onLocationChange?: (isInTavern: boolean) => void;
+  
+  constructor(mountElement: HTMLDivElement) {
+    console.log('⚙️ [GameEngine] Initializing with mount element...');
     
-    this.scene = scene;
-    this.camera = camera;
-    this.renderer = renderer;
+    this.mountElement = mountElement;
     
-    // Initialize managers and systems
+    // Initialize Three.js core
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.mountElement.appendChild(this.renderer.domElement);
+    
+    // Initialize clock
     this.clock = new THREE.Clock();
+    
+    // Initialize managers
     this.inputManager = new InputManager();
     this.effectsManager = new EffectsManager(this.scene);
     this.audioManager = new AudioManager();
+    this.renderEngine = new RenderEngine(this.scene, this.camera, this.renderer);
+    this.sceneManager = new SceneManager(this.scene);
+    this.stateManager = new StateManager();
+    
+    // Initialize player
     this.player = new Player(this.scene, this.effectsManager, this.audioManager);
+    
+    // Initialize combat system
     this.combatSystem = new CombatSystem(this.scene, this.player, this.effectsManager, this.audioManager);
-    this.levelManager = new LevelManager(this.scene, this.player, this.combatSystem);
-    this.uiManager = new UIManager(this.player, this.combatSystem);
-    this.gameSettings = new GameSettings();
-    this.saveManager = new SaveManager(this.player, this.levelManager, this.gameSettings);
-    this.performanceMonitor = new PerformanceMonitor();
     
     // Set initial camera position
     this.camera.position.set(0, 2, 5);
@@ -52,84 +72,49 @@ export class GameEngine {
     console.log('⚙️ [GameEngine] Initialization complete.');
   }
 
-  public initialize(renderer: THREE.WebGLRenderer): Promise<void> {
-    return new Promise((resolve) => {
-      console.log('⚙️ [GameEngine] Async initialization started...');
+  public async initialize(): Promise<void> {
+    console.log('⚙️ [GameEngine] Async initialization started...');
+    
+    // Initialize input manager
+    this.inputManager.initialize(this.renderer);
+    
+    // Load audio resources
+    await this.audioManager.loadAudio();
+    console.log('🔊 [GameEngine] Audio resources loaded.');
+    
+    // Set up basic scene
+    this.sceneManager.setupBasicLevel();
+    
+    // Set up input handling for bow drawing
+    document.addEventListener('gameInput', (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { type, data } = customEvent.detail;
       
-      // Initialize input manager
-      this.inputManager.initialize(renderer);
+      console.log('🎮 [GameEngine] Input event received:', type, data);
       
-      // Load game settings
-      this.gameSettings.loadSettings();
+      if (type === 'attack') {
+        this.combatSystem.startPlayerAttack();
+      } else if (type === 'attackEnd') {
+        this.combatSystem.stopPlayerAttack();
+      }
       
-      // Load audio resources
-      this.audioManager.loadAudio().then(() => {
-        console.log('🔊 [GameEngine] Audio resources loaded.');
-      });
+      if (type === 'pause') {
+        this.pause();
+      }
       
-      // Load a level
-      this.levelManager.loadLevel('forest').then(() => {
-        console.log('🌍 [GameEngine] Level loaded.');
-        
-        // Initialize UI
-        this.uiManager.initialize();
-        
-        // Resolve the promise to signal completion
-        resolve();
-        
-        console.log('⚙️ [GameEngine] Async initialization complete.');
-      });
-
-      // Set up input handling for bow drawing
-      document.addEventListener('gameInput', (event: Event) => {
-        const customEvent = event as CustomEvent;
-        const { type, data } = customEvent.detail;
-        
-        console.log('🎮 [GameEngine] Input event received:', type, data);
-        
-        if (type === 'attack') {
-          this.combatSystem.startPlayerAttack();
-        } else if (type === 'attackEnd') {
-          this.combatSystem.stopPlayerAttack();
-        }
-        
-        if (type === 'pause') {
-          this.uiManager.togglePauseMenu();
-        }
-        
-        if (type === 'inventory') {
-          this.uiManager.toggleInventory();
-        }
-        
-        if (type === 'skillTree') {
-          this.uiManager.toggleSkillTree();
-        }
-        
-        if (type === 'questLog') {
-          this.uiManager.toggleQuestLog();
-        }
-        
-        if (type === 'interact') {
-          // Implement interaction logic here
-          console.log('🎮 [GameEngine] Interact action');
-        }
-      });
-
-      console.log('🎮 [GameEngine] Input event listeners added.');
+      if (type === 'interact') {
+        console.log('🎮 [GameEngine] Interact action');
+      }
     });
+
+    console.log('⚙️ [GameEngine] Async initialization complete.');
   }
 
   private update(): void {
     const deltaTime = this.clock.getDelta();
     
-    // Update performance monitor
-    this.performanceMonitor.update();
-    
     // Update input manager
     this.inputManager.update();
-    
-    // Update player position for combat system
-    const playerPosition = this.player.getPosition();
     
     // Handle player movement
     const moveSpeed = this.player.getStats().movementSpeed * deltaTime;
@@ -154,26 +139,17 @@ export class GameEngine {
     // Update player with bow charge consideration
     this.player.updateWeaponAnimationWithBowCharge(deltaTime);
     
-    // Update level manager
-    this.levelManager.update(deltaTime);
-    
-    // Update UI
-    this.uiManager.update(deltaTime);
-    
     // Update effects
     this.effectsManager.update(deltaTime);
     
     // Update audio
-    this.audioManager.update(playerPosition);
+    this.audioManager.update(this.player.getPosition());
     
     // Update camera position
-    this.updateCameraPosition(playerPosition);
+    this.updateCameraPosition(this.player.getPosition());
     
     // Render the scene
     this.renderer.render(this.scene, this.camera);
-    
-    // Update performance stats in UI
-    this.uiManager.updatePerformanceStats(this.performanceMonitor.getStats());
   }
 
   private updateCameraPosition(playerPosition: THREE.Vector3): void {
@@ -185,35 +161,63 @@ export class GameEngine {
 
   public start(): void {
     console.log('⚙️ [GameEngine] Starting game loop...');
+    this.running = true;
     this.renderer.setAnimationLoop(() => {
-      this.update();
+      if (this.running && !this.paused) {
+        this.update();
+      }
     });
   }
 
   public stop(): void {
     console.log('⚙️ [GameEngine] Stopping game loop...');
+    this.running = false;
     this.renderer.setAnimationLoop(null);
+  }
+
+  public pause(): void {
+    this.paused = !this.paused;
+    console.log('⚙️ [GameEngine] Pause toggled:', this.paused);
+  }
+
+  public restart(): void {
+    console.log('⚙️ [GameEngine] Restarting game...');
+    this.stop();
+    
+    // Reset player
+    this.player = new Player(this.scene, this.effectsManager, this.audioManager);
+    
+    // Reset combat system
+    this.combatSystem = new CombatSystem(this.scene, this.player, this.effectsManager, this.audioManager);
+    
+    this.start();
+  }
+
+  public handleInput(type: string, data?: any): void {
+    console.log('🎮 [GameEngine] Handling input:', type, data);
+    
+    if (type === 'requestPointerLock') {
+      this.inputManager.requestPointerLock();
+    } else if (type === 'requestPointerUnlock') {
+      this.inputManager.exitPointerLock();
+    }
+  }
+
+  public setUIState(uiOpen: boolean): void {
+    console.log('🎮 [GameEngine] UI state changed:', uiOpen);
   }
 
   public dispose(): void {
     console.log('⚙️ [GameEngine] Disposing resources...');
+    this.stop();
     this.inputManager.dispose();
-    this.levelManager.dispose();
-    this.uiManager.dispose();
     this.effectsManager.dispose();
     this.audioManager.dispose();
-    this.performanceMonitor.dispose();
-    this.saveManager.dispose();
     this.combatSystem.dispose();
     this.renderer.dispose();
-  }
-
-  public saveGame(): void {
-    this.saveManager.saveGame();
-  }
-
-  public loadGame(): void {
-    this.saveManager.loadGame();
+    if (this.mountElement && this.renderer.domElement) {
+      this.mountElement.removeChild(this.renderer.domElement);
+    }
   }
 
   public spawnEnemies(count: number): void {
@@ -223,5 +227,46 @@ export class GameEngine {
 
   public getPlayer(): Player {
     return this.player;
+  }
+
+  public isRunning(): boolean {
+    return this.running;
+  }
+
+  public isPaused(): boolean {
+    return this.paused;
+  }
+
+  public getGameState(): { timeElapsed: number } {
+    return { timeElapsed: this.clock.getElapsedTime() };
+  }
+
+  public getRenderer(): THREE.WebGLRenderer {
+    return this.renderer;
+  }
+
+  // Callback setters
+  public setOnUpdateHealth(callback: (health: number) => void): void {
+    this.onUpdateHealth = callback;
+  }
+
+  public setOnUpdateGold(callback: (gold: number) => void): void {
+    this.onUpdateGold = callback;
+  }
+
+  public setOnUpdateStamina(callback: (stamina: number) => void): void {
+    this.onUpdateStamina = callback;
+  }
+
+  public setOnUpdateScore(callback: (score: number) => void): void {
+    this.onUpdateScore = callback;
+  }
+
+  public setOnGameOver(callback: (score: number) => void): void {
+    this.onGameOver = callback;
+  }
+
+  public setOnLocationChange(callback: (isInTavern: boolean) => void): void {
+    this.onLocationChange = callback;
   }
 }

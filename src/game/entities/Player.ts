@@ -144,7 +144,7 @@ export class Player {
       this.body.leftHand.add(this.huntingBow.getMesh());
       
       // Set initial weapon
-      this.setEquippedWeapon('sword');
+      this.equipWeapon('steel_sword');
     });
   }
   
@@ -426,14 +426,16 @@ export class Player {
     console.log(`🎉 Leveled up to level ${this.stats.level}`);
   }
   
-  public setEquippedWeapon(weapon: 'sword' | 'bow'): void {
-    if (weapon === 'sword') {
+  public equipWeapon(weaponId: string): void {
+    console.log(`🗡️ [Player] Equipping weapon: ${weaponId}`);
+    
+    if (weaponId === 'steel_sword' || weaponId === 'iron_sword' || weaponId === 'wooden_sword') {
       this.equippedWeapon = this.sword;
       this.weaponAnimationSystem.setWeaponType('melee');
       this.body.leftHand.remove(this.huntingBow.getMesh());
       this.body.rightHand.add(this.sword.getMesh());
       this.body.rightHand.add(this.swordHitBox);
-    } else if (weapon === 'bow') {
+    } else if (weaponId === 'hunting_bow') {
       this.equippedWeapon = this.huntingBow;
       this.weaponAnimationSystem.setWeaponType('bow');
       this.body.rightHand.remove(this.sword.getMesh());
@@ -444,8 +446,27 @@ export class Player {
     this.weaponAnimationSystem.resetToWeaponStance(this.body);
   }
   
+  public unequipWeapon(): void {
+    console.log('🗡️ [Player] Unequipping weapon');
+    this.equippedWeapon = null;
+    this.body.rightHand.remove(this.sword.getMesh());
+    this.body.rightHand.remove(this.swordHitBox);
+    this.body.leftHand.remove(this.huntingBow.getMesh());
+    this.weaponAnimationSystem.setWeaponType('empty');
+    this.weaponAnimationSystem.resetToWeaponStance(this.body);
+  }
+  
   public getEquippedWeapon(): BaseWeapon | null {
     return this.equippedWeapon;
+  }
+
+  public heal(amount: number): void {
+    this.stats.health = Math.min(this.stats.maxHealth, this.stats.health + amount);
+    console.log(`❤️ [Player] Healed ${amount} HP. Current health: ${this.stats.health}`);
+  }
+
+  public isAlive(): boolean {
+    return this.stats.health > 0;
   }
   
   // Add public accessor methods for GameEngine
