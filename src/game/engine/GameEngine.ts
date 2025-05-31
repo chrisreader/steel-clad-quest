@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -88,8 +87,10 @@ export class GameEngine {
         console.warn("🎮 [GameEngine] Audio preloading failed, continuing:", audioError);
       }
       
-      // Create the player
+      // CRITICAL: Create the player with extensive debugging
+      console.log("🎮 [GameEngine] Creating player with NEW ARM POSITIONING...");
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
+      console.log("🎮 [GameEngine] Player created successfully with new arm positioning");
       
       // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
@@ -105,7 +106,7 @@ export class GameEngine {
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete!");
+      console.log("🎮 [GameEngine] Initialization complete with NEW ARM POSITIONING!");
       
       // Start the game
       this.start();
@@ -224,10 +225,10 @@ export class GameEngine {
       return;
     }
     
-    console.log("🎮 [GameEngine] Starting game...");
+    console.log("🎮 [GameEngine] Starting game with NEW ARM POSITIONING...");
     this.stateManager.start();
     this.animate();
-    console.log("🎮 [GameEngine] Game started successfully!");
+    console.log("🎮 [GameEngine] Game started successfully with NEW ARM POSITIONING!");
   }
   
   private animate = (): void => {
@@ -305,21 +306,40 @@ export class GameEngine {
   public restart(): void {
     if (!this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Restarting game...");
+    console.log("🎮 [GameEngine] Restarting game and RECREATING PLAYER with NEW ARM POSITIONING...");
     this.stateManager.restart();
     
-    // Reset player
-    if (this.player) {
-      this.player.setPosition(new THREE.Vector3(0, 0, 2));
-    }
-    
-    // Clear enemies and gold
-    if (this.combatSystem) {
-      this.combatSystem.clear();
-    }
-    
-    // Reset first-person camera
-    if (this.player) {
+    // CRITICAL: Recreate player to ensure new arm positioning takes effect
+    if (this.effectsManager && this.audioManager) {
+      // Dispose old player
+      if (this.player) {
+        this.player.dispose();
+        this.renderEngine.getScene().remove(this.player.getGroup());
+      }
+      
+      // Create new player with updated positioning
+      console.log("🔄 [GameEngine] Creating NEW player instance with updated arm positioning...");
+      this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
+      console.log("🔄 [GameEngine] NEW player instance created with updated arm positioning");
+      
+      // Make player arms/sword visible for first-person immersion
+      const playerBody = this.player.getBody();
+      if (playerBody.leftArm) playerBody.leftArm.visible = true;
+      if (playerBody.rightArm) playerBody.rightArm.visible = true;
+      
+      // Recreate combat system with new player
+      if (this.combatSystem) {
+        this.combatSystem.dispose();
+      }
+      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager);
+      
+      // Recreate movement system with new player  
+      if (this.movementSystem) {
+        this.movementSystem.dispose();
+      }
+      this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager!);
+      
+      // Reset first-person camera
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
     }
     
@@ -329,7 +349,7 @@ export class GameEngine {
       this.audioManager.play('game_music', true);
     }
     
-    console.log("🎮 [GameEngine] Game restarted!");
+    console.log("🎮 [GameEngine] Game restarted with NEW PLAYER and ARM POSITIONING!");
   }
   
   public handleInput(type: string, data?: any): void {

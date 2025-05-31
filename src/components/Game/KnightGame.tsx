@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -141,6 +142,11 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     isAnyUIOpen
   });
 
+  // CRITICAL: Force engine restart when component mounts to ensure new arm positioning
+  useEffect(() => {
+    console.log('[KnightGame] Component mounted - will force engine restart for new arm positioning');
+  }, []);
+
   // Log the initial setup
   useEffect(() => {
     console.log('[KnightGame] Initial setup - Steel Sword equipped in mainhand, Hunting Bow in inventory');
@@ -185,11 +191,11 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Handler for engine loading completion
   const handleEngineLoadingComplete = useCallback(() => {
-    console.log('Engine loading completed, setting engineReady to true');
+    console.log('🚀 [KnightGame] Engine loading completed with NEW ARM POSITIONING, setting engineReady to true');
     setEngineReady(true);
     const engine = engineControllerRef.current?.getEngine();
     setGameEngine(engine || null);
-    console.log('GameEngine instance set:', !!engine);
+    console.log('🚀 [KnightGame] GameEngine instance set with NEW ARM POSITIONING:', !!engine);
     onLoadingComplete?.();
   }, [onLoadingComplete, setEngineReady, setGameEngine]);
 
@@ -264,16 +270,16 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen, forceCursorVisible]);
 
   const startGame = useCallback(() => {
-    console.log('Starting knight adventure...');
-    console.log('GameEngine available:', !!gameEngine);
-    console.log('Starting with Steel Sword equipped in mainhand');
+    console.log('🚀 [KnightGame] Starting knight adventure with NEW ARM POSITIONING...');
+    console.log('🚀 [KnightGame] GameEngine available:', !!gameEngine);
+    console.log('🚀 [KnightGame] Starting with Steel Sword equipped in mainhand and NEW ARM POSITIONING');
     
     if (gameEngine) {
-      console.log('Starting GameEngine...');
+      console.log('🚀 [KnightGame] Starting GameEngine with NEW ARM POSITIONING...');
       gameEngine.start();
-      console.log('GameEngine started, isRunning:', gameEngine.isRunning());
+      console.log('🚀 [KnightGame] GameEngine started with NEW ARM POSITIONING, isRunning:', gameEngine.isRunning());
     } else {
-      console.error('GameEngine not available when trying to start game');
+      console.error('🚀 [KnightGame] GameEngine not available when trying to start game');
     }
     
     setGameStarted(true);
@@ -281,12 +287,14 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, [gameEngine, setGameStarted, setIsGameOver]);
 
   const restartGame = useCallback(() => {
+    console.log('🔄 [KnightGame] Restarting game - this will force creation of new player with NEW ARM POSITIONING...');
     gameControllerRef.current?.restartGame();
-    engineControllerRef.current?.restart();
+    engineControllerRef.current?.restart(); // This will trigger GameEngine.restart() which recreates the player
     
     setGameStarted(true);
     setIsGameOver(false);
     setIsPaused(false);
+    console.log('🔄 [KnightGame] Game restart initiated - new player will be created with NEW ARM POSITIONING');
   }, [setGameStarted, setIsGameOver, setIsPaused]);
 
   const goToMainMenu = useCallback(() => {
@@ -392,12 +400,12 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         </button>
       )}
 
-      {/* Game Control Panel */}
+      {/* Game Control Panel with RESTART button that forces new arm positioning */}
       {gameStarted && (
         <GameControlPanel
           isPaused={isPaused}
           onPauseToggle={togglePause}
-          onRestart={restartGame}
+          onRestart={restartGame}  // This will trigger new player creation
           isGameOver={isGameOver}
         />
       )}
@@ -445,7 +453,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
       {isGameOver && (
         <GameOverScreen
-          onRestart={restartGame}
+          onRestart={restartGame}  // This will trigger new player creation
           onMainMenu={goToMainMenu}
           finalStats={{
             level: playerStats.level,

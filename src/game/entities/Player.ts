@@ -103,10 +103,14 @@ export class Player {
     this.group.userData.isPlayer = true;
     scene.add(this.group);
     
-    console.log("Player group created with natural proportions at position:", this.group.position);
+    console.log("🧍 [Player] CONSTRUCTOR - Creating player with new arm positioning system");
+    console.log("🧍 [Player] Player group created with natural proportions at position:", this.group.position);
     
     // Create player body with natural realistic proportions
     this.playerBody = this.createRealisticPlayerBody();
+    
+    // CRITICAL DEBUG: Verify arm positions immediately after creation
+    this.debugArmPositions("AFTER_CREATION");
     
     // Create fallback hitbox for when no weapon is equipped
     const fallbackHitBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
@@ -136,11 +140,40 @@ export class Player {
       attackPower: 20
     };
     
-    console.log("Player initialized with realistic arm system, weapon animation system, and full visible body:", this.stats);
+    console.log("🧍 [Player] CONSTRUCTOR COMPLETE - Player initialized with NEW arm positioning:", this.stats);
+    
+    // Final verification
+    this.debugArmPositions("CONSTRUCTOR_COMPLETE");
+  }
+  
+  // NEW DEBUG METHOD: Track arm positions and detect changes
+  private debugArmPositions(context: string): void {
+    if (this.playerBody && this.playerBody.leftArm && this.playerBody.rightArm) {
+      const leftPos = this.playerBody.leftArm.position.clone();
+      const rightPos = this.playerBody.rightArm.position.clone();
+      
+      console.log(`🔍 [Player] ARM POSITION DEBUG [${context}]:`);
+      console.log(`   Left Arm Position: x=${leftPos.x.toFixed(3)}, y=${leftPos.y.toFixed(3)}, z=${leftPos.z.toFixed(3)}`);
+      console.log(`   Right Arm Position: x=${rightPos.x.toFixed(3)}, y=${rightPos.y.toFixed(3)}, z=${rightPos.z.toFixed(3)}`);
+      console.log(`   Expected Y Position: 0.55 (NEW REALISTIC HEIGHT)`);
+      console.log(`   Previous Y Position: 0.70 (OLD FLOATING HEIGHT)`);
+      
+      if (leftPos.y === 0.55 && rightPos.y === 0.55) {
+        console.log(`✅ [Player] ARM POSITIONS CORRECT - Arms at realistic shoulder height!`);
+      } else if (leftPos.y === 0.70 || rightPos.y === 0.70) {
+        console.log(`❌ [Player] ARM POSITIONS STILL OLD - Arms still at floating height!`);
+      } else {
+        console.log(`⚠️ [Player] ARM POSITIONS UNEXPECTED - Arms at unknown height!`);
+      }
+    } else {
+      console.log(`❌ [Player] ARM POSITION DEBUG [${context}] - Arms not yet created!`);
+    }
   }
   
   private createRealisticPlayerBody(): PlayerBody {
     const playerBodyGroup = new THREE.Group();
+    
+    console.log("🏗️ [Player] CREATING REALISTIC PLAYER BODY WITH NEW ARM POSITIONING");
     
     // Create enhanced metal texture for armor/clothing
     const metalTexture = TextureGenerator.createMetalTexture();
@@ -181,19 +214,30 @@ export class Player {
     
     console.log("🧍 [Player] Torso positioned naturally at:", body.position, "- castShadow:", body.castShadow);
     
+    // CRITICAL: NEW ARM POSITIONING - MOVED TO REALISTIC SHOULDER HEIGHT
+    console.log("🦾 [Player] CREATING ARMS AT NEW REALISTIC POSITION (Y=0.55 INSTEAD OF Y=0.70)");
+    
     // REALISTIC ARM SYSTEM - Left Arm (positioned at realistic shoulder height)
     const leftArmSystem = this.createRealisticArm('left');
-    leftArmSystem.position.set(-0.3, 0.55, 0); // Lowered to realistic shoulder height
+    leftArmSystem.position.set(-0.3, 0.55, 0); // FIXED: Lowered from 0.7 to 0.55 for realistic shoulder height
     leftArmSystem.visible = true;
     playerBodyGroup.add(leftArmSystem);
     
     // REALISTIC ARM SYSTEM - Right Arm (positioned at realistic shoulder height)
     const rightArmSystem = this.createRealisticArm('right');
-    rightArmSystem.position.set(0.3, 0.55, 0); // Lowered to realistic shoulder height
+    rightArmSystem.position.set(0.3, 0.55, 0); // FIXED: Lowered from 0.7 to 0.55 for realistic shoulder height
     rightArmSystem.visible = true;
     playerBodyGroup.add(rightArmSystem);
     
-    console.log("🦾 [Player] Arms positioned at realistic shoulder height - Left:", leftArmSystem.position, "Right:", rightArmSystem.position);
+    console.log("🦾 [Player] NEW ARM POSITIONS SET:");
+    console.log("   Left Arm: x=-0.3, y=0.55, z=0 (LOWERED FROM y=0.7)");
+    console.log("   Right Arm: x=0.3, y=0.55, z=0 (LOWERED FROM y=0.7)");
+    console.log("   This positions arms at realistic shoulder height instead of floating high!");
+    
+    // Verify positions immediately after setting
+    console.log("🔍 [Player] IMMEDIATE VERIFICATION:");
+    console.log("   Left Arm actual position:", leftArmSystem.position);
+    console.log("   Right Arm actual position:", rightArmSystem.position);
     
     // LEGS - Natural position connected to torso bottom
     const legGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.15);
@@ -249,7 +293,8 @@ export class Player {
     const leftArmComponents = this.getArmComponents(leftArmSystem);
     const rightArmComponents = this.getArmComponents(rightArmSystem);
     
-    console.log("🧍 [Player] Complete naturally proportioned body created with all parts visible and shadow casting");
+    console.log("🧍 [Player] Complete naturally proportioned body created with NEW ARM POSITIONING");
+    console.log("🔧 [Player] Body creation complete - arms should now be at realistic shoulder height");
     
     return {
       group: playerBodyGroup,
@@ -510,6 +555,9 @@ export class Player {
   }
   
   private setRealisticArcheryStance(): void {
+    // Debug arm positions before setting archery stance
+    this.debugArmPositions("BEFORE_ARCHERY_STANCE");
+    
     // Set arms to proper archery positions with realistic joint control
     this.playerBody.leftArm.position.set(-0.5, 1.3, -0.4);
     this.playerBody.rightArm.position.set(0.7, 1.3, -0.4);
@@ -553,12 +601,18 @@ export class Player {
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
     console.log("🏹 [Player] Realistic archery stance set with proper joint control");
+    
+    // Debug arm positions after setting archery stance
+    this.debugArmPositions("AFTER_ARCHERY_STANCE");
   }
   
   private resetToRealisticNormalStance(): void {
+    // Debug arm positions before reset
+    this.debugArmPositions("BEFORE_NORMAL_STANCE_RESET");
+    
     // Reset arms to normal positions with realistic joint control
-    this.playerBody.leftArm.position.set(-0.5, 1.3, -0.4);
-    this.playerBody.rightArm.position.set(0.7, 1.3, -0.4);
+    this.playerBody.leftArm.position.set(-0.3, 0.55, 0); // CRITICAL: Keep new realistic shoulder height
+    this.playerBody.rightArm.position.set(0.3, 0.55, 0); // CRITICAL: Keep new realistic shoulder height
     
     // Reset shoulder rotations
     this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
@@ -576,7 +630,10 @@ export class Player {
     this.playerBody.leftHand.rotation.set(0, 0, 0);
     this.playerBody.rightHand.rotation.set(0, 0, 0);
     
-    console.log("🗡️ [Player] Reset to realistic normal stance for melee weapon");
+    console.log("🗡️ [Player] Reset to realistic normal stance for melee weapon - ARMS KEPT AT NEW HEIGHT (y=0.55)");
+    
+    // Debug arm positions after reset
+    this.debugArmPositions("AFTER_NORMAL_STANCE_RESET");
   }
   
   public unequipWeapon(): boolean {
@@ -873,6 +930,11 @@ export class Player {
   
   public update(deltaTime: number, isMoving?: boolean): void {
     const isActuallyMoving = isMoving ?? false;
+    
+    // DEBUG: Periodically check arm positions to detect overrides
+    if (Math.random() < 0.01) { // 1% chance per frame to log positions
+      this.debugArmPositions("UPDATE_LOOP");
+    }
     
     // Update weapon swing animation (for melee weapons) with realistic arm system
     if (!this.isBowEquipped) {
