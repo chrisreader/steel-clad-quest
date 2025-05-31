@@ -97,17 +97,17 @@ export class Player {
     this.weaponManager = new WeaponManager();
     this.weaponAnimationSystem = new WeaponAnimationSystem();
     
-    // Create player group at natural ground position
+    // Create player group at TALLER position for realistic scale
     this.group = new THREE.Group();
-    this.group.position.set(0, 0.7, 2); // Raised so feet are at ground level
+    this.group.position.set(0, 1.0, 2); // INCREASED from 0.7 to 1.0 (43% height increase)
     this.group.userData.isPlayer = true;
     scene.add(this.group);
     
-    console.log("🧍 [Player] CONSTRUCTOR - Creating player with new arm positioning system and improved first-person view");
-    console.log("🧍 [Player] Player group created with natural proportions at position:", this.group.position);
+    console.log("🧍 [Player] CONSTRUCTOR - Creating TALLER player with realistic proportions and improved first-person view");
+    console.log("🧍 [Player] Player group created at INCREASED height:", this.group.position);
     
-    // Create player body with natural realistic proportions
-    this.playerBody = this.createRealisticPlayerBody();
+    // Create player body with TALLER realistic proportions
+    this.playerBody = this.createTallerRealisticPlayerBody();
     
     // CRITICAL DEBUG: Verify arm positions immediately after creation
     this.debugArmPositions("AFTER_CREATION");
@@ -140,7 +140,7 @@ export class Player {
       attackPower: 20
     };
     
-    console.log("🧍 [Player] CONSTRUCTOR COMPLETE - Player initialized with improved first-person view:", this.stats);
+    console.log("🧍 [Player] CONSTRUCTOR COMPLETE - TALLER player initialized with improved first-person view:", this.stats);
     
     // Final verification
     this.debugArmPositions("CONSTRUCTOR_COMPLETE");
@@ -155,13 +155,13 @@ export class Player {
       console.log(`🔍 [Player] ARM POSITION DEBUG [${context}]:`);
       console.log(`   Left Arm Position: x=${leftPos.x.toFixed(3)}, y=${leftPos.y.toFixed(3)}, z=${leftPos.z.toFixed(3)}`);
       console.log(`   Right Arm Position: x=${rightPos.x.toFixed(3)}, y=${rightPos.y.toFixed(3)}, z=${rightPos.z.toFixed(3)}`);
-      console.log(`   Expected Y Position: 0.55 (NEW REALISTIC HEIGHT)`);
-      console.log(`   Previous Y Position: 0.70 (OLD FLOATING HEIGHT)`);
+      console.log(`   Expected Y Position: 0.8 (NEW TALLER SHOULDER HEIGHT)`);
+      console.log(`   Previous Y Position: 0.55 (OLD SHORTER HEIGHT)`);
       
-      if (leftPos.y === 0.55 && rightPos.y === 0.55) {
-        console.log(`✅ [Player] ARM POSITIONS CORRECT - Arms at realistic shoulder height!`);
-      } else if (leftPos.y === 0.70 || rightPos.y === 0.70) {
-        console.log(`❌ [Player] ARM POSITIONS STILL OLD - Arms still at floating height!`);
+      if (leftPos.y === 0.8 && rightPos.y === 0.8) {
+        console.log(`✅ [Player] ARM POSITIONS CORRECT - Arms at NEW TALLER shoulder height!`);
+      } else if (leftPos.y === 0.55 || rightPos.y === 0.55) {
+        console.log(`❌ [Player] ARM POSITIONS STILL OLD - Arms still at shorter height!`);
       } else {
         console.log(`⚠️ [Player] ARM POSITIONS UNEXPECTED - Arms at unknown height!`);
       }
@@ -170,16 +170,16 @@ export class Player {
     }
   }
   
-  private createRealisticPlayerBody(): PlayerBody {
+  private createTallerRealisticPlayerBody(): PlayerBody {
     const playerBodyGroup = new THREE.Group();
     
-    console.log("🏗️ [Player] CREATING REALISTIC PLAYER BODY WITH IMPROVED FIRST-PERSON VIEW");
+    console.log("🏗️ [Player] CREATING TALLER REALISTIC PLAYER BODY WITH IMPROVED FIRST-PERSON VIEW");
     
     // Create enhanced metal texture for armor/clothing
     const metalTexture = TextureGenerator.createMetalTexture();
     const skinTexture = this.createSkinTexture();
     
-    // HEAD - Natural position at top, but INVISIBLE in first-person for better view
+    // HEAD - TALLER position at top, but INVISIBLE in first-person for better view
     const headGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.25);
     const headMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xFFDBC4,
@@ -188,16 +188,16 @@ export class Player {
       opacity: 0.95
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.set(0, 0.85, 0); // Natural head position at eye level
-    head.castShadow = true; // Keep shadow casting for realism
+    head.position.set(0, 1.2, 0); // INCREASED from 0.85 to 1.2 (proportional to height increase)
+    head.castShadow = true;
     head.receiveShadow = true;
-    head.visible = false; // Make invisible in first-person to prevent view obstruction
+    head.visible = false; // Keep invisible for first-person view
     playerBodyGroup.add(head);
     
-    console.log("👤 [Player] Head positioned naturally but made invisible for first-person view - castShadow:", head.castShadow);
+    console.log("👤 [Player] Head positioned at TALLER height but invisible for first-person view - position:", head.position);
     
-    // TORSO - Natural position below head
-    const bodyGeometry = new THREE.BoxGeometry(0.5, 0.7, 0.25);
+    // TORSO - TALLER and WIDER for realistic proportions
+    const bodyGeometry = new THREE.BoxGeometry(0.5, 1.0, 0.25); // INCREASED height from 0.7 to 1.0
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
       shininess: 80,
@@ -206,41 +206,41 @@ export class Player {
       normalScale: new THREE.Vector2(0.5, 0.5)
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.set(0, 0.35, 0); // Connected below head naturally
+    body.position.set(0, 0.5, 0); // INCREASED from 0.35 to 0.5 (proportional positioning)
     body.castShadow = true;
     body.receiveShadow = true;
     body.visible = true;
     playerBodyGroup.add(body);
     
-    console.log("🧍 [Player] Torso positioned naturally at:", body.position, "- castShadow:", body.castShadow);
+    console.log("🧍 [Player] Torso positioned at TALLER height with INCREASED size - position:", body.position);
     
-    // CRITICAL: NEW ARM POSITIONING - MOVED TO REALISTIC SHOULDER HEIGHT
-    console.log("🦾 [Player] CREATING ARMS AT NEW REALISTIC POSITION (Y=0.55 INSTEAD OF Y=0.70)");
+    // CRITICAL: TALLER ARM POSITIONING - MOVED TO REALISTIC TALLER SHOULDER HEIGHT
+    console.log("🦾 [Player] CREATING ARMS AT NEW TALLER REALISTIC POSITION (Y=0.8 INSTEAD OF Y=0.55)");
     
-    // REALISTIC ARM SYSTEM - Left Arm (positioned at realistic shoulder height)
+    // REALISTIC ARM SYSTEM - Left Arm (positioned at TALLER shoulder height)
     const leftArmSystem = this.createRealisticArm('left');
-    leftArmSystem.position.set(-0.3, 0.55, 0); // FIXED: Lowered from 0.7 to 0.55 for realistic shoulder height
+    leftArmSystem.position.set(-0.3, 0.8, 0); // INCREASED from 0.55 to 0.8 for TALLER shoulder height
     leftArmSystem.visible = true;
     playerBodyGroup.add(leftArmSystem);
     
-    // REALISTIC ARM SYSTEM - Right Arm (positioned at realistic shoulder height)
+    // REALISTIC ARM SYSTEM - Right Arm (positioned at TALLER shoulder height)
     const rightArmSystem = this.createRealisticArm('right');
-    rightArmSystem.position.set(0.3, 0.55, 0); // FIXED: Lowered from 0.7 to 0.55 for realistic shoulder height
+    rightArmSystem.position.set(0.3, 0.8, 0); // INCREASED from 0.55 to 0.8 for TALLER shoulder height
     rightArmSystem.visible = true;
     playerBodyGroup.add(rightArmSystem);
     
-    console.log("🦾 [Player] NEW ARM POSITIONS SET FOR IMPROVED FIRST-PERSON VIEW:");
-    console.log("   Left Arm: x=-0.3, y=0.55, z=0 (LOWERED FROM y=0.7)");
-    console.log("   Right Arm: x=0.3, y=0.55, z=0 (LOWERED FROM y=0.7)");
-    console.log("   This positions arms at realistic shoulder height and camera at neck level for better body visibility!");
+    console.log("🦾 [Player] NEW TALLER ARM POSITIONS SET FOR IMPROVED PROPORTIONS:");
+    console.log("   Left Arm: x=-0.3, y=0.8, z=0 (INCREASED FROM y=0.55)");
+    console.log("   Right Arm: x=0.3, y=0.8, z=0 (INCREASED FROM y=0.55)");
+    console.log("   This positions arms at TALLER realistic shoulder height!");
     
     // Verify positions immediately after setting
     console.log("🔍 [Player] IMMEDIATE VERIFICATION:");
     console.log("   Left Arm actual position:", leftArmSystem.position);
     console.log("   Right Arm actual position:", rightArmSystem.position);
     
-    // LEGS - Natural position connected to torso bottom
-    const legGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.15);
+    // LEGS - TALLER and positioned for realistic proportions
+    const legGeometry = new THREE.BoxGeometry(0.15, 0.8, 0.15); // INCREASED height from 0.6 to 0.8
     const legMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
       shininess: 60,
@@ -248,22 +248,22 @@ export class Player {
     });
     
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-0.1, -0.3, 0); // Natural connection to torso
+    leftLeg.position.set(-0.1, -0.4, 0); // ADJUSTED from -0.3 to -0.4 for TALLER legs
     leftLeg.castShadow = true;
     leftLeg.receiveShadow = true;
     leftLeg.visible = true;
     playerBodyGroup.add(leftLeg);
     
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
-    rightLeg.position.set(0.1, -0.3, 0); // Natural connection to torso
+    rightLeg.position.set(0.1, -0.4, 0); // ADJUSTED from -0.3 to -0.4 for TALLER legs
     rightLeg.castShadow = true;
     rightLeg.receiveShadow = true;
     rightLeg.visible = true;
     playerBodyGroup.add(rightLeg);
     
-    console.log("🦵 [Player] Legs positioned naturally - Left:", leftLeg.position, "Right:", rightLeg.position);
+    console.log("🦵 [Player] TALLER legs positioned - Left:", leftLeg.position, "Right:", rightLeg.position);
     
-    // FEET - Natural position at ground level
+    // FEET - Positioned at ground level relative to TALLER body
     const footGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.3);
     const footMaterial = new THREE.MeshPhongMaterial({
       color: 0x2D3B5C,
@@ -272,20 +272,20 @@ export class Player {
     });
     
     const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
-    leftFoot.position.set(-0.1, -0.7, 0.1); // At ground level
+    leftFoot.position.set(-0.1, -0.9, 0.1); // ADJUSTED from -0.7 to -0.9 for TALLER body
     leftFoot.castShadow = true;
     leftFoot.receiveShadow = true;
     leftFoot.visible = true;
     playerBodyGroup.add(leftFoot);
     
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
-    rightFoot.position.set(0.1, -0.7, 0.1); // At ground level
+    rightFoot.position.set(0.1, -0.9, 0.1); // ADJUSTED from -0.7 to -0.9 for TALLER body
     rightFoot.castShadow = true;
     rightFoot.receiveShadow = true;
     rightFoot.visible = true;
     playerBodyGroup.add(rightFoot);
     
-    console.log("👟 [Player] Feet positioned at ground level - Left:", leftFoot.position, "Right:", rightFoot.position);
+    console.log("👟 [Player] Feet positioned for TALLER body - Left:", leftFoot.position, "Right:", rightFoot.position);
     
     this.group.add(playerBodyGroup);
     
@@ -293,8 +293,8 @@ export class Player {
     const leftArmComponents = this.getArmComponents(leftArmSystem);
     const rightArmComponents = this.getArmComponents(rightArmSystem);
     
-    console.log("🧍 [Player] Complete naturally proportioned body created with IMPROVED FIRST-PERSON VIEW");
-    console.log("🔧 [Player] Body creation complete - head invisible, camera at neck level, arms at realistic height");
+    console.log("🧍 [Player] Complete TALLER naturally proportioned body created with IMPROVED FIRST-PERSON VIEW");
+    console.log("🔧 [Player] TALLER body creation complete - head invisible, camera will be at TALLER neck level, arms at TALLER realistic height");
     
     return {
       group: playerBodyGroup,
@@ -344,7 +344,7 @@ export class Player {
     const upperArm = new THREE.Mesh(upperArmGeometry, armMaterial.clone());
     upperArm.position.y = -upperArmLength / 2;
     upperArm.castShadow = true;
-    upperArm.receiveShadow = true; // Add shadow receiving
+    upperArm.receiveShadow = true;
     upperArm.name = `${side}UpperArm`;
     shoulderGroup.add(upperArm);
     
@@ -360,7 +360,7 @@ export class Player {
     const forearm = new THREE.Mesh(forearmGeometry, armMaterial.clone());
     forearm.position.y = -forearmLength / 2;
     forearm.castShadow = true;
-    forearm.receiveShadow = true; // Add shadow receiving
+    forearm.receiveShadow = true;
     forearm.name = `${side}Forearm`;
     elbowGroup.add(forearm);
     
@@ -376,12 +376,12 @@ export class Player {
     
     // Create a simple ellipsoid hand that matches arm color
     const handGeometry = new THREE.SphereGeometry(0.06, 12, 8);
-    handGeometry.scale(1.2, 0.8, 1.4); // Make it slightly oval-shaped
+    handGeometry.scale(1.2, 0.8, 1.4);
     
     const hand = new THREE.Mesh(handGeometry, armMaterial.clone());
     hand.castShadow = true;
-    hand.receiveShadow = true; // Add shadow receiving
-    hand.position.set(0, -0.02, 0); // Position slightly below wrist
+    hand.receiveShadow = true;
+    hand.position.set(0, -0.02, 0);
     handGroup.add(hand);
     
     wristGroup.add(handGroup);
@@ -436,55 +436,55 @@ export class Player {
   
   private initializeBowAnimationPositions(): void {
     // Enhanced hand rotations for proper vertical bow gripping
-    this.bowDrawAnimation.leftHandRestRotation.set(-Math.PI / 4, 0, Math.PI / 3); // Better grip angle
-    this.bowDrawAnimation.rightHandRestRotation.set(0, 0, 0); // Keep right hand neutral
+    this.bowDrawAnimation.leftHandRestRotation.set(-Math.PI / 4, 0, Math.PI / 3);
+    this.bowDrawAnimation.rightHandRestRotation.set(0, 0, 0);
     
     // Hand rotations during draw - left hand maintains realistic grip
-    this.bowDrawAnimation.leftHandDrawRotation.set(-Math.PI / 4, 0, Math.PI / 3); // Maintain grip orientation
-    this.bowDrawAnimation.rightHandDrawRotation.set(0, 0, 0); // Right hand stays neutral
+    this.bowDrawAnimation.leftHandDrawRotation.set(-Math.PI / 4, 0, Math.PI / 3);
+    this.bowDrawAnimation.rightHandDrawRotation.set(0, 0, 0);
     
-    // Updated realistic arm positions for enhanced archery stance
-    this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.4, -0.4); // Updated Y to 1.4
-    this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.5, -0.3); // Right arm ready position
+    // Updated realistic arm positions for enhanced archery stance at TALLER height
+    this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.7, -0.4); // INCREASED Y from 1.4 to 1.7
+    this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.8, -0.3); // INCREASED Y from 1.5 to 1.8
     
     const baseShoulder = Math.PI / 8;
     
     // Left arm: Extended forward for bow holding with upward angle
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder - 0.3, // Angled downward for better visibility
-      -0.6, // Less extreme angle across body for better view
-      0.1   // Slight outward rotation (reduced from 0.3)
+      baseShoulder - 0.3,
+      -0.6,
+      0.1
     );
     
     // Right arm: Ready to draw position
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder - 0.2, // Angled downward (reversed from upward angling)
-      0.1,  // Forward position (reduced from 0.3)
-      -0.1  // Slight inward rotation (reduced from -0.2)
+      baseShoulder - 0.2,
+      0.1,
+      -0.1
     );
     
-    // Drawing positions - left arm stays steady, right arm pulls back
-    this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.4, -0.4); // Updated Y to 1.4
-    this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.5, -0.2);  // Right hand pulls back
+    // Drawing positions - left arm stays steady, right arm pulls back at TALLER height
+    this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.7, -0.4); // INCREASED Y from 1.4 to 1.7
+    this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.8, -0.2); // INCREASED Y from 1.5 to 1.8
     
     // Drawing arm rotations with enhanced visibility
     this.bowDrawAnimation.leftArmDrawRotation.set(
-      baseShoulder - 0.3, // Maintain bow holding angle
-      -0.6, // Keep extended position but visible
-      0.1   // Maintain outward rotation
+      baseShoulder - 0.3,
+      -0.6,
+      0.1
     );
     
     this.bowDrawAnimation.rightArmDrawRotation.set(
-      baseShoulder + 0.7, // Pull back higher
-      1.0,  // Pulled back position
-      -0.5  // More inward rotation when drawing
+      baseShoulder + 0.7,
+      1.0,
+      -0.5
     );
     
     // Bow rotations - keep vertical throughout
-    this.bowDrawAnimation.bowRestRotation.set(0, 0, 0); // Vertical bow
-    this.bowDrawAnimation.bowDrawRotation.set(0, 0, 0); // Stay vertical
+    this.bowDrawAnimation.bowRestRotation.set(0, 0, 0);
+    this.bowDrawAnimation.bowDrawRotation.set(0, 0, 0);
     
-    console.log("🏹 [Player] Enhanced bow animation initialized with realistic arm system");
+    console.log("🏹 [Player] Enhanced bow animation initialized with TALLER realistic arm system");
   }
   
   public equipWeapon(weaponId: string): boolean {
@@ -513,21 +513,21 @@ export class Player {
     let weaponType: WeaponType;
     if (this.isBowEquipped) {
       weaponType = 'bow';
-      // Attach bow to left HAND for proper control with realistic arm system
+      // Attach bow to left HAND for proper control with TALLER realistic arm system
       this.playerBody.leftHand.add(weapon.getMesh());
       
-      // Position bow handle properly in the enhanced hand - compensate for leftward visual bias
-      weapon.getMesh().position.set(-0.03, 0, 0.08); // Negative X to center visually
-      weapon.getMesh().rotation.set(0, 0, 0); // Vertical orientation
+      // Position bow handle properly in the enhanced hand
+      weapon.getMesh().position.set(-0.03, 0, 0.08);
+      weapon.getMesh().rotation.set(0, 0, 0);
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
-      // Set initial archery stance positions with realistic arms
+      // Set initial archery stance positions with TALLER realistic arms
       this.setRealisticArcheryStance();
       
-      console.log(`🏹 [Player] Bow equipped with realistic arm system and centered positioning`);
+      console.log(`🏹 [Player] Bow equipped with TALLER realistic arm system and centered positioning`);
     } else {
       weaponType = 'melee';
-      // Attach melee weapon to right hand with realistic positioning
+      // Attach melee weapon to right hand with TALLER realistic positioning
       this.playerBody.rightHand.add(weapon.getMesh());
       
       // Better weapon positioning for enhanced hand
@@ -550,7 +550,7 @@ export class Player {
     // Update hitbox reference
     this.swordHitBox = weapon.getHitBox();
     
-    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with realistic arm system and animation type: ${weaponType}`);
+    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with TALLER realistic arm system and animation type: ${weaponType}`);
     return true;
   }
   
@@ -558,37 +558,37 @@ export class Player {
     // Debug arm positions before setting archery stance
     this.debugArmPositions("BEFORE_ARCHERY_STANCE");
     
-    // Set arms to proper archery positions with realistic joint control
-    this.playerBody.leftArm.position.set(-0.5, 1.3, -0.4);
-    this.playerBody.rightArm.position.set(0.7, 1.3, -0.4);
+    // Set arms to proper archery positions with TALLER realistic joint control
+    this.playerBody.leftArm.position.set(-0.5, 1.6, -0.4); // INCREASED Y from 1.3 to 1.6
+    this.playerBody.rightArm.position.set(0.7, 1.6, -0.4); // INCREASED Y from 1.3 to 1.6
     
     // Set shoulder rotations for archery stance
     const baseShoulder = Math.PI / 8;
     
     // Left shoulder: Extended forward for bow holding
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder - 0.3, // Angled downward for better visibility
-      -0.6, // Across body but visible
-      0.1   // Slight outward rotation
+      baseShoulder - 0.3,
+      -0.6,
+      0.1
     );
     
     // Right shoulder: Ready to draw position
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder - 0.2, // Angled downward
-      0.1,  // Forward position
-      -0.1  // Slight inward rotation
+      baseShoulder - 0.2,
+      0.1,
+      -0.1
     );
     
     // Apply rotations to shoulder joints (the main arm groups)
     this.playerBody.leftArm.rotation.copy(this.bowDrawAnimation.leftArmRestRotation);
     this.playerBody.rightArm.rotation.copy(this.bowDrawAnimation.rightArmRestRotation);
     
-    // Set elbow positions for natural arm bend - FIXED: Use positive values for forward bending
+    // Set elbow positions for natural arm bend
     if (this.playerBody.leftElbow) {
-      this.playerBody.leftElbow.rotation.set(0.2, 0, 0); // Natural forward bend
+      this.playerBody.leftElbow.rotation.set(0.2, 0, 0);
     }
     if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(0.3, 0, 0); // Ready to pull with forward bend
+      this.playerBody.rightElbow.rotation.set(0.3, 0, 0);
     }
     
     // Set realistic hand rotations for bow gripping
@@ -600,7 +600,7 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] Realistic archery stance set with proper joint control");
+    console.log("🏹 [Player] TALLER realistic archery stance set with proper joint control");
     
     // Debug arm positions after setting archery stance
     this.debugArmPositions("AFTER_ARCHERY_STANCE");
@@ -610,9 +610,9 @@ export class Player {
     // Debug arm positions before reset
     this.debugArmPositions("BEFORE_NORMAL_STANCE_RESET");
     
-    // Reset arms to normal positions with realistic joint control
-    this.playerBody.leftArm.position.set(-0.3, 0.55, 0); // CRITICAL: Keep new realistic shoulder height
-    this.playerBody.rightArm.position.set(0.3, 0.55, 0); // CRITICAL: Keep new realistic shoulder height
+    // Reset arms to normal positions with TALLER realistic joint control
+    this.playerBody.leftArm.position.set(-0.3, 0.8, 0); // CRITICAL: Keep new TALLER shoulder height
+    this.playerBody.rightArm.position.set(0.3, 0.8, 0); // CRITICAL: Keep new TALLER shoulder height
     
     // Reset shoulder rotations
     this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
@@ -630,7 +630,7 @@ export class Player {
     this.playerBody.leftHand.rotation.set(0, 0, 0);
     this.playerBody.rightHand.rotation.set(0, 0, 0);
     
-    console.log("🗡️ [Player] Reset to realistic normal stance for melee weapon - ARMS KEPT AT NEW HEIGHT (y=0.55)");
+    console.log("🗡️ [Player] Reset to TALLER realistic normal stance for melee weapon - ARMS KEPT AT NEW TALLER HEIGHT (y=0.8)");
     
     // Debug arm positions after reset
     this.debugArmPositions("AFTER_NORMAL_STANCE_RESET");
@@ -664,7 +664,7 @@ export class Player {
     this.swordHitBox = new THREE.Mesh(fallbackHitBoxGeometry, fallbackHitBoxMaterial);
     this.scene.add(this.swordHitBox);
     
-    console.log(`🗡️ [Player] Weapon unequipped from realistic arm system, animation type set to emptyHands`);
+    console.log(`🗡️ [Player] Weapon unequipped from TALLER realistic arm system, animation type set to emptyHands`);
     return true;
   }
   
@@ -730,7 +730,7 @@ export class Player {
       return;
     }
     
-    console.log("🗡️ [Player] Starting realistic weapon swing animation");
+    console.log("🗡️ [Player] Starting TALLER realistic weapon swing animation");
     this.weaponSwing.isActive = true;
     this.weaponSwing.startTime = this.weaponSwing.clock.getElapsedTime();
     this.lastAttackTime = now;
@@ -751,7 +751,7 @@ export class Player {
       this.weaponSwing.trailPoints.push(new THREE.Vector3());
     }
     
-    console.log("🗡️ [Player] Realistic weapon swing animation started successfully");
+    console.log("🗡️ [Player] TALLER realistic weapon swing animation started successfully");
   }
   
   public isAttacking(): boolean {
@@ -936,12 +936,12 @@ export class Player {
       this.debugArmPositions("UPDATE_LOOP");
     }
     
-    // Update weapon swing animation (for melee weapons) with realistic arm system
+    // Update weapon swing animation (for melee weapons) with TALLER realistic arm system
     if (!this.isBowEquipped) {
       this.updateRealisticSwordSwing();
     }
     
-    // Update bow animation (for bow weapons) with realistic arm system
+    // Update bow animation (for bow weapons) with TALLER realistic arm system
     if (this.isBowEquipped) {
       this.updateRealisticBowAnimation(deltaTime);
     }
@@ -981,13 +981,12 @@ export class Player {
       } else {
         // Drain stamina if actually moving while sprinting
         if (isActuallyMoving) {
-          // For 5 seconds of sprinting: 100 stamina / 5 seconds = 20 stamina per second
           this.sprintStamina = Math.max(0, this.sprintStamina - (20 * deltaTime));
           this.stats.stamina = this.sprintStamina;
         }
       }
     } else {
-      // Regenerate stamina when not sprinting - 10 stamina per second (full recovery in 10 seconds)
+      // Regenerate stamina when not sprinting
       if (this.sprintStamina < this.stats.maxStamina) {
         this.sprintStamina = Math.min(this.stats.maxStamina, this.sprintStamina + (10 * deltaTime));
         this.stats.stamina = this.sprintStamina;
@@ -999,7 +998,7 @@ export class Player {
   }
   
   public startSprint(): void {
-    if (this.sprintStamina >= 50) { // Need at least 50 stamina to sprint
+    if (this.sprintStamina >= 50) {
       this.isSprinting = true;
       this.sprintStartTime = Date.now();
     }
@@ -1011,25 +1010,17 @@ export class Player {
   
   public takeDamage(amount: number): void {
     this.stats.health = Math.max(0, this.stats.health - amount);
-    
-    // Play hurt sound
     this.audioManager.play('player_hurt');
-    
-    // Create damage effect (no camera shake)
     this.effectsManager.createDamageEffect(this.group.position.clone());
   }
   
   public addGold(amount: number): void {
     this.stats.gold += amount;
-    
-    // Play gold pickup sound
     this.audioManager.play('gold_pickup');
   }
   
   public addExperience(amount: number): void {
     this.stats.experience += amount;
-    
-    // Check for level up
     while (this.stats.experience >= this.stats.experienceToNext) {
       this.stats.experience -= this.stats.experienceToNext;
       this.levelUp();
@@ -1043,12 +1034,7 @@ export class Player {
     this.stats.attack += 2;
     this.stats.attackPower += 2;
     this.stats.defense += 1;
-    
-    // Increase experience requirement for next level
     this.stats.experienceToNext = Math.floor(this.stats.experienceToNext * 1.5);
-    
-    // Create level up effect
-    // TODO: Add level up effect
   }
   
   public heal(amount: number): void {
@@ -1061,7 +1047,7 @@ export class Player {
   
   public setPosition(position: THREE.Vector3): void {
     this.group.position.copy(position);
-    console.log("Player position set to:", this.group.position);
+    console.log("TALLER Player position set to:", this.group.position);
   }
   
   public getRotation(): number {
@@ -1069,29 +1055,23 @@ export class Player {
   }
   
   public setRotation(rotation: number): void {
-    // This is used by MovementSystem for movement direction calculation only
-    // It doesn't rotate the visual components (arms, sword, etc.)
-    console.log("Player movement rotation set to:", rotation);
+    console.log("TALLER Player movement rotation set to:", rotation);
   }
   
   public setVisualRotation(yaw: number, pitch: number): void {
-    // Only rotate the player's visual components based on camera look direction
-    // This keeps arms and sword pointing where the player is looking
-    
     // Apply yaw rotation to the entire player body group for first-person feel
     this.group.rotation.y = yaw;
     
     // Apply subtle pitch rotation to arms for looking up/down - BUT NOT when bow is equipped
     if (this.playerBody.leftArm && this.playerBody.rightArm && !this.isBowEquipped) {
-      const pitchInfluence = pitch * 0.3; // Reduced influence for subtle effect
+      const pitchInfluence = pitch * 0.3;
       
-      // Adjust shoulder rotations based on pitch for realistic arm system
+      // Adjust shoulder rotations based on pitch for TALLER realistic arm system
       this.playerBody.leftArm.rotation.x = Math.PI / 8 + pitchInfluence;
       this.playerBody.rightArm.rotation.x = Math.PI / 8 + pitchInfluence;
     }
-    // When bow is equipped, don't modify arm rotations - let archery stance remain intact
     
-    console.log("Player visual rotation updated with realistic arms - Yaw:", yaw, "Pitch:", pitch, "Bow equipped:", this.isBowEquipped);
+    console.log("TALLER Player visual rotation updated with realistic arms - Yaw:", yaw, "Pitch:", pitch, "Bow equipped:", this.isBowEquipped);
   }
   
   public getStats(): PlayerStats {
@@ -1126,7 +1106,7 @@ export class Player {
     const speed = this.stats.speed * deltaTime * (this.isSprinting ? 1.5 : 1);
     const previousPosition = this.group.position.clone();
     
-    console.log("🚶 [Player] Move called with weapon animation system:", {
+    console.log("🚶 [Player] TALLER Move called with weapon animation system:", {
       direction: direction,
       speed: speed,
       deltaTime: deltaTime,
@@ -1141,7 +1121,7 @@ export class Player {
     
     const actualMovement = this.group.position.clone().sub(previousPosition);
     
-    console.log("🚶 [Player] Move executed with weapon animation system:", {
+    console.log("🚶 [Player] TALLER Move executed with weapon animation system:", {
       previousPos: previousPosition,
       newPos: this.group.position.clone(),
       actualMovement: actualMovement,
@@ -1149,9 +1129,6 @@ export class Player {
       wasSuccessful: actualMovement.length() > 0.001,
       weaponType: this.weaponAnimationSystem.getCurrentWeaponType()
     });
-    
-    // FIXED: Don't rotate visual components during movement
-    // Visual rotation is now handled by setVisualRotation() from camera look
   }
   
   public getMesh(): THREE.Group {
@@ -1164,7 +1141,7 @@ export class Player {
   
   public gainExperience(amount: number): boolean {
     this.addExperience(amount);
-    return false; // Will be true if level up happened, but simplified for now
+    return false;
   }
   
   public dispose(): void {
@@ -1180,7 +1157,7 @@ export class Player {
     console.log(`🏹 [Player] Realistic bow animation update - Active: ${this.bowDrawAnimation.isActive}, Charge: ${chargeLevel.toFixed(2)}`);
     
     if (this.bowDrawAnimation.isActive) {
-      // Enhanced progressive draw animation with realistic joint control
+      // Enhanced progressive draw animation with TALLER realistic joint control
       const drawProgress = Math.min(chargeLevel * 1.2, 1.0);
       
       // Left shoulder: Stays steady holding the bow with slight adjustment
@@ -1282,7 +1259,7 @@ export class Player {
         const shakeAmount = 0.03 * Math.sin(Date.now() * 0.015);
         this.playerBody.rightArm.rotation.x += shakeAmount;
         this.playerBody.rightArm.rotation.y += shakeAmount * 0.7;
-        console.log("🏹 [Player] Full draw shake effect active with realistic arms");
+        console.log("🏹 [Player] Full draw shake effect active with TALLER realistic arms");
       }
       
     } else {
@@ -1356,13 +1333,12 @@ export class Player {
       return;
     }
     
-    console.log("🏹 [Player] Starting realistic bow draw animation with enhanced joint control");
+    console.log("🏹 [Player] Starting TALLER realistic bow draw animation with enhanced joint control");
     this.bowDrawAnimation.isActive = true;
     
-    // Start weapon draw
     if (this.equippedWeapon.startDrawing) {
       this.equippedWeapon.startDrawing();
-      console.log("🏹 [Player] Weapon draw started on equipped weapon with realistic arms");
+      console.log("🏹 [Player] Weapon draw started on equipped weapon with TALLER realistic arms");
     } else {
       console.warn("🏹 [Player] Equipped weapon does not support startDrawing method");
     }
@@ -1373,13 +1349,12 @@ export class Player {
       return;
     }
     
-    console.log("🏹 [Player] Stopping realistic bow draw animation with enhanced joint control");
+    console.log("🏹 [Player] Stopping TALLER realistic bow draw animation with enhanced joint control");
     this.bowDrawAnimation.isActive = false;
     
-    // Stop weapon draw
     if (this.equippedWeapon.stopDrawing) {
       this.equippedWeapon.stopDrawing();
-      console.log("🏹 [Player] Weapon draw stopped on equipped weapon with realistic arms");
+      console.log("🏹 [Player] Weapon draw stopped on equipped weapon with TALLER realistic arms");
     } else {
       console.warn("🏹 [Player] Equipped weapon does not support stopDrawing method");
     }

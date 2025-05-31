@@ -56,18 +56,18 @@ export class RenderEngine {
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
-    // Position camera at neck level with slight backward offset for better body visibility
-    // Player head is at playerPosition.y + 0.85, neck level is at +0.75
+    // Position camera at TALLER neck level with slight backward offset for better body visibility
+    // Player head is at playerPosition.y + 1.2, TALLER neck level is at +1.05
     this.camera.position.set(
       playerPosition.x, 
-      playerPosition.y + 0.75, // Moved from 0.85 (head) to 0.75 (neck level)
+      playerPosition.y + 1.05, // INCREASED from 0.75 to 1.05 for TALLER player (40% increase)
       playerPosition.z - 0.05  // Slight backward offset for better viewing angle
     );
     this.cameraRotation.pitch = 0;
     this.cameraRotation.yaw = 0;
     this.updateCameraRotation();
     
-    console.log("📹 [RenderEngine] First-person camera positioned at neck level for better body visibility:", this.camera.position);
+    console.log("📹 [RenderEngine] First-person camera positioned at TALLER neck level for better body visibility:", this.camera.position);
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
@@ -87,10 +87,10 @@ export class RenderEngine {
   }
   
   public updateFirstPersonCamera(playerPosition: THREE.Vector3): void {
-    // Keep camera positioned at neck level with slight offset
+    // Keep camera positioned at TALLER neck level with slight offset
     this.camera.position.set(
       playerPosition.x, 
-      playerPosition.y + 0.75, // Maintain neck level position
+      playerPosition.y + 1.05, // INCREASED from 0.75 to 1.05 for TALLER player
       playerPosition.z - 0.05  // Maintain slight backward offset
     );
   }
@@ -102,7 +102,7 @@ export class RenderEngine {
     // Log every 60 frames (roughly 1 second)
     if (this.renderCount % 60 === 0) {
       const fps = this.renderCount / ((now - this.lastRenderTime) / 1000) * 60;
-      console.log("🎨 [RenderEngine] Rendering:", {
+      console.log("🎨 [RenderEngine] Rendering with TALLER camera:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
         cameraPos: this.camera.position,
