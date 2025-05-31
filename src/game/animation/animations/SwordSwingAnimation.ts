@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -101,9 +100,9 @@ export class SwordSwingAnimation {
       // AGGRESSIVE ACCELERATION: smoothstep easing for fast diagonal sweep
       const aggressiveT = t * t * (3 - 2 * t); // Smoothstep for aggressive acceleration
       
-      // NEW SLASH END POSITION: x: +15°, y: 70°, z: 0°
+      // NEW SLASH END POSITION: x: +45°, y: 70°, z: 0°
       const slashEndRotation = {
-        x: THREE.MathUtils.degToRad(15),  // +15° end position
+        x: THREE.MathUtils.degToRad(45),  // +45° end position
         y: THREE.MathUtils.degToRad(70), // 70° wide sweep to left
         z: 0 // No z rotation
       };
@@ -135,7 +134,7 @@ export class SwordSwingAnimation {
       
       // Return from the new slash end position to neutral
       const slashEndRotation = {
-        x: THREE.MathUtils.degToRad(15),
+        x: THREE.MathUtils.degToRad(45),
         y: THREE.MathUtils.degToRad(70),
         z: 0
       };
