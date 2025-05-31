@@ -1,5 +1,5 @@
 
-import * as THREE from 'three';
+import * * THREE from 'three';
 import { Sword } from '../Sword';
 import { WeaponConfig } from '../BaseWeapon';
 
@@ -26,14 +26,14 @@ export class WoodenSword extends Sword {
         rotations: {
           neutral: { x: Math.PI / 3 + 0.03, y: 0, z: 0 }, // Match new idle position (61.7°)
           windup: { 
-            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(40), // Reduced from 45° to 40°
-            y: THREE.MathUtils.degToRad(-25), // Keep Y rotation for windup
-            z: THREE.MathUtils.degToRad(12)   // Keep Z rotation for natural movement
+            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(55), // Increased from 40° to 55° for quicker but noticeable windup
+            y: THREE.MathUtils.degToRad(-30), // Increased Y rotation for better positioning
+            z: THREE.MathUtils.degToRad(15)   // Increased Z rotation for light weapon speed
           },
           slash: { 
-            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-15), // Increased from -10° to -15°
-            y: THREE.MathUtils.degToRad(40),  // Keep Y rotation for slash across body
-            z: THREE.MathUtils.degToRad(-8)   // Keep Z rotation for wrist snap
+            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-35), // Increased from -15° to -35° for effective forward swing
+            y: THREE.MathUtils.degToRad(55),  // Increased Y rotation for quick cross-body slash
+            z: THREE.MathUtils.degToRad(-12)  // Increased Z rotation for quick snap
           }
         }
       }

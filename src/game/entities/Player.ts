@@ -850,38 +850,47 @@ export class Player {
     let shoulderRotation = { x: 0, y: 0, z: 0 };
     let elbowRotation = { x: 0, y: 0, z: 0 };
     let weaponWristRotation = 0;
+    let torsoRotation = 0; // New: Add torso rotation for realism
     
-    // FIXED: PARALLEL base position for weapon swings - MATCH NEW IDLE ARM POSITION
-    const parallelAngleBase = Math.PI / 3 + 0.03; // 61.7° upward angle, matching new idle position
+    // ENHANCED: Match current idle arm position for proper swing base
+    const parallelAngleBase = Math.PI / 3 + 0.03; // 61.7° upward angle, matching current idle position
     
     if (elapsed < phases.windup) {
-      // WIND-UP PHASE with realistic joint movement
+      // ENHANCED WIND-UP PHASE with torso rotation and improved motion
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
+      // Enhanced shoulder movement - more dramatic windup
       shoulderRotation.x = THREE.MathUtils.lerp(parallelAngleBase, rotations.windup.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT); // Use weapon config Y rotation
-      shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT); // Use weapon config Z rotation
+      shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT);
       
-      // Elbow bends during windup
-      elbowRotation.x = THREE.MathUtils.lerp(0, 0.8, easedT);
+      // Enhanced elbow coordination - deeper bend for power storage
+      elbowRotation.x = THREE.MathUtils.lerp(0, 1.2, easedT); // Increased from 0.8 to 1.2
+      
+      // NEW: Add torso rotation for power generation
+      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT); // Rotate torso back for windup
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE with coordinated joint movement
+      // ENHANCED SLASH PHASE with coordinated body movement and forward swing
       const t = (elapsed - phases.windup) / phases.slash;
-      const easedT = t * t * (3 - 2 * t);
+      const easedT = t * t * (3 - 2 * t); // Smooth easing for powerful swing
       
+      // Enhanced shoulder movement - dramatic forward swing
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT); // Use weapon config Y rotation
-      shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT); // Use weapon config Z rotation
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT);
       
-      // Elbow extends during slash
-      elbowRotation.x = THREE.MathUtils.lerp(0.8, 0.2, easedT);
+      // Enhanced elbow movement - explosive extension
+      elbowRotation.x = THREE.MathUtils.lerp(1.2, 0.1, easedT); // More dramatic extension
       
-      // Wrist snap for impact
-      if (t >= 0.2 && t <= 0.8) {
-        const wristT = (t - 0.2) / 0.6;
-        weaponWristRotation = Math.sin(wristT * Math.PI) * this.weaponSwing.wristSnapIntensity;
+      // NEW: Enhanced torso rotation - snap forward for power
+      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.4, easedT); // Rotate torso forward through swing
+      
+      // Enhanced wrist snap for impact
+      if (t >= 0.15 && t <= 0.85) { // Extended wrist snap duration
+        const wristT = (t - 0.15) / 0.7;
+        weaponWristRotation = Math.sin(wristT * Math.PI) * (this.weaponSwing.wristSnapIntensity * 1.5); // Increased intensity
       }
       
       // Track weapon tip for trail effect
@@ -894,23 +903,28 @@ export class Player {
       }
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE - return to CORRECT PARALLEL base position (61.7°)
+      // ENHANCED RECOVERY PHASE - smooth return to ready stance
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
+      // Return to proper idle position
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, parallelAngleBase, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT); // Return to parallel position (Y=0)
-      shoulderRotation.z = THREE.MathUtils.lerp(rotations.slash.z, 0, easedT); // Return to parallel position (Z=0)
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.slash.z, 0, easedT);
       
-      // Elbow returns to neutral
-      elbowRotation.x = THREE.MathUtils.lerp(0.2, 0, easedT);
+      // Elbow returns to neutral ready position
+      elbowRotation.x = THREE.MathUtils.lerp(0.1, 0, easedT);
+      
+      // NEW: Torso returns to neutral position
+      torsoRotation = THREE.MathUtils.lerp(0.4, 0, easedT);
       
     } else {
-      // ANIMATION COMPLETE - return to CORRECT PARALLEL base position (61.7°)
+      // ANIMATION COMPLETE - return to exact idle position
       shoulderRotation.x = parallelAngleBase;
-      shoulderRotation.y = 0; // Ensure Y rotation is 0 - parallel with body
-      shoulderRotation.z = 0; // Ensure Z rotation is 0 - perfectly parallel
+      shoulderRotation.y = 0;
+      shoulderRotation.z = 0;
       elbowRotation = { x: 0, y: 0, z: 0 };
+      torsoRotation = 0;
       this.weaponSwing.isActive = false;
       
       // Create weapon trail if we have enough positions
@@ -921,18 +935,25 @@ export class Player {
       return;
     }
     
-    // Apply rotations to realistic arm system
+    // Apply enhanced rotations to realistic arm system
     this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
     
-    // Apply elbow rotation
+    // Apply enhanced elbow rotation
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
     }
     
-    // Apply wrist snap to weapon
+    // NEW: Apply torso rotation for realistic body movement
+    if (this.playerBody.body) {
+      this.playerBody.body.rotation.y = torsoRotation;
+    }
+    
+    // Apply enhanced wrist snap to weapon
     if (this.equippedWeapon) {
       this.equippedWeapon.getMesh().rotation.z = weaponWristRotation;
     }
+    
+    console.log(`⚔️ [Player] Enhanced realistic sword swing - Phase: ${elapsed < phases.windup ? 'WINDUP' : elapsed < phases.windup + phases.slash ? 'SLASH' : 'RECOVERY'}, Torso: ${torsoRotation.toFixed(2)}`);
   }
   
   private trackWeaponTip(): void {

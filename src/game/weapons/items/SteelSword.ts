@@ -26,14 +26,14 @@ export class SteelSword extends Sword {
         rotations: {
           neutral: { x: Math.PI / 3 + 0.03, y: 0, z: 0 }, // Match new idle position (61.7°)
           windup: { 
-            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(50), // Reduced from 55° to 50°
-            y: THREE.MathUtils.degToRad(-35), // Keep Y rotation for windup
-            z: THREE.MathUtils.degToRad(18)   // Keep Z rotation for natural movement
+            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(65), // Increased from 50° to 65° for heavier weapon feel
+            y: THREE.MathUtils.degToRad(-40), // Increased Y rotation for better positioning
+            z: THREE.MathUtils.degToRad(25)   // Increased Z rotation for heavier weapon windup
           },
           slash: { 
-            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-25), // Increased from -20° to -25°
-            y: THREE.MathUtils.degToRad(50),  // Keep Y rotation for slash across body
-            z: THREE.MathUtils.degToRad(-12)  // Keep Z rotation for wrist snap
+            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-45), // Increased from -25° to -45° for powerful heavy swing
+            y: THREE.MathUtils.degToRad(65),  // Increased Y rotation for dramatic heavy slash
+            z: THREE.MathUtils.degToRad(-18)  // Increased Z rotation for heavy weapon impact
           }
         }
       }
