@@ -39,19 +39,37 @@ export class WeaponAnimationSystem {
     this.meleeWalkAnimation = new MeleeWalkAnimation(this.configs.melee);
     this.emptyHandsWalkAnimation = new EmptyHandsWalkAnimation(this.configs.emptyHands);
     
-    // Initialize bow states
-    this.currentBowState = this.createBowState(60); // Idle state
-    this.targetBowState = this.createBowState(60);
+    // Initialize bow states - Idle state with updated right arm angles
+    this.currentBowState = this.createBowState(60, false, false); // Idle state
+    this.targetBowState = this.createBowState(60, false, false);
     
     console.log('🎭 [WeaponAnimationSystem] Initialized with smooth bow state transitions');
   }
   
-  private createBowState(leftArmAngle: number): BowState {
+  private createBowState(leftArmAngle: number, isMoving: boolean = false, isDrawing: boolean = false): BowState {
+    let rightArmX: number;
+    let rightArmY: number = 0; // Always 0° (no side-to-side rotation)
+    let rightArmZ: number;
+    
+    if (isDrawing) {
+      // Drawing state: 95° upward, inward angle
+      rightArmX = Math.PI * 95 / 180;
+      rightArmZ = -Math.PI / 8; // -22.5° inward angle pointing left
+    } else if (isMoving) {
+      // Walking/Running state: 40° upward, no inward angle
+      rightArmX = Math.PI * 40 / 180;
+      rightArmZ = 0;
+    } else {
+      // Idle/Ready state: 30° upward, no inward angle
+      rightArmX = Math.PI / 6; // 30°
+      rightArmZ = 0;
+    }
+    
     return {
       leftArmX: Math.PI * leftArmAngle / 180,
-      rightArmX: Math.PI / 6,
-      rightArmY: 0,
-      rightArmZ: -Math.PI / 8,
+      rightArmX: rightArmX,
+      rightArmY: rightArmY,
+      rightArmZ: rightArmZ,
       leftElbowX: 0.2,
       rightElbowX: 0.3
     };
@@ -59,11 +77,11 @@ export class WeaponAnimationSystem {
   
   private getBowStateForCondition(isMoving: boolean, isBowDrawing: boolean): BowState {
     if (isBowDrawing) {
-      return this.createBowState(115); // Drawing state
+      return this.createBowState(115, false, true); // Drawing state
     } else if (isMoving) {
-      return this.createBowState(80);  // Walking/Running state
+      return this.createBowState(80, true, false);  // Walking/Running state
     } else {
-      return this.createBowState(60);  // Idle state
+      return this.createBowState(60, false, false);  // Idle state
     }
   }
   
@@ -78,12 +96,14 @@ export class WeaponAnimationSystem {
     
     // Check if we need to start a new transition
     const stateChanged = 
-      Math.abs(newTargetState.leftArmX - this.targetBowState.leftArmX) > 0.01;
+      Math.abs(newTargetState.leftArmX - this.targetBowState.leftArmX) > 0.01 ||
+      Math.abs(newTargetState.rightArmX - this.targetBowState.rightArmX) > 0.01 ||
+      Math.abs(newTargetState.rightArmZ - this.targetBowState.rightArmZ) > 0.01;
     
     if (stateChanged) {
       this.targetBowState = newTargetState;
       this.isTransitioning = true;
-      console.log(`🏹 [WeaponAnimationSystem] Starting transition to ${(newTargetState.leftArmX * 180 / Math.PI).toFixed(0)}° state`);
+      console.log(`🏹 [WeaponAnimationSystem] Starting transition to ${(newTargetState.leftArmX * 180 / Math.PI).toFixed(0)}° left arm, ${(newTargetState.rightArmX * 180 / Math.PI).toFixed(0)}° right arm state`);
     }
     
     // Smooth transition to target state
@@ -145,7 +165,8 @@ export class WeaponAnimationSystem {
     
     // Check if transition is complete
     const threshold = 0.01;
-    if (Math.abs(this.currentBowState.leftArmX - this.targetBowState.leftArmX) < threshold) {
+    if (Math.abs(this.currentBowState.leftArmX - this.targetBowState.leftArmX) < threshold &&
+        Math.abs(this.currentBowState.rightArmX - this.targetBowState.rightArmX) < threshold) {
       this.isTransitioning = false;
     }
   }
@@ -154,10 +175,11 @@ export class WeaponAnimationSystem {
     // Apply draw-specific modifications on top of the base state
     const drawAmount = this.easeInOutQuad(chargeLevel);
     
-    // Right arm draw animation - pulls back based on charge level
-    const rightArmDrawX = Math.PI / 6 + (drawAmount * Math.PI / 4);  // Pull up
-    const rightArmDrawY = drawAmount * Math.PI / 8;  // Slight outward angle
-    const rightArmDrawZ = -Math.PI / 8 - (drawAmount * Math.PI / 6);  // Pull back
+    // Right arm draw animation - pulls back based on charge level from base 95° position
+    const baseRightArmX = Math.PI * 95 / 180; // Base 95° drawing position
+    const rightArmDrawX = baseRightArmX + (drawAmount * Math.PI / 4);  // Pull up further
+    const rightArmDrawY = 0; // Always 0° (no side-to-side rotation)
+    const rightArmDrawZ = -Math.PI / 8 - (drawAmount * Math.PI / 6);  // Start with inward angle, pull back more
     
     playerBody.rightArm.rotation.x = rightArmDrawX;
     playerBody.rightArm.rotation.y = rightArmDrawY;
@@ -242,12 +264,8 @@ export class WeaponAnimationSystem {
         playerBody.rightLeg.rotation.x, 0, returnSpeed
       );
       
-      // Return to weapon-appropriate idle stance
+      // Return to weapon-appropriate idle stance - BOW REMOVED FROM HERE (handled by smooth transition system)
       switch (this.currentWeaponType) {
-        case 'bow':
-          // For bow, the smooth transition system handles this
-          break;
-          
         case 'melee':
         case 'emptyHands':
           // Return to neutral arm positions
@@ -320,70 +338,8 @@ export class WeaponAnimationSystem {
       playerBody.rightLeg.rotation.x, 0, returnSpeed
     );
     
-    // Return to weapon-appropriate idle stance
+    // Return to weapon-appropriate idle stance - BOW REMOVED FROM HERE (handled by smooth transition system)
     switch (this.currentWeaponType) {
-      case 'bow':
-        // BOW NATURAL READY STANCE: Left arm at 60° chest level, parallel with body
-        const bowLeftArmTargetX = Math.PI * 60 / 180;  // 60° upward angle
-        const bowLeftArmTargetY = 0;                   // Parallel with body
-        const bowLeftArmTargetZ = 0;                   // Parallel with body
-        
-        playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
-          playerBody.leftArm.rotation.x, bowLeftArmTargetX, returnSpeed
-        );
-        playerBody.leftArm.rotation.y = THREE.MathUtils.lerp(
-          playerBody.leftArm.rotation.y, bowLeftArmTargetY, returnSpeed
-        );
-        playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
-          playerBody.leftArm.rotation.z, bowLeftArmTargetZ, returnSpeed
-        );
-        
-        // Right arm in ready position
-        playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
-          playerBody.rightArm.rotation.x, Math.PI / 6, returnSpeed
-        );
-        playerBody.rightArm.rotation.y = THREE.MathUtils.lerp(
-          playerBody.rightArm.rotation.y, 0, returnSpeed
-        );
-        playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
-          playerBody.rightArm.rotation.z, -Math.PI / 8, returnSpeed
-        );
-        
-        // Bow-specific elbow and hand positions
-        if (playerBody.leftElbow) {
-          playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
-            playerBody.leftElbow.rotation.x, 0.2, returnSpeed
-          );
-        }
-        if (playerBody.rightElbow) {
-          playerBody.rightElbow.rotation.x = THREE.MathUtils.lerp(
-            playerBody.rightElbow.rotation.x, 0.3, returnSpeed
-          );
-        }
-        
-        playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
-          playerBody.leftHand.rotation.x, -Math.PI / 6, returnSpeed
-        );
-        playerBody.leftHand.rotation.y = THREE.MathUtils.lerp(
-          playerBody.leftHand.rotation.y, 0, returnSpeed
-        );
-        playerBody.leftHand.rotation.z = THREE.MathUtils.lerp(
-          playerBody.leftHand.rotation.z, Math.PI / 4, returnSpeed
-        );
-        
-        playerBody.rightHand.rotation.x = THREE.MathUtils.lerp(
-          playerBody.rightHand.rotation.x, 0, returnSpeed
-        );
-        playerBody.rightHand.rotation.y = THREE.MathUtils.lerp(
-          playerBody.rightHand.rotation.y, 0, returnSpeed
-        );
-        playerBody.rightHand.rotation.z = THREE.MathUtils.lerp(
-          playerBody.rightHand.rotation.z, 0, returnSpeed
-        );
-        
-        console.log('🏹 [WeaponAnimationSystem] Returning to bow natural ready stance - 60° chest level, parallel with body');
-        break;
-        
       case 'melee':
       case 'emptyHands':
         // Return to neutral arm positions
@@ -412,8 +368,8 @@ export class WeaponAnimationSystem {
     switch (this.currentWeaponType) {
       case 'bow':
         // Reset to idle state and let transition system handle it
-        this.currentBowState = this.createBowState(60);
-        this.targetBowState = this.createBowState(60);
+        this.currentBowState = this.createBowState(60, false, false);
+        this.targetBowState = this.createBowState(60, false, false);
         this.isTransitioning = false;
         break;
       case 'melee':
