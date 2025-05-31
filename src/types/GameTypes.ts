@@ -40,6 +40,9 @@ export interface PlayerBody {
   rightElbow?: THREE.Group;
   leftWrist?: THREE.Group;
   rightWrist?: THREE.Group;
+  // Add foot properties for complete body representation
+  leftFoot?: THREE.Mesh;
+  rightFoot?: THREE.Mesh;
 }
 
 // Equipment slot types
