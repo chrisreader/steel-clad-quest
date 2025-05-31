@@ -6,6 +6,7 @@ import { EffectsManager } from '../engine/EffectsManager';
 import { BaseWeapon } from '../weapons/BaseWeapon';
 import { WeaponManager } from '../weapons/WeaponManager';
 import { WeaponAnimationSystem, WeaponType } from '../animation/WeaponAnimationSystem';
+import { SwordSwingAnimation } from '../animation/animations/SwordSwingAnimation';
 
 export class Player {
   // THREE.js objects
@@ -20,6 +21,7 @@ export class Player {
   
   // Animation system
   private weaponAnimationSystem: WeaponAnimationSystem;
+  private swordSwingAnimation: SwordSwingAnimation | null = null;
   
   // Game state
   private stats: PlayerStats;
@@ -613,6 +615,14 @@ export class Player {
       this.setWeaponArmStance('melee');
       
       console.log(`🗡️ [Player] Melee weapon equipped with raised right arm ready stance`);
+      
+      // CRITICAL: Initialize SwordSwingAnimation for melee weapons
+      this.swordSwingAnimation = new SwordSwingAnimation(
+        this.weaponSwing, 
+        this.playerBody, 
+        this.equippedWeapon
+      );
+      console.log("🗡️ [Player] SwordSwingAnimation created for spatial arm movement");
     }
     
     // Update animation system weapon type
@@ -725,6 +735,9 @@ export class Player {
       this.resetToRealisticNormalStance(); // Reset stance when unequipping bow
     } else {
       this.playerBody.rightHand.remove(this.equippedWeapon.getMesh());
+      // Clear sword swing animation
+      this.swordSwingAnimation = null;
+      console.log("🗡️ [Player] SwordSwingAnimation cleared");
     }
     
     // Reset bow state
@@ -806,7 +819,7 @@ export class Player {
       return;
     }
     
-    console.log("🗡️ [Player] Starting TALLER realistic weapon swing animation");
+    console.log("🗡️ [Player] Starting SPATIAL MOVEMENT sword swing animation");
     this.weaponSwing.isActive = true;
     this.weaponSwing.startTime = this.weaponSwing.clock.getElapsedTime();
     this.lastAttackTime = now;
@@ -827,7 +840,7 @@ export class Player {
       this.weaponSwing.trailPoints.push(new THREE.Vector3());
     }
     
-    console.log("🗡️ [Player] TALLER realistic weapon swing animation started successfully");
+    console.log("🗡️ [Player] SPATIAL MOVEMENT sword swing animation started successfully");
   }
   
   public isAttacking(): boolean {
@@ -846,119 +859,44 @@ export class Player {
     this.hitEnemiesThisSwing.add(enemy);
   }
   
-  private updateRealisticSwordSwing(): void {
-    if (!this.weaponSwing.isActive || !this.equippedWeapon) return;
+  private updateSwordSwingAnimation(): void {
+    if (!this.weaponSwing.isActive || !this.equippedWeapon || this.isBowEquipped) return;
     
+    console.log("🗡️ [Player] *** UPDATING SWORD SWING WITH SPATIAL MOVEMENT ***");
+    
+    // Use SwordSwingAnimation for spatial movement if available
+    if (this.swordSwingAnimation) {
+      console.log("🗡️ [Player] Using SwordSwingAnimation for spatial arm movement");
+      this.swordSwingAnimation.update();
+    } else {
+      console.warn("🗡️ [Player] SwordSwingAnimation not available, weapon swing may not work properly");
+    }
+    
+    // Continue with existing weapon tip tracking and effects
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
-    const { phases, rotations, duration } = this.weaponSwing;
+    const { phases } = this.weaponSwing;
     
-    let shoulderRotation = { x: 0, y: 0, z: 0 };
-    let elbowRotation = { x: 0, y: 0, z: 0 };
-    let weaponWristRotation = 0;
-    let torsoRotation = 0; // New: Add torso rotation for realism
-    
-    // ENHANCED: Match current idle arm position for proper swing base
-    const parallelAngleBase = Math.PI / 3 + 0.03; // 61.7° upward angle, matching current idle position
-    
-    if (elapsed < phases.windup) {
-      // ENHANCED WIND-UP PHASE with torso rotation and improved motion
-      const t = elapsed / phases.windup;
-      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
-      
-      // Enhanced shoulder movement - more dramatic windup
-      shoulderRotation.x = THREE.MathUtils.lerp(parallelAngleBase, rotations.windup.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT);
-      
-      // FIXED: Enhanced elbow coordination - DOWNWARD bend for horizontal sword positioning
-      elbowRotation.x = THREE.MathUtils.lerp(0, -0.05, easedT); // CHANGED: Negative (downward) bend to counteract forward shoulder
-      
-      // NEW: Add torso rotation for power generation
-      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT); // Rotate torso back for windup
-      
-    } else if (elapsed < phases.windup + phases.slash) {
-      // ENHANCED SLASH PHASE with coordinated body movement and forward swing
-      const t = (elapsed - phases.windup) / phases.slash;
-      const easedT = t * t * (3 - 2 * t); // Smooth easing for powerful swing
-      
-      // Enhanced shoulder movement - dramatic forward swing
-      shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT);
-      
-      // FIXED: Enhanced elbow movement - DOWNWARD extension for horizontal blade
-      elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.1, easedT); // CHANGED: Negative (downward) extension for horizontal sword
-      
-      // NEW: Enhanced torso rotation - snap forward for power
-      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.4, easedT); // Rotate torso forward through swing
-      
-      // Enhanced wrist snap for impact
-      if (t >= 0.15 && t <= 0.85) { // Extended wrist snap duration
-        const wristT = (t - 0.15) / 0.7;
-        weaponWristRotation = Math.sin(wristT * Math.PI) * (this.weaponSwing.wristSnapIntensity * 1.5); // Increased intensity
-      }
-      
-      // Track weapon tip for trail effect
+    // Track weapon tip during slash phase
+    if (elapsed >= phases.windup && elapsed < phases.windup + phases.slash) {
       this.trackWeaponTip();
       
       // Create enhanced swoosh effect once during mid-slash
-      if (t >= 0.3 && t <= 0.5 && !this.swooshEffectCreated) {
+      const slashProgress = (elapsed - phases.windup) / phases.slash;
+      if (slashProgress >= 0.3 && slashProgress <= 0.5 && !this.swooshEffectCreated) {
         this.createEnhancedSwooshEffect();
         this.swooshEffectCreated = true;
       }
-      
-    } else if (elapsed < duration) {
-      // ENHANCED RECOVERY PHASE - smooth return to ready stance
-      const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
-      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
-      
-      // Return to proper idle position
-      shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, parallelAngleBase, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(rotations.slash.z, 0, easedT);
-      
-      // FIXED: Elbow returns to DOWNWARD position for horizontal sword
-      elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.05, easedT); // CHANGED: Return to downward bend for horizontal sword
-      
-      // NEW: Torso returns to neutral position
-      torsoRotation = THREE.MathUtils.lerp(0.4, 0, easedT);
-      
-    } else {
-      // ANIMATION COMPLETE - return to exact idle position
-      shoulderRotation.x = parallelAngleBase;
-      shoulderRotation.y = 0;
-      shoulderRotation.z = 0;
-      elbowRotation = { x: -0.05, y: 0, z: 0 }; // FIXED: DOWNWARD elbow bend for horizontal sword at rest
-      torsoRotation = 0;
-      this.weaponSwing.isActive = false;
+    }
+    
+    // Complete animation if duration exceeded
+    if (elapsed >= this.weaponSwing.duration) {
+      console.log("🗡️ [Player] Spatial sword swing animation completed");
       
       // Create weapon trail if we have enough positions
       if (this.weaponTipPositions.length > 5) {
         this.createWeaponTrailEffect();
       }
-      
-      return;
     }
-    
-    // Apply enhanced rotations to realistic arm system
-    this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
-    
-    // Apply enhanced elbow rotation
-    if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
-    }
-    
-    // NEW: Apply torso rotation for realistic body movement
-    if (this.playerBody.body) {
-      this.playerBody.body.rotation.y = torsoRotation;
-    }
-    
-    // Apply enhanced wrist snap to weapon
-    if (this.equippedWeapon) {
-      this.equippedWeapon.getMesh().rotation.z = weaponWristRotation;
-    }
-    
-    console.log(`⚔️ [Player] FIXED Enhanced realistic sword swing - Phase: ${elapsed < phases.windup ? 'WINDUP' : elapsed < phases.windup + phases.slash ? 'SLASH' : 'RECOVERY'}, Elbow: ${elbowRotation.x.toFixed(3)} (DOWNWARD), Torso: ${torsoRotation.toFixed(2)}`);
   }
   
   private trackWeaponTip(): void {
@@ -1041,9 +979,9 @@ export class Player {
       this.debugArmPositions("UPDATE_LOOP");
     }
     
-    // Update weapon swing animation (for melee weapons) with TALLER realistic arm system
+    // Update weapon swing animation (for melee weapons) with SPATIAL MOVEMENT
     if (!this.isBowEquipped) {
-      this.updateRealisticSwordSwing();
+      this.updateSwordSwingAnimation();
     }
     
     // Update bow animation (for bow weapons) with TALLER realistic arm system
