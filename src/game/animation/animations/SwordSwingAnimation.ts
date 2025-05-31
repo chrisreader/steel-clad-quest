@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -52,7 +51,8 @@ export class SwordSwingAnimation {
     shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT);
     
-    elbowRotation.x = THREE.MathUtils.lerp(0, 0.3, easedT); // Reduced elbow bend
+    // FIXED: Negative elbow rotation to bend forearm DOWNWARD for horizontal sword
+    elbowRotation.x = THREE.MathUtils.lerp(0, -0.1, easedT); // Changed from 0.3 to -0.1
     torsoRotation = THREE.MathUtils.lerp(0, -0.1, easedT); // Minimal torso rotation
   }
   
@@ -68,7 +68,8 @@ export class SwordSwingAnimation {
     shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT);
     
-    elbowRotation.x = THREE.MathUtils.lerp(0.3, 0.1, easedT); // Extend arm during slash
+    // FIXED: More negative elbow rotation during slash to keep sword horizontal
+    elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.2, easedT); // Changed from 0.1 to -0.2
     torsoRotation = THREE.MathUtils.lerp(-0.1, 0.2, easedT); // More torso follow-through
     
     // Enhanced wrist rotation for proper slashing motion
@@ -87,14 +88,15 @@ export class SwordSwingAnimation {
     shoulderRotation.y = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.y, 0, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.z, 0, easedT);
     
-    elbowRotation.x = THREE.MathUtils.lerp(0.1, 0, easedT);
+    // FIXED: Return to neutral elbow position (slight downward bend)
+    elbowRotation.x = THREE.MathUtils.lerp(-0.2, -0.05, easedT); // Changed from 0.1 to -0.05
     torsoRotation = THREE.MathUtils.lerp(0.2, 0, easedT);
   }
   
   private completeAnimation(parallelAngleBase: number): void {
     this.playerBody.rightArm.rotation.set(parallelAngleBase, 0, 0);
     if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(0, 0, 0);
+      this.playerBody.rightElbow.rotation.set(-0.05, 0, 0); // Slight downward bend at rest
     }
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = 0;

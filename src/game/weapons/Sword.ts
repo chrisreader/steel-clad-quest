@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig } from './BaseWeapon';
 import { TextureGenerator } from '../utils/TextureGenerator';
@@ -73,9 +72,9 @@ export class Sword extends BaseWeapon {
     pommel.castShadow = true;
     swordGroup.add(pommel);
 
-    // FIXED: Adjust sword rotation for HORIZONTAL combat positioning with new MUCH LOWER arm stance
-    swordGroup.position.set(0, -0.5, -0.1);
-    swordGroup.rotation.x = -Math.PI / 24; // Changed from -Math.PI / 6 to -Math.PI / 24 (only -7.5° downward tilt for horizontal stance)
+    // FIXED: Adjusted sword position and rotation for TRUE HORIZONTAL positioning
+    swordGroup.position.set(0, -0.3, -0.1); // Raised Y position slightly
+    swordGroup.rotation.x = 0; // REMOVED downward tilt completely for horizontal blade
 
     this.mesh = swordGroup;
     return swordGroup;
