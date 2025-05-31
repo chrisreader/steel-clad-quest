@@ -1,8 +1,8 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
 import { BowWalkAnimation } from './animations/BowWalkAnimation';
+import { BowDrawAnimation } from './animations/BowDrawAnimation';
 import { MeleeWalkAnimation } from './animations/MeleeWalkAnimation';
 import { EmptyHandsWalkAnimation } from './animations/EmptyHandsWalkAnimation';
 
@@ -11,6 +11,7 @@ export type WeaponType = 'emptyHands' | 'melee' | 'bow';
 export class WeaponAnimationSystem {
   private configs: WeaponAnimationConfigs;
   private bowWalkAnimation: BowWalkAnimation;
+  private bowDrawAnimation: BowDrawAnimation;
   private meleeWalkAnimation: MeleeWalkAnimation;
   private emptyHandsWalkAnimation: EmptyHandsWalkAnimation;
   private currentWeaponType: WeaponType = 'emptyHands';
@@ -19,10 +20,11 @@ export class WeaponAnimationSystem {
   constructor() {
     this.configs = ANIMATION_CONFIGS;
     this.bowWalkAnimation = new BowWalkAnimation(this.configs.bow);
+    this.bowDrawAnimation = new BowDrawAnimation(this.configs.bow);
     this.meleeWalkAnimation = new MeleeWalkAnimation(this.configs.melee);
     this.emptyHandsWalkAnimation = new EmptyHandsWalkAnimation(this.configs.emptyHands);
     
-    console.log('🎭 [WeaponAnimationSystem] Initialized with weapon-specific animations');
+    console.log('🎭 [WeaponAnimationSystem] Initialized with bow draw animation support');
   }
   
   public setWeaponType(weaponType: WeaponType): void {
@@ -39,12 +41,20 @@ export class WeaponAnimationSystem {
     isMoving: boolean,
     isSprinting: boolean,
     isAttacking: boolean = false,
-    isBowDrawing: boolean = false
+    isBowDrawing: boolean = false,
+    bowChargeLevel: number = 0
   ): void {
     console.log(`🎭 [WeaponAnimationSystem] Update: moving=${isMoving}, weapon=${this.currentWeaponType}, attacking=${isAttacking}, bowDrawing=${isBowDrawing}`);
     
+    // BOW DRAW STATE - Highest priority for bow weapons
+    if (this.currentWeaponType === 'bow' && isBowDrawing) {
+      this.bowDrawAnimation.update(playerBody, bowChargeLevel, deltaTime);
+      console.log('🏹 [WeaponAnimationSystem] Applied bow draw animation');
+      return;
+    }
+    
+    // WALKING/RUNNING STATE
     if (isMoving) {
-      // FIXED: Always allow walking animation when moving, regardless of weapon state
       // Only block walking animation during melee attacks, not during bow drawing
       const shouldBlockWalkAnimation = isAttacking && this.currentWeaponType === 'melee';
       
@@ -68,7 +78,7 @@ export class WeaponAnimationSystem {
         console.log('🚫 [WeaponAnimationSystem] Walking animation blocked due to melee attack');
       }
     } else if (!isMoving && !isAttacking && !isBowDrawing) {
-      // Return to idle pose only when completely idle
+      // IDLE STATE - Return to idle pose only when completely idle
       this.returnToIdlePose(playerBody, deltaTime);
     }
   }
@@ -176,6 +186,7 @@ export class WeaponAnimationSystem {
     switch (this.currentWeaponType) {
       case 'bow':
         this.bowWalkAnimation.reset(playerBody);
+        this.bowDrawAnimation.reset(playerBody);
         break;
       case 'melee':
         this.meleeWalkAnimation.reset(playerBody);
