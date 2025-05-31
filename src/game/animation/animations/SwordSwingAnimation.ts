@@ -46,8 +46,8 @@ export class SwordSwingAnimation {
     shoulderRotation.y = 0; // Absolutely no backward pull
     shoulderRotation.z = 0; // No extra rotation
     
-    // FIXED: UPWARD elbow bend to counteract forward shoulder angle and keep blade horizontal
-    elbowRotation.x = 0.05; // POSITIVE (upward) elbow bend to maintain horizontal blade
+    // FIXED: DOWNWARD elbow bend to counteract forward shoulder angle and keep blade horizontal
+    elbowRotation.x = -0.05; // NEGATIVE (downward) elbow bend to maintain horizontal blade
     torsoRotation = 0; // No torso movement during windup
   }
   
@@ -63,8 +63,8 @@ export class SwordSwingAnimation {
     shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.slash.y, easedT); // Right-to-left motion
     shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.slash.z, easedT); // Wrist snap
     
-    // FIXED: UPWARD elbow animation to maintain horizontal blade positioning
-    elbowRotation.x = THREE.MathUtils.lerp(0.05, 0.1, easedT); // POSITIVE (upward) bend increase for follow-through
+    // FIXED: DOWNWARD elbow animation to maintain horizontal blade positioning
+    elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.1, easedT); // NEGATIVE (downward) bend increase for follow-through
     torsoRotation = THREE.MathUtils.lerp(0, 0.15, easedT); // Reduced torso rotation
     
     // Enhanced wrist rotation for proper slashing motion
@@ -83,15 +83,15 @@ export class SwordSwingAnimation {
     shoulderRotation.y = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.y, 0, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.z, 0, easedT);
     
-    // FIXED: Return to UPWARD elbow position for horizontal stance
-    elbowRotation.x = THREE.MathUtils.lerp(0.1, 0.05, easedT); // Return to upward bend
+    // FIXED: Return to DOWNWARD elbow position for horizontal stance
+    elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.05, easedT); // Return to downward bend
     torsoRotation = THREE.MathUtils.lerp(0.15, 0, easedT);
   }
   
   private completeAnimation(parallelAngleBase: number): void {
     this.playerBody.rightArm.rotation.set(parallelAngleBase, 0, 0);
     if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(0.05, 0, 0); // FIXED: UPWARD elbow bend at rest for horizontal blade
+      this.playerBody.rightElbow.rotation.set(-0.05, 0, 0); // FIXED: DOWNWARD elbow bend at rest for horizontal blade
     }
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = 0;
