@@ -508,34 +508,34 @@ export class Player {
     this.playerBody.rightArm.position.set(0.3, 0.8, 0);
     
     if (weaponType === 'melee') {
-      // MELEE READY STANCE: Right arm raised up and outward, left arm at side
+      // MELEE READY STANCE: Right arm raised up, left arm at side
       
       // Left arm: Normal side position (like empty hands)
       this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
       
-      // Right arm: Raised ready position - up and outward from body
+      // Right arm: Raised ready position - UPWARD and FORWARD only (NO Y rotation for inward/outward)
       this.playerBody.rightArm.rotation.set(
         Math.PI / 4,   // 45° upward angle (higher than normal)
-        -Math.PI / 6,  // 30° outward angle (NEGATIVE for outward rotation)
+        0,             // NO Y rotation - keep natural like empty hands
         -Math.PI / 8   // Slight forward tilt
       );
       
-      console.log("🗡️ [Player] Set MELEE ready stance - Right arm raised outward/up, left arm at side");
+      console.log("🗡️ [Player] Set MELEE ready stance - Right arm raised upward/forward, NO inward rotation");
       
     } else if (weaponType === 'bow') {
-      // BOW READY STANCE: Left arm raised up and outward for bow holding, right arm at side
+      // BOW READY STANCE: Left arm raised up, right arm at side
       
-      // Left arm: Raised bow-holding position - up and outward
+      // Left arm: Raised bow-holding position - UPWARD and FORWARD only (NO Y rotation for inward/outward)
       this.playerBody.leftArm.rotation.set(
         Math.PI / 4,  // 45° upward angle
-        Math.PI / 6,  // 30° outward angle (POSITIVE for left arm outward rotation) 
+        0,            // NO Y rotation - keep natural like empty hands
         -Math.PI / 8  // Slight forward tilt
       );
       
       // Right arm: Normal side position initially (will be adjusted by bow animation)
       this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
       
-      console.log("🏹 [Player] Set BOW ready stance - Left arm raised outward/up, right arm at side");
+      console.log("🏹 [Player] Set BOW ready stance - Left arm raised upward/forward, NO inward rotation");
     }
     
     // Reset elbow positions for natural arm bend

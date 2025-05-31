@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -29,7 +28,7 @@ export class MeleeWalkAnimation {
     
     // Left arm - normal side position with walking swing
     const leftArmBaseX = Math.PI / 8; // Normal side position
-    const leftArmBaseY = 0;
+    const leftArmBaseY = 0;           // NO Y rotation - keep natural like empty hands
     const leftArmBaseZ = 0;
     
     playerBody.leftArm.rotation.x = leftArmBaseX - armSwing;
@@ -39,7 +38,7 @@ export class MeleeWalkAnimation {
     // Right arm - WEAPON ARM: raised ready position with reduced swing
     if (!isAttacking) {
       const rightArmBaseX = Math.PI / 4;   // 45° raised position
-      const rightArmBaseY = -Math.PI / 6;  // 30° outward (NEGATIVE for outward rotation)
+      const rightArmBaseY = 0;             // NO Y rotation - keep natural like empty hands
       const rightArmBaseZ = -Math.PI / 8;  // Slight forward tilt
       
       // Reduced swing intensity for weapon arm to maintain ready stance
@@ -57,7 +56,7 @@ export class MeleeWalkAnimation {
       playerBody.rightElbow.rotation.x = Math.sin(walkCycle) * (this.config.elbowMovement * 0.5) + 0.05;
     }
     
-    console.log(`⚔️ [MeleeWalkAnimation] Updated with RIGHT ARM READY STANCE - Left at side, Right raised/outward - Attacking: ${isAttacking}`);
+    console.log(`⚔️ [MeleeWalkAnimation] Updated with RIGHT ARM READY STANCE - Natural positioning, NO inward rotation - Attacking: ${isAttacking}`);
   }
   
   public reset(playerBody: PlayerBody): void {
@@ -66,8 +65,8 @@ export class MeleeWalkAnimation {
     // Left arm: Normal side position
     playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
     
-    // Right arm: Raised ready position for weapon - OUTWARD rotation
-    playerBody.rightArm.rotation.set(Math.PI / 4, -Math.PI / 6, -Math.PI / 8);
+    // Right arm: Raised ready position for weapon - NO Y rotation
+    playerBody.rightArm.rotation.set(Math.PI / 4, 0, -Math.PI / 8);
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0, 0, 0);

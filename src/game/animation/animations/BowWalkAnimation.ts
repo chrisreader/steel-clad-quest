@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -32,7 +31,7 @@ export class BowWalkAnimation {
     
     // Left arm - WEAPON ARM: raised bow-holding position with reduced swing
     const leftArmBaseX = Math.PI / 4;   // 45° raised position
-    const leftArmBaseY = Math.PI / 6;   // Pronounced bow angle (POSITIVE for left arm outward)
+    const leftArmBaseY = 0;             // NO Y rotation - keep natural like empty hands
     const leftArmBaseZ = -Math.PI / 6;  // Forward angle for better POV visibility
     
     // Reduced swing for bow-holding arm to maintain control
@@ -42,7 +41,7 @@ export class BowWalkAnimation {
     
     // Right arm - normal side position with walking movement (will be adjusted by draw animation)
     const rightArmBaseX = Math.PI / 6;  // Moderate upward angle
-    const rightArmBaseY = Math.PI / 8;  // Slight outward angle
+    const rightArmBaseY = 0;            // NO Y rotation - keep natural like empty hands
     const rightArmBaseZ = -Math.PI / 8; // Forward angle for better POV visibility
     
     playerBody.rightArm.rotation.x = rightArmBaseX + (armSwing * 0.5);
@@ -86,11 +85,11 @@ export class BowWalkAnimation {
   public reset(playerBody: PlayerBody): void {
     // Reset to BOW READY STANCE (not empty hands stance)
     
-    // Left arm: Raised bow-holding position - OUTWARD rotation
-    playerBody.leftArm.rotation.set(Math.PI / 4, Math.PI / 6, -Math.PI / 6);
+    // Left arm: Raised bow-holding position - NO Y rotation
+    playerBody.leftArm.rotation.set(Math.PI / 4, 0, -Math.PI / 6);
     
-    // Right arm: Ready position
-    playerBody.rightArm.rotation.set(Math.PI / 6, Math.PI / 8, -Math.PI / 8);
+    // Right arm: Ready position - NO Y rotation
+    playerBody.rightArm.rotation.set(Math.PI / 6, 0, -Math.PI / 8);
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0.2, 0, 0);
