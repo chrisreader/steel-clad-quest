@@ -568,9 +568,9 @@ export class Player {
     // Debug arm positions before setting archery stance
     this.debugArmPositions("BEFORE_ARCHERY_STANCE");
     
-    // Set arms to proper archery positions with TALLER realistic joint control - FIXED: Use correct shoulder height
-    this.playerBody.leftArm.position.set(-0.5, 0.8, -0.4); // FIXED: Changed Y from 1.6 to 0.8 (correct shoulder height)
-    this.playerBody.rightArm.position.set(0.7, 0.8, -0.4); // FIXED: Changed Y from 1.6 to 0.8 (correct shoulder height)
+    // FIXED: Keep arms at normal shoulder positions for proper shadow connection (same as empty hands)
+    this.playerBody.leftArm.position.set(-0.3, 0.8, 0); // FIXED: Use normal position for proper shadows
+    this.playerBody.rightArm.position.set(0.3, 0.8, 0); // FIXED: Use normal position for proper shadows
     
     // Set shoulder rotations for archery stance - FIXED: Use same base position as walking animation
     const baseShoulder = Math.PI / 8;
@@ -610,7 +610,7 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] TALLER realistic archery stance set with FIXED arm positioning at correct shoulder height (Y=0.8)");
+    console.log("🏹 [Player] FIXED: Bow stance set with normal arm positions for proper shadows while preserving bow rotations");
     
     // Debug arm positions after setting archery stance
     this.debugArmPositions("AFTER_ARCHERY_STANCE");
