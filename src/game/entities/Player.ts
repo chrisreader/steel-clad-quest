@@ -422,7 +422,7 @@ export class Player {
       this.playerBody.leftHand.add(weapon.getMesh());
       
       // Position bow handle properly in the enhanced hand - compensate for leftward visual bias
-      weapon.getMesh().position.set(-0.03, 0, 0.08); // Negative X to center visually (was 0)
+      weapon.getMesh().position.set(-0.03, 0, 0.08); // Negative X to center visually
       weapon.getMesh().rotation.set(0, 0, 0); // Vertical orientation
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
