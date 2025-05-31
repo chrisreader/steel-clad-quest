@@ -17,6 +17,9 @@ export class SceneManager {
   private fog: THREE.Fog | null = null;
   private ground: THREE.Mesh | null = null;
   
+  // Ground-level fog system
+  private groundFogLayers: THREE.Mesh[] = [];
+  
   // Time of day
   private timeOfDay: number = 0.5; // 0-1, 0 = midnight, 0.5 = noon
   private dayNightCycleEnabled: boolean = false;
@@ -25,11 +28,11 @@ export class SceneManager {
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     
-    // Setup fog with realistic blue color that matches the sky
-    this.scene.fog = new THREE.Fog(0x87CEEB, 50, 150); // Sky blue color
-    this.fog = this.scene.fog;
+    // Remove global fog to prevent skybox interference
+    this.scene.fog = null;
+    this.fog = null;
     
-    console.log("SceneManager initialized with existing scene and realistic blue fog");
+    console.log("SceneManager initialized with ground-level fog system (no global fog)");
     
     // Setup basic lighting
     this.setupLighting();
@@ -73,12 +76,55 @@ export class SceneManager {
     console.log("Rim light added");
   }
   
+  private createGroundFog(): void {
+    // Clear existing fog layers
+    this.groundFogLayers.forEach(layer => this.scene.remove(layer));
+    this.groundFogLayers = [];
+    
+    // Create multiple horizontal fog layers at different heights
+    const fogLayers = [
+      { height: 1, opacity: 0.15, size: 200 },
+      { height: 3, opacity: 0.12, size: 180 },
+      { height: 5, opacity: 0.08, size: 160 },
+      { height: 8, opacity: 0.05, size: 140 },
+      { height: 10, opacity: 0.03, size: 120 }
+    ];
+    
+    fogLayers.forEach(layer => {
+      const fogGeometry = new THREE.PlaneGeometry(layer.size, layer.size, 1, 1);
+      const fogMaterial = new THREE.MeshBasicMaterial({
+        color: 0xB0E0E6, // Atmospheric blue-white
+        transparent: true,
+        opacity: layer.opacity,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.NormalBlending
+      });
+      
+      const fogMesh = new THREE.Mesh(fogGeometry, fogMaterial);
+      fogMesh.position.set(0, layer.height, 0);
+      fogMesh.rotation.x = -Math.PI / 2; // Make it horizontal
+      
+      // Add slight randomization to prevent uniformity
+      fogMesh.rotation.z = Math.random() * Math.PI * 2;
+      
+      this.groundFogLayers.push(fogMesh);
+      this.scene.add(fogMesh);
+    });
+    
+    console.log(`Ground fog system created with ${fogLayers.length} layers`);
+  }
+  
   public createDefaultWorld(): void {
     console.log('Creating default world...');
     
     // Create terrain
     this.createTerrain();
     console.log('Terrain created');
+    
+    // Create ground-level fog
+    this.createGroundFog();
+    console.log('Ground fog created');
     
     // Create tavern
     this.createTavern();
@@ -381,6 +427,10 @@ export class SceneManager {
       }
     });
     objectsToRemove.forEach(obj => this.scene.remove(obj));
+    
+    // Clear ground fog layers
+    this.groundFogLayers.forEach(layer => this.scene.remove(layer));
+    this.groundFogLayers = [];
   }
 
   private loadTavernLevel(): void {
@@ -497,7 +547,19 @@ export class SceneManager {
   }
   
   public dispose(): void {
+    // Clean up ground fog layers
+    this.groundFogLayers.forEach(layer => {
+      if (layer.material instanceof THREE.Material) {
+        layer.material.dispose();
+      }
+      if (layer.geometry) {
+        layer.geometry.dispose();
+      }
+      this.scene.remove(layer);
+    });
+    this.groundFogLayers = [];
+    
     // The scene is managed by RenderEngine, so we don't dispose it here
-    console.log("SceneManager disposed");
+    console.log("SceneManager disposed with ground fog cleanup");
   }
 }
