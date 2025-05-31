@@ -97,15 +97,15 @@ export class Player {
     this.weaponManager = new WeaponManager();
     this.weaponAnimationSystem = new WeaponAnimationSystem();
     
-    // Create player group
+    // Create player group at natural ground position
     this.group = new THREE.Group();
-    this.group.position.set(0, 0, 2);
+    this.group.position.set(0, 0.7, 2); // Raised so feet are at ground level
     this.group.userData.isPlayer = true;
     scene.add(this.group);
     
-    console.log("Player group created and added to scene at position:", this.group.position);
+    console.log("Player group created with natural proportions at position:", this.group.position);
     
-    // Create player body with realistic arm system
+    // Create player body with natural realistic proportions
     this.playerBody = this.createRealisticPlayerBody();
     
     // Create fallback hitbox for when no weapon is equipped
@@ -146,8 +146,25 @@ export class Player {
     const metalTexture = TextureGenerator.createMetalTexture();
     const skinTexture = this.createSkinTexture();
     
-    // Body - positioned closer but still below camera view
-    const bodyGeometry = new THREE.BoxGeometry(0.7, 1.4, 0.35);
+    // HEAD - Natural position at top, visible but camera will be inside
+    const headGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.25);
+    const headMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xFFDBC4,
+      map: skinTexture,
+      transparent: true,
+      opacity: 0.95
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.set(0, 0.85, 0); // Natural head position at eye level
+    head.castShadow = true;
+    head.receiveShadow = true;
+    head.visible = true; // Keep visible for shadows but camera will be inside
+    playerBodyGroup.add(head);
+    
+    console.log("👤 [Player] Head positioned naturally at:", head.position, "- castShadow:", head.castShadow);
+    
+    // TORSO - Natural position below head
+    const bodyGeometry = new THREE.BoxGeometry(0.5, 0.7, 0.25);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
       shininess: 80,
@@ -156,45 +173,30 @@ export class Player {
       normalScale: new THREE.Vector2(0.5, 0.5)
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    // Adjusted positioning - closer but still outside FOV
-    body.position.set(0, -0.8, 0.1); // Much closer positioning
+    body.position.set(0, 0.35, 0); // Connected below head naturally
     body.castShadow = true;
-    body.receiveShadow = true; // Also receive shadows
+    body.receiveShadow = true;
     body.visible = true;
     playerBodyGroup.add(body);
     
-    console.log("🧍 [Player] Body positioned at:", body.position, "- castShadow:", body.castShadow);
+    console.log("🧍 [Player] Torso positioned naturally at:", body.position, "- castShadow:", body.castShadow);
     
-    // Head - keep hidden since camera is at head position
-    const headGeometry = new THREE.BoxGeometry(0.45, 0.45, 0.35);
-    const headMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xFFDBC4,
-      map: skinTexture,
-      transparent: true,
-      opacity: 0.95
-    });
-    const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = 0.5;
-    head.castShadow = true;
-    head.visible = false; // Keep head hidden since camera is at head level
-    playerBodyGroup.add(head);
-    
-    // REALISTIC ARM SYSTEM - Left Arm (connected to body)
+    // REALISTIC ARM SYSTEM - Left Arm (naturally connected to shoulders)
     const leftArmSystem = this.createRealisticArm('left');
-    leftArmSystem.position.set(-0.4, 0.5, -0.1); // Connected to body shoulders
+    leftArmSystem.position.set(-0.3, 0.65, 0); // Connected to shoulder naturally
     leftArmSystem.visible = true;
     playerBodyGroup.add(leftArmSystem);
     
-    // REALISTIC ARM SYSTEM - Right Arm (connected to body)
+    // REALISTIC ARM SYSTEM - Right Arm (naturally connected to shoulders)
     const rightArmSystem = this.createRealisticArm('right');
-    rightArmSystem.position.set(0.4, 0.5, -0.1); // Connected to body shoulders
+    rightArmSystem.position.set(0.3, 0.65, 0); // Connected to shoulder naturally
     rightArmSystem.visible = true;
     playerBodyGroup.add(rightArmSystem);
     
-    console.log("🦾 [Player] Arms positioned to connect with body - Left:", leftArmSystem.position, "Right:", rightArmSystem.position);
+    console.log("🦾 [Player] Arms positioned naturally - Left:", leftArmSystem.position, "Right:", rightArmSystem.position);
     
-    // Legs - positioned closer and naturally connected to body
-    const legGeometry = new THREE.BoxGeometry(0.25, 0.9, 0.25);
+    // LEGS - Natural position connected to torso bottom
+    const legGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.15);
     const legMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x4A6FA5,
       shininess: 60,
@@ -202,23 +204,23 @@ export class Player {
     });
     
     const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-0.15, -1.3, 0.05); // Connected to body bottom
+    leftLeg.position.set(-0.1, -0.3, 0); // Natural connection to torso
     leftLeg.castShadow = true;
     leftLeg.receiveShadow = true;
     leftLeg.visible = true;
     playerBodyGroup.add(leftLeg);
     
     const rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
-    rightLeg.position.set(0.15, -1.3, 0.05); // Connected to body bottom
+    rightLeg.position.set(0.1, -0.3, 0); // Natural connection to torso
     rightLeg.castShadow = true;
     rightLeg.receiveShadow = true;
     rightLeg.visible = true;
     playerBodyGroup.add(rightLeg);
     
-    console.log("🦵 [Player] Legs positioned - Left:", leftLeg.position, "Right:", rightLeg.position, "- castShadow:", leftLeg.castShadow);
+    console.log("🦵 [Player] Legs positioned naturally - Left:", leftLeg.position, "Right:", rightLeg.position);
     
-    // Add feet for complete body representation
-    const footGeometry = new THREE.BoxGeometry(0.3, 0.15, 0.45);
+    // FEET - Natural position at ground level
+    const footGeometry = new THREE.BoxGeometry(0.2, 0.1, 0.3);
     const footMaterial = new THREE.MeshPhongMaterial({
       color: 0x2D3B5C,
       shininess: 40,
@@ -226,20 +228,20 @@ export class Player {
     });
     
     const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
-    leftFoot.position.set(-0.15, -1.85, 0.15); // Below legs, naturally positioned
+    leftFoot.position.set(-0.1, -0.7, 0.1); // At ground level
     leftFoot.castShadow = true;
     leftFoot.receiveShadow = true;
     leftFoot.visible = true;
     playerBodyGroup.add(leftFoot);
     
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
-    rightFoot.position.set(0.15, -1.85, 0.15); // Below legs, naturally positioned
+    rightFoot.position.set(0.1, -0.7, 0.1); // At ground level
     rightFoot.castShadow = true;
     rightFoot.receiveShadow = true;
     rightFoot.visible = true;
     playerBodyGroup.add(rightFoot);
     
-    console.log("👟 [Player] Feet positioned - Left:", leftFoot.position, "Right:", rightFoot.position, "- castShadow:", leftFoot.castShadow);
+    console.log("👟 [Player] Feet positioned at ground level - Left:", leftFoot.position, "Right:", rightFoot.position);
     
     this.group.add(playerBodyGroup);
     
@@ -247,19 +249,18 @@ export class Player {
     const leftArmComponents = this.getArmComponents(leftArmSystem);
     const rightArmComponents = this.getArmComponents(rightArmSystem);
     
-    console.log("🧍 [Player] Complete body created with proper positioning and shadow casting enabled on all parts");
+    console.log("🧍 [Player] Complete naturally proportioned body created with all parts visible and shadow casting");
     
     return {
       group: playerBodyGroup,
-      leftArm: leftArmSystem, // This is now the shoulder group
-      rightArm: rightArmSystem, // This is now the shoulder group
+      leftArm: leftArmSystem,
+      rightArm: rightArmSystem,
       leftHand: leftArmComponents.hand,
       rightHand: rightArmComponents.hand,
       leftLeg,
       rightLeg,
       body,
-      head,
-      // Add new arm components
+      head, // Now visible head for shadows
       leftUpperArm: leftArmComponents.upperArm,
       rightUpperArm: rightArmComponents.upperArm,
       leftForearm: leftArmComponents.forearm,
@@ -268,7 +269,6 @@ export class Player {
       rightElbow: rightArmComponents.elbow,
       leftWrist: leftArmComponents.wrist,
       rightWrist: rightArmComponents.wrist,
-      // Add feet references
       leftFoot,
       rightFoot
     };

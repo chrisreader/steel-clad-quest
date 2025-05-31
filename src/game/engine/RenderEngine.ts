@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class RenderEngine {
@@ -57,12 +56,18 @@ export class RenderEngine {
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
-    this.camera.position.set(playerPosition.x, playerPosition.y + 1.7, playerPosition.z);
+    // Position camera inside the player's head at eye level
+    // Player head is at playerPosition.y + 0.85, so camera goes inside it
+    this.camera.position.set(
+      playerPosition.x, 
+      playerPosition.y + 0.85, // Inside head position (head is at +0.85 from player group)
+      playerPosition.z
+    );
     this.cameraRotation.pitch = 0;
     this.cameraRotation.yaw = 0;
     this.updateCameraRotation();
     
-    console.log("🎨 [RenderEngine] First-person camera setup completed");
+    console.log("📹 [RenderEngine] First-person camera positioned inside player head at:", this.camera.position);
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
@@ -82,7 +87,12 @@ export class RenderEngine {
   }
   
   public updateFirstPersonCamera(playerPosition: THREE.Vector3): void {
-    this.camera.position.set(playerPosition.x, playerPosition.y + 1.7, playerPosition.z);
+    // Keep camera positioned inside the player's head
+    this.camera.position.set(
+      playerPosition.x, 
+      playerPosition.y + 0.85, // Maintain position inside head
+      playerPosition.z
+    );
   }
   
   public render(): void {
