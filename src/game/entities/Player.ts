@@ -421,15 +421,15 @@ export class Player {
       // Attach bow to left HAND for proper control with realistic arm system
       this.playerBody.leftHand.add(weapon.getMesh());
       
-      // Position bow handle properly in the enhanced hand
-      weapon.getMesh().position.set(0.02, 0, 0.08); // Adjusted for new hand geometry
+      // Position bow handle properly in the enhanced hand - centered in hand
+      weapon.getMesh().position.set(0, 0, 0.08); // Centered X position (was 0.02)
       weapon.getMesh().rotation.set(0, 0, 0); // Vertical orientation
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
       // Set initial archery stance positions with realistic arms
       this.setRealisticArcheryStance();
       
-      console.log(`🏹 [Player] Bow equipped with realistic arm system and improved positioning`);
+      console.log(`🏹 [Player] Bow equipped with realistic arm system and centered positioning`);
     } else {
       // Attach melee weapon to right hand with realistic positioning
       this.playerBody.rightHand.add(weapon.getMesh());
