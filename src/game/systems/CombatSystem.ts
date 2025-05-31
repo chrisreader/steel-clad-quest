@@ -89,11 +89,13 @@ export class CombatSystem {
   public startPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] Starting player attack, weapon type:", currentWeapon?.getConfig().type || 'none');
+    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK CALLED *** - weapon type:", currentWeapon?.getConfig().type || 'none');
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
+      console.log("⚔️ [CombatSystem] Starting bow attack");
       this.startBowDraw();
     } else {
+      console.log("⚔️ [CombatSystem] *** STARTING MELEE ATTACK *** - calling startMeleeAttack()");
       this.startMeleeAttack();
     }
   }
@@ -170,9 +172,10 @@ export class CombatSystem {
       return;
     }
     
-    console.log("⚔️ [CombatSystem] Starting melee attack");
+    console.log("⚔️ [CombatSystem] *** STARTING MELEE ATTACK *** - calling player.startSwordSwing()");
     this.lastAttackTime = now;
     this.player.startSwordSwing();
+    console.log("⚔️ [CombatSystem] *** MELEE ATTACK *** - player.startSwordSwing() called successfully");
   }
   
   private checkPlayerAttacks(): void {

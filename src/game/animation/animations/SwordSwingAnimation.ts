@@ -14,16 +14,28 @@ export class SwordSwingAnimation {
     this.equippedWeapon = equippedWeapon;
     // Store original shoulder position for restoration
     this.originalShoulderPosition = this.playerBody.rightArm.position.clone();
+    console.log('🗡️ [SwordSwingAnimation] *** CONSTRUCTOR CALLED *** - NEW INSTANCE CREATED');
     console.log('🗡️ [SwordSwingAnimation] Constructor - Original shoulder position:', this.originalShoulderPosition);
+    console.log('🗡️ [SwordSwingAnimation] Constructor - WeaponSwing active?:', this.weaponSwing.isActive);
+    console.log('🗡️ [SwordSwingAnimation] Constructor - Duration:', this.weaponSwing.duration);
   }
   
   public update(): void {
-    if (!this.weaponSwing.isActive || !this.equippedWeapon) return;
+    if (!this.weaponSwing.isActive || !this.equippedWeapon) {
+      // Add debug for why update is skipping
+      if (!this.weaponSwing.isActive) {
+        console.log('🗡️ [SwordSwingAnimation] Update SKIPPED - weaponSwing not active');
+      }
+      if (!this.equippedWeapon) {
+        console.log('🗡️ [SwordSwingAnimation] Update SKIPPED - no equipped weapon');
+      }
+      return;
+    }
     
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
     const { phases, duration } = this.weaponSwing;
     
-    console.log(`🗡️ [SwordSwingAnimation] Update - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
+    console.log(`🗡️ [SwordSwingAnimation] *** UPDATE CALLED *** - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
     
     let shoulderRotation = { x: 0, y: 0, z: 0 };
     let shoulderPosition = { x: 0, y: 0, z: 0 };
@@ -51,23 +63,23 @@ export class SwordSwingAnimation {
       shoulderRotation.z = THREE.MathUtils.lerp(0, -0.3, easedT);
       
       // MASSIVE SPATIAL MOVEMENT - move arm FAR to the right with dramatic arc
-      shoulderPosition.x = THREE.MathUtils.lerp(0, 3.0, easedT);      // MASSIVE outward movement
-      shoulderPosition.y = THREE.MathUtils.lerp(0, 1.0, easedT);      // Higher arc movement 
-      shoulderPosition.z = THREE.MathUtils.lerp(0, -1.5, easedT);     // Much further back for maximum coiling
+      shoulderPosition.x = THREE.MathUtils.lerp(0, 4.0, easedT);      // MASSIVE outward movement
+      shoulderPosition.y = THREE.MathUtils.lerp(0, 1.2, easedT);      // Higher arc movement 
+      shoulderPosition.z = THREE.MathUtils.lerp(0, -2.0, easedT);     // Much further back for maximum coiling
       
       // Elbow - retract arm dramatically during windup (bend in for power)
-      elbowRotation.x = THREE.MathUtils.lerp(-0.05, -2.0, easedT);    // Much more dramatic bend
-      elbowRotation.y = THREE.MathUtils.lerp(0, 0.4, easedT);
+      elbowRotation.x = THREE.MathUtils.lerp(-0.05, -2.2, easedT);    // Much more dramatic bend
+      elbowRotation.y = THREE.MathUtils.lerp(0, 0.5, easedT);
       
       // Wrist coordination
       wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 4, -Math.PI / 6, easedT);
-      wristRotation.y = THREE.MathUtils.lerp(0, -0.2, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0, 0.15, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(0, -0.25, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(0, 0.2, easedT);
       
       // Enhanced torso coiling for power
-      torsoRotation = THREE.MathUtils.lerp(0, -1.0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0, -1.2, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] WINDUP - Position: x=${shoulderPosition.x.toFixed(2)}, y=${shoulderPosition.y.toFixed(2)}, z=${shoulderPosition.z.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** - Position offset: x=${shoulderPosition.x.toFixed(2)}, y=${shoulderPosition.y.toFixed(2)}, z=${shoulderPosition.z.toFixed(2)}`);
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE: MASSIVE sweep from far right to far left across entire body
@@ -77,26 +89,26 @@ export class SwordSwingAnimation {
       // Shoulder rotation - drive the swing
       shoulderRotation.x = THREE.MathUtils.lerp(windupShoulderX, slashEndShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(windupShoulderY, slashEndShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(-0.3, 0.4, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(-0.3, 0.5, easedT);
       
       // MASSIVE CROSS-BODY SWEEP - from FAR right to FAR left with dramatic arc
-      shoulderPosition.x = THREE.MathUtils.lerp(3.0, -3.0, easedT);     // MASSIVE 6-unit sweep across body
-      shoulderPosition.y = THREE.MathUtils.lerp(1.0, -0.5, easedT);     // Arc downward as swing progresses
-      shoulderPosition.z = THREE.MathUtils.lerp(-1.5, 2.0, easedT);     // Extend dramatically forward into strike
+      shoulderPosition.x = THREE.MathUtils.lerp(4.0, -4.0, easedT);     // MASSIVE 8-unit sweep across body
+      shoulderPosition.y = THREE.MathUtils.lerp(1.2, -0.6, easedT);     // Arc downward as swing progresses
+      shoulderPosition.z = THREE.MathUtils.lerp(-2.0, 2.5, easedT);     // Extend dramatically forward into strike
       
       // Elbow - EXPLOSIVE extension for maximum reach and power
-      elbowRotation.x = THREE.MathUtils.lerp(-2.0, 1.5, easedT);       // From bent to fully extended
-      elbowRotation.y = THREE.MathUtils.lerp(0.4, -0.5, easedT);
+      elbowRotation.x = THREE.MathUtils.lerp(-2.2, 1.8, easedT);       // From bent to fully extended
+      elbowRotation.y = THREE.MathUtils.lerp(0.5, -0.6, easedT);
       
       // Wrist - snap through the strike
       wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 6, -Math.PI / 3, easedT);
-      wristRotation.y = THREE.MathUtils.lerp(-0.2, Math.PI / 5, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0.15, -Math.PI / 6, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(-0.25, Math.PI / 4.5, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(0.2, -Math.PI / 5, easedT);
       
       // Enhanced torso uncoiling with maximum power
-      torsoRotation = THREE.MathUtils.lerp(-1.0, 1.4, easedT);
+      torsoRotation = THREE.MathUtils.lerp(-1.2, 1.6, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] SLASH - Position: x=${shoulderPosition.x.toFixed(2)}, y=${shoulderPosition.y.toFixed(2)}, z=${shoulderPosition.z.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** - Position offset: x=${shoulderPosition.x.toFixed(2)}, y=${shoulderPosition.y.toFixed(2)}, z=${shoulderPosition.z.toFixed(2)}`);
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE: Return to center ready position
@@ -106,39 +118,41 @@ export class SwordSwingAnimation {
       // Return shoulder rotation to ready
       shoulderRotation.x = THREE.MathUtils.lerp(slashEndShoulderX, neutralShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(slashEndShoulderY, neutralShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0.4, 0, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0.5, 0, easedT);
       
       // Return shoulder position to neutral center
-      shoulderPosition.x = THREE.MathUtils.lerp(-3.0, 0, easedT);       // Return from FAR left to center
-      shoulderPosition.y = THREE.MathUtils.lerp(-0.5, 0, easedT);       // Return to neutral height
-      shoulderPosition.z = THREE.MathUtils.lerp(2.0, 0, easedT);        // Return from extended to neutral
+      shoulderPosition.x = THREE.MathUtils.lerp(-4.0, 0, easedT);       // Return from FAR left to center
+      shoulderPosition.y = THREE.MathUtils.lerp(-0.6, 0, easedT);       // Return to neutral height
+      shoulderPosition.z = THREE.MathUtils.lerp(2.5, 0, easedT);        // Return from extended to neutral
       
       // Return elbow to ready position
-      elbowRotation.x = THREE.MathUtils.lerp(1.5, -0.05, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(-0.5, 0, easedT);
+      elbowRotation.x = THREE.MathUtils.lerp(1.8, -0.05, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(-0.6, 0, easedT);
       
       // Return wrist to forward-pointing ready position
       wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 3, -Math.PI / 4, easedT);
-      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 5, 0, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 6, 0, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 4.5, 0, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 5, 0, easedT);
       
       // Return torso to neutral
-      torsoRotation = THREE.MathUtils.lerp(1.4, 0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(1.6, 0, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] RECOVERY - Position: x=${shoulderPosition.x.toFixed(2)}, y=${shoulderPosition.y.toFixed(2)}, z=${shoulderPosition.z.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** - Position offset: x=${shoulderPosition.x.toFixed(2)}, y=${shoulderPosition.y.toFixed(2)}, z=${shoulderPosition.z.toFixed(2)}`);
       
     } else {
       // ANIMATION COMPLETE - reset everything
+      console.log('🗡️ [SwordSwingAnimation] *** ANIMATION COMPLETE *** - calling completeAnimation()');
       this.completeAnimation();
       return;
     }
     
     // Apply all rotations and positions
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING TRANSFORMS *** - About to call applyRotations with position offset: x=${shoulderPosition.x.toFixed(2)}`);
     this.applyRotations(shoulderRotation, shoulderPosition, elbowRotation, wristRotation, torsoRotation);
   }
   
   private completeAnimation(): void {
-    console.log('🗡️ [SwordSwingAnimation] COMPLETING ANIMATION - Resetting to original position');
+    console.log('🗡️ [SwordSwingAnimation] *** COMPLETING ANIMATION *** - Resetting to original position');
     
     // Reset to proper ready position
     this.playerBody.rightArm.rotation.set(Math.PI / 3, 0, 0);
@@ -155,7 +169,7 @@ export class SwordSwingAnimation {
     }
     
     this.weaponSwing.isActive = false;
-    console.log('🗡️ [SwordSwingAnimation] Animation complete');
+    console.log('🗡️ [SwordSwingAnimation] *** ANIMATION COMPLETE *** - weaponSwing.isActive set to false');
   }
   
   private applyRotations(
@@ -175,7 +189,8 @@ export class SwordSwingAnimation {
     newPosition.z += shoulderPosition.z;  // This moves the arm forward/back
     this.playerBody.rightArm.position.copy(newPosition);
     
-    console.log(`🗡️ [SwordSwingAnimation] Applied position - Original: x=${this.originalShoulderPosition.x.toFixed(2)}, New: x=${newPosition.x.toFixed(2)}, Offset: x=${shoulderPosition.x.toFixed(2)}`);
+    console.log(`🗡️ [SwordSwingAnimation] *** POSITION APPLIED *** - Original: x=${this.originalShoulderPosition.x.toFixed(2)}, New: x=${newPosition.x.toFixed(2)}, Offset: x=${shoulderPosition.x.toFixed(2)}`);
+    console.log(`🗡️ [SwordSwingAnimation] *** POSITION APPLIED *** - Full new position: x=${newPosition.x.toFixed(2)}, y=${newPosition.y.toFixed(2)}, z=${newPosition.z.toFixed(2)}`);
     
     // Apply joint rotations
     if (this.playerBody.rightElbow) {
