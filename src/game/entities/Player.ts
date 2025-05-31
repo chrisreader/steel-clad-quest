@@ -501,7 +501,7 @@ export class Player {
     console.log("🏹 [Player] FIXED bow animation initialized with NO Y ROTATION - arms only go upward/forward");
   }
   
-  // FIXED: Set weapon-specific ready stance - only weapon arm raised with NO Y ROTATION
+  // FIXED: Set weapon-specific ready stance - only weapon arm raised with NO Y ROTATION and PARALLEL positioning
   private setWeaponArmStance(weaponType: 'melee' | 'bow'): void {
     // Debug arm positions before setting weapon stance
     this.debugArmPositions("BEFORE_WEAPON_READY_STANCE");
@@ -511,34 +511,34 @@ export class Player {
     this.playerBody.rightArm.position.set(0.3, 0.8, 0);
     
     if (weaponType === 'melee') {
-      // MELEE READY STANCE: Right arm raised up, left arm at side
+      // MELEE READY STANCE: Right arm raised up PARALLEL with body, left arm at side
       
       // Left arm: Normal side position (like empty hands)
       this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
       
-      // FIXED: Right arm: Raised ready position - UPWARD and FORWARD only (NO Y rotation)
+      // FIXED: Right arm: Raised ready position - UPWARD and PARALLEL with body (NO inward rotation)
       this.playerBody.rightArm.rotation.set(
-        Math.PI / 4,   // 45° upward angle (higher than normal)
-        0,             // FIXED: NO Y rotation - keep natural like empty hands
-        -Math.PI / 8   // Slight forward tilt
+        Math.PI / 3,   // 60° upward angle (more raised for better sword positioning)
+        0,             // FIXED: NO Y rotation - keep parallel with body
+        0              // FIXED: NO Z rotation - keep perfectly parallel with body
       );
       
-      console.log("🗡️ [Player] FIXED MELEE ready stance - Right arm raised upward/forward, NO Y rotation");
+      console.log("🗡️ [Player] FIXED MELEE ready stance - Right arm raised upward and PARALLEL with body");
       
     } else if (weaponType === 'bow') {
-      // BOW READY STANCE: Left arm raised up, right arm at side
+      // BOW READY STANCE: Left arm raised up PARALLEL with body, right arm at side
       
-      // FIXED: Left arm: Raised bow-holding position - UPWARD and FORWARD only (NO Y rotation)
+      // FIXED: Left arm: Raised bow-holding position - UPWARD and PARALLEL with body
       this.playerBody.leftArm.rotation.set(
-        Math.PI / 4,  // 45° upward angle
-        0,            // FIXED: NO Y rotation - keep natural like empty hands
-        -Math.PI / 8  // Slight forward tilt
+        Math.PI / 3,  // 60° upward angle
+        0,            // FIXED: NO Y rotation - keep parallel with body
+        0             // FIXED: NO Z rotation - keep perfectly parallel with body
       );
       
       // Right arm: Normal side position initially (will be adjusted by bow animation)
       this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
       
-      console.log("🏹 [Player] FIXED BOW ready stance - Left arm raised upward/forward, NO Y rotation");
+      console.log("🏹 [Player] FIXED BOW ready stance - Left arm raised upward and PARALLEL with body");
     }
     
     // Reset elbow positions for natural arm bend
@@ -851,18 +851,17 @@ export class Player {
     let elbowRotation = { x: 0, y: 0, z: 0 };
     let weaponWristRotation = 0;
     
-    // FORWARD-ANGLED base position for weapon swings
-    const forwardAngleBase = Math.PI / 6; // 30° upward angle
-    const forwardZ = -0.3; // Forward tilt
+    // PARALLEL base position for weapon swings - NO inward rotation
+    const parallelAngleBase = Math.PI / 3; // 60° upward angle, parallel with body
     
     if (elapsed < phases.windup) {
       // WIND-UP PHASE with realistic joint movement
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      shoulderRotation.x = THREE.MathUtils.lerp(forwardAngleBase, rotations.windup.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(forwardZ, 0, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(parallelAngleBase, rotations.windup.x, easedT);
+      shoulderRotation.y = 0; // FIXED: Always 0 - keep parallel with body
+      shoulderRotation.z = 0; // FIXED: Always 0 - keep perfectly parallel
       
       // Elbow bends during windup
       elbowRotation.x = THREE.MathUtils.lerp(0, 0.8, easedT);
@@ -873,8 +872,8 @@ export class Player {
       const easedT = t * t * (3 - 2 * t);
       
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0, 0, easedT);
+      shoulderRotation.y = 0; // FIXED: Always 0 - keep parallel with body during slash
+      shoulderRotation.z = 0; // FIXED: Always 0 - keep perfectly parallel
       
       // Elbow extends during slash
       elbowRotation.x = THREE.MathUtils.lerp(0.8, 0.2, easedT);
@@ -895,22 +894,22 @@ export class Player {
       }
       
     } else if (elapsed < duration) {
-      // FIXED: RECOVERY PHASE - return to FORWARD-ANGLED base with NO Y ROTATION
+      // FIXED: RECOVERY PHASE - return to PARALLEL base position
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, forwardAngleBase, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT); // FIXED: Return to Y=0
-      shoulderRotation.z = THREE.MathUtils.lerp(0, forwardZ, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, parallelAngleBase, easedT);
+      shoulderRotation.y = 0; // FIXED: Always 0 - return to parallel position
+      shoulderRotation.z = 0; // FIXED: Always 0 - keep perfectly parallel
       
       // Elbow returns to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.2, 0, easedT);
       
     } else {
-      // FIXED: ANIMATION COMPLETE - return to FORWARD-ANGLED base with NO Y ROTATION
-      shoulderRotation.x = forwardAngleBase;
-      shoulderRotation.y = 0; // FIXED: Ensure Y rotation is 0
-      shoulderRotation.z = forwardZ;
+      // FIXED: ANIMATION COMPLETE - return to PARALLEL base position
+      shoulderRotation.x = parallelAngleBase;
+      shoulderRotation.y = 0; // FIXED: Ensure Y rotation is 0 - parallel with body
+      shoulderRotation.z = 0; // FIXED: Ensure Z rotation is 0 - perfectly parallel
       elbowRotation = { x: 0, y: 0, z: 0 };
       this.weaponSwing.isActive = false;
       

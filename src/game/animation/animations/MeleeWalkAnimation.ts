@@ -25,27 +25,27 @@ export class MeleeWalkAnimation {
     // Arms - different base positions for weapon vs non-weapon arms
     const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     
-    // MELEE READY STANCE: Right arm raised, left arm at side
+    // MELEE READY STANCE: Right arm raised and PARALLEL with body, left arm at side
     
     // Left arm - normal side position with walking swing
     const leftArmBaseX = Math.PI / 8; // Normal side position
-    const leftArmBaseY = 0;           // FIXED: NO Y rotation - keep natural like empty hands
-    const leftArmBaseZ = 0;
+    const leftArmBaseY = 0;           // FIXED: Always 0 - parallel with body
+    const leftArmBaseZ = 0;           // FIXED: Always 0 - parallel with body
     
     playerBody.leftArm.rotation.x = leftArmBaseX - armSwing;
-    playerBody.leftArm.rotation.y = leftArmBaseY; // FIXED: Always 0 - no inward rotation
+    playerBody.leftArm.rotation.y = leftArmBaseY;
     playerBody.leftArm.rotation.z = leftArmBaseZ;
     
-    // Right arm - WEAPON ARM: raised ready position with reduced swing
+    // Right arm - WEAPON ARM: raised ready position PARALLEL with body and reduced swing
     if (!isAttacking) {
-      const rightArmBaseX = Math.PI / 4;   // 45° raised position
-      const rightArmBaseY = 0;             // FIXED: NO Y rotation - keep natural like empty hands
-      const rightArmBaseZ = -Math.PI / 8;  // Slight forward tilt
+      const rightArmBaseX = Math.PI / 3;   // 60° raised position - parallel with body
+      const rightArmBaseY = 0;             // FIXED: Always 0 - parallel with body
+      const rightArmBaseZ = 0;             // FIXED: Always 0 - perfectly parallel
       
       // Reduced swing intensity for weapon arm to maintain ready stance
       playerBody.rightArm.rotation.x = rightArmBaseX + (armSwing * 0.3);
-      playerBody.rightArm.rotation.y = rightArmBaseY; // FIXED: Always 0 - no inward rotation
-      playerBody.rightArm.rotation.z = rightArmBaseZ;
+      playerBody.rightArm.rotation.y = rightArmBaseY; // FIXED: Always 0 - parallel
+      playerBody.rightArm.rotation.z = rightArmBaseZ; // FIXED: Always 0 - parallel
     }
     
     // Elbows - subtle movement during walking
@@ -57,7 +57,7 @@ export class MeleeWalkAnimation {
       playerBody.rightElbow.rotation.x = Math.sin(walkCycle) * (this.config.elbowMovement * 0.5) + 0.05;
     }
     
-    console.log(`⚔️ [MeleeWalkAnimation] FIXED - Right arm raised with NO Y rotation - Attacking: ${isAttacking}`);
+    console.log(`⚔️ [MeleeWalkAnimation] FIXED - Right arm raised PARALLEL with body - Attacking: ${isAttacking}`);
   }
   
   public reset(playerBody: PlayerBody): void {
@@ -66,8 +66,8 @@ export class MeleeWalkAnimation {
     // Left arm: Normal side position
     playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
     
-    // FIXED: Right arm: Raised ready position for weapon - NO Y rotation
-    playerBody.rightArm.rotation.set(Math.PI / 4, 0, -Math.PI / 8);
+    // FIXED: Right arm: Raised ready position PARALLEL with body
+    playerBody.rightArm.rotation.set(Math.PI / 3, 0, 0); // 60° up, parallel with body
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0, 0, 0);
@@ -76,6 +76,6 @@ export class MeleeWalkAnimation {
       playerBody.rightElbow.rotation.set(0, 0, 0);
     }
     
-    console.log('⚔️ [MeleeWalkAnimation] FIXED reset - Right arm raised upward/forward with NO Y rotation');
+    console.log('⚔️ [MeleeWalkAnimation] FIXED reset - Right arm raised PARALLEL with body');
   }
 }
