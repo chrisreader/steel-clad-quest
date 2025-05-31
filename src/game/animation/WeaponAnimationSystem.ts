@@ -10,6 +10,8 @@ export type WeaponType = 'emptyHands' | 'melee' | 'bow';
 
 interface BowState {
   leftArmX: number;
+  leftArmY: number;
+  leftArmZ: number;
   rightArmX: number;
   rightArmY: number;
   rightArmZ: number;
@@ -39,49 +41,69 @@ export class WeaponAnimationSystem {
     this.meleeWalkAnimation = new MeleeWalkAnimation(this.configs.melee);
     this.emptyHandsWalkAnimation = new EmptyHandsWalkAnimation(this.configs.emptyHands);
     
-    // Initialize bow states - Idle state with updated right arm angles
-    this.currentBowState = this.createBowState(60, false, false); // Idle state
-    this.targetBowState = this.createBowState(60, false, false);
+    // Initialize bow states - Idle state
+    this.currentBowState = this.createBowState('idle');
+    this.targetBowState = this.createBowState('idle');
     
     console.log('🎭 [WeaponAnimationSystem] Initialized with smooth bow state transitions');
   }
   
-  private createBowState(leftArmAngle: number, isMoving: boolean = false, isDrawing: boolean = false): BowState {
-    let rightArmX: number;
-    let rightArmY: number = 0; // Always 0° (no side-to-side rotation)
-    let rightArmZ: number;
-    
-    if (isDrawing) {
-      // Drawing state: 95° upward, inward angle
-      rightArmX = Math.PI * 95 / 180;
-      rightArmZ = -Math.PI / 8; // -22.5° inward angle pointing left
-    } else if (isMoving) {
-      // Walking/Running state: 40° upward, no inward angle
-      rightArmX = Math.PI * 40 / 180;
-      rightArmZ = 0;
-    } else {
-      // Idle/Ready state: 30° upward, no inward angle
-      rightArmX = Math.PI / 6; // 30°
-      rightArmZ = 0;
+  private createBowState(state: 'idle' | 'walking' | 'drawing'): BowState {
+    switch (state) {
+      case 'idle':
+        return {
+          // Left arm (bow-holding): 60° upward, parallel with body
+          leftArmX: Math.PI * 60 / 180,
+          leftArmY: 0,
+          leftArmZ: 0,
+          // Right arm (string-pulling): 30° upward, no inward angle
+          rightArmX: Math.PI / 6, // 30°
+          rightArmY: 0,
+          rightArmZ: 0,
+          leftElbowX: 0.2,
+          rightElbowX: 0.3
+        };
+      
+      case 'walking':
+        return {
+          // Left arm (bow-holding): 80° upward, parallel with body
+          leftArmX: Math.PI * 80 / 180,
+          leftArmY: 0,
+          leftArmZ: 0,
+          // Right arm (string-pulling): 40° upward, no inward angle
+          rightArmX: Math.PI * 40 / 180, // 40°
+          rightArmY: 0,
+          rightArmZ: 0,
+          leftElbowX: 0.2,
+          rightElbowX: 0.3
+        };
+      
+      case 'drawing':
+        return {
+          // Left arm (bow-holding): 95° upward, with inward angle pointing right
+          leftArmX: Math.PI * 95 / 180,
+          leftArmY: 0,
+          leftArmZ: Math.PI / 8, // +22.5° inward angle pointing right
+          // Right arm (string-pulling): 95° upward, with inward angle pointing left
+          rightArmX: Math.PI * 95 / 180,
+          rightArmY: 0,
+          rightArmZ: -Math.PI / 8, // -22.5° inward angle pointing left
+          leftElbowX: 0.2,
+          rightElbowX: 0.3
+        };
+      
+      default:
+        return this.createBowState('idle');
     }
-    
-    return {
-      leftArmX: Math.PI * leftArmAngle / 180,
-      rightArmX: rightArmX,
-      rightArmY: rightArmY,
-      rightArmZ: rightArmZ,
-      leftElbowX: 0.2,
-      rightElbowX: 0.3
-    };
   }
   
   private getBowStateForCondition(isMoving: boolean, isBowDrawing: boolean): BowState {
     if (isBowDrawing) {
-      return this.createBowState(115, false, true); // Drawing state
+      return this.createBowState('drawing');
     } else if (isMoving) {
-      return this.createBowState(80, true, false);  // Walking/Running state
+      return this.createBowState('walking');
     } else {
-      return this.createBowState(60, false, false);  // Idle state
+      return this.createBowState('idle');
     }
   }
   
@@ -97,23 +119,38 @@ export class WeaponAnimationSystem {
     // Check if we need to start a new transition
     const stateChanged = 
       Math.abs(newTargetState.leftArmX - this.targetBowState.leftArmX) > 0.01 ||
+      Math.abs(newTargetState.leftArmZ - this.targetBowState.leftArmZ) > 0.01 ||
       Math.abs(newTargetState.rightArmX - this.targetBowState.rightArmX) > 0.01 ||
       Math.abs(newTargetState.rightArmZ - this.targetBowState.rightArmZ) > 0.01;
     
     if (stateChanged) {
       this.targetBowState = newTargetState;
       this.isTransitioning = true;
-      console.log(`🏹 [WeaponAnimationSystem] Starting transition to ${(newTargetState.leftArmX * 180 / Math.PI).toFixed(0)}° left arm, ${(newTargetState.rightArmX * 180 / Math.PI).toFixed(0)}° right arm state`);
+      const stateName = isBowDrawing ? 'drawing' : (isMoving ? 'walking' : 'idle');
+      console.log(`🏹 [WeaponAnimationSystem] Starting transition to ${stateName} state - Left: ${(newTargetState.leftArmX * 180 / Math.PI).toFixed(0)}°, Right: ${(newTargetState.rightArmX * 180 / Math.PI).toFixed(0)}°`);
     }
     
     // Smooth transition to target state
     const transitionAmount = deltaTime * this.transitionSpeed;
     
+    // Left arm transitions
     this.currentBowState.leftArmX = THREE.MathUtils.lerp(
       this.currentBowState.leftArmX,
       this.targetBowState.leftArmX,
       transitionAmount
     );
+    this.currentBowState.leftArmY = THREE.MathUtils.lerp(
+      this.currentBowState.leftArmY,
+      this.targetBowState.leftArmY,
+      transitionAmount
+    );
+    this.currentBowState.leftArmZ = THREE.MathUtils.lerp(
+      this.currentBowState.leftArmZ,
+      this.targetBowState.leftArmZ,
+      transitionAmount
+    );
+    
+    // Right arm transitions
     this.currentBowState.rightArmX = THREE.MathUtils.lerp(
       this.currentBowState.rightArmX,
       this.targetBowState.rightArmX,
@@ -129,6 +166,8 @@ export class WeaponAnimationSystem {
       this.targetBowState.rightArmZ,
       transitionAmount
     );
+    
+    // Elbow transitions
     this.currentBowState.leftElbowX = THREE.MathUtils.lerp(
       this.currentBowState.leftElbowX,
       this.targetBowState.leftElbowX,
@@ -142,8 +181,8 @@ export class WeaponAnimationSystem {
     
     // Apply the interpolated state to the player body
     playerBody.leftArm.rotation.x = this.currentBowState.leftArmX;
-    playerBody.leftArm.rotation.y = 0; // Always parallel with body
-    playerBody.leftArm.rotation.z = 0; // Always parallel with body
+    playerBody.leftArm.rotation.y = this.currentBowState.leftArmY;
+    playerBody.leftArm.rotation.z = this.currentBowState.leftArmZ;
     
     // For drawing state, apply the draw animation on top of the base position
     if (isBowDrawing) {
@@ -264,7 +303,7 @@ export class WeaponAnimationSystem {
         playerBody.rightLeg.rotation.x, 0, returnSpeed
       );
       
-      // Return to weapon-appropriate idle stance - BOW REMOVED FROM HERE (handled by smooth transition system)
+      // Return to weapon-appropriate idle stance
       switch (this.currentWeaponType) {
         case 'melee':
         case 'emptyHands':
@@ -338,7 +377,7 @@ export class WeaponAnimationSystem {
       playerBody.rightLeg.rotation.x, 0, returnSpeed
     );
     
-    // Return to weapon-appropriate idle stance - BOW REMOVED FROM HERE (handled by smooth transition system)
+    // Return to weapon-appropriate idle stance
     switch (this.currentWeaponType) {
       case 'melee':
       case 'emptyHands':
@@ -368,8 +407,8 @@ export class WeaponAnimationSystem {
     switch (this.currentWeaponType) {
       case 'bow':
         // Reset to idle state and let transition system handle it
-        this.currentBowState = this.createBowState(60, false, false);
-        this.targetBowState = this.createBowState(60, false, false);
+        this.currentBowState = this.createBowState('idle');
+        this.targetBowState = this.createBowState('idle');
         this.isTransitioning = false;
         break;
       case 'melee':
