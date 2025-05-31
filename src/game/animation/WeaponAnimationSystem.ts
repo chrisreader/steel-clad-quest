@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
@@ -49,7 +48,7 @@ export class WeaponAnimationSystem {
     console.log('🎭 [WeaponAnimationSystem] Initialized with smooth bow state transitions');
   }
   
-  private createBowState(state: 'idle' | 'walking' | 'drawing'): BowState {
+  private createBowState(state: 'idle' | 'walking' | 'drawing1' | 'drawing2' | 'drawing3' | 'drawing4'): BowState {
     switch (state) {
       case 'idle':
         return {
@@ -79,7 +78,7 @@ export class WeaponAnimationSystem {
           rightElbowX: 0.3
         };
       
-      case 'drawing':
+      case 'drawing1':
         return {
           // Left arm (bow-holding): 95° upward, with small inward angle pointing right
           leftArmX: Math.PI * 95 / 180,
@@ -93,14 +92,65 @@ export class WeaponAnimationSystem {
           rightElbowX: 0.3
         };
       
+      case 'drawing2':
+        return {
+          // Left arm stays the same as drawing1
+          leftArmX: Math.PI * 95 / 180,
+          leftArmY: 0,
+          leftArmZ: Math.PI * 5.5 / 180,
+          // Right arm: 90° upward, increased inward angle
+          rightArmX: Math.PI * 90 / 180, // 90°
+          rightArmY: 0,
+          rightArmZ: -Math.PI * 20.5 / 180, // -20.5° inward angle pointing left
+          leftElbowX: 0.2,
+          rightElbowX: 0.3
+        };
+      
+      case 'drawing3':
+        return {
+          // Left arm stays the same as drawing1
+          leftArmX: Math.PI * 95 / 180,
+          leftArmY: 0,
+          leftArmZ: Math.PI * 5.5 / 180,
+          // Right arm: 93° upward, further increased inward angle
+          rightArmX: Math.PI * 93 / 180, // 93°
+          rightArmY: 0,
+          rightArmZ: -Math.PI * 25.5 / 180, // -25.5° inward angle pointing left
+          leftElbowX: 0.2,
+          rightElbowX: 0.9 // Increased elbow bend
+        };
+      
+      case 'drawing4':
+        return {
+          // Left arm stays the same as drawing1
+          leftArmX: Math.PI * 95 / 180,
+          leftArmY: 0,
+          leftArmZ: Math.PI * 5.5 / 180,
+          // Right arm: 90° upward, maximum inward angle
+          rightArmX: Math.PI * 90 / 180, // 90°
+          rightArmY: 0,
+          rightArmZ: -Math.PI * 28.5 / 180, // -28.5° inward angle pointing left
+          leftElbowX: 0.2,
+          rightElbowX: 1.4 // Maximum elbow bend
+        };
+      
       default:
         return this.createBowState('idle');
     }
   }
   
-  private getBowStateForCondition(isMoving: boolean, isBowDrawing: boolean): BowState {
+  private getBowStateForCondition(isMoving: boolean, isBowDrawing: boolean, chargeLevel: number): BowState {
     if (isBowDrawing) {
-      return this.createBowState('drawing');
+      // Determine drawing stage based on charge level (0.0 to 1.0)
+      if (chargeLevel < 0.25) {
+        return this.createBowState('drawing1'); // 0-1 second
+      } else if (chargeLevel < 0.5) {
+        return this.createBowState('drawing2'); // 1-2 seconds
+      } else if (chargeLevel < 0.75) {
+        return this.createBowState('drawing3'); // 2-3 seconds
+      } else {
+        return this.createBowState('drawing4'); // 3-4 seconds
+      }
     } else if (isMoving) {
       return this.createBowState('walking');
     } else {
@@ -115,20 +165,32 @@ export class WeaponAnimationSystem {
     isBowDrawing: boolean,
     bowChargeLevel: number
   ): void {
-    const newTargetState = this.getBowStateForCondition(isMoving, isBowDrawing);
+    const newTargetState = this.getBowStateForCondition(isMoving, isBowDrawing, bowChargeLevel);
     
     // Check if we need to start a new transition
     const stateChanged = 
       Math.abs(newTargetState.leftArmX - this.targetBowState.leftArmX) > 0.01 ||
       Math.abs(newTargetState.leftArmZ - this.targetBowState.leftArmZ) > 0.01 ||
       Math.abs(newTargetState.rightArmX - this.targetBowState.rightArmX) > 0.01 ||
-      Math.abs(newTargetState.rightArmZ - this.targetBowState.rightArmZ) > 0.01;
+      Math.abs(newTargetState.rightArmZ - this.targetBowState.rightArmZ) > 0.01 ||
+      Math.abs(newTargetState.rightElbowX - this.targetBowState.rightElbowX) > 0.01;
     
     if (stateChanged) {
       this.targetBowState = newTargetState;
       this.isTransitioning = true;
-      const stateName = isBowDrawing ? 'drawing' : (isMoving ? 'walking' : 'idle');
-      console.log(`🏹 [WeaponAnimationSystem] Starting transition to ${stateName} state - Left: ${(newTargetState.leftArmX * 180 / Math.PI).toFixed(0)}°, Right: ${(newTargetState.rightArmX * 180 / Math.PI).toFixed(0)}°`);
+      
+      // Determine current drawing stage for logging
+      let stageName = 'idle';
+      if (isBowDrawing) {
+        if (bowChargeLevel < 0.25) stageName = 'drawing1';
+        else if (bowChargeLevel < 0.5) stageName = 'drawing2';
+        else if (bowChargeLevel < 0.75) stageName = 'drawing3';
+        else stageName = 'drawing4';
+      } else if (isMoving) {
+        stageName = 'walking';
+      }
+      
+      console.log(`🏹 [WeaponAnimationSystem] Starting transition to ${stageName} stage - Left: ${(newTargetState.leftArmX * 180 / Math.PI).toFixed(0)}°, Right: ${(newTargetState.rightArmX * 180 / Math.PI).toFixed(0)}°, RightElbow: ${newTargetState.rightElbowX.toFixed(1)}`);
     }
     
     // Smooth transition to target state
@@ -185,60 +247,39 @@ export class WeaponAnimationSystem {
     playerBody.leftArm.rotation.y = this.currentBowState.leftArmY;
     playerBody.leftArm.rotation.z = this.currentBowState.leftArmZ;
     
-    // For drawing state, apply the draw animation on top of the base position
-    if (isBowDrawing) {
-      this.applyDrawAnimationModifiers(playerBody, bowChargeLevel);
-    } else {
-      // Apply base right arm position when not drawing
-      playerBody.rightArm.rotation.x = this.currentBowState.rightArmX;
-      playerBody.rightArm.rotation.y = this.currentBowState.rightArmY;
-      playerBody.rightArm.rotation.z = this.currentBowState.rightArmZ;
-    }
+    // Apply right arm position (no longer needs draw animation modifiers)
+    playerBody.rightArm.rotation.x = this.currentBowState.rightArmX;
+    playerBody.rightArm.rotation.y = this.currentBowState.rightArmY;
+    playerBody.rightArm.rotation.z = this.currentBowState.rightArmZ;
     
     // Apply elbow positions
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.x = this.currentBowState.leftElbowX;
     }
-    if (playerBody.rightElbow && !isBowDrawing) {
+    if (playerBody.rightElbow) {
       playerBody.rightElbow.rotation.x = this.currentBowState.rightElbowX;
+    }
+    
+    // Apply hand positions for drawing states
+    if (isBowDrawing) {
+      playerBody.leftHand.rotation.x = -Math.PI / 6;
+      playerBody.leftHand.rotation.y = 0;
+      playerBody.leftHand.rotation.z = Math.PI / 4;
+      
+      // Right hand pulls string back with progressive intensity
+      const drawAmount = this.easeInOutQuad(bowChargeLevel);
+      playerBody.rightHand.rotation.x = drawAmount * Math.PI / 8;
+      playerBody.rightHand.rotation.y = 0;
+      playerBody.rightHand.rotation.z = drawAmount * Math.PI / 6;
     }
     
     // Check if transition is complete
     const threshold = 0.01;
     if (Math.abs(this.currentBowState.leftArmX - this.targetBowState.leftArmX) < threshold &&
-        Math.abs(this.currentBowState.rightArmX - this.targetBowState.rightArmX) < threshold) {
+        Math.abs(this.currentBowState.rightArmX - this.targetBowState.rightArmX) < threshold &&
+        Math.abs(this.currentBowState.rightElbowX - this.targetBowState.rightElbowX) < threshold) {
       this.isTransitioning = false;
     }
-  }
-  
-  private applyDrawAnimationModifiers(playerBody: PlayerBody, chargeLevel: number): void {
-    // Apply draw-specific modifications on top of the base state
-    const drawAmount = this.easeInOutQuad(chargeLevel);
-    
-    // Right arm draw animation - pulls back based on charge level from base 95° position
-    const baseRightArmX = Math.PI * 95 / 180; // Base 95° drawing position
-    const rightArmDrawX = baseRightArmX + (drawAmount * Math.PI / 4);  // Pull up further
-    const rightArmDrawY = 0; // Always 0° (no side-to-side rotation)
-    const rightArmDrawZ = -Math.PI / 8 - (drawAmount * Math.PI / 6);  // Start with inward angle, pull back more
-    
-    playerBody.rightArm.rotation.x = rightArmDrawX;
-    playerBody.rightArm.rotation.y = rightArmDrawY;
-    playerBody.rightArm.rotation.z = rightArmDrawZ;
-    
-    // Right elbow bends more as we draw
-    if (playerBody.rightElbow) {
-      playerBody.rightElbow.rotation.x = 0.3 + (drawAmount * 0.8);
-    }
-    
-    // Hand positions for drawing
-    playerBody.leftHand.rotation.x = -Math.PI / 6;
-    playerBody.leftHand.rotation.y = 0;
-    playerBody.leftHand.rotation.z = Math.PI / 4;
-    
-    // Right hand pulls string back
-    playerBody.rightHand.rotation.x = drawAmount * Math.PI / 8;
-    playerBody.rightHand.rotation.y = 0;
-    playerBody.rightHand.rotation.z = drawAmount * Math.PI / 6;
   }
   
   public setWeaponType(weaponType: WeaponType): void {
@@ -258,9 +299,9 @@ export class WeaponAnimationSystem {
     isBowDrawing: boolean = false,
     bowChargeLevel: number = 0
   ): void {
-    console.log(`🎭 [WeaponAnimationSystem] Update: moving=${isMoving}, weapon=${this.currentWeaponType}, attacking=${isAttacking}, bowDrawing=${isBowDrawing}`);
+    console.log(`🎭 [WeaponAnimationSystem] Update: moving=${isMoving}, weapon=${this.currentWeaponType}, attacking=${isAttacking}, bowDrawing=${isBowDrawing}, chargeLevel=${bowChargeLevel.toFixed(2)}`);
     
-    // BOW WEAPON - Handle smooth state transitions
+    // BOW WEAPON - Handle smooth state transitions with new drawing stages
     if (this.currentWeaponType === 'bow') {
       this.updateBowStateTransition(playerBody, deltaTime, isMoving, isBowDrawing, bowChargeLevel);
       
