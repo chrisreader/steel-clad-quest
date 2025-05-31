@@ -236,37 +236,37 @@ export class TextureGenerator {
     canvas.width = canvas.height = 1024;
     const ctx = canvas.getContext('2d')!;
     
-    // Time of day determines sky color
+    // Time of day determines sky color - using realistic blue tones
     let skyColor;
     let horizonColor;
     let cloudColor;
     
     if (timeOfDay < 0.25) { // Night
       const nightProgress = 1 - (timeOfDay / 0.25);
-      skyColor = `rgb(0, 10, ${30 + nightProgress * 40})`;
-      horizonColor = `rgb(10, 20, ${40 + nightProgress * 30})`;
-      cloudColor = `rgba(20, 30, 50, ${0.5 * nightProgress})`;
+      skyColor = `rgb(15, 25, ${45 + nightProgress * 30})`; // Dark blue night sky
+      horizonColor = `rgb(25, 35, ${55 + nightProgress * 25})`;
+      cloudColor = `rgba(40, 50, 80, ${0.4 * nightProgress})`;
     } else if (timeOfDay < 0.3) { // Dawn
       const dawnProgress = (timeOfDay - 0.25) / 0.05;
-      skyColor = `rgb(${dawnProgress * 100}, ${dawnProgress * 50}, ${40 + dawnProgress * 160})`;
-      horizonColor = `rgb(${100 + dawnProgress * 155}, ${50 + dawnProgress * 100}, ${70 + dawnProgress * 100})`;
-      cloudColor = `rgba(${180 + dawnProgress * 75}, ${100 + dawnProgress * 100}, ${100 + dawnProgress * 100}, 0.6)`;
-    } else if (timeOfDay < 0.7) { // Day
+      skyColor = `rgb(${70 + dawnProgress * 50}, ${90 + dawnProgress * 70}, ${150 + dawnProgress * 80})`; // Dawn blue
+      horizonColor = `rgb(${180 + dawnProgress * 75}, ${120 + dawnProgress * 80}, ${100 + dawnProgress * 80})`;
+      cloudColor = `rgba(${200 + dawnProgress * 55}, ${150 + dawnProgress * 80}, ${120 + dawnProgress * 80}, 0.7)`;
+    } else if (timeOfDay < 0.7) { // Day - realistic blue sky
       const dayProgress = (timeOfDay - 0.3) / 0.4;
       const intensity = Math.sin(dayProgress * Math.PI);
-      skyColor = `rgb(80, ${130 + intensity * 125}, ${200 + intensity * 55})`;
-      horizonColor = `rgb(${180 + intensity * 75}, ${180 + intensity * 75}, ${180 + intensity * 75})`;
-      cloudColor = `rgba(255, 255, 255, ${0.7 + intensity * 0.3})`;
+      skyColor = `rgb(${120 + intensity * 15}, ${180 + intensity * 35}, ${240 + intensity * 15})`; // Clear blue sky
+      horizonColor = `rgb(${160 + intensity * 40}, ${200 + intensity * 35}, ${230 + intensity * 25})`;
+      cloudColor = `rgba(255, 255, 255, ${0.8 + intensity * 0.2})`;
     } else if (timeOfDay < 0.75) { // Dusk
       const duskProgress = (timeOfDay - 0.7) / 0.05;
-      skyColor = `rgb(${100 - duskProgress * 100}, ${150 - duskProgress * 100}, ${200 - duskProgress * 100})`;
-      horizonColor = `rgb(${255 - duskProgress * 100}, ${150 - duskProgress * 50}, ${100 - duskProgress * 30})`;
-      cloudColor = `rgba(${255 - duskProgress * 100}, ${150 - duskProgress * 50}, ${100 - duskProgress * 50}, 0.6)`;
+      skyColor = `rgb(${120 - duskProgress * 50}, ${160 - duskProgress * 70}, ${220 - duskProgress * 80})`; // Dusk blue
+      horizonColor = `rgb(${200 - duskProgress * 80}, ${140 - duskProgress * 40}, ${120 - duskProgress * 20})`;
+      cloudColor = `rgba(${220 - duskProgress * 80}, ${160 - duskProgress * 60}, ${140 - duskProgress * 40}, 0.7)`;
     } else { // Night
       const nightProgress = (timeOfDay - 0.75) / 0.25;
-      skyColor = `rgb(${10 - nightProgress * 10}, ${20 - nightProgress * 10}, ${50 - nightProgress * 20})`;
-      horizonColor = `rgb(${50 - nightProgress * 40}, ${30 - nightProgress * 10}, ${70 - nightProgress * 30})`;
-      cloudColor = `rgba(20, 30, 50, ${0.5 * nightProgress})`;
+      skyColor = `rgb(${20 - nightProgress * 5}, ${30 - nightProgress * 5}, ${60 - nightProgress * 15})`; // Deep night blue
+      horizonColor = `rgb(${40 - nightProgress * 15}, ${45 - nightProgress * 10}, ${70 - nightProgress * 15})`;
+      cloudColor = `rgba(40, 50, 80, ${0.4 * nightProgress})`;
     }
     
     // Create gradient for sky
