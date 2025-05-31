@@ -27,13 +27,13 @@ export class IronSword extends Sword {
           neutral: { x: Math.PI / 3, y: 0, z: 0 }, // 60° chest level position
           windup: { 
             x: Math.PI / 3, // STAY at chest level - no vertical movement
-            y: 0,           // NO BACKWARD PULL
+            y: -THREE.MathUtils.degToRad(12), // Pull back for dramatic windup
             z: 0            // NO EXTRA ROTATION
           },
           slash: { 
             x: Math.PI / 3,                       // STAY at chest level throughout swing
-            y: THREE.MathUtils.degToRad(40),      // Cross-body slash motion
-            z: THREE.MathUtils.degToRad(-10)      // Wrist snap
+            y: THREE.MathUtils.degToRad(80),      // WIDE cross-body slash motion (increased from 40°)
+            z: THREE.MathUtils.degToRad(-15)      // Enhanced wrist snap
           }
         }
       }

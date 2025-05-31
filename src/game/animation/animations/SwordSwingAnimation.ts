@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -43,38 +42,42 @@ export class SwordSwingAnimation {
   }
   
   private updateWindupPhase(elapsed: number, phases: any, rotations: any, chestLevelBase: number, shoulderRotation: any, elbowRotation: any, wristRotation: any, torsoRotation: number): void {
-    // Stay at chest level during windup - no movement
+    const t = elapsed / phases.windup;
+    const easedT = t * t * (3 - 2 * t);
+    
+    // Pull back during windup for dramatic effect
     shoulderRotation.x = chestLevelBase; // Stay at 60° chest level position
-    shoulderRotation.y = 0; // No backward pull
+    shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT); // Pull back motion
     shoulderRotation.z = 0; // No extra rotation
     
     // Downward elbow bend to maintain horizontal blade at chest level
     elbowRotation.x = -0.05; // Downward bend to counteract forward shoulder angle
     
-    // NEW: Wrist positioning for forward-pointing sword during windup
+    // Wrist positioning for forward-pointing sword during windup
     wristRotation.x = -Math.PI / 4; // Angle wrist down to point sword forward (-45°)
     wristRotation.y = 0;
     wristRotation.z = 0;
     
-    torsoRotation = 0; // No torso movement during windup
+    // Add slight torso counter-rotation during windup for more power
+    torsoRotation = THREE.MathUtils.lerp(0, -0.1, easedT); // Slight counter-rotation
   }
   
   private updateSlashPhase(elapsed: number, phases: any, rotations: any, shoulderRotation: any, elbowRotation: any, wristRotation: any, torsoRotation: number, weaponWristRotation: number): void {
     const t = (elapsed - phases.windup) / phases.slash;
     const easedT = t * t * (3 - 2 * t);
     
-    // HORIZONTAL CHEST-LEVEL SLASH - swing across at same height
+    // DRAMATIC HORIZONTAL CHEST-LEVEL SLASH - wide arc across screen
     const startX = Math.PI / 3; // Start from 60° chest level
     const slashX = Math.PI / 3; // END at same 60° chest level (no vertical movement)
     
     shoulderRotation.x = THREE.MathUtils.lerp(startX, slashX, easedT); // Stay at chest level
-    shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.slash.y, easedT); // Right-to-left motion
-    shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.slash.z, easedT); // Wrist snap
+    shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT); // WIDE right-to-left motion
+    shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.slash.z, easedT); // Enhanced wrist snap
     
     // Elbow maintains horizontal blade positioning throughout
     elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.1, easedT); // Slightly more downward bend for follow-through
     
-    // NEW: Wrist motion for forward slashing - angles sword forward and sweeps
+    // Wrist motion for forward slashing - angles sword forward and sweeps
     const startWristX = -Math.PI / 4; // Start with sword pointing forward
     const endWristX = -Math.PI / 6;   // End with sword still forward but less angled
     wristRotation.x = THREE.MathUtils.lerp(startWristX, endWristX, easedT);
@@ -83,13 +86,14 @@ export class SwordSwingAnimation {
     wristRotation.y = THREE.MathUtils.lerp(0, Math.PI / 8, easedT); // Rotate wrist for slash
     wristRotation.z = THREE.MathUtils.lerp(0, -Math.PI / 12, easedT); // Slight twist for realism
     
-    torsoRotation = THREE.MathUtils.lerp(0, 0.15, easedT); // Reduced torso rotation
+    // ENHANCED TORSO ROTATION for dramatic full-body movement
+    torsoRotation = THREE.MathUtils.lerp(-0.1, 0.35, easedT); // Increased torso rotation for wider arc
     
     // Enhanced wrist rotation for proper slashing motion
     if (t >= 0.2 && t <= 0.8) {
       const wristT = (t - 0.2) / 0.6;
       const intensity = this.weaponSwing.wristSnapIntensity || 1.0;
-      weaponWristRotation = Math.sin(wristT * Math.PI) * (intensity * 1.5);
+      weaponWristRotation = Math.sin(wristT * Math.PI) * (intensity * 2.0); // Increased intensity
     }
   }
   
@@ -104,12 +108,13 @@ export class SwordSwingAnimation {
     // Return to downward elbow position for horizontal stance
     elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.05, easedT);
     
-    // NEW: Return wrist to forward-pointing ready position
+    // Return wrist to forward-pointing ready position
     wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 6, -Math.PI / 4, easedT); // Return to forward-pointing
     wristRotation.y = THREE.MathUtils.lerp(Math.PI / 8, 0, easedT);
     wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 12, 0, easedT);
     
-    torsoRotation = THREE.MathUtils.lerp(0.15, 0, easedT);
+    // Return torso to neutral position
+    torsoRotation = THREE.MathUtils.lerp(0.35, 0, easedT);
   }
   
   private completeAnimation(chestLevelBase: number): void {

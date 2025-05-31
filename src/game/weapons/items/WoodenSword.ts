@@ -27,13 +27,13 @@ export class WoodenSword extends Sword {
           neutral: { x: Math.PI / 3, y: 0, z: 0 }, // 60° chest level position
           windup: { 
             x: Math.PI / 3, // STAY at chest level - no vertical movement
-            y: 0,           // NO BACKWARD PULL
+            y: -THREE.MathUtils.degToRad(15), // Pull back for dramatic windup
             z: 0            // NO EXTRA ROTATION
           },
           slash: { 
             x: Math.PI / 3,                       // STAY at chest level throughout swing
-            y: THREE.MathUtils.degToRad(35),      // Cross-body slash motion
-            z: THREE.MathUtils.degToRad(-8)       // Wrist snap
+            y: THREE.MathUtils.degToRad(75),      // WIDE cross-body slash motion (increased from 35°)
+            z: THREE.MathUtils.degToRad(-12)      // Enhanced wrist snap
           }
         }
       }
