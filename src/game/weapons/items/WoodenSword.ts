@@ -24,16 +24,16 @@ export class WoodenSword extends Sword {
           recovery: 0.159
         },
         rotations: {
-          neutral: { x: Math.PI / 3 + 0.03, y: 0, z: 0 }, // Match new idle position (61.7°)
+          neutral: { x: Math.PI / 5, y: 0, z: 0 }, // Match new REALISTIC idle position (36°)
           windup: { 
-            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(15), // Reduced from 55° to 15°
-            y: THREE.MathUtils.degToRad(-20), // Reduced Y rotation 
-            z: THREE.MathUtils.degToRad(10)   // Reduced Z rotation
+            x: Math.PI / 5 + THREE.MathUtils.degToRad(5), // Minimal windup to 41°
+            y: THREE.MathUtils.degToRad(-15), // Reduced Y rotation
+            z: THREE.MathUtils.degToRad(8)    // Reduced Z rotation
           },
           slash: { 
-            x: Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-25), // Increased downward from -35° to -25°
-            y: THREE.MathUtils.degToRad(40),  // Increased cross-body slash
-            z: THREE.MathUtils.degToRad(-8)   // Moderate wrist snap
+            x: Math.PI / 5 + THREE.MathUtils.degToRad(-25), // Forward slash to 11°
+            y: THREE.MathUtils.degToRad(35),  // Cross-body slash
+            z: THREE.MathUtils.degToRad(-8)   // Wrist snap
           }
         }
       }

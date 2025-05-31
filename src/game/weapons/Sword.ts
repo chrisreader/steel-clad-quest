@@ -73,8 +73,9 @@ export class Sword extends BaseWeapon {
     pommel.castShadow = true;
     swordGroup.add(pommel);
 
+    // FIXED: Adjust sword rotation for realistic combat positioning with new lower arm stance
     swordGroup.position.set(0, -0.5, -0.1);
-    swordGroup.rotation.x = -Math.PI / 12;
+    swordGroup.rotation.x = -Math.PI / 6; // Changed from -Math.PI / 12 to -Math.PI / 6 (more downward tilt)
 
     this.mesh = swordGroup;
     return swordGroup;

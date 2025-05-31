@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -24,8 +23,8 @@ export class SwordSwingAnimation {
     let weaponWristRotation = 0;
     let torsoRotation = 0;
     
-    // Base position matching current idle arm position
-    const parallelAngleBase = Math.PI / 3 + 0.03; // 61.7°
+    // FIXED: Base position matching REALISTIC arm position (36° instead of 61.7°)
+    const parallelAngleBase = Math.PI / 5; // 36° - REALISTIC combat position
     
     if (elapsed < phases.windup) {
       this.updateWindupPhase(elapsed, phases, rotations, parallelAngleBase, shoulderRotation, elbowRotation, torsoRotation);
@@ -45,31 +44,31 @@ export class SwordSwingAnimation {
     const t = elapsed / phases.windup;
     const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
     
-    // Drastically reduce windup height - only add 10° instead of 35°
-    const windupX = parallelAngleBase + THREE.MathUtils.degToRad(10); // Total: 71.7°
+    // FIXED: Minimal windup height - only add 5° to the new REALISTIC base position
+    const windupX = parallelAngleBase + THREE.MathUtils.degToRad(5); // Total: ~41°
     
     shoulderRotation.x = THREE.MathUtils.lerp(parallelAngleBase, windupX, easedT);
     shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT);
     
-    elbowRotation.x = THREE.MathUtils.lerp(0, 0.5, easedT); // Reduced elbow bend
-    torsoRotation = THREE.MathUtils.lerp(0, -0.15, easedT); // Minimal torso rotation
+    elbowRotation.x = THREE.MathUtils.lerp(0, 0.3, easedT); // Reduced elbow bend
+    torsoRotation = THREE.MathUtils.lerp(0, -0.1, easedT); // Minimal torso rotation
   }
   
   private updateSlashPhase(elapsed: number, phases: any, rotations: any, shoulderRotation: any, elbowRotation: any, torsoRotation: number, weaponWristRotation: number): void {
     const t = (elapsed - phases.windup) / phases.slash;
     const easedT = t * t * (3 - 2 * t);
     
-    // Increase downward slash motion - go down to 31.7° (much lower)
+    // FIXED: Forward slash motion - go forward and across from REALISTIC base position
     const windupX = this.playerBody.rightArm.rotation.x; // Current windup position
-    const slashX = Math.PI / 3 + 0.03 + THREE.MathUtils.degToRad(-30); // Down to 31.7°
+    const slashX = Math.PI / 5 + THREE.MathUtils.degToRad(-25); // Down to ~11° (forward slash)
     
     shoulderRotation.x = THREE.MathUtils.lerp(windupX, slashX, easedT);
     shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, easedT);
     
-    elbowRotation.x = THREE.MathUtils.lerp(0.5, 0.1, easedT); // Extend arm during slash
-    torsoRotation = THREE.MathUtils.lerp(-0.15, 0.25, easedT); // More torso follow-through
+    elbowRotation.x = THREE.MathUtils.lerp(0.3, 0.1, easedT); // Extend arm during slash
+    torsoRotation = THREE.MathUtils.lerp(-0.1, 0.2, easedT); // More torso follow-through
     
     // Enhanced wrist rotation for proper slashing motion
     if (t >= 0.2 && t <= 0.8) {
@@ -88,7 +87,7 @@ export class SwordSwingAnimation {
     shoulderRotation.z = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.z, 0, easedT);
     
     elbowRotation.x = THREE.MathUtils.lerp(0.1, 0, easedT);
-    torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT);
+    torsoRotation = THREE.MathUtils.lerp(0.2, 0, easedT);
   }
   
   private completeAnimation(parallelAngleBase: number): void {
