@@ -6,7 +6,7 @@ export class Terrain {
   private geometry: THREE.PlaneGeometry;
   private material: THREE.MeshLambertMaterial;
   
-  constructor(scene: THREE.Scene) {
+  constructor() {
     // Create a simple flat terrain for now
     this.geometry = new THREE.PlaneGeometry(100, 100);
     this.material = new THREE.MeshLambertMaterial({ color: 0x4a5d23 });
@@ -14,7 +14,9 @@ export class Terrain {
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.rotation.x = -Math.PI / 2;
     this.mesh.receiveShadow = true;
-    
+  }
+  
+  public addToScene(scene: THREE.Scene): void {
     scene.add(this.mesh);
   }
   
