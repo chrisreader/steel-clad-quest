@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -51,92 +52,122 @@ export class SwordSwingAnimation {
     console.log(`🗡️ [SwordSwingAnimation] *** ANIMATION ACTIVE *** - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
     console.log(`🗡️ [SwordSwingAnimation] Animation phases:`, phases);
     
-    // Get weapon config rotations - use these for coordinated movement
+    // Get weapon config rotations as base
     const weaponConfig = this.equippedWeapon.getConfig();
     const configRotations = weaponConfig.swingAnimation.rotations;
     
-    console.log('🗡️ [SwordSwingAnimation] Using weapon config rotations for coordinated swing:', configRotations);
+    console.log('🗡️ [SwordSwingAnimation] Using weapon config as base, but shoulder drives the swing:', configRotations);
     
-    // Initialize with weapon config neutral position
+    // SHOULDER is PRIMARY DRIVER - following reference code pattern
     let shoulderRotation = { 
       x: configRotations.neutral.x, 
       y: configRotations.neutral.y, 
       z: configRotations.neutral.z 
     };
     
-    // Enhanced elbow control for linear sweep
+    // Elbow supports shoulder motion
     let elbowRotation = { x: 0.02, y: 0, z: 0 };
-    let wristRotation = { x: -Math.PI / 4, y: 0, z: configRotations.neutral.z };
+    
+    // WRIST is SECONDARY - only for snap effect
+    let wristRotation = { x: -Math.PI / 4, y: 0, z: 0 };
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: REDUCED shoulder movement, focus on positioning for linear sweep
+      // WINDUP PHASE: SHOULDER builds up the arc (like reference code)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // REDUCED shoulder movement - only slight positioning, not a big arc
-      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x, configRotations.windup.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(configRotations.neutral.y, Math.PI / 6, easedT); // REDUCED from π/2.2 to π/6 (~30°)
+      // SHOULDER: Main windup movement - UP and RIGHT (like reference: 22° to 72°, 0° to -40°)
+      shoulderRotation.x = THREE.MathUtils.lerp(
+        configRotations.neutral.x,                    // Start at ~22° (π/8)
+        configRotations.neutral.x + Math.PI / 3,      // End at ~82° (π/8 + π/3)
+        easedT
+      );
+      shoulderRotation.y = THREE.MathUtils.lerp(
+        configRotations.neutral.y,                    // Start at 0°
+        -Math.PI / 4.5,                               // End at ~-40° (like reference)
+        easedT
+      );
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.neutral.z, configRotations.windup.z, easedT);
       
-      // Elbow prepares for extension during sweep
-      elbowRotation.x = THREE.MathUtils.lerp(0.02, 0.1, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0, Math.PI / 12, easedT); // Slight outward for linear preparation
+      // Elbow extends to support the windup
+      elbowRotation.x = THREE.MathUtils.lerp(0.02, -0.1, easedT); // Extends arm
+      elbowRotation.y = THREE.MathUtils.lerp(0, Math.PI / 12, easedT);
       
-      // WRIST: Primary setup for horizontal sweep - moderate right position
-      wristRotation.y = THREE.MathUtils.lerp(0, Math.PI / 4, easedT); // REDUCED from π/3 to π/4 (~45°)
+      // WRIST: Minimal movement - just positioning
+      wristRotation.y = THREE.MathUtils.lerp(0, Math.PI / 12, easedT); // Small ~15° positioning
       wristRotation.z = THREE.MathUtils.lerp(configRotations.neutral.z, configRotations.windup.z, easedT);
       
-      // Minimal torso coiling
-      torsoRotation = THREE.MathUtils.lerp(0, -0.1, easedT); // REDUCED from -0.2
+      // Torso coils for power
+      torsoRotation = THREE.MathUtils.lerp(0, -0.15, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - REDUCED shoulder arc, preparing for linear sweep`);
+      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - SHOULDER drives UP+RIGHT movement`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: LINEAR SWEEP with wrist as primary driver
+      // SLASH PHASE: SHOULDER drives diagonal sweep (like reference: aggressive motion)
       const t = (elapsed - phases.windup) / phases.slash;
-      const linearT = t; // USE LINEAR interpolation instead of eased for straight motion
       
-      // MINIMAL shoulder movement - just slight repositioning
-      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.windup.x, configRotations.slash.x, linearT);
-      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 6, -Math.PI / 12, linearT); // MUCH smaller arc: 30° to -15°
-      shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, linearT);
+      // AGGRESSIVE EASING like reference code: t * t * (3 - 2 * t)
+      const aggressiveT = t * t * (3 - 2 * t);
       
-      // ELBOW: Extension and compensation for linear motion
-      elbowRotation.x = THREE.MathUtils.lerp(0.1, 0.05, linearT); // Extends for reach
-      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 12, -Math.PI / 8, linearT); // Compensates for linear path
+      // SHOULDER: Main diagonal slash movement - DOWN and LEFT (like reference: 72° to 7°, -40° to +70°)
+      shoulderRotation.x = THREE.MathUtils.lerp(
+        configRotations.neutral.x + Math.PI / 3,      // From windup ~82°
+        configRotations.neutral.x - Math.PI / 12,     // To low position ~7° (π/8 - π/12)
+        aggressiveT
+      );
+      shoulderRotation.y = THREE.MathUtils.lerp(
+        -Math.PI / 4.5,                               // From windup ~-40°
+        Math.PI / 2.5,                                // To sweep end ~+72° (like reference)
+        aggressiveT
+      );
+      shoulderRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, aggressiveT);
       
-      // WRIST: PRIMARY DRIVER of horizontal sweep motion
-      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 4, -Math.PI / 2, linearT); // MAJOR horizontal sweep: 45° to -90°
-      wristRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, linearT);
+      // Elbow contracts during slash for power
+      elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.05, aggressiveT);
+      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 12, -Math.PI / 6, aggressiveT);
       
-      // TORSO: Counter-rotation to support linear sweep
-      torsoRotation = THREE.MathUtils.lerp(-0.1, 0.2, linearT); // Counter-rotates to shoulder
+      // WRIST: SNAP EFFECT during peak slash (20%-80% like reference)
+      let wristSnapMultiplier = 1.0;
+      if (t >= 0.2 && t <= 0.8) {
+        const snapProgress = (t - 0.2) / 0.6; // 0 to 1 during snap period
+        wristSnapMultiplier = 1.0 + Math.sin(snapProgress * Math.PI) * 0.5; // Sine wave for snap
+      }
       
-      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - LINEAR SWEEP: wrist drives horizontal motion, wrist Y: ${wristRotation.y.toFixed(2)}`);
+      wristRotation.y = THREE.MathUtils.lerp(
+        Math.PI / 12,                                 // From small positioning
+        -Math.PI / 8 * wristSnapMultiplier,           // To snap position (enhanced during snap)
+        aggressiveT
+      );
+      wristRotation.z = THREE.MathUtils.lerp(configRotations.windup.z, configRotations.slash.z, aggressiveT);
+      
+      // Torso uncoils to support slash
+      torsoRotation = THREE.MathUtils.lerp(-0.15, 0.25, aggressiveT);
+      
+      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - SHOULDER drives DOWN+LEFT diagonal sweep`);
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to weapon config neutral position
+      // RECOVERY PHASE: Return to neutral (like reference)
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return to weapon config neutral rotations
-      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.slash.x, configRotations.neutral.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(-Math.PI / 12, configRotations.neutral.y, easedT); // Return from small left position
+      // Return all joints to neutral positions
+      shoulderRotation.x = THREE.MathUtils.lerp(configRotations.neutral.x - Math.PI / 12, configRotations.neutral.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 2.5, configRotations.neutral.y, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(configRotations.slash.z, configRotations.neutral.z, easedT);
       
       // Return elbow to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.05, 0.02, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, 0, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, 0, easedT);
       
-      // WRIST: Return to neutral position
-      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 2, 0, easedT); // Return from left sweep
+      // Return wrist to neutral
+      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, 0, easedT);
       wristRotation.z = THREE.MathUtils.lerp(configRotations.slash.z, configRotations.neutral.z, easedT);
       
       // Torso returns to center
-      torsoRotation = THREE.MathUtils.lerp(0.2, 0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to neutral, wrist Y: ${wristRotation.y.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to neutral`);
       
     } else {
       // ANIMATION COMPLETE
@@ -145,44 +176,44 @@ export class SwordSwingAnimation {
       return;
     }
     
-    // Apply the coordinated rotations for linear sweep motion
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING LINEAR SWEEP ROTATIONS ***`);
-    this.applyLinearSweepRotations(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
+    // Apply the SHOULDER-DRIVEN rotations
+    console.log(`🗡️ [SwordSwingAnimation] *** APPLYING SHOULDER-DRIVEN SWORD SWING ***`);
+    this.applyShoulderDrivenSwing(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
   }
   
-  private applyLinearSweepRotations(
+  private applyShoulderDrivenSwing(
     shoulderRotation: any,
     elbowRotation: any, 
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    console.log(`🗡️ [SwordSwingAnimation] *** APPLY LINEAR SWEEP *** - Blade follows straight horizontal line`);
+    console.log(`🗡️ [SwordSwingAnimation] *** SHOULDER-DRIVEN SWING *** - Diagonal arc from high-right to low-left`);
     
     if (!this.playerBody || !this.playerBody.rightArm) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - playerBody or rightArm is null');
       return;
     }
     
-    // Apply shoulder rotations with minimal arc for positioning
+    // Apply SHOULDER rotations - PRIMARY DRIVER of the swing
     this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
-    console.log(`🗡️ [SwordSwingAnimation] Shoulder rotation (minimal arc): x=${shoulderRotation.x.toFixed(2)}, y=${shoulderRotation.y.toFixed(2)}, z=${shoulderRotation.z.toFixed(2)}`);
+    console.log(`🗡️ [SwordSwingAnimation] SHOULDER (PRIMARY): x=${shoulderRotation.x.toFixed(2)}, y=${shoulderRotation.y.toFixed(2)}, z=${shoulderRotation.z.toFixed(2)}`);
     
-    // Apply elbow rotations for linear path compensation
+    // Apply elbow rotations - SUPPORTS shoulder motion
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
-      console.log(`🗡️ [SwordSwingAnimation] Elbow rotation (linear compensation): x=${elbowRotation.x.toFixed(2)}, y=${elbowRotation.y.toFixed(2)}, z=${elbowRotation.z.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] ELBOW (SUPPORT): x=${elbowRotation.x.toFixed(2)}, y=${elbowRotation.y.toFixed(2)}, z=${elbowRotation.z.toFixed(2)}`);
     }
     
-    // Apply wrist rotations as PRIMARY DRIVER of horizontal sweep
+    // Apply wrist rotations - SECONDARY for snap effect
     if (this.playerBody.rightWrist) {
       this.playerBody.rightWrist.rotation.set(wristRotation.x, wristRotation.y, wristRotation.z);
-      console.log(`🗡️ [SwordSwingAnimation] Wrist rotation (PRIMARY LINEAR SWEEP): x=${wristRotation.x.toFixed(2)}, y=${wristRotation.y.toFixed(2)}, z=${wristRotation.z.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] WRIST (SNAP EFFECT): x=${wristRotation.x.toFixed(2)}, y=${wristRotation.y.toFixed(2)}, z=${wristRotation.z.toFixed(2)}`);
     }
     
-    // Apply supporting torso counter-rotation
+    // Apply torso rotation for power and support
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = torsoRotation;
-      console.log(`🗡️ [SwordSwingAnimation] Torso rotation (supports linear sweep): ${torsoRotation.toFixed(2)}`);
+      console.log(`🗡️ [SwordSwingAnimation] TORSO (POWER): ${torsoRotation.toFixed(2)}`);
     }
     
     // Debug weapon position if available
