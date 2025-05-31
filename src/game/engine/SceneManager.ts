@@ -412,10 +412,6 @@ export class SceneManager {
       }
     });
     objectsToRemove.forEach(obj => this.scene.remove(obj));
-    
-    // Clear dynamic fog rings
-    this.dynamicFogRings.forEach(ring => this.scene.remove(ring));
-    this.dynamicFogRings = [];
   }
 
   private loadTavernLevel(): void {

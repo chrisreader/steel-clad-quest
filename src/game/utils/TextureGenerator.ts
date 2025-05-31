@@ -236,7 +236,7 @@ export class TextureGenerator {
     canvas.width = canvas.height = 1024;
     const ctx = canvas.getContext('2d')!;
     
-    // Time of day determines sky color - using realistic blue tones
+    // Time of day determines sky color - using deep blue tones for day
     let skyColor;
     let horizonColor;
     let cloudColor;
@@ -251,15 +251,16 @@ export class TextureGenerator {
       skyColor = `rgb(${70 + dawnProgress * 50}, ${90 + dawnProgress * 70}, ${150 + dawnProgress * 80})`; // Dawn blue
       horizonColor = `rgb(${180 + dawnProgress * 75}, ${120 + dawnProgress * 80}, ${100 + dawnProgress * 80})`;
       cloudColor = `rgba(${200 + dawnProgress * 55}, ${150 + dawnProgress * 80}, ${120 + dawnProgress * 80}, 0.7)`;
-    } else if (timeOfDay < 0.7) { // Day - realistic blue sky
+    } else if (timeOfDay < 0.7) { // Day - DEEP BLUE SKY
       const dayProgress = (timeOfDay - 0.3) / 0.4;
       const intensity = Math.sin(dayProgress * Math.PI);
-      skyColor = `rgb(${120 + intensity * 15}, ${180 + intensity * 35}, ${240 + intensity * 15})`; // Clear blue sky
-      horizonColor = `rgb(${160 + intensity * 40}, ${200 + intensity * 35}, ${230 + intensity * 25})`;
+      // Deep blue sky colors - much more saturated and realistic
+      skyColor = `rgb(${70 + intensity * 10}, ${130 + intensity * 25}, ${250 + intensity * 5})`; // Deep azure blue
+      horizonColor = `rgb(${120 + intensity * 20}, ${170 + intensity * 25}, ${235 + intensity * 15})`; // Lighter blue horizon
       cloudColor = `rgba(255, 255, 255, ${0.8 + intensity * 0.2})`;
     } else if (timeOfDay < 0.75) { // Dusk
       const duskProgress = (timeOfDay - 0.7) / 0.05;
-      skyColor = `rgb(${120 - duskProgress * 50}, ${160 - duskProgress * 70}, ${220 - duskProgress * 80})`; // Dusk blue
+      skyColor = `rgb(${80 - duskProgress * 30}, ${140 - duskProgress * 50}, ${240 - duskProgress * 70})`; // Dusk blue
       horizonColor = `rgb(${200 - duskProgress * 80}, ${140 - duskProgress * 40}, ${120 - duskProgress * 20})`;
       cloudColor = `rgba(${220 - duskProgress * 80}, ${160 - duskProgress * 60}, ${140 - duskProgress * 40}, 0.7)`;
     } else { // Night
