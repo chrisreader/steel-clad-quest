@@ -24,16 +24,16 @@ export class WoodenSword extends Sword {
           recovery: 0.159
         },
         rotations: {
-          neutral: { x: Math.PI / 36, y: 0, z: 0 }, // ~5° horizontal position
+          neutral: { x: Math.PI / 3, y: 0, z: 0 }, // 60° chest level position
           windup: { 
-            x: Math.PI / 36, // EXACTLY same as neutral - NO MOVEMENT
-            y: 0,            // NO BACKWARD PULL
-            z: 0             // NO EXTRA ROTATION
+            x: Math.PI / 3, // STAY at chest level - no vertical movement
+            y: 0,           // NO BACKWARD PULL
+            z: 0            // NO EXTRA ROTATION
           },
           slash: { 
-            x: Math.PI / 36 + THREE.MathUtils.degToRad(-10), // Forward slash to ~-5° (horizontal)
-            y: THREE.MathUtils.degToRad(35),  // Cross-body slash
-            z: THREE.MathUtils.degToRad(-8)   // Wrist snap
+            x: Math.PI / 3,                       // STAY at chest level throughout swing
+            y: THREE.MathUtils.degToRad(35),      // Cross-body slash motion
+            z: THREE.MathUtils.degToRad(-8)       // Wrist snap
           }
         }
       }

@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -23,31 +24,31 @@ export class SwordSwingAnimation {
     let weaponWristRotation = 0;
     let torsoRotation = 0;
     
-    // FIXED: Much lower base angle for TRUE HORIZONTAL positioning (~5° instead of 15°)
-    const parallelAngleBase = Math.PI / 36; // ~5° - TRULY HORIZONTAL combat position
+    // FIXED: Use proper chest-level horizontal base angle
+    const chestLevelBase = Math.PI / 3; // 60° - matches the ready stance
     
     if (elapsed < phases.windup) {
-      this.updateWindupPhase(elapsed, phases, rotations, parallelAngleBase, shoulderRotation, elbowRotation, torsoRotation);
+      this.updateWindupPhase(elapsed, phases, rotations, chestLevelBase, shoulderRotation, elbowRotation, torsoRotation);
     } else if (elapsed < phases.windup + phases.slash) {
       this.updateSlashPhase(elapsed, phases, rotations, shoulderRotation, elbowRotation, torsoRotation, weaponWristRotation);
     } else if (elapsed < duration) {
-      this.updateRecoveryPhase(elapsed, phases, rotations, parallelAngleBase, shoulderRotation, elbowRotation, torsoRotation);
+      this.updateRecoveryPhase(elapsed, phases, rotations, chestLevelBase, shoulderRotation, elbowRotation, torsoRotation);
     } else {
-      this.completeAnimation(parallelAngleBase);
+      this.completeAnimation(chestLevelBase);
       return;
     }
     
     this.applyRotations(shoulderRotation, elbowRotation, torsoRotation, weaponWristRotation);
   }
   
-  private updateWindupPhase(elapsed: number, phases: any, rotations: any, parallelAngleBase: number, shoulderRotation: any, elbowRotation: any, torsoRotation: number): void {
-    // FIXED: Absolutely NO movement during windup - stay at horizontal position
-    shoulderRotation.x = parallelAngleBase; // Stay at ~5° horizontal position
-    shoulderRotation.y = 0; // Absolutely no backward pull
+  private updateWindupPhase(elapsed: number, phases: any, rotations: any, chestLevelBase: number, shoulderRotation: any, elbowRotation: any, torsoRotation: number): void {
+    // FIXED: Stay at chest level during windup - no movement
+    shoulderRotation.x = chestLevelBase; // Stay at 60° chest level position
+    shoulderRotation.y = 0; // No backward pull
     shoulderRotation.z = 0; // No extra rotation
     
-    // FIXED: DOWNWARD elbow bend to counteract forward shoulder angle and keep blade horizontal
-    elbowRotation.x = -0.05; // NEGATIVE (downward) elbow bend to maintain horizontal blade
+    // FIXED: Downward elbow bend to maintain horizontal blade at chest level
+    elbowRotation.x = -0.05; // Downward bend to counteract forward shoulder angle
     torsoRotation = 0; // No torso movement during windup
   }
   
@@ -55,16 +56,16 @@ export class SwordSwingAnimation {
     const t = (elapsed - phases.windup) / phases.slash;
     const easedT = t * t * (3 - 2 * t);
     
-    // FIXED: True horizontal slash - from ~5° to -5° (parallel to player's perspective)
-    const startX = Math.PI / 36; // Start from ~5° horizontal
-    const slashX = Math.PI / 36 + THREE.MathUtils.degToRad(-10); // End at ~-5° (horizontal forward slash)
+    // FIXED: HORIZONTAL CHEST-LEVEL SLASH - swing across at same height
+    const startX = Math.PI / 3; // Start from 60° chest level
+    const slashX = Math.PI / 3; // END at same 60° chest level (no vertical movement)
     
-    shoulderRotation.x = THREE.MathUtils.lerp(startX, slashX, easedT);
+    shoulderRotation.x = THREE.MathUtils.lerp(startX, slashX, easedT); // Stay at chest level
     shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.slash.y, easedT); // Right-to-left motion
     shoulderRotation.z = THREE.MathUtils.lerp(0, rotations.slash.z, easedT); // Wrist snap
     
-    // FIXED: DOWNWARD elbow animation to maintain horizontal blade positioning
-    elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.1, easedT); // NEGATIVE (downward) bend increase for follow-through
+    // FIXED: Elbow maintains horizontal blade positioning throughout
+    elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.1, easedT); // Slightly more downward bend for follow-through
     torsoRotation = THREE.MathUtils.lerp(0, 0.15, easedT); // Reduced torso rotation
     
     // Enhanced wrist rotation for proper slashing motion
@@ -75,23 +76,23 @@ export class SwordSwingAnimation {
     }
   }
   
-  private updateRecoveryPhase(elapsed: number, phases: any, rotations: any, parallelAngleBase: number, shoulderRotation: any, elbowRotation: any, torsoRotation: number): void {
+  private updateRecoveryPhase(elapsed: number, phases: any, rotations: any, chestLevelBase: number, shoulderRotation: any, elbowRotation: any, torsoRotation: number): void {
     const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
     const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
     
-    shoulderRotation.x = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.x, parallelAngleBase, easedT);
+    shoulderRotation.x = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.x, chestLevelBase, easedT);
     shoulderRotation.y = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.y, 0, easedT);
     shoulderRotation.z = THREE.MathUtils.lerp(this.playerBody.rightArm.rotation.z, 0, easedT);
     
-    // FIXED: Return to DOWNWARD elbow position for horizontal stance
-    elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.05, easedT); // Return to downward bend
+    // Return to downward elbow position for horizontal stance
+    elbowRotation.x = THREE.MathUtils.lerp(-0.1, -0.05, easedT);
     torsoRotation = THREE.MathUtils.lerp(0.15, 0, easedT);
   }
   
-  private completeAnimation(parallelAngleBase: number): void {
-    this.playerBody.rightArm.rotation.set(parallelAngleBase, 0, 0);
+  private completeAnimation(chestLevelBase: number): void {
+    this.playerBody.rightArm.rotation.set(chestLevelBase, 0, 0);
     if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(-0.05, 0, 0); // FIXED: DOWNWARD elbow bend at rest for horizontal blade
+      this.playerBody.rightElbow.rotation.set(-0.05, 0, 0); // Downward elbow bend at rest
     }
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = 0;
