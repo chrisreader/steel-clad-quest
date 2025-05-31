@@ -26,13 +26,13 @@ export class SteelSword extends Sword {
         rotations: {
           neutral: { x: Math.PI / 3, y: 0, z: 0 }, // 60° proper ready position
           windup: { 
-            x: Math.PI / 2, // 90° overhead position for proper arc
+            x: Math.PI / 4, // 45° horizontal level (not overhead) - right ready position
             y: THREE.MathUtils.degToRad(45), // 45° right position
             z: 0
           },
           slash: { 
-            x: Math.PI / 6, // 30° reasonable end position
-            y: THREE.MathUtils.degToRad(-45), // 45° left position completing the arc
+            x: Math.PI / 4, // 45° same horizontal level - left follow-through position
+            y: THREE.MathUtils.degToRad(-45), // 45° left position completing the horizontal arc
             z: 0
           }
         }
