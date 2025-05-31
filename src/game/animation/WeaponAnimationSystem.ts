@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
@@ -84,10 +85,10 @@ export class WeaponAnimationSystem {
           leftArmX: Math.PI * 95 / 180,
           leftArmY: 0,
           leftArmZ: Math.PI * 5.5 / 180, // +5.5° inward angle pointing right
-          // Right arm: 30° upward (idle-like stance to start drawing)
-          rightArmX: Math.PI / 6, // 30°
+          // Right arm: 95° upward with -15.5° inward angle pointing left
+          rightArmX: Math.PI * 95 / 180, // 95°
           rightArmY: 0,
-          rightArmZ: 0, // No inward angle yet
+          rightArmZ: -Math.PI * 15.5 / 180, // -15.5° inward angle pointing left
           leftElbowX: 0.2,
           rightElbowX: 0.3
         };
@@ -98,10 +99,10 @@ export class WeaponAnimationSystem {
           leftArmX: Math.PI * 95 / 180,
           leftArmY: 0,
           leftArmZ: Math.PI * 5.5 / 180,
-          // Right arm: 90° upward, inward angle begins
+          // Right arm: 90° upward, -10.5° inward angle
           rightArmX: Math.PI * 90 / 180, // 90°
           rightArmY: 0,
-          rightArmZ: -Math.PI * 20.5 / 180, // -20.5° inward angle pointing left
+          rightArmZ: -Math.PI * 10.5 / 180, // -10.5° inward angle pointing left
           leftElbowX: 0.2,
           rightElbowX: 0.3
         };
@@ -112,10 +113,10 @@ export class WeaponAnimationSystem {
           leftArmX: Math.PI * 95 / 180,
           leftArmY: 0,
           leftArmZ: Math.PI * 5.5 / 180,
-          // Right arm: 93° upward, further increased inward angle
+          // Right arm: 93° upward, -5.5° inward angle
           rightArmX: Math.PI * 93 / 180, // 93°
           rightArmY: 0,
-          rightArmZ: -Math.PI * 25.5 / 180, // -25.5° inward angle pointing left
+          rightArmZ: -Math.PI * 5.5 / 180, // -5.5° inward angle pointing left
           leftElbowX: 0.2,
           rightElbowX: 0.9 // Increased elbow bend
         };
@@ -126,10 +127,10 @@ export class WeaponAnimationSystem {
           leftArmX: Math.PI * 95 / 180,
           leftArmY: 0,
           leftArmZ: Math.PI * 5.5 / 180,
-          // Right arm: 90° upward, maximum inward angle
+          // Right arm: 90° upward, +1.5° outward angle
           rightArmX: Math.PI * 90 / 180, // 90°
           rightArmY: 0,
-          rightArmZ: -Math.PI * 28.5 / 180, // -28.5° inward angle pointing left
+          rightArmZ: Math.PI * 1.5 / 180, // +1.5° outward angle
           leftElbowX: 0.2,
           rightElbowX: 1.4 // Maximum elbow bend
         };
