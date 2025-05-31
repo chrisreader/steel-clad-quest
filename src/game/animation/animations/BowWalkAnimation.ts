@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -27,16 +28,16 @@ export class BowWalkAnimation {
     // Arms - more natural walking movement similar to melee, but with bow positioning
     const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     
-    // Left arm - bow holding with walking movement (symmetric Y rotation)
-    const leftArmBase = Math.PI / 8 - 0.2;
+    // Left arm - bow holding with walking movement (same base position as melee/empty hands)
+    const leftArmBase = Math.PI / 8; // Changed from Math.PI / 8 - 0.2 to match other animations
     playerBody.leftArm.rotation.x = leftArmBase - armSwing * 0.5;
-    playerBody.leftArm.rotation.y = 0; // Changed from -0.3 to 0 for symmetry
+    playerBody.leftArm.rotation.y = 0; // Symmetric Y rotation
     playerBody.leftArm.rotation.z = 0.1;
     
-    // Right arm - ready-to-draw with walking movement (symmetric Y rotation)
-    const rightArmBase = Math.PI / 8 - 0.1;
+    // Right arm - ready-to-draw with walking movement (same base position as melee/empty hands)
+    const rightArmBase = Math.PI / 8; // Changed from Math.PI / 8 - 0.1 to match other animations
     playerBody.rightArm.rotation.x = rightArmBase + armSwing * 0.5;
-    playerBody.rightArm.rotation.y = 0; // Changed from 0.1 to 0 for perfect symmetry
+    playerBody.rightArm.rotation.y = 0; // Symmetric Y rotation
     playerBody.rightArm.rotation.z = -0.1;
     
     // Elbows - more natural movement similar to melee
@@ -73,9 +74,9 @@ export class BowWalkAnimation {
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to symmetric archery stance
-    playerBody.leftArm.rotation.set(Math.PI / 8 - 0.2, 0, 0.1); // Y rotation changed to 0
-    playerBody.rightArm.rotation.set(Math.PI / 8 - 0.1, 0, -0.1); // Y rotation changed to 0
+    // Reset to symmetric archery stance with corrected arm positioning
+    playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0.1); // Changed from Math.PI / 8 - 0.2 to match other animations
+    playerBody.rightArm.rotation.set(Math.PI / 8, 0, -0.1); // Changed from Math.PI / 8 - 0.1 to match other animations
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0.05, 0, 0);
@@ -91,6 +92,6 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] Reset to symmetric archery stance');
+    console.log('🏹 [BowWalkAnimation] Reset to symmetric archery stance with corrected arm positioning');
   }
 }
