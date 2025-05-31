@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -23,8 +24,8 @@ export class SwordSwingAnimation {
     let weaponWristRotation = 0;
     let torsoRotation = 0;
     
-    // FIXED: Base position matching REALISTIC arm position (36° instead of 61.7°)
-    const parallelAngleBase = Math.PI / 5; // 36° - REALISTIC combat position
+    // FIXED: Base position matching HORIZONTAL arm position (15° instead of 36°)
+    const parallelAngleBase = Math.PI / 12; // 15° - HORIZONTAL combat position
     
     if (elapsed < phases.windup) {
       this.updateWindupPhase(elapsed, phases, rotations, parallelAngleBase, shoulderRotation, elbowRotation, torsoRotation);
@@ -44,8 +45,8 @@ export class SwordSwingAnimation {
     const t = elapsed / phases.windup;
     const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
     
-    // FIXED: Minimal windup height - only add 5° to the new REALISTIC base position
-    const windupX = parallelAngleBase + THREE.MathUtils.degToRad(5); // Total: ~41°
+    // FIXED: Minimal windup height - only add 5° to the new HORIZONTAL base position
+    const windupX = parallelAngleBase + THREE.MathUtils.degToRad(5); // Total: ~20°
     
     shoulderRotation.x = THREE.MathUtils.lerp(parallelAngleBase, windupX, easedT);
     shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
@@ -59,9 +60,9 @@ export class SwordSwingAnimation {
     const t = (elapsed - phases.windup) / phases.slash;
     const easedT = t * t * (3 - 2 * t);
     
-    // FIXED: Forward slash motion - go forward and across from REALISTIC base position
+    // FIXED: Forward slash motion - go forward and across from HORIZONTAL base position
     const windupX = this.playerBody.rightArm.rotation.x; // Current windup position
-    const slashX = Math.PI / 5 + THREE.MathUtils.degToRad(-25); // Down to ~11° (forward slash)
+    const slashX = Math.PI / 12 + THREE.MathUtils.degToRad(-10); // Down to ~5° (horizontal forward slash)
     
     shoulderRotation.x = THREE.MathUtils.lerp(windupX, slashX, easedT);
     shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);

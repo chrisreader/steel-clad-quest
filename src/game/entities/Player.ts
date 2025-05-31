@@ -511,19 +511,19 @@ export class Player {
     this.playerBody.rightArm.position.set(0.3, 0.8, 0);
     
     if (weaponType === 'melee') {
-      // MELEE READY STANCE: Right arm raised to REALISTIC combat position, left arm at side
+      // MELEE READY STANCE: Right arm raised to MUCH LOWER horizontal combat position, left arm at side
       
       // Left arm: Normal side position (like empty hands)
       this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
       
-      // FIXED: Right arm: REALISTIC combat ready position - LOWER angle for proper sword positioning
+      // FIXED: Right arm: MUCH LOWER horizontal combat ready position - FORWARD-FACING for realistic sword stance
       this.playerBody.rightArm.rotation.set(
-        Math.PI / 5,   // ~36° upward angle (MUCH LOWER than previous 61.7°)
+        Math.PI / 12,  // ~15° upward angle (MUCH LOWER than previous 36°)
         0,             // FIXED: NO Y rotation - keep parallel with body
         0              // FIXED: NO Z rotation - keep perfectly parallel with body
       );
       
-      console.log("🗡️ [Player] FIXED MELEE ready stance - Right arm at REALISTIC ~36° combat position");
+      console.log("🗡️ [Player] FIXED MELEE ready stance - Right arm at HORIZONTAL ~15° combat position");
       
     } else if (weaponType === 'bow') {
       // BOW READY STANCE: Left arm raised up PARALLEL with body, right arm at side
