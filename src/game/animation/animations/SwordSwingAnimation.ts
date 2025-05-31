@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 
@@ -24,21 +25,21 @@ export class SwordSwingAnimation {
     let weaponWristRotation = 0;
     let torsoRotation = 0;
     
-    // REFERENCE-BASED positions for dramatic diagonal slash (72.5° to 7.5° vertical arc = 65° total)
-    const neutralShoulderX = Math.PI / 8; // 22.5° - correct neutral position from reference
-    const windupShoulderX = Math.PI / 8 + THREE.MathUtils.degToRad(50); // 72.5° high position
-    const slashEndShoulderX = Math.PI / 8 - THREE.MathUtils.degToRad(15); // 7.5° low position
+    // CORRECTED positions for proper overhead swing
+    const neutralShoulderX = Math.PI / 3; // 60° - proper ready position
+    const windupShoulderX = Math.PI / 3 + THREE.MathUtils.degToRad(30); // 90° high overhead position
+    const slashEndShoulderX = Math.PI / 6; // 30° reasonable end position (not too low)
     
     const neutralShoulderY = 0;
-    const windupShoulderY = THREE.MathUtils.degToRad(-40); // Pull right/back
-    const slashEndShoulderY = THREE.MathUtils.degToRad(70); // Sweep left
+    const windupShoulderY = THREE.MathUtils.degToRad(-30); // Reduced pull back
+    const slashEndShoulderY = THREE.MathUtils.degToRad(45); // Reduced sweep to prevent going behind player
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Dramatic raise for proper diagonal slash (20% of total time)
+      // WINDUP PHASE: Proper overhead raise from 60° to 90°
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Reference-based diagonal windup - from 22.5° to 72.5°
+      // Proper overhead windup - from 60° to 90°
       shoulderRotation.x = THREE.MathUtils.lerp(neutralShoulderX, windupShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(neutralShoulderY, windupShoulderY, easedT);
       shoulderRotation.z = THREE.MathUtils.lerp(0, -0.2, easedT);
@@ -52,62 +53,62 @@ export class SwordSwingAnimation {
       wristRotation.y = THREE.MathUtils.lerp(0, -0.15, easedT);
       wristRotation.z = THREE.MathUtils.lerp(0, 0.1, easedT);
       
-      // Torso winds up for power
-      torsoRotation = THREE.MathUtils.lerp(0, -0.4, easedT);
+      // Reduced torso wind up
+      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Dramatic diagonal sweep from 72.5° to 7.5° (50% of total time)
+      // SLASH PHASE: Controlled diagonal sweep from 90° to 30°
       const t = (elapsed - phases.windup) / phases.slash;
       const easedT = t * t * (3 - 2 * t); // Aggressive acceleration
       
-      // DRAMATIC diagonal sweep with full 65° vertical arc
+      // Proper diagonal sweep from 90° to 30°
       shoulderRotation.x = THREE.MathUtils.lerp(windupShoulderX, slashEndShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(windupShoulderY, slashEndShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(-0.2, 0.3, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(-0.2, 0.2, easedT);
       
-      // Elbow extends dramatically during slash
+      // Elbow extends during slash
       elbowRotation.x = THREE.MathUtils.lerp(-0.3, 0.1, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0.15, -0.2, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(0.15, -0.1, easedT);
       
       // Wrist follows through the diagonal motion
       wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 6, -Math.PI / 3, easedT);
-      wristRotation.y = THREE.MathUtils.lerp(-0.15, Math.PI / 4, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0.1, -Math.PI / 6, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(-0.15, Math.PI / 6, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(0.1, -Math.PI / 8, easedT);
       
-      // Strong torso rotation for full-body diagonal slash
-      torsoRotation = THREE.MathUtils.lerp(-0.4, 0.8, easedT);
+      // Controlled torso rotation for diagonal slash
+      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.5, easedT);
       
       // Enhanced wrist snap during middle 60% of slash
       if (t >= 0.2 && t <= 0.8) {
         const wristT = (t - 0.2) / 0.6;
         const intensity = this.weaponSwing.wristSnapIntensity || 1.0;
-        weaponWristRotation = Math.sin(wristT * Math.PI) * (intensity * 3.0);
+        weaponWristRotation = Math.sin(wristT * Math.PI) * (intensity * 2.5);
       }
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to correct neutral stance (30% of total time)
+      // RECOVERY PHASE: Return to 60° ready stance
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Smooth return to correct neutral position (22.5°)
+      // Return to proper 60° ready position
       shoulderRotation.x = THREE.MathUtils.lerp(slashEndShoulderX, neutralShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(slashEndShoulderY, neutralShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0.3, 0, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0.2, 0, easedT);
       
       // Return elbow to ready position
       elbowRotation.x = THREE.MathUtils.lerp(0.1, -0.05, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(-0.2, 0, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(-0.1, 0, easedT);
       
       // Return wrist to forward-pointing ready position
       wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 3, -Math.PI / 4, easedT);
-      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 4, 0, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 6, 0, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 6, 0, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 8, 0, easedT);
       
       // Return torso to neutral
-      torsoRotation = THREE.MathUtils.lerp(0.8, 0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0.5, 0, easedT);
       
     } else {
-      // ANIMATION COMPLETE - reset to correct neutral position
+      // ANIMATION COMPLETE - reset to 60° ready position
       this.completeAnimation();
       return;
     }
@@ -116,8 +117,8 @@ export class SwordSwingAnimation {
   }
   
   private completeAnimation(): void {
-    // Set to correct neutral position (22.5° instead of 60°)
-    this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
+    // Set to proper 60° ready position
+    this.playerBody.rightArm.rotation.set(Math.PI / 3, 0, 0);
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(-0.05, 0, 0);
     }

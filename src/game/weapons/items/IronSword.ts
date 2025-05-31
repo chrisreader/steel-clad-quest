@@ -24,15 +24,15 @@ export class IronSword extends Sword {
           recovery: 0.192  // 30% of 0.64s
         },
         rotations: {
-          neutral: { x: Math.PI / 8, y: 0, z: 0 }, // 22.5° chest level position
+          neutral: { x: Math.PI / 3, y: 0, z: 0 }, // 60° proper ready position
           windup: { 
-            x: Math.PI / 8 + THREE.MathUtils.degToRad(50), // High position (72.5°)
-            y: THREE.MathUtils.degToRad(-40),               // Pull right/back
+            x: Math.PI / 3 + THREE.MathUtils.degToRad(30), // 90° overhead position
+            y: THREE.MathUtils.degToRad(-30),               // Reduced pull back
             z: 0
           },
           slash: { 
-            x: Math.PI / 8 - THREE.MathUtils.degToRad(15), // Low position (7.5°)
-            y: THREE.MathUtils.degToRad(70),                // Sweep left
+            x: Math.PI / 6,                                 // 30° reasonable end position
+            y: THREE.MathUtils.degToRad(45),                // Controlled sweep
             z: THREE.MathUtils.degToRad(-15)                // Enhanced wrist snap
           }
         }
