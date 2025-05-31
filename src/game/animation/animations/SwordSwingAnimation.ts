@@ -6,11 +6,14 @@ export class SwordSwingAnimation {
   private weaponSwing: WeaponSwingAnimation;
   private playerBody: PlayerBody;
   private equippedWeapon: any;
+  private originalShoulderPosition: THREE.Vector3;
   
   constructor(weaponSwing: WeaponSwingAnimation, playerBody: PlayerBody, equippedWeapon: any) {
     this.weaponSwing = weaponSwing;
     this.playerBody = playerBody;
     this.equippedWeapon = equippedWeapon;
+    // Store original shoulder position for restoration
+    this.originalShoulderPosition = this.playerBody.rightArm.position.clone();
   }
   
   public update(): void {
@@ -20,98 +23,116 @@ export class SwordSwingAnimation {
     const { phases, duration } = this.weaponSwing;
     
     let shoulderRotation = { x: 0, y: 0, z: 0 };
+    let shoulderPosition = { x: 0, y: 0, z: 0 }; // NEW: Spatial movement
     let elbowRotation = { x: 0, y: 0, z: 0 };
     let wristRotation = { x: 0, y: 0, z: 0 };
     let torsoRotation = 0;
     
-    // CORRECTED positions for proper overhead swing
-    const neutralShoulderX = Math.PI / 3; // 60° - proper ready position
-    const windupShoulderX = Math.PI / 3 + THREE.MathUtils.degToRad(30); // 90° high overhead position
-    const slashEndShoulderX = THREE.MathUtils.degToRad(50); // 50° reasonable end position
+    // Natural shoulder rotation positions
+    const neutralShoulderX = Math.PI / 3; // 60° ready position
+    const windupShoulderX = Math.PI / 3 + THREE.MathUtils.degToRad(30); // 90° overhead
+    const slashEndShoulderX = THREE.MathUtils.degToRad(50); // 50° end position
     
     const neutralShoulderY = 0;
-    const windupShoulderY = THREE.MathUtils.degToRad(-60); // Further right for wider swing
-    const slashEndShoulderY = THREE.MathUtils.degToRad(75); // Further left for wider swing
+    const windupShoulderY = THREE.MathUtils.degToRad(-35); // Reduced from -60° for natural range
+    const slashEndShoulderY = THREE.MathUtils.degToRad(55); // Reduced from 75° for natural range
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Proper overhead raise from 60° to 90°
+      // WINDUP PHASE: Pull back and raise
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Enhanced shoulder rotation - this drives the entire weapon motion
+      // Shoulder rotation - preparing for strike
       shoulderRotation.x = THREE.MathUtils.lerp(neutralShoulderX, windupShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(neutralShoulderY, windupShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0, -0.3, easedT); // Enhanced shoulder lean
+      shoulderRotation.z = THREE.MathUtils.lerp(0, -0.2, easedT);
       
-      // Elbow coordination - works with shoulder to position weapon
-      elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.3, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0, 0.15, easedT);
+      // NEW: Shoulder spatial movement - pull back and to the side
+      shoulderPosition.x = THREE.MathUtils.lerp(0, -0.15, easedT); // Pull shoulder back
+      shoulderPosition.y = THREE.MathUtils.lerp(0, 0.1, easedT); // Slight upward movement
+      shoulderPosition.z = THREE.MathUtils.lerp(0, -0.2, easedT); // Pull back from target
       
-      // Wrist coordination - maintains weapon orientation relative to arm
+      // Elbow - retract arm during windup
+      elbowRotation.x = THREE.MathUtils.lerp(-0.05, -0.8, easedT); // Bend elbow more to retract
+      elbowRotation.y = THREE.MathUtils.lerp(0, 0.1, easedT);
+      
+      // Wrist coordination
       wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 4, -Math.PI / 6, easedT);
-      wristRotation.y = THREE.MathUtils.lerp(0, -0.15, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0, 0.1, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(0, -0.1, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(0, 0.05, easedT);
       
-      // Enhanced torso rotation for wider swing preparation
-      torsoRotation = THREE.MathUtils.lerp(0, -0.5, easedT);
+      // Torso - coil for power
+      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Arm-driven diagonal sweep from 90° to 50°
+      // SLASH PHASE: Explosive extension and swing
       const t = (elapsed - phases.windup) / phases.slash;
-      const easedT = t * t * (3 - 2 * t); // Aggressive acceleration
+      const easedT = t * t * (3 - 2 * t); // Aggressive acceleration for power
       
-      // Enhanced shoulder rotation - this is the primary driver of the attack arc
+      // Shoulder rotation - drive the swing
       shoulderRotation.x = THREE.MathUtils.lerp(windupShoulderX, slashEndShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(windupShoulderY, slashEndShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(-0.3, 0.3, easedT); // Enhanced shoulder rotation
+      shoulderRotation.z = THREE.MathUtils.lerp(-0.2, 0.2, easedT);
       
-      // Elbow follows shoulder motion naturally
-      elbowRotation.x = THREE.MathUtils.lerp(-0.3, 0.1, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0.15, -0.1, easedT);
+      // NEW: Shoulder spatial movement - reach forward and across
+      shoulderPosition.x = THREE.MathUtils.lerp(-0.15, 0.25, easedT); // Move shoulder forward and across
+      shoulderPosition.y = THREE.MathUtils.lerp(0.1, -0.05, easedT); // Slight downward as swing progresses
+      shoulderPosition.z = THREE.MathUtils.lerp(-0.2, 0.3, easedT); // Push forward into strike
       
-      // Wrist maintains weapon orientation through the arc
+      // Elbow - explosive extension for reach and power
+      elbowRotation.x = THREE.MathUtils.lerp(-0.8, 0.2, easedT); // Straighten arm dramatically
+      elbowRotation.y = THREE.MathUtils.lerp(0.1, -0.15, easedT);
+      
+      // Wrist - snap through the strike
       wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 6, -Math.PI / 3, easedT);
-      wristRotation.y = THREE.MathUtils.lerp(-0.15, Math.PI / 6, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0.1, -Math.PI / 8, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(-0.1, Math.PI / 8, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(0.05, -Math.PI / 12, easedT);
       
-      // Enhanced torso rotation drives the entire swing motion
-      torsoRotation = THREE.MathUtils.lerp(-0.5, 0.8, easedT);
+      // Torso - uncoil with power
+      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.6, easedT);
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to 60° ready stance
+      // RECOVERY PHASE: Return to ready position
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return to proper 60° ready position
+      // Return shoulder rotation to ready
       shoulderRotation.x = THREE.MathUtils.lerp(slashEndShoulderX, neutralShoulderX, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(slashEndShoulderY, neutralShoulderY, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(0.3, 0, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0.2, 0, easedT);
+      
+      // NEW: Return shoulder position to neutral
+      shoulderPosition.x = THREE.MathUtils.lerp(0.25, 0, easedT);
+      shoulderPosition.y = THREE.MathUtils.lerp(-0.05, 0, easedT);
+      shoulderPosition.z = THREE.MathUtils.lerp(0.3, 0, easedT);
       
       // Return elbow to ready position
-      elbowRotation.x = THREE.MathUtils.lerp(0.1, -0.05, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(-0.1, 0, easedT);
+      elbowRotation.x = THREE.MathUtils.lerp(0.2, -0.05, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(-0.15, 0, easedT);
       
       // Return wrist to forward-pointing ready position
       wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 3, -Math.PI / 4, easedT);
-      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 6, 0, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 8, 0, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 8, 0, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 12, 0, easedT);
       
       // Return torso to neutral
-      torsoRotation = THREE.MathUtils.lerp(0.8, 0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0.6, 0, easedT);
       
     } else {
-      // ANIMATION COMPLETE - reset to 60° ready position
+      // ANIMATION COMPLETE - reset everything
       this.completeAnimation();
       return;
     }
     
-    // Apply rotations - weapon will follow arm motion naturally
-    this.applyRotations(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
+    // Apply all rotations and positions
+    this.applyRotations(shoulderRotation, shoulderPosition, elbowRotation, wristRotation, torsoRotation);
   }
   
   private completeAnimation(): void {
-    // Set to proper 60° ready position
+    // Reset to proper ready position
     this.playerBody.rightArm.rotation.set(Math.PI / 3, 0, 0);
+    this.playerBody.rightArm.position.copy(this.originalShoulderPosition); // NEW: Reset position
+    
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(-0.05, 0, 0);
     }
@@ -121,14 +142,28 @@ export class SwordSwingAnimation {
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = 0;
     }
-    // REMOVED: No separate weapon rotation - it follows the arm naturally
+    
     this.weaponSwing.isActive = false;
   }
   
-  private applyRotations(shoulderRotation: any, elbowRotation: any, wristRotation: any, torsoRotation: number): void {
-    // Apply arm rotations - weapon follows these motions naturally
+  private applyRotations(
+    shoulderRotation: any, 
+    shoulderPosition: any, // NEW: Position parameter
+    elbowRotation: any, 
+    wristRotation: any, 
+    torsoRotation: number
+  ): void {
+    // Apply shoulder rotation AND position movement
     this.playerBody.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
     
+    // NEW: Apply spatial shoulder movement
+    const newPosition = this.originalShoulderPosition.clone();
+    newPosition.x += shoulderPosition.x;
+    newPosition.y += shoulderPosition.y;
+    newPosition.z += shoulderPosition.z;
+    this.playerBody.rightArm.position.copy(newPosition);
+    
+    // Apply joint rotations
     if (this.playerBody.rightElbow) {
       this.playerBody.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
     }
@@ -140,8 +175,5 @@ export class SwordSwingAnimation {
     if (this.playerBody.body) {
       this.playerBody.body.rotation.y = torsoRotation;
     }
-    
-    // REMOVED: No separate weapon rotation - the weapon now follows the arm's motion entirely
-    // The weapon is attached to the wrist and inherits all arm movement naturally
   }
 }
