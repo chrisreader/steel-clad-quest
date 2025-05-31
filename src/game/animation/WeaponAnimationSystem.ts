@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
@@ -80,14 +81,14 @@ export class WeaponAnimationSystem {
       
       case 'drawing':
         return {
-          // Left arm (bow-holding): 95° upward, with inward angle pointing right
+          // Left arm (bow-holding): 95° upward, with small inward angle pointing right
           leftArmX: Math.PI * 95 / 180,
           leftArmY: 0,
-          leftArmZ: Math.PI / 8, // +22.5° inward angle pointing right
-          // Right arm (string-pulling): 95° upward, with inward angle pointing left
+          leftArmZ: Math.PI * 5.5 / 180, // +5.5° inward angle pointing right
+          // Right arm (string-pulling): 95° upward, with small inward angle pointing left
           rightArmX: Math.PI * 95 / 180,
           rightArmY: 0,
-          rightArmZ: -Math.PI / 8, // -22.5° inward angle pointing left
+          rightArmZ: -Math.PI * 15.5 / 180, // -15.5° inward angle pointing left
           leftElbowX: 0.2,
           rightElbowX: 0.3
         };
