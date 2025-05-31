@@ -236,20 +236,12 @@ export class Player {
     
     // Materials
     const metalTexture = TextureGenerator.createMetalTexture();
-    const skinTexture = this.createSkinTexture();
     
     const armMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x5A7BC8,
       shininess: 60,
       specular: 0x555555,
       map: metalTexture
-    });
-    
-    const skinMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xf4c2a1,
-      map: skinTexture,
-      transparent: true,
-      opacity: 0.95
     });
     
     // Shoulder (connection point - invisible)
@@ -287,32 +279,18 @@ export class Player {
     wristGroup.name = `${side}Wrist`;
     elbowGroup.add(wristGroup);
     
-    // Enhanced Hand with basic finger representation
+    // Simplified Hand - Single oval/ellipsoid shape
     const handGroup = new THREE.Group();
     handGroup.name = `${side}Hand`;
     
-    // Palm
-    const palmGeometry = new THREE.BoxGeometry(0.12, 0.06, 0.18);
-    const palm = new THREE.Mesh(palmGeometry, skinMaterial.clone());
-    palm.castShadow = true;
-    handGroup.add(palm);
+    // Create a simple ellipsoid hand that matches arm color
+    const handGeometry = new THREE.SphereGeometry(0.06, 12, 8);
+    handGeometry.scale(1.2, 0.8, 1.4); // Make it slightly oval-shaped (wider and longer than tall)
     
-    // Simplified fingers
-    for (let i = 0; i < 4; i++) {
-      const fingerGeometry = new THREE.BoxGeometry(0.02, 0.04, 0.08);
-      const finger = new THREE.Mesh(fingerGeometry, skinMaterial.clone());
-      finger.position.set((i - 1.5) * 0.025, -0.02, 0.06);
-      finger.castShadow = true;
-      handGroup.add(finger);
-    }
-    
-    // Thumb
-    const thumbGeometry = new THREE.BoxGeometry(0.025, 0.04, 0.06);
-    const thumb = new THREE.Mesh(thumbGeometry, skinMaterial.clone());
-    thumb.position.set(side === 'left' ? 0.08 : -0.08, 0, 0.02);
-    thumb.rotation.z = side === 'left' ? -0.5 : 0.5;
-    thumb.castShadow = true;
-    handGroup.add(thumb);
+    const hand = new THREE.Mesh(handGeometry, armMaterial.clone());
+    hand.castShadow = true;
+    hand.position.set(0, -0.02, 0); // Position slightly below wrist
+    handGroup.add(hand);
     
     wristGroup.add(handGroup);
     
@@ -326,7 +304,7 @@ export class Player {
       hand: handGroup
     };
     
-    console.log(`🦾 [Player] Created realistic ${side} arm with proper joints and proportions`);
+    console.log(`🦾 [Player] Created realistic ${side} arm with simplified oval hand`);
     
     return armSystem;
   }
@@ -487,7 +465,7 @@ export class Player {
     
     // Left shoulder: Extended forward for bow holding
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder - 0.3, // Angled downward for visibility
+      baseShoulder - 0.3, // Angled downward for better visibility
       -0.6, // Across body but visible
       0.1   // Slight outward rotation
     );
