@@ -181,19 +181,19 @@ export class Player {
     
     console.log("🧍 [Player] Torso positioned naturally at:", body.position, "- castShadow:", body.castShadow);
     
-    // REALISTIC ARM SYSTEM - Left Arm (naturally connected to shoulders)
+    // REALISTIC ARM SYSTEM - Left Arm (connected to shoulders at top of torso)
     const leftArmSystem = this.createRealisticArm('left');
-    leftArmSystem.position.set(-0.3, 0.65, 0); // Connected to shoulder naturally
+    leftArmSystem.position.set(-0.3, 0.7, 0); // Connected to shoulder at top of torso
     leftArmSystem.visible = true;
     playerBodyGroup.add(leftArmSystem);
     
-    // REALISTIC ARM SYSTEM - Right Arm (naturally connected to shoulders)
+    // REALISTIC ARM SYSTEM - Right Arm (connected to shoulders at top of torso)
     const rightArmSystem = this.createRealisticArm('right');
-    rightArmSystem.position.set(0.3, 0.65, 0); // Connected to shoulder naturally
+    rightArmSystem.position.set(0.3, 0.7, 0); // Connected to shoulder at top of torso
     rightArmSystem.visible = true;
     playerBodyGroup.add(rightArmSystem);
     
-    console.log("🦾 [Player] Arms positioned naturally - Left:", leftArmSystem.position, "Right:", rightArmSystem.position);
+    console.log("🦾 [Player] Arms positioned at shoulders - Left:", leftArmSystem.position, "Right:", rightArmSystem.position);
     
     // LEGS - Natural position connected to torso bottom
     const legGeometry = new THREE.BoxGeometry(0.15, 0.6, 0.15);
