@@ -25,22 +25,23 @@ export class BowWalkAnimation {
     playerBody.leftLeg.rotation.x = legSwing;
     playerBody.rightLeg.rotation.x = -legSwing;
     
-    // Arms - more natural walking movement similar to melee, but with bow positioning
+    // Arms - more natural walking movement with FORWARD-ANGLED bow positioning
     const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     
-    // Left arm - bow holding with walking movement (same base position as melee/empty hands)
-    const leftArmBase = Math.PI / 8; // Changed from Math.PI / 8 - 0.2 to match other animations
-    playerBody.leftArm.rotation.x = leftArmBase - armSwing * 0.5;
-    playerBody.leftArm.rotation.y = 0; // Symmetric Y rotation
-    playerBody.leftArm.rotation.z = 0.1;
+    // FORWARD-ANGLED base position for bow stance (30° upward, forward tilt)
+    const forwardAngleBase = Math.PI / 6; // 30° instead of 22.5°
     
-    // Right arm - ready-to-draw with walking movement (same base position as melee/empty hands)
-    const rightArmBase = Math.PI / 8; // Changed from Math.PI / 8 - 0.1 to match other animations
-    playerBody.rightArm.rotation.x = rightArmBase + armSwing * 0.5;
-    playerBody.rightArm.rotation.y = 0; // Symmetric Y rotation
-    playerBody.rightArm.rotation.z = -0.1;
+    // Left arm - bow holding with walking movement and FORWARD-ANGLED base
+    playerBody.leftArm.rotation.x = forwardAngleBase - armSwing * 0.5;
+    playerBody.leftArm.rotation.y = -0.6; // Bow angle positioning
+    playerBody.leftArm.rotation.z = -0.4; // Forward angle for better POV visibility
     
-    // Elbows - more natural movement similar to melee
+    // Right arm - ready-to-draw with walking movement and FORWARD-ANGLED base
+    playerBody.rightArm.rotation.x = forwardAngleBase + armSwing * 0.5;
+    playerBody.rightArm.rotation.y = 0.1; // Slight outward angle
+    playerBody.rightArm.rotation.z = -0.3; // Forward angle for better POV visibility
+    
+    // Elbows - more natural movement for bow stance
     if (playerBody.leftElbow) {
       const leftElbowMovement = Math.sin(walkCycle + Math.PI) * this.config.elbowMovement + 0.05;
       playerBody.leftElbow.rotation.x = leftElbowMovement;
@@ -70,13 +71,15 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    console.log(`🏹 [BowWalkAnimation] Updated bow walking animation - Cycle: ${walkCycle.toFixed(2)}, Sprint: ${isSprinting}`);
+    console.log(`🏹 [BowWalkAnimation] Updated with FORWARD-ANGLED arms for better POV - Cycle: ${walkCycle.toFixed(2)}, Sprint: ${isSprinting}`);
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to symmetric archery stance with corrected arm positioning
-    playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0.1); // Changed from Math.PI / 8 - 0.2 to match other animations
-    playerBody.rightArm.rotation.set(Math.PI / 8, 0, -0.1); // Changed from Math.PI / 8 - 0.1 to match other animations
+    // Reset to FORWARD-ANGLED archery stance
+    const forwardAngleBase = Math.PI / 6; // 30° upward angle
+    
+    playerBody.leftArm.rotation.set(forwardAngleBase, -0.6, -0.4); // FORWARD-ANGLED bow stance
+    playerBody.rightArm.rotation.set(forwardAngleBase, 0.1, -0.3); // FORWARD-ANGLED ready stance
     
     if (playerBody.leftElbow) {
       playerBody.leftElbow.rotation.set(0.05, 0, 0);
@@ -92,6 +95,6 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] Reset to symmetric archery stance with corrected arm positioning');
+    console.log('🏹 [BowWalkAnimation] Reset to FORWARD-ANGLED archery stance for better POV');
   }
 }

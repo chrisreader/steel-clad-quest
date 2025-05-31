@@ -457,31 +457,32 @@ export class Player {
     this.bowDrawAnimation.leftHandRestPosition.set(-0.4, 1.7, -0.4); // INCREASED Y from 1.4 to 1.7
     this.bowDrawAnimation.rightHandRestPosition.set(0.3, 1.8, -0.3); // INCREASED Y from 1.5 to 1.8
     
-    const baseShoulder = Math.PI / 8;
+    // FORWARD-ANGLED base position for bow stance - more visible in POV
+    const baseShoulder = Math.PI / 6; // Changed from Math.PI / 8 to Math.PI / 6 (30° instead of 22.5°)
     
-    // Left arm: Extended forward for bow holding with upward angle - FIXED: Use same base position as walking animation
+    // Left arm: Extended forward for bow holding with upward angle - FORWARD-ANGLED base
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder, // Changed from baseShoulder - 0.3 to match walking animation
+      baseShoulder, // Use forward-angled base position
       -0.6,
-      0.1
+      -0.4 // Added forward angle (negative Z rotation)
     );
     
-    // Right arm: Ready to draw position - FIXED: Use same base position as walking animation
+    // Right arm: Ready to draw position - FORWARD-ANGLED base
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder, // Changed from baseShoulder - 0.2 to match walking animation
+      baseShoulder, // Use forward-angled base position
       0.1,
-      -0.1
+      -0.3 // Added forward angle (negative Z rotation)
     );
     
     // Drawing positions - left arm stays steady, right arm pulls back at TALLER height
     this.bowDrawAnimation.leftHandDrawPosition.set(-0.4, 1.7, -0.4); // INCREASED Y from 1.4 to 1.7
     this.bowDrawAnimation.rightHandDrawPosition.set(0.8, 1.8, -0.2); // INCREASED Y from 1.5 to 1.8
     
-    // Drawing arm rotations with enhanced visibility - FIXED: Use corrected base positions
+    // Drawing arm rotations with enhanced visibility - FORWARD-ANGLED base positions
     this.bowDrawAnimation.leftArmDrawRotation.set(
-      baseShoulder, // Changed from baseShoulder - 0.3 to match walking animation
+      baseShoulder, // Use forward-angled base position
       -0.6,
-      0.1
+      -0.4 // Maintain forward angle
     );
     
     this.bowDrawAnimation.rightArmDrawRotation.set(
@@ -494,7 +495,42 @@ export class Player {
     this.bowDrawAnimation.bowRestRotation.set(0, 0, 0);
     this.bowDrawAnimation.bowDrawRotation.set(0, 0, 0);
     
-    console.log("🏹 [Player] Enhanced bow animation initialized with TALLER realistic arm system and corrected base positioning");
+    console.log("🏹 [Player] Enhanced bow animation initialized with FORWARD-ANGLED arms for better POV visibility");
+  }
+  
+  // NEW METHOD: Set forward-angled weapon arm stance for better POV visibility
+  private setWeaponArmStance(): void {
+    // Debug arm positions before setting weapon stance
+    this.debugArmPositions("BEFORE_WEAPON_STANCE");
+    
+    // Keep arms at normal shoulder positions for proper shadow connection
+    this.playerBody.leftArm.position.set(-0.3, 0.8, 0);
+    this.playerBody.rightArm.position.set(0.3, 0.8, 0);
+    
+    // FORWARD-ANGLED base rotations for weapon stance - more visible in POV
+    const forwardAngleBase = Math.PI / 6; // 30° upward angle
+    const forwardZ = -0.3; // Forward tilt
+    
+    // Set both arms to forward-angled position
+    this.playerBody.leftArm.rotation.set(forwardAngleBase, 0, forwardZ);
+    this.playerBody.rightArm.rotation.set(forwardAngleBase, 0, forwardZ);
+    
+    // Reset elbow positions for natural arm bend
+    if (this.playerBody.leftElbow) {
+      this.playerBody.leftElbow.rotation.set(0, 0, 0);
+    }
+    if (this.playerBody.rightElbow) {
+      this.playerBody.rightElbow.rotation.set(0, 0, 0);
+    }
+    
+    // Reset hand rotations
+    this.playerBody.leftHand.rotation.set(0, 0, 0);
+    this.playerBody.rightHand.rotation.set(0, 0, 0);
+    
+    console.log("🗡️ [Player] Set FORWARD-ANGLED weapon arm stance for better POV visibility");
+    
+    // Debug arm positions after setting weapon stance
+    this.debugArmPositions("AFTER_WEAPON_STANCE");
   }
   
   public equipWeapon(weaponId: string): boolean {
@@ -531,10 +567,10 @@ export class Player {
       weapon.getMesh().rotation.set(0, 0, 0);
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
-      // Set initial archery stance positions with TALLER realistic arms
+      // Set archery stance with FORWARD-ANGLED arms
       this.setRealisticArcheryStance();
       
-      console.log(`🏹 [Player] Bow equipped with TALLER realistic arm system and centered positioning`);
+      console.log(`🏹 [Player] Bow equipped with FORWARD-ANGLED realistic arm system for better POV`);
     } else {
       weaponType = 'melee';
       // Attach melee weapon to right hand with TALLER realistic positioning
@@ -544,8 +580,10 @@ export class Player {
       weapon.getMesh().position.set(0, 0, 0.1);
       weapon.getMesh().rotation.set(0, 0, 0);
       
-      // Reset to normal stance for melee weapons
-      this.resetToRealisticNormalStance();
+      // Set FORWARD-ANGLED weapon stance for melee weapons
+      this.setWeaponArmStance();
+      
+      console.log(`🗡️ [Player] Melee weapon equipped with FORWARD-ANGLED arm stance for better POV`);
     }
     
     // Update animation system weapon type
@@ -560,7 +598,7 @@ export class Player {
     // Update hitbox reference
     this.swordHitBox = weapon.getHitBox();
     
-    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with TALLER realistic arm system and animation type: ${weaponType}`);
+    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with FORWARD-ANGLED arm system and animation type: ${weaponType}`);
     return true;
   }
   
@@ -568,25 +606,25 @@ export class Player {
     // Debug arm positions before setting archery stance
     this.debugArmPositions("BEFORE_ARCHERY_STANCE");
     
-    // FIXED: Keep arms at normal shoulder positions for proper shadow connection (same as empty hands)
-    this.playerBody.leftArm.position.set(-0.3, 0.8, 0); // FIXED: Use normal position for proper shadows
-    this.playerBody.rightArm.position.set(0.3, 0.8, 0); // FIXED: Use normal position for proper shadows
+    // Keep arms at normal shoulder positions for proper shadow connection
+    this.playerBody.leftArm.position.set(-0.3, 0.8, 0);
+    this.playerBody.rightArm.position.set(0.3, 0.8, 0);
     
-    // Set shoulder rotations for archery stance - FIXED: Use same base position as walking animation
-    const baseShoulder = Math.PI / 8;
+    // Set shoulder rotations for archery stance with FORWARD-ANGLED base
+    const baseShoulder = Math.PI / 6; // FORWARD-ANGLED base (30° instead of 22.5°)
     
-    // Left shoulder: Extended forward for bow holding - FIXED: Use corrected base position
+    // Left shoulder: Extended forward for bow holding - FORWARD-ANGLED base
     this.bowDrawAnimation.leftArmRestRotation.set(
-      baseShoulder, // Changed from baseShoulder - 0.3 to match walking animation
+      baseShoulder, // Use forward-angled base position
       -0.6,
-      0.1
+      -0.4 // Forward angle for better POV visibility
     );
     
-    // Right shoulder: Ready to draw position - FIXED: Use corrected base position
+    // Right shoulder: Ready to draw position - FORWARD-ANGLED base
     this.bowDrawAnimation.rightArmRestRotation.set(
-      baseShoulder, // Changed from baseShoulder - 0.2 to match walking animation
+      baseShoulder, // Use forward-angled base position
       0.1,
-      -0.1
+      -0.3 // Forward angle for better POV visibility
     );
     
     // Apply rotations to shoulder joints (the main arm groups)
@@ -610,7 +648,7 @@ export class Player {
     this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
     this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
     
-    console.log("🏹 [Player] FIXED: Bow stance set with normal arm positions for proper shadows while preserving bow rotations");
+    console.log("🏹 [Player] FORWARD-ANGLED bow stance set for better POV visibility while maintaining proper shadows");
     
     // Debug arm positions after setting archery stance
     this.debugArmPositions("AFTER_ARCHERY_STANCE");
@@ -621,12 +659,12 @@ export class Player {
     this.debugArmPositions("BEFORE_NORMAL_STANCE_RESET");
     
     // Reset arms to normal positions with TALLER realistic joint control
-    this.playerBody.leftArm.position.set(-0.3, 0.8, 0); // CRITICAL: Keep new TALLER shoulder height
-    this.playerBody.rightArm.position.set(0.3, 0.8, 0); // CRITICAL: Keep new TALLER shoulder height
+    this.playerBody.leftArm.position.set(-0.3, 0.8, 0); // Keep new TALLER shoulder height
+    this.playerBody.rightArm.position.set(0.3, 0.8, 0); // Keep new TALLER shoulder height
     
-    // Reset shoulder rotations
-    this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
-    this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
+    // Reset shoulder rotations to SIDE-POSITIONED empty hands stance
+    this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0); // Back to side position (22.5°)
+    this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0); // Back to side position (22.5°)
     
     // Reset elbow positions
     if (this.playerBody.leftElbow) {
@@ -640,7 +678,7 @@ export class Player {
     this.playerBody.leftHand.rotation.set(0, 0, 0);
     this.playerBody.rightHand.rotation.set(0, 0, 0);
     
-    console.log("🗡️ [Player] Reset to TALLER realistic normal stance for melee weapon - ARMS KEPT AT NEW TALLER HEIGHT (y=0.8)");
+    console.log("🗡️ [Player] Reset to SIDE-POSITIONED empty hands stance (arms at sides)");
     
     // Debug arm positions after reset
     this.debugArmPositions("AFTER_NORMAL_STANCE_RESET");
@@ -790,15 +828,20 @@ export class Player {
     let elbowRotation = { x: 0, y: 0, z: 0 };
     let weaponWristRotation = 0;
     
+    // FORWARD-ANGLED base position for weapon swings
+    const forwardAngleBase = Math.PI / 6; // 30° upward angle
+    const forwardZ = -0.3; // Forward tilt
+    
     if (elapsed < phases.windup) {
       // WIND-UP PHASE with realistic joint movement
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      shoulderRotation.x = THREE.MathUtils.lerp(rotations.neutral.x, rotations.windup.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.neutral.y, rotations.windup.y, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(forwardAngleBase, rotations.windup.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(0, rotations.windup.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(forwardZ, 0, easedT);
       
-      // Elbow bends during windup - FIXED: Use positive values for forward bending
+      // Elbow bends during windup
       elbowRotation.x = THREE.MathUtils.lerp(0, 0.8, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
@@ -808,8 +851,9 @@ export class Player {
       
       shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0, 0, easedT);
       
-      // Elbow extends during slash - FIXED: Use positive values for natural extension
+      // Elbow extends during slash
       elbowRotation.x = THREE.MathUtils.lerp(0.8, 0.2, easedT);
       
       // Wrist snap for impact
@@ -828,19 +872,22 @@ export class Player {
       }
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE
+      // RECOVERY PHASE - return to FORWARD-ANGLED base
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, rotations.neutral.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, rotations.neutral.y, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, forwardAngleBase, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, 0, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(0, forwardZ, easedT);
       
-      // Elbow returns to neutral - FIXED: Return to neutral position (0)
+      // Elbow returns to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.2, 0, easedT);
       
     } else {
-      // ANIMATION COMPLETE
-      shoulderRotation = rotations.neutral;
+      // ANIMATION COMPLETE - return to FORWARD-ANGLED base
+      shoulderRotation.x = forwardAngleBase;
+      shoulderRotation.y = 0;
+      shoulderRotation.z = forwardZ;
       elbowRotation = { x: 0, y: 0, z: 0 };
       this.weaponSwing.isActive = false;
       
@@ -1072,16 +1119,16 @@ export class Player {
     // Apply yaw rotation to the entire player body group for first-person feel
     this.group.rotation.y = yaw;
     
-    // Apply subtle pitch rotation to arms for looking up/down - BUT NOT when bow is equipped
-    if (this.playerBody.leftArm && this.playerBody.rightArm && !this.isBowEquipped) {
+    // Apply subtle pitch rotation to arms for looking up/down - BUT NOT when weapon is equipped
+    if (this.playerBody.leftArm && this.playerBody.rightArm && !this.equippedWeapon) {
       const pitchInfluence = pitch * 0.3;
       
-      // Adjust shoulder rotations based on pitch for TALLER realistic arm system
+      // Adjust shoulder rotations based on pitch for empty hands only
       this.playerBody.leftArm.rotation.x = Math.PI / 8 + pitchInfluence;
       this.playerBody.rightArm.rotation.x = Math.PI / 8 + pitchInfluence;
     }
     
-    console.log("TALLER Player visual rotation updated with realistic arms - Yaw:", yaw, "Pitch:", pitch, "Bow equipped:", this.isBowEquipped);
+    console.log("TALLER Player visual rotation updated - Yaw:", yaw, "Pitch:", pitch, "Weapon equipped:", !!this.equippedWeapon);
   }
   
   public getStats(): PlayerStats {
@@ -1167,7 +1214,7 @@ export class Player {
     console.log(`🏹 [Player] Realistic bow animation update - Active: ${this.bowDrawAnimation.isActive}, Charge: ${chargeLevel.toFixed(2)}`);
     
     if (this.bowDrawAnimation.isActive) {
-      // Enhanced progressive draw animation with TALLER realistic joint control
+      // Enhanced progressive draw animation with FORWARD-ANGLED joint control
       const drawProgress = Math.min(chargeLevel * 1.2, 1.0);
       
       // Left shoulder: Stays steady holding the bow with slight adjustment
@@ -1184,7 +1231,7 @@ export class Player {
         this.bowDrawAnimation.rightArmRestRotation.z - (drawProgress * 0.6)
       );
       
-      // Elbow movements for realistic drawing - FIXED: Use positive values for forward bending
+      // Elbow movements for realistic drawing
       const leftElbowRotation = new THREE.Euler(
         0.2 + (drawProgress * 0.1), // Natural forward bend with slight adjustment
         0,
@@ -1269,7 +1316,7 @@ export class Player {
         const shakeAmount = 0.03 * Math.sin(Date.now() * 0.015);
         this.playerBody.rightArm.rotation.x += shakeAmount;
         this.playerBody.rightArm.rotation.y += shakeAmount * 0.7;
-        console.log("🏹 [Player] Full draw shake effect active with TALLER realistic arms");
+        console.log("🏹 [Player] Full draw shake effect active with FORWARD-ANGLED arms");
       }
       
     } else {
@@ -1294,7 +1341,7 @@ export class Player {
         this.playerBody.rightArm.rotation.z, this.bowDrawAnimation.rightArmRestRotation.z, lerpSpeed
       );
       
-      // Return elbows to rest positions - FIXED: Use positive values for natural forward bend
+      // Return elbows to rest positions
       if (this.playerBody.leftElbow) {
         this.playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
           this.playerBody.leftElbow.rotation.x, 0.2, lerpSpeed
