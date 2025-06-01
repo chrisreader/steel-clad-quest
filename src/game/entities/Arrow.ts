@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
@@ -18,7 +19,7 @@ export class Arrow {
   private trail: THREE.Line | null = null;
   private trailPositions: THREE.Vector3[] = [];
   private trailOpacities: number[] = [];
-  private maxTrailLength: number = 40; // Increased from 20 to 40 for more visibility
+  private maxTrailLength: number = 40;
   
   private flightTime: number = 0;
   private minFlightTime: number = 0.2;
@@ -29,7 +30,7 @@ export class Arrow {
   // Wind effect properties
   private windOffset: number = 0;
   private windSpeed: number = 2.0;
-  private windStrength: number = 0.5; // Increased from 0.3 to 0.5 for more pronounced effect
+  private windStrength: number = 0.5;
 
   constructor(
     scene: THREE.Scene,
@@ -243,9 +244,11 @@ export class Arrow {
       this.removeTrail();
     }
     
-    // Ground collision - fixed to match player floor level
+    // Ground collision - improved logic for direct downward shots
     const groundPlaneY = 0.0;
     const canHitGround = this.flightTime >= this.minFlightTime && this.hasMovedSignificantly;
+    
+    // Check if arrow has reached or passed through ground level
     if (canHitGround && this.position.y <= groundPlaneY) {
       this.hitGround();
       return true;
@@ -317,7 +320,9 @@ export class Arrow {
   private hitGround(): void {
     this.isGrounded = true;
     this.velocity.set(0, 0, 0);
-    this.position.y = 0.0; // Changed from -1.0 to 0.0 to match ground level
+    
+    // Ensure arrow lands exactly at ground level
+    this.position.y = 0.0;
     this.mesh.position.copy(this.position);
     
     // Remove trail when hitting ground
