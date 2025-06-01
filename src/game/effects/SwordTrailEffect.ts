@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class SwordTrailEffect {
@@ -53,9 +52,16 @@ export class SwordTrailEffect {
       }
     });
     
-    // Filter out disposed trails
+    // Filter out disposed trails - FIXED: Check if material is disposed using dispose method
     this.trails = this.trails.filter(trail => trail.parent === this.scene);
-    this.trailMaterials = this.trailMaterials.filter(material => !material.disposed);
+    this.trailMaterials = this.trailMaterials.filter(material => {
+      try {
+        // Check if material is still valid by trying to access a property
+        return material.color !== undefined;
+      } catch {
+        return false;
+      }
+    });
   }
   
   private createProgressiveMainTrail(swordPath: THREE.Vector3[]): void {

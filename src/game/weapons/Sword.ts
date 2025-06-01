@@ -1,10 +1,12 @@
-
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig } from './BaseWeapon';
 import { TextureGenerator } from '../utils/graphics/TextureGenerator';
 
 export class Sword extends BaseWeapon {
   private bladeMesh: THREE.Mesh | null = null;
+  private hitBoxMesh: THREE.Mesh | null = null;
+  private debugHitBox: THREE.LineSegments | null = null;
+  private debugMode: boolean = false;
 
   constructor(config: WeaponConfig) {
     super(config);
@@ -84,7 +86,60 @@ export class Sword extends BaseWeapon {
   public createHitBox(): THREE.Mesh {
     const swordHitBoxGeometry = new THREE.BoxGeometry(3.5, 3.5, 4);
     const swordHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
-    return new THREE.Mesh(swordHitBoxGeometry, swordHitBoxMaterial);
+    const hitBox = new THREE.Mesh(swordHitBoxGeometry, swordHitBoxMaterial);
+    
+    this.hitBoxMesh = hitBox;
+    
+    // Create debug visualization
+    this.createDebugHitBox(swordHitBoxGeometry);
+    
+    return hitBox;
+  }
+
+  private createDebugHitBox(geometry: THREE.BoxGeometry): void {
+    // Create wireframe geometry for debug visualization
+    const edges = new THREE.EdgesGeometry(geometry);
+    const debugMaterial = new THREE.LineBasicMaterial({ 
+      color: 0xff0000, // Red color
+      linewidth: 3,
+      transparent: true,
+      opacity: 0.8
+    });
+    
+    this.debugHitBox = new THREE.LineSegments(edges, debugMaterial);
+    this.debugHitBox.visible = false; // Hidden by default
+    
+    console.log("🔧 [Sword] Debug hitbox visualization created");
+  }
+
+  public getDebugHitBox(): THREE.LineSegments | null {
+    return this.debugHitBox;
+  }
+
+  public setDebugMode(enabled: boolean): void {
+    this.debugMode = enabled;
+    if (this.debugHitBox) {
+      this.debugHitBox.visible = enabled;
+      console.log(`🔧 [Sword] Debug mode ${enabled ? 'enabled' : 'disabled'}`);
+    }
+  }
+
+  public isDebugMode(): boolean {
+    return this.debugMode;
+  }
+
+  public showHitBoxDebug(): void {
+    if (this.debugHitBox && this.debugMode) {
+      this.debugHitBox.visible = true;
+      console.log("🔧 [Sword] Debug hitbox shown during attack");
+    }
+  }
+
+  public hideHitBoxDebug(): void {
+    if (this.debugHitBox) {
+      this.debugHitBox.visible = false;
+      console.log("🔧 [Sword] Debug hitbox hidden");
+    }
   }
 
   public getBladeReference(): THREE.Mesh {
@@ -92,5 +147,9 @@ export class Sword extends BaseWeapon {
       throw new Error('Blade mesh not created. Call createMesh() first.');
     }
     return this.bladeMesh;
+  }
+
+  public getHitBoxMesh(): THREE.Mesh | null {
+    return this.hitBoxMesh;
   }
 }

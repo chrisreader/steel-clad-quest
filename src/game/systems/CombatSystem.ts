@@ -27,6 +27,9 @@ export class CombatSystem {
   // FPS-style bow mechanics
   private bowReadyToFire: boolean = false;
   
+  // Debug hitbox visualization
+  private debugHitboxEnabled: boolean = true; // Enable by default for testing
+  
   constructor(
     scene: THREE.Scene,
     player: Player,
@@ -42,6 +45,26 @@ export class CombatSystem {
     this.camera = camera;
     this.physicsManager = physicsManager;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager, physicsManager);
+    
+    // Enable debug mode for sword hitbox
+    this.setupHitboxDebugVisualization();
+  }
+  
+  private setupHitboxDebugVisualization(): void {
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (currentWeapon && currentWeapon.getConfig().type === 'melee') {
+      const sword = currentWeapon as any; // Cast to access Sword methods
+      if (sword.setDebugMode) {
+        sword.setDebugMode(this.debugHitboxEnabled);
+        
+        // Add debug hitbox to scene if it exists
+        const debugHitBox = sword.getDebugHitBox();
+        if (debugHitBox && !this.scene.getObjectById(debugHitBox.id)) {
+          this.scene.add(debugHitBox);
+          console.log("🔧 [CombatSystem] Added debug hitbox to scene");
+        }
+      }
+    }
   }
   
   public update(deltaTime: number): void {
@@ -128,12 +151,54 @@ export class CombatSystem {
     try {
       this.player.startSwordSwing();
       
-      // REMOVED: No effects created for empty swings
-      // Empty sword swings now have NO visual effects
-      console.log("⚔️ [CombatSystem] Empty sword swing - no effects created");
+      // Show debug hitbox when attack starts
+      this.showDebugHitBox();
+      
+      // Hide debug hitbox after attack duration
+      setTimeout(() => {
+        this.hideDebugHitBox();
+      }, 600); // Hide after 600ms (typical sword swing duration)
+      
+      console.log("⚔️ [CombatSystem] Melee attack started - hitbox debug visualization active");
     } catch (error) {
       console.error("⚔️ [CombatSystem] Error calling player.startSwordSwing()", error);
     }
+  }
+  
+  private showDebugHitBox(): void {
+    if (!this.debugHitboxEnabled) return;
+    
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (currentWeapon && currentWeapon.getConfig().type === 'melee') {
+      const sword = currentWeapon as any;
+      if (sword.showHitBoxDebug) {
+        sword.showHitBoxDebug();
+        console.log("🔧 [CombatSystem] Debug hitbox activated for attack");
+      }
+    }
+  }
+  
+  private hideDebugHitBox(): void {
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (currentWeapon && currentWeapon.getConfig().type === 'melee') {
+      const sword = currentWeapon as any;
+      if (sword.hideHitBoxDebug) {
+        sword.hideHitBoxDebug();
+        console.log("🔧 [CombatSystem] Debug hitbox deactivated");
+      }
+    }
+  }
+  
+  public toggleDebugHitbox(): void {
+    this.debugHitboxEnabled = !this.debugHitboxEnabled;
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (currentWeapon && currentWeapon.getConfig().type === 'melee') {
+      const sword = currentWeapon as any;
+      if (sword.setDebugMode) {
+        sword.setDebugMode(this.debugHitboxEnabled);
+      }
+    }
+    console.log(`🔧 [CombatSystem] Debug hitbox ${this.debugHitboxEnabled ? 'enabled' : 'disabled'}`);
   }
   
   private checkPlayerAttacks(): void {
@@ -144,6 +209,12 @@ export class CombatSystem {
     const playerPosition = this.player.getPosition();
     
     let enemyHit = false;
+    
+    console.log("🔧 [CombatSystem] Checking sword hitbox collision - box size:", {
+      min: swordBox.min,
+      max: swordBox.max,
+      size: swordBox.getSize(new THREE.Vector3())
+    });
     
     this.enemies.forEach(enemy => {
       if (enemy.isDead()) return;
@@ -158,8 +229,6 @@ export class CombatSystem {
         
         const enemyPosition = enemy.getPosition();
         const slashDirection = enemyPosition.clone().sub(playerPosition).normalize();
-        
-        // REMOVED: No slash trail effect - only blood on enemy hit
         
         // Apply damage and create blood effect
         enemy.takeDamage(attackPower, playerPosition);
