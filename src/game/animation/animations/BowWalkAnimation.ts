@@ -2,12 +2,20 @@ import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
 
+// DEPRECATED: This class is now handled by BowAnimationController
+// Keeping for compatibility but functionality moved to unified system
 export class BowWalkAnimation {
   private config: WalkAnimationConfig;
   private breathingTime: number = 0;
   
+  // STANDARDIZED CONSTANTS - Must match BowAnimationController
+  private static readonly HAND_ROTATION_X = Math.PI * 80 / 180; // +80° downward angle for grip
+  private static readonly HAND_ROTATION_Y = 0; // 0° no side rotation
+  private static readonly HAND_ROTATION_Z = 0; // 0° no twist for bow grip
+  
   constructor(config: WalkAnimationConfig) {
     this.config = config;
+    console.log('⚠️ [BowWalkAnimation] DEPRECATED: Use BowAnimationController instead');
   }
   
   public update(
@@ -19,38 +27,29 @@ export class BowWalkAnimation {
     const sprintMultiplier = isSprinting ? 1.5 : 1;
     this.breathingTime += deltaTime * 2;
     
-    // Legs - normal walking animation
     const legSwing = Math.sin(walkCycle) * this.config.legSwingIntensity;
     playerBody.leftLeg.rotation.x = legSwing;
     playerBody.rightLeg.rotation.x = -legSwing;
     
-    // Arms - different base positions for bow vs non-bow arms
     const armSwing = Math.sin(walkCycle) * this.config.armSwingIntensity;
     
-    // BOW READY STANCE: Left arm raised for bow, right arm at side
+    const leftArmBaseX = Math.PI * 70 / 180;
+    const leftArmBaseY = 0;
+    const leftArmBaseZ = 0;
     
-    // Left arm - WEAPON ARM: raised bow-holding position at 70 degrees (active position) with reduced swing
-    const leftArmBaseX = Math.PI * 70 / 180;   // 70° raised position (active position) for walking/running
-    const leftArmBaseY = 0;                    // NO Y rotation - keep parallel with body
-    const leftArmBaseZ = 0;                    // NO Z rotation - keep parallel with body
-    
-    // Reduced swing for bow-holding arm to maintain control
     playerBody.leftArm.rotation.x = leftArmBaseX - (armSwing * 0.3);
-    playerBody.leftArm.rotation.y = leftArmBaseY; // NO Y rotation
-    playerBody.leftArm.rotation.z = leftArmBaseZ; // NO Z rotation - parallel with body
+    playerBody.leftArm.rotation.y = leftArmBaseY;
+    playerBody.leftArm.rotation.z = leftArmBaseZ;
     
-    // Right arm - normal side position with walking movement (will be adjusted by draw animation)
-    const rightArmBaseX = Math.PI / 6;  // Moderate upward angle
-    const rightArmBaseY = 0;            // NO Y rotation - keep natural like empty hands
-    const rightArmBaseZ = -Math.PI / 8; // Forward angle for better POV visibility
+    const rightArmBaseX = Math.PI / 6;
+    const rightArmBaseY = 0;
+    const rightArmBaseZ = -Math.PI / 8;
     
     playerBody.rightArm.rotation.x = rightArmBaseX + (armSwing * 0.5);
-    playerBody.rightArm.rotation.y = rightArmBaseY; // NO Y rotation
+    playerBody.rightArm.rotation.y = rightArmBaseY;
     playerBody.rightArm.rotation.z = rightArmBaseZ;
     
-    // Elbows - natural movement for bow stance
     if (playerBody.leftElbow) {
-      // Less movement for bow-holding arm
       const leftElbowMovement = Math.sin(walkCycle + Math.PI) * (this.config.elbowMovement * 0.5) + 0.2;
       playerBody.leftElbow.rotation.x = leftElbowMovement;
     }
@@ -60,35 +59,27 @@ export class BowWalkAnimation {
       playerBody.rightElbow.rotation.x = rightElbowMovement;
     }
     
-    // Hands - maintain grip positions with subtle movement
     const handBreathing = Math.sin(this.breathingTime * 1.2) * this.config.handMovement;
     
-    // FIXED: Consistent left hand rotation (+80°, 0°, 15°) with subtle breathing
-    playerBody.leftHand.rotation.x = Math.PI * 80 / 180 + handBreathing; // +80° downward angle for grip
-    playerBody.leftHand.rotation.y = 0; // 0° no side rotation
-    playerBody.leftHand.rotation.z = Math.PI / 12; // 15° slight twist for bow grip
+    // STANDARDIZED: Use consistent hand rotations
+    playerBody.leftHand.rotation.x = BowWalkAnimation.HAND_ROTATION_X + handBreathing;
+    playerBody.leftHand.rotation.y = BowWalkAnimation.HAND_ROTATION_Y;
+    playerBody.leftHand.rotation.z = BowWalkAnimation.HAND_ROTATION_Z;
     
-    // Right hand ready position
     playerBody.rightHand.rotation.x = handBreathing * 0.5;
     playerBody.rightHand.rotation.y = 0;
     playerBody.rightHand.rotation.z = 0;
     
-    // Torso sway for natural movement (applied to entire body group)
     const torsoSway = Math.sin(walkCycle * 0.8) * this.config.torsoSway * sprintMultiplier;
     if (playerBody.body) {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    console.log(`🏹 [BowWalkAnimation] Walking/Running - Left arm at 70° (active position) parallel with body - Sprint: ${isSprinting}`);
+    console.log(`🏹 [BowWalkAnimation] DEPRECATED - Use BowAnimationController instead`);
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to BOW WALKING READY STANCE with 70 degree positioning (active walking position)
-    
-    // Left arm: Raised bow-holding position at 70 degrees (active position) for walking - parallel with body
     playerBody.leftArm.rotation.set(Math.PI * 70 / 180, 0, 0);
-    
-    // Right arm: Ready position - NO Y rotation
     playerBody.rightArm.rotation.set(Math.PI / 6, 0, -Math.PI / 8);
     
     if (playerBody.leftElbow) {
@@ -98,14 +89,18 @@ export class BowWalkAnimation {
       playerBody.rightElbow.rotation.set(0.3, 0, 0);
     }
     
-    // FIXED: Consistent left hand rotation (+80°, 0°, 15°) - same as all other bow states
-    playerBody.leftHand.rotation.set(Math.PI * 80 / 180, 0, Math.PI / 12); // +80° X, 0° Y, 15° Z
+    // STANDARDIZED: Use consistent hand rotations
+    playerBody.leftHand.rotation.set(
+      BowWalkAnimation.HAND_ROTATION_X,
+      BowWalkAnimation.HAND_ROTATION_Y,
+      BowWalkAnimation.HAND_ROTATION_Z
+    );
     playerBody.rightHand.rotation.set(0, 0, 0);
     
     if (playerBody.body) {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] Reset to walking ready stance - Left arm at 70° (active position) parallel with body');
+    console.log('🏹 [BowWalkAnimation] DEPRECATED - Reset to walking ready stance');
   }
 }
