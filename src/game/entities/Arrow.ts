@@ -16,7 +16,9 @@ export class Arrow {
   private maxGroundTime: number = 60000;
   private gravity: number = -9.8;
   private damage: number;
-  private trail: THREE.Points | null = null;
+  private trail: THREE.Line | null = null;
+  private trailPositions: THREE.Vector3[] = [];
+  private maxTrailLength: number = 15;
   
   private flightTime: number = 0;
   private minFlightTime: number = 0.2;
@@ -119,26 +121,26 @@ export class Arrow {
   }
 
   private createTrailEffect(): void {
-    const particleCount = 50;
-    const particles = new Float32Array(particleCount * 3);
-    
-    for (let i = 0; i < particleCount; i++) {
-      particles[i * 3] = 0;
-      particles[i * 3 + 1] = 0;
-      particles[i * 3 + 2] = 0;
+    // Initialize trail positions array
+    this.trailPositions = [];
+    for (let i = 0; i < this.maxTrailLength; i++) {
+      this.trailPositions.push(this.position.clone());
     }
     
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(particles, 3));
+    // Create line geometry for trail
+    const geometry = new THREE.BufferGeometry().setFromPoints(this.trailPositions);
     
-    const material = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.1,
+    // Use a subtle gray color instead of white to reduce visibility of artifacts
+    const material = new THREE.LineBasicMaterial({
+      color: 0x888888,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.6,
+      depthTest: true,
+      depthWrite: false,
+      blending: THREE.NormalBlending // Use normal blending instead of additive
     });
     
-    this.trail = new THREE.Points(geometry, material);
+    this.trail = new THREE.Line(geometry, material);
     this.scene.add(this.trail);
   }
 
@@ -167,8 +169,6 @@ export class Arrow {
     
     this.flightTime += safeDeltatime;
     
-    const previousPosition = this.position.clone();
-    
     // Apply physics
     this.velocity.y += this.gravity * safeDeltatime;
     
@@ -187,8 +187,13 @@ export class Arrow {
     // Update rotation
     this.updateRotationWithQuaternion();
     
-    // Update trail
-    this.updateTrail();
+    // Update trail with bounds checking
+    if (this.trail && distanceFromStart < 100) { // Only update trail if not too far
+      this.updateTrail();
+    } else if (this.trail && distanceFromStart >= 100) {
+      // Remove trail if arrow is too far to prevent distant artifacts
+      this.removeTrail();
+    }
     
     // Ground collision
     const groundPlaneY = -1.0;
@@ -210,19 +215,31 @@ export class Arrow {
   private updateTrail(): void {
     if (!this.trail) return;
     
-    const positions = this.trail.geometry.attributes.position.array as Float32Array;
-    
-    for (let i = positions.length - 3; i > 2; i -= 3) {
-      positions[i] = positions[i - 3];
-      positions[i + 1] = positions[i - 2];
-      positions[i + 2] = positions[i - 1];
+    // Shift trail positions
+    for (let i = this.trailPositions.length - 1; i > 0; i--) {
+      this.trailPositions[i].copy(this.trailPositions[i - 1]);
     }
     
-    positions[0] = this.position.x;
-    positions[1] = this.position.y;
-    positions[2] = this.position.z;
+    // Add current position to front
+    this.trailPositions[0].copy(this.position);
     
-    this.trail.geometry.attributes.position.needsUpdate = true;
+    // Update geometry
+    const geometry = new THREE.BufferGeometry().setFromPoints(this.trailPositions);
+    this.trail.geometry.dispose();
+    this.trail.geometry = geometry;
+  }
+
+  private removeTrail(): void {
+    if (this.trail) {
+      this.scene.remove(this.trail);
+      this.trail.geometry.dispose();
+      if (Array.isArray(this.trail.material)) {
+        this.trail.material.forEach(material => material.dispose());
+      } else {
+        this.trail.material.dispose();
+      }
+      this.trail = null;
+    }
   }
 
   private hitGround(): void {
@@ -231,10 +248,8 @@ export class Arrow {
     this.position.y = -1.0;
     this.mesh.position.copy(this.position);
     
-    if (this.trail) {
-      this.scene.remove(this.trail);
-      this.trail = null;
-    }
+    // Remove trail when hitting ground
+    this.removeTrail();
     
     this.audioManager.play('arrow_impact');
     this.effectsManager.createDustCloud(this.position);
@@ -259,6 +274,9 @@ export class Arrow {
   public dispose(): void {
     this.isActive = false;
     
+    // Remove trail first
+    this.removeTrail();
+    
     if (this.mesh) {
       this.scene.remove(this.mesh);
       this.mesh.traverse((child) => {
@@ -271,16 +289,6 @@ export class Arrow {
           }
         }
       });
-    }
-    
-    if (this.trail) {
-      this.scene.remove(this.trail);
-      this.trail.geometry.dispose();
-      if (Array.isArray(this.trail.material)) {
-        this.trail.material.forEach(material => material.dispose());
-      } else {
-        this.trail.material.dispose();
-      }
     }
   }
 }
