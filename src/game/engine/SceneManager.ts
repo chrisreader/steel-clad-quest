@@ -106,7 +106,7 @@ export class SceneManager {
     
     // Create sun geometry
     const sunGeometry = new THREE.SphereGeometry(8, 32, 32);
-    const sunMaterial = new THREE.MeshBasicMaterial({
+    const sunMaterial = new THREE.MeshStandardMaterial({
       color: 0xFFF8DC, // Cream color
       emissive: 0xFFD700, // Golden emissive
       emissiveIntensity: 0.3,

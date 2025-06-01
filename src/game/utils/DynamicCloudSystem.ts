@@ -1,8 +1,7 @@
-
 import * as THREE from 'three';
 
 interface Cloud {
-  mesh: THREE.Mesh;
+  mesh: THREE.Group;
   velocity: THREE.Vector3;
   opacity: number;
   targetOpacity: number;
