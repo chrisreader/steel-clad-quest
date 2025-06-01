@@ -59,13 +59,13 @@ export class HuntingBow extends BaseWeapon {
     };
     
     super(config);
-    console.log("🏹 [HuntingBow] Initialized with enhanced charging system");
+    console.log("🏹 [HuntingBow] Initialized with corrected vertical orientation");
   }
 
   public createMesh(): THREE.Group {
     const bowGroup = new THREE.Group();
     
-    // Create enhanced bow components with realistic geometry
+    // Create enhanced bow components with corrected vertical geometry
     this.createEnhancedBowLimbs(bowGroup);
     this.createDetailedBowHandle(bowGroup);
     this.createRealisticBowString(bowGroup);
@@ -76,23 +76,23 @@ export class HuntingBow extends BaseWeapon {
     bowGroup.scale.set(1.2, 1.2, 1.2);
     bowGroup.position.set(0, 0, 0);
     
-    console.log("🏹 [HuntingBow] Bow oriented perfectly vertical - limb rotations removed");
+    console.log("🏹 [HuntingBow] Bow oriented perfectly vertical with corrected limb geometry");
     
     return bowGroup;
   }
 
   private createEnhancedBowLimbs(bowGroup: THREE.Group): void {
-    // FIXED: Create properly oriented bow limbs using X-Y plane for natural vertical bow orientation
+    // FIXED: Create perfectly vertical bow limbs with minimal X-axis offsets for natural curve
     const upperLimbCurve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.15, 0.35, 0),  // X-axis for curvature, Y-axis for height
-      new THREE.Vector3(0.08, 0.75, 0)   // Limb curves naturally left/right
+      new THREE.Vector3(0.02, 0.35, 0),  // Minimal X-axis curvature for natural bow shape
+      new THREE.Vector3(0.01, 0.75, 0)   // Minimal endpoint offset for natural limb curve
     );
     
     const lowerLimbCurve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(-0.15, -0.35, 0), // X-axis for curvature, Y-axis for height
-      new THREE.Vector3(-0.08, -0.75, 0)  // Limb curves naturally left/right
+      new THREE.Vector3(-0.02, -0.35, 0), // Minimal X-axis curvature for natural bow shape
+      new THREE.Vector3(-0.01, -0.75, 0)  // Minimal endpoint offset for natural limb curve
     );
     
     // Enhanced limb geometry with better detail
@@ -189,7 +189,7 @@ export class HuntingBow extends BaseWeapon {
   }
 
   private addBowTips(bowGroup: THREE.Group): void {
-    // FIXED: Enhanced bow tips (nocks) positioned for X-Y plane limbs
+    // FIXED: Bow tips perfectly aligned vertically with minimal curve endpoints
     const tipGeometry = new THREE.ConeGeometry(0.025, 0.06, 8);
     const tipMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xa0826d,
@@ -197,27 +197,27 @@ export class HuntingBow extends BaseWeapon {
       emissiveIntensity: 0.02
     });
     
-    // Upper tip - positioned at end of upper limb curve
+    // Upper tip - positioned at corrected limb curve endpoint
     const upperTip = new THREE.Mesh(tipGeometry, tipMaterial);
-    upperTip.position.set(0.08, 0.8, 0); // Match limb curve endpoint
+    upperTip.position.set(0.01, 0.8, 0); // Match corrected limb curve endpoint
     upperTip.rotation.x = Math.PI;
     bowGroup.add(upperTip);
     
-    // Lower tip - positioned at end of lower limb curve
+    // Lower tip - positioned at corrected limb curve endpoint
     const lowerTip = new THREE.Mesh(tipGeometry, tipMaterial.clone());
-    lowerTip.position.set(-0.08, -0.8, 0); // Match limb curve endpoint
+    lowerTip.position.set(-0.01, -0.8, 0); // Match corrected limb curve endpoint
     bowGroup.add(lowerTip);
     
-    // Add string attachment points - aligned with new limb endpoints
+    // Add string attachment points - aligned with corrected limb endpoints
     const attachGeometry = new THREE.SphereGeometry(0.008, 6, 6);
     const attachMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
     
     const upperAttach = new THREE.Mesh(attachGeometry, attachMaterial);
-    upperAttach.position.set(0.08, 0.75, 0); // Match limb curve positioning
+    upperAttach.position.set(0.01, 0.75, 0); // Match corrected limb positioning
     bowGroup.add(upperAttach);
     
     const lowerAttach = new THREE.Mesh(attachGeometry, attachMaterial.clone());
-    lowerAttach.position.set(-0.08, -0.75, 0); // Match limb curve positioning
+    lowerAttach.position.set(-0.01, -0.75, 0); // Match corrected limb positioning
     bowGroup.add(lowerAttach);
   }
 
@@ -249,7 +249,7 @@ export class HuntingBow extends BaseWeapon {
     this.drawingState = true;
     this.chargeLevel = 0;
     this.updateDrawStage();
-    console.log('🏹 [HuntingBow] Started drawing bow with enhanced charging and debug');
+    console.log('🏹 [HuntingBow] Started drawing bow with corrected vertical orientation');
   }
 
   public stopDrawing(): void {
