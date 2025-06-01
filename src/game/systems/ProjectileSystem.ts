@@ -23,7 +23,7 @@ export class ProjectileSystem {
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
-    console.log("🏹 [ProjectileSystem] Initialized with FIXED arrow physics");
+    console.log("🏹 [ProjectileSystem] Initialized with FIXED arrow orientation and debug");
   }
 
   public shootArrow(
@@ -32,7 +32,7 @@ export class ProjectileSystem {
     speed: number,
     damage: number
   ): void {
-    console.log("🏹 [ProjectileSystem] *** CREATING FIXED ARROW ***");
+    console.log("🏹 [ProjectileSystem] *** CREATING ARROW WITH FIXED ORIENTATION ***");
     console.log("🏹 [ProjectileSystem] Start position:", startPosition);
     console.log("🏹 [ProjectileSystem] Direction:", direction);
     console.log("🏹 [ProjectileSystem] Direction magnitude:", direction.length());
@@ -44,7 +44,7 @@ export class ProjectileSystem {
     console.log("🏹 [ProjectileSystem] Normalized direction:", normalizedDirection);
     
     try {
-      // Create FIXED arrow entity
+      // Create arrow entity with fixed orientation
       const arrow = new Arrow(
         this.scene,
         startPosition,
@@ -56,16 +56,18 @@ export class ProjectileSystem {
       );
       
       this.arrows.push(arrow);
-      console.log(`🏹 [ProjectileSystem] ✅ FIXED ARROW CREATED - Total arrows: ${this.arrows.length}`);
-      console.log(`🏹 [ProjectileSystem] ✅ ARROW SHOULD FLY WITH FIXED PHYSICS AT ${speed} UNITS/SECOND`);
+      console.log(`🏹 [ProjectileSystem] ✅ ARROW CREATED WITH FIXED ORIENTATION - Total arrows: ${this.arrows.length}`);
+      console.log(`🏹 [ProjectileSystem] ✅ ARROW SHOULD FLY WITH PROPER PHYSICS AT ${speed} UNITS/SECOND`);
     } catch (error) {
-      console.error("🏹 [ProjectileSystem] ❌ ERROR CREATING FIXED ARROW:", error);
+      console.error("🏹 [ProjectileSystem] ❌ ERROR CREATING ARROW:", error);
     }
   }
 
   public update(deltaTime: number): void {
-    // Log that projectile system is updating
-    console.log(`🏹 [ProjectileSystem] Updating ${this.arrows.length} arrows with deltaTime ${deltaTime}`);
+    // Log that projectile system is updating with timing info
+    if (this.arrows.length > 0) {
+      console.log(`🏹 [ProjectileSystem] Updating ${this.arrows.length} arrows with deltaTime ${deltaTime.toFixed(6)}`);
+    }
     
     // Skip if no arrows or invalid deltaTime
     if (this.arrows.length === 0 || deltaTime <= 0) {
@@ -76,7 +78,7 @@ export class ProjectileSystem {
     const activeArrowsBefore = this.arrows.length;
     
     this.arrows = this.arrows.filter(arrow => {
-      // Each arrow updates with FIXED physics
+      // Each arrow updates with fixed physics
       const isActive = arrow.update(deltaTime);
       
       // Check collisions only for active arrows

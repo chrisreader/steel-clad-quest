@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
@@ -24,9 +25,10 @@ export class Arrow {
   private hasMovedSignificantly: boolean = false;
   private initialPosition: THREE.Vector3;
   
-  // Enhanced physics parameters
-  private airResistance: number = 0.05;  // Air resistance coefficient
-  private arrowMass: number = 0.05;     // Arrow mass in kg
+  // Debug visualization
+  private debugArrow: THREE.ArrowHelper | null = null;
+  private debugSpheres: THREE.Mesh[] = [];
+  private debug: boolean = true; // Enable for troubleshooting
 
   constructor(
     scene: THREE.Scene,
@@ -42,7 +44,7 @@ export class Arrow {
     this.audioManager = audioManager;
     this.damage = damage;
     
-    // Fix #3: Ensure direction is normalized before applying speed
+    // Fix #1: Ensure direction is normalized before applying speed
     if (direction.lengthSq() < 0.001) {
       console.error("🏹 [Arrow] Direction vector is too small!");
       direction = new THREE.Vector3(0, 0, -1); // Default forward direction
@@ -58,7 +60,7 @@ export class Arrow {
       this.position.y = 1.5; // Ensure it starts well above ground
     }
     
-    console.log("🏹 [Arrow] *** CREATING ARROW WITH FIXED PHYSICS ***");
+    console.log("🏹 [Arrow] *** CREATING ARROW WITH FIXED ORIENTATION ***");
     console.log("🏹 [Arrow] Start position:", this.position);
     console.log("🏹 [Arrow] Direction:", direction);
     console.log("🏹 [Arrow] Speed:", speed);
@@ -71,9 +73,14 @@ export class Arrow {
     
     // Position and orient the arrow
     this.mesh.position.copy(this.position);
-    this.updateRotation();
+    this.updateRotationWithQuaternion();
     
-    console.log("🏹 [Arrow] ✅ ARROW CREATED WITH IMPROVED PHYSICS");
+    // Create debug visualization
+    if (this.debug) {
+      this.createDebugVisualization(direction);
+    }
+    
+    console.log("🏹 [Arrow] ✅ ARROW CREATED WITH FIXED ORIENTATION AND DEBUG");
     
     // Play arrow shoot sound
     this.audioManager.play('arrow_shoot');
@@ -84,7 +91,7 @@ export class Arrow {
     
     const scale = 0.8;
     
-    // Arrow shaft - brown wood color
+    // Arrow shaft - FIXED: align along Z-axis instead of X-axis
     const shaftGeometry = new THREE.CylinderGeometry(0.02 * scale, 0.02 * scale, 1.0 * scale);
     const shaftMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x8B4513,
@@ -92,10 +99,10 @@ export class Arrow {
       emissiveIntensity: 0.1
     });
     const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
-    shaft.rotation.z = Math.PI / 2;
+    shaft.rotation.x = Math.PI / 2; // FIXED: rotate to align with Z-axis
     arrowGroup.add(shaft);
     
-    // Arrow head - metallic gray
+    // Arrow head - FIXED: position along Z-axis
     const headGeometry = new THREE.ConeGeometry(0.08 * scale, 0.2 * scale);
     const headMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xC0C0C0,
@@ -103,11 +110,11 @@ export class Arrow {
       emissiveIntensity: 0.2
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.x = 0.6 * scale;
-    head.rotation.z = -Math.PI / 2;
+    head.position.z = 0.5 * scale; // FIXED: position at front along Z-axis
+    head.rotation.x = -Math.PI / 2; // Point forward along Z-axis
     arrowGroup.add(head);
     
-    // Fletching
+    // Fletching - positioned at back of arrow
     const fletchingGeometry = new THREE.PlaneGeometry(0.15 * scale, 0.2 * scale);
     const fletchingMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x654321,
@@ -118,7 +125,7 @@ export class Arrow {
     
     for (let i = 0; i < 3; i++) {
       const fletching = new THREE.Mesh(fletchingGeometry, fletchingMaterial);
-      fletching.position.x = -0.4 * scale;
+      fletching.position.z = -0.4 * scale; // FIXED: position at back along Z-axis
       fletching.rotation.y = (i * Math.PI * 2) / 3;
       arrowGroup.add(fletching);
     }
@@ -131,7 +138,7 @@ export class Arrow {
       emissiveIntensity: 0.1
     });
     const nock = new THREE.Mesh(nockGeometry, nockMaterial);
-    nock.position.x = -0.5 * scale;
+    nock.position.z = -0.5 * scale; // FIXED: position at back along Z-axis
     arrowGroup.add(nock);
     
     return arrowGroup;
@@ -161,20 +168,61 @@ export class Arrow {
     this.scene.add(this.trail);
   }
 
-  // NEW: Improved rotation update method
-  private updateRotation(): void {
+  // NEW: Quaternion-based rotation update method
+  private updateRotationWithQuaternion(): void {
     // Only update rotation if we have meaningful velocity
     if (this.velocity.lengthSq() > 0.01) {
-      // Calculate forward direction from velocity
-      const forward = this.velocity.clone().normalize();
+      // The default "forward" for our arrow model is along positive Z-axis
+      const defaultForward = new THREE.Vector3(0, 0, 1);
       
-      // Use lookAt to point the arrow in its travel direction
-      const target = this.position.clone().add(forward);
-      this.mesh.lookAt(target);
+      // Get quaternion to rotate from default forward to our velocity direction
+      const quaternion = new THREE.Quaternion();
+      quaternion.setFromUnitVectors(defaultForward, this.velocity.clone().normalize());
       
-      // Adjust for arrow model orientation
-      this.mesh.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+      // Apply the quaternion to the arrow
+      this.mesh.quaternion.copy(quaternion);
+      
+      if (this.debug) {
+        console.log(`🏹 [Arrow] Quaternion rotation applied for velocity:`, this.velocity);
+      }
     }
+  }
+
+  // Create debug visualization
+  private createDebugVisualization(direction: THREE.Vector3): void {
+    // Create debug arrow helper
+    this.debugArrow = new THREE.ArrowHelper(
+      direction.clone().normalize(),
+      this.position.clone(),
+      2.0, // Length
+      0xff0000, // Red color
+      0.5, // Head length
+      0.3  // Head width
+    );
+    this.scene.add(this.debugArrow);
+    
+    console.log("🏹 [Arrow] Debug arrow helper created");
+  }
+
+  // Add debug sphere at current position
+  private addDebugSphere(): void {
+    if (!this.debug) return;
+    
+    const sphereGeometry = new THREE.SphereGeometry(0.05);
+    const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere.position.copy(this.position);
+    this.scene.add(sphere);
+    this.debugSpheres.push(sphere);
+    
+    // Remove sphere after 5 seconds
+    setTimeout(() => {
+      this.scene.remove(sphere);
+      const index = this.debugSpheres.indexOf(sphere);
+      if (index > -1) {
+        this.debugSpheres.splice(index, 1);
+      }
+    }, 5000);
   }
 
   public update(deltaTime: number): boolean {
@@ -205,8 +253,8 @@ export class Arrow {
     // Store previous position to track movement
     const previousPosition = this.position.clone();
     
-    // Apply enhanced physics
-    this.applyPhysics(safeDeltatime);
+    // Apply physics (simplified for initial testing)
+    this.velocity.y += this.gravity * safeDeltatime;
     
     // Update position based on velocity
     const deltaPosition = this.velocity.clone().multiplyScalar(safeDeltatime);
@@ -222,10 +270,23 @@ export class Arrow {
     this.mesh.position.copy(this.position);
     
     // Update arrow rotation to match trajectory
-    this.updateRotation();
+    this.updateRotationWithQuaternion();
     
     // Update trail effect
     this.updateTrail();
+    
+    // Update debug visualization
+    if (this.debug) {
+      if (this.debugArrow) {
+        this.debugArrow.position.copy(this.position);
+        this.debugArrow.setDirection(this.velocity.clone().normalize());
+      }
+      
+      // Add debug sphere every 10 frames
+      if (Math.floor(this.flightTime * 60) % 10 === 0) {
+        this.addDebugSphere();
+      }
+    }
     
     // Fix #2: Improved ground collision check
     const groundPlaneY = -1.0;
@@ -252,24 +313,6 @@ export class Arrow {
     }
     
     return true;
-  }
-
-  private applyPhysics(deltaTime: number): void {
-    // Apply gravity to Y velocity
-    this.velocity.y += this.gravity * deltaTime;
-    
-    // Apply air resistance (drag) for more realistic physics
-    if (this.velocity.lengthSq() > 0.01) {
-      // Calculate drag force: F = -kv² (opposite direction of velocity)
-      const dragMagnitude = this.airResistance * this.velocity.lengthSq();
-      const dragForce = this.velocity.clone().normalize().multiplyScalar(-dragMagnitude);
-      
-      // Calculate acceleration from drag: a = F/m
-      const dragAcceleration = dragForce.multiplyScalar(1/this.arrowMass);
-      
-      // Apply acceleration to velocity: v = v + a*t
-      this.velocity.add(dragAcceleration.multiplyScalar(deltaTime));
-    }
   }
 
   private updateTrail(): void {
@@ -357,5 +400,16 @@ export class Arrow {
         this.trail.material.dispose();
       }
     }
+    
+    // Clean up debug objects
+    if (this.debugArrow) {
+      this.scene.remove(this.debugArrow);
+      this.debugArrow = null;
+    }
+    
+    this.debugSpheres.forEach(sphere => {
+      this.scene.remove(sphere);
+    });
+    this.debugSpheres = [];
   }
 }

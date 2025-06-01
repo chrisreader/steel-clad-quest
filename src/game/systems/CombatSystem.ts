@@ -38,7 +38,7 @@ export class CombatSystem {
     this.audioManager = audioManager;
     this.camera = camera;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with FIXED arrow physics");
+    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with FIXED arrow orientation and debug");
   }
   
   public update(deltaTime: number): void {
@@ -95,7 +95,7 @@ export class CombatSystem {
   }
   
   private fireIndependentArrow(): void {
-    console.log("🏹 [CombatSystem] *** FIRING FIXED ARROW ***");
+    console.log("🏹 [CombatSystem] *** FIRING ARROW WITH FIXED ORIENTATION ***");
     
     // Only fire if we have a valid player and camera
     if (!this.player || !this.camera) {
@@ -109,33 +109,37 @@ export class CombatSystem {
       return;
     }
     
-    // Fix #4: Get proper player position and camera direction
-    const playerPosition = this.player.getPosition();
-    const cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    // CRITICAL: Get proper camera direction using getWorldDirection for accuracy
+    const cameraDirection = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDirection);
     
-    // Improved arrow start position - higher up, further forward
+    // Get player position
+    const playerPosition = this.player.getPosition();
+    
+    // Improved arrow start position - eye level, forward offset
     const arrowStartPos = playerPosition.clone()
       .add(new THREE.Vector3(0, 1.7, 0)) // Eye level at 1.7
       .add(cameraDirection.clone().multiplyScalar(1.0)); // 1 unit in front of player
     
-    // Make direction match camera exactly
+    // Use camera direction directly (already normalized)
     const arrowDirection = cameraDirection.clone();
     
+    console.log("🏹 [CombatSystem] FIXED FIRING PARAMETERS:");
     console.log("🏹 [CombatSystem] Player position:", playerPosition);
-    console.log("🏹 [CombatSystem] FIXED arrow start position:", arrowStartPos);
     console.log("🏹 [CombatSystem] Camera direction:", arrowDirection);
+    console.log("🏹 [CombatSystem] Arrow start position:", arrowStartPos);
+    console.log("🏹 [CombatSystem] Direction magnitude:", arrowDirection.length());
     
-    // Use a reasonable speed for FPS games
+    // Use a good speed for FPS games - increased for better visibility
     const damage = currentWeapon.getConfig().stats.damage;
-    const speed = 40; // Realistic arrow speed for good gameplay
+    const speed = 50; // Increased speed for better debugging
     
-    console.log(`🏹 [CombatSystem] FIRING FIXED ARROW - Damage: ${damage}, Speed: ${speed}`);
-    console.log(`🏹 [CombatSystem] Arrow direction magnitude: ${arrowDirection.length()}`);
+    console.log(`🏹 [CombatSystem] FIRING ARROW - Damage: ${damage}, Speed: ${speed}`);
     
-    // Fire the FIXED arrow through ProjectileSystem
+    // Fire the arrow through ProjectileSystem
     this.projectileSystem.shootArrow(arrowStartPos, arrowDirection, speed, damage);
     
-    console.log("🏹 [CombatSystem] ✅ FIXED ARROW FIRED SUCCESSFULLY");
+    console.log("🏹 [CombatSystem] ✅ ARROW FIRED WITH FIXED ORIENTATION");
     
     this.audioManager.play('bow_release');
   }
