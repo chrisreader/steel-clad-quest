@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BaseBow } from './BaseBow';
-import { WeaponConfig, WeaponStats } from '../base/BaseWeapon';
+import { WeaponConfig, WeaponStats } from '../BaseWeapon';
 
 export class HuntingBow extends BaseBow {
   private bowString: THREE.Mesh | null = null;

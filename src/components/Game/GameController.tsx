@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useRef } from 'react';
-import { GameEngine } from '../../game/core/GameEngine';
+import { GameEngine } from '../../game/engine/GameEngine';
 import { PlayerStats, Quest, Skill } from '../../types/GameTypes';
 
 interface GameControllerProps {

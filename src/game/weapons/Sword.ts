@@ -1,7 +1,7 @@
 
 import * as THREE from 'three';
-import { BaseWeapon, WeaponConfig } from './base/BaseWeapon';
-import { TextureGenerator } from '../utils/graphics/TextureGenerator';
+import { BaseWeapon, WeaponConfig } from './BaseWeapon';
+import { TextureGenerator } from '../utils/TextureGenerator';
 
 export class Sword extends BaseWeapon {
   private bladeMesh: THREE.Mesh | null = null;

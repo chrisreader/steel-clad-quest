@@ -1,6 +1,7 @@
+
 import { useState, useCallback } from 'react';
 import { PlayerStats, Item } from '../../../types/GameTypes';
-import { GameEngine } from '../../../game/core/GameEngine';
+import { GameEngine } from '../../../game/engine/GameEngine';
 
 export const useGameManager = () => {
   const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);

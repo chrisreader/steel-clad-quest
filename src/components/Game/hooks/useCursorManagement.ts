@@ -1,5 +1,6 @@
+
 import { useCallback, useEffect, useRef } from 'react';
-import { GameEngine } from '../../../game/core/GameEngine';
+import { GameEngine } from '../../../game/engine/GameEngine';
 
 interface UseCursorManagementProps {
   gameEngine: GameEngine | null;

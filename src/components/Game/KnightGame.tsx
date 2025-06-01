@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -12,7 +11,7 @@ import GameControlPanel from './UI/GameControlPanel';
 import PlayerStatsPanel from './UI/PlayerStatsPanel';
 import GameEngineController from './GameEngineController';
 import GameController, { GameControllerRef } from './GameController';
-import { GameEngine } from '../../game/core/GameEngine';
+import { GameEngine } from '../../game/engine/GameEngine';
 import { Item } from '../../types/GameTypes';
 import { useGameState } from './hooks/useGameState';
 import { useUIState } from './hooks/useUIState';
