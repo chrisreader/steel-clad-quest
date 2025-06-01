@@ -216,14 +216,17 @@ export class EffectsManager {
     this.shakeCamera(0.04 * intensity);
   }
   
-  // NEW: Sword swoosh effect that follows the blade trail
+  // UPDATED: Sword swoosh effect that follows the blade trail with proper path distribution
   public createSwordSwooshEffect(swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): void {
     if (swordPath.length < 2) {
       console.log("🌪️ [EffectsManager] Insufficient sword path data for swoosh effect");
       return;
     }
     
-    console.log("🌪️ [EffectsManager] Creating realistic sword swoosh effect following blade trail");
+    console.log("🌪️ [EffectsManager] Creating white wind swoosh effect following blade trail from top-right to bottom-left");
+    console.log("🌪️ [EffectsManager] Sword path points:", swordPath.length);
+    console.log("🌪️ [EffectsManager] Path start:", swordPath[0]);
+    console.log("🌪️ [EffectsManager] Path end:", swordPath[swordPath.length - 1]);
     
     // Create wind displacement particles along the sword path
     const windSwoosh = ParticleSystem.createWindSwoosh(this.scene, swordPath, swingDirection);
@@ -235,10 +238,10 @@ export class EffectsManager {
     airStreaks.start();
     this.particleSystems.push(airStreaks);
     
-    console.log("🌪️ [EffectsManager] Sword swoosh effect created with", swordPath.length, "path points");
+    console.log("🌪️ [EffectsManager] White wind swoosh effect created following sword blade path");
   }
   
-  // Legacy methods updated - REMOVED slash trail effects
+  // LEGACY METHODS UPDATED - REMOVED SLASH TRAIL EFFECTS
   public createAttackEffect(position: THREE.Vector3, color: number = 0xFF6B6B): void {
     // Empty method - no effects for empty attacks
     console.log("⚔️ [EffectsManager] Empty attack - no effects created");

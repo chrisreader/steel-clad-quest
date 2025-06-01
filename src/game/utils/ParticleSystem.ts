@@ -18,6 +18,7 @@ interface ParticleOptions {
   fadeIn?: number;
   fadeOut?: number;
   rotationSpeed?: number;
+  particleType?: string; // NEW: Add particle type for texture selection
 }
 
 interface Particle {
@@ -42,6 +43,7 @@ export class ParticleSystem {
   private startTime: number;
   private isActive: boolean;
   private bloodTexture: THREE.Texture | null = null;
+  private windTexture: THREE.Texture | null = null; // NEW: Wind texture for sword swoosh
   
   constructor(scene: THREE.Scene, options: ParticleOptions) {
     this.scene = scene;
@@ -61,7 +63,8 @@ export class ParticleSystem {
         opacity: 1,
         fadeIn: 0.1,
         fadeOut: 0.3,
-        rotationSpeed: 0
+        rotationSpeed: 0,
+        particleType: 'blood' // Default to blood type
       },
       ...options
     };
@@ -72,6 +75,7 @@ export class ParticleSystem {
     this.sprites = [];
     
     this.createBloodTexture();
+    this.createWindTexture(); // NEW: Create wind texture
     this.initParticles();
     this.createSprites();
   }
@@ -95,6 +99,27 @@ export class ParticleSystem {
     
     this.bloodTexture = new THREE.CanvasTexture(canvas);
     this.bloodTexture.needsUpdate = true;
+  }
+  
+  private createWindTexture(): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Create white circular wind particle texture
+    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)'); // White center
+    gradient.addColorStop(0.5, 'rgba(240, 240, 240, 0.5)'); // Light gray
+    gradient.addColorStop(1, 'rgba(220, 220, 220, 0)'); // Transparent edge
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(16, 16, 16, 0, Math.PI * 2);
+    ctx.fill();
+    
+    this.windTexture = new THREE.CanvasTexture(canvas);
+    this.windTexture.needsUpdate = true;
   }
   
   private initParticles(): void {
@@ -137,11 +162,17 @@ export class ParticleSystem {
   private createSprites(): void {
     this.sprites = [];
     
+    // Select appropriate texture based on particle type
+    let selectedTexture = this.bloodTexture; // Default
+    if (this.options.particleType === 'wind') {
+      selectedTexture = this.windTexture;
+    }
+    
     for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i];
       
       const material = new THREE.SpriteMaterial({
-        map: this.bloodTexture,
+        map: selectedTexture,
         transparent: true,
         opacity: particle.opacity,
         color: particle.color,
@@ -150,9 +181,9 @@ export class ParticleSystem {
       });
       
       const sprite = new THREE.Sprite(material);
-      sprite.scale.setScalar(particle.size * 2); // Make sprites more visible
+      sprite.scale.setScalar(particle.size * 2);
       sprite.position.copy(particle.position);
-      sprite.visible = false; // Start invisible
+      sprite.visible = false;
       
       this.sprites.push(sprite);
     }
@@ -313,49 +344,85 @@ export class ParticleSystem {
     });
   }
   
-  // NEW: Realistic wind swoosh effect that follows sword blade trail
+  // UPDATED: Enhanced wind swoosh effect that follows sword blade path
   static createWindSwoosh(scene: THREE.Scene, swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): ParticleSystem {
-    const avgPosition = swordPath.reduce((sum, pos) => sum.add(pos), new THREE.Vector3()).divideScalar(swordPath.length);
+    // Calculate particles distributed along the sword path
+    const pathLength = swordPath.length;
+    const particleCount = Math.max(15, Math.min(30, pathLength * 2)); // Scale with path detail
+    
+    // Create particles positioned along the sword path from top-right to bottom-left
+    const particles: THREE.Vector3[] = [];
+    for (let i = 0; i < particleCount; i++) {
+      const t = i / (particleCount - 1); // 0 to 1
+      const pathIndex = Math.floor(t * (pathLength - 1));
+      const nextIndex = Math.min(pathIndex + 1, pathLength - 1);
+      
+      // Interpolate between path points for smooth distribution
+      const localT = (t * (pathLength - 1)) - pathIndex;
+      const position = swordPath[pathIndex].clone().lerp(swordPath[nextIndex], localT);
+      
+      // Add slight random offset perpendicular to swing direction
+      const perpendicular = new THREE.Vector3(-swingDirection.z, 0, swingDirection.x).normalize();
+      position.add(perpendicular.multiplyScalar((Math.random() - 0.5) * 0.1));
+      
+      particles.push(position);
+    }
+    
+    // Use the middle of the path as the spawn point
+    const avgPosition = particles.reduce((sum, pos) => sum.add(pos), new THREE.Vector3()).divideScalar(particles.length);
     
     return new ParticleSystem(scene, {
       position: avgPosition,
-      count: 25,
-      duration: 300,
-      size: 0.03,
-      sizeVariation: 0.015,
-      speed: 2,
-      speedVariation: 1,
-      color: 0xF0F0F0,
-      colorVariation: 0.1,
-      gravity: 0.1,
+      count: particleCount,
+      duration: 400, // Slightly longer duration
+      size: 0.04,
+      sizeVariation: 0.02,
+      speed: 1.5,
+      speedVariation: 0.8,
+      color: 0xFFFFFF, // Pure white
+      colorVariation: 0.05, // Minimal variation to keep it white
+      gravity: 0.05, // Very light gravity
       direction: swingDirection.clone().normalize(),
-      spread: 0.3,
-      opacity: 0.7,
-      fadeIn: 0.05,
-      fadeOut: 0.6
+      spread: 0.4,
+      opacity: 0.8,
+      fadeIn: 0.03,
+      fadeOut: 0.7,
+      particleType: 'wind' // Use wind texture
     });
   }
   
-  // NEW: Air streaks that follow the sword blade more precisely
+  // UPDATED: Air streaks that follow the sword blade more precisely
   static createAirStreaks(scene: THREE.Scene, swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): ParticleSystem {
-    const midPoint = swordPath[Math.floor(swordPath.length / 2)] || swordPath[0];
+    // Create particles at key points along the sword path
+    const streakCount = Math.min(10, swordPath.length);
+    const streakPositions: THREE.Vector3[] = [];
+    
+    for (let i = 0; i < streakCount; i++) {
+      const t = i / (streakCount - 1);
+      const pathIndex = Math.floor(t * (swordPath.length - 1));
+      streakPositions.push(swordPath[pathIndex].clone());
+    }
+    
+    // Use the starting position of the sword path
+    const startPosition = swordPath[0] || new THREE.Vector3();
     
     return new ParticleSystem(scene, {
-      position: midPoint,
-      count: 15,
-      duration: 200,
-      size: 0.02,
-      sizeVariation: 0.01,
-      speed: 1.5,
+      position: startPosition,
+      count: streakCount,
+      duration: 300,
+      size: 0.03,
+      sizeVariation: 0.015,
+      speed: 2.0,
       speedVariation: 0.5,
-      color: 0xE8E8E8,
-      colorVariation: 0.05,
-      gravity: 0.05,
+      color: 0xF8F8F8, // Very light gray-white
+      colorVariation: 0.02, // Keep it mostly white
+      gravity: 0.02,
       direction: swingDirection.clone().normalize(),
-      spread: 0.2,
-      opacity: 0.6,
+      spread: 0.25,
+      opacity: 0.7,
       fadeIn: 0.02,
-      fadeOut: 0.8
+      fadeOut: 0.8,
+      particleType: 'wind' // Use wind texture
     });
   }
   

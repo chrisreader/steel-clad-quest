@@ -894,13 +894,13 @@ export class Player {
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
     const { phases } = this.weaponSwing;
     
-    // Track weapon tip during slash phase
-    if (elapsed >= phases.windup && elapsed < phases.windup + phases.slash) {
+    // Track weapon tip during the ENTIRE swing (windup + slash phases)
+    if (elapsed >= 0 && elapsed < phases.windup + phases.slash) {
       this.trackWeaponTip();
       
-      // Create sword swoosh effect once during mid-slash using tracked path
-      const slashProgress = (elapsed - phases.windup) / phases.slash;
-      if (slashProgress >= 0.3 && slashProgress <= 0.5 && !this.swooshEffectCreated) {
+      // Create sword swoosh effect during mid-slash using the accumulated path
+      const slashProgress = Math.max(0, (elapsed - phases.windup) / phases.slash);
+      if (slashProgress >= 0.3 && slashProgress <= 0.5 && !this.swooshEffectCreated && this.weaponTipPositions.length >= 3) {
         this.createRealisticSwordSwoosh();
         this.swooshEffectCreated = true;
       }
@@ -909,11 +909,6 @@ export class Player {
     // Complete animation if duration exceeded
     if (elapsed >= this.weaponSwing.duration) {
       console.log("🗡️ [Player] Spatial sword swing animation completed");
-      
-      // Create weapon trail if we have enough positions
-      if (this.weaponTipPositions.length > 5) {
-        this.createWeaponTrailEffect();
-      }
     }
   }
   
@@ -929,33 +924,38 @@ export class Player {
       const worldTipPosition = bladeLocalTip.clone();
       bladeReference.localToWorld(worldTipPosition);
       
-      // Add to trail positions
+      // Add to trail positions with better frequency
       this.weaponTipPositions.push(worldTipPosition.clone());
       
-      // Limit trail length
-      if (this.weaponTipPositions.length > this.maxTrailLength) {
+      // Limit trail length but keep more points for better path tracking
+      if (this.weaponTipPositions.length > 20) { // Increased from 15 to 20
         this.weaponTipPositions.shift();
       }
+      
+      console.log("🗡️ [Player] Tracking weapon tip - total positions:", this.weaponTipPositions.length);
     } catch (error) {
       console.warn("Could not track weapon tip:", error);
     }
   }
   
   private createRealisticSwordSwoosh(): void {
-    if (!this.equippedWeapon || this.weaponTipPositions.length < 2) {
+    if (!this.equippedWeapon || this.weaponTipPositions.length < 3) {
       console.log("🌪️ [Player] Cannot create sword swoosh - insufficient weapon data");
       return;
     }
     
-    // Calculate swing direction from sword path
+    // Calculate swing direction from the sword path (top-right to bottom-left)
     const pathStart = this.weaponTipPositions[0];
     const pathEnd = this.weaponTipPositions[this.weaponTipPositions.length - 1];
     const swingDirection = pathEnd.clone().sub(pathStart).normalize();
     
-    console.log("🌪️ [Player] Creating sword swoosh effect with", this.weaponTipPositions.length, "tracked positions");
+    console.log("🌪️ [Player] Creating WHITE sword swoosh effect with", this.weaponTipPositions.length, "tracked positions");
+    console.log("🌪️ [Player] Swing direction from top-right to bottom-left:", swingDirection);
+    console.log("🌪️ [Player] Path start (top-right):", pathStart);
+    console.log("🌪️ [Player] Path end (bottom-left):", pathEnd);
     
-    // Create the swoosh effect following the sword trail
-    this.effectsManager.createSwordSwooshEffect(this.weaponTipPositions, swingDirection);
+    // Create the WHITE swoosh effect following the sword trail
+    this.effectsManager.createSwordSwooshEffect(this.weaponTipPositions.slice(), swingDirection);
   }
   
   private createEnhancedSwooshEffect(): void {
