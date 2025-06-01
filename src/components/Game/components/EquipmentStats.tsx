@@ -1,17 +1,19 @@
 
 import React from 'react';
-import { Item } from '../../../types/GameTypes';
+import { Item, WeaponSlots } from '../../../types/GameTypes';
 
 interface EquipmentStatsProps {
-  equippedWeapons: {
-    mainhand: Item | null;
-    offhand: Item | null;
-  };
+  equippedWeapons: WeaponSlots;
 }
 
 export const EquipmentStats: React.FC<EquipmentStatsProps> = ({ equippedWeapons }) => {
-  const attackBonus = equippedWeapons.mainhand?.stats?.attack || 0;
-  const defenseBonus = 0; // Weapons don't provide defense in this system
+  // Calculate attack bonus from primary or secondary weapon (whichever has higher attack)
+  const primaryAttack = equippedWeapons.primary?.stats?.attack || 0;
+  const secondaryAttack = equippedWeapons.secondary?.stats?.attack || 0;
+  const attackBonus = Math.max(primaryAttack, secondaryAttack);
+  
+  // Calculate defense bonus from offhand (shields will provide defense in the future)
+  const defenseBonus = equippedWeapons.offhand?.stats?.defense || 0;
 
   return (
     <div className="mt-6 pt-4 border-t border-gray-700">

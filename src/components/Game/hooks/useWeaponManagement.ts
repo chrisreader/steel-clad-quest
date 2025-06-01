@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { Item, WeaponSlots } from '../../../types/GameTypes';
 
-export { WeaponSlots } from '../../../types/GameTypes';
+export type { WeaponSlots } from '../../../types/GameTypes';
 
 export const useWeaponManagement = (initialWeapons: WeaponSlots = { primary: null, secondary: null, offhand: null }) => {
   const [equippedWeapons, setEquippedWeapons] = useState<WeaponSlots>(initialWeapons);
