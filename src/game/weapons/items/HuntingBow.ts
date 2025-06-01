@@ -24,9 +24,9 @@ export class HuntingBow extends BaseWeapon {
   private shakeIntensity: number = 0;
   private shakeTime: number = 0;
   
-  // Original limb rotations for reset
-  private originalUpperLimbRotation: number = 0.15;
-  private originalLowerLimbRotation: number = -0.15;
+  // FIXED: Set original limb rotations to 0 for perfectly vertical bow
+  private originalUpperLimbRotation: number = 0;
+  private originalLowerLimbRotation: number = 0;
   
   // Original string position for pullback animation
   private originalStringPosition: number = 0;
@@ -72,14 +72,11 @@ export class HuntingBow extends BaseWeapon {
     this.createArrowRest(bowGroup);
     this.addBowTips(bowGroup);
     
-    // FIXED: Removed the problematic rotation - bow now naturally points up/down
-    // bowGroup.rotation.z = Math.PI / 2; // REMOVED this line
-    
     // Optimized positioning for realistic archery hold
     bowGroup.scale.set(1.2, 1.2, 1.2);
     bowGroup.position.set(0, 0, 0);
     
-    console.log("🏹 [HuntingBow] Bow oriented perfectly vertical (up/down) - X-axis offsets removed");
+    console.log("🏹 [HuntingBow] Bow oriented perfectly vertical - limb rotations removed");
     
     return bowGroup;
   }
@@ -106,17 +103,17 @@ export class HuntingBow extends BaseWeapon {
       emissiveIntensity: 0.1
     });
     
-    // Upper limb with enhanced positioning
+    // FIXED: Upper limb with NO rotation - perfectly vertical
     this.upperLimb = new THREE.Mesh(limbGeometry, limbMaterial);
     this.upperLimb.position.set(0, 0.15, 0);
-    this.upperLimb.rotation.z = this.originalUpperLimbRotation;
+    this.upperLimb.rotation.z = this.originalUpperLimbRotation; // Now 0
     bowGroup.add(this.upperLimb);
     
-    // Lower limb (using separate geometry for different curve)
+    // FIXED: Lower limb with NO rotation - perfectly vertical
     const lowerLimbGeometry = new THREE.TubeGeometry(lowerLimbCurve, 24, 0.03, 8, false);
     this.lowerLimb = new THREE.Mesh(lowerLimbGeometry, limbMaterial.clone());
     this.lowerLimb.position.set(0, -0.15, 0);
-    this.lowerLimb.rotation.z = this.originalLowerLimbRotation;
+    this.lowerLimb.rotation.z = this.originalLowerLimbRotation; // Now 0
     bowGroup.add(this.lowerLimb);
   }
 
@@ -312,15 +309,15 @@ export class HuntingBow extends BaseWeapon {
     
     // Enhanced draw mechanics with more dramatic string pullback
     const pullback = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.8; // Increased pullback distance
-    const limbBend = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.5; // More limb bend
+    const limbBend = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.3; // Reduced limb bend for vertical bow
     
     // FIXED: Update string position for vertical bow - moves toward player (positive Z for vertical bow)
     this.bowString.position.z = this.originalStringPosition + pullback;
     this.bowString.scale.y = 1 + (this.chargeLevel * 0.12); // More visible stretch
     
-    // Enhanced limb bending with more dramatic physics
-    const upperLimbRotation = this.originalUpperLimbRotation + limbBend;
-    const lowerLimbRotation = this.originalLowerLimbRotation - limbBend;
+    // FIXED: Enhanced limb bending starting from 0 rotation baseline
+    const upperLimbRotation = this.originalUpperLimbRotation + limbBend; // 0 + limbBend
+    const lowerLimbRotation = this.originalLowerLimbRotation - limbBend; // 0 - limbBend
     
     this.upperLimb.rotation.z = upperLimbRotation;
     this.lowerLimb.rotation.z = lowerLimbRotation;
