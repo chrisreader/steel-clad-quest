@@ -36,6 +36,7 @@ export class Arrow {
     
     console.log("🏹 [Arrow] *** CREATING ARROW ***");
     console.log("🏹 [Arrow] Start position:", this.position);
+    console.log("🏹 [Arrow] Direction:", direction);
     console.log("🏹 [Arrow] Velocity:", this.velocity);
     console.log("🏹 [Arrow] Speed:", speed);
     console.log("🏹 [Arrow] Damage:", damage);
@@ -44,17 +45,23 @@ export class Arrow {
     this.createTrailEffect();
     this.scene.add(this.mesh);
     
-    // Position and orient the arrow
+    // Position the arrow
     this.mesh.position.copy(this.position);
     
-    // Point arrow in direction of travel
+    // FIXED: Properly orient arrow to point in direction of travel
     if (this.velocity.length() > 0) {
       const direction = this.velocity.clone().normalize();
-      this.mesh.lookAt(this.position.clone().add(direction));
+      // Create a matrix to orient the arrow properly
+      const matrix = new THREE.Matrix4();
+      matrix.lookAt(this.position, this.position.clone().add(direction), new THREE.Vector3(0, 1, 0));
+      this.mesh.setRotationFromMatrix(matrix);
+      // Rotate 90 degrees around Y to point forward correctly
+      this.mesh.rotateY(Math.PI / 2);
     }
     
     console.log("🏹 [Arrow] ✅ ARROW MESH CREATED AND ADDED TO SCENE");
     console.log("🏹 [Arrow] Arrow mesh position:", this.mesh.position);
+    console.log("🏹 [Arrow] Arrow mesh rotation:", this.mesh.rotation);
     
     // Play arrow shoot sound
     this.audioManager.play('arrow_shoot');
@@ -63,49 +70,64 @@ export class Arrow {
   private createArrowMesh(): THREE.Group {
     const arrowGroup = new THREE.Group();
     
-    // Make arrow MUCH larger and more visible
-    const scale = 3.0; // Increased scale for better visibility
+    // FIXED: Reasonable arrow size (much smaller than before)
+    const scale = 0.8; // Reduced from 3.0 to 0.8 for realistic size
     
-    // Arrow shaft - bright colored for visibility
-    const shaftGeometry = new THREE.CylinderGeometry(0.05 * scale, 0.05 * scale, 1.5 * scale);
+    // Arrow shaft - brown wood color
+    const shaftGeometry = new THREE.CylinderGeometry(0.02 * scale, 0.02 * scale, 1.0 * scale);
     const shaftMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xffa500, // Orange color for high visibility
-      emissive: 0x4d2600,
-      emissiveIntensity: 0.3
+      color: 0x8B4513, // Saddle brown for wood
+      emissive: 0x2d1810,
+      emissiveIntensity: 0.1
     });
     const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
+    // FIXED: Shaft positioned correctly along X-axis (arrow points in +X direction)
     shaft.rotation.z = Math.PI / 2;
     arrowGroup.add(shaft);
     
-    // Arrow head - bright metallic
-    const headGeometry = new THREE.ConeGeometry(0.12 * scale, 0.3 * scale);
+    // Arrow head - metallic gray
+    const headGeometry = new THREE.ConeGeometry(0.08 * scale, 0.2 * scale);
     const headMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xffff00, // Bright yellow for visibility
-      emissive: 0x444400,
-      emissiveIntensity: 0.3
+      color: 0xC0C0C0, // Silver metallic
+      emissive: 0x333333,
+      emissiveIntensity: 0.2
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.x = 0.9 * scale;
+    // FIXED: Head positioned at front of arrow (+X direction)
+    head.position.x = 0.6 * scale;
     head.rotation.z = -Math.PI / 2;
     arrowGroup.add(head);
     
-    // Fletching (feathers) - bright red for visibility
-    const fletchingGeometry = new THREE.PlaneGeometry(0.2 * scale, 0.3 * scale);
+    // Fletching (feathers) - natural feather colors
+    const fletchingGeometry = new THREE.PlaneGeometry(0.15 * scale, 0.2 * scale);
     const fletchingMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xff0000, // Bright red
+      color: 0x654321, // Dark brown feathers
       side: THREE.DoubleSide,
-      emissive: 0x440000,
-      emissiveIntensity: 0.2
+      emissive: 0x1a1105,
+      emissiveIntensity: 0.1
     });
     
+    // Create 3 fletching pieces around the nock
     for (let i = 0; i < 3; i++) {
       const fletching = new THREE.Mesh(fletchingGeometry, fletchingMaterial);
-      fletching.position.x = -0.6 * scale;
+      // FIXED: Fletching positioned at back of arrow (-X direction)
+      fletching.position.x = -0.4 * scale;
       fletching.rotation.y = (i * Math.PI * 2) / 3;
       arrowGroup.add(fletching);
     }
     
-    console.log("🏹 [Arrow] Arrow mesh created with HIGH VISIBILITY (large scale, bright colors)");
+    // Add nock (string notch) at back
+    const nockGeometry = new THREE.SphereGeometry(0.03 * scale, 6, 6);
+    const nockMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x8B4513,
+      emissive: 0x2d1810,
+      emissiveIntensity: 0.1
+    });
+    const nock = new THREE.Mesh(nockGeometry, nockMaterial);
+    nock.position.x = -0.5 * scale;
+    arrowGroup.add(nock);
+    
+    console.log("🏹 [Arrow] Arrow mesh created with proper size and orientation");
     return arrowGroup;
   }
 
@@ -152,12 +174,18 @@ export class Arrow {
     const deltaPosition = this.velocity.clone().multiplyScalar(deltaTime);
     this.position.add(deltaPosition);
     
-    // Update mesh position and rotation
+    // Update mesh position
     this.mesh.position.copy(this.position);
     
-    // Point arrow in direction of travel
-    const direction = this.velocity.clone().normalize();
-    this.mesh.lookAt(this.position.clone().add(direction));
+    // FIXED: Update arrow orientation to follow trajectory
+    if (this.velocity.length() > 0) {
+      const direction = this.velocity.clone().normalize();
+      const matrix = new THREE.Matrix4();
+      matrix.lookAt(this.position, this.position.clone().add(direction), new THREE.Vector3(0, 1, 0));
+      this.mesh.setRotationFromMatrix(matrix);
+      // Rotate 90 degrees around Y to point forward correctly
+      this.mesh.rotateY(Math.PI / 2);
+    }
     
     // Update trail effect
     this.updateTrail();
@@ -167,8 +195,8 @@ export class Arrow {
       this.hitGround();
     }
     
-    // Log position for debugging
-    if (Math.random() < 0.01) { // Log occasionally to avoid spam
+    // Log position occasionally for debugging
+    if (Math.random() < 0.01) {
       console.log("🏹 [Arrow] Position:", this.position, "Velocity:", this.velocity);
     }
     
