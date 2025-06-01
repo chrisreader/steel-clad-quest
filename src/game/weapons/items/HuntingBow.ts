@@ -79,24 +79,23 @@ export class HuntingBow extends BaseWeapon {
     bowGroup.scale.set(1.2, 1.2, 1.2);
     bowGroup.position.set(0, 0, 0);
     
-    console.log("🏹 [HuntingBow] Bow oriented vertically (up/down) - rotation removed");
+    console.log("🏹 [HuntingBow] Bow oriented perfectly vertical (up/down) - X-axis offsets removed");
     
     return bowGroup;
   }
 
   private createEnhancedBowLimbs(bowGroup: THREE.Group): void {
-    // Create more realistic curved bow limbs using QuadraticBezierCurve3
-    // FIXED: Adjusted curves for vertical bow orientation
+    // FIXED: Create perfectly vertical bow limbs by removing X-axis offsets
     const upperLimbCurve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.05, 0.35, 0.15),
-      new THREE.Vector3(0.02, 0.75, 0.08)
+      new THREE.Vector3(0, 0.35, 0.15),
+      new THREE.Vector3(0, 0.75, 0.08)
     );
     
     const lowerLimbCurve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.05, -0.35, 0.15),
-      new THREE.Vector3(0.02, -0.75, 0.08)
+      new THREE.Vector3(0, -0.35, 0.15),
+      new THREE.Vector3(0, -0.75, 0.08)
     );
     
     // Enhanced limb geometry with better detail
@@ -182,18 +181,18 @@ export class HuntingBow extends BaseWeapon {
     });
     
     this.arrowRest = new THREE.Mesh(restGeometry, restMaterial);
-    this.arrowRest.position.set(0, 0.03, -0.08); // Adjusted for vertical orientation
+    this.arrowRest.position.set(0, 0.03, -0.08); // Centered on X-axis
     bowGroup.add(this.arrowRest);
     
     // Add small notch detail
     const notchGeometry = new THREE.SphereGeometry(0.008, 6, 4);
     const notch = new THREE.Mesh(notchGeometry, restMaterial.clone());
-    notch.position.set(0, 0.03, -0.08);
+    notch.position.set(0, 0.03, -0.08); // Centered on X-axis
     bowGroup.add(notch);
   }
 
   private addBowTips(bowGroup: THREE.Group): void {
-    // Enhanced bow tips (nocks) with better detail
+    // FIXED: Enhanced bow tips (nocks) perfectly centered on X-axis
     const tipGeometry = new THREE.ConeGeometry(0.025, 0.06, 8);
     const tipMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xa0826d,
@@ -201,27 +200,27 @@ export class HuntingBow extends BaseWeapon {
       emissiveIntensity: 0.02
     });
     
-    // Upper tip
+    // Upper tip - centered on X-axis
     const upperTip = new THREE.Mesh(tipGeometry, tipMaterial);
-    upperTip.position.set(0.02, 0.8, 0.08);
+    upperTip.position.set(0, 0.8, 0.08);
     upperTip.rotation.x = Math.PI;
     bowGroup.add(upperTip);
     
-    // Lower tip
+    // Lower tip - centered on X-axis
     const lowerTip = new THREE.Mesh(tipGeometry, tipMaterial.clone());
-    lowerTip.position.set(0.02, -0.8, 0.08);
+    lowerTip.position.set(0, -0.8, 0.08);
     bowGroup.add(lowerTip);
     
-    // Add string attachment points
+    // Add string attachment points - centered on X-axis
     const attachGeometry = new THREE.SphereGeometry(0.008, 6, 6);
     const attachMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
     
     const upperAttach = new THREE.Mesh(attachGeometry, attachMaterial);
-    upperAttach.position.set(0.02, 0.75, 0.08);
+    upperAttach.position.set(0, 0.75, 0.08);
     bowGroup.add(upperAttach);
     
     const lowerAttach = new THREE.Mesh(attachGeometry, attachMaterial.clone());
-    lowerAttach.position.set(0.02, -0.75, 0.08);
+    lowerAttach.position.set(0, -0.75, 0.08);
     bowGroup.add(lowerAttach);
   }
 
