@@ -143,6 +143,56 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     isAnyUIOpen
   });
 
+  // CRITICAL: Enhanced weapon syncing - sync whenever weapons or active slot changes
+  useEffect(() => {
+    if (!gameEngine || !gameStarted) return;
+
+    console.log('[KnightGame] 🔄 WEAPON SYNC - Syncing equipped weapons with game engine');
+    console.log('[KnightGame] 🔄 Active slot:', activeWeaponSlot);
+    console.log('[KnightGame] 🔄 Equipped weapons:', equippedWeapons);
+    
+    const player = gameEngine.getPlayer();
+    
+    // Get the weapon for the currently active slot
+    const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
+                        activeWeaponSlot === 2 ? equippedWeapons.secondary : 
+                        equippedWeapons.offhand;
+    
+    if (activeWeapon && activeWeapon.weaponId) {
+      console.log(`[KnightGame] 🏹 EQUIPPING WEAPON: ${activeWeapon.name} (${activeWeapon.weaponId}) to Player entity`);
+      player.equipWeapon(activeWeapon.weaponId);
+      console.log(`[KnightGame] ✅ WEAPON EQUIPPED - Player should now have ${activeWeapon.name} equipped`);
+      
+      // Additional logging for bow weapons
+      if (activeWeapon.subtype === 'bow') {
+        console.log(`[KnightGame] 🏹 BOW EQUIPPED - Player should now be able to shoot arrows`);
+        console.log(`[KnightGame] 🏹 isBowEquipped should be: true`);
+      }
+    } else {
+      console.log(`[KnightGame] 🔄 UNEQUIPPING WEAPON - slot ${activeWeaponSlot} is empty`);
+      player.unequipWeapon();
+      console.log(`[KnightGame] ✅ WEAPON UNEQUIPPED - Player should now have no weapon equipped`);
+    }
+    
+    // Log current player weapon state after syncing
+    setTimeout(() => {
+      console.log(`[KnightGame] 🔍 POST-SYNC CHECK - Player weapon state:`);
+      // Note: We can't directly access private properties, but the equip/unequip calls should have set them
+    }, 100);
+    
+  }, [gameEngine, gameStarted, equippedWeapons, activeWeaponSlot]);
+
+  // Enhanced weapon slot selection with immediate syncing
+  const handleEnhancedWeaponSlotSelect = useCallback((slot: 1 | 2 | 3) => {
+    console.log(`[KnightGame] 🎯 SLOT SELECTION - Switching to weapon slot ${slot}`);
+    
+    // Use the existing slot selection logic
+    handleWeaponSlotSelect(slot);
+    
+    // The weapon syncing will happen automatically via the useEffect above
+    console.log(`[KnightGame] 🎯 SLOT SWITCHED - Active slot is now ${slot}, weapon sync will trigger`);
+  }, [handleWeaponSlotSelect]);
+
   // CRITICAL: Force engine restart when component mounts to ensure new arm positioning
   useEffect(() => {
     console.log('[KnightGame] Component mounted - will force engine restart for new arm positioning');
@@ -152,27 +202,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   useEffect(() => {
     console.log('[KnightGame] Initial setup - Steel Sword equipped in primary, Hunting Bow in inventory');
   }, []); // Empty dependency array - runs once on mount
-
-  // Sync equipped weapons with game engine when weapons or game engine changes
-  useEffect(() => {
-    if (!gameEngine || !gameStarted) return;
-
-    console.log('[KnightGame] Syncing equipped weapons with game engine');
-    const player = gameEngine.getPlayer();
-    
-    // Get the weapon for the currently active slot
-    const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
-                        activeWeaponSlot === 2 ? equippedWeapons.secondary : 
-                        equippedWeapons.offhand;
-    
-    if (activeWeapon && activeWeapon.weaponId) {
-      console.log(`[KnightGame] Equipping weapon: ${activeWeapon.name} in slot ${activeWeaponSlot}`);
-      player.equipWeapon(activeWeapon.weaponId);
-    } else {
-      console.log(`[KnightGame] Unequipping weapon - slot ${activeWeaponSlot} is empty`);
-      player.unequipWeapon();
-    }
-  }, [gameEngine, gameStarted, equippedWeapons, activeWeaponSlot]);
 
   // Wait for mount element to be ready
   useEffect(() => {
@@ -331,7 +360,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     return () => clearInterval(updateInterval);
   }, [gameStarted, gameEngine, setPlayerStats, setGameTime, setIsGameOver]);
 
-  // Use input handling hook with weapon slot selection
+  // Use input handling hook with enhanced weapon slot selection
   useInputHandling({
     gameStarted,
     gameEngine,
@@ -343,7 +372,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     toggleStatsPanel,
     closeAllUIs,
     togglePause,
-    onWeaponSlotSelect: handleWeaponSlotSelect
+    onWeaponSlotSelect: handleEnhancedWeaponSlotSelect
   });
 
   // Show game menu until user clicks start
@@ -389,7 +418,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           secondaryWeapon={equippedWeapons.secondary}
           offhandWeapon={equippedWeapons.offhand}
           activeWeaponSlot={activeWeaponSlot}
-          onWeaponSlotSelect={handleWeaponSlotSelect}
+          onWeaponSlotSelect={handleEnhancedWeaponSlotSelect}
           isOffhandDisabled={isOffhandDisabled()}
         />
       )}
