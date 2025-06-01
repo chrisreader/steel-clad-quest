@@ -277,9 +277,9 @@ export class GameEngine {
     // Update camera to follow player
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // Update distance-based fog (optional for dynamic adjustments)
+    // Update scene manager (includes cloud system and distance-based fog)
     if (this.sceneManager) {
-      this.sceneManager.updateDistanceFog(this.player.getPosition());
+      this.sceneManager.update(deltaTime, this.player.getPosition());
     }
     
     // Check location changes
