@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class SwordTrailEffect {
@@ -20,31 +19,32 @@ export class SwordTrailEffect {
       return;
     }
     
-    console.log("🌪️ [SwordTrailEffect] Creating continuous trail from sword path with", swordPath.length, "points");
+    console.log("🌪️ [SwordTrailEffect] Creating EXTENDED trail from sword path with", swordPath.length, "points");
+    console.log("🌪️ [SwordTrailEffect] Path covers entire swing from top-right to bottom-left");
     
-    // Create main sword trail following the exact path
+    // Create main sword trail following the exact path - EXTENDED duration
     this.createMainTrail(swordPath);
     
-    // Create secondary air displacement trails
+    // Create secondary air displacement trails - MORE trails for better effect
     this.createAirDisplacementTrails(swordPath, swingDirection);
     
-    // Schedule cleanup
+    // EXTENDED cleanup time to let trail be visible longer
     setTimeout(() => {
       this.dispose();
-    }, this.trailLifetime);
+    }, this.trailLifetime * 1.5); // 50% longer visibility
   }
   
   private createMainTrail(swordPath: THREE.Vector3[]): void {
     // Create geometry from sword path points
     const geometry = new THREE.BufferGeometry().setFromPoints(swordPath);
     
-    // Create material with white color and transparency
+    // ENHANCED material with better visibility and wider trail
     const material = new THREE.LineBasicMaterial({
       color: 0xFFFFFF,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.9, // Increased from 0.8 for better visibility
       blending: THREE.AdditiveBlending,
-      linewidth: 3
+      linewidth: 5  // Increased from 3 for more prominent trail
     });
     
     // Create the trail line
@@ -53,18 +53,19 @@ export class SwordTrailEffect {
     this.trails.push(trail);
     this.trailMaterials.push(material);
     
-    // Animate fade out
+    // Animate fade out with longer duration
     this.animateTrailFadeOut(material, 0);
     
-    console.log("🌪️ [SwordTrailEffect] Main trail created following sword path");
+    console.log("🌪️ [SwordTrailEffect] ENHANCED main trail created following complete sword path");
   }
   
   private createAirDisplacementTrails(swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): void {
-    const numSecondaryTrails = 2;
+    // INCREASED number of secondary trails for more dramatic effect
+    const numSecondaryTrails = 4; // Increased from 2
     
     for (let i = 0; i < numSecondaryTrails; i++) {
       // Create offset paths parallel to the main sword path
-      const offset = (i + 1) * 0.05; // Small offset distance
+      const offset = (i + 1) * 0.04; // Slightly smaller offset for tighter grouping
       const offsetDirection = new THREE.Vector3(-swingDirection.z, 0, swingDirection.x).normalize();
       const sign = i % 2 === 0 ? 1 : -1;
       
@@ -75,13 +76,13 @@ export class SwordTrailEffect {
       // Create geometry for offset trail
       const geometry = new THREE.BufferGeometry().setFromPoints(offsetPath);
       
-      // Create material with slightly different properties
+      // ENHANCED material with varying properties
       const material = new THREE.LineBasicMaterial({
-        color: 0xF0F0F0, // Slightly gray-white
+        color: i < 2 ? 0xF8F8FF : 0xF0F0F0, // Slightly different whites
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.7 - (i * 0.1), // Decreasing opacity for depth
         blending: THREE.AdditiveBlending,
-        linewidth: 2
+        linewidth: 3 - (i * 0.5) // Decreasing width for depth
       });
       
       // Create the trail line
@@ -90,11 +91,11 @@ export class SwordTrailEffect {
       this.trails.push(trail);
       this.trailMaterials.push(material);
       
-      // Animate fade out with slight delay
-      this.animateTrailFadeOut(material, (i + 1) * 50);
+      // Animate fade out with staggered delays
+      this.animateTrailFadeOut(material, (i + 1) * 30);
     }
     
-    console.log("🌪️ [SwordTrailEffect] Air displacement trails created");
+    console.log("🌪️ [SwordTrailEffect] ENHANCED air displacement trails created with", numSecondaryTrails, "secondary trails");
   }
   
   private animateTrailFadeOut(material: THREE.LineBasicMaterial, delay: number): void {

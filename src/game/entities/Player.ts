@@ -897,17 +897,22 @@ export class Player {
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
     const { phases } = this.weaponSwing;
     
-    // ENHANCED: Track weapon tip more frequently during the ENTIRE swing
+    // FIXED: Track weapon tip throughout the ENTIRE swing motion - from windup start to slash end
     const now = Date.now();
-    if (elapsed >= 0 && elapsed < phases.windup + phases.slash && now - this.lastTipTrackTime >= this.tipTrackInterval) {
+    const isInSwingMotion = elapsed >= 0 && elapsed < (phases.windup + phases.slash);
+    
+    if (isInSwingMotion && now - this.lastTipTrackTime >= this.tipTrackInterval) {
       this.trackWeaponTipHighFrequency();
       this.lastTipTrackTime = now;
       
-      // Create sword swoosh effect during mid-slash using the accumulated path
+      // FIXED: Create sword swoosh effect during the ENTIRE slash phase, not just a narrow window
       const slashProgress = Math.max(0, (elapsed - phases.windup) / phases.slash);
-      if (slashProgress >= 0.3 && slashProgress <= 0.5 && !this.swooshEffectCreated && this.weaponTipPositions.length >= 5) {
+      
+      // Create swoosh effect once we have enough path data and are in the slash phase
+      if (slashProgress >= 0.1 && slashProgress <= 0.9 && !this.swooshEffectCreated && this.weaponTipPositions.length >= 8) {
         this.createRealisticSwordSwoosh();
         this.swooshEffectCreated = true;
+        console.log("🌪️ [Player] Sword swoosh effect created during slash phase at progress:", slashProgress.toFixed(2));
       }
     }
     
