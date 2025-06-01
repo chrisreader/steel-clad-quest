@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -65,6 +64,9 @@ export class GameEngine {
       // Initialize render engine
       this.renderEngine.initialize();
       
+      // Connect physics manager to render engine for camera collision
+      this.renderEngine.setPhysicsManager(this.physicsManager);
+      
       // Create the scene manager using the render engine's scene and physics manager
       this.sceneManager = new SceneManager(this.renderEngine.getScene(), this.physicsManager);
       
@@ -110,7 +112,7 @@ export class GameEngine {
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete with distance-based fog system!");
+      console.log("🎮 [GameEngine] Initialization complete with camera collision system!");
       
       // Start the game
       this.start();
@@ -348,7 +350,7 @@ export class GameEngine {
       }
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager!, this.physicsManager);
       
-      // Reset first-person camera
+      // Reset first-person camera with collision support
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
     }
     
@@ -358,7 +360,7 @@ export class GameEngine {
       this.audioManager.play('game_music', true);
     }
     
-    console.log("🎮 [GameEngine] Game restarted with NEW PLAYER and ARM POSITIONING!");
+    console.log("🎮 [GameEngine] Game restarted with camera collision system!");
   }
   
   public handleInput(type: string, data?: any): void {

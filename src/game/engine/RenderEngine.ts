@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PhysicsManager } from './PhysicsManager';
 
 export class RenderEngine {
   private scene: THREE.Scene;
@@ -6,6 +7,7 @@ export class RenderEngine {
   private renderer: THREE.WebGLRenderer;
   private clock: THREE.Clock;
   private mountElement: HTMLDivElement;
+  private physicsManager: PhysicsManager | null = null;
   
   // Camera controls with smoothing
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
@@ -25,6 +27,11 @@ export class RenderEngine {
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
     this.clock = new THREE.Clock();
+  }
+  
+  public setPhysicsManager(physicsManager: PhysicsManager): void {
+    this.physicsManager = physicsManager;
+    console.log("🎨 [RenderEngine] Physics manager set for camera collision");
   }
   
   public initialize(): void {
@@ -109,12 +116,40 @@ export class RenderEngine {
   }
   
   public updateFirstPersonCamera(playerPosition: THREE.Vector3): void {
-    // Keep camera positioned at head level to avoid torso clipping
-    this.camera.position.set(
+    // Calculate desired camera position
+    const desiredCameraPosition = new THREE.Vector3(
       playerPosition.x, 
       playerPosition.y + 1.2,
       playerPosition.z - 0.05
     );
+    
+    // Check for camera collision if physics manager is available
+    if (this.physicsManager) {
+      const currentCameraPosition = this.camera.position.clone();
+      const cameraRadius = 0.1; // Small radius for camera collision
+      
+      // Check if the desired position would cause collision
+      const safePosition = this.physicsManager.checkPlayerMovement(
+        currentCameraPosition, 
+        desiredCameraPosition, 
+        cameraRadius
+      );
+      
+      // Use safe position
+      this.camera.position.copy(safePosition);
+      
+      // Additional check: ensure camera doesn't go too far from player
+      const distanceFromPlayer = this.camera.position.distanceTo(playerPosition);
+      if (distanceFromPlayer > 2.0) {
+        // If camera gets pushed too far, pull it back towards player
+        const directionToPlayer = new THREE.Vector3().subVectors(playerPosition, this.camera.position).normalize();
+        this.camera.position.copy(playerPosition.clone().add(directionToPlayer.multiplyScalar(-0.5)));
+        this.camera.position.y = playerPosition.y + 1.2; // Maintain head level
+      }
+    } else {
+      // Fallback: use desired position without collision checking
+      this.camera.position.copy(desiredCameraPosition);
+    }
   }
   
   public render(): void {
