@@ -5,8 +5,8 @@ import { TextureGenerator } from '../utils/graphics/TextureGenerator';
 export class Sword extends BaseWeapon {
   private bladeMesh: THREE.Mesh | null = null;
   private hitBoxMesh: THREE.Mesh | null = null;
-  private debugHitBox: THREE.LineSegments | null = null;
-  private debugMode: boolean = false;
+  private debugHitBox: THREE.Mesh | null = null; // Changed from LineSegments to Mesh for solid cube
+  private debugMode: boolean = true; // FORCE ENABLED for debugging
 
   constructor(config: WeaponConfig) {
     super(config);
@@ -90,52 +90,55 @@ export class Sword extends BaseWeapon {
     
     this.hitBoxMesh = hitBox;
     
-    // Create debug visualization
+    // Create debug visualization - SOLID RED CUBE for better visibility
     this.createDebugHitBox(swordHitBoxGeometry);
     
     return hitBox;
   }
 
   private createDebugHitBox(geometry: THREE.BoxGeometry): void {
-    // Create wireframe geometry for debug visualization
-    const edges = new THREE.EdgesGeometry(geometry);
-    const debugMaterial = new THREE.LineBasicMaterial({ 
-      color: 0xff0000, // Red color
-      linewidth: 3,
+    // Create SOLID red cube for debug visualization (more visible than wireframe)
+    const debugMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xff0000, // Bright red
       transparent: true,
-      opacity: 1.0 // Full opacity when visible
+      opacity: 0.5, // Semi-transparent so we can see through it
+      depthTest: false, // Render on top of everything
+      depthWrite: false // Don't interfere with depth buffer
     });
     
-    this.debugHitBox = new THREE.LineSegments(edges, debugMaterial);
-    this.debugHitBox.visible = false; // Hidden by default
+    this.debugHitBox = new THREE.Mesh(geometry.clone(), debugMaterial);
+    this.debugHitBox.visible = false; // Hidden by default, shown during attacks
+    this.debugHitBox.renderOrder = 1000; // Render on top
     
-    console.log("🔧 [Sword] Debug hitbox visualization created - RED wireframe");
+    console.log("🔧 [Sword] Debug hitbox visualization created - SOLID RED CUBE for maximum visibility");
   }
 
-  public getDebugHitBox(): THREE.LineSegments | null {
+  public getDebugHitBox(): THREE.Mesh | null {
     return this.debugHitBox;
   }
 
   public setDebugMode(enabled: boolean): void {
-    this.debugMode = enabled;
-    console.log(`🔧 [Sword] Debug mode ${enabled ? 'enabled' : 'disabled'}`);
+    this.debugMode = true; // ALWAYS FORCE ENABLED
+    console.log(`🔧 [Sword] Debug mode FORCE ENABLED for hitbox visualization`);
   }
 
   public isDebugMode(): boolean {
-    return this.debugMode;
+    return true; // ALWAYS RETURN TRUE
   }
 
   public showHitBoxDebug(): void {
-    if (this.debugHitBox && this.debugMode) {
+    if (this.debugHitBox) {
       this.debugHitBox.visible = true;
-      console.log("🔧 [Sword] RED debug hitbox shown during attack");
+      console.log("🔧 [Sword] SOLID RED debug hitbox made VISIBLE during attack");
+    } else {
+      console.error("🔧 [Sword] Debug hitbox is NULL - cannot show");
     }
   }
 
   public hideHitBoxDebug(): void {
     if (this.debugHitBox) {
       this.debugHitBox.visible = false;
-      console.log("🔧 [Sword] RED debug hitbox hidden");
+      console.log("🔧 [Sword] SOLID RED debug hitbox HIDDEN after attack");
     }
   }
 
