@@ -24,9 +24,9 @@ export class HuntingBow extends BaseWeapon {
   private shakeIntensity: number = 0;
   private shakeTime: number = 0;
   
-  // FIXED: Set original limb rotations to 0 for perfectly vertical bow
-  private originalUpperLimbRotation: number = 0;
-  private originalLowerLimbRotation: number = 0;
+  // Original limb rotations for reset
+  private originalUpperLimbRotation: number = 0.15;
+  private originalLowerLimbRotation: number = -0.15;
   
   // Original string position for pullback animation
   private originalStringPosition: number = 0;
@@ -72,27 +72,31 @@ export class HuntingBow extends BaseWeapon {
     this.createArrowRest(bowGroup);
     this.addBowTips(bowGroup);
     
+    // FIXED: Removed the problematic rotation - bow now naturally points up/down
+    // bowGroup.rotation.z = Math.PI / 2; // REMOVED this line
+    
     // Optimized positioning for realistic archery hold
     bowGroup.scale.set(1.2, 1.2, 1.2);
     bowGroup.position.set(0, 0, 0);
     
-    console.log("🏹 [HuntingBow] Bow oriented perfectly vertical - limb rotations removed");
+    console.log("🏹 [HuntingBow] Bow oriented vertically (up/down) - rotation removed");
     
     return bowGroup;
   }
 
   private createEnhancedBowLimbs(bowGroup: THREE.Group): void {
-    // FIXED: Create properly oriented bow limbs using X-Y plane for natural vertical bow orientation
+    // Create more realistic curved bow limbs using QuadraticBezierCurve3
+    // FIXED: Adjusted curves for vertical bow orientation
     const upperLimbCurve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.15, 0.35, 0),  // X-axis for curvature, Y-axis for height
-      new THREE.Vector3(0.08, 0.75, 0)   // Limb curves naturally left/right
+      new THREE.Vector3(0.05, 0.35, 0.15),
+      new THREE.Vector3(0.02, 0.75, 0.08)
     );
     
     const lowerLimbCurve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(-0.15, -0.35, 0), // X-axis for curvature, Y-axis for height
-      new THREE.Vector3(-0.08, -0.75, 0)  // Limb curves naturally left/right
+      new THREE.Vector3(0.05, -0.35, 0.15),
+      new THREE.Vector3(0.02, -0.75, 0.08)
     );
     
     // Enhanced limb geometry with better detail
@@ -103,17 +107,17 @@ export class HuntingBow extends BaseWeapon {
       emissiveIntensity: 0.1
     });
     
-    // FIXED: Upper limb with NO rotation - perfectly vertical
+    // Upper limb with enhanced positioning
     this.upperLimb = new THREE.Mesh(limbGeometry, limbMaterial);
     this.upperLimb.position.set(0, 0.15, 0);
-    this.upperLimb.rotation.z = this.originalUpperLimbRotation; // Now 0
+    this.upperLimb.rotation.z = this.originalUpperLimbRotation;
     bowGroup.add(this.upperLimb);
     
-    // FIXED: Lower limb with NO rotation - perfectly vertical
+    // Lower limb (using separate geometry for different curve)
     const lowerLimbGeometry = new THREE.TubeGeometry(lowerLimbCurve, 24, 0.03, 8, false);
     this.lowerLimb = new THREE.Mesh(lowerLimbGeometry, limbMaterial.clone());
     this.lowerLimb.position.set(0, -0.15, 0);
-    this.lowerLimb.rotation.z = this.originalLowerLimbRotation; // Now 0
+    this.lowerLimb.rotation.z = this.originalLowerLimbRotation;
     bowGroup.add(this.lowerLimb);
   }
 
@@ -178,18 +182,18 @@ export class HuntingBow extends BaseWeapon {
     });
     
     this.arrowRest = new THREE.Mesh(restGeometry, restMaterial);
-    this.arrowRest.position.set(0, 0.03, -0.08); // Centered on X-axis for vertical bow
+    this.arrowRest.position.set(0, 0.03, -0.08); // Adjusted for vertical orientation
     bowGroup.add(this.arrowRest);
     
     // Add small notch detail
     const notchGeometry = new THREE.SphereGeometry(0.008, 6, 4);
     const notch = new THREE.Mesh(notchGeometry, restMaterial.clone());
-    notch.position.set(0, 0.03, -0.08); // Centered on X-axis for vertical bow
+    notch.position.set(0, 0.03, -0.08);
     bowGroup.add(notch);
   }
 
   private addBowTips(bowGroup: THREE.Group): void {
-    // FIXED: Enhanced bow tips (nocks) positioned for X-Y plane limbs
+    // Enhanced bow tips (nocks) with better detail
     const tipGeometry = new THREE.ConeGeometry(0.025, 0.06, 8);
     const tipMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xa0826d,
@@ -197,27 +201,27 @@ export class HuntingBow extends BaseWeapon {
       emissiveIntensity: 0.02
     });
     
-    // Upper tip - positioned at end of upper limb curve
+    // Upper tip
     const upperTip = new THREE.Mesh(tipGeometry, tipMaterial);
-    upperTip.position.set(0.08, 0.8, 0); // Match limb curve endpoint
+    upperTip.position.set(0.02, 0.8, 0.08);
     upperTip.rotation.x = Math.PI;
     bowGroup.add(upperTip);
     
-    // Lower tip - positioned at end of lower limb curve
+    // Lower tip
     const lowerTip = new THREE.Mesh(tipGeometry, tipMaterial.clone());
-    lowerTip.position.set(-0.08, -0.8, 0); // Match limb curve endpoint
+    lowerTip.position.set(0.02, -0.8, 0.08);
     bowGroup.add(lowerTip);
     
-    // Add string attachment points - aligned with new limb endpoints
+    // Add string attachment points
     const attachGeometry = new THREE.SphereGeometry(0.008, 6, 6);
     const attachMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
     
     const upperAttach = new THREE.Mesh(attachGeometry, attachMaterial);
-    upperAttach.position.set(0.08, 0.75, 0); // Match limb curve positioning
+    upperAttach.position.set(0.02, 0.75, 0.08);
     bowGroup.add(upperAttach);
     
     const lowerAttach = new THREE.Mesh(attachGeometry, attachMaterial.clone());
-    lowerAttach.position.set(-0.08, -0.75, 0); // Match limb curve positioning
+    lowerAttach.position.set(0.02, -0.75, 0.08);
     bowGroup.add(lowerAttach);
   }
 
@@ -309,15 +313,15 @@ export class HuntingBow extends BaseWeapon {
     
     // Enhanced draw mechanics with more dramatic string pullback
     const pullback = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.8; // Increased pullback distance
-    const limbBend = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.3; // Reduced limb bend for vertical bow
+    const limbBend = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.5; // More limb bend
     
     // FIXED: Update string position for vertical bow - moves toward player (positive Z for vertical bow)
     this.bowString.position.z = this.originalStringPosition + pullback;
     this.bowString.scale.y = 1 + (this.chargeLevel * 0.12); // More visible stretch
     
-    // FIXED: Enhanced limb bending starting from 0 rotation baseline
-    const upperLimbRotation = this.originalUpperLimbRotation + limbBend; // 0 + limbBend
-    const lowerLimbRotation = this.originalLowerLimbRotation - limbBend; // 0 - limbBend
+    // Enhanced limb bending with more dramatic physics
+    const upperLimbRotation = this.originalUpperLimbRotation + limbBend;
+    const lowerLimbRotation = this.originalLowerLimbRotation - limbBend;
     
     this.upperLimb.rotation.z = upperLimbRotation;
     this.lowerLimb.rotation.z = lowerLimbRotation;
