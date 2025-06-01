@@ -1364,13 +1364,9 @@ export class Player {
       );
     }
     
-    // Keep bow vertical and straight up and down throughout
-    if (this.equippedWeapon) {
-      const bowMesh = this.equippedWeapon.getMesh();
-      bowMesh.rotation.x = THREE.MathUtils.lerp(bowMesh.rotation.x, 0, lerpSpeed);
-      bowMesh.rotation.y = THREE.MathUtils.lerp(bowMesh.rotation.y, 0, lerpSpeed);
-      bowMesh.rotation.z = THREE.MathUtils.lerp(bowMesh.rotation.z, 0, lerpSpeed);
-    }
+    // REMOVED: The conflicting bow mesh rotation override that was causing the positioning difference
+    // This allows the bow to maintain its correct equipment rotation (30°, 50°, -85°) in both IDLE and DRAW states
+    console.log("🏹 [Player] FIXED: Bow mesh rotation override removed - bow maintains equipment rotation in both IDLE and DRAW states");
   }
   
   public startBowDraw(): void {
