@@ -1,6 +1,5 @@
-
 import * as THREE from 'three';
-import { PlayerBody } from '../../types/GameTypes';
+import { PlayerBody } from '../../../types/GameTypes';
 
 interface BowState {
   leftArmX: number;

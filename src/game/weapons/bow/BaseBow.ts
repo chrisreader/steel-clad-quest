@@ -1,6 +1,6 @@
 
 import * as THREE from 'three';
-import { BaseWeapon, WeaponConfig, WeaponStats } from './BaseWeapon';
+import { BaseWeapon, WeaponConfig, WeaponStats } from '../BaseWeapon';
 
 // Draw stage enumeration for better state management
 export enum DrawStage {
@@ -24,6 +24,7 @@ export abstract class BaseBow extends BaseWeapon {
     console.log(`🏹 [BaseBow] Initialized ${config.name} with unified bow system`);
   }
 
+  // BOW STATE METHODS
   public isDrawing(): boolean {
     return this.drawingState;
   }
@@ -44,6 +45,7 @@ export abstract class BaseBow extends BaseWeapon {
     console.log(`🏹 [BaseBow] Stopped drawing ${this.config.name} and reset charge`);
   }
 
+  // CHARGE MECHANICS
   public updateCharge(deltaTime: number): void {
     if (!this.drawingState) return;
     
@@ -60,29 +62,6 @@ export abstract class BaseBow extends BaseWeapon {
       this.applyShakeEffect();
     }
   }
-
-  private updateDrawStage(): void {
-    const prevStage = this.currentDrawStage;
-    
-    if (this.chargeLevel === 0) {
-      this.currentDrawStage = DrawStage.IDLE;
-    } else if (this.chargeLevel < 0.25) {
-      this.currentDrawStage = DrawStage.EARLY_DRAW;
-    } else if (this.chargeLevel < 0.6) {
-      this.currentDrawStage = DrawStage.MID_DRAW;
-    } else if (this.chargeLevel < 1.0) {
-      this.currentDrawStage = DrawStage.FULL_DRAW;
-    } else {
-      this.currentDrawStage = DrawStage.OVERCHARGED;
-    }
-    
-    if (prevStage !== this.currentDrawStage) {
-      console.log(`🏹 [BaseBow] Draw stage: ${prevStage} -> ${this.currentDrawStage} (${Math.round(this.chargeLevel * 100)}%)`);
-    }
-  }
-
-  protected abstract updateBowVisuals(): void;
-  protected abstract applyShakeEffect(): void;
 
   public getChargeLevel(): number {
     return Math.min(this.chargeLevel, 1.0);
@@ -112,6 +91,32 @@ export abstract class BaseBow extends BaseWeapon {
     return this.currentDrawStage;
   }
 
+  // DRAW STAGE MANAGEMENT
+  protected updateDrawStage(): void {
+    const prevStage = this.currentDrawStage;
+    
+    if (this.chargeLevel === 0) {
+      this.currentDrawStage = DrawStage.IDLE;
+    } else if (this.chargeLevel < 0.25) {
+      this.currentDrawStage = DrawStage.EARLY_DRAW;
+    } else if (this.chargeLevel < 0.6) {
+      this.currentDrawStage = DrawStage.MID_DRAW;
+    } else if (this.chargeLevel < 1.0) {
+      this.currentDrawStage = DrawStage.FULL_DRAW;
+    } else {
+      this.currentDrawStage = DrawStage.OVERCHARGED;
+    }
+    
+    if (prevStage !== this.currentDrawStage) {
+      console.log(`🏹 [BaseBow] Draw stage: ${prevStage} -> ${this.currentDrawStage} (${Math.round(this.chargeLevel * 100)}%)`);
+    }
+  }
+
+  // ABSTRACT METHODS FOR SUBCLASSES
+  protected abstract updateBowVisuals(): void;
+  protected abstract applyShakeEffect(): void;
+
+  // UTILITY METHODS
   protected easeInOutQuad(t: number): number {
     return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   }

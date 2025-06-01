@@ -4,7 +4,7 @@ import { BaseWeapon } from './BaseWeapon';
 import { IronSword } from './items/IronSword';
 import { WoodenSword } from './items/WoodenSword';
 import { SteelSword } from './items/SteelSword';
-import { HuntingBow } from './items/HuntingBow';
+import { HuntingBow } from './bow/HuntingBow';
 
 export class WeaponManager {
   private weapons: Map<string, () => BaseWeapon> = new Map();

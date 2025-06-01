@@ -1,8 +1,7 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
-import { BowAnimationController } from './BowAnimationController';
+import { BowAnimationController } from './bow/BowAnimationController';
 import { MeleeWalkAnimation } from './animations/MeleeWalkAnimation';
 import { EmptyHandsWalkAnimation } from './animations/EmptyHandsWalkAnimation';
 
@@ -44,7 +43,6 @@ export class WeaponAnimationSystem {
   ): void {
     console.log(`🎭 [WeaponAnimationSystem] Update: moving=${isMoving}, weapon=${this.currentWeaponType}, attacking=${isAttacking}, bowDrawing=${isBowDrawing}, chargeLevel=${bowChargeLevel.toFixed(2)}`);
     
-    // BOW WEAPON - Use unified animation controller
     if (this.currentWeaponType === 'bow') {
       this.bowAnimationController.updateAnimation(
         playerBody,
@@ -60,7 +58,6 @@ export class WeaponAnimationSystem {
       return;
     }
     
-    // WALKING/RUNNING STATE for other weapons
     if (isMoving) {
       const shouldBlockWalkAnimation = isAttacking && this.currentWeaponType === 'melee';
       
@@ -86,7 +83,6 @@ export class WeaponAnimationSystem {
   private returnToIdlePose(playerBody: PlayerBody, deltaTime: number): void {
     const returnSpeed = deltaTime * this.animationReturnSpeed;
     
-    // Return legs to neutral
     playerBody.leftLeg.rotation.x = THREE.MathUtils.lerp(
       playerBody.leftLeg.rotation.x, 0, returnSpeed
     );
@@ -94,11 +90,9 @@ export class WeaponAnimationSystem {
       playerBody.rightLeg.rotation.x, 0, returnSpeed
     );
     
-    // Return to weapon-appropriate idle stance
     switch (this.currentWeaponType) {
       case 'melee':
       case 'emptyHands':
-        // Return to neutral arm positions
         playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
           playerBody.leftArm.rotation.x, Math.PI / 8, returnSpeed
         );
