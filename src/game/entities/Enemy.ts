@@ -570,21 +570,6 @@ export class Enemy {
     return new Enemy(scene, type, spawnPosition, effectsManager, audioManager);
   }
   
-  public static createRandomEnemyAtPosition(
-    scene: THREE.Scene,
-    spawnPosition: THREE.Vector3,
-    effectsManager: EffectsManager,
-    audioManager: AudioManager,
-    difficulty: number = 1
-  ): Enemy {
-    // Determine enemy type (more difficult enemies appear more often at higher difficulty)
-    const typeRoll = Math.random() * (1 + difficulty * 0.2);
-    const type = typeRoll < 0.7 ? EnemyType.GOBLIN : EnemyType.ORC;
-    
-    // Create enemy at specified position
-    return new Enemy(scene, type, spawnPosition, effectsManager, audioManager);
-  }
-  
   public dispose(): void {
     // Remove from scene
     this.scene.remove(this.enemy.mesh);

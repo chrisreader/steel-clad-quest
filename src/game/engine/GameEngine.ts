@@ -68,6 +68,9 @@ export class GameEngine {
       // Create the scene manager using the render engine's scene and physics manager
       this.sceneManager = new SceneManager(this.renderEngine.getScene(), this.physicsManager);
       
+      // Create default world
+      this.sceneManager.createDefaultWorld();
+      
       // Create the input manager
       this.inputManager = new InputManager();
       this.inputManager.initialize(this.renderEngine.getRenderer());
@@ -80,9 +83,6 @@ export class GameEngine {
       
       // Create the audio manager
       this.audioManager = new AudioManager(this.renderEngine.getCamera(), this.renderEngine.getScene());
-      
-      // Initialize enemy spawning system BEFORE creating the world
-      this.sceneManager.initializeEnemySpawning(this.effectsManager, this.audioManager);
       
       // Preload audio
       try {
@@ -105,18 +105,12 @@ export class GameEngine {
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
       
-      // Connect combat system to enemy spawning
-      this.sceneManager.setCombatSystem(this.combatSystem);
-      
-      // Create default world (this will now spawn initial enemies)
-      this.sceneManager.createDefaultWorld();
-      
       // Set first-person camera position
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete with enemy spawning system!");
+      console.log("🎮 [GameEngine] Initialization complete with distance-based fog system!");
       
       // Start the game
       this.start();

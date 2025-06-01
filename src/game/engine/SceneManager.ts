@@ -1,12 +1,9 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
-import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
 import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
 import { PhysicsManager } from './PhysicsManager';
-import { EffectsManager } from './EffectsManager';
-import { AudioManager } from './AudioManager';
-import { CombatSystem } from '../systems/CombatSystem';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 
 export class SceneManager {
@@ -28,9 +25,6 @@ export class SceneManager {
   // New 3D sun and cloud system
   private sun: THREE.Mesh | null = null;
   private cloudSpawningSystem: DynamicCloudSpawningSystem | null = null;
-  
-  // Enemy spawning system
-  private enemySpawningSystem: DynamicEnemySpawningSystem | null = null;
   
   // Distance-based fog system
   private fog: THREE.Fog;
@@ -58,22 +52,6 @@ export class SceneManager {
     
     // Initialize environment collision manager
     this.environmentCollisionManager = new EnvironmentCollisionManager(this.scene, this.physicsManager);
-  }
-  
-  public initializeEnemySpawning(effectsManager: EffectsManager, audioManager: AudioManager): void {
-    this.enemySpawningSystem = new DynamicEnemySpawningSystem(
-      this.scene,
-      effectsManager,
-      audioManager
-    );
-    console.log("Enemy spawning system initialized");
-  }
-  
-  public setCombatSystem(combatSystem: CombatSystem): void {
-    if (this.enemySpawningSystem) {
-      this.enemySpawningSystem.setCombatSystem(combatSystem);
-      console.log("Combat system connected to enemy spawning");
-    }
   }
   
   private setupDistanceFog(): void {
@@ -183,11 +161,6 @@ export class SceneManager {
       this.cloudSpawningSystem.update(deltaTime);
     }
     
-    // Update enemy spawning system
-    if (this.enemySpawningSystem && playerPosition) {
-      this.enemySpawningSystem.update(deltaTime, playerPosition);
-    }
-    
     // Update stored player position if provided
     if (playerPosition) {
       this.lastPlayerPosition.copy(playerPosition);
@@ -229,12 +202,6 @@ export class SceneManager {
     if (this.cloudSpawningSystem) {
       this.cloudSpawningSystem.initialize();
       console.log('Dynamic cloud spawning system initialized');
-    }
-    
-    // Initialize enemy spawning system if available
-    if (this.enemySpawningSystem) {
-      this.enemySpawningSystem.initialize(this.lastPlayerPosition);
-      console.log('Enemy spawning system initialized with initial enemies');
     }
     
     // IMPORTANT: Register all environment objects for collision after creating the world
@@ -640,12 +607,6 @@ export class SceneManager {
       this.cloudSpawningSystem = null;
     }
     
-    // Dispose enemy spawning system
-    if (this.enemySpawningSystem) {
-      this.enemySpawningSystem.dispose();
-      this.enemySpawningSystem = null;
-    }
-    
     // Clean up sun
     if (this.sun) {
       this.scene.remove(this.sun);
@@ -661,17 +622,5 @@ export class SceneManager {
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
     return this.environmentCollisionManager;
-  }
-  
-  public getEnemySpawningSystem(): DynamicEnemySpawningSystem | null {
-    return this.enemySpawningSystem;
-  }
-  
-  public getEnemyCount(): number {
-    return this.enemySpawningSystem ? this.enemySpawningSystem.getEntityCount() : 0;
-  }
-  
-  public getAliveEnemyCount(): number {
-    return this.enemySpawningSystem ? this.enemySpawningSystem.getAliveEnemyCount() : 0;
   }
 }
