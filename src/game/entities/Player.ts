@@ -1042,6 +1042,20 @@ export class Player {
       bladeReference.localToWorld(worldTipPosition);
       
       this.swordHitBox.position.copy(worldTipPosition);
+      
+      // CRITICAL FIX: Sync debug hitbox position with collision hitbox
+      if (this.equippedWeapon && ['sword', 'axe', 'mace'].includes(this.equippedWeapon.getConfig().type)) {
+        const sword = this.equippedWeapon as any;
+        const debugHitBox = sword.getDebugHitBox();
+        if (debugHitBox && sword.isDebugMode()) {
+          // Position debug hitbox at same location as collision hitbox
+          debugHitBox.position.copy(this.swordHitBox.position);
+          debugHitBox.rotation.copy(this.swordHitBox.rotation);
+          debugHitBox.scale.copy(this.swordHitBox.scale);
+          
+          console.log("🔧 [Player] Debug hitbox synced to collision position:", worldTipPosition);
+        }
+      }
     } catch (error) {
       console.warn("Could not update weapon hitbox:", error);
     }

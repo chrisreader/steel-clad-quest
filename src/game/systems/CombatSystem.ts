@@ -61,7 +61,14 @@ export class CombatSystem {
         const debugHitBox = sword.getDebugHitBox();
         if (debugHitBox && !this.scene.getObjectById(debugHitBox.id)) {
           this.scene.add(debugHitBox);
-          console.log("🔧 [CombatSystem] Added RED debug hitbox to scene");
+          
+          // CRITICAL FIX: Position debug hitbox at player's sword hitbox location
+          const playerSwordHitBox = this.player.getSwordHitBox();
+          debugHitBox.position.copy(playerSwordHitBox.position);
+          debugHitBox.rotation.copy(playerSwordHitBox.rotation);
+          debugHitBox.scale.copy(playerSwordHitBox.scale);
+          
+          console.log("🔧 [CombatSystem] Added RED debug hitbox to scene and positioned at sword location");
         }
       }
     }
