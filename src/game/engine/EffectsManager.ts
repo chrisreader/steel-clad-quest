@@ -50,17 +50,8 @@ export class EffectsManager {
         effect.userData.age += deltaTime * 1000;
         
         if (effect.userData.age >= effect.userData.duration) {
-          // Proper cleanup with geometry disposal
-          if (effect.geometry) {
-            effect.geometry.dispose();
-          }
-          if (effect.material) {
-            if (Array.isArray(effect.material)) {
-              effect.material.forEach(mat => mat.dispose());
-            } else {
-              effect.material.dispose();
-            }
-          }
+          // Proper cleanup with geometry disposal and type guards
+          this.disposeEffectSafely(effect);
           this.scene.remove(effect);
           this.effects.delete(key);
         } else {
@@ -72,20 +63,110 @@ export class EffectsManager {
     });
   }
   
+  private disposeEffectSafely(effect: THREE.Object3D): void {
+    // Type guard for Mesh objects
+    if (effect instanceof THREE.Mesh) {
+      if (effect.geometry) {
+        effect.geometry.dispose();
+      }
+      if (effect.material) {
+        if (Array.isArray(effect.material)) {
+          effect.material.forEach(mat => mat.dispose());
+        } else {
+          effect.material.dispose();
+        }
+      }
+    }
+    
+    // Type guard for Line objects
+    if (effect instanceof THREE.Line) {
+      if (effect.geometry) {
+        effect.geometry.dispose();
+      }
+      if (effect.material) {
+        if (Array.isArray(effect.material)) {
+          effect.material.forEach(mat => mat.dispose());
+        } else {
+          effect.material.dispose();
+        }
+      }
+    }
+  }
+  
+  public createSwordSwooshEffect(startPos: THREE.Vector3, endPos: THREE.Vector3, direction: THREE.Vector3): void {
+    console.log('🌪️ [EffectsManager] Creating sword swoosh effect for empty swing');
+    
+    // Create air displacement trail
+    const swooshTrail = this.createAirSwooshTrail(startPos, endPos);
+    if (swooshTrail) {
+      this.scene.add(swooshTrail);
+      this.effects.set(`swoosh_${Date.now()}`, swooshTrail);
+    }
+    
+    // Add wind particles that follow the sword path
+    const windSystem = ParticleSystem.createWindTrail(this.scene, startPos, direction);
+    windSystem.start();
+    this.particleSystems.push(windSystem);
+    
+    // Add subtle sparkles for metallic gleam (no blood)
+    const gleamSystem = ParticleSystem.createMetallicGleam(this.scene, startPos, direction);
+    gleamSystem.start();
+    this.particleSystems.push(gleamSystem);
+    
+    // Light camera shake for swoosh
+    this.shakeCamera(0.005);
+  }
+  
+  private createAirSwooshTrail(startPos: THREE.Vector3, endPos: THREE.Vector3): THREE.Line | null {
+    const direction = endPos.clone().sub(startPos);
+    const length = direction.length();
+    
+    if (length < 0.1) return null;
+    
+    // Create curved swoosh geometry for air displacement
+    const curve = new THREE.QuadraticBezierCurve3(
+      startPos,
+      startPos.clone().add(direction.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.1, 0)),
+      endPos
+    );
+    
+    const points = curve.getPoints(8);
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    
+    // Create subtle wind/air material
+    const material = new THREE.LineBasicMaterial({
+      color: 0xAABBCC,
+      transparent: true,
+      opacity: 0.15,
+      linewidth: 1
+    });
+    
+    const swooshTrail = new THREE.Line(geometry, material);
+    
+    swooshTrail.userData = {
+      type: 'swoosh_trail',
+      age: 0,
+      duration: 80, // Very quick fade for air displacement
+      update: (deltaTime: number) => {
+        const progress = swooshTrail.userData.age / swooshTrail.userData.duration;
+        material.opacity = 0.15 * (1 - progress);
+      }
+    };
+    
+    return swooshTrail;
+  }
+  
   public createSwordSlashEffect(startPos: THREE.Vector3, endPos: THREE.Vector3, direction: THREE.Vector3): void {
-    // Create realistic sword slash trail with improved visuals
-    const slashTrail = this.createSlashTrail(startPos, endPos);
+    console.log('⚔️ [EffectsManager] Creating metallic sword slash effect for enemy hit');
+    
+    // Create metallic slash trail (no blood)
+    const slashTrail = this.createMetallicSlashTrail(startPos, endPos);
     if (slashTrail) {
       this.scene.add(slashTrail);
       this.effects.set(`slash_${Date.now()}`, slashTrail);
     }
     
-    // Add metallic gleam particles
-    const gleamSystem = ParticleSystem.createMetallicGleam(this.scene, startPos, direction);
-    gleamSystem.start();
-    this.particleSystems.push(gleamSystem);
-    
-    // Add impact sparks
+    // Add metallic impact sparks (no blood)
     const sparkSystem = ParticleSystem.createMetallicSparks(this.scene, endPos);
     sparkSystem.start();
     this.particleSystems.push(sparkSystem);
@@ -93,7 +174,7 @@ export class EffectsManager {
     this.shakeCamera(0.015);
   }
   
-  private createSlashTrail(startPos: THREE.Vector3, endPos: THREE.Vector3): THREE.Line | null {
+  private createMetallicSlashTrail(startPos: THREE.Vector3, endPos: THREE.Vector3): THREE.Line | null {
     const direction = endPos.clone().sub(startPos);
     const length = direction.length();
     
@@ -109,23 +190,23 @@ export class EffectsManager {
     const points = curve.getPoints(12);
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     
-    // Create subtle material for the slash - much less visible
+    // Create metallic slash material
     const material = new THREE.LineBasicMaterial({
-      color: 0x888888,
+      color: 0xCCCCDD,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.4,
       linewidth: 1
     });
     
     const slashTrail = new THREE.Line(geometry, material);
     
     slashTrail.userData = {
-      type: 'slash_trail',
+      type: 'metallic_slash_trail',
       age: 0,
-      duration: 100, // Reduced from 300ms to 100ms
+      duration: 120,
       update: (deltaTime: number) => {
         const progress = slashTrail.userData.age / slashTrail.userData.duration;
-        material.opacity = 0.3 * (1 - progress);
+        material.opacity = 0.4 * (1 - progress);
       }
     };
     
@@ -257,16 +338,16 @@ export class EffectsManager {
   
   // Legacy methods updated with realistic effects
   public createAttackEffect(position: THREE.Vector3, color: number = 0xFF6B6B): void {
-    // Use realistic slash effect instead of geometric shapes
+    // Use swoosh effect for empty attacks
     const direction = new THREE.Vector3(1, 0, 0);
     const startPos = position.clone().add(new THREE.Vector3(-0.5, 0.8, 0));
     const endPos = position.clone().add(new THREE.Vector3(0.5, 0.8, 0));
     
-    this.createSwordSlashEffect(startPos, endPos, direction);
+    this.createSwordSwooshEffect(startPos, endPos, direction);
   }
   
   public createDamageEffect(position: THREE.Vector3): void {
-    // Use realistic blood effect instead of geometric particles
+    // Use realistic blood effect for damage
     const direction = new THREE.Vector3(0, 0, 1);
     this.createRealisticBloodEffect(position, direction, 1);
   }
@@ -287,7 +368,7 @@ export class EffectsManager {
     const startPos = position.clone().sub(direction.clone().multiplyScalar(0.5));
     const endPos = position.clone().add(direction.clone().multiplyScalar(0.5));
     
-    this.createSwordSlashEffect(startPos, endPos, direction);
+    this.createSwordSwooshEffect(startPos, endPos, direction);
   }
   
   public createSwordTrail(positions: THREE.Vector3[]): THREE.Line | null {
@@ -373,17 +454,8 @@ export class EffectsManager {
   
   public clearEffects(): void {
     this.effects.forEach(effect => {
-      // Proper cleanup with geometry and material disposal
-      if (effect.geometry) {
-        effect.geometry.dispose();
-      }
-      if (effect.material) {
-        if (Array.isArray(effect.material)) {
-          effect.material.forEach(mat => mat.dispose());
-        } else {
-          effect.material.dispose();
-        }
-      }
+      // Proper cleanup with type guards
+      this.disposeEffectSafely(effect);
       this.scene.remove(effect);
     });
     this.effects.clear();

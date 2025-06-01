@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { PlayerBody, WeaponSwingAnimation, PlayerStats } from '../../types/GameTypes';
@@ -954,7 +953,14 @@ export class Player {
       direction = recent.clone().sub(previous).normalize();
     }
     
-    this.effectsManager.createSwooshEffect(tipPosition, direction);
+    // FIXED: Use sword swoosh effect instead of createSwooshEffect to avoid blood
+    this.effectsManager.createSwordSwooshEffect(
+      this.weaponTipPositions[0], 
+      tipPosition, 
+      direction
+    );
+    
+    console.log("🌪️ [Player] Created enhanced sword swoosh effect (no blood)");
   }
   
   private createWeaponTrailEffect(): void {

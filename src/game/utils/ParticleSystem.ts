@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 interface ParticleOptions {
@@ -231,6 +230,27 @@ export class ParticleSystem {
       const sizeMultiplier = 1 - particleProgress * 0.3;
       sprite.scale.setScalar(particle.size * 2 * sizeMultiplier);
     }
+  }
+  
+  // NEW: Wind trail effect for sword swooshes
+  static createWindTrail(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 12,
+      duration: 300,
+      size: 0.04,
+      sizeVariation: 0.02,
+      speed: 1.5,
+      speedVariation: 0.8,
+      color: 0xBBCCDD,
+      colorVariation: 0.1,
+      gravity: 0.1,
+      direction: direction,
+      spread: 0.3,
+      opacity: 0.3,
+      fadeIn: 0.1,
+      fadeOut: 0.6
+    });
   }
   
   // Enhanced realistic blood effects with improved textures
