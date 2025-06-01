@@ -26,7 +26,7 @@ export const STANDARD_SWORD_ANIMATION: StandardSwordAnimationConfig = {
   rotations: {
     neutral: { x: THREE.MathUtils.degToRad(60), y: 0, z: 0 }, // 60° ready position
     windup: { 
-      x: THREE.MathUtils.degToRad(70),           // 70° move to right side
+      x: THREE.MathUtils.degToRad(50),           // 50° move to right side
       y: THREE.MathUtils.degToRad(10),           // 10° right side position
       z: THREE.MathUtils.degToRad(20)            // 20° twist for power buildup
     },
