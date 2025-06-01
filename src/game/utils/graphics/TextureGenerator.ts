@@ -1,5 +1,8 @@
+
+import * as THREE from 'three';
+
 export class TextureGenerator {
-  public static createWoodTexture(color: number): THREE.CanvasTexture {
+  public static createWoodTexture(color: number = 0x8B4513): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     const size = 128;
     canvas.width = size;
@@ -27,7 +30,7 @@ export class TextureGenerator {
     return texture;
   }
   
-  public static createMetalTexture(color: number): THREE.CanvasTexture {
+  public static createMetalTexture(color: number = 0xC0C0C0): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     const size = 128;
     canvas.width = size;

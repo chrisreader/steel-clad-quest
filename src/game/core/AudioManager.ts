@@ -1,135 +1,156 @@
+
 import * as THREE from 'three';
 
 export enum SoundCategory {
   SFX = 'sfx',
-  Music = 'music',
-  Ambient = 'ambient'
+  MUSIC = 'music',
+  AMBIENT = 'ambient',
+  UI = 'ui'
+}
+
+interface SoundConfig {
+  buffer: AudioBuffer;
+  category: SoundCategory;
+  volume: number;
+  loop: boolean;
 }
 
 export class AudioManager {
+  private audioContext: AudioContext;
   private listener: THREE.AudioListener;
-  private audioLoader: THREE.AudioLoader;
-  private sounds: Map<string, THREE.Audio<GainNode>> = new Map();
-  private categoryVolumes: Map<SoundCategory, number> = new Map([
-    [SoundCategory.SFX, 0.5],
-    [SoundCategory.Music, 0.25],
-    [SoundCategory.Ambient, 0.3]
-  ]);
-  
+  private sounds: Map<string, SoundConfig> = new Map();
+  private playingSounds: Map<string, THREE.Audio> = new Map();
+  private categoryVolumes: Map<SoundCategory, number> = new Map();
+  private masterVolume: number = 1.0;
+
   constructor(camera: THREE.PerspectiveCamera, scene: THREE.Scene) {
-    console.log("🔊 [AudioManager] Initializing...");
-    
-    // Create audio listener and add to the camera
+    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.listener = new THREE.AudioListener();
     camera.add(this.listener);
     
-    // Add listener to the scene for spatial sound
-    scene.add(this.listener);
-    
-    // Create audio loader
-    this.audioLoader = new THREE.AudioLoader();
-    
-    console.log("🔊 [AudioManager] Initialized successfully");
+    // Initialize category volumes
+    this.categoryVolumes.set(SoundCategory.SFX, 0.7);
+    this.categoryVolumes.set(SoundCategory.MUSIC, 0.5);
+    this.categoryVolumes.set(SoundCategory.AMBIENT, 0.6);
+    this.categoryVolumes.set(SoundCategory.UI, 0.8);
   }
-  
-  public loadSound(url: string, id: string, category: SoundCategory = SoundCategory.SFX): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.audioLoader.load(
-        url,
-        (buffer) => {
-          const sound = new THREE.Audio<GainNode>(this.listener);
-          sound.setBuffer(buffer);
-          sound.setLoop(false);
-          sound.setVolume(this.categoryVolumes.get(category) || 0.5);
-          this.sounds.set(id, sound);
-          console.log(`🔊 [AudioManager] Sound loaded: ${id} from ${url}`);
-          resolve();
-        },
-        undefined,
-        (error) => {
-          console.error(`🔊 [AudioManager] Error loading sound: ${id} from ${url}`, error);
-          reject(error);
-        }
-      );
-    });
-  }
-  
-  public play(id: string, loop: boolean = false): void {
-    const sound = this.sounds.get(id);
-    if (!sound) {
-      console.warn(`🔊 [AudioManager] Sound not found: ${id}`);
-      return;
-    }
-    
-    sound.stop(); // Stop previous instances
-    sound.setLoop(loop);
-    sound.play();
-  }
-  
-  public pause(id: string): void {
-    const sound = this.sounds.get(id);
-    if (sound && sound.isPlaying) {
-      sound.pause();
+
+  public async loadSound(url: string, id: string, category: SoundCategory = SoundCategory.SFX): Promise<void> {
+    try {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      
+      this.sounds.set(id, {
+        buffer: audioBuffer,
+        category,
+        volume: 1.0,
+        loop: false
+      });
+      
+      console.log(`🔊 [AudioManager] Loaded sound: ${id}`);
+    } catch (error) {
+      console.warn(`🔊 [AudioManager] Failed to load sound ${id}:`, error);
     }
   }
-  
-  public resume(id: string): void {
-    const sound = this.sounds.get(id);
-    if (sound && sound.isPaused) {
-      sound.play();
+
+  public play(soundId: string, loop: boolean = false): THREE.Audio | null {
+    const soundConfig = this.sounds.get(soundId);
+    if (!soundConfig) {
+      console.warn(`🔊 [AudioManager] Sound not found: ${soundId}`);
+      return null;
+    }
+
+    try {
+      // Stop existing instance if playing
+      if (this.playingSounds.has(soundId)) {
+        this.stop(soundId);
+      }
+
+      const audio = new THREE.Audio(this.listener);
+      audio.setBuffer(soundConfig.buffer);
+      audio.setLoop(loop);
+      
+      const categoryVolume = this.categoryVolumes.get(soundConfig.category) || 1.0;
+      const finalVolume = this.masterVolume * categoryVolume * soundConfig.volume;
+      audio.setVolume(finalVolume);
+      
+      audio.play();
+      this.playingSounds.set(soundId, audio);
+      
+      // Remove from playing sounds when finished (if not looping)
+      if (!loop) {
+        setTimeout(() => {
+          this.playingSounds.delete(soundId);
+        }, (soundConfig.buffer.duration * 1000) + 100);
+      }
+      
+      return audio;
+    } catch (error) {
+      console.warn(`🔊 [AudioManager] Failed to play sound ${soundId}:`, error);
+      return null;
     }
   }
-  
-  public stop(id: string): void {
-    const sound = this.sounds.get(id);
-    if (sound && sound.isPlaying) {
-      sound.stop();
+
+  public stop(soundId: string): void {
+    const audio = this.playingSounds.get(soundId);
+    if (audio && audio.isPlaying) {
+      audio.stop();
+      this.playingSounds.delete(soundId);
     }
   }
-  
-  public setVolume(id: string, volume: number): void {
-    const sound = this.sounds.get(id);
-    if (sound) {
-      sound.setVolume(volume);
+
+  public pause(soundId: string): void {
+    const audio = this.playingSounds.get(soundId);
+    if (audio && audio.isPlaying) {
+      audio.pause();
     }
   }
-  
+
+  public resume(soundId: string): void {
+    const audio = this.playingSounds.get(soundId);
+    if (audio) {
+      audio.play();
+    }
+  }
+
+  public setMasterVolume(volume: number): void {
+    this.masterVolume = Math.max(0, Math.min(1, volume));
+    this.updateAllVolumes();
+  }
+
   public setCategoryVolume(category: SoundCategory, volume: number): void {
-    this.categoryVolumes.set(category, volume);
-    
-    // Update volume for all sounds in this category
-    this.sounds.forEach((sound, id) => {
-      // @ts-ignore
-      if (sound.buffer && sound.buffer.url && sound.buffer.url.includes(category)) {
-        sound.setVolume(volume);
+    this.categoryVolumes.set(category, Math.max(0, Math.min(1, volume)));
+    this.updateAllVolumes();
+  }
+
+  private updateAllVolumes(): void {
+    this.playingSounds.forEach((audio, soundId) => {
+      const soundConfig = this.sounds.get(soundId);
+      if (soundConfig) {
+        const categoryVolume = this.categoryVolumes.get(soundConfig.category) || 1.0;
+        const finalVolume = this.masterVolume * categoryVolume * soundConfig.volume;
+        audio.setVolume(finalVolume);
       }
     });
   }
-  
-  public getCategoryVolume(category: SoundCategory): number {
-    return this.categoryVolumes.get(category) || 0.5;
-  }
-  
+
   public update(): void {
-    // Update listener position (if needed)
-    // this.listener.position.copy(this.camera.position);
-    // this.listener.rotation.copy(this.camera.rotation);
+    // Update audio system if needed
   }
-  
+
   public dispose(): void {
-    console.log("🔊 [AudioManager] Disposing...");
-    
-    // Stop and dispose all sounds
-    this.sounds.forEach((sound, id) => {
-      sound.stop();
-      sound.disconnect();
+    // Stop all playing sounds
+    this.playingSounds.forEach(audio => {
+      if (audio.isPlaying) {
+        audio.stop();
+      }
     });
-    this.sounds.clear();
+    this.playingSounds.clear();
     
-    // Dispose the listener
-    this.listener.disconnect();
-    
-    console.log("🔊 [AudioManager] Disposed successfully");
+    // Dispose of audio context
+    if (this.audioContext.state !== 'closed') {
+      this.audioContext.close();
+    }
   }
 }
-

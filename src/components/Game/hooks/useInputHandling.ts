@@ -1,6 +1,5 @@
-
 import { useEffect, useCallback } from 'react';
-import { GameEngine } from '../../../game/engine/GameEngine';
+import { GameEngine } from '../../../game/core/GameEngine';
 
 interface UseInputHandlingProps {
   gameStarted: boolean;

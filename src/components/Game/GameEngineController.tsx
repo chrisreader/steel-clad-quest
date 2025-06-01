@@ -1,6 +1,5 @@
-
 import React, { useEffect, useRef, useCallback } from 'react';
-import { GameEngine } from '../../game/engine/GameEngine';
+import { GameEngine } from '../../game/core/GameEngine';
 
 interface GameEngineControllerProps {
   onUpdateHealth: (health: number) => void;
