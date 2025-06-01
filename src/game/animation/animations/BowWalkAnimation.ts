@@ -64,10 +64,10 @@ export class BowWalkAnimation {
     // Hands - maintain grip positions with subtle movement
     const handBreathing = Math.sin(this.breathingTime * 1.2) * this.config.handMovement;
     
-    // FIXED: Left hand maintains bow grip with corrected Z-rotation (15° instead of 45°)
-    playerBody.leftHand.rotation.x = -Math.PI / 6 + handBreathing;
-    playerBody.leftHand.rotation.y = 0;
-    playerBody.leftHand.rotation.z = Math.PI / 12; // FIXED: Changed from Math.PI / 4 to Math.PI / 12 (15°)
+    // UPDATED: Left hand maintains bow grip with corrected rotation (0°, 0°, 15°)
+    playerBody.leftHand.rotation.x = 0 + handBreathing; // UPDATED: 0° downward angle for grip
+    playerBody.leftHand.rotation.y = 0; // UPDATED: 0° no side rotation
+    playerBody.leftHand.rotation.z = Math.PI / 12; // UPDATED: 15° slight twist for bow grip
     
     // Right hand ready position
     playerBody.rightHand.rotation.x = handBreathing * 0.5;
@@ -99,8 +99,8 @@ export class BowWalkAnimation {
       playerBody.rightElbow.rotation.set(0.3, 0, 0);
     }
     
-    // FIXED: Left hand with corrected Z-rotation (15° instead of 45°)
-    playerBody.leftHand.rotation.set(-Math.PI / 6, 0, Math.PI / 12); // FIXED: Changed from Math.PI / 4 to Math.PI / 12
+    // UPDATED: Left hand with corrected rotation (0°, 0°, 15°)
+    playerBody.leftHand.rotation.set(0, 0, Math.PI / 12); // UPDATED: 0° X, 0° Y, 15° Z
     playerBody.rightHand.rotation.set(0, 0, 0);
     
     if (playerBody.body) {

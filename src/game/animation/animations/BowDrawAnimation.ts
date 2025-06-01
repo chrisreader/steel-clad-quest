@@ -70,9 +70,9 @@ export class BowDrawAnimation {
     }
     
     // Hand positions for drawing - also transition smoothly
-    const targetLeftHandX = -Math.PI / 6;
-    const targetLeftHandY = 0;
-    const targetLeftHandZ = Math.PI / 12; // FIXED: Changed from Math.PI / 4 to Math.PI / 12 (15°)
+    const targetLeftHandX = 0;  // UPDATED: 0° downward angle for grip
+    const targetLeftHandY = 0;  // UPDATED: 0° no side rotation
+    const targetLeftHandZ = Math.PI / 12; // UPDATED: 15° slight twist for bow grip
     
     playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
       playerBody.leftHand.rotation.x,
@@ -110,8 +110,8 @@ export class BowDrawAnimation {
       playerBody.rightElbow.rotation.set(0.3, 0, 0);
     }
     
-    // FIXED: Left hand with corrected Z-rotation (15° instead of 45°)
-    playerBody.leftHand.rotation.set(-Math.PI / 6, 0, Math.PI / 12); // FIXED: Changed from Math.PI / 4 to Math.PI / 12
+    // UPDATED: Left hand with corrected rotation (0°, 0°, 15°)
+    playerBody.leftHand.rotation.set(0, 0, Math.PI / 12); // UPDATED: 0° X, 0° Y, 15° Z
     playerBody.rightHand.rotation.set(0, 0, 0);
     
     console.log('🏹 [BowDrawAnimation] Reset to bow ready stance');
