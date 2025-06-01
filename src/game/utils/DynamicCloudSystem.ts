@@ -18,7 +18,7 @@ export class DynamicCloudSystem {
   private time: number = 0;
   private windDirection: THREE.Vector3;
   private spawnTimer: number = 0;
-  private spawnInterval: number = 3000; // 3 seconds
+  private spawnInterval: number = 8000; // Increased from 3000 to 8000ms for fewer clouds
   
   // Distance-based fade settings - adjusted for better visibility
   private fadeInDistance: number = 150; // Increased for larger visible zone
@@ -37,62 +37,63 @@ export class DynamicCloudSystem {
       fog: false // Don't let fog affect clouds
     });
     
-    console.log('DynamicCloudSystem initialized with realistic settings');
+    console.log('DynamicCloudSystem initialized with realistic distributed sky settings');
     console.log('Fade distances - In:', this.fadeInDistance, 'Out:', this.fadeOutDistance);
   }
   
   public initialize(): void {
-    // Create initial clouds positioned within visible range for immediate demonstration
-    for (let i = 0; i < 8; i++) {
+    // Create fewer initial clouds positioned across a wider area for realistic distribution
+    for (let i = 0; i < 5; i++) { // Reduced from 8 to 5 initial clouds
       this.createCloud(true);
     }
-    console.log(`Cloud system initialized with ${this.clouds.length} clouds in visible range`);
+    console.log(`Realistic sky initialized with ${this.clouds.length} well-distributed clouds`);
   }
   
   private createCloud(isInitial: boolean = false): void {
-    // Create cloud geometry using multiple spheres - larger for more realistic appearance
+    // Create simplified cloud geometry - fewer puffs for individual cloud formations
     const cloudGroup = new THREE.Group();
     
-    // Create multiple cloud puffs with shared material
-    const puffCount = 4 + Math.floor(Math.random() * 4); // More puffs for fuller clouds
+    // Fewer puffs per cloud for realistic individual formations
+    const puffCount = 1 + Math.floor(Math.random() * 3); // Reduced from 4-8 to 1-3 puffs
     for (let i = 0; i < puffCount; i++) {
       const puffGeometry = new THREE.SphereGeometry(
-        12 + Math.random() * 10, // Much larger radius: 12-22 units (was 6-10)
+        12 + Math.random() * 10, // Keep large radius for visibility: 12-22 units
         16, 12
       );
       // Clone material for each puff to allow individual opacity control
       const puffMaterial = this.cloudMaterial.clone();
       const puffMesh = new THREE.Mesh(puffGeometry, puffMaterial);
       
-      // Position puffs to create larger cloud shape
+      // Create more elongated, natural cloud shapes with better horizontal spread
       puffMesh.position.set(
-        (Math.random() - 0.5) * 25, // Wider spread for larger clouds
-        (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 18
+        (Math.random() - 0.5) * 30, // Increased horizontal spread for elongated clouds
+        (Math.random() - 0.5) * 8,  // Reduced vertical spread for flatter clouds
+        (Math.random() - 0.5) * 20  // Moderate depth spread
       );
       
-      puffMesh.scale.y = 0.6; // Flatten clouds for more realistic shape
+      puffMesh.scale.y = 0.5; // More flattened for realistic cumulus appearance
+      puffMesh.scale.x = 1.2; // Slightly stretched horizontally
       cloudGroup.add(puffMesh);
     }
     
-    // Position cloud in sky
+    // Position cloud in sky with better distribution
     const cloudHeight = 35 + Math.random() * 15; // Lower height for better visibility
     let spawnX, spawnZ;
     
     if (isInitial) {
-      // Initial clouds: spawn within visible range (50-120 units from origin)
+      // Initial clouds: distribute across a much wider area for realistic spacing
       const angle = (Math.random() * Math.PI * 2);
-      const distance = 50 + Math.random() * 70; // Within fade-in distance for immediate visibility
+      const distance = 60 + Math.random() * 120; // Wider distribution: 60-180 units
       spawnX = Math.cos(angle) * distance;
       spawnZ = Math.sin(angle) * distance;
-      console.log(`Initial cloud spawned at distance ${distance.toFixed(1)} from origin`);
+      console.log(`Distributed cloud spawned at distance ${distance.toFixed(1)} from origin`);
     } else {
-      // New clouds: spawn at edge of system and move toward visible zone
-      const spawnDistance = 220; // Outside fadeOut distance
-      // Spawn upwind so they move toward player area
-      spawnX = -this.windDirection.x * spawnDistance + (Math.random() - 0.5) * 100;
-      spawnZ = -this.windDirection.z * spawnDistance + (Math.random() - 0.5) * 100;
-      console.log(`New cloud spawned at distance ${spawnDistance} (outside visible range)`);
+      // New clouds: spawn further away with better spacing
+      const spawnDistance = 240; // Increased spawn distance for better distribution
+      // Spawn upwind with more variation for natural appearance
+      spawnX = -this.windDirection.x * spawnDistance + (Math.random() - 0.5) * 150;
+      spawnZ = -this.windDirection.z * spawnDistance + (Math.random() - 0.5) * 150;
+      console.log(`New distributed cloud spawned at distance ${spawnDistance}`);
     }
     
     cloudGroup.position.set(spawnX, cloudHeight, spawnZ);
@@ -113,25 +114,25 @@ export class DynamicCloudSystem {
       targetOpacity: baseOpacity,
       fadeSpeed: 0.02 + Math.random() * 0.01, // Faster fade transitions
       age: 0,
-      maxAge: 40000 + Math.random() * 20000, // 40-60 seconds
+      maxAge: 50000 + Math.random() * 30000, // Longer lifespan: 50-80 seconds for fewer clouds
       baseOpacity: baseOpacity
     };
     
     this.clouds.push(cloud);
     this.scene.add(cloudGroup);
     
-    console.log(`Created larger cloud at position (${spawnX.toFixed(1)}, ${cloudHeight.toFixed(1)}, ${spawnZ.toFixed(1)}) with reduced baseOpacity ${baseOpacity.toFixed(2)}`);
+    console.log(`Created realistic cloud (${puffCount} puffs) at position (${spawnX.toFixed(1)}, ${cloudHeight.toFixed(1)}, ${spawnZ.toFixed(1)}) with baseOpacity ${baseOpacity.toFixed(2)}`);
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     this.time += deltaTime;
     this.spawnTimer += deltaTime * 1000;
     
-    // Spawn new clouds periodically
-    if (this.spawnTimer >= this.spawnInterval && this.clouds.length < 12) {
+    // Spawn new clouds less frequently to maintain realistic sky density
+    if (this.spawnTimer >= this.spawnInterval && this.clouds.length < 7) { // Reduced max from 12 to 7
       this.createCloud(false);
       this.spawnTimer = 0;
-      console.log(`Spawned new cloud, total clouds: ${this.clouds.length}`);
+      console.log(`Spawned new cloud for realistic sky, total clouds: ${this.clouds.length}`);
     }
     
     // Update existing clouds
