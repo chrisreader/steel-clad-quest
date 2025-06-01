@@ -17,7 +17,7 @@ export const useGameManager = () => {
       value: 150,
       description: 'A well-crafted hunting bow made from flexible yew wood. Draw and release to shoot arrows with varying power based on draw time. Perfect for ranged combat (+8 attack)',
       quantity: 1,
-      equipmentSlot: 'mainhand' as const,
+      equipmentSlot: 'primary' as const,
       stats: { attack: 8 },
       tier: 'common' as const,
       icon: 'bow',
