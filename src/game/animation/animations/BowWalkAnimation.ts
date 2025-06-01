@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -30,8 +29,8 @@ export class BowWalkAnimation {
     
     // BOW READY STANCE: Left arm raised for bow, right arm at side
     
-    // Left arm - WEAPON ARM: raised bow-holding position at 80 degrees (active position) with reduced swing
-    const leftArmBaseX = Math.PI * 80 / 180;   // 80° raised position (active position) for walking/running
+    // Left arm - WEAPON ARM: raised bow-holding position at 70 degrees (active position) with reduced swing
+    const leftArmBaseX = Math.PI * 70 / 180;   // 70° raised position (active position) for walking/running
     const leftArmBaseY = 0;                    // NO Y rotation - keep parallel with body
     const leftArmBaseZ = 0;                    // NO Z rotation - keep parallel with body
     
@@ -80,14 +79,14 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    console.log(`🏹 [BowWalkAnimation] Walking/Running - Left arm at 80° (active position) parallel with body - Sprint: ${isSprinting}`);
+    console.log(`🏹 [BowWalkAnimation] Walking/Running - Left arm at 70° (active position) parallel with body - Sprint: ${isSprinting}`);
   }
   
   public reset(playerBody: PlayerBody): void {
-    // Reset to BOW WALKING READY STANCE with 80 degree positioning (active walking position)
+    // Reset to BOW WALKING READY STANCE with 70 degree positioning (active walking position)
     
-    // Left arm: Raised bow-holding position at 80 degrees (active position) for walking - parallel with body
-    playerBody.leftArm.rotation.set(Math.PI * 80 / 180, 0, 0);
+    // Left arm: Raised bow-holding position at 70 degrees (active position) for walking - parallel with body
+    playerBody.leftArm.rotation.set(Math.PI * 70 / 180, 0, 0);
     
     // Right arm: Ready position - NO Y rotation
     playerBody.rightArm.rotation.set(Math.PI / 6, 0, -Math.PI / 8);
@@ -107,6 +106,6 @@ export class BowWalkAnimation {
       playerBody.body.rotation.z = 0;
     }
     
-    console.log('🏹 [BowWalkAnimation] Reset to walking ready stance - Left arm at 80° (active position) parallel with body');
+    console.log('🏹 [BowWalkAnimation] Reset to walking ready stance - Left arm at 70° (active position) parallel with body');
   }
 }

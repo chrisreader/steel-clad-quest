@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
@@ -67,8 +66,8 @@ export class WeaponAnimationSystem {
       
       case 'walking':
         return {
-          // Left arm (bow-holding): 80° upward, parallel with body
-          leftArmX: Math.PI * 80 / 180,
+          // Left arm (bow-holding): 70° upward, parallel with body
+          leftArmX: Math.PI * 70 / 180,
           leftArmY: 0,
           leftArmZ: 0,
           // Right arm (string-pulling): 40° upward, no inward angle
