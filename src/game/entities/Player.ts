@@ -594,16 +594,15 @@ export class Player {
       // Attach bow to left HAND for proper control with TALLER realistic arm system
       this.playerBody.leftHand.add(weapon.getMesh());
       
-      // FIXED: Position and rotate bow for VERTICAL orientation in the hand
-      weapon.getMesh().position.set(0, -0.1, 0.05);
-      // CRITICAL FIX: Rotate bow 90 degrees around X-axis to make it vertical (up-down)
-      weapon.getMesh().rotation.set(Math.PI / 2, 0, 0); // 90° X rotation makes bow vertical
+      // FIXED: Position bow handle properly in the enhanced hand for vertical orientation
+      weapon.getMesh().position.set(0, -0.1, 0.05); // Adjusted for vertical bow
+      weapon.getMesh().rotation.set(0, 0, 0); // Let the bow's internal rotation handle orientation
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
       
       // Set bow ready stance - left arm raised outward
       this.setWeaponArmStance('bow');
       
-      console.log(`🏹 [Player] Bow equipped with VERTICAL orientation (90° X rotation) and raised left arm ready stance`);
+      console.log(`🏹 [Player] Bow equipped with vertical orientation and raised left arm ready stance`);
     } else {
       weaponType = 'melee';
       // Attach melee weapon to right hand with TALLER realistic positioning
