@@ -20,15 +20,22 @@ export class DynamicCloudSystem {
   private time: number = 0;
   private windDirection: THREE.Vector3;
   private spawnTimer: number = 0;
-  private spawnInterval: number = 5500; // Reduced from 8000 to 5500ms for more frequent spawning
+  private baseSpawnInterval: number = 4000; // Base spawn interval
+  private currentSpawnInterval: number = 4000;
   
-  // Player-centered system variables
+  // Player-centered system variables - IMPROVED VALUES
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
-  private playerMovementThreshold: number = 10; // Distance player must move to trigger repositioning
+  private playerMovementThreshold: number = 3; // Reduced from 10 to 3 for more responsive following
+  private playerMovementSpeed: number = 0; // Track player movement speed
   
-  // Distance-based fade settings - adjusted for better visibility
-  private fadeInDistance: number = 150; // Increased for larger visible zone
-  private fadeOutDistance: number = 250; // Increased for larger visible zone
+  // Distance-based fade settings - EXPANDED for better coverage
+  private fadeInDistance: number = 200; // Increased visible zone
+  private fadeOutDistance: number = 300; // Increased fade zone
+  private maxCloudDistance: number = 400; // Hard limit for cloud removal
+  
+  // Spawn zone settings - EXPANDED
+  private minSpawnDistance: number = 150; // Minimum distance from player to spawn
+  private maxSpawnDistance: number = 350; // Maximum distance from player to spawn
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -39,12 +46,13 @@ export class DynamicCloudSystem {
     this.cloudMaterial = new THREE.MeshLambertMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.4, // Reduced from 0.8 for more realistic appearance
-      fog: false // Don't let fog affect clouds
+      opacity: 0.4,
+      fog: false
     });
     
-    console.log('DynamicCloudSystem initialized with player-centered spawning');
-    console.log('Spawn interval:', this.spawnInterval, 'ms');
+    console.log('DynamicCloudSystem initialized with IMPROVED player-centered spawning');
+    console.log('Movement threshold:', this.playerMovementThreshold, 'units');
+    console.log('Spawn zone:', this.minSpawnDistance, '-', this.maxSpawnDistance, 'units from player');
   }
   
   public initialize(playerPosition?: THREE.Vector3): void {
@@ -53,42 +61,40 @@ export class DynamicCloudSystem {
       this.lastPlayerPosition.copy(playerPosition);
     }
     
-    // Create initial clouds positioned around the player (or origin if no player position)
-    for (let i = 0; i < 5; i++) {
+    // Create initial clouds positioned around the player
+    for (let i = 0; i < 6; i++) {
       this.createCloud(true, playerPosition);
     }
-    console.log(`Player-centered cloud sky initialized with ${this.clouds.length} clouds around player position`);
+    console.log(`IMPROVED player-centered cloud sky initialized with ${this.clouds.length} clouds around player`);
   }
   
   private createCloud(isInitial: boolean = false, playerPosition?: THREE.Vector3): void {
-    // Create simplified cloud geometry - fewer puffs for individual cloud formations
+    // Create simplified cloud geometry
     const cloudGroup = new THREE.Group();
     
     // Fewer puffs per cloud for realistic individual formations
-    const puffCount = 1 + Math.floor(Math.random() * 3); // Reduced from 4-8 to 1-3 puffs
+    const puffCount = 1 + Math.floor(Math.random() * 3);
     for (let i = 0; i < puffCount; i++) {
       const puffGeometry = new THREE.SphereGeometry(
-        12 + Math.random() * 10, // Keep large radius for visibility: 12-22 units
+        12 + Math.random() * 10,
         16, 12
       );
-      // Clone material for each puff to allow individual opacity control
       const puffMaterial = this.cloudMaterial.clone();
       const puffMesh = new THREE.Mesh(puffGeometry, puffMaterial);
       
-      // Create more elongated, natural cloud shapes with better horizontal spread
       puffMesh.position.set(
-        (Math.random() - 0.5) * 30, // Increased horizontal spread for elongated clouds
-        (Math.random() - 0.5) * 8,  // Reduced vertical spread for flatter clouds
-        (Math.random() - 0.5) * 20  // Moderate depth spread
+        (Math.random() - 0.5) * 30,
+        (Math.random() - 0.5) * 8,
+        (Math.random() - 0.5) * 20
       );
       
-      puffMesh.scale.y = 0.5; // More flattened for realistic cumulus appearance
-      puffMesh.scale.x = 1.2; // Slightly stretched horizontally
+      puffMesh.scale.y = 0.5;
+      puffMesh.scale.x = 1.2;
       cloudGroup.add(puffMesh);
     }
     
-    // Position cloud in sky with better distribution - NOW RELATIVE TO PLAYER
-    const cloudHeight = 35 + Math.random() * 15; // Lower height for better visibility
+    // Position cloud in sky RELATIVE TO PLAYER - IMPROVED DISTRIBUTION
+    const cloudHeight = 35 + Math.random() * 15;
     let spawnX, spawnZ;
     
     // Use player position as the center of the cloud spawning area
@@ -96,84 +102,143 @@ export class DynamicCloudSystem {
     const centerZ = playerPosition ? playerPosition.z : 0;
     
     if (isInitial) {
-      // Initial clouds: distribute in a circle around the player/center position
+      // Initial clouds: distribute in a circle around the player
       const angle = (Math.random() * Math.PI * 2);
-      const distance = 60 + Math.random() * 120; // Wider distribution: 60-180 units
+      const distance = this.minSpawnDistance + Math.random() * (this.maxSpawnDistance - this.minSpawnDistance);
       spawnX = centerX + Math.cos(angle) * distance;
       spawnZ = centerZ + Math.sin(angle) * distance;
-      console.log(`Initial cloud spawned at distance ${distance.toFixed(1)} from player position (${centerX.toFixed(1)}, ${centerZ.toFixed(1)})`);
+      console.log(`Initial cloud spawned at distance ${distance.toFixed(1)} from player (${centerX.toFixed(1)}, ${centerZ.toFixed(1)})`);
     } else {
-      // New clouds: spawn upwind relative to the player's current position
-      const spawnDistance = 240; // Increased spawn distance for better distribution
-      // Spawn upwind with more variation for natural appearance
-      spawnX = centerX + (-this.windDirection.x * spawnDistance) + (Math.random() - 0.5) * 150;
-      spawnZ = centerZ + (-this.windDirection.z * spawnDistance) + (Math.random() - 0.5) * 150;
-      console.log(`New cloud spawned upwind at distance ${spawnDistance} from player position (${centerX.toFixed(1)}, ${centerZ.toFixed(1)})`);
+      // New clouds: spawn around player in expanded zone with bias toward upwind
+      const angle = Math.random() * Math.PI * 2;
+      let distance = this.minSpawnDistance + Math.random() * (this.maxSpawnDistance - this.minSpawnDistance);
+      
+      // Bias toward upwind direction (opposite of wind) for natural flow
+      const upwindBias = Math.random() * 0.5; // 50% chance for upwind bias
+      if (upwindBias > 0.3) {
+        const upwindAngle = Math.atan2(-this.windDirection.z, -this.windDirection.x);
+        const biasedAngle = upwindAngle + (Math.random() - 0.5) * Math.PI; // ±90° from upwind
+        spawnX = centerX + Math.cos(biasedAngle) * distance;
+        spawnZ = centerZ + Math.sin(biasedAngle) * distance;
+        console.log(`New cloud spawned UPWIND at distance ${distance.toFixed(1)} from player (${centerX.toFixed(1)}, ${centerZ.toFixed(1)})`);
+      } else {
+        spawnX = centerX + Math.cos(angle) * distance;
+        spawnZ = centerZ + Math.sin(angle) * distance;
+        console.log(`New cloud spawned at distance ${distance.toFixed(1)} from player (${centerX.toFixed(1)}, ${centerZ.toFixed(1)})`);
+      }
     }
     
     cloudGroup.position.set(spawnX, cloudHeight, spawnZ);
     
-    // Reduced base opacity range for more realistic appearance (50% reduction)
-    const baseOpacity = 0.2 + Math.random() * 0.2; // 0.2 to 0.4 range (was 0.4-0.8)
+    // Base opacity range for realistic appearance
+    const baseOpacity = 0.2 + Math.random() * 0.2;
     
     // Create cloud object
     const cloud: Cloud = {
       mesh: cloudGroup,
-      // Faster velocity for more noticeable movement - INDEPENDENT OF PLAYER MOVEMENT
       velocity: new THREE.Vector3(
-        this.windDirection.x * 3.0, // Increased from 1.2 to 3.0
+        this.windDirection.x * 3.0,
         0,
         this.windDirection.z * 3.0
       ),
-      opacity: isInitial ? 0.05 : 0, // Start initial clouds with very low opacity
+      opacity: isInitial ? 0.05 : 0,
       targetOpacity: baseOpacity,
-      fadeSpeed: 0.02 + Math.random() * 0.01, // Faster fade transitions
+      fadeSpeed: 0.02 + Math.random() * 0.01,
       age: 0,
-      maxAge: 30000 + Math.random() * 20000, // Reduced lifespan: 30-50 seconds for faster turnover
+      maxAge: 25000 + Math.random() * 15000, // 25-40 seconds
       baseOpacity: baseOpacity,
-      fadedOutTime: 0 // Initialize fade-out tracking
+      fadedOutTime: 0
     };
     
     this.clouds.push(cloud);
     this.scene.add(cloudGroup);
     
-    console.log(`Created player-centered cloud (${puffCount} puffs) at (${spawnX.toFixed(1)}, ${cloudHeight.toFixed(1)}, ${spawnZ.toFixed(1)}) - lifespan: ${(cloud.maxAge/1000).toFixed(1)}s`);
+    console.log(`Created PLAYER-CENTERED cloud at (${spawnX.toFixed(1)}, ${cloudHeight.toFixed(1)}, ${spawnZ.toFixed(1)})`);
+  }
+  
+  private spawnCloudsAroundPlayer(playerPosition: THREE.Vector3, count: number = 2): void {
+    console.log(`IMMEDIATE spawn of ${count} clouds around new player position`);
+    for (let i = 0; i < count; i++) {
+      this.createCloud(false, playerPosition);
+    }
+  }
+  
+  private repositionDistantClouds(playerPosition: THREE.Vector3): void {
+    let repositioned = 0;
+    this.clouds.forEach(cloud => {
+      const distance = cloud.mesh.position.distanceTo(playerPosition);
+      if (distance > this.maxCloudDistance * 0.8) { // Reposition clouds at 80% of max distance
+        // Move cloud to new position around player
+        const angle = Math.random() * Math.PI * 2;
+        const newDistance = this.minSpawnDistance + Math.random() * (this.maxSpawnDistance - this.minSpawnDistance);
+        
+        cloud.mesh.position.x = playerPosition.x + Math.cos(angle) * newDistance;
+        cloud.mesh.position.z = playerPosition.z + Math.sin(angle) * newDistance;
+        cloud.age = 0; // Reset age for repositioned cloud
+        cloud.opacity = 0; // Start faded out and fade in
+        repositioned++;
+      }
+    });
+    
+    if (repositioned > 0) {
+      console.log(`Repositioned ${repositioned} distant clouds around new player position`);
+    }
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     this.time += deltaTime;
     this.spawnTimer += deltaTime * 1000;
     
-    // Update last player position if provided
+    // Track player movement and adjust spawn behavior
     let shouldRepositionSpawning = false;
     if (playerPosition) {
       const playerMovement = playerPosition.distanceTo(this.lastPlayerPosition);
+      this.playerMovementSpeed = playerMovement / deltaTime; // Units per second
+      
       if (playerMovement > this.playerMovementThreshold) {
         shouldRepositionSpawning = true;
+        console.log(`Player moved ${playerMovement.toFixed(1)} units (speed: ${this.playerMovementSpeed.toFixed(1)} u/s) - REPOSITIONING cloud zone`);
+        
+        // Immediate response: spawn clouds around new position and reposition distant ones
+        this.spawnCloudsAroundPlayer(playerPosition, 2);
+        this.repositionDistantClouds(playerPosition);
+        
         this.lastPlayerPosition.copy(playerPosition);
-        console.log(`Player moved ${playerMovement.toFixed(1)} units - repositioning cloud spawning zone`);
+      }
+      
+      // Dynamic spawn rate based on movement speed
+      const baseInterval = this.baseSpawnInterval;
+      if (this.playerMovementSpeed > 10) {
+        // Player moving fast - spawn more frequently
+        this.currentSpawnInterval = baseInterval * 0.6; // 40% faster
+      } else if (this.playerMovementSpeed > 5) {
+        // Player moving moderately - spawn slightly more frequently  
+        this.currentSpawnInterval = baseInterval * 0.8; // 20% faster
+      } else {
+        // Player stationary or slow - normal spawn rate
+        this.currentSpawnInterval = baseInterval;
       }
     }
     
-    // Spawn new clouds more frequently to maintain continuous flow - NOW RELATIVE TO PLAYER
-    if (this.spawnTimer >= this.spawnInterval && this.clouds.length < 7) {
+    // Spawn new clouds based on dynamic interval - RELATIVE TO PLAYER
+    if (this.spawnTimer >= this.currentSpawnInterval && this.clouds.length < 8) {
       this.createCloud(false, playerPosition);
       this.spawnTimer = 0;
-      console.log(`Spawned player-centered cloud, total clouds: ${this.clouds.length}`);
+      console.log(`Spawned cloud (interval: ${this.currentSpawnInterval}ms), total: ${this.clouds.length}`);
     }
     
     // Update existing clouds
     for (let i = this.clouds.length - 1; i >= 0; i--) {
       const cloud = this.clouds[i];
       
-      // Update position - movement happens here with faster speed (INDEPENDENT OF PLAYER)
+      // Update position - movement happens with wind (INDEPENDENT OF PLAYER)
       const movement = cloud.velocity.clone().multiplyScalar(deltaTime);
       cloud.mesh.position.add(movement);
       
       // Update age
       cloud.age += deltaTime * 1000;
       
-      // Calculate distance-based opacity relative to PLAYER POSITION (not world origin)
+      // Calculate distance-based opacity relative to PLAYER POSITION
       let distanceFactor = 1.0;
       let distance = 0;
       if (playerPosition) {
@@ -195,26 +260,21 @@ export class DynamicCloudSystem {
       
       // Handle age-based fade in/out
       let ageFactor = 1.0;
-      if (cloud.age < 5000) {
-        // Fade in over first 5 seconds
-        ageFactor = cloud.age / 5000;
-      } else if (cloud.age > cloud.maxAge - 8000) {
-        // Fade out over last 8 seconds
-        const fadeProgress = (cloud.age - (cloud.maxAge - 8000)) / 8000;
+      if (cloud.age < 3000) {
+        // Fade in over first 3 seconds
+        ageFactor = cloud.age / 3000;
+      } else if (cloud.age > cloud.maxAge - 6000) {
+        // Fade out over last 6 seconds
+        const fadeProgress = (cloud.age - (cloud.maxAge - 6000)) / 6000;
         ageFactor = 1 - fadeProgress;
       }
       
       // Combine distance and age factors
       cloud.targetOpacity = cloud.baseOpacity * distanceFactor * ageFactor;
       
-      // Safety check - ensure minimum visibility when in visible range (but with reduced opacity)
-      if (playerPosition && distance <= this.fadeInDistance && ageFactor > 0.1) {
-        cloud.targetOpacity = Math.max(cloud.targetOpacity, 0.1); // Reduced minimum visible opacity
-      }
-      
       // Smooth opacity transition
       const opacityDiff = cloud.targetOpacity - cloud.opacity;
-      cloud.opacity += opacityDiff * cloud.fadeSpeed * (deltaTime * 60); // 60fps normalized
+      cloud.opacity += opacityDiff * cloud.fadeSpeed * (deltaTime * 60);
       
       // Clamp opacity
       cloud.opacity = Math.max(0, Math.min(1, cloud.opacity));
@@ -223,7 +283,7 @@ export class DynamicCloudSystem {
       if (cloud.opacity <= 0.001) {
         cloud.fadedOutTime += deltaTime * 1000;
       } else {
-        cloud.fadedOutTime = 0; // Reset if cloud becomes visible again
+        cloud.fadedOutTime = 0;
       }
       
       // Update material opacity for all child meshes
@@ -235,45 +295,29 @@ export class DynamicCloudSystem {
         }
       });
       
-      // Enhanced debug logging for player-centered flow tracking
-      if (i === 0 && Math.random() < 0.05) { // Occasional logging for debugging
-        console.log(`Cloud 0 PLAYER-CENTERED:`, {
-          position: `(${cloud.mesh.position.x.toFixed(1)}, ${cloud.mesh.position.z.toFixed(1)})`,
-          playerPos: playerPosition ? `(${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)})` : 'N/A',
-          distanceFromPlayer: playerPosition ? distance.toFixed(1) : 'N/A',
-          opacity: cloud.opacity.toFixed(3),
-          age: `${(cloud.age/1000).toFixed(1)}s/${(cloud.maxAge/1000).toFixed(1)}s`,
-          fadedOutTime: `${(cloud.fadedOutTime/1000).toFixed(1)}s`,
-          totalClouds: this.clouds.length
-        });
-      }
-      
-      // IMPROVED REMOVAL LOGIC - Remove clouds efficiently for player-centered spawning
+      // IMPROVED REMOVAL LOGIC - More aggressive cleanup for player-following
       let shouldRemove = false;
       let removeReason = '';
       
-      // 1. Remove clouds that have been fully faded for more than 3 seconds
-      if (cloud.fadedOutTime > 3000) {
+      // 1. Remove clouds that are too far from player (PRIORITY)
+      if (playerPosition) {
+        const distanceFromPlayer = cloud.mesh.position.distanceTo(playerPosition);
+        if (distanceFromPlayer > this.maxCloudDistance) {
+          shouldRemove = true;
+          removeReason = 'too-far-from-player';
+        }
+      }
+      
+      // 2. Remove clouds that have been faded for more than 2 seconds
+      if (!shouldRemove && cloud.fadedOutTime > 2000) {
         shouldRemove = true;
         removeReason = 'faded-out-timeout';
       }
-      // 2. Remove clouds that exceed their maximum age
-      else if (cloud.age > cloud.maxAge) {
+      
+      // 3. Remove clouds that exceed their maximum age
+      if (!shouldRemove && cloud.age > cloud.maxAge) {
         shouldRemove = true;
         removeReason = 'max-age';
-      }
-      // 3. Remove clouds that are completely invisible (immediate removal for efficiency)
-      else if (cloud.opacity <= 0 && cloud.targetOpacity <= 0) {
-        shouldRemove = true;
-        removeReason = 'fully-invisible';
-      }
-      // 4. Remove clouds that are too far away FROM THE PLAYER (cleanup for performance)
-      else if (playerPosition) {
-        const distanceFromPlayer = cloud.mesh.position.distanceTo(playerPosition);
-        if (distanceFromPlayer > 350) { // Increased cleanup distance slightly
-          shouldRemove = true;
-          removeReason = 'too-distant-from-player';
-        }
       }
       
       if (shouldRemove) {
@@ -287,8 +331,14 @@ export class DynamicCloudSystem {
           }
         });
         this.clouds.splice(i, 1);
-        console.log(`Removed cloud (${removeReason}) - age: ${(cloud.age/1000).toFixed(1)}s, fadedOut: ${(cloud.fadedOutTime/1000).toFixed(1)}s, remaining: ${this.clouds.length}`);
+        console.log(`Removed cloud (${removeReason}) - remaining: ${this.clouds.length}`);
       }
+    }
+    
+    // Debug logging
+    if (Math.random() < 0.02) { // Occasional logging
+      const activeCloudCount = this.clouds.filter(c => c.opacity > 0.1).length;
+      console.log(`PLAYER-CENTERED Cloud System: ${activeCloudCount}/${this.clouds.length} visible clouds, spawn interval: ${this.currentSpawnInterval}ms`);
     }
   }
   
@@ -311,6 +361,6 @@ export class DynamicCloudSystem {
       this.cloudMaterial.dispose();
     }
     
-    console.log('DynamicCloudSystem disposed');
+    console.log('IMPROVED DynamicCloudSystem disposed');
   }
 }
