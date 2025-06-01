@@ -73,7 +73,7 @@ export class ParticleSystem {
     this.particles = [];
     this.startTime = 0;
     this.isActive = false;
-    this.useShader = true; // Use shader material for better effects
+    this.useShader = true;
     
     this.initParticles();
     this.createMesh();
@@ -102,7 +102,7 @@ export class ParticleSystem {
         velocity: direction.multiplyScalar(speed),
         size: this.options.size! + (Math.random() - 0.5) * this.options.sizeVariation!,
         color: new THREE.Color(this.options.color),
-        opacity: 0, // Start at 0 for fade in
+        opacity: 0,
         age: 0,
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: (Math.random() - 0.5) * this.options.rotationSpeed!,
@@ -145,7 +145,6 @@ export class ParticleSystem {
       opacities[i] = particle.opacity;
     }
     
-    // Set attributes
     this.positionAttribute = new THREE.BufferAttribute(positions, 3);
     this.colorAttribute = new THREE.BufferAttribute(colors, 3);
     this.sizeAttribute = new THREE.BufferAttribute(sizes, 1);
@@ -156,68 +155,18 @@ export class ParticleSystem {
     this.geometry.setAttribute('size', this.sizeAttribute);
     this.geometry.setAttribute('opacity', this.opacityAttribute);
     
-    // Create material
-    if (this.useShader) {
-      this.material = new THREE.ShaderMaterial({
-        uniforms: {
-          texture: { value: this.options.texture || new THREE.Texture() },
-          useTexture: { value: this.options.texture ? 1.0 : 0.0 }
-        },
-        vertexShader: `
-          attribute float size;
-          attribute float opacity;
-          varying float vOpacity;
-          varying vec3 vColor;
-          
-          void main() {
-            vColor = color;
-            vOpacity = opacity;
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            gl_PointSize = size * (300.0 / -mvPosition.z);
-            gl_Position = projectionMatrix * mvPosition;
-          }
-        `,
-        fragmentShader: `
-          uniform sampler2D texture;
-          uniform float useTexture;
-          varying float vOpacity;
-          varying vec3 vColor;
-          
-          void main() {
-            vec4 texColor = vec4(1.0);
-            if (useTexture > 0.5) {
-              texColor = texture2D(texture, gl_PointCoord);
-              if (texColor.a < 0.1) discard;
-            } else {
-              // Create circular particles
-              vec2 uv = gl_PointCoord.xy - 0.5;
-              float distance = length(uv);
-              if (distance > 0.5) discard;
-              texColor = vec4(1.0 - distance * 2.0);
-            }
-            gl_FragColor = vec4(vColor, vOpacity) * texColor;
-          }
-        `,
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        vertexColors: true
-      });
-    } else {
-      this.material = new THREE.PointsMaterial({
-        size: this.options.size!,
-        vertexColors: true,
-        transparent: true,
-        opacity: this.options.opacity,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        map: this.options.texture
-      });
-    }
+    // Create simplified material for better performance
+    this.material = new THREE.PointsMaterial({
+      size: this.options.size!,
+      vertexColors: true,
+      transparent: true,
+      opacity: this.options.opacity,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
     
-    // Create mesh
     this.mesh = new THREE.Points(this.geometry, this.material);
-    this.mesh.frustumCulled = false; // Prevent disappearing when out of camera frustum
+    this.mesh.frustumCulled = false;
   }
   
   public start(): void {
@@ -226,7 +175,7 @@ export class ParticleSystem {
     this.isActive = true;
     this.startTime = Date.now();
     this.scene.add(this.mesh);
-    this.initParticles(); // Reset particles
+    this.initParticles();
   }
   
   public stop(): void {
@@ -241,7 +190,6 @@ export class ParticleSystem {
     
     const now = Date.now();
     const elapsed = now - this.startTime;
-    const elapsedNormalized = elapsed / this.options.duration;
     
     // Check if effect is complete
     if (elapsed >= this.options.duration) {
@@ -254,8 +202,7 @@ export class ParticleSystem {
       const particle = this.particles[i];
       if (!particle.active) continue;
       
-      // Update age
-      particle.age += 16; // Assuming 60fps, ~16ms per frame
+      particle.age += 16;
       const particleProgress = particle.age / this.options.duration;
       
       // Update opacity based on fade in/out
@@ -267,125 +214,138 @@ export class ParticleSystem {
         particle.opacity = this.options.opacity!;
       }
       
-      // Update rotation
       particle.rotation += particle.rotationSpeed;
-      
-      // Update velocity with gravity
-      particle.velocity.y -= this.options.gravity! * 0.016; // Gravity effect
-      
-      // Update position
+      particle.velocity.y -= this.options.gravity! * 0.016;
       particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
       
-      // Update buffers
       this.positionAttribute.setXYZ(i, particle.position.x, particle.position.y, particle.position.z);
       this.opacityAttribute.setX(i, particle.opacity);
     }
     
-    // Mark attributes as needing update
     this.positionAttribute.needsUpdate = true;
     this.opacityAttribute.needsUpdate = true;
   }
   
-  // Create various pre-defined particle effects
+  // Enhanced particle effects with improved visuals
   
   static createExplosion(scene: THREE.Scene, position: THREE.Vector3, color: THREE.Color | string | number = 0xFF5500, scale: number = 1): ParticleSystem {
     return new ParticleSystem(scene, {
       position: position,
-      count: 100 * scale,
-      duration: 1000,
-      size: 0.2 * scale,
-      sizeVariation: 0.1 * scale,
-      speed: 5 * scale,
-      speedVariation: 2 * scale,
+      count: Math.floor(50 * scale),
+      duration: 800,
+      size: 0.1 * scale,
+      sizeVariation: 0.05 * scale,
+      speed: 3 * scale,
+      speedVariation: 1.5 * scale,
       color: color,
       colorVariation: 0.2,
-      gravity: 3,
+      gravity: 2,
       direction: new THREE.Vector3(0, 1, 0),
       spread: 1,
-      opacity: 0.8,
+      opacity: 0.7,
       fadeIn: 0.1,
-      fadeOut: 0.3
+      fadeOut: 0.4
+    });
+  }
+  
+  static createImpactBurst(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 25,
+      duration: 400,
+      size: 0.08,
+      sizeVariation: 0.04,
+      speed: 4,
+      speedVariation: 2,
+      color: 0xFFAA44,
+      colorVariation: 0.3,
+      gravity: 1,
+      direction: new THREE.Vector3(0, 0.5, 0),
+      spread: 0.8,
+      opacity: 0.8,
+      fadeIn: 0.05,
+      fadeOut: 0.6
     });
   }
   
   static createBloodSplatter(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
     return new ParticleSystem(scene, {
       position: position,
-      count: 50,
-      duration: 800,
-      size: 0.15,
-      sizeVariation: 0.1,
-      speed: 3,
-      speedVariation: 1.5,
-      color: 0xAA0000,
+      count: 30,
+      duration: 600,
+      size: 0.06,
+      sizeVariation: 0.03,
+      speed: 2,
+      speedVariation: 1,
+      color: 0x880000,
       colorVariation: 0.1,
-      gravity: 9,
+      gravity: 6,
       direction: direction,
-      spread: 0.3,
+      spread: 0.4,
       opacity: 0.9,
       fadeIn: 0.05,
-      fadeOut: 0.2
+      fadeOut: 0.3
     });
   }
   
   static createDustCloud(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
     return new ParticleSystem(scene, {
       position: position,
-      count: 30,
-      duration: 2000,
-      size: 0.3,
-      sizeVariation: 0.2,
-      speed: 1,
-      speedVariation: 0.5,
+      count: 20,
+      duration: 1500,
+      size: 0.15,
+      sizeVariation: 0.1,
+      speed: 0.5,
+      speedVariation: 0.3,
       color: 0xCCBB99,
       colorVariation: 0.1,
-      gravity: 0.1,
+      gravity: 0.05,
       direction: new THREE.Vector3(0, 1, 0),
-      spread: 0.8,
-      opacity: 0.6,
-      fadeIn: 0.2,
-      fadeOut: 0.4
+      spread: 0.6,
+      opacity: 0.4,
+      fadeIn: 0.3,
+      fadeOut: 0.5
     });
   }
   
   static createSwordTrail(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
     return new ParticleSystem(scene, {
       position: position,
-      count: 20,
-      duration: 300,
-      size: 0.2,
-      sizeVariation: 0.05,
-      speed: 0.5,
-      speedVariation: 0.2,
-      color: 0xFFFFFF,
+      count: 15,
+      duration: 250,
+      size: 0.12,
+      sizeVariation: 0.04,
+      speed: 0.3,
+      speedVariation: 0.1,
+      color: 0xCCCCCC,
       colorVariation: 0,
       gravity: 0,
       direction: direction,
       spread: 0.1,
-      opacity: 0.7,
+      opacity: 0.6,
       fadeIn: 0.1,
-      fadeOut: 0.8
+      fadeOut: 0.7
     });
   }
   
   static createFireball(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
     return new ParticleSystem(scene, {
       position: position,
-      count: 60,
-      duration: 1000,
-      size: 0.3,
-      sizeVariation: 0.1,
+      count: 40,
+      duration: 800,
+      size: 0.2,
+      sizeVariation: 0.08,
       speed: 0.2,
       speedVariation: 0.1,
       color: 0xFF6600,
       colorVariation: 0.3,
-      gravity: -0.5, // Negative gravity makes fire rise
+      gravity: -0.3,
       direction: direction,
-      spread: 0.2,
-      opacity: 0.8,
+      spread: 0.15,
+      opacity: 0.7,
       fadeIn: 0.1,
       fadeOut: 0.5,
-      rotationSpeed: 2
+      rotationSpeed: 1
     });
   }
 }

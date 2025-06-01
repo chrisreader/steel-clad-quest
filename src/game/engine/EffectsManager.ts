@@ -16,7 +16,7 @@ export class EffectsManager {
     if (camera) {
       this.cameraOriginalPosition.copy(camera.position);
     }
-    console.log('Effects Manager initialized with advanced features');
+    console.log('Effects Manager initialized with improved combat effects');
   }
   
   public update(deltaTime: number): void {
@@ -54,16 +54,11 @@ export class EffectsManager {
           this.effects.delete(key);
         } else {
           // Update based on effect type
-          if (effect.userData.type === 'slash') {
+          if (effect.userData.type === 'impact_flash') {
             const progress = effect.userData.age / effect.userData.duration;
-            effect.scale.x = 1 + progress * 2;
             const material = (effect as THREE.Mesh).material as THREE.MeshBasicMaterial;
-            material.opacity = 0.9 * (1 - progress);
-          } else if (effect.userData.type === 'swoosh') {
-            const progress = effect.userData.age / effect.userData.duration;
-            const material = (effect as THREE.Line).material as THREE.LineBasicMaterial;
-            material.opacity = 0.8 * (1 - progress);
-            effect.scale.setScalar(1 + progress * 0.5);
+            material.opacity = 0.6 * (1 - progress);
+            effect.scale.setScalar(0.2 + progress * 0.3);
           } else if (effect.userData.type === 'damage_particle' && effect.userData.update) {
             effect.userData.update(deltaTime);
           } else if (effect.userData.type === 'fireball_light' && effect.userData.update) {
@@ -75,46 +70,55 @@ export class EffectsManager {
   }
   
   public createAttackEffect(position: THREE.Vector3, color: number = 0xFF6B6B): void {
-    const slashGeometry = new THREE.PlaneGeometry(1.5, 0.2);
-    const slashMaterial = new THREE.MeshBasicMaterial({
+    // Create a small impact flash instead of large plane
+    const flashGeometry = new THREE.SphereGeometry(0.15, 8, 6);
+    const flashMaterial = new THREE.MeshBasicMaterial({
       color: color,
       transparent: true,
-      opacity: 0.9,
-      side: THREE.DoubleSide
+      opacity: 0.6,
+      emissive: new THREE.Color(color).multiplyScalar(0.3)
     });
     
-    const slash = new THREE.Mesh(slashGeometry, slashMaterial);
-    slash.position.copy(position);
-    slash.position.y += 0.5;
-    slash.rotation.z = Math.random() * Math.PI;
+    const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+    flash.position.copy(position);
+    flash.position.y += 0.8;
     
-    slash.userData = {
-      type: 'slash',
+    flash.userData = {
+      type: 'impact_flash',
       age: 0,
-      duration: 400
+      duration: 200
     };
     
-    this.scene.add(slash);
-    this.effects.set(`slash_${Date.now()}_${Math.random()}`, slash);
+    this.scene.add(flash);
+    this.effects.set(`flash_${Date.now()}_${Math.random()}`, flash);
+    
+    // Add particle burst effect
+    const impactSystem = ParticleSystem.createImpactBurst(this.scene, position);
+    impactSystem.start();
+    this.particleSystems.push(impactSystem);
+    
+    // Subtle camera shake
+    this.shakeCamera(0.02);
   }
   
   public createDamageEffect(position: THREE.Vector3): void {
-    for (let i = 0; i < 8; i++) {
-      const particleGeometry = new THREE.SphereGeometry(0.05);
+    // Create smaller, more numerous damage particles
+    for (let i = 0; i < 12; i++) {
+      const particleGeometry = new THREE.SphereGeometry(0.03);
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0xFF3333,
+        color: new THREE.Color().setHSL(0, 0.8, 0.5 + Math.random() * 0.3), // Varied red tones
         transparent: true,
-        opacity: 1
+        opacity: 0.8
       });
       
       const particle = new THREE.Mesh(particleGeometry, particleMaterial);
       particle.position.copy(position);
-      particle.position.y += 1;
+      particle.position.y += 0.8 + Math.random() * 0.4;
       
       const velocity = new THREE.Vector3(
-        (Math.random() - 0.5) * 4,
-        Math.random() * 3 + 1,
-        (Math.random() - 0.5) * 4
+        (Math.random() - 0.5) * 3,
+        Math.random() * 2 + 0.5,
+        (Math.random() - 0.5) * 3
       );
       
       this.scene.add(particle);
@@ -122,7 +126,7 @@ export class EffectsManager {
       particle.userData = {
         type: 'damage_particle',
         age: 0,
-        duration: 800,
+        duration: 600,
         velocity: velocity
       };
       
@@ -133,24 +137,28 @@ export class EffectsManager {
         if (particle.userData.age >= particle.userData.duration) return;
         
         particle.position.add(velocity.clone().multiplyScalar(deltaTime));
-        velocity.y -= 9.8 * deltaTime; // Gravity
+        velocity.y -= 6 * deltaTime; // Gravity
+        velocity.multiplyScalar(0.98); // Air resistance
         
         const progress = particle.userData.age / particle.userData.duration;
-        particleMaterial.opacity = 1 - progress;
+        particleMaterial.opacity = 0.8 * (1 - progress);
+        
+        // Shrink over time
+        const scale = 1 - progress * 0.5;
+        particle.scale.setScalar(scale);
       };
       
-      // Store the update function in userData for use in main update loop
       particle.userData.update = updateParticle;
     }
   }
   
   public createHitEffect(position: THREE.Vector3): void {
-    const particleSystem = ParticleSystem.createExplosion(this.scene, position);
+    const particleSystem = ParticleSystem.createExplosion(this.scene, position, 0xFF3366, 0.5);
     particleSystem.start();
     this.particleSystems.push(particleSystem);
     
-    // Add camera shake
-    this.shakeCamera(0.1);
+    // Very subtle camera shake
+    this.shakeCamera(0.03);
   }
   
   public createBloodEffect(position: THREE.Vector3, direction: THREE.Vector3): void {
@@ -160,32 +168,10 @@ export class EffectsManager {
   }
   
   public createSwooshEffect(position: THREE.Vector3, direction: THREE.Vector3): void {
-    const curve = new THREE.QuadraticBezierCurve3(
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(direction.x * 0.5, direction.y * 0.5 + 0.5, direction.z * 0.5),
-      new THREE.Vector3(direction.x, direction.y, direction.z)
-    );
-
-    const points = curve.getPoints(20);
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    
-    const material = new THREE.LineBasicMaterial({
-      color: 0xFFFFFF,
-      transparent: true,
-      opacity: 0.8
-    });
-
-    const swoosh = new THREE.Line(geometry, material);
-    swoosh.position.copy(position);
-    
-    swoosh.userData = {
-      type: 'swoosh',
-      age: 0,
-      duration: 300
-    };
-    
-    this.scene.add(swoosh);
-    this.effects.set(`swoosh_${Date.now()}_${Math.random()}`, swoosh);
+    // Create a more subtle swoosh effect
+    const particleSystem = ParticleSystem.createSwordTrail(this.scene, position, direction);
+    particleSystem.start();
+    this.particleSystems.push(particleSystem);
   }
   
   public createSwordTrail(positions: THREE.Vector3[]): THREE.Line | null {
@@ -193,9 +179,9 @@ export class EffectsManager {
     
     const geometry = new THREE.BufferGeometry().setFromPoints(positions);
     const material = new THREE.LineBasicMaterial({
-      color: 0xFFFFFF,
+      color: 0xCCCCCC,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.4
     });
     
     const trail = new THREE.Line(geometry, material);
@@ -204,7 +190,7 @@ export class EffectsManager {
     trail.userData = {
       type: 'sword_trail',
       age: 0,
-      duration: 300
+      duration: 150
     };
     
     this.effects.set(`trail_${Date.now()}`, trail);
@@ -228,7 +214,7 @@ export class EffectsManager {
     this.particleSystems.push(particleSystem);
     
     // Create a point light that follows the fireball
-    const light = new THREE.PointLight(0xFF6600, 1, 6);
+    const light = new THREE.PointLight(0xFF6600, 0.8, 4);
     light.position.copy(position);
     
     light.userData = {
@@ -249,11 +235,10 @@ export class EffectsManager {
       // Move light in direction
       light.position.add(direction.clone().multiplyScalar(light.userData.speed * deltaTime));
       
-      // Flicker intensity
-      light.intensity = 1 + Math.random() * 0.3;
+      // Gentle flicker
+      light.intensity = 0.8 + Math.random() * 0.2;
     };
     
-    // Store the update function in userData
     light.userData.update = updateLight;
   }
   
@@ -265,35 +250,13 @@ export class EffectsManager {
   
   // Legacy methods for backward compatibility
   public createLevelUpEffect(position: THREE.Vector3): void {
-    const particleCount = 50;
-    const geometry = new THREE.BufferGeometry();
-    const positions = new Float32Array(particleCount * 3);
-
-    for (let i = 0; i < particleCount * 3; i += 3) {
-      positions[i] = position.x + (Math.random() - 0.5) * 3;
-      positions[i + 1] = position.y + Math.random() * 5;
-      positions[i + 2] = position.z + (Math.random() - 0.5) * 3;
-    }
-
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-    const material = new THREE.PointsMaterial({
-      color: 0xffdd00,
-      size: 0.2,
-      transparent: true,
-      opacity: 1
-    });
-
-    const particles = new THREE.Points(geometry, material);
-    this.scene.add(particles);
-
-    setTimeout(() => {
-      this.scene.remove(particles);
-    }, 1000);
+    const particleSystem = ParticleSystem.createExplosion(this.scene, position, 0xFFDD00, 0.8);
+    particleSystem.start();
+    this.particleSystems.push(particleSystem);
   }
   
   public shakeCamera(intensity: number): void {
-    this.cameraShakeIntensity = intensity;
+    this.cameraShakeIntensity = Math.min(intensity, 0.05); // Cap shake intensity
     if (this.camera) {
       this.cameraOriginalPosition.copy(this.camera.position);
     }
