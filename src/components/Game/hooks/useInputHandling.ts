@@ -29,6 +29,39 @@ export const useInputHandling = ({
   onWeaponSlotSelect
 }: UseInputHandlingProps) => {
 
+  // Enhanced game input event handling with bow support
+  useEffect(() => {
+    const handleGameInput = (event: Event) => {
+      if (!gameStarted || !gameEngine) return;
+
+      const customEvent = event as CustomEvent;
+      const { type, data } = customEvent.detail;
+
+      const anyUIOpen = isAnyUIOpen();
+      if (anyUIOpen) return; // Don't handle game inputs when UI is open
+
+      switch (type) {
+        case 'attack':
+        case 'attackStart':
+          console.log('[useInputHandling] Attack start detected - starting bow draw or melee attack');
+          gameEngine.handleInput('attack');
+          break;
+        case 'attackEnd':
+          console.log('[useInputHandling] Attack end detected - releasing bow or ending melee');
+          gameEngine.handleInput('attackEnd');
+          break;
+        case 'look':
+          if (data) {
+            gameEngine.handleInput('look', data);
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('gameInput', handleGameInput);
+    return () => document.removeEventListener('gameInput', handleGameInput);
+  }, [gameStarted, gameEngine, isAnyUIOpen]);
+
   // Enhanced keyboard input handler
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -45,7 +78,7 @@ export const useInputHandling = ({
       switch (event.code) {
         case 'Space':
           if (!anyUIOpen) {
-            console.log('Space pressed - attacking');
+            console.log('Space pressed - attacking (bow draw or melee)');
             gameEngine.handleInput('attack');
           }
           break;
@@ -128,17 +161,19 @@ export const useInputHandling = ({
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameStarted, gameEngine, isAnyUIOpen, toggleInventory, toggleSkillTree, toggleQuestLog, toggleCrafting, toggleStatsPanel, closeAllUIs, togglePause, onWeaponSlotSelect]);
 
-  // Handle keyup events for movement
+  // Handle keyup events for movement and attacks
   useEffect(() => {
     const handleKeyUp = (event: KeyboardEvent) => {
       if (!gameStarted || !gameEngine) return;
 
-      // Only handle movement keys when no UI is open
       const anyUIOpen = isAnyUIOpen();
       if (anyUIOpen) return;
 
-      // Handle key releases for movement
       switch (event.code) {
+        case 'Space':
+          console.log('Space released - ending attack (bow release or melee end)');
+          gameEngine.handleInput('attackEnd');
+          break;
         case 'KeyW':
         case 'KeyS':
         case 'KeyA':

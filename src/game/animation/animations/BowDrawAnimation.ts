@@ -15,12 +15,21 @@ export class BowDrawAnimation {
     chargeLevel: number,
     deltaTime: number
   ): void {
-    // Draw animation - right arm pulls back while left arm transitions to drawing position
+    // Enhanced draw animation with 4 distinct stages based on charge level
     
-    // Target position for drawing (115° raised position, parallel with body)
-    const targetLeftArmX = Math.PI * 115 / 180;  // 115° raised position for drawing
-    const targetLeftArmY = 0;  // Parallel with body
-    const targetLeftArmZ = 0;  // Parallel with body
+    // Determine draw stage based on charge level
+    let drawStage = 1;
+    if (chargeLevel >= 0.75) drawStage = 4;
+    else if (chargeLevel >= 0.5) drawStage = 3;
+    else if (chargeLevel >= 0.25) drawStage = 2;
+    
+    // Target positions for progressive drawing stages
+    const baseLeftArmX = Math.PI * 115 / 180;  // 115° raised position
+    const progressiveRaise = (drawStage - 1) * 0.1; // Additional raise per stage
+    
+    const targetLeftArmX = baseLeftArmX + progressiveRaise;
+    const targetLeftArmY = 0;
+    const targetLeftArmZ = 0;
     
     // Smoothly transition left arm to drawing position
     const transitionAmount = deltaTime * this.transitionSpeed;
@@ -41,21 +50,25 @@ export class BowDrawAnimation {
       transitionAmount
     );
     
-    // Right arm draw animation - pulls back based on charge level
+    // Enhanced right arm draw animation with progressive stages
     const drawAmount = this.easeInOutQuad(chargeLevel);
     
-    // Right arm pulls back and up for draw
-    const rightArmDrawX = Math.PI / 6 + (drawAmount * Math.PI / 4);  // Pull up
-    const rightArmDrawY = drawAmount * Math.PI / 8;  // Slight outward angle
-    const rightArmDrawZ = -Math.PI / 8 - (drawAmount * Math.PI / 6);  // Pull back
+    // Progressive right arm pull based on draw stage
+    const baseRightArmX = Math.PI / 6;
+    const baseRightArmZ = -Math.PI / 8;
+    
+    const stageMultiplier = 1 + (drawStage - 1) * 0.3; // Increase intensity per stage
+    const rightArmDrawX = baseRightArmX + (drawAmount * Math.PI / 4 * stageMultiplier);
+    const rightArmDrawY = drawAmount * Math.PI / 8;
+    const rightArmDrawZ = baseRightArmZ - (drawAmount * Math.PI / 6 * stageMultiplier);
     
     playerBody.rightArm.rotation.x = rightArmDrawX;
     playerBody.rightArm.rotation.y = rightArmDrawY;
     playerBody.rightArm.rotation.z = rightArmDrawZ;
     
-    // Elbow adjustments for natural draw
+    // Enhanced elbow adjustments with stage progression
     if (playerBody.leftElbow) {
-      const targetLeftElbowX = 0.2 + (drawAmount * 0.1);
+      const targetLeftElbowX = 0.2 + (drawAmount * 0.1) + (drawStage - 1) * 0.05;
       playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
         playerBody.leftElbow.rotation.x,
         targetLeftElbowX,
@@ -64,14 +77,17 @@ export class BowDrawAnimation {
     }
     
     if (playerBody.rightElbow) {
-      // Right elbow bends more as we draw
-      playerBody.rightElbow.rotation.x = 0.3 + (drawAmount * 0.8);
+      // Progressive right elbow bend with stage enhancement
+      const baseElbowBend = 0.3;
+      const stageBend = drawAmount * 0.8;
+      const stageBonus = (drawStage - 1) * 0.15;
+      playerBody.rightElbow.rotation.x = baseElbowBend + stageBend + stageBonus;
     }
     
-    // Hand positions for drawing - also transition smoothly
-    const targetLeftHandX = -Math.PI / 6;
+    // Enhanced hand positions with stage progression
+    const targetLeftHandX = -Math.PI / 6 - (drawStage - 1) * 0.05;
     const targetLeftHandY = 0;
-    const targetLeftHandZ = Math.PI / 4;
+    const targetLeftHandZ = Math.PI / 4 + (drawStage - 1) * 0.1;
     
     playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
       playerBody.leftHand.rotation.x,
@@ -89,12 +105,14 @@ export class BowDrawAnimation {
       transitionAmount
     );
     
-    // Right hand pulls string back
-    playerBody.rightHand.rotation.x = drawAmount * Math.PI / 8;
+    // Enhanced right hand string pull with stage progression
+    const baseStringPull = drawAmount * Math.PI / 8;
+    const stageStringPull = (drawStage - 1) * 0.1;
+    playerBody.rightHand.rotation.x = baseStringPull + stageStringPull;
     playerBody.rightHand.rotation.y = 0;
-    playerBody.rightHand.rotation.z = drawAmount * Math.PI / 6;
+    playerBody.rightHand.rotation.z = drawAmount * Math.PI / 6 + stageStringPull;
     
-    console.log(`🏹 [BowDrawAnimation] Transitioning to 115° drawing position - Charge: ${(chargeLevel * 100).toFixed(1)}%`);
+    console.log(`🏹 [BowDrawAnimation] Draw Stage ${drawStage}/4 - Charge: ${(chargeLevel * 100).toFixed(1)}%`);
   }
   
   public reset(playerBody: PlayerBody): void {

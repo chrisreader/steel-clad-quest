@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -21,9 +20,10 @@ export class CombatSystem {
   private attackCooldownMs: number = 768; // Updated to match new sword duration (0.768s)
   private lastAttackTime: number = 0;
   
-  // Bow mechanics
+  // Bow mechanics - enhanced for continuous charging
   private isDrawingBow: boolean = false;
   private bowDrawStartTime: number = 0;
+  private inputManager: any = null; // Will be set by GameEngine
   
   constructor(
     scene: THREE.Scene,
@@ -36,7 +36,12 @@ export class CombatSystem {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with bow support");
+    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with enhanced bow support and continuous charging");
+  }
+  
+  public setInputManager(inputManager: any): void {
+    this.inputManager = inputManager;
+    console.log("⚔️ [CombatSystem] InputManager reference set for continuous bow charging");
   }
   
   public update(deltaTime: number): void {
@@ -50,10 +55,8 @@ export class CombatSystem {
     this.projectileSystem.setEnemies(this.enemies);
     this.projectileSystem.update(deltaTime);
     
-    // Update bow drawing if active
-    if (this.isDrawingBow) {
-      this.updateBowDrawing(deltaTime);
-    }
+    // Handle continuous bow charging
+    this.updateBowCharging(deltaTime);
     
     // Check sword collision with enemies (for melee weapons)
     if (this.player.isAttacking() && !this.isDrawingBow) {
@@ -67,22 +70,39 @@ export class CombatSystem {
     this.cleanupEntities();
   }
   
+  private updateBowCharging(deltaTime: number): void {
+    const currentWeapon = this.player.getEquippedWeapon();
+    
+    // Check if we should be charging a bow
+    if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
+      const isAttackHeld = this.inputManager ? this.inputManager.isAttackHeld() : false;
+      
+      if (isAttackHeld && this.isDrawingBow) {
+        // Continue charging the bow
+        if (currentWeapon.updateCharge) {
+          currentWeapon.updateCharge(deltaTime);
+          
+          // Debug charge level progression
+          if (currentWeapon.getChargeLevel) {
+            const chargeLevel = currentWeapon.getChargeLevel();
+            console.log(`🏹 [CombatSystem] Bow charging continuously: ${(chargeLevel * 100).toFixed(1)}%`);
+          }
+        }
+      } else if (!isAttackHeld && this.isDrawingBow) {
+        // Attack button released - fire the bow
+        console.log("🏹 [CombatSystem] Attack button released - firing bow");
+        this.releaseBowString();
+      }
+    }
+  }
+  
   private updateBowDrawing(deltaTime: number): void {
     const currentWeapon = this.player.getEquippedWeapon();
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
-      // Enhanced update bow charge with better debug info
-      if (currentWeapon.updateCharge) {
+      // This method is now handled by updateBowCharging for continuous updates
+      // Keep for compatibility but delegate to the new system
+      if (this.isDrawingBow && currentWeapon.updateCharge) {
         currentWeapon.updateCharge(deltaTime);
-        
-        // Debug charge level
-        if (currentWeapon.getChargeLevel) {
-          const chargeLevel = currentWeapon.getChargeLevel();
-          if (chargeLevel > 0) {
-            console.log(`🏹 [CombatSystem] Bow charging: ${(chargeLevel * 100).toFixed(1)}%`);
-          }
-        }
-      } else {
-        console.warn("🏹 [CombatSystem] Current bow weapon does not support updateCharge method");
       }
     }
   }
@@ -91,11 +111,9 @@ export class CombatSystem {
     const currentWeapon = this.player.getEquippedWeapon();
     
     console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK CALLED *** - weapon type:", currentWeapon?.getConfig().type || 'none');
-    console.log("⚔️ [CombatSystem] Player object exists:", !!this.player);
-    console.log("⚔️ [CombatSystem] Player startSwordSwing method exists:", typeof this.player.startSwordSwing);
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
-      console.log("⚔️ [CombatSystem] Starting bow attack");
+      console.log("⚔️ [CombatSystem] Starting bow attack with continuous charging");
       this.startBowDraw();
     } else {
       console.log("⚔️ [CombatSystem] *** STARTING MELEE ATTACK *** - calling startMeleeAttack()");
@@ -109,12 +127,13 @@ export class CombatSystem {
     console.log("⚔️ [CombatSystem] Stopping player attack, weapon type:", currentWeapon?.getConfig().type || 'none');
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.isDrawingBow) {
+      console.log("⚔️ [CombatSystem] Bow attack stopped - firing arrow");
       this.releaseBowString();
     }
   }
   
   private startBowDraw(): void {
-    console.log("🏹 [CombatSystem] Starting bow draw with enhanced debug");
+    console.log("🏹 [CombatSystem] Starting bow draw with continuous charging system");
     this.isDrawingBow = true;
     this.bowDrawStartTime = Date.now();
     
@@ -124,11 +143,11 @@ export class CombatSystem {
     // Play bow draw sound
     this.audioManager.play('bow_draw');
     
-    console.log("🏹 [CombatSystem] Bow draw initiated successfully");
+    console.log("🏹 [CombatSystem] Bow draw initiated - charging will continue while button held");
   }
   
   private releaseBowString(): void {
-    console.log("🏹 [CombatSystem] Releasing bow string with enhanced debug");
+    console.log("🏹 [CombatSystem] Releasing bow string");
     this.isDrawingBow = false;
     
     const currentWeapon = this.player.getEquippedWeapon();
@@ -137,7 +156,7 @@ export class CombatSystem {
       return;
     }
     
-    // Get charge level and calculate damage/speed with enhanced debugging
+    // Get charge level and calculate damage/speed
     const chargeLevel = currentWeapon.getChargeLevel ? currentWeapon.getChargeLevel() : 0;
     const damage = currentWeapon.getChargeDamage ? currentWeapon.getChargeDamage() : currentWeapon.getStats().damage;
     const speed = currentWeapon.getArrowSpeed ? currentWeapon.getArrowSpeed() : 20;
@@ -150,7 +169,7 @@ export class CombatSystem {
       const playerPosition = this.player.getPosition();
       const cameraDirection = new THREE.Vector3(0, 0, -1); // Simple forward direction for now
       
-      // Shoot arrow with enhanced positioning
+      // Shoot arrow
       const arrowStartPos = playerPosition.clone().add(new THREE.Vector3(0, 1.5, 0));
       this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
       
