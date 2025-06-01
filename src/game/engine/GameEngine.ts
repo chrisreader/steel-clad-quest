@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -105,12 +104,18 @@ export class GameEngine {
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
       
+      // Initialize enemy spawning system in scene manager
+      if (this.sceneManager) {
+        this.sceneManager.initializeEnemySpawning(this.effectsManager, this.audioManager);
+        this.sceneManager.startEnemySpawning(this.player.getPosition());
+      }
+      
       // Set first-person camera position
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete with distance-based fog system!");
+      console.log("🎮 [GameEngine] Initialization complete with distance-based fog system and enemy spawning!");
       
       // Start the game
       this.start();
@@ -266,6 +271,17 @@ export class GameEngine {
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
     
+    // Sync enemies from scene manager to combat system
+    if (this.sceneManager) {
+      const sceneEnemies = this.sceneManager.getEnemies();
+      // Update combat system with current enemies
+      sceneEnemies.forEach(enemy => {
+        if (!this.combatSystem!.getEnemies().includes(enemy)) {
+          this.combatSystem!.addEnemy(enemy);
+        }
+      });
+    }
+    
     // Update combat system
     this.combatSystem.update(deltaTime);
     
@@ -350,6 +366,12 @@ export class GameEngine {
       
       // Reset first-person camera
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
+    }
+    
+    // Restart enemy spawning
+    if (this.sceneManager && this.effectsManager && this.audioManager) {
+      this.sceneManager.initializeEnemySpawning(this.effectsManager, this.audioManager);
+      this.sceneManager.startEnemySpawning(this.player!.getPosition());
     }
     
     // Start ambient sounds

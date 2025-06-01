@@ -542,8 +542,18 @@ export class Enemy {
     return this.enemy.mesh;
   }
   
-  public getEnemy(): EnemyInterface {
+  public getEnemy(): any {
     return this.enemy;
+  }
+  
+  public getDistanceFromPlayer(playerPosition: THREE.Vector3): number {
+    return this.enemy.mesh.position.distanceTo(playerPosition);
+  }
+  
+  public shouldCleanup(maxDistance: number, playerPosition: THREE.Vector3): boolean {
+    if (this.enemy.isDead && this.isDeadFor(30000)) return true;
+    if (this.getDistanceFromPlayer(playerPosition) > maxDistance) return true;
+    return false;
   }
   
   public static createRandomEnemy(

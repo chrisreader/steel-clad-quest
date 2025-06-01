@@ -1,10 +1,10 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
 import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
 import { PhysicsManager } from './PhysicsManager';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
+import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -34,6 +34,9 @@ export class SceneManager {
   private timeOfDay: number = 0.5; // 0-1, 0 = midnight, 0.5 = noon
   private dayNightCycleEnabled: boolean = false;
   private dayNightCycleSpeed: number = 0.001; // How quickly time passes
+  
+  // New enemy spawning system
+  private enemySpawningSystem: DynamicEnemySpawningSystem | null = null;
   
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
@@ -161,6 +164,11 @@ export class SceneManager {
       this.cloudSpawningSystem.update(deltaTime);
     }
     
+    // Update enemy spawning system
+    if (this.enemySpawningSystem && playerPosition) {
+      this.enemySpawningSystem.update(deltaTime, playerPosition);
+    }
+    
     // Update stored player position if provided
     if (playerPosition) {
       this.lastPlayerPosition.copy(playerPosition);
@@ -213,6 +221,37 @@ export class SceneManager {
     console.log('Skybox updated with realistic blue colors');
     
     console.log('Default world creation complete with collision system. Total scene children:', this.scene.children.length);
+  }
+  
+  // New method to initialize enemy spawning system
+  public initializeEnemySpawning(effectsManager: any, audioManager: any): void {
+    if (!this.enemySpawningSystem) {
+      this.enemySpawningSystem = new DynamicEnemySpawningSystem(
+        this.scene,
+        effectsManager,
+        audioManager
+      );
+      
+      console.log('Enemy spawning system initialized in SceneManager');
+    }
+  }
+  
+  // New method to start enemy spawning
+  public startEnemySpawning(playerPosition?: THREE.Vector3): void {
+    if (this.enemySpawningSystem) {
+      this.enemySpawningSystem.initialize(playerPosition);
+      console.log('Enemy spawning started');
+    }
+  }
+  
+  // New method to get enemies for combat system
+  public getEnemies(): any[] {
+    return this.enemySpawningSystem ? this.enemySpawningSystem.getEnemies() : [];
+  }
+  
+  // New method to get enemy count
+  public getEnemyCount(): number {
+    return this.enemySpawningSystem ? this.enemySpawningSystem.getEntityCount() : 0;
   }
   
   private createTerrain(): void {
@@ -615,6 +654,12 @@ export class SceneManager {
         this.sun.material.dispose();
       }
       this.sun = null;
+    }
+    
+    // Dispose enemy spawning system
+    if (this.enemySpawningSystem) {
+      this.enemySpawningSystem.dispose();
+      this.enemySpawningSystem = null;
     }
     
     console.log("SceneManager disposed with collision system cleanup");
