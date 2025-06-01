@@ -93,53 +93,57 @@ export class EffectsManager {
     }
   }
   
-  public createSwordSwooshEffect(startPosition: THREE.Vector3, endPosition: THREE.Vector3, direction: THREE.Vector3): void {
-    // Create wind-like swoosh effect that follows the sword blade
-    const swooshGroup = new THREE.Group();
-    
-    // Create multiple wind streak lines for swoosh effect
-    const numStreaks = 5;
-    const streakLength = 0.8;
-    
-    for (let i = 0; i < numStreaks; i++) {
-      const points = [];
-      const offset = (i - numStreaks / 2) * 0.1;
-      
-      // Create curved wind streak points
-      for (let j = 0; j <= 8; j++) {
-        const t = j / 8;
-        const pos = startPosition.clone().lerp(endPosition, t);
-        
-        // Add wind-like curvature
-        const perpendicular = new THREE.Vector3()
-          .crossVectors(direction, new THREE.Vector3(0, 1, 0))
-          .normalize()
-          .multiplyScalar(offset);
-        
-        const windCurve = Math.sin(t * Math.PI) * 0.2;
-        pos.add(perpendicular);
-        pos.y += windCurve;
-        
-        points.push(pos);
-      }
-      
-      // Create line geometry for streak
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      const material = new THREE.LineBasicMaterial({
-        color: 0xCCCCCC,
-        transparent: true,
-        opacity: 0.6 - i * 0.1, // Fade outer streaks
-        linewidth: 2
-      });
-      
-      const streak = new THREE.Line(geometry, material);
-      swooshGroup.add(streak);
+  public createSwordSwooshEffect(swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): void {
+    if (swordPath.length === 0) {
+      console.warn("🌪️ [EffectsManager] Cannot create sword swoosh - empty sword path");
+      return;
     }
     
-    // Add wind particles for enhanced effect
-    const windParticles = ParticleSystem.createWindSwoosh(this.scene, startPosition, direction);
-    windParticles.start();
-    this.particleSystems.push(windParticles);
+    // Create realistic sword swoosh that follows the actual blade path
+    const swooshParticles = ParticleSystem.createRealisticSwordSwoosh(this.scene, swordPath, swingDirection);
+    swooshParticles.start();
+    this.particleSystems.push(swooshParticles);
+    
+    // Create visual wind streak lines along the sword path
+    const swooshGroup = new THREE.Group();
+    
+    if (swordPath.length >= 2) {
+      // Create multiple wind streak lines for enhanced swoosh effect
+      const numStreaks = 3;
+      
+      for (let i = 0; i < numStreaks; i++) {
+        const points = [];
+        const offset = (i - numStreaks / 2) * 0.05;
+        
+        // Create wind streak points along the actual sword path
+        for (let j = 0; j < swordPath.length; j++) {
+          const pos = swordPath[j].clone();
+          
+          // Add wind-like offset perpendicular to swing direction
+          const perpendicular = new THREE.Vector3()
+            .crossVectors(swingDirection, new THREE.Vector3(0, 1, 0))
+            .normalize()
+            .multiplyScalar(offset);
+          
+          pos.add(perpendicular);
+          points.push(pos);
+        }
+        
+        // Create line geometry for streak
+        if (points.length >= 2) {
+          const geometry = new THREE.BufferGeometry().setFromPoints(points);
+          const material = new THREE.LineBasicMaterial({
+            color: 0xDDDDDD,
+            transparent: true,
+            opacity: 0.7 - i * 0.15, // Fade outer streaks
+            linewidth: 2
+          });
+          
+          const streak = new THREE.Line(geometry, material);
+          swooshGroup.add(streak);
+        }
+      }
+    }
     
     swooshGroup.userData = {
       type: 'sword_swoosh',
@@ -152,19 +156,19 @@ export class EffectsManager {
         swooshGroup.children.forEach((child, index) => {
           if (child instanceof THREE.Line && child.material) {
             const material = child.material as THREE.LineBasicMaterial;
-            material.opacity = (0.6 - index * 0.1) * (1 - progress);
+            material.opacity = (0.7 - index * 0.15) * (1 - progress);
           }
         });
         
         // Slight movement with the wind
-        swooshGroup.position.add(direction.clone().multiplyScalar(deltaTime * 2));
+        swooshGroup.position.add(swingDirection.clone().multiplyScalar(deltaTime * 1.5));
       }
     };
     
     this.scene.add(swooshGroup);
     this.effects.set(`sword_swoosh_${Date.now()}`, swooshGroup);
     
-    console.log("🌪️ [EffectsManager] Created sword swoosh wind effect");
+    console.log("🌪️ [EffectsManager] Created realistic sword swoosh effect following blade path");
   }
   
   public createRealisticBloodEffect(position: THREE.Vector3, direction: THREE.Vector3, intensity: number = 1): void {

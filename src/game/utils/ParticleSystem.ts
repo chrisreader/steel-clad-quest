@@ -338,6 +338,85 @@ export class ParticleSystem {
     return system;
   }
   
+  public static createRealisticSwordSwoosh(scene: THREE.Scene, swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): ParticleSystem {
+    const particleCount = 50;
+    const material = new THREE.PointsMaterial({
+      color: 0xE8E8E8,
+      size: 0.03,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    });
+    
+    const system = new ParticleSystem(scene, particleCount, material, 300);
+    
+    // Create particles along the sword path with realistic wind displacement
+    for (let i = 0; i < particleCount; i++) {
+      const i3 = i * 3;
+      
+      // Distribute particles along the sword path
+      const pathProgress = i / particleCount;
+      let basePosition: THREE.Vector3;
+      
+      if (swordPath.length >= 2) {
+        // Interpolate along the actual sword path
+        const segmentIndex = Math.floor(pathProgress * (swordPath.length - 1));
+        const localProgress = (pathProgress * (swordPath.length - 1)) - segmentIndex;
+        
+        if (segmentIndex < swordPath.length - 1) {
+          const start = swordPath[segmentIndex];
+          const end = swordPath[segmentIndex + 1];
+          basePosition = start.clone().lerp(end, localProgress);
+        } else {
+          basePosition = swordPath[swordPath.length - 1].clone();
+        }
+      } else if (swordPath.length === 1) {
+        basePosition = swordPath[0].clone();
+      } else {
+        basePosition = new THREE.Vector3(0, 0, 0);
+      }
+      
+      // Add wind displacement perpendicular to swing direction
+      const perpendicular = new THREE.Vector3()
+        .crossVectors(swingDirection, new THREE.Vector3(0, 1, 0))
+        .normalize();
+      
+      const windOffset = perpendicular.clone()
+        .multiplyScalar((Math.random() - 0.5) * 0.15);
+      
+      basePosition.add(windOffset);
+      
+      // Set particle position
+      system.positions[i3] = basePosition.x;
+      system.positions[i3 + 1] = basePosition.y + (Math.random() - 0.5) * 0.1;
+      system.positions[i3 + 2] = basePosition.z;
+      
+      // Set velocity to follow the swing direction with wind-like turbulence
+      const baseVelocity = swingDirection.clone().multiplyScalar(3 + Math.random() * 2);
+      const turbulence = new THREE.Vector3(
+        (Math.random() - 0.5) * 1.5,
+        (Math.random() - 0.5) * 1.0,
+        (Math.random() - 0.5) * 1.5
+      );
+      
+      const finalVelocity = baseVelocity.add(turbulence);
+      
+      system.velocities[i3] = finalVelocity.x;
+      system.velocities[i3 + 1] = finalVelocity.y;
+      system.velocities[i3 + 2] = finalVelocity.z;
+      
+      // Stagger lifetimes for more realistic fading
+      system.lifetimes[i] = 250 + Math.random() * 100;
+    }
+    
+    // Override respawn to not respawn particles (one-time effect)
+    system.respawnParticle = (index: number) => {
+      system.lifetimes[index] = -1; // Don't respawn
+    };
+    
+    return system;
+  }
+  
   public dispose(): void {
     this.stop();
     this.geometry.dispose();
