@@ -94,11 +94,6 @@ export class Player {
     rightHandDrawRotation: new THREE.Euler(0, 0, 0)
   };
   
-  // BOW DRAWING STATE - FOR VISUAL ANIMATION ONLY
-  private bowDrawStartTime: number = 0;
-  private isBowDrawing: boolean = false;
-  private maxDrawTime: number = 1000; // 1 second for full draw animation
-
   constructor(scene: THREE.Scene, effectsManager: EffectsManager, audioManager: AudioManager) {
     this.scene = scene;
     this.effectsManager = effectsManager;
@@ -1230,32 +1225,32 @@ export class Player {
   }
   
   public startBowDraw(): void {
-    if (!this.hasEquippedWeapon() || this.getEquippedWeapon()?.getConfig().type !== 'bow') {
+    if (!this.isBowEquipped || !this.equippedWeapon) {
+      console.log("🏹 [Player] Cannot draw bow - no bow equipped");
       return;
     }
-
-    console.log("🏹 [Player] Starting bow draw - visual animation only");
-    this.isBowDrawing = true;
-    this.bowDrawStartTime = Date.now();
-  }
-
-  public stopBowDraw(): void {
-    console.log("🏹 [Player] Stopping bow draw - visual animation only");
-    this.isBowDrawing = false;
-    this.bowDrawStartTime = 0;
-  }
-
-  public isBowDrawn(): boolean {
-    return this.isBowDrawing;
-  }
-
-  public getBowDrawChargeLevel(): number {
-    if (!this.isBowDrawing || this.bowDrawStartTime === 0) {
-      return 0;
+    
+    if (this.equippedWeapon.getConfig().type !== 'bow') {
+      console.log("🏹 [Player] Cannot draw bow - equipped weapon is not a bow");
+      return;
     }
-
-    const elapsed = Date.now() - this.bowDrawStartTime;
-    const chargeLevel = Math.min(elapsed / this.maxDrawTime, 1.0);
-    return chargeLevel;
+    
+    console.log("🏹 [Player] Starting simplified bow draw");
+    this.bowDrawAnimation.isActive = true;
+    // SIMPLIFIED: No weapon draw methods needed
+  }
+  
+  public stopBowDraw(): void {
+    if (!this.isBowEquipped || !this.equippedWeapon) {
+      return;
+    }
+    
+    if (this.equippedWeapon.getConfig().type !== 'bow') {
+      return;
+    }
+    
+    console.log("🏹 [Player] Stopping simplified bow draw");
+    this.bowDrawAnimation.isActive = false;
+    // SIMPLIFIED: No weapon draw methods needed
   }
 }
