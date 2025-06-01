@@ -128,16 +128,9 @@ export class CombatSystem {
     try {
       this.player.startSwordSwing();
       
-      // CRITICAL FIX: Create swoosh effect for empty swings (when no enemies present or hit)
-      const playerPosition = this.player.getPosition();
-      const slashDirection = new THREE.Vector3(1, 0, 0); // Forward slash direction
-      const slashStart = playerPosition.clone().add(new THREE.Vector3(-0.5, 0.8, 0));
-      const slashEnd = playerPosition.clone().add(new THREE.Vector3(0.5, 0.8, 0));
-      
-      // Always create swoosh effect for sword swings (will be enhanced if enemies are hit)
-      this.effectsManager.createSwordSwooshEffect(slashStart, slashEnd, slashDirection);
-      
-      console.log("🌪️ [CombatSystem] Created sword swoosh effect for melee attack");
+      // REMOVED: No effects created for empty swings
+      // Empty sword swings now have NO visual effects
+      console.log("⚔️ [CombatSystem] Empty sword swing - no effects created");
     } catch (error) {
       console.error("⚔️ [CombatSystem] Error calling player.startSwordSwing()", error);
     }
@@ -150,7 +143,7 @@ export class CombatSystem {
     const attackPower = this.player.getAttackPower();
     const playerPosition = this.player.getPosition();
     
-    let enemyHit = false; // Track if any enemy was hit
+    let enemyHit = false;
     
     this.enemies.forEach(enemy => {
       if (enemy.isDead()) return;
@@ -161,19 +154,14 @@ export class CombatSystem {
       const enemyBox = new THREE.Box3().setFromObject(enemyMesh);
       
       if (swordBox.intersectsBox(enemyBox)) {
-        enemyHit = true; // Mark that an enemy was hit
+        enemyHit = true;
         
         const enemyPosition = enemy.getPosition();
-        
-        // Calculate slash direction and positions
         const slashDirection = enemyPosition.clone().sub(playerPosition).normalize();
-        const slashStart = playerPosition.clone().add(new THREE.Vector3(0, 0.8, 0));
-        const slashEnd = enemyPosition.clone().add(new THREE.Vector3(0, 0.8, 0));
         
-        // Create metallic sword slash effect (without blood)
-        this.effectsManager.createSwordSlashEffect(slashStart, slashEnd, slashDirection);
+        // REMOVED: No slash trail effect - only blood on enemy hit
         
-        // Apply damage and create SEPARATE blood effect
+        // Apply damage and create blood effect
         enemy.takeDamage(attackPower, playerPosition);
         
         // Create realistic blood effect ONLY when hitting enemy
@@ -189,12 +177,12 @@ export class CombatSystem {
           this.player.addExperience(enemy.getExperienceReward());
         }
         
-        console.log("⚔️ [CombatSystem] Enemy hit - created slash effect + blood effect");
+        console.log("⚔️ [CombatSystem] Enemy hit - created blood effect only (no slash trail)");
       }
     });
     
     if (!enemyHit) {
-      console.log("🌪️ [CombatSystem] No enemies hit - swoosh effect only (no blood)");
+      console.log("⚔️ [CombatSystem] No enemies hit - no effects created");
     }
   }
   

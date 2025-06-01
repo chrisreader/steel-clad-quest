@@ -93,126 +93,6 @@ export class EffectsManager {
     }
   }
   
-  public createSwordSwooshEffect(startPos: THREE.Vector3, endPos: THREE.Vector3, direction: THREE.Vector3): void {
-    console.log('🌪️ [EffectsManager] Creating sword swoosh effect for empty swing');
-    
-    // Create air displacement trail
-    const swooshTrail = this.createAirSwooshTrail(startPos, endPos);
-    if (swooshTrail) {
-      this.scene.add(swooshTrail);
-      this.effects.set(`swoosh_${Date.now()}`, swooshTrail);
-    }
-    
-    // Add wind particles that follow the sword path
-    const windSystem = ParticleSystem.createWindTrail(this.scene, startPos, direction);
-    windSystem.start();
-    this.particleSystems.push(windSystem);
-    
-    // Add subtle sparkles for metallic gleam (no blood)
-    const gleamSystem = ParticleSystem.createMetallicGleam(this.scene, startPos, direction);
-    gleamSystem.start();
-    this.particleSystems.push(gleamSystem);
-    
-    // Light camera shake for swoosh
-    this.shakeCamera(0.005);
-  }
-  
-  private createAirSwooshTrail(startPos: THREE.Vector3, endPos: THREE.Vector3): THREE.Line | null {
-    const direction = endPos.clone().sub(startPos);
-    const length = direction.length();
-    
-    if (length < 0.1) return null;
-    
-    // Create curved swoosh geometry for air displacement
-    const curve = new THREE.QuadraticBezierCurve3(
-      startPos,
-      startPos.clone().add(direction.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.1, 0)),
-      endPos
-    );
-    
-    const points = curve.getPoints(8);
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    
-    // Create subtle wind/air material
-    const material = new THREE.LineBasicMaterial({
-      color: 0xAABBCC,
-      transparent: true,
-      opacity: 0.15,
-      linewidth: 1
-    });
-    
-    const swooshTrail = new THREE.Line(geometry, material);
-    
-    swooshTrail.userData = {
-      type: 'swoosh_trail',
-      age: 0,
-      duration: 80, // Very quick fade for air displacement
-      update: (deltaTime: number) => {
-        const progress = swooshTrail.userData.age / swooshTrail.userData.duration;
-        material.opacity = 0.15 * (1 - progress);
-      }
-    };
-    
-    return swooshTrail;
-  }
-  
-  public createSwordSlashEffect(startPos: THREE.Vector3, endPos: THREE.Vector3, direction: THREE.Vector3): void {
-    console.log('⚔️ [EffectsManager] Creating metallic sword slash effect for enemy hit');
-    
-    // Create metallic slash trail (no blood)
-    const slashTrail = this.createMetallicSlashTrail(startPos, endPos);
-    if (slashTrail) {
-      this.scene.add(slashTrail);
-      this.effects.set(`slash_${Date.now()}`, slashTrail);
-    }
-    
-    // Add metallic impact sparks (no blood)
-    const sparkSystem = ParticleSystem.createMetallicSparks(this.scene, endPos);
-    sparkSystem.start();
-    this.particleSystems.push(sparkSystem);
-    
-    this.shakeCamera(0.015);
-  }
-  
-  private createMetallicSlashTrail(startPos: THREE.Vector3, endPos: THREE.Vector3): THREE.Line | null {
-    const direction = endPos.clone().sub(startPos);
-    const length = direction.length();
-    
-    if (length < 0.1) return null;
-    
-    // Create curved slash geometry
-    const curve = new THREE.QuadraticBezierCurve3(
-      startPos,
-      startPos.clone().add(direction.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.2, 0)),
-      endPos
-    );
-    
-    const points = curve.getPoints(12);
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    
-    // Create metallic slash material
-    const material = new THREE.LineBasicMaterial({
-      color: 0xCCCCDD,
-      transparent: true,
-      opacity: 0.4,
-      linewidth: 1
-    });
-    
-    const slashTrail = new THREE.Line(geometry, material);
-    
-    slashTrail.userData = {
-      type: 'metallic_slash_trail',
-      age: 0,
-      duration: 120,
-      update: (deltaTime: number) => {
-        const progress = slashTrail.userData.age / slashTrail.userData.duration;
-        material.opacity = 0.4 * (1 - progress);
-      }
-    };
-    
-    return slashTrail;
-  }
-  
   public createRealisticBloodEffect(position: THREE.Vector3, direction: THREE.Vector3, intensity: number = 1): void {
     // Create blood spray with proper physics
     const bloodSpray = ParticleSystem.createBloodSpray(this.scene, position, direction, intensity);
@@ -336,14 +216,10 @@ export class EffectsManager {
     this.shakeCamera(0.04 * intensity);
   }
   
-  // Legacy methods updated with realistic effects
+  // Legacy methods updated - REMOVED slash trail effects
   public createAttackEffect(position: THREE.Vector3, color: number = 0xFF6B6B): void {
-    // Use swoosh effect for empty attacks
-    const direction = new THREE.Vector3(1, 0, 0);
-    const startPos = position.clone().add(new THREE.Vector3(-0.5, 0.8, 0));
-    const endPos = position.clone().add(new THREE.Vector3(0.5, 0.8, 0));
-    
-    this.createSwordSwooshEffect(startPos, endPos, direction);
+    // Empty method - no effects for empty attacks
+    console.log("⚔️ [EffectsManager] Empty attack - no effects created");
   }
   
   public createDamageEffect(position: THREE.Vector3): void {
@@ -364,44 +240,13 @@ export class EffectsManager {
     this.createRealisticBloodEffect(position, direction, 1);
   }
   
-  public createSwooshEffect(position: THREE.Vector3, direction: THREE.Vector3): void {
-    const startPos = position.clone().sub(direction.clone().multiplyScalar(0.5));
-    const endPos = position.clone().add(direction.clone().multiplyScalar(0.5));
-    
-    this.createSwordSwooshEffect(startPos, endPos, direction);
-  }
-  
   public createSwordTrail(positions: THREE.Vector3[]): THREE.Line | null {
-    if (positions.length < 2) return null;
-    
-    const geometry = new THREE.BufferGeometry().setFromPoints(positions);
-    const material = new THREE.LineBasicMaterial({
-      color: 0xCCCCCC,
-      transparent: true,
-      opacity: 0.4
-    });
-    
-    const trail = new THREE.Line(geometry, material);
-    this.scene.add(trail);
-    
-    trail.userData = {
-      type: 'sword_trail',
-      age: 0,
-      duration: 150
-    };
-    
-    this.effects.set(`trail_${Date.now()}`, trail);
-    return trail;
+    // Return null - no sword trails
+    return null;
   }
   
   public updateSwordTrail(trail: THREE.Line, positions: THREE.Vector3[]): void {
-    if (!trail || positions.length < 2) return;
-    
-    const geometry = new THREE.BufferGeometry().setFromPoints(positions);
-    trail.geometry.dispose();
-    trail.geometry = geometry;
-    
-    trail.userData.age = 0;
+    // Empty method - no sword trails
   }
   
   public createFireball(position: THREE.Vector3, direction: THREE.Vector3): void {
