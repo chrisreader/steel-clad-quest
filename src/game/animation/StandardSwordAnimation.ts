@@ -28,12 +28,12 @@ export const STANDARD_SWORD_ANIMATION: StandardSwordAnimationConfig = {
     windup: { 
       x: THREE.MathUtils.degToRad(70),           // 70° move to right side
       y: THREE.MathUtils.degToRad(10),           // 10° right side position
-      z: 0
+      z: THREE.MathUtils.degToRad(20)            // 20° twist for power buildup
     },
     slash: { 
       x: THREE.MathUtils.degToRad(15),           // 15° end position
       y: THREE.MathUtils.degToRad(20),           // 20° moderate sweep to left
-      z: 0                                       // No z rotation
+      z: THREE.MathUtils.degToRad(-20)           // -20° counter-twist for dynamic slash
     }
   }
 };
