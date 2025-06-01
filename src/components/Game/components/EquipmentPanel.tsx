@@ -5,7 +5,8 @@ import { EquipmentSlot } from '../UI/EquipmentSlot';
 
 interface EquipmentPanelProps {
   equippedWeapons: {
-    mainhand: Item | null;
+    primary: Item | null;
+    secondary: Item | null;
     offhand: Item | null;
   };
   onUnequip: (slotType: EquipmentSlotType) => void;
@@ -22,7 +23,8 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({
     chestplate: null,
     leggings: null,
     boots: null,
-    mainhand: equippedWeapons.mainhand,
+    primary: equippedWeapons.primary,
+    secondary: equippedWeapons.secondary,
     offhand: equippedWeapons.offhand,
   };
 
@@ -62,20 +64,30 @@ export const EquipmentPanel: React.FC<EquipmentPanelProps> = ({
         onDrop={onDrop}
       />
       
-      {/* Weapon Slots */}
-      <div className="flex gap-4 mt-4">
-        <EquipmentSlot
-          slotType="mainhand"
-          item={equippedItems.mainhand}
-          onUnequip={onUnequip}
-          onDrop={onDrop}
-        />
-        <EquipmentSlot
-          slotType="offhand"
-          item={equippedItems.offhand}
-          onUnequip={onUnequip}
-          onDrop={onDrop}
-        />
+      {/* Weapon Slots - Updated for 3-slot system */}
+      <div className="flex flex-col gap-2 mt-4">
+        <div className="flex gap-4">
+          <EquipmentSlot
+            slotType="primary"
+            item={equippedItems.primary}
+            onUnequip={onUnequip}
+            onDrop={onDrop}
+          />
+          <EquipmentSlot
+            slotType="secondary"
+            item={equippedItems.secondary}
+            onUnequip={onUnequip}
+            onDrop={onDrop}
+          />
+        </div>
+        <div className="flex justify-center">
+          <EquipmentSlot
+            slotType="offhand"
+            item={equippedItems.offhand}
+            onUnequip={onUnequip}
+            onDrop={onDrop}
+          />
+        </div>
       </div>
     </div>
   );

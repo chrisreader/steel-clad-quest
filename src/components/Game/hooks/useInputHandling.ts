@@ -1,3 +1,4 @@
+
 import { useEffect, useCallback } from 'react';
 import { GameEngine } from '../../../game/engine/GameEngine';
 
@@ -12,7 +13,7 @@ interface UseInputHandlingProps {
   toggleStatsPanel: () => void;
   closeAllUIs: () => void;
   togglePause: () => void;
-  onWeaponSlotSelect?: (slot: 1 | 2) => void;
+  onWeaponSlotSelect?: (slot: 1 | 2 | 3) => void;
 }
 
 export const useInputHandling = ({
@@ -38,7 +39,7 @@ export const useInputHandling = ({
 
       // Prevent default for game controls only when no UI is open
       const anyUIOpen = isAnyUIOpen();
-      if (!anyUIOpen && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Digit1', 'Digit2'].includes(event.code)) {
+      if (!anyUIOpen && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Digit1', 'Digit2', 'Digit3'].includes(event.code)) {
         event.preventDefault();
       }
 
@@ -82,14 +83,20 @@ export const useInputHandling = ({
           break;
         case 'Digit1':
           if (!anyUIOpen && onWeaponSlotSelect) {
-            console.log('1 pressed - selecting weapon slot 1');
+            console.log('1 pressed - selecting primary weapon slot');
             onWeaponSlotSelect(1);
           }
           break;
         case 'Digit2':
           if (!anyUIOpen && onWeaponSlotSelect) {
-            console.log('2 pressed - selecting weapon slot 2');
+            console.log('2 pressed - selecting secondary weapon slot');
             onWeaponSlotSelect(2);
+          }
+          break;
+        case 'Digit3':
+          if (!anyUIOpen && onWeaponSlotSelect) {
+            console.log('3 pressed - selecting offhand weapon slot');
+            onWeaponSlotSelect(3);
           }
           break;
         case 'KeyI':

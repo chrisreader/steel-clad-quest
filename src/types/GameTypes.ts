@@ -45,8 +45,8 @@ export interface PlayerBody {
   rightFoot?: THREE.Mesh;
 }
 
-// Equipment slot types
-export type EquipmentSlotType = 'helmet' | 'chestplate' | 'leggings' | 'boots' | 'mainhand' | 'offhand';
+// Equipment slot types - updated for 3-slot weapon system
+export type EquipmentSlotType = 'helmet' | 'chestplate' | 'leggings' | 'boots' | 'primary' | 'secondary' | 'offhand';
 
 // Inventory slot interface
 export interface InventorySlot {
@@ -55,13 +55,14 @@ export interface InventorySlot {
   isEmpty: boolean;
 }
 
-// Equipment slots interface
+// Equipment slots interface - updated for 3-slot weapon system
 export interface EquippedItems {
   helmet: Item | null;
   chestplate: Item | null;
   leggings: Item | null;
   boots: Item | null;
-  mainhand: Item | null;
+  primary: Item | null;
+  secondary: Item | null;
   offhand: Item | null;
 }
 
@@ -78,6 +79,7 @@ export interface WeaponConfig {
   id: string;
   name: string;
   type: 'sword' | 'axe' | 'mace' | 'bow';
+  handRequirement: 'one-handed' | 'two-handed';
   stats: WeaponStats;
   swingAnimation: {
     duration: number;
@@ -263,16 +265,6 @@ export interface WeaponSwingAnimation {
 
 // Legacy alias for backward compatibility
 export type SwordSwingAnimation = WeaponSwingAnimation;
-
-export interface Item {
-  id: string;
-  name: string;
-  type: 'weapon' | 'armor' | 'potion' | 'material';
-  value: number;
-  stats?: Partial<PlayerStats>;
-  description: string;
-  quantity: number;
-}
 
 export interface Quest {
   id: string;
