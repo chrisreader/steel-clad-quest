@@ -36,7 +36,7 @@ export class CombatSystem {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with bow support");
+    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with enhanced bow debug logging");
   }
   
   public update(deltaTime: number): void {
@@ -75,13 +75,15 @@ export class CombatSystem {
   public startPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK CALLED *** - weapon type:", currentWeapon?.getConfig().type || 'none');
+    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK CALLED ***");
+    console.log("⚔️ [CombatSystem] Current weapon:", currentWeapon ? currentWeapon.getConfig().name : 'none');
+    console.log("⚔️ [CombatSystem] Weapon type:", currentWeapon?.getConfig().type || 'none');
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
-      console.log("⚔️ [CombatSystem] Starting bow attack");
+      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Starting bow attack sequence");
       this.startBowDraw();
     } else {
-      console.log("⚔️ [CombatSystem] *** STARTING MELEE ATTACK *** - calling startMeleeAttack()");
+      console.log("⚔️ [CombatSystem] ⚔️ MELEE WEAPON - Starting melee attack");
       this.startMeleeAttack();
     }
   }
@@ -89,31 +91,39 @@ export class CombatSystem {
   public stopPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] Stopping player attack, weapon type:", currentWeapon?.getConfig().type || 'none');
+    console.log("⚔️ [CombatSystem] *** STOP PLAYER ATTACK CALLED ***");
+    console.log("⚔️ [CombatSystem] Current weapon:", currentWeapon ? currentWeapon.getConfig().name : 'none');
+    console.log("⚔️ [CombatSystem] Is drawing bow:", this.isDrawingBow);
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.isDrawingBow) {
+      console.log("⚔️ [CombatSystem] 🏹 RELEASING BOW STRING");
       this.releaseBowString();
+    } else {
+      console.log("⚔️ [CombatSystem] No bow release needed");
     }
   }
   
   private startBowDraw(): void {
-    console.log("🏹 [CombatSystem] Starting bow draw with enhanced debug");
+    console.log("🏹 [CombatSystem] *** STARTING BOW DRAW ***");
     this.isDrawingBow = true;
     this.bowDrawStartTime = Date.now();
     
+    console.log("🏹 [CombatSystem] Calling player.startBowDraw()");
     this.player.startBowDraw();
+    
+    console.log("🏹 [CombatSystem] Playing bow draw sound");
     this.audioManager.play('bow_draw');
     
-    console.log("🏹 [CombatSystem] Bow draw initiated successfully");
+    console.log("🏹 [CombatSystem] Bow draw sequence completed successfully");
   }
   
   private releaseBowString(): void {
-    console.log("🏹 [CombatSystem] Releasing bow string with enhanced debug");
+    console.log("🏹 [CombatSystem] *** RELEASING BOW STRING ***");
     this.isDrawingBow = false;
     
     const currentWeapon = this.player.getEquippedWeapon();
     if (!currentWeapon || currentWeapon.getConfig().type !== 'bow') {
-      console.warn("🏹 [CombatSystem] Cannot release bow - no bow equipped");
+      console.warn("🏹 [CombatSystem] ⚠️ Cannot release bow - no bow equipped");
       return;
     }
     
@@ -122,23 +132,30 @@ export class CombatSystem {
     const damage = bow.getChargeDamage();
     const speed = bow.getArrowSpeed();
     
-    console.log(`🏹 [CombatSystem] Bow release stats - Charge: ${chargeLevel.toFixed(2)}, Damage: ${damage}, Speed: ${speed}`);
+    console.log(`🏹 [CombatSystem] BOW STATS - Charge: ${chargeLevel.toFixed(2)}, Damage: ${damage}, Speed: ${speed}`);
     
     if (chargeLevel > 0.1) {
+      console.log("🏹 [CombatSystem] ✅ SUFFICIENT CHARGE - FIRING ARROW");
+      
       const playerPosition = this.player.getPosition();
       const cameraDirection = new THREE.Vector3(0, 0, -1);
       
       const arrowStartPos = playerPosition.clone().add(new THREE.Vector3(0, 1.5, 0));
+      
+      console.log("🏹 [CombatSystem] Arrow start position:", arrowStartPos);
+      console.log("🏹 [CombatSystem] Arrow direction:", cameraDirection);
+      
       this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
       
-      console.log(`🏹 [CombatSystem] Arrow shot successfully from position:`, arrowStartPos);
+      console.log("🏹 [CombatSystem] ✅ ARROW FIRED SUCCESSFULLY");
       
       this.audioManager.play('bow_release');
     } else {
-      console.log("🏹 [CombatSystem] Arrow not shot - insufficient charge");
+      console.log("🏹 [CombatSystem] ❌ INSUFFICIENT CHARGE - Arrow not fired");
     }
     
     this.player.stopBowDraw();
+    console.log("🏹 [CombatSystem] Bow release sequence completed");
   }
   
   private startMeleeAttack(): void {

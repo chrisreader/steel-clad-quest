@@ -30,12 +30,51 @@ export const useInputHandling = ({
   onWeaponSlotSelect
 }: UseInputHandlingProps) => {
 
+  // Listen for game input events (from mouse/keyboard handlers)
+  useEffect(() => {
+    const handleGameInput = (event: Event) => {
+      if (!gameStarted || !gameEngine) return;
+
+      const customEvent = event as CustomEvent;
+      const { type, data } = customEvent.detail;
+      
+      console.log(`🎮 [useInputHandling] Received game input event: ${type}`, data);
+      
+      const anyUIOpen = isAnyUIOpen();
+      if (anyUIOpen) {
+        console.log(`🎮 [useInputHandling] UI is open, ignoring input: ${type}`);
+        return;
+      }
+
+      switch (type) {
+        case 'attack':
+          console.log('🎮 [useInputHandling] *** ATTACK EVENT *** - calling gameEngine.handleInput("attack")');
+          gameEngine.handleInput('attack');
+          break;
+        case 'attackEnd':
+          console.log('🎮 [useInputHandling] *** ATTACK END EVENT *** - calling gameEngine.handleInput("attackEnd")');
+          gameEngine.handleInput('attackEnd');
+          break;
+        case 'look':
+          // Handle mouse look
+          gameEngine.handleInput('look', data);
+          break;
+        default:
+          // Handle other input types
+          break;
+      }
+    };
+
+    document.addEventListener('gameInput', handleGameInput);
+    return () => document.removeEventListener('gameInput', handleGameInput);
+  }, [gameStarted, gameEngine, isAnyUIOpen]);
+
   // Enhanced keyboard input handler
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (!gameStarted || !gameEngine) return;
 
-      console.log('Key pressed:', event.code, 'Game running:', gameEngine.isRunning());
+      console.log('🎮 [useInputHandling] Key pressed:', event.code);
 
       // Prevent default for game controls only when no UI is open
       const anyUIOpen = isAnyUIOpen();
@@ -46,7 +85,7 @@ export const useInputHandling = ({
       switch (event.code) {
         case 'Space':
           if (!anyUIOpen) {
-            console.log('Space pressed - attacking');
+            console.log('🎮 [useInputHandling] Space pressed - attacking via keyboard');
             gameEngine.handleInput('attack');
           }
           break;
@@ -83,19 +122,19 @@ export const useInputHandling = ({
           break;
         case 'Digit1':
           if (!anyUIOpen && onWeaponSlotSelect) {
-            console.log('1 pressed - selecting weapon slot 1 (primary)');
+            console.log('🎮 [useInputHandling] 1 pressed - selecting weapon slot 1 (primary)');
             onWeaponSlotSelect(1);
           }
           break;
         case 'Digit2':
           if (!anyUIOpen && onWeaponSlotSelect) {
-            console.log('2 pressed - selecting weapon slot 2 (secondary)');
+            console.log('🎮 [useInputHandling] 2 pressed - selecting weapon slot 2 (secondary)');
             onWeaponSlotSelect(2);
           }
           break;
         case 'Digit3':
           if (!anyUIOpen && onWeaponSlotSelect) {
-            console.log('3 pressed - selecting weapon slot 3 (offhand)');
+            console.log('🎮 [useInputHandling] 3 pressed - selecting weapon slot 3 (offhand)');
             onWeaponSlotSelect(3);
           }
           break;

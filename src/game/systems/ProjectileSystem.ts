@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Arrow } from '../entities/Arrow';
 import { Player } from '../entities/Player';
@@ -24,6 +23,7 @@ export class ProjectileSystem {
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    console.log("🏹 [ProjectileSystem] Initialized with enhanced debug logging");
   }
 
   public shootArrow(
@@ -32,18 +32,28 @@ export class ProjectileSystem {
     speed: number,
     damage: number
   ): void {
-    const arrow = new Arrow(
-      this.scene,
-      startPosition,
-      direction,
-      speed,
-      damage,
-      this.effectsManager,
-      this.audioManager
-    );
+    console.log("🏹 [ProjectileSystem] *** SHOOT ARROW CALLED ***");
+    console.log("🏹 [ProjectileSystem] Start position:", startPosition);
+    console.log("🏹 [ProjectileSystem] Direction:", direction);
+    console.log("🏹 [ProjectileSystem] Speed:", speed);
+    console.log("🏹 [ProjectileSystem] Damage:", damage);
     
-    this.arrows.push(arrow);
-    console.log('🏹 [ProjectileSystem] Arrow shot with damage:', damage);
+    try {
+      const arrow = new Arrow(
+        this.scene,
+        startPosition,
+        direction,
+        speed,
+        damage,
+        this.effectsManager,
+        this.audioManager
+      );
+      
+      this.arrows.push(arrow);
+      console.log(`🏹 [ProjectileSystem] ✅ ARROW CREATED SUCCESSFULLY - Total arrows: ${this.arrows.length}`);
+    } catch (error) {
+      console.error("🏹 [ProjectileSystem] ❌ ERROR CREATING ARROW:", error);
+    }
   }
 
   public update(deltaTime: number): void {

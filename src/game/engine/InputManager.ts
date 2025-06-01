@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { MouseHandler } from './input/MouseHandler';
 import { KeyboardHandler } from './input/KeyboardHandler';
@@ -61,6 +62,7 @@ export class InputManager {
   
   // Custom event system
   private dispatchInputEvent(type: string, data?: any): void {
+    console.log(`🎮 [InputManager] Dispatching input event: ${type}`, data);
     const event = new CustomEvent('gameInput', {
       detail: {
         type: type,

@@ -60,6 +60,7 @@ export class MouseHandler {
   }
   
   private handleMouseDown(event: MouseEvent): void {
+    console.log("🖱️ [MouseHandler] Mouse down detected - button:", event.button);
     this.mouse.buttons |= (1 << event.button);
     
     const now = Date.now();
@@ -80,9 +81,11 @@ export class MouseHandler {
     
     switch (event.button) {
       case 0: // Left mouse button
+        console.log("🖱️ [MouseHandler] LEFT CLICK - dispatching 'attack' event");
         this.eventDispatcher('attack');
         break;
       case 2: // Right mouse button
+        console.log("🖱️ [MouseHandler] RIGHT CLICK - dispatching 'secondaryAction' event");
         this.eventDispatcher('secondaryAction');
         break;
       case 1: // Middle mouse button
@@ -92,13 +95,16 @@ export class MouseHandler {
   }
   
   private handleMouseUp(event: MouseEvent): void {
+    console.log("🖱️ [MouseHandler] Mouse up detected - button:", event.button);
     this.mouse.buttons &= ~(1 << event.button);
     
     switch (event.button) {
       case 0: // Left mouse button
+        console.log("🖱️ [MouseHandler] LEFT RELEASE - dispatching 'attackEnd' event");
         this.eventDispatcher('attackEnd');
         break;
       case 2: // Right mouse button
+        console.log("🖱️ [MouseHandler] RIGHT RELEASE - dispatching 'secondaryActionEnd' event");
         this.eventDispatcher('secondaryActionEnd');
         break;
     }
