@@ -953,14 +953,7 @@ export class Player {
       direction = recent.clone().sub(previous).normalize();
     }
     
-    // FIXED: Use sword swoosh effect instead of createSwooshEffect to avoid blood
-    this.effectsManager.createSwordSwooshEffect(
-      this.weaponTipPositions[0], 
-      tipPosition, 
-      direction
-    );
-    
-    console.log("🌪️ [Player] Created enhanced sword swoosh effect (no blood)");
+    console.log("🌪️ [Player] Sword swoosh effect removed - no effects on empty swings");
   }
   
   private createWeaponTrailEffect(): void {
