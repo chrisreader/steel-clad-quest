@@ -29,14 +29,20 @@ export class Arrow {
   ) {
     this.scene = scene;
     this.position = startPosition.clone();
-    this.velocity = direction.clone().multiplyScalar(speed);
+    
+    // ENHANCED: Add slight upward arc for realistic arrow trajectory
+    const adjustedDirection = direction.clone().normalize();
+    adjustedDirection.y += 0.05; // Small upward component for realistic arc
+    adjustedDirection.normalize();
+    
+    this.velocity = adjustedDirection.multiplyScalar(speed);
     this.damage = damage;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
     console.log("🏹 [Arrow] *** CREATING ARROW ***");
     console.log("🏹 [Arrow] Start position:", this.position);
-    console.log("🏹 [Arrow] Direction:", direction);
+    console.log("🏹 [Arrow] Adjusted direction:", adjustedDirection);
     console.log("🏹 [Arrow] Velocity:", this.velocity);
     console.log("🏹 [Arrow] Speed:", speed);
     console.log("🏹 [Arrow] Damage:", damage);
@@ -132,7 +138,8 @@ export class Arrow {
   }
 
   private createTrailEffect(): void {
-    const particleCount = 20;
+    // ENHANCED: Increased particle count and improved visibility for better trail effect
+    const particleCount = 50; // Increased from 20 to 50
     const particles = new Float32Array(particleCount * 3);
     
     for (let i = 0; i < particleCount; i++) {
@@ -145,10 +152,10 @@ export class Arrow {
     geometry.setAttribute('position', new THREE.BufferAttribute(particles, 3));
     
     const material = new THREE.PointsMaterial({
-      color: 0xcccccc,
-      size: 0.05,
+      color: 0xffffff, // Brighter white for better visibility
+      size: 0.1, // Increased from 0.05 to 0.1 for better visibility
       transparent: true,
-      opacity: 0.6
+      opacity: 0.8 // Increased from 0.6 to 0.8 for better visibility
     });
     
     this.trail = new THREE.Points(geometry, material);
@@ -193,6 +200,13 @@ export class Arrow {
     // Check ground collision (simple y = 0 ground)
     if (this.position.y <= 0) {
       this.hitGround();
+    }
+    
+    // ENHANCED: Bounds checking to prevent arrows from going too far
+    if (this.position.length() > 1000) {
+      console.log("🏹 [Arrow] Arrow traveled too far, disposing");
+      this.dispose();
+      return false;
     }
     
     // Log position occasionally for debugging

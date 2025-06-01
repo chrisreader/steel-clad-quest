@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -118,9 +119,9 @@ export class CombatSystem {
     
     console.log("🏹 [CombatSystem] Arrow start position:", arrowStartPos);
     
-    // Use fixed damage and speed (no charge mechanics)
+    // FIXED: Increased arrow speed from 30 to 150 for realistic projectile motion
     const damage = currentWeapon.getConfig().stats.damage;
-    const speed = 30; // Fixed FPS-style arrow speed
+    const speed = 150; // Increased from 30 to 150 for fast, realistic arrow shooting
     
     console.log(`🏹 [CombatSystem] FIRING - Damage: ${damage}, Speed: ${speed}`);
     
