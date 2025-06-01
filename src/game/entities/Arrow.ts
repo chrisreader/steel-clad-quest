@@ -78,7 +78,7 @@ export class Arrow {
     shaft.rotation.x = Math.PI / 2;
     arrowGroup.add(shaft);
     
-    // Arrow head - positioned along Z-axis
+    // Arrow head - positioned along Z-axis and flipped to point forward
     const headGeometry = new THREE.ConeGeometry(0.08 * scale, 0.2 * scale);
     const headMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xC0C0C0,
@@ -87,7 +87,7 @@ export class Arrow {
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.z = 0.5 * scale;
-    head.rotation.x = -Math.PI / 2;
+    head.rotation.x = Math.PI / 2; // Flipped to point forward
     arrowGroup.add(head);
     
     // Fletching
