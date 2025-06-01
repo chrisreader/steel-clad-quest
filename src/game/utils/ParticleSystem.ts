@@ -42,6 +42,8 @@ export class ParticleSystem {
   private startTime: number;
   private isActive: boolean;
   private bloodTexture: THREE.Texture | null = null;
+  private windTexture: THREE.Texture | null = null;
+  private metallicTexture: THREE.Texture | null = null;
   
   constructor(scene: THREE.Scene, options: ParticleOptions) {
     this.scene = scene;
@@ -71,30 +73,68 @@ export class ParticleSystem {
     this.isActive = false;
     this.sprites = [];
     
-    this.createBloodTexture();
+    this.createTextures();
     this.initParticles();
     this.createSprites();
   }
   
-  private createBloodTexture(): void {
-    const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext('2d')!;
+  private createTextures(): void {
+    // Create blood texture (only for blood effects)
+    const bloodCanvas = document.createElement('canvas');
+    bloodCanvas.width = 32;
+    bloodCanvas.height = 32;
+    const bloodCtx = bloodCanvas.getContext('2d')!;
     
-    // Create circular blood droplet texture
-    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    gradient.addColorStop(0, 'rgba(139, 0, 0, 1)');
-    gradient.addColorStop(0.7, 'rgba(100, 0, 0, 0.8)');
-    gradient.addColorStop(1, 'rgba(80, 0, 0, 0)');
+    const bloodGradient = bloodCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    bloodGradient.addColorStop(0, 'rgba(139, 0, 0, 1)');
+    bloodGradient.addColorStop(0.7, 'rgba(100, 0, 0, 0.8)');
+    bloodGradient.addColorStop(1, 'rgba(80, 0, 0, 0)');
     
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(16, 16, 16, 0, Math.PI * 2);
-    ctx.fill();
+    bloodCtx.fillStyle = bloodGradient;
+    bloodCtx.beginPath();
+    bloodCtx.arc(16, 16, 16, 0, Math.PI * 2);
+    bloodCtx.fill();
     
-    this.bloodTexture = new THREE.CanvasTexture(canvas);
+    this.bloodTexture = new THREE.CanvasTexture(bloodCanvas);
     this.bloodTexture.needsUpdate = true;
+    
+    // Create wind texture (for wind/air effects)
+    const windCanvas = document.createElement('canvas');
+    windCanvas.width = 32;
+    windCanvas.height = 32;
+    const windCtx = windCanvas.getContext('2d')!;
+    
+    const windGradient = windCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    windGradient.addColorStop(0, 'rgba(187, 204, 221, 0.8)');
+    windGradient.addColorStop(0.5, 'rgba(187, 204, 221, 0.4)');
+    windGradient.addColorStop(1, 'rgba(187, 204, 221, 0)');
+    
+    windCtx.fillStyle = windGradient;
+    windCtx.beginPath();
+    windCtx.arc(16, 16, 16, 0, Math.PI * 2);
+    windCtx.fill();
+    
+    this.windTexture = new THREE.CanvasTexture(windCanvas);
+    this.windTexture.needsUpdate = true;
+    
+    // Create metallic texture (for sparks/gleam effects)
+    const metallicCanvas = document.createElement('canvas');
+    metallicCanvas.width = 32;
+    metallicCanvas.height = 32;
+    const metallicCtx = metallicCanvas.getContext('2d')!;
+    
+    const metallicGradient = metallicCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    metallicGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    metallicGradient.addColorStop(0.5, 'rgba(204, 204, 255, 0.8)');
+    metallicGradient.addColorStop(1, 'rgba(170, 170, 255, 0)');
+    
+    metallicCtx.fillStyle = metallicGradient;
+    metallicCtx.beginPath();
+    metallicCtx.arc(16, 16, 16, 0, Math.PI * 2);
+    metallicCtx.fill();
+    
+    this.metallicTexture = new THREE.CanvasTexture(metallicCanvas);
+    this.metallicTexture.needsUpdate = true;
   }
   
   private initParticles(): void {
@@ -140,8 +180,14 @@ export class ParticleSystem {
     for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i];
       
+      // Choose appropriate texture based on particle type
+      let texture = this.windTexture; // Default to wind texture
+      if (this.options.texture) {
+        texture = this.options.texture;
+      }
+      
       const material = new THREE.SpriteMaterial({
-        map: this.bloodTexture,
+        map: texture,
         transparent: true,
         opacity: particle.opacity,
         color: particle.color,
@@ -150,9 +196,9 @@ export class ParticleSystem {
       });
       
       const sprite = new THREE.Sprite(material);
-      sprite.scale.setScalar(particle.size * 2); // Make sprites more visible
+      sprite.scale.setScalar(particle.size * 2);
       sprite.position.copy(particle.position);
-      sprite.visible = false; // Start invisible
+      sprite.visible = false;
       
       this.sprites.push(sprite);
     }
@@ -164,7 +210,6 @@ export class ParticleSystem {
     this.isActive = true;
     this.startTime = Date.now();
     
-    // Add sprites to scene
     this.sprites.forEach(sprite => {
       this.scene.add(sprite);
     });
@@ -177,7 +222,6 @@ export class ParticleSystem {
     
     this.isActive = false;
     
-    // Remove sprites from scene and dispose materials
     this.sprites.forEach(sprite => {
       this.scene.remove(sprite);
       if (sprite.material) {
@@ -206,7 +250,6 @@ export class ParticleSystem {
       particle.age += 16;
       const particleProgress = particle.age / this.options.duration;
       
-      // Calculate opacity with fade in/out
       if (particleProgress < this.options.fadeIn!) {
         particle.opacity = particleProgress / this.options.fadeIn! * this.options.opacity!;
       } else if (particleProgress > (1 - this.options.fadeOut!)) {
@@ -215,25 +258,23 @@ export class ParticleSystem {
         particle.opacity = this.options.opacity!;
       }
       
-      // Update physics
       particle.rotation += particle.rotationSpeed;
       particle.velocity.y -= this.options.gravity! * 0.016;
       particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
       
-      // Update sprite
       sprite.position.copy(particle.position);
       sprite.material.opacity = particle.opacity;
       sprite.material.rotation = particle.rotation;
       sprite.visible = particle.opacity > 0.01;
       
-      // Scale down over time for more realism
       const sizeMultiplier = 1 - particleProgress * 0.3;
       sprite.scale.setScalar(particle.size * 2 * sizeMultiplier);
     }
   }
   
-  // NEW: Wind trail effect for sword swooshes
+  // FIXED: Wind trail effect with proper non-blood texture
   static createWindTrail(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
+    console.log('🌪️ [ParticleSystem] Creating WIND TRAIL effect (NO BLOOD)');
     return new ParticleSystem(scene, {
       position: position,
       count: 12,
@@ -242,7 +283,7 @@ export class ParticleSystem {
       sizeVariation: 0.02,
       speed: 1.5,
       speedVariation: 0.8,
-      color: 0xBBCCDD,
+      color: 0xBBCCDD, // Blue-grey wind color
       colorVariation: 0.1,
       gravity: 0.1,
       direction: direction,
@@ -253,13 +294,14 @@ export class ParticleSystem {
     });
   }
   
-  // Enhanced realistic blood effects with improved textures
+  // Blood effects use blood texture
   static createBloodSpray(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3, intensity: number = 1): ParticleSystem {
-    return new ParticleSystem(scene, {
+    console.log('🩸 [ParticleSystem] Creating BLOOD SPRAY effect');
+    const system = new ParticleSystem(scene, {
       position: position,
       count: Math.floor(30 * intensity),
       duration: 1200,
-      size: 0.08, // Increased size for visibility
+      size: 0.08,
       sizeVariation: 0.04,
       speed: 4 * intensity,
       speedVariation: 2,
@@ -272,14 +314,18 @@ export class ParticleSystem {
       fadeIn: 0.05,
       fadeOut: 0.4
     });
+    // Explicitly set blood texture
+    system.options.texture = system.bloodTexture;
+    return system;
   }
   
   static createBloodDroplets(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
-    return new ParticleSystem(scene, {
+    console.log('🩸 [ParticleSystem] Creating BLOOD DROPLETS effect');
+    const system = new ParticleSystem(scene, {
       position: position,
       count: 20,
       duration: 2000,
-      size: 0.12, // Increased size for visibility
+      size: 0.12,
       sizeVariation: 0.06,
       speed: 2,
       speedVariation: 1.5,
@@ -292,10 +338,13 @@ export class ParticleSystem {
       fadeIn: 0.02,
       fadeOut: 0.2
     });
+    system.options.texture = system.bloodTexture;
+    return system;
   }
   
   static createDirectionalBloodSpray(scene: THREE.Scene, position: THREE.Vector3, arrowDirection: THREE.Vector3, intensity: number): ParticleSystem {
-    return new ParticleSystem(scene, {
+    console.log('🩸 [ParticleSystem] Creating DIRECTIONAL BLOOD SPRAY effect');
+    const system = new ParticleSystem(scene, {
       position: position,
       count: Math.floor(30 * intensity),
       duration: 1500,
@@ -312,10 +361,13 @@ export class ParticleSystem {
       fadeIn: 0.03,
       fadeOut: 0.3
     });
+    system.options.texture = system.bloodTexture;
+    return system;
   }
   
   static createBloodTrail(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
-    return new ParticleSystem(scene, {
+    console.log('🩸 [ParticleSystem] Creating BLOOD TRAIL effect');
+    const system = new ParticleSystem(scene, {
       position: position,
       count: 15,
       duration: 800,
@@ -332,10 +384,14 @@ export class ParticleSystem {
       fadeIn: 0.1,
       fadeOut: 0.5
     });
+    system.options.texture = system.bloodTexture;
+    return system;
   }
   
+  // FIXED: Metallic gleam with proper metallic texture (NO BLOOD)
   static createMetallicGleam(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
-    return new ParticleSystem(scene, {
+    console.log('✨ [ParticleSystem] Creating METALLIC GLEAM effect (NO BLOOD)');
+    const system = new ParticleSystem(scene, {
       position: position,
       count: 20,
       duration: 400,
@@ -343,7 +399,7 @@ export class ParticleSystem {
       sizeVariation: 0.04,
       speed: 1.5,
       speedVariation: 0.8,
-      color: 0xCCCCFF,
+      color: 0xCCCCFF, // Light blue-white metallic color
       colorVariation: 0.1,
       gravity: 0.2,
       direction: direction,
@@ -353,9 +409,13 @@ export class ParticleSystem {
       fadeOut: 0.6,
       rotationSpeed: 3
     });
+    system.options.texture = system.metallicTexture;
+    return system;
   }
   
+  // FIXED: Metallic sparks with proper metallic texture (NO BLOOD)
   static createMetallicSparks(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
+    console.log('⚡ [ParticleSystem] Creating METALLIC SPARKS effect (NO BLOOD)');
     return new ParticleSystem(scene, {
       position: position,
       count: 35,
@@ -364,7 +424,7 @@ export class ParticleSystem {
       sizeVariation: 0.02,
       speed: 5,
       speedVariation: 3,
-      color: 0xFFDD44,
+      color: 0xFFDD44, // Gold/yellow sparks
       colorVariation: 0.3,
       gravity: 4,
       direction: new THREE.Vector3(0, 0.8, 0),
@@ -436,7 +496,8 @@ export class ParticleSystem {
   }
   
   static createBloodSplatter(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
-    return new ParticleSystem(scene, {
+    console.log('🩸 [ParticleSystem] Creating BLOOD SPLATTER effect');
+    const system = new ParticleSystem(scene, {
       position: position,
       count: 30,
       duration: 600,
@@ -453,6 +514,8 @@ export class ParticleSystem {
       fadeIn: 0.05,
       fadeOut: 0.3
     });
+    system.options.texture = system.bloodTexture;
+    return system;
   }
   
   static createDustCloud(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {

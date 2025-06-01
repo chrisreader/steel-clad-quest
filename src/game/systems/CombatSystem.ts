@@ -126,18 +126,22 @@ export class CombatSystem {
     this.lastAttackTime = now;
     
     try {
+      console.log('⚔️ [CombatSystem] STARTING MELEE ATTACK - checking for hits...');
+      
+      // Start sword swing animation first
       this.player.startSwordSwing();
       
-      // CRITICAL FIX: Create swoosh effect for empty swings (when no enemies present or hit)
+      // IMPORTANT: Only create swoosh effect here for empty swings
+      // Hit effects will be handled in checkPlayerAttacks if enemies are hit
       const playerPosition = this.player.getPosition();
-      const slashDirection = new THREE.Vector3(1, 0, 0); // Forward slash direction
+      const slashDirection = new THREE.Vector3(1, 0, 0);
       const slashStart = playerPosition.clone().add(new THREE.Vector3(-0.5, 0.8, 0));
       const slashEnd = playerPosition.clone().add(new THREE.Vector3(0.5, 0.8, 0));
       
-      // Always create swoosh effect for sword swings (will be enhanced if enemies are hit)
+      // Create ONLY swoosh effect initially (no blood)
+      console.log('🌪️ [CombatSystem] Creating initial swoosh effect for sword swing');
       this.effectsManager.createSwordSwooshEffect(slashStart, slashEnd, slashDirection);
       
-      console.log("🌪️ [CombatSystem] Created sword swoosh effect for melee attack");
     } catch (error) {
       console.error("⚔️ [CombatSystem] Error calling player.startSwordSwing()", error);
     }
@@ -150,7 +154,7 @@ export class CombatSystem {
     const attackPower = this.player.getAttackPower();
     const playerPosition = this.player.getPosition();
     
-    let enemyHit = false; // Track if any enemy was hit
+    let enemyHit = false;
     
     this.enemies.forEach(enemy => {
       if (enemy.isDead()) return;
@@ -161,9 +165,11 @@ export class CombatSystem {
       const enemyBox = new THREE.Box3().setFromObject(enemyMesh);
       
       if (swordBox.intersectsBox(enemyBox)) {
-        enemyHit = true; // Mark that an enemy was hit
+        enemyHit = true;
         
         const enemyPosition = enemy.getPosition();
+        
+        console.log('⚔️ [CombatSystem] ENEMY HIT - Creating slash + blood effects');
         
         // Calculate slash direction and positions
         const slashDirection = enemyPosition.clone().sub(playerPosition).normalize();
@@ -173,10 +179,10 @@ export class CombatSystem {
         // Create metallic sword slash effect (without blood)
         this.effectsManager.createSwordSlashEffect(slashStart, slashEnd, slashDirection);
         
-        // Apply damage and create SEPARATE blood effect
+        // Apply damage
         enemy.takeDamage(attackPower, playerPosition);
         
-        // Create realistic blood effect ONLY when hitting enemy
+        // Create SEPARATE blood effect ONLY when hitting enemy
         const damageIntensity = Math.min(attackPower / 50, 2);
         this.effectsManager.createRealisticBloodEffect(enemyPosition, slashDirection, damageIntensity);
         
@@ -188,13 +194,11 @@ export class CombatSystem {
           this.spawnGold(enemy.getPosition(), enemy.getGoldReward());
           this.player.addExperience(enemy.getExperienceReward());
         }
-        
-        console.log("⚔️ [CombatSystem] Enemy hit - created slash effect + blood effect");
       }
     });
     
     if (!enemyHit) {
-      console.log("🌪️ [CombatSystem] No enemies hit - swoosh effect only (no blood)");
+      console.log('🌪️ [CombatSystem] No enemies hit - ONLY swoosh effect (NO BLOOD)');
     }
   }
   
@@ -203,19 +207,14 @@ export class CombatSystem {
     const damageDirection = damageSource.clone().sub(playerPosition).normalize();
     const intensity = Math.min(damage / 30, 2);
     
-    // Create player damage effect
     this.effectsManager.createPlayerDamageEffect(damageDirection, intensity);
     
-    // Apply damage to player
-    // Note: This would need to be connected to player health system
     console.log(`Player takes ${damage} damage from direction:`, damageDirection);
   }
   
   public handleArrowHit(enemy: Enemy, arrowPosition: THREE.Vector3, arrowDirection: THREE.Vector3, damage: number): void {
-    // Create arrow-specific blood effect
     this.effectsManager.createArrowBloodEffect(arrowPosition, arrowDirection, damage);
     
-    // Apply damage
     enemy.takeDamage(damage, arrowPosition);
     
     this.audioManager.play('arrow_hit');
