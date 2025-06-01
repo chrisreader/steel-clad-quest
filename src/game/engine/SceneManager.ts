@@ -142,10 +142,15 @@ export class SceneManager {
     // No manual updates needed as it's built into the renderer
   }
   
-  public update(deltaTime: number): void {
-    // Update cloud system
+  public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
+    // Update cloud system with player position for distance-based fading
     if (this.cloudSystem) {
-      this.cloudSystem.update(deltaTime);
+      this.cloudSystem.update(deltaTime, playerPosition);
+    }
+    
+    // Update stored player position if provided
+    if (playerPosition) {
+      this.lastPlayerPosition.copy(playerPosition);
     }
   }
   
