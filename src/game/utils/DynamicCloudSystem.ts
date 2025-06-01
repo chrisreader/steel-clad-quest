@@ -21,9 +21,12 @@ export class DynamicCloudSystem {
   private spawnTimer: number = 0;
   private spawnInterval: number = 3000;
   
-  // Distance-based fade settings
+  // Distance-based fade settings - adjusted for better visibility
   private fadeInDistance: number = 150;
   private fadeOutDistance: number = 250;
+  
+  // Player starting position for better cloud positioning
+  private readonly PLAYER_START_POSITION = new THREE.Vector3(17, 1, 14);
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -37,7 +40,7 @@ export class DynamicCloudSystem {
         cloudColor: { value: new THREE.Color(0xffffff) },
         fogColor: { value: new THREE.Color(0x87ceeb) }, // Sky blue
         radius: { value: 20.0 }, // Dynamic radius for proper feathering
-        featherWidth: { value: 8.0 } // Proportional feather width
+        featherWidth: { value: 4.0 } // Reduced feather width for better visibility
       },
       vertexShader: `
         varying vec3 vPosition;
@@ -99,25 +102,25 @@ export class DynamicCloudSystem {
       fog: false
     });
     
-    console.log('DynamicCloudSystem initialized with larger, more realistic clouds');
+    console.log('DynamicCloudSystem initialized with improved visibility settings');
   }
   
   public initialize(): void {
-    // Create initial clouds positioned within visible range
-    for (let i = 0; i < 6; i++) { // Reduced from 8 to 6 since clouds are larger
+    // Create initial clouds positioned near player starting position
+    for (let i = 0; i < 6; i++) {
       this.createCloud(true);
     }
-    console.log(`Realistic cloud system initialized with ${this.clouds.length} larger clouds`);
+    console.log(`Visible cloud system initialized with ${this.clouds.length} clouds near player start position`);
   }
   
   private createCloud(isInitial: boolean = false): void {
     const cloudGroup = new THREE.Group();
     
     // Create fewer but larger cloud puffs
-    const puffCount = 3 + Math.floor(Math.random() * 3); // 3-5 puffs (reduced from 4-7)
+    const puffCount = 3 + Math.floor(Math.random() * 3); // 3-5 puffs
     for (let i = 0; i < puffCount; i++) {
-      // Much larger geometry for realistic cloud size
-      const puffRadius = 15 + Math.random() * 10; // 15-25 units (increased from 4-10)
+      // Large geometry for realistic cloud size
+      const puffRadius = 15 + Math.random() * 10; // 15-25 units
       const puffGeometry = new THREE.SphereGeometry(
         puffRadius,
         8, 6 // Keep lower poly count for softer appearance
@@ -126,19 +129,19 @@ export class DynamicCloudSystem {
       // Clone the shader material and set radius for proper feathering
       const puffMaterial = this.cloudShaderMaterial.clone();
       puffMaterial.uniforms.radius.value = puffRadius;
-      puffMaterial.uniforms.featherWidth.value = puffRadius * 0.4; // Proportional feather width
+      puffMaterial.uniforms.featherWidth.value = puffRadius * 0.2; // Reduced to 20% for better visibility
       
       const puffMesh = new THREE.Mesh(puffGeometry, puffMaterial);
       
-      // Better spacing for larger clouds - increased spread
+      // Better spacing for larger clouds
       puffMesh.position.set(
-        (Math.random() - 0.5) * 40, // Increased from 20 to 40
-        (Math.random() - 0.5) * 15, // Increased from 8 to 15
-        (Math.random() - 0.5) * 25  // Increased from 12 to 25
+        (Math.random() - 0.5) * 40,
+        (Math.random() - 0.5) * 15,
+        (Math.random() - 0.5) * 25
       );
       
       // Larger scale range for substantial clouds
-      const scale = 1.0 + Math.random() * 1.0; // 1.0 to 2.0 scale (increased from 0.6-1.4)
+      const scale = 1.0 + Math.random() * 1.0; // 1.0 to 2.0 scale
       puffMesh.scale.set(scale, scale * 0.8, scale); // Slightly flatten for more natural look
       
       // Add slight random rotation for more natural appearance
@@ -151,47 +154,50 @@ export class DynamicCloudSystem {
       cloudGroup.add(puffMesh);
     }
     
-    // Position cloud in sky
+    // Position cloud in sky - adjusted for better visibility
     const cloudHeight = 35 + Math.random() * 15;
     let spawnX, spawnZ;
     
     if (isInitial) {
-      // Initial clouds: spawn within visible range
+      // Initial clouds: spawn near player starting position for immediate visibility
       const angle = (Math.random() * Math.PI * 2);
-      const distance = 60 + Math.random() * 80; // Increased distance for larger clouds
-      spawnX = Math.cos(angle) * distance;
-      spawnZ = Math.sin(angle) * distance;
+      const distance = 30 + Math.random() * 50; // Closer to player: 30-80 units
+      spawnX = this.PLAYER_START_POSITION.x + Math.cos(angle) * distance;
+      spawnZ = this.PLAYER_START_POSITION.z + Math.sin(angle) * distance;
+      console.log(`Creating initial cloud at distance ${distance.toFixed(1)} from player start position`);
     } else {
-      // New clouds: spawn outside visible range
-      const spawnDistance = 250; // Increased from 220
-      spawnX = -this.windDirection.x * spawnDistance + (Math.random() - 0.5) * 120;
-      spawnZ = -this.windDirection.z * spawnDistance + (Math.random() - 0.5) * 120;
+      // New clouds: spawn outside visible range but closer than before
+      const spawnDistance = 200; // Reduced from 250
+      spawnX = this.PLAYER_START_POSITION.x - this.windDirection.x * spawnDistance + (Math.random() - 0.5) * 80;
+      spawnZ = this.PLAYER_START_POSITION.z - this.windDirection.z * spawnDistance + (Math.random() - 0.5) * 80;
     }
     
     cloudGroup.position.set(spawnX, cloudHeight, spawnZ);
     
-    // Increased base opacity for better visibility while maintaining realism
-    const baseOpacity = 0.3 + Math.random() * 0.3; // 0.3 to 0.6 range (increased from 0.1-0.3)
+    // Increased base opacity for much better visibility
+    const baseOpacity = 0.4 + Math.random() * 0.3; // 0.4 to 0.7 range for better visibility
     
     const cloud: Cloud = {
       mesh: cloudGroup,
       velocity: new THREE.Vector3(
-        this.windDirection.x * 2.5, // Slightly slower for larger clouds
+        this.windDirection.x * 2.5,
         0,
         this.windDirection.z * 2.5
       ),
-      opacity: isInitial ? 0.15 : 0, // Higher initial opacity
+      opacity: isInitial ? 0.3 : 0, // Higher initial opacity for immediate visibility
       targetOpacity: baseOpacity,
-      fadeSpeed: 0.015 + Math.random() * 0.01, // Slightly slower fade for larger clouds
+      fadeSpeed: 0.015 + Math.random() * 0.01,
       age: 0,
-      maxAge: 50000 + Math.random() * 25000, // Longer lifespan for larger clouds
+      maxAge: 50000 + Math.random() * 25000,
       baseOpacity: baseOpacity
     };
     
     this.clouds.push(cloud);
     this.scene.add(cloudGroup);
     
-    console.log(`Created larger realistic cloud at position (${spawnX.toFixed(1)}, ${cloudHeight.toFixed(1)}, ${spawnZ.toFixed(1)}) with baseOpacity ${baseOpacity.toFixed(3)}`);
+    // Enhanced logging for debugging visibility
+    const distanceFromPlayer = isInitial ? cloudGroup.position.distanceTo(this.PLAYER_START_POSITION) : 'N/A';
+    console.log(`Created visible cloud at position (${spawnX.toFixed(1)}, ${cloudHeight.toFixed(1)}, ${spawnZ.toFixed(1)}) with baseOpacity ${baseOpacity.toFixed(3)}, distance from player: ${distanceFromPlayer}`);
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
@@ -201,7 +207,7 @@ export class DynamicCloudSystem {
     // Update shader time uniform for animated effects
     this.cloudShaderMaterial.uniforms.time.value = this.time;
     
-    // Spawn new clouds periodically (reduced max count since clouds are larger)
+    // Spawn new clouds periodically
     if (this.spawnTimer >= this.spawnInterval && this.clouds.length < 10) {
       this.createCloud(false);
       this.spawnTimer = 0;
@@ -218,7 +224,7 @@ export class DynamicCloudSystem {
       // Update age
       cloud.age += deltaTime * 1000;
       
-      // Calculate distance-based opacity
+      // Calculate distance-based opacity with improved logging
       let distanceFactor = 1.0;
       let distance = 0;
       if (playerPosition) {
@@ -237,9 +243,9 @@ export class DynamicCloudSystem {
       
       // Age-based fade
       let ageFactor = 1.0;
-      if (cloud.age < 8000) { // Longer fade-in for larger clouds
+      if (cloud.age < 8000) { // Fade-in period
         ageFactor = cloud.age / 8000;
-      } else if (cloud.age > cloud.maxAge - 12000) { // Longer fade-out
+      } else if (cloud.age > cloud.maxAge - 12000) { // Fade-out period
         const fadeProgress = (cloud.age - (cloud.maxAge - 12000)) / 12000;
         ageFactor = 1 - fadeProgress;
       }
@@ -247,9 +253,9 @@ export class DynamicCloudSystem {
       // Combine factors for final opacity
       cloud.targetOpacity = cloud.baseOpacity * distanceFactor * ageFactor;
       
-      // Higher minimum visibility for larger clouds
+      // Higher minimum visibility threshold
       if (playerPosition && distance <= this.fadeInDistance && ageFactor > 0.2) {
-        cloud.targetOpacity = Math.max(cloud.targetOpacity, 0.15); // Increased from 0.05
+        cloud.targetOpacity = Math.max(cloud.targetOpacity, 0.25); // Increased minimum visibility
       }
       
       // Smooth opacity transition
@@ -265,13 +271,17 @@ export class DynamicCloudSystem {
         }
       });
       
-      // Debug logging (less frequent)
-      if (i === 0 && Math.random() < 0.05) {
-        console.log(`Large Realistic Cloud 0:`, {
+      // Enhanced debug logging for visibility issues
+      if (i === 0 && Math.random() < 0.1) { // More frequent logging for debugging
+        console.log(`Visible Cloud Debug:`, {
           position: `(${cloud.mesh.position.x.toFixed(1)}, ${cloud.mesh.position.z.toFixed(1)})`,
           distance: playerPosition ? distance.toFixed(1) : 'N/A',
           opacity: cloud.opacity.toFixed(4),
-          targetOpacity: cloud.targetOpacity.toFixed(4)
+          targetOpacity: cloud.targetOpacity.toFixed(4),
+          baseOpacity: cloud.baseOpacity.toFixed(3),
+          distanceFactor: distanceFactor.toFixed(3),
+          ageFactor: ageFactor.toFixed(3),
+          withinFadeIn: playerPosition ? (distance <= this.fadeInDistance) : 'N/A'
         });
       }
       
@@ -287,12 +297,13 @@ export class DynamicCloudSystem {
           }
         });
         this.clouds.splice(i, 1);
+        console.log('Removed cloud due to age or invisibility');
       }
       
-      // Remove distant clouds for cleanup (increased distance for larger clouds)
+      // Remove distant clouds for cleanup
       else if (playerPosition) {
         const distanceFromPlayer = cloud.mesh.position.distanceTo(playerPosition);
-        if (distanceFromPlayer > 400) { // Increased from 300
+        if (distanceFromPlayer > 400) {
           this.scene.remove(cloud.mesh);
           cloud.mesh.traverse((child) => {
             if (child instanceof THREE.Mesh) {
@@ -303,6 +314,7 @@ export class DynamicCloudSystem {
             }
           });
           this.clouds.splice(i, 1);
+          console.log(`Removed distant cloud at distance ${distanceFromPlayer.toFixed(1)}`);
         }
       }
     }
@@ -327,6 +339,6 @@ export class DynamicCloudSystem {
       this.cloudShaderMaterial.dispose();
     }
     
-    console.log('Large Realistic DynamicCloudSystem disposed');
+    console.log('Improved DynamicCloudSystem disposed');
   }
 }
