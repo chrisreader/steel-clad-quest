@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PhysicsManager } from './PhysicsManager';
 
@@ -126,25 +127,69 @@ export class RenderEngine {
     // Check for camera collision if physics manager is available
     if (this.physicsManager) {
       const currentCameraPosition = this.camera.position.clone();
-      const cameraRadius = 0.1; // Small radius for camera collision
+      const cameraRadius = 0.2; // Increased radius for better collision detection
       
-      // Check if the desired position would cause collision
-      const safePosition = this.physicsManager.checkPlayerMovement(
+      // First check if we can move the camera to the desired position
+      const primarySafePosition = this.physicsManager.checkPlayerMovement(
         currentCameraPosition, 
         desiredCameraPosition, 
         cameraRadius
       );
       
-      // Use safe position
-      this.camera.position.copy(safePosition);
+      // If the primary position is blocked, try multiple fallback positions
+      let finalCameraPosition = primarySafePosition;
       
-      // Additional check: ensure camera doesn't go too far from player
+      // Check if the camera position is too far from the desired position (indicates collision)
+      const distanceFromDesired = primarySafePosition.distanceTo(desiredCameraPosition);
+      if (distanceFromDesired > 0.3) {
+        // Try pulling the camera back along the view direction
+        const viewDirection = new THREE.Vector3();
+        this.camera.getWorldDirection(viewDirection);
+        viewDirection.negate(); // Reverse direction to pull back
+        
+        const fallbackPositions = [
+          desiredCameraPosition.clone().add(viewDirection.clone().multiplyScalar(0.2)),
+          desiredCameraPosition.clone().add(viewDirection.clone().multiplyScalar(0.5)),
+          desiredCameraPosition.clone().add(viewDirection.clone().multiplyScalar(1.0)),
+          playerPosition.clone().add(new THREE.Vector3(0, 1.2, 0)) // Last resort: directly above player
+        ];
+        
+        // Test each fallback position
+        for (const fallbackPos of fallbackPositions) {
+          const testPosition = this.physicsManager.checkPlayerMovement(
+            currentCameraPosition, 
+            fallbackPos, 
+            cameraRadius
+          );
+          
+          const testDistance = testPosition.distanceTo(fallbackPos);
+          if (testDistance < 0.1) { // Position is mostly clear
+            finalCameraPosition = testPosition;
+            break;
+          }
+        }
+      }
+      
+      // Use safe position
+      this.camera.position.copy(finalCameraPosition);
+      
+      // Additional safety check: ensure camera doesn't go too far from player
       const distanceFromPlayer = this.camera.position.distanceTo(playerPosition);
-      if (distanceFromPlayer > 2.0) {
+      if (distanceFromPlayer > 3.0) {
         // If camera gets pushed too far, pull it back towards player
         const directionToPlayer = new THREE.Vector3().subVectors(playerPosition, this.camera.position).normalize();
-        this.camera.position.copy(playerPosition.clone().add(directionToPlayer.multiplyScalar(-0.5)));
+        this.camera.position.copy(playerPosition.clone().add(directionToPlayer.multiplyScalar(-1.0)));
         this.camera.position.y = playerPosition.y + 1.2; // Maintain head level
+      }
+      
+      // Final collision check for the camera position to prevent any remaining clipping
+      const finalCheck = this.physicsManager.checkSphereCollision(this.camera.position, cameraRadius);
+      if (finalCheck) {
+        // If still colliding, push camera away from collision
+        const collisionCenter = finalCheck.box.getCenter(new THREE.Vector3());
+        const pushDirection = new THREE.Vector3().subVectors(this.camera.position, collisionCenter).normalize();
+        this.camera.position.copy(collisionCenter.clone().add(pushDirection.multiplyScalar(cameraRadius + 0.3)));
+        this.camera.position.y = Math.max(this.camera.position.y, playerPosition.y + 0.5); // Keep camera above ground
       }
     } else {
       // Fallback: use desired position without collision checking

@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -137,24 +138,44 @@ export class MovementSystem {
       // Get current and target positions
       const currentPosition = this.player.getPosition();
       const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
-      const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
-      // Check collision and get safe position
-      const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4); // 0.4 is player radius
+      // Use smaller steps to prevent wall glitching
+      const maxStepSize = 0.05; // Maximum step size per check
+      const steps = Math.ceil(movementDistance / maxStepSize);
+      const stepDistance = movementDistance / steps;
+      const stepDirection = worldMoveDirection.normalize();
+      
+      let finalPosition = currentPosition.clone();
+      
+      // Check collision in small steps to prevent glitching
+      for (let i = 0; i < steps; i++) {
+        const stepTarget = finalPosition.clone().add(stepDirection.clone().multiplyScalar(stepDistance));
+        const safePosition = this.physicsManager.checkPlayerMovement(finalPosition, stepTarget, 0.5); // Increased radius for better collision
+        
+        // If we couldn't move the full step, stop here
+        const actualMovement = new THREE.Vector3().subVectors(safePosition, finalPosition);
+        if (actualMovement.length() < stepDistance * 0.9) {
+          finalPosition = safePosition;
+          break;
+        }
+        
+        finalPosition = safePosition;
+      }
       
       // Calculate actual movement vector
-      const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
+      const actualMovement = new THREE.Vector3().subVectors(finalPosition, currentPosition);
       
       if (actualMovement.length() > 0.001) {
         // Convert back to normalized direction for player.move()
         const normalizedMovement = actualMovement.clone().normalize();
         const movementScale = actualMovement.length() / (5.0 * deltaTime);
         
-        console.log("🏃 [MovementSystem] Moving with collision detection:", {
+        console.log("🏃 [MovementSystem] Moving with enhanced collision detection:", {
           from: currentPosition,
-          to: safePosition,
+          to: finalPosition,
           movement: actualMovement,
-          distance: actualMovement.length()
+          distance: actualMovement.length(),
+          steps: steps
         });
         
         this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
