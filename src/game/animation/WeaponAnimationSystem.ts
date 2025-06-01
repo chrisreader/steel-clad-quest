@@ -17,6 +17,9 @@ interface BowState {
   rightArmZ: number;
   leftElbowX: number;
   rightElbowX: number;
+  bowMeshRotationX: number;
+  bowMeshRotationY: number;
+  bowMeshRotationZ: number;
 }
 
 export class WeaponAnimationSystem {
@@ -34,6 +37,9 @@ export class WeaponAnimationSystem {
   private transitionSpeed: number = 5;
   private isTransitioning: boolean = false;
   
+  // NEW: Reference to the equipped weapon for bow mesh rotation control
+  private equippedWeapon: any = null;
+  
   constructor() {
     this.configs = ANIMATION_CONFIGS;
     this.bowWalkAnimation = new BowWalkAnimation(this.configs.bow);
@@ -45,7 +51,7 @@ export class WeaponAnimationSystem {
     this.currentBowState = this.createBowState('idle');
     this.targetBowState = this.createBowState('idle');
     
-    console.log('🎭 [WeaponAnimationSystem] Initialized with smooth bow state transitions');
+    console.log('🎭 [WeaponAnimationSystem] Initialized with smooth bow state transitions and separate bow mesh rotations');
   }
   
   private createBowState(state: 'idle' | 'walking' | 'drawing1' | 'drawing2' | 'drawing3' | 'drawing4'): BowState {
@@ -61,7 +67,11 @@ export class WeaponAnimationSystem {
           rightArmY: 0,
           rightArmZ: 0,
           leftElbowX: 0.2,
-          rightElbowX: 0.3
+          rightElbowX: 0.3,
+          // NEW: Bow mesh rotation for idle state (same as current)
+          bowMeshRotationX: 0, // 0° X rotation
+          bowMeshRotationY: 0, // 0° Y rotation
+          bowMeshRotationZ: 0  // 0° Z rotation
         };
       
       case 'walking':
@@ -75,7 +85,11 @@ export class WeaponAnimationSystem {
           rightArmY: 0,
           rightArmZ: 0,
           leftElbowX: 0.2,
-          rightElbowX: 0.3
+          rightElbowX: 0.3,
+          // NEW: Bow mesh rotation for walking state (same as current)
+          bowMeshRotationX: 0, // 0° X rotation
+          bowMeshRotationY: 0, // 0° Y rotation
+          bowMeshRotationZ: 0  // 0° Z rotation
         };
       
       case 'drawing1':
@@ -89,7 +103,11 @@ export class WeaponAnimationSystem {
           rightArmY: 0,
           rightArmZ: -Math.PI * 15.5 / 180, // -15.5° inward angle pointing left
           leftElbowX: 0.2,
-          rightElbowX: 0.3
+          rightElbowX: 0.3,
+          // NEW: Bow mesh rotation for drawing1 state (same as current)
+          bowMeshRotationX: 0, // 0° X rotation
+          bowMeshRotationY: 0, // 0° Y rotation
+          bowMeshRotationZ: 0  // 0° Z rotation
         };
       
       case 'drawing2':
@@ -103,7 +121,11 @@ export class WeaponAnimationSystem {
           rightArmY: 0,
           rightArmZ: -Math.PI * 10.5 / 180, // -10.5° inward angle pointing left
           leftElbowX: 0.2,
-          rightElbowX: 0.3
+          rightElbowX: 0.3,
+          // NEW: Bow mesh rotation for drawing2 state (same as current)
+          bowMeshRotationX: 0, // 0° X rotation
+          bowMeshRotationY: 0, // 0° Y rotation
+          bowMeshRotationZ: 0  // 0° Z rotation
         };
       
       case 'drawing3':
@@ -117,7 +139,11 @@ export class WeaponAnimationSystem {
           rightArmY: 0,
           rightArmZ: -Math.PI * 5.5 / 180, // -5.5° inward angle pointing left
           leftElbowX: 0.2,
-          rightElbowX: 0.9 // Increased elbow bend
+          rightElbowX: 0.9, // Increased elbow bend
+          // NEW: Bow mesh rotation for drawing3 state (same as current)
+          bowMeshRotationX: 0, // 0° X rotation
+          bowMeshRotationY: 0, // 0° Y rotation
+          bowMeshRotationZ: 0  // 0° Z rotation
         };
       
       case 'drawing4':
@@ -131,12 +157,22 @@ export class WeaponAnimationSystem {
           rightArmY: 0,
           rightArmZ: Math.PI * 1.5 / 180, // +1.5° outward angle
           leftElbowX: 0.2,
-          rightElbowX: 1.4 // Maximum elbow bend
+          rightElbowX: 1.4, // Maximum elbow bend
+          // NEW: Bow mesh rotation for drawing4 state (same as current)
+          bowMeshRotationX: 0, // 0° X rotation
+          bowMeshRotationY: 0, // 0° Y rotation
+          bowMeshRotationZ: 0  // 0° Z rotation
         };
       
       default:
         return this.createBowState('idle');
     }
+  }
+  
+  // NEW: Method to set weapon reference for bow mesh control
+  public setEquippedWeapon(weapon: any): void {
+    this.equippedWeapon = weapon;
+    console.log('🏹 [WeaponAnimationSystem] Equipped weapon reference set for bow mesh rotation control');
   }
   
   private getBowStateForCondition(isMoving: boolean, isBowDrawing: boolean, chargeLevel: number): BowState {
@@ -173,7 +209,8 @@ export class WeaponAnimationSystem {
       Math.abs(newTargetState.leftArmZ - this.targetBowState.leftArmZ) > 0.01 ||
       Math.abs(newTargetState.rightArmX - this.targetBowState.rightArmX) > 0.01 ||
       Math.abs(newTargetState.rightArmZ - this.targetBowState.rightArmZ) > 0.01 ||
-      Math.abs(newTargetState.rightElbowX - this.targetBowState.rightElbowX) > 0.01;
+      Math.abs(newTargetState.rightElbowX - this.targetBowState.rightElbowX) > 0.01 ||
+      Math.abs(newTargetState.bowMeshRotationX - this.targetBowState.bowMeshRotationX) > 0.01;
     
     if (stateChanged) {
       this.targetBowState = newTargetState;
@@ -190,7 +227,7 @@ export class WeaponAnimationSystem {
         stageName = 'walking';
       }
       
-      console.log(`🏹 [WeaponAnimationSystem] Starting transition to ${stageName} stage - Left: ${(newTargetState.leftArmX * 180 / Math.PI).toFixed(0)}°, Right: ${(newTargetState.rightArmX * 180 / Math.PI).toFixed(0)}°, RightElbow: ${newTargetState.rightElbowX.toFixed(1)}`);
+      console.log(`🏹 [WeaponAnimationSystem] Starting transition to ${stageName} stage - Left: ${(newTargetState.leftArmX * 180 / Math.PI).toFixed(0)}°, Right: ${(newTargetState.rightArmX * 180 / Math.PI).toFixed(0)}°, RightElbow: ${newTargetState.rightElbowX.toFixed(1)}, BowMesh: ${newTargetState.bowMeshRotationX.toFixed(2)}°`);
     }
     
     // Smooth transition to target state
@@ -242,6 +279,23 @@ export class WeaponAnimationSystem {
       transitionAmount
     );
     
+    // NEW: Bow mesh rotation transitions
+    this.currentBowState.bowMeshRotationX = THREE.MathUtils.lerp(
+      this.currentBowState.bowMeshRotationX,
+      this.targetBowState.bowMeshRotationX,
+      transitionAmount
+    );
+    this.currentBowState.bowMeshRotationY = THREE.MathUtils.lerp(
+      this.currentBowState.bowMeshRotationY,
+      this.targetBowState.bowMeshRotationY,
+      transitionAmount
+    );
+    this.currentBowState.bowMeshRotationZ = THREE.MathUtils.lerp(
+      this.currentBowState.bowMeshRotationZ,
+      this.targetBowState.bowMeshRotationZ,
+      transitionAmount
+    );
+    
     // Apply the interpolated state to the player body
     playerBody.leftArm.rotation.x = this.currentBowState.leftArmX;
     playerBody.leftArm.rotation.y = this.currentBowState.leftArmY;
@@ -258,6 +312,14 @@ export class WeaponAnimationSystem {
     }
     if (playerBody.rightElbow) {
       playerBody.rightElbow.rotation.x = this.currentBowState.rightElbowX;
+    }
+    
+    // NEW: Apply bow mesh rotation if weapon is available
+    if (this.equippedWeapon && this.equippedWeapon.getMesh) {
+      const bowMesh = this.equippedWeapon.getMesh();
+      bowMesh.rotation.x = this.currentBowState.bowMeshRotationX;
+      bowMesh.rotation.y = this.currentBowState.bowMeshRotationY;
+      bowMesh.rotation.z = this.currentBowState.bowMeshRotationZ;
     }
     
     // Apply hand positions for drawing states
@@ -277,7 +339,8 @@ export class WeaponAnimationSystem {
     const threshold = 0.01;
     if (Math.abs(this.currentBowState.leftArmX - this.targetBowState.leftArmX) < threshold &&
         Math.abs(this.currentBowState.rightArmX - this.targetBowState.rightArmX) < threshold &&
-        Math.abs(this.currentBowState.rightElbowX - this.targetBowState.rightElbowX) < threshold) {
+        Math.abs(this.currentBowState.rightElbowX - this.targetBowState.rightElbowX) < threshold &&
+        Math.abs(this.currentBowState.bowMeshRotationX - this.targetBowState.bowMeshRotationX) < threshold) {
       this.isTransitioning = false;
     }
   }
@@ -310,7 +373,7 @@ export class WeaponAnimationSystem {
         this.applyBowWalkingModifiers(playerBody, walkCycle, deltaTime, isSprinting);
       }
       
-      console.log(`🏹 [WeaponAnimationSystem] Applied smooth bow animation - State: ${(this.currentBowState.leftArmX * 180 / Math.PI).toFixed(0)}°`);
+      console.log(`🏹 [WeaponAnimationSystem] Applied smooth bow animation - State: ${(this.currentBowState.leftArmX * 180 / Math.PI).toFixed(0)}°, BowMesh: ${this.currentBowState.bowMeshRotationX.toFixed(2)}°`);
       return;
     }
     
