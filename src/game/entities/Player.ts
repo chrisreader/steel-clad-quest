@@ -953,7 +953,14 @@ export class Player {
       direction = recent.clone().sub(previous).normalize();
     }
     
-    console.log("🌪️ [Player] Sword swoosh effect removed - no effects on empty swings");
+    // Create wind swoosh effect that follows the sword blade
+    this.effectsManager.createSwordSwooshEffect(
+      this.weaponTipPositions[0], 
+      tipPosition, 
+      direction
+    );
+    
+    console.log("🌪️ [Player] Created sword swoosh wind effect");
   }
   
   private createWeaponTrailEffect(): void {
