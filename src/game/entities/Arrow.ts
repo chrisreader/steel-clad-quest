@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
@@ -501,6 +502,10 @@ export class Arrow {
 
   public getPosition(): THREE.Vector3 {
     return this.position.clone();
+  }
+
+  public getDirection(): THREE.Vector3 {
+    return this.velocity.clone().normalize();
   }
 
   public getDamage(): number {

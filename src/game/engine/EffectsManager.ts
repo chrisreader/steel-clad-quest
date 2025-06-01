@@ -86,7 +86,7 @@ export class EffectsManager {
     this.shakeCamera(0.015);
   }
   
-  private createSlashTrail(startPos: THREE.Vector3, endPos: THREE.Vector3): THREE.Mesh | null {
+  private createSlashTrail(startPos: THREE.Vector3, endPos: THREE.Vector3): THREE.Line | null {
     const direction = endPos.clone().sub(startPos);
     const length = direction.length();
     
