@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -9,6 +10,7 @@ import { MovementSystem } from '../systems/MovementSystem';
 import { RenderEngine } from './RenderEngine';
 import { StateManager } from './StateManager';
 import { UIIntegrationManager } from './UIIntegrationManager';
+import { PhysicsManager } from './PhysicsManager';
 import { GameState, EnemyType } from '../../types/GameTypes';
 
 export class GameEngine {
@@ -16,6 +18,7 @@ export class GameEngine {
   private renderEngine: RenderEngine;
   private stateManager: StateManager;
   private uiIntegrationManager: UIIntegrationManager;
+  private physicsManager: PhysicsManager;
   
   // Game systems
   private sceneManager: SceneManager | null = null;
@@ -45,6 +48,7 @@ export class GameEngine {
     this.renderEngine = new RenderEngine(mountElement);
     this.stateManager = new StateManager();
     this.uiIntegrationManager = new UIIntegrationManager();
+    this.physicsManager = new PhysicsManager();
   }
   
   // NEW METHOD: Set UI state from KnightGame
@@ -61,8 +65,8 @@ export class GameEngine {
       // Initialize render engine
       this.renderEngine.initialize();
       
-      // Create the scene manager using the render engine's scene
-      this.sceneManager = new SceneManager(this.renderEngine.getScene());
+      // Create the scene manager using the render engine's scene and physics manager
+      this.sceneManager = new SceneManager(this.renderEngine.getScene(), this.physicsManager);
       
       // Create default world
       this.sceneManager.createDefaultWorld();
@@ -97,9 +101,9 @@ export class GameEngine {
       if (playerBody.leftArm) playerBody.leftArm.visible = true;
       if (playerBody.rightArm) playerBody.rightArm.visible = true;
       
-      // Create game systems
-      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera());
-      this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager);
+      // Create game systems with physics manager
+      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
+      this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
       
       // Set first-person camera position
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
@@ -332,17 +336,17 @@ export class GameEngine {
       if (playerBody.leftArm) playerBody.leftArm.visible = true;
       if (playerBody.rightArm) playerBody.rightArm.visible = true;
       
-      // Recreate combat system with new player and camera
+      // Recreate combat system with new player, camera, and physics manager
       if (this.combatSystem) {
         this.combatSystem.dispose();
       }
-      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera());
+      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       
-      // Recreate movement system with new player  
+      // Recreate movement system with new player and physics manager
       if (this.movementSystem) {
         this.movementSystem.dispose();
       }
-      this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager!);
+      this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager!, this.physicsManager);
       
       // Reset first-person camera
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());

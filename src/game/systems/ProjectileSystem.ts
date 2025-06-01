@@ -5,6 +5,7 @@ import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
+import { PhysicsManager } from '../engine/PhysicsManager';
 
 export class ProjectileSystem {
   private arrows: Arrow[] = [];
@@ -13,17 +14,20 @@ export class ProjectileSystem {
   private enemies: Enemy[] = [];
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
+  private physicsManager: PhysicsManager;
 
   constructor(
     scene: THREE.Scene,
     player: Player,
     effectsManager: EffectsManager,
-    audioManager: AudioManager
+    audioManager: AudioManager,
+    physicsManager: PhysicsManager
   ) {
     this.scene = scene;
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    this.physicsManager = physicsManager;
   }
 
   public shootArrow(
@@ -42,7 +46,8 @@ export class ProjectileSystem {
         speed,
         damage,
         this.effectsManager,
-        this.audioManager
+        this.audioManager,
+        this.physicsManager
       );
       
       this.arrows.push(arrow);
