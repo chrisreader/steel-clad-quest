@@ -29,15 +29,15 @@ export class DynamicCloudSystem {
     // Unified wind direction - all clouds move the same way
     this.windDirection = new THREE.Vector3(1.0, 0, 0.5).normalize();
     
-    // Create cloud material with better visibility
+    // Create cloud material with reduced opacity for realism
     this.cloudMaterial = new THREE.MeshLambertMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.8, // Higher base opacity for better visibility
+      opacity: 0.4, // Reduced from 0.8 for more realistic appearance
       fog: false // Don't let fog affect clouds
     });
     
-    console.log('DynamicCloudSystem initialized with enhanced visibility settings');
+    console.log('DynamicCloudSystem initialized with realistic settings');
     console.log('Fade distances - In:', this.fadeInDistance, 'Out:', this.fadeOutDistance);
   }
   
@@ -50,28 +50,28 @@ export class DynamicCloudSystem {
   }
   
   private createCloud(isInitial: boolean = false): void {
-    // Create cloud geometry using multiple spheres
+    // Create cloud geometry using multiple spheres - larger for more realistic appearance
     const cloudGroup = new THREE.Group();
     
     // Create multiple cloud puffs with shared material
-    const puffCount = 3 + Math.floor(Math.random() * 3);
+    const puffCount = 4 + Math.floor(Math.random() * 4); // More puffs for fuller clouds
     for (let i = 0; i < puffCount; i++) {
       const puffGeometry = new THREE.SphereGeometry(
-        6 + Math.random() * 4, // Slightly smaller but more visible
+        12 + Math.random() * 10, // Much larger radius: 12-22 units (was 6-10)
         16, 12
       );
       // Clone material for each puff to allow individual opacity control
       const puffMaterial = this.cloudMaterial.clone();
       const puffMesh = new THREE.Mesh(puffGeometry, puffMaterial);
       
-      // Position puffs to create cloud shape
+      // Position puffs to create larger cloud shape
       puffMesh.position.set(
-        (Math.random() - 0.5) * 16,
-        (Math.random() - 0.5) * 6,
-        (Math.random() - 0.5) * 10
+        (Math.random() - 0.5) * 25, // Wider spread for larger clouds
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 18
       );
       
-      puffMesh.scale.y = 0.7; // Flatten clouds slightly
+      puffMesh.scale.y = 0.6; // Flatten clouds for more realistic shape
       cloudGroup.add(puffMesh);
     }
     
@@ -97,8 +97,8 @@ export class DynamicCloudSystem {
     
     cloudGroup.position.set(spawnX, cloudHeight, spawnZ);
     
-    // Better base opacity range for visibility
-    const baseOpacity = 0.4 + Math.random() * 0.4; // 0.4 to 0.8 range for better visibility
+    // Reduced base opacity range for more realistic appearance (50% reduction)
+    const baseOpacity = 0.2 + Math.random() * 0.2; // 0.2 to 0.4 range (was 0.4-0.8)
     
     // Create cloud object
     const cloud: Cloud = {
@@ -109,7 +109,7 @@ export class DynamicCloudSystem {
         0,
         this.windDirection.z * 3.0
       ),
-      opacity: isInitial ? 0.1 : 0, // Start initial clouds with some opacity
+      opacity: isInitial ? 0.05 : 0, // Start initial clouds with very low opacity
       targetOpacity: baseOpacity,
       fadeSpeed: 0.02 + Math.random() * 0.01, // Faster fade transitions
       age: 0,
@@ -120,7 +120,7 @@ export class DynamicCloudSystem {
     this.clouds.push(cloud);
     this.scene.add(cloudGroup);
     
-    console.log(`Created cloud at position (${spawnX.toFixed(1)}, ${cloudHeight.toFixed(1)}, ${spawnZ.toFixed(1)}) with baseOpacity ${baseOpacity.toFixed(2)}`);
+    console.log(`Created larger cloud at position (${spawnX.toFixed(1)}, ${cloudHeight.toFixed(1)}, ${spawnZ.toFixed(1)}) with reduced baseOpacity ${baseOpacity.toFixed(2)}`);
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
@@ -179,9 +179,9 @@ export class DynamicCloudSystem {
       // Combine distance and age factors
       cloud.targetOpacity = cloud.baseOpacity * distanceFactor * ageFactor;
       
-      // Safety check - ensure minimum visibility when in visible range
+      // Safety check - ensure minimum visibility when in visible range (but with reduced opacity)
       if (playerPosition && distance <= this.fadeInDistance && ageFactor > 0.1) {
-        cloud.targetOpacity = Math.max(cloud.targetOpacity, 0.2); // Minimum visible opacity
+        cloud.targetOpacity = Math.max(cloud.targetOpacity, 0.1); // Reduced minimum visible opacity
       }
       
       // Smooth opacity transition
