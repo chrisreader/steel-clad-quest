@@ -18,7 +18,7 @@ export class Arrow {
   private trail: THREE.Line | null = null;
   private trailPositions: THREE.Vector3[] = [];
   private trailOpacities: number[] = [];
-  private maxTrailLength: number = 20; // Increased for smoother wind effect
+  private maxTrailLength: number = 40; // Increased from 20 to 40 for more visibility
   
   private flightTime: number = 0;
   private minFlightTime: number = 0.2;
@@ -29,7 +29,7 @@ export class Arrow {
   // Wind effect properties
   private windOffset: number = 0;
   private windSpeed: number = 2.0;
-  private windStrength: number = 0.3;
+  private windStrength: number = 0.5; // Increased from 0.3 to 0.5 for more pronounced effect
 
   constructor(
     scene: THREE.Scene,
@@ -159,11 +159,11 @@ export class Arrow {
           
           // Add subtle wind displacement
           vec3 pos = position;
-          pos.x += sin(time * 2.0 + position.z * 0.5) * 0.1;
-          pos.y += cos(time * 1.5 + position.x * 0.3) * 0.05;
+          pos.x += sin(time * 2.0 + position.z * 0.5) * 0.15;
+          pos.y += cos(time * 1.5 + position.x * 0.3) * 0.08;
           
           gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-          gl_PointSize = 3.0 + sin(time + position.z) * 1.0;
+          gl_PointSize = 5.0 + sin(time + position.z) * 2.0;
         }
       `,
       fragmentShader: `
@@ -174,10 +174,10 @@ export class Arrow {
         void main() {
           // Create flowing wind-like pattern
           float windPattern = sin(time * 3.0 + vPosition.z * 2.0) * 0.5 + 0.5;
-          float finalOpacity = vOpacity * windPattern * 0.8;
+          float finalOpacity = vOpacity * windPattern * 1.0;
           
-          // Soft blue-white color like moving air
-          vec3 windColor = mix(vec3(0.7, 0.9, 1.0), vec3(1.0, 1.0, 1.0), windPattern);
+          // Brighter blue-white color for better visibility
+          vec3 windColor = mix(vec3(0.8, 0.95, 1.0), vec3(1.0, 1.0, 1.0), windPattern);
           
           gl_FragColor = vec4(windColor, finalOpacity);
         }
@@ -185,7 +185,7 @@ export class Arrow {
       transparent: true,
       depthTest: true,
       depthWrite: false,
-      blending: THREE.NormalBlending
+      blending: THREE.AdditiveBlending
     });
     
     this.trail = new THREE.Line(geometry, material);
@@ -266,7 +266,7 @@ export class Arrow {
     // Shift trail positions and opacities
     for (let i = this.trailPositions.length - 1; i > 0; i--) {
       this.trailPositions[i].copy(this.trailPositions[i - 1]);
-      this.trailOpacities[i] = this.trailOpacities[i - 1] * 0.95; // Gradual fade
+      this.trailOpacities[i] = this.trailOpacities[i - 1] * 0.98; // Slower fade for longer trail
     }
     
     // Add current position with wind displacement to front
@@ -282,13 +282,13 @@ export class Arrow {
     // Update geometry
     const geometry = new THREE.BufferGeometry().setFromPoints(this.trailPositions);
     
-    // Update opacity attribute
+    // Update opacity attribute with enhanced visibility
     const opacities = new Float32Array(this.maxTrailLength);
     for (let i = 0; i < this.maxTrailLength; i++) {
       // Create smooth fade from front to back with wind variation
       const fadeRatio = 1 - (i / this.maxTrailLength);
-      const windVariation = Math.sin(this.windOffset + i * 0.3) * 0.2 + 0.8;
-      opacities[i] = this.trailOpacities[i] * fadeRatio * windVariation;
+      const windVariation = Math.sin(this.windOffset + i * 0.3) * 0.3 + 0.9; // Increased base opacity
+      opacities[i] = this.trailOpacities[i] * fadeRatio * windVariation * 1.2; // Increased overall opacity
     }
     geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
     
