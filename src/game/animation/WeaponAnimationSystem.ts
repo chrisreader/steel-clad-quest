@@ -399,10 +399,10 @@ export class WeaponAnimationSystem {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    // Hand positions
+    // FIXED: Hand positions with corrected left hand Z-rotation (15° instead of 45°)
     playerBody.leftHand.rotation.x = -Math.PI / 6;
     playerBody.leftHand.rotation.y = 0;
-    playerBody.leftHand.rotation.z = Math.PI / 4;
+    playerBody.leftHand.rotation.z = Math.PI / 12; // FIXED: Changed from Math.PI / 4 to Math.PI / 12
     
     playerBody.rightHand.rotation.x = 0;
     playerBody.rightHand.rotation.y = 0;

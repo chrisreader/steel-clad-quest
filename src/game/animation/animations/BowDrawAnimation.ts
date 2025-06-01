@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -71,7 +72,7 @@ export class BowDrawAnimation {
     // Hand positions for drawing - also transition smoothly
     const targetLeftHandX = -Math.PI / 6;
     const targetLeftHandY = 0;
-    const targetLeftHandZ = Math.PI / 4;
+    const targetLeftHandZ = Math.PI / 12; // FIXED: Changed from Math.PI / 4 to Math.PI / 12 (15°)
     
     playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
       playerBody.leftHand.rotation.x,
@@ -109,7 +110,8 @@ export class BowDrawAnimation {
       playerBody.rightElbow.rotation.set(0.3, 0, 0);
     }
     
-    playerBody.leftHand.rotation.set(-Math.PI / 6, 0, Math.PI / 4);
+    // FIXED: Left hand with corrected Z-rotation (15° instead of 45°)
+    playerBody.leftHand.rotation.set(-Math.PI / 6, 0, Math.PI / 12); // FIXED: Changed from Math.PI / 4 to Math.PI / 12
     playerBody.rightHand.rotation.set(0, 0, 0);
     
     console.log('🏹 [BowDrawAnimation] Reset to bow ready stance');

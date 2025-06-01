@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody } from '../../../types/GameTypes';
 import { WalkAnimationConfig } from '../AnimationConfig';
@@ -63,10 +64,10 @@ export class BowWalkAnimation {
     // Hands - maintain grip positions with subtle movement
     const handBreathing = Math.sin(this.breathingTime * 1.2) * this.config.handMovement;
     
-    // Left hand maintains bow grip
+    // FIXED: Left hand maintains bow grip with corrected Z-rotation (15° instead of 45°)
     playerBody.leftHand.rotation.x = -Math.PI / 6 + handBreathing;
     playerBody.leftHand.rotation.y = 0;
-    playerBody.leftHand.rotation.z = Math.PI / 4;
+    playerBody.leftHand.rotation.z = Math.PI / 12; // FIXED: Changed from Math.PI / 4 to Math.PI / 12 (15°)
     
     // Right hand ready position
     playerBody.rightHand.rotation.x = handBreathing * 0.5;
@@ -98,7 +99,8 @@ export class BowWalkAnimation {
       playerBody.rightElbow.rotation.set(0.3, 0, 0);
     }
     
-    playerBody.leftHand.rotation.set(-Math.PI / 6, 0, Math.PI / 4);
+    // FIXED: Left hand with corrected Z-rotation (15° instead of 45°)
+    playerBody.leftHand.rotation.set(-Math.PI / 6, 0, Math.PI / 12); // FIXED: Changed from Math.PI / 4 to Math.PI / 12
     playerBody.rightHand.rotation.set(0, 0, 0);
     
     if (playerBody.body) {
