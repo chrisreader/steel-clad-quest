@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
+import { DynamicCloudSystem } from '../utils/DynamicCloudSystem';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 
 export class SceneManager {
@@ -16,6 +17,10 @@ export class SceneManager {
   private skybox: THREE.Mesh | null = null;
   private ground: THREE.Mesh | null = null;
   
+  // New 3D sun and clouds
+  private sun: THREE.Mesh | null = null;
+  private cloudSystem: DynamicCloudSystem | null = null;
+  
   // Distance-based fog system
   private fog: THREE.Fog;
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -28,13 +33,16 @@ export class SceneManager {
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     
-    console.log("SceneManager initialized with distance-based fog system");
+    console.log("SceneManager initialized with 3D sun and dynamic clouds");
     
     // Setup distance-based fog
     this.setupDistanceFog();
     
     // Setup basic lighting
     this.setupLighting();
+    
+    // Initialize cloud system
+    this.cloudSystem = new DynamicCloudSystem(this.scene);
   }
   
   private setupDistanceFog(): void {
@@ -91,6 +99,38 @@ export class SceneManager {
     console.log("Rim light added");
   }
   
+  private create3DSun(): void {
+    // Calculate sun position based on directional light direction
+    const lightDirection = this.directionalLight.position.clone().normalize();
+    const sunDistance = 200; // Far away to appear on horizon
+    
+    // Create sun geometry
+    const sunGeometry = new THREE.SphereGeometry(8, 32, 32);
+    const sunMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFF8DC, // Cream color
+      emissive: 0xFFD700, // Golden emissive
+      emissiveIntensity: 0.3,
+      fog: false // Don't let fog affect the sun
+    });
+    
+    this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    this.sun.position.copy(lightDirection.multiplyScalar(sunDistance));
+    
+    // Add subtle glow effect
+    const glowGeometry = new THREE.SphereGeometry(12, 16, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFFFAA,
+      transparent: true,
+      opacity: 0.2,
+      fog: false
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    this.sun.add(glow);
+    
+    this.scene.add(this.sun);
+    console.log("3D sun created at position:", this.sun.position);
+  }
+  
   /**
    * Updates fog parameters based on player position (optional for dynamic adjustments)
    */
@@ -100,6 +140,13 @@ export class SceneManager {
     
     // The fog automatically works with THREE.js rendering pipeline
     // No manual updates needed as it's built into the renderer
+  }
+  
+  public update(deltaTime: number): void {
+    // Update cloud system
+    if (this.cloudSystem) {
+      this.cloudSystem.update(deltaTime);
+    }
   }
   
   public createDefaultWorld(): void {
@@ -129,11 +176,21 @@ export class SceneManager {
     this.createSkybox();
     console.log('Skybox created');
     
+    // Create 3D sun
+    this.create3DSun();
+    console.log('3D sun created');
+    
+    // Initialize cloud system
+    if (this.cloudSystem) {
+      this.cloudSystem.initialize();
+      console.log('Dynamic cloud system initialized');
+    }
+    
     // Force update skybox to apply new realistic blue colors
     this.updateSkybox();
     console.log('Skybox updated with realistic blue colors');
     
-    console.log('Default world creation complete with distance-based fog. Total scene children:', this.scene.children.length);
+    console.log('Default world creation complete with 3D sun and dynamic clouds. Total scene children:', this.scene.children.length);
   }
   
   private createTerrain(): void {
@@ -531,7 +588,23 @@ export class SceneManager {
     // Clean up fog
     this.scene.fog = null;
     
+    // Dispose cloud system
+    if (this.cloudSystem) {
+      this.cloudSystem.dispose();
+      this.cloudSystem = null;
+    }
+    
+    // Clean up sun
+    if (this.sun) {
+      this.scene.remove(this.sun);
+      if (this.sun.geometry) this.sun.geometry.dispose();
+      if (this.sun.material instanceof THREE.Material) {
+        this.sun.material.dispose();
+      }
+      this.sun = null;
+    }
+    
     // The scene is managed by RenderEngine, so we don't dispose it here
-    console.log("SceneManager disposed with distance-based fog cleanup");
+    console.log("SceneManager disposed with 3D sun and cloud cleanup");
   }
 }

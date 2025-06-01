@@ -225,7 +225,7 @@ export class TextureGenerator {
   }
 
   /**
-   * Creates a sky texture with day/night cycle support
+   * Creates a sky texture with day/night cycle support - NO SUN OR MOON
    */
   static createSkyTexture(
     timeOfDay: number = 0.5, // 0-1, 0 = midnight, 0.5 = noon
@@ -239,35 +239,29 @@ export class TextureGenerator {
     // Time of day determines sky color - using deep blue tones for day
     let skyColor;
     let horizonColor;
-    let cloudColor;
     
     if (timeOfDay < 0.25) { // Night
       const nightProgress = 1 - (timeOfDay / 0.25);
       skyColor = `rgb(15, 25, ${45 + nightProgress * 30})`; // Dark blue night sky
       horizonColor = `rgb(25, 35, ${55 + nightProgress * 25})`;
-      cloudColor = `rgba(40, 50, 80, ${0.4 * nightProgress})`;
     } else if (timeOfDay < 0.3) { // Dawn
       const dawnProgress = (timeOfDay - 0.25) / 0.05;
       skyColor = `rgb(${70 + dawnProgress * 50}, ${90 + dawnProgress * 70}, ${150 + dawnProgress * 80})`; // Dawn blue
       horizonColor = `rgb(${180 + dawnProgress * 75}, ${120 + dawnProgress * 80}, ${100 + dawnProgress * 80})`;
-      cloudColor = `rgba(${200 + dawnProgress * 55}, ${150 + dawnProgress * 80}, ${120 + dawnProgress * 80}, 0.7)`;
     } else if (timeOfDay < 0.7) { // Day - DEEP BLUE SKY
       const dayProgress = (timeOfDay - 0.3) / 0.4;
       const intensity = Math.sin(dayProgress * Math.PI);
       // Deep blue sky colors - much more saturated and realistic
       skyColor = `rgb(${70 + intensity * 10}, ${130 + intensity * 25}, ${250 + intensity * 5})`; // Deep azure blue
       horizonColor = `rgb(${120 + intensity * 20}, ${170 + intensity * 25}, ${235 + intensity * 15})`; // Lighter blue horizon
-      cloudColor = `rgba(255, 255, 255, ${0.8 + intensity * 0.2})`;
     } else if (timeOfDay < 0.75) { // Dusk
       const duskProgress = (timeOfDay - 0.7) / 0.05;
       skyColor = `rgb(${80 - duskProgress * 30}, ${140 - duskProgress * 50}, ${240 - duskProgress * 70})`; // Dusk blue
       horizonColor = `rgb(${200 - duskProgress * 80}, ${140 - duskProgress * 40}, ${120 - duskProgress * 20})`;
-      cloudColor = `rgba(${220 - duskProgress * 80}, ${160 - duskProgress * 60}, ${140 - duskProgress * 40}, 0.7)`;
     } else { // Night
       const nightProgress = (timeOfDay - 0.75) / 0.25;
       skyColor = `rgb(${20 - nightProgress * 5}, ${30 - nightProgress * 5}, ${60 - nightProgress * 15})`; // Deep night blue
       horizonColor = `rgb(${40 - nightProgress * 15}, ${45 - nightProgress * 10}, ${70 - nightProgress * 15})`;
-      cloudColor = `rgba(40, 50, 80, ${0.4 * nightProgress})`;
     }
     
     // Create gradient for sky
@@ -295,74 +289,7 @@ export class TextureGenerator {
       }
     }
     
-    // Draw sun or moon
-    const celestialBodySize = canvas.width * 0.05;
-    let celestialBodyX, celestialBodyY;
-    
-    if (timeOfDay >= 0.25 && timeOfDay <= 0.75) {
-      // Sun position based on time of day
-      const sunProgress = (timeOfDay - 0.25) / 0.5; // 0 to 1 for sun's arc
-      celestialBodyX = canvas.width * sunProgress;
-      celestialBodyY = canvas.height * 0.2 - Math.sin(sunProgress * Math.PI) * canvas.height * 0.6;
-      
-      // Draw sun
-      const sunGradient = ctx.createRadialGradient(
-        celestialBodyX, celestialBodyY, 0,
-        celestialBodyX, celestialBodyY, celestialBodySize
-      );
-      sunGradient.addColorStop(0, 'rgba(255, 255, 200, 1)');
-      sunGradient.addColorStop(0.3, 'rgba(255, 200, 50, 1)');
-      sunGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-      
-      ctx.fillStyle = sunGradient;
-      ctx.beginPath();
-      ctx.arc(celestialBodyX, celestialBodyY, celestialBodySize * 2, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // Moon position
-      const moonProgress = timeOfDay < 0.25 ? (0.25 - timeOfDay) / 0.25 : (timeOfDay - 0.75) / 0.25;
-      celestialBodyX = canvas.width * moonProgress;
-      celestialBodyY = canvas.height * 0.2 - Math.sin(moonProgress * Math.PI) * canvas.height * 0.4;
-      
-      // Draw moon
-      ctx.fillStyle = 'rgba(220, 220, 240, 0.9)';
-      ctx.beginPath();
-      ctx.arc(celestialBodyX, celestialBodyY, celestialBodySize * 0.7, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Moon craters
-      ctx.fillStyle = 'rgba(200, 200, 220, 0.8)';
-      for (let i = 0; i < 5; i++) {
-        const craterX = celestialBodyX + (Math.random() - 0.5) * celestialBodySize * 0.8;
-        const craterY = celestialBodyY + (Math.random() - 0.5) * celestialBodySize * 0.8;
-        const craterSize = Math.random() * celestialBodySize * 0.2 + celestialBodySize * 0.05;
-        
-        ctx.beginPath();
-        ctx.arc(craterX, craterY, craterSize, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    
-    // Draw clouds
-    ctx.fillStyle = cloudColor;
-    const cloudCount = Math.floor(canvas.width / 200 * cloudCoverage);
-    
-    for (let i = 0; i < cloudCount; i++) {
-      const cloudX = Math.random() * canvas.width;
-      const cloudY = canvas.height * (0.2 + Math.random() * 0.3);
-      const cloudWidth = 100 + Math.random() * 200;
-      const cloudHeight = 30 + Math.random() * 50;
-      
-      for (let j = 0; j < 5; j++) {
-        const blobX = cloudX + (Math.random() - 0.5) * cloudWidth * 0.5;
-        const blobY = cloudY + (Math.random() - 0.5) * cloudHeight * 0.5;
-        const blobRadius = cloudWidth * 0.2 + Math.random() * cloudWidth * 0.1;
-        
-        ctx.beginPath();
-        ctx.arc(blobX, blobY, blobRadius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
+    // NO SUN OR MOON - removed to prevent white blob
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
