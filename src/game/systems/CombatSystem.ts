@@ -97,11 +97,9 @@ export class CombatSystem {
       return;
     }
     
-    // Get accurate camera direction
     const cameraDirection = new THREE.Vector3();
     this.camera.getWorldDirection(cameraDirection);
     
-    // Get player position and calculate arrow start position at eye level
     const playerPosition = this.player.getPosition();
     const arrowStartPos = playerPosition.clone()
       .add(new THREE.Vector3(0, 1.2, 0))
@@ -112,7 +110,6 @@ export class CombatSystem {
     
     console.log(`🏹 [CombatSystem] Firing arrow with collision detection - damage: ${damage}, speed: ${speed}`);
     
-    // Fire the arrow with collision support
     this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
     
     this.audioManager.play('bow_release');
@@ -140,6 +137,7 @@ export class CombatSystem {
     const swordBox = new THREE.Box3().setFromObject(swordHitBox);
     
     const attackPower = this.player.getAttackPower();
+    const playerPosition = this.player.getPosition();
     
     this.enemies.forEach(enemy => {
       if (enemy.isDead()) return;
@@ -150,7 +148,22 @@ export class CombatSystem {
       const enemyBox = new THREE.Box3().setFromObject(enemyMesh);
       
       if (swordBox.intersectsBox(enemyBox)) {
-        enemy.takeDamage(attackPower, this.player.getPosition());
+        const enemyPosition = enemy.getPosition();
+        
+        // Calculate slash direction and positions
+        const slashDirection = enemyPosition.clone().sub(playerPosition).normalize();
+        const slashStart = playerPosition.clone().add(new THREE.Vector3(0, 0.8, 0));
+        const slashEnd = enemyPosition.clone().add(new THREE.Vector3(0, 0.8, 0));
+        
+        // Create realistic sword slash effect
+        this.effectsManager.createSwordSlashEffect(slashStart, slashEnd, slashDirection);
+        
+        // Apply damage and create blood effect
+        enemy.takeDamage(attackPower, playerPosition);
+        
+        // Create realistic blood effect based on damage intensity
+        const damageIntensity = Math.min(attackPower / 50, 2);
+        this.effectsManager.createRealisticBloodEffect(enemyPosition, slashDirection, damageIntensity);
         
         this.player.addEnemy(enemy);
         
@@ -158,11 +171,38 @@ export class CombatSystem {
         
         if (enemy.isDead()) {
           this.spawnGold(enemy.getPosition(), enemy.getGoldReward());
-          
           this.player.addExperience(enemy.getExperienceReward());
         }
       }
     });
+  }
+  
+  public handlePlayerDamage(damage: number, damageSource: THREE.Vector3): void {
+    const playerPosition = this.player.getPosition();
+    const damageDirection = damageSource.clone().sub(playerPosition).normalize();
+    const intensity = Math.min(damage / 30, 2);
+    
+    // Create player damage effect
+    this.effectsManager.createPlayerDamageEffect(damageDirection, intensity);
+    
+    // Apply damage to player
+    // Note: This would need to be connected to player health system
+    console.log(`Player takes ${damage} damage from direction:`, damageDirection);
+  }
+  
+  public handleArrowHit(enemy: Enemy, arrowPosition: THREE.Vector3, arrowDirection: THREE.Vector3, damage: number): void {
+    // Create arrow-specific blood effect
+    this.effectsManager.createArrowBloodEffect(arrowPosition, arrowDirection, damage);
+    
+    // Apply damage
+    enemy.takeDamage(damage, arrowPosition);
+    
+    this.audioManager.play('arrow_hit');
+    
+    if (enemy.isDead()) {
+      this.spawnGold(enemy.getPosition(), enemy.getGoldReward());
+      this.player.addExperience(enemy.getExperienceReward());
+    }
   }
   
   private checkGoldPickups(): void {

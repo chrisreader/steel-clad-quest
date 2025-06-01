@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Arrow } from '../entities/Arrow';
 import { Player } from '../entities/Player';
@@ -85,6 +84,7 @@ export class ProjectileSystem {
 
   private checkArrowCollisions(arrow: Arrow): void {
     const arrowPosition = arrow.getPosition();
+    const arrowDirection = arrow.getDirection(); // Assuming Arrow has getDirection method
     const arrowBox = new THREE.Box3();
     arrowBox.setFromCenterAndSize(arrowPosition, new THREE.Vector3(0.2, 0.2, 0.2));
     
@@ -96,17 +96,20 @@ export class ProjectileSystem {
       
       if (arrowBox.intersectsBox(enemyBox)) {
         const damage = arrow.getDamage();
+        
+        // Create realistic arrow blood effect
+        this.effectsManager.createArrowBloodEffect(arrowPosition, arrowDirection, damage);
+        
+        // Apply damage to enemy
         enemy.takeDamage(damage, arrowPosition);
         
         this.audioManager.play('arrow_hit');
         
-        const direction = new THREE.Vector3(0, 0, 1);
-        this.effectsManager.createBloodEffect(arrowPosition, direction);
-        
+        // Dispose of arrow
         arrow.dispose();
         this.arrows = this.arrows.filter(a => a !== arrow);
         
-        console.log(`🏹 Arrow hit enemy for ${damage} damage`);
+        console.log(`🏹 Arrow hit enemy for ${damage} damage with realistic blood effect`);
         
         if (enemy.isDead()) {
           this.player.addExperience(enemy.getExperienceReward());
