@@ -451,12 +451,12 @@ export class Player {
   }
   
   private initializeBowAnimationPositions(): void {
-    // FIXED: Enhanced hand rotations for proper vertical bow gripping - NO Y ROTATION
-    this.bowDrawAnimation.leftHandRestRotation.set(-Math.PI / 4, 0, Math.PI / 3);
+    // FIXED: Reduced left hand Z-rotation from 45° to 15° to minimize diagonal tilt
+    this.bowDrawAnimation.leftHandRestRotation.set(-Math.PI / 4, 0, Math.PI / 12); // Changed from Math.PI / 3 to Math.PI / 12
     this.bowDrawAnimation.rightHandRestRotation.set(0, 0, 0);
     
-    // FIXED: Hand rotations during draw - left hand maintains realistic grip - NO Y ROTATION
-    this.bowDrawAnimation.leftHandDrawRotation.set(-Math.PI / 4, 0, Math.PI / 3);
+    // FIXED: Hand rotations during draw - left hand maintains realistic grip with reduced Z-rotation
+    this.bowDrawAnimation.leftHandDrawRotation.set(-Math.PI / 4, 0, Math.PI / 12); // Changed from Math.PI / 3 to Math.PI / 12
     this.bowDrawAnimation.rightHandDrawRotation.set(0, 0, 0);
     
     // Updated realistic arm positions for enhanced archery stance at TALLER height
