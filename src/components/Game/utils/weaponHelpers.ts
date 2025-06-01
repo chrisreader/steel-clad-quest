@@ -4,18 +4,22 @@ import { Item, EquipmentSlotType } from '../../../types/GameTypes';
 export const canEquipInSlot = (item: Item, slotType: EquipmentSlotType): boolean => {
   if (item.type !== 'weapon' && item.type !== 'armor') return false;
   
-  // Weapon-specific restrictions
+  // Weapon-specific restrictions for new 3-slot system
   if (item.type === 'weapon') {
-    // Swords can only go in main hand
-    if (item.subtype === 'sword' && slotType !== 'mainhand') {
-      return false;
+    // Swords can go in primary or secondary
+    if (item.subtype === 'sword' && (slotType === 'primary' || slotType === 'secondary')) {
+      return true;
     }
-    // Shields can only go in off hand
-    if (item.subtype === 'shield' && slotType !== 'offhand') {
-      return false;
+    // Bows can go in primary or secondary
+    if (item.subtype === 'bow' && (slotType === 'primary' || slotType === 'secondary')) {
+      return true;
     }
-    // General weapon slots check
-    if (slotType !== 'mainhand' && slotType !== 'offhand') {
+    // Shields can only go in offhand
+    if (item.subtype === 'shield' && slotType === 'offhand') {
+      return true;
+    }
+    // General weapon slots check (no weapons in armor slots)
+    if (['helmet', 'chestplate', 'leggings', 'boots'].includes(slotType)) {
       return false;
     }
   }
@@ -28,9 +32,12 @@ export const canEquipInSlot = (item: Item, slotType: EquipmentSlotType): boolean
   return item.equipmentSlot === slotType;
 };
 
-export const getWeaponStats = (weapons: { mainhand: Item | null; offhand: Item | null }) => {
+export const getWeaponStats = (weapons: { primary: Item | null; secondary: Item | null; offhand: Item | null }) => {
+  const activeWeaponAttack = weapons.primary?.stats?.attack || weapons.secondary?.stats?.attack || 0;
+  const offhandDefense = weapons.offhand?.stats?.defense || 0;
+  
   return {
-    attack: weapons.mainhand?.stats?.attack || 0,
-    defense: 0 // Weapons don't provide defense in this system
+    attack: activeWeaponAttack,
+    defense: offhandDefense
   };
 };

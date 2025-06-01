@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Item, EquipmentSlotType } from '../../../types/GameTypes';
-import { Sword, Shield } from 'lucide-react';
+import { Sword, Shield, Target } from 'lucide-react';
 
 interface EquipmentSlotProps {
   slotType: EquipmentSlotType;
@@ -25,8 +26,9 @@ export const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       case 'chestplate': return 'Chest';
       case 'leggings': return 'Legs';
       case 'boots': return 'Feet';
-      case 'mainhand': return 'Main Hand';
-      case 'offhand': return 'Off Hand';
+      case 'primary': return 'Primary';
+      case 'secondary': return 'Secondary';
+      case 'offhand': return 'Offhand';
       default: return type;
     }
   };
@@ -36,6 +38,9 @@ export const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       // Show specific weapon icons based on weapon type
       if (item.subtype === 'sword') {
         return <Sword className="w-6 h-6 text-yellow-400" />;
+      }
+      if (item.subtype === 'bow') {
+        return <Target className="w-6 h-6 text-green-400" />;
       }
       if (item.subtype === 'shield') {
         return <Shield className="w-6 h-6 text-gray-400" />;
@@ -58,9 +63,11 @@ export const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
         return <div className="w-4 h-6 border-2 border-gray-600 rounded-sm" />;
       case 'boots':
         return <div className="w-5 h-4 border-2 border-gray-600 rounded-sm" />;
-      case 'mainhand':
-      case 'offhand':
+      case 'primary':
+      case 'secondary':
         return <div className="w-6 h-6 border-2 border-gray-600 rounded-sm transform rotate-45" />;
+      case 'offhand':
+        return <div className="w-6 h-6 border-2 border-gray-600 rounded-full" />;
       default:
         return null;
     }

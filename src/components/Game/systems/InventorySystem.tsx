@@ -1,6 +1,6 @@
 
 import React, { useCallback, useEffect } from 'react';
-import { Item, EquipmentSlotType } from '../../../types/GameTypes';
+import { Item, EquipmentSlotType, WeaponSlots } from '../../../types/GameTypes';
 import { EquipmentPanel } from '../components/EquipmentPanel';
 import { InventoryGrid } from '../components/InventoryGrid';
 import { EquipmentStats } from '../components/EquipmentStats';
@@ -12,11 +12,8 @@ interface InventorySystemProps {
   isOpen: boolean;
   onClose: () => void;
   onUseItem: (item: Item) => void;
-  equippedWeapons: {
-    mainhand: Item | null;
-    offhand: Item | null;
-  };
-  onEquippedWeaponsChange: (weapons: { mainhand: Item | null; offhand: Item | null; }) => void;
+  equippedWeapons: WeaponSlots;
+  onEquippedWeaponsChange: (weapons: WeaponSlots) => void;
   onEquipWeapon?: (item: Item) => void;
   onUnequipWeapon?: () => void;
 }
@@ -101,15 +98,15 @@ export const InventorySystem: React.FC<InventorySystemProps> = ({
 
     if (draggedItem.source === 'inventory') {
       const sourceSlotId = draggedItem.sourceId as number;
-      const currentEquipped = targetSlotType === 'mainhand' ? equippedWeapons.mainhand : equippedWeapons.offhand;
+      const currentEquipped = equippedWeapons[targetSlotType as keyof WeaponSlots];
       
       // Handle weapon equipping
-      if (targetSlotType === 'mainhand' && draggedItem.item.weaponId && onEquipWeapon) {
+      if ((targetSlotType === 'primary' || targetSlotType === 'secondary') && draggedItem.item.weaponId && onEquipWeapon) {
         onEquipWeapon(draggedItem.item);
       }
       
       // Update equipped weapons through callback
-      if (targetSlotType === 'mainhand' || targetSlotType === 'offhand') {
+      if (targetSlotType === 'primary' || targetSlotType === 'secondary' || targetSlotType === 'offhand') {
         onEquippedWeaponsChange({
           ...equippedWeapons,
           [targetSlotType]: draggedItem.item
@@ -142,7 +139,7 @@ export const InventorySystem: React.FC<InventorySystemProps> = ({
       ));
 
       // Update equipped weapons through callback for weapon slots
-      if (sourceSlotType === 'mainhand' || sourceSlotType === 'offhand') {
+      if (sourceSlotType === 'primary' || sourceSlotType === 'secondary' || sourceSlotType === 'offhand') {
         onEquippedWeaponsChange({
           ...equippedWeapons,
           [sourceSlotType]: targetSlot.item
@@ -168,25 +165,25 @@ export const InventorySystem: React.FC<InventorySystemProps> = ({
   };
 
   const handleUnequip = (slotType: EquipmentSlotType) => {
-    const item = slotType === 'mainhand' ? equippedWeapons.mainhand : equippedWeapons.offhand;
-    if (!item || !onEquippedWeaponsChange) return;
+    if (slotType === 'primary' || slotType === 'secondary' || slotType === 'offhand') {
+      const item = equippedWeapons[slotType];
+      if (!item || !onEquippedWeaponsChange) return;
 
-    // Handle weapon unequipping
-    if (slotType === 'mainhand' && item.weaponId && onUnequipWeapon) {
-      onUnequipWeapon();
-    }
+      // Handle weapon unequipping
+      if ((slotType === 'primary' || slotType === 'secondary') && item.weaponId && onUnequipWeapon) {
+        onUnequipWeapon();
+      }
 
-    // Find empty inventory slot
-    const emptySlotIndex = inventorySlots.findIndex(slot => slot.isEmpty);
-    if (emptySlotIndex !== -1) {
-      setInventorySlots(prev => prev.map(slot =>
-        slot.id === emptySlotIndex
-          ? { ...slot, item, isEmpty: false }
-          : slot
-      ));
+      // Find empty inventory slot
+      const emptySlotIndex = inventorySlots.findIndex(slot => slot.isEmpty);
+      if (emptySlotIndex !== -1) {
+        setInventorySlots(prev => prev.map(slot =>
+          slot.id === emptySlotIndex
+            ? { ...slot, item, isEmpty: false }
+            : slot
+        ));
 
-      // Update equipped weapons through callback for weapon slots
-      if (slotType === 'mainhand' || slotType === 'offhand') {
+        // Update equipped weapons through callback
         onEquippedWeaponsChange({
           ...equippedWeapons,
           [slotType]: null

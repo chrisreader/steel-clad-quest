@@ -1,21 +1,25 @@
 
 import React from 'react';
 import { Item } from '../../../types/GameTypes';
-import { Sword, Shield } from 'lucide-react';
+import { Sword, Shield, Target } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 
 interface WeaponSlotsHUDProps {
-  mainHandWeapon: Item | null;
-  offHandWeapon: Item | null;
-  activeSlot: 1 | 2;
-  onSlotSelect: (slot: 1 | 2) => void;
+  primaryWeapon: Item | null;
+  secondaryWeapon: Item | null;
+  offhandWeapon: Item | null;
+  activeSlot: 1 | 2 | 3;
+  onSlotSelect: (slot: 1 | 2 | 3) => void;
+  isOffhandDisabled?: boolean;
 }
 
 export const WeaponSlotsHUD: React.FC<WeaponSlotsHUDProps> = ({
-  mainHandWeapon,
-  offHandWeapon,
+  primaryWeapon,
+  secondaryWeapon,
+  offhandWeapon,
   activeSlot,
-  onSlotSelect
+  onSlotSelect,
+  isOffhandDisabled = false
 }) => {
   const getWeaponIcon = (weapon: Item | null) => {
     if (!weapon) return null;
@@ -23,6 +27,8 @@ export const WeaponSlotsHUD: React.FC<WeaponSlotsHUDProps> = ({
     switch (weapon.subtype) {
       case 'sword':
         return <Sword className="w-6 h-6 text-yellow-400" />;
+      case 'bow':
+        return <Target className="w-6 h-6 text-green-400" />;
       case 'shield':
         return <Shield className="w-6 h-6 text-gray-400" />;
       default:
@@ -34,8 +40,9 @@ export const WeaponSlotsHUD: React.FC<WeaponSlotsHUDProps> = ({
     }
   };
 
-  const renderWeaponSlot = (slotNumber: 1 | 2, weapon: Item | null, label: string) => {
+  const renderWeaponSlot = (slotNumber: 1 | 2 | 3, weapon: Item | null, label: string) => {
     const isActive = activeSlot === slotNumber;
+    const isDisabled = slotNumber === 3 && isOffhandDisabled;
     
     const slotContent = (
       <div
@@ -50,9 +57,13 @@ export const WeaponSlotsHUD: React.FC<WeaponSlotsHUDProps> = ({
             ? 'ring-2 ring-blue-400 ring-opacity-75 border-blue-400 shadow-lg shadow-blue-400/50' 
             : ''
           }
+          ${isDisabled 
+            ? 'opacity-50 cursor-not-allowed border-gray-700 bg-gray-900' 
+            : ''
+          }
         `}
-        onClick={() => onSlotSelect(slotNumber)}
-        title={weapon ? weapon.name : `Empty ${label}`}
+        onClick={() => !isDisabled && onSlotSelect(slotNumber)}
+        title={weapon ? weapon.name : `Empty ${label}${isDisabled ? ' (Disabled)' : ''}`}
       >
         {weapon ? getWeaponIcon(weapon) : (
           <div className="w-6 h-6 border-2 border-gray-600 rounded-sm transform rotate-45" />
@@ -64,8 +75,15 @@ export const WeaponSlotsHUD: React.FC<WeaponSlotsHUDProps> = ({
         </div>
         
         {/* Active slot indicator */}
-        {isActive && (
+        {isActive && !isDisabled && (
           <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-1 bg-blue-400 rounded-full"></div>
+        )}
+        
+        {/* Disabled indicator */}
+        {isDisabled && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-8 h-0.5 bg-red-500 rounded transform rotate-45"></div>
+          </div>
         )}
       </div>
     );
@@ -83,10 +101,11 @@ export const WeaponSlotsHUD: React.FC<WeaponSlotsHUDProps> = ({
       <div className="bg-black bg-opacity-50 rounded-lg p-3">
         <div className="text-xs text-gray-300 mb-2 text-center">Weapons</div>
         <div className="flex gap-2">
-          {renderWeaponSlot(1, mainHandWeapon, 'Main Hand')}
-          {renderWeaponSlot(2, offHandWeapon, 'Off Hand')}
+          {renderWeaponSlot(1, primaryWeapon, 'Primary')}
+          {renderWeaponSlot(2, secondaryWeapon, 'Secondary')}
+          {renderWeaponSlot(3, offhandWeapon, 'Offhand')}
         </div>
-        <div className="text-xs text-gray-400 mt-1 text-center">Press 1-2</div>
+        <div className="text-xs text-gray-400 mt-1 text-center">Press 1-3</div>
       </div>
     </div>
   );

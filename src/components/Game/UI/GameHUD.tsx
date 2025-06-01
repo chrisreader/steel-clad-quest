@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PlayerStats, Item } from '../../../types/GameTypes';
 import { HealthBar } from './HealthBar';
@@ -8,20 +9,24 @@ interface GameHUDProps {
   playerStats: PlayerStats;
   gameTime: number;
   isInTavern?: boolean;
-  mainHandWeapon?: Item | null;
-  offHandWeapon?: Item | null;
-  activeWeaponSlot?: 1 | 2;
-  onWeaponSlotSelect?: (slot: 1 | 2) => void;
+  primaryWeapon?: Item | null;
+  secondaryWeapon?: Item | null;
+  offhandWeapon?: Item | null;
+  activeWeaponSlot?: 1 | 2 | 3;
+  onWeaponSlotSelect?: (slot: 1 | 2 | 3) => void;
+  isOffhandDisabled?: boolean;
 }
 
 export const GameHUD: React.FC<GameHUDProps> = ({ 
   playerStats, 
   gameTime, 
   isInTavern = false,
-  mainHandWeapon = null,
-  offHandWeapon = null,
+  primaryWeapon = null,
+  secondaryWeapon = null,
+  offhandWeapon = null,
   activeWeaponSlot = 1,
-  onWeaponSlotSelect = () => {}
+  onWeaponSlotSelect = () => {},
+  isOffhandDisabled = false
 }) => {
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -85,10 +90,12 @@ export const GameHUD: React.FC<GameHUDProps> = ({
 
       {/* Weapon Slots HUD */}
       <WeaponSlotsHUD
-        mainHandWeapon={mainHandWeapon}
-        offHandWeapon={offHandWeapon}
+        primaryWeapon={primaryWeapon}
+        secondaryWeapon={secondaryWeapon}
+        offhandWeapon={offhandWeapon}
         activeSlot={activeWeaponSlot}
         onSlotSelect={onWeaponSlotSelect}
+        isOffhandDisabled={isOffhandDisabled}
       />
     </>
   );
