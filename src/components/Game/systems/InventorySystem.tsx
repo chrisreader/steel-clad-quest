@@ -6,15 +6,17 @@ import { InventoryGrid } from '../components/InventoryGrid';
 import { EquipmentStats } from '../components/EquipmentStats';
 import { useInventoryManagement } from '../hooks/useInventoryManagement';
 import { canEquipInSlot } from '../utils/weaponHelpers';
-import { WeaponSlots } from '../hooks/useWeaponManagement';
 
 interface InventorySystemProps {
   items: Item[];
   isOpen: boolean;
   onClose: () => void;
   onUseItem: (item: Item) => void;
-  equippedWeapons: WeaponSlots;
-  onEquippedWeaponsChange: (weapons: WeaponSlots) => void;
+  equippedWeapons: {
+    mainhand: Item | null;
+    offhand: Item | null;
+  };
+  onEquippedWeaponsChange: (weapons: { mainhand: Item | null; offhand: Item | null; }) => void;
   onEquipWeapon?: (item: Item) => void;
   onUnequipWeapon?: () => void;
 }
@@ -99,24 +101,15 @@ export const InventorySystem: React.FC<InventorySystemProps> = ({
 
     if (draggedItem.source === 'inventory') {
       const sourceSlotId = draggedItem.sourceId as number;
-      let currentEquipped: Item | null = null;
+      const currentEquipped = targetSlotType === 'mainhand' ? equippedWeapons.mainhand : equippedWeapons.offhand;
       
-      // Get currently equipped item based on target slot
-      if (targetSlotType === 'primary') {
-        currentEquipped = equippedWeapons.primary;
-      } else if (targetSlotType === 'secondary') {
-        currentEquipped = equippedWeapons.secondary;
-      } else if (targetSlotType === 'offhand') {
-        currentEquipped = equippedWeapons.offhand;
-      }
-      
-      // Handle weapon equipping for primary slot
-      if (targetSlotType === 'primary' && draggedItem.item.weaponId && onEquipWeapon) {
+      // Handle weapon equipping
+      if (targetSlotType === 'mainhand' && draggedItem.item.weaponId && onEquipWeapon) {
         onEquipWeapon(draggedItem.item);
       }
       
       // Update equipped weapons through callback
-      if (targetSlotType === 'primary' || targetSlotType === 'secondary' || targetSlotType === 'offhand') {
+      if (targetSlotType === 'mainhand' || targetSlotType === 'offhand') {
         onEquippedWeaponsChange({
           ...equippedWeapons,
           [targetSlotType]: draggedItem.item
@@ -149,7 +142,7 @@ export const InventorySystem: React.FC<InventorySystemProps> = ({
       ));
 
       // Update equipped weapons through callback for weapon slots
-      if (sourceSlotType === 'primary' || sourceSlotType === 'secondary' || sourceSlotType === 'offhand') {
+      if (sourceSlotType === 'mainhand' || sourceSlotType === 'offhand') {
         onEquippedWeaponsChange({
           ...equippedWeapons,
           [sourceSlotType]: targetSlot.item
@@ -175,20 +168,11 @@ export const InventorySystem: React.FC<InventorySystemProps> = ({
   };
 
   const handleUnequip = (slotType: EquipmentSlotType) => {
-    let item: Item | null = null;
-    
-    if (slotType === 'primary') {
-      item = equippedWeapons.primary;
-    } else if (slotType === 'secondary') {
-      item = equippedWeapons.secondary;
-    } else if (slotType === 'offhand') {
-      item = equippedWeapons.offhand;
-    }
-    
+    const item = slotType === 'mainhand' ? equippedWeapons.mainhand : equippedWeapons.offhand;
     if (!item || !onEquippedWeaponsChange) return;
 
-    // Handle weapon unequipping for primary slot
-    if (slotType === 'primary' && item.weaponId && onUnequipWeapon) {
+    // Handle weapon unequipping
+    if (slotType === 'mainhand' && item.weaponId && onUnequipWeapon) {
       onUnequipWeapon();
     }
 
@@ -202,7 +186,7 @@ export const InventorySystem: React.FC<InventorySystemProps> = ({
       ));
 
       // Update equipped weapons through callback for weapon slots
-      if (slotType === 'primary' || slotType === 'secondary' || slotType === 'offhand') {
+      if (slotType === 'mainhand' || slotType === 'offhand') {
         onEquippedWeaponsChange({
           ...equippedWeapons,
           [slotType]: null

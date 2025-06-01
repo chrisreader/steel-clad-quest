@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Item, EquipmentSlotType } from '../../../types/GameTypes';
 import { Sword, Shield } from 'lucide-react';
@@ -26,8 +25,7 @@ export const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
       case 'chestplate': return 'Chest';
       case 'leggings': return 'Legs';
       case 'boots': return 'Feet';
-      case 'primary': return 'Primary';
-      case 'secondary': return 'Secondary';
+      case 'mainhand': return 'Main Hand';
       case 'offhand': return 'Off Hand';
       default: return type;
     }
@@ -60,8 +58,7 @@ export const EquipmentSlot: React.FC<EquipmentSlotProps> = ({
         return <div className="w-4 h-6 border-2 border-gray-600 rounded-sm" />;
       case 'boots':
         return <div className="w-5 h-4 border-2 border-gray-600 rounded-sm" />;
-      case 'primary':
-      case 'secondary':
+      case 'mainhand':
       case 'offhand':
         return <div className="w-6 h-6 border-2 border-gray-600 rounded-sm transform rotate-45" />;
       default:

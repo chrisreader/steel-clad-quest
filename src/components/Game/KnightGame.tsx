@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -83,17 +84,16 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     handleUseItem
   } = useGameManager();
 
-  // Use weapon management hook with Steel Sword in primary slot
+  // Use weapon management hook with both Steel Sword and Hunting Bow
   const {
     equippedWeapons,
     setEquippedWeapons,
     activeWeaponSlot,
-    isOffhandDisabled,
     handleEquipWeapon,
     handleUnequipWeapon,
     handleWeaponSlotSelect
   } = useWeaponManagement({
-    primary: {
+    mainhand: {
       id: '1', 
       name: 'Steel Sword', 
       type: 'weapon' as const, 
@@ -101,13 +101,12 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       value: 200, 
       description: 'A masterfully forged steel blade with razor-sharp edges. This superior weapon offers exceptional balance and deadly precision in combat (+15 attack)', 
       quantity: 1,
-      equipmentSlot: 'primary' as const,
+      equipmentSlot: 'mainhand' as const,
       stats: { attack: 15 },
       tier: 'uncommon' as const,
       icon: 'sword',
       weaponId: 'steel_sword'
     },
-    secondary: null,
     offhand: null
   });
 
@@ -121,7 +120,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       value: 150,
       description: 'A well-crafted hunting bow made from flexible yew wood. Draw and release to shoot arrows with varying power based on draw time. Perfect for ranged combat (+8 attack)',
       quantity: 1,
-      equipmentSlot: 'primary' as const,
+      equipmentSlot: 'mainhand' as const,
       stats: { attack: 8 },
       tier: 'common' as const,
       icon: 'bow',
@@ -150,7 +149,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Log the initial setup
   useEffect(() => {
-    console.log('[KnightGame] Initial setup - Steel Sword equipped in primary, Hunting Bow in inventory');
+    console.log('[KnightGame] Initial setup - Steel Sword equipped in mainhand, Hunting Bow in inventory');
   }, []); // Empty dependency array - runs once on mount
 
   // Sync equipped weapons with game engine when weapons or game engine changes
@@ -161,9 +160,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     const player = gameEngine.getPlayer();
     
     // Get the weapon for the currently active slot
-    const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
-                         activeWeaponSlot === 2 ? equippedWeapons.secondary : 
-                         equippedWeapons.offhand;
+    const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.mainhand : equippedWeapons.offhand;
     
     if (activeWeapon && activeWeapon.weaponId) {
       console.log(`[KnightGame] Equipping weapon: ${activeWeapon.name} in slot ${activeWeaponSlot}`);
@@ -275,7 +272,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   const startGame = useCallback(() => {
     console.log('🚀 [KnightGame] Starting knight adventure with NEW ARM POSITIONING...');
     console.log('🚀 [KnightGame] GameEngine available:', !!gameEngine);
-    console.log('🚀 [KnightGame] Starting with Steel Sword equipped in primary and NEW ARM POSITIONING');
+    console.log('🚀 [KnightGame] Starting with Steel Sword equipped in mainhand and NEW ARM POSITIONING');
     
     if (gameEngine) {
       console.log('🚀 [KnightGame] Starting GameEngine with NEW ARM POSITIONING...');
@@ -385,11 +382,9 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           playerStats={playerStats} 
           gameTime={gameTime} 
           isInTavern={isInTavern}
-          primaryWeapon={equippedWeapons.primary}
-          secondaryWeapon={equippedWeapons.secondary}
-          offhandWeapon={equippedWeapons.offhand}
+          mainHandWeapon={equippedWeapons.mainhand}
+          offHandWeapon={equippedWeapons.offhand}
           activeWeaponSlot={activeWeaponSlot}
-          isOffhandDisabled={isOffhandDisabled}
           onWeaponSlotSelect={handleWeaponSlotSelect}
         />
       )}

@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerStats } from '../../types/GameTypes';
 
@@ -13,7 +14,6 @@ export interface WeaponConfig {
   id: string;
   name: string;
   type: 'sword' | 'axe' | 'mace' | 'bow';
-  handRequirement: 'one-handed' | 'two-handed';
   stats: WeaponStats;
   swingAnimation?: {
     duration: number;
