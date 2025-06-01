@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Arrow } from '../entities/Arrow';
 import { Player } from '../entities/Player';
@@ -23,7 +24,7 @@ export class ProjectileSystem {
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
-    console.log("🏹 [ProjectileSystem] Initialized with enhanced debug logging");
+    console.log("🏹 [ProjectileSystem] Initialized with enhanced arrow visibility and positioning");
   }
 
   public shootArrow(
@@ -38,11 +39,15 @@ export class ProjectileSystem {
     console.log("🏹 [ProjectileSystem] Speed:", speed);
     console.log("🏹 [ProjectileSystem] Damage:", damage);
     
+    // Ensure direction is normalized
+    const normalizedDirection = direction.clone().normalize();
+    console.log("🏹 [ProjectileSystem] Normalized direction:", normalizedDirection);
+    
     try {
       const arrow = new Arrow(
         this.scene,
         startPosition,
-        direction,
+        normalizedDirection,
         speed,
         damage,
         this.effectsManager,
@@ -51,6 +56,7 @@ export class ProjectileSystem {
       
       this.arrows.push(arrow);
       console.log(`🏹 [ProjectileSystem] ✅ ARROW CREATED SUCCESSFULLY - Total arrows: ${this.arrows.length}`);
+      console.log(`🏹 [ProjectileSystem] ✅ ARROW SHOULD BE VISIBLE IN SCENE`);
     } catch (error) {
       console.error("🏹 [ProjectileSystem] ❌ ERROR CREATING ARROW:", error);
     }

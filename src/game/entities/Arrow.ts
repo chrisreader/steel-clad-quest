@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
@@ -33,9 +34,24 @@ export class Arrow {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
+    console.log("🏹 [Arrow] Creating arrow at position:", this.position);
+    console.log("🏹 [Arrow] Arrow velocity:", this.velocity);
+    
     this.mesh = this.createArrowMesh();
     this.createTrailEffect();
     this.scene.add(this.mesh);
+    
+    // Position and orient the arrow
+    this.mesh.position.copy(this.position);
+    
+    // Point arrow in direction of travel
+    if (this.velocity.length() > 0) {
+      const direction = this.velocity.clone().normalize();
+      this.mesh.lookAt(this.position.clone().add(direction));
+    }
+    
+    console.log("🏹 [Arrow] Arrow mesh created and added to scene");
+    console.log("🏹 [Arrow] Arrow mesh position:", this.mesh.position);
     
     // Play arrow shoot sound
     this.audioManager.play('arrow_shoot');
@@ -44,32 +60,49 @@ export class Arrow {
   private createArrowMesh(): THREE.Group {
     const arrowGroup = new THREE.Group();
     
-    // Arrow shaft
-    const shaftGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.8);
-    const shaftMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+    // Make arrow larger and more visible
+    const scale = 1.5;
+    
+    // Arrow shaft - make it more visible
+    const shaftGeometry = new THREE.CylinderGeometry(0.03 * scale, 0.03 * scale, 1.0 * scale);
+    const shaftMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x8b4513,
+      emissive: 0x2d1810,
+      emissiveIntensity: 0.1
+    });
     const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
     shaft.rotation.z = Math.PI / 2;
     arrowGroup.add(shaft);
     
-    // Arrow head
-    const headGeometry = new THREE.ConeGeometry(0.05, 0.15);
-    const headMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 });
+    // Arrow head - make it more prominent
+    const headGeometry = new THREE.ConeGeometry(0.08 * scale, 0.2 * scale);
+    const headMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x888888,
+      emissive: 0x222222,
+      emissiveIntensity: 0.1
+    });
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.x = 0.475;
+    head.position.x = 0.6 * scale;
     head.rotation.z = -Math.PI / 2;
     arrowGroup.add(head);
     
-    // Fletching (feathers)
-    const fletchingGeometry = new THREE.PlaneGeometry(0.1, 0.15);
-    const fletchingMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    // Fletching (feathers) - make them more visible
+    const fletchingGeometry = new THREE.PlaneGeometry(0.15 * scale, 0.2 * scale);
+    const fletchingMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xff6b6b, 
+      side: THREE.DoubleSide,
+      emissive: 0x331111,
+      emissiveIntensity: 0.05
+    });
     
     for (let i = 0; i < 3; i++) {
       const fletching = new THREE.Mesh(fletchingGeometry, fletchingMaterial);
-      fletching.position.x = -0.3;
+      fletching.position.x = -0.4 * scale;
       fletching.rotation.y = (i * Math.PI * 2) / 3;
       arrowGroup.add(fletching);
     }
     
+    console.log("🏹 [Arrow] Arrow mesh created with enhanced visibility");
     return arrowGroup;
   }
 

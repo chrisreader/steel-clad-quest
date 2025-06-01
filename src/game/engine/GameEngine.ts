@@ -98,7 +98,7 @@ export class GameEngine {
       if (playerBody.rightArm) playerBody.rightArm.visible = true;
       
       // Create game systems
-      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager);
+      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera());
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager);
       
       // Set first-person camera position
@@ -332,11 +332,11 @@ export class GameEngine {
       if (playerBody.leftArm) playerBody.leftArm.visible = true;
       if (playerBody.rightArm) playerBody.rightArm.visible = true;
       
-      // Recreate combat system with new player
+      // Recreate combat system with new player and camera
       if (this.combatSystem) {
         this.combatSystem.dispose();
       }
-      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager);
+      this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera());
       
       // Recreate movement system with new player  
       if (this.movementSystem) {

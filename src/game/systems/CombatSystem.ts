@@ -15,6 +15,7 @@ export class CombatSystem {
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   private projectileSystem: ProjectileSystem;
+  private camera: THREE.PerspectiveCamera;
   
   // Combat parameters
   private pickupRange: number = 2;
@@ -29,14 +30,16 @@ export class CombatSystem {
     scene: THREE.Scene,
     player: Player,
     effectsManager: EffectsManager,
-    audioManager: AudioManager
+    audioManager: AudioManager,
+    camera: THREE.PerspectiveCamera
   ) {
     this.scene = scene;
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    this.camera = camera;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with enhanced bow debug logging");
+    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with camera integration for arrow direction");
   }
   
   public update(deltaTime: number): void {
@@ -138,16 +141,24 @@ export class CombatSystem {
       console.log("🏹 [CombatSystem] ✅ SUFFICIENT CHARGE - FIRING ARROW");
       
       const playerPosition = this.player.getPosition();
-      const cameraDirection = new THREE.Vector3(0, 0, -1);
       
-      const arrowStartPos = playerPosition.clone().add(new THREE.Vector3(0, 1.5, 0));
+      // Get camera direction for arrow aiming
+      const cameraDirection = new THREE.Vector3();
+      this.camera.getWorldDirection(cameraDirection);
+      console.log("🏹 [CombatSystem] Camera direction:", cameraDirection);
+      
+      // Calculate arrow start position from bow in player's right hand
+      // Position it slightly forward and to the right of player, at chest height
+      const arrowStartPos = playerPosition.clone()
+        .add(new THREE.Vector3(0.3, 1.4, 0)) // Right hand position at chest level
+        .add(cameraDirection.clone().multiplyScalar(0.5)); // Slightly forward from bow
       
       console.log("🏹 [CombatSystem] Arrow start position:", arrowStartPos);
       console.log("🏹 [CombatSystem] Arrow direction:", cameraDirection);
       
       this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
       
-      console.log("🏹 [CombatSystem] ✅ ARROW FIRED SUCCESSFULLY");
+      console.log("🏹 [CombatSystem] ✅ ARROW FIRED SUCCESSFULLY with camera direction");
       
       this.audioManager.play('bow_release');
     } else {
