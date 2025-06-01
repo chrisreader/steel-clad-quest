@@ -15,35 +15,16 @@ export class BowDrawAnimation {
     chargeLevel: number,
     deltaTime: number
   ): void {
-    // CRITICAL FIX: Enhanced draw animation with 4 distinct stages based on charge level
-    console.log(`🏹 [BowDrawAnimation] Received charge level: ${(chargeLevel * 100).toFixed(1)}%`);
+    // Draw animation - right arm pulls back while left arm transitions to drawing position
     
-    // Determine draw stage based on charge level with more responsive thresholds
-    let drawStage = 1;
-    if (chargeLevel >= 0.8) drawStage = 4;
-    else if (chargeLevel >= 0.6) drawStage = 3;
-    else if (chargeLevel >= 0.3) drawStage = 2;
-    else if (chargeLevel > 0) drawStage = 1;
+    // Target position for drawing (115° raised position, parallel with body)
+    const targetLeftArmX = Math.PI * 115 / 180;  // 115° raised position for drawing
+    const targetLeftArmY = 0;  // Parallel with body
+    const targetLeftArmZ = 0;  // Parallel with body
     
-    // CRITICAL FIX: Only animate if there's actual charge
-    if (chargeLevel <= 0) {
-      console.log("🏹 [BowDrawAnimation] No charge detected - resetting to ready stance");
-      this.reset(playerBody);
-      return;
-    }
+    // Smoothly transition left arm to drawing position
+    const transitionAmount = deltaTime * this.transitionSpeed;
     
-    // Target positions for progressive drawing stages
-    const baseLeftArmX = Math.PI * 115 / 180;  // 115° raised position
-    const progressiveRaise = (drawStage - 1) * 0.15; // INCREASED: More noticeable progression
-    
-    const targetLeftArmX = baseLeftArmX + progressiveRaise;
-    const targetLeftArmY = 0;
-    const targetLeftArmZ = 0;
-    
-    // CRITICAL FIX: More aggressive transition speed for visible changes
-    const transitionAmount = deltaTime * (this.transitionSpeed * 2);
-    
-    // CRITICAL FIX: Enhanced left arm movement with more dramatic staging
     playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
       playerBody.leftArm.rotation.x,
       targetLeftArmX,
@@ -60,25 +41,21 @@ export class BowDrawAnimation {
       transitionAmount
     );
     
-    // CRITICAL FIX: Enhanced right arm draw animation with dramatic progression
+    // Right arm draw animation - pulls back based on charge level
     const drawAmount = this.easeInOutQuad(chargeLevel);
     
-    // Progressive right arm pull based on draw stage with more dramatic movement
-    const baseRightArmX = Math.PI / 6;
-    const baseRightArmZ = -Math.PI / 8;
-    
-    const stageMultiplier = 1 + (drawStage - 1) * 0.5; // INCREASED: More dramatic per stage
-    const rightArmDrawX = baseRightArmX + (drawAmount * Math.PI / 3 * stageMultiplier); // INCREASED movement
-    const rightArmDrawY = drawAmount * Math.PI / 6; // INCREASED Y movement
-    const rightArmDrawZ = baseRightArmZ - (drawAmount * Math.PI / 4 * stageMultiplier); // INCREASED Z movement
+    // Right arm pulls back and up for draw
+    const rightArmDrawX = Math.PI / 6 + (drawAmount * Math.PI / 4);  // Pull up
+    const rightArmDrawY = drawAmount * Math.PI / 8;  // Slight outward angle
+    const rightArmDrawZ = -Math.PI / 8 - (drawAmount * Math.PI / 6);  // Pull back
     
     playerBody.rightArm.rotation.x = rightArmDrawX;
     playerBody.rightArm.rotation.y = rightArmDrawY;
     playerBody.rightArm.rotation.z = rightArmDrawZ;
     
-    // CRITICAL FIX: Enhanced elbow adjustments with more dramatic stage progression
+    // Elbow adjustments for natural draw
     if (playerBody.leftElbow) {
-      const targetLeftElbowX = 0.2 + (drawAmount * 0.2) + (drawStage - 1) * 0.1; // INCREASED progression
+      const targetLeftElbowX = 0.2 + (drawAmount * 0.1);
       playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
         playerBody.leftElbow.rotation.x,
         targetLeftElbowX,
@@ -87,17 +64,14 @@ export class BowDrawAnimation {
     }
     
     if (playerBody.rightElbow) {
-      // CRITICAL FIX: More dramatic right elbow bend progression
-      const baseElbowBend = 0.3;
-      const stageBend = drawAmount * 1.2; // INCREASED bend amount
-      const stageBonus = (drawStage - 1) * 0.25; // INCREASED stage bonus
-      playerBody.rightElbow.rotation.x = baseElbowBend + stageBend + stageBonus;
+      // Right elbow bends more as we draw
+      playerBody.rightElbow.rotation.x = 0.3 + (drawAmount * 0.8);
     }
     
-    // CRITICAL FIX: Enhanced hand positions with more dramatic stage progression
-    const targetLeftHandX = -Math.PI / 6 - (drawStage - 1) * 0.1; // INCREASED progression
+    // Hand positions for drawing - also transition smoothly
+    const targetLeftHandX = -Math.PI / 6;
     const targetLeftHandY = 0;
-    const targetLeftHandZ = Math.PI / 4 + (drawStage - 1) * 0.15; // INCREASED progression
+    const targetLeftHandZ = Math.PI / 4;
     
     playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
       playerBody.leftHand.rotation.x,
@@ -115,14 +89,12 @@ export class BowDrawAnimation {
       transitionAmount
     );
     
-    // CRITICAL FIX: Enhanced right hand string pull with dramatic stage progression
-    const baseStringPull = drawAmount * Math.PI / 6; // INCREASED base pull
-    const stageStringPull = (drawStage - 1) * 0.15; // INCREASED stage pull
-    playerBody.rightHand.rotation.x = baseStringPull + stageStringPull;
+    // Right hand pulls string back
+    playerBody.rightHand.rotation.x = drawAmount * Math.PI / 8;
     playerBody.rightHand.rotation.y = 0;
-    playerBody.rightHand.rotation.z = drawAmount * Math.PI / 4 + stageStringPull; // INCREASED Z rotation
+    playerBody.rightHand.rotation.z = drawAmount * Math.PI / 6;
     
-    console.log(`🏹 [BowDrawAnimation] ENHANCED Draw Stage ${drawStage}/4 - Charge: ${(chargeLevel * 100).toFixed(1)}% - Left Arm X: ${playerBody.leftArm.rotation.x.toFixed(3)} - Right Arm X: ${playerBody.rightArm.rotation.x.toFixed(3)}`);
+    console.log(`🏹 [BowDrawAnimation] Transitioning to 115° drawing position - Charge: ${(chargeLevel * 100).toFixed(1)}%`);
   }
   
   public reset(playerBody: PlayerBody): void {

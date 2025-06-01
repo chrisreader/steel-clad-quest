@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class MouseHandler {
@@ -10,9 +11,6 @@ export class MouseHandler {
   private isDoubleClick: boolean = false;
   private wheelDelta: number = 0;
   private isPointerLocked: boolean = false;
-  
-  // Track button hold states
-  private buttonHoldStates: boolean[] = [false, false, false]; // Left, Right, Middle
   
   // Performance optimization
   private lastMouseMoveTime: number = 0;
@@ -80,15 +78,9 @@ export class MouseHandler {
     
     this.lastMouseDown = now;
     
-    // Track hold state
-    if (event.button < this.buttonHoldStates.length) {
-      this.buttonHoldStates[event.button] = true;
-    }
-    
     switch (event.button) {
       case 0: // Left mouse button
         this.eventDispatcher('attack');
-        this.eventDispatcher('attackStart'); // New event for hold tracking
         break;
       case 2: // Right mouse button
         this.eventDispatcher('secondaryAction');
@@ -101,11 +93,6 @@ export class MouseHandler {
   
   private handleMouseUp(event: MouseEvent): void {
     this.mouse.buttons &= ~(1 << event.button);
-    
-    // Update hold state
-    if (event.button < this.buttonHoldStates.length) {
-      this.buttonHoldStates[event.button] = false;
-    }
     
     switch (event.button) {
       case 0: // Left mouse button
@@ -137,10 +124,6 @@ export class MouseHandler {
   
   public isButtonPressed(button: number): boolean {
     return !!(this.mouse.buttons & (1 << button));
-  }
-  
-  public isButtonHeld(button: number): boolean {
-    return button < this.buttonHoldStates.length ? this.buttonHoldStates[button] : false;
   }
   
   public setPointerLocked(locked: boolean): void {

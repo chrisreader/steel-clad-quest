@@ -89,10 +89,6 @@ export class InputManager {
     return false;
   }
   
-  public isAttackHeld(): boolean {
-    return this.mouseHandler.isButtonHeld(0); // Left mouse button
-  }
-  
   public getMousePosition(): { x: number; y: number } {
     return this.mouseHandler.getMousePosition();
   }
