@@ -4,6 +4,7 @@ import { PlayerBody, WeaponSwingAnimation, PlayerStats } from '../../types/GameT
 import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { EffectsManager } from '../engine/EffectsManager';
 import { BaseWeapon } from '../weapons/BaseWeapon';
+import { BaseBow } from '../weapons/bow/BaseBow';
 import { WeaponManager } from '../weapons/WeaponManager';
 import { WeaponAnimationSystem, WeaponType } from '../animation/WeaponAnimationSystem';
 import { SwordSwingAnimation } from '../animation/animations/SwordSwingAnimation';
@@ -764,6 +765,8 @@ export class Player {
     this.swordHitBox = new THREE.Mesh(fallbackHitBoxGeometry, fallbackHitBoxMaterial);
     this.scene.add(this.swordHitBox);
     
+    this.equippedWeapon = null;
+    
     console.log(`🗡️ [Player] Weapon unequipped from TALLER realistic arm system, animation type set to emptyHands`);
     return true;
   }
@@ -1015,7 +1018,8 @@ export class Player {
       isActuallyMoving,
       this.isSprinting,
       this.weaponSwing.isActive,
-      this.bowDrawAnimation.isActive
+      this.bowDrawAnimation.isActive,
+      this.isBowEquipped && this.equippedWeapon ? (this.equippedWeapon as BaseBow).getChargeLevel() : 0
     );
     
     // Play footstep sound
@@ -1205,7 +1209,11 @@ export class Player {
   private updateRealisticBowAnimation(deltaTime: number): void {
     if (!this.isBowEquipped || !this.equippedWeapon) return;
     
-    const chargeLevel = this.equippedWeapon.getChargeLevel ? this.equippedWeapon.getChargeLevel() : 0;
+    // Type guard and cast to BaseBow for bow-specific methods
+    if (this.equippedWeapon.getConfig().type !== 'bow') return;
+    const bow = this.equippedWeapon as BaseBow;
+    
+    const chargeLevel = bow.getChargeLevel();
     const lerpSpeed = deltaTime * 8;
     
     console.log(`🏹 [Player] FIXED bow animation update - Active: ${this.bowDrawAnimation.isActive}, Charge: ${chargeLevel.toFixed(2)}`);
@@ -1375,15 +1383,18 @@ export class Player {
       return;
     }
     
+    // Type guard and cast to BaseBow for bow-specific methods
+    if (this.equippedWeapon.getConfig().type !== 'bow') {
+      console.log("🏹 [Player] Cannot draw bow - equipped weapon is not a bow");
+      return;
+    }
+    
     console.log("🏹 [Player] Starting TALLER realistic bow draw animation with enhanced joint control");
     this.bowDrawAnimation.isActive = true;
     
-    if (this.equippedWeapon.startDrawing) {
-      this.equippedWeapon.startDrawing();
-      console.log("🏹 [Player] Weapon draw started on equipped weapon with TALLER realistic arms");
-    } else {
-      console.warn("🏹 [Player] Equipped weapon does not support startDrawing method");
-    }
+    const bow = this.equippedWeapon as BaseBow;
+    bow.startDrawing();
+    console.log("🏹 [Player] Weapon draw started on equipped bow with TALLER realistic arms");
   }
   
   public stopBowDraw(): void {
@@ -1391,14 +1402,16 @@ export class Player {
       return;
     }
     
+    // Type guard and cast to BaseBow for bow-specific methods
+    if (this.equippedWeapon.getConfig().type !== 'bow') {
+      return;
+    }
+    
     console.log("🏹 [Player] Stopping TALLER realistic bow draw animation with enhanced joint control");
     this.bowDrawAnimation.isActive = false;
     
-    if (this.equippedWeapon.stopDrawing) {
-      this.equippedWeapon.stopDrawing();
-      console.log("🏹 [Player] Weapon draw stopped on equipped weapon with TALLER realistic arms");
-    } else {
-      console.warn("🏹 [Player] Equipped weapon does not support stopDrawing method");
-    }
+    const bow = this.equippedWeapon as BaseBow;
+    bow.stopDrawing();
+    console.log("🏹 [Player] Weapon draw stopped on equipped bow with TALLER realistic arms");
   }
 }
