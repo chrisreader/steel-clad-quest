@@ -260,10 +260,10 @@ export class WeaponAnimationSystem {
       playerBody.rightElbow.rotation.x = this.currentBowState.rightElbowX;
     }
     
-    // FIXED: Consistent left hand rotation across ALL bow states (+80°, 0°, 15°)
+    // FIXED: Consistent left hand rotation across ALL bow states (+80°, 0°, 0°)
     playerBody.leftHand.rotation.x = Math.PI * 80 / 180; // +80° downward angle for grip
     playerBody.leftHand.rotation.y = 0; // 0° no side rotation
-    playerBody.leftHand.rotation.z = Math.PI / 12; // 15° slight twist for bow grip
+    playerBody.leftHand.rotation.z = 0; // 0° no twist for bow grip
     
     // Apply hand positions for drawing states
     if (isBowDrawing) {
@@ -404,10 +404,10 @@ export class WeaponAnimationSystem {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    // FIXED: Consistent left hand rotation (+80°, 0°, 15°) - same as all other bow states
+    // FIXED: Consistent left hand rotation (+80°, 0°, 0°) - same as all other bow states
     playerBody.leftHand.rotation.x = Math.PI * 80 / 180; // +80° downward angle for grip
     playerBody.leftHand.rotation.y = 0; // 0° no side rotation
-    playerBody.leftHand.rotation.z = Math.PI / 12; // 15° slight twist for bow grip
+    playerBody.leftHand.rotation.z = 0; // 0° no twist for bow grip
     
     playerBody.rightHand.rotation.x = 0;
     playerBody.rightHand.rotation.y = 0;
