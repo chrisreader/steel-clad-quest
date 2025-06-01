@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BaseBow, DrawStage } from './BaseBow';
 import { WeaponConfig, WeaponStats } from '../BaseWeapon';
@@ -19,6 +20,7 @@ export class HuntingBow extends BaseBow {
       id: 'hunting_bow',
       name: 'Hunting Bow',
       type: 'bow',
+      handRequirement: 'two-handed',
       stats: {
         damage: 8,
         attackSpeed: 1.0,

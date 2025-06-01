@@ -9,6 +9,7 @@ export class IronSword extends Sword {
       id: 'iron_sword',
       name: 'Iron Sword',
       type: 'sword',
+      handRequirement: 'one-handed',
       stats: {
         damage: 10,
         attackSpeed: 1.0,

@@ -9,6 +9,7 @@ export class WoodenSword extends Sword {
       id: 'wooden_sword',
       name: 'Wooden Sword',
       type: 'sword',
+      handRequirement: 'one-handed',
       stats: {
         damage: 5,
         attackSpeed: 1.2,

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerStats } from '../../types/GameTypes';
 
@@ -14,6 +13,7 @@ export interface WeaponConfig {
   id: string;
   name: string;
   type: 'sword' | 'axe' | 'mace' | 'bow';
+  handRequirement: 'one-handed' | 'two-handed';
   stats: WeaponStats;
   swingAnimation?: {
     duration: number;
@@ -60,6 +60,10 @@ export abstract class BaseWeapon {
 
   public getStats(): WeaponStats {
     return this.config.stats;
+  }
+
+  public getHandRequirement(): 'one-handed' | 'two-handed' {
+    return this.config.handRequirement;
   }
 
   public equip(scene: THREE.Scene): void {
