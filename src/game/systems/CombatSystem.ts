@@ -61,7 +61,7 @@ export class CombatSystem {
         const debugHitBox = sword.getDebugHitBox();
         if (debugHitBox && !this.scene.getObjectById(debugHitBox.id)) {
           this.scene.add(debugHitBox);
-          console.log("🔧 [CombatSystem] Added debug hitbox to scene");
+          console.log("🔧 [CombatSystem] Added RED debug hitbox to scene");
         }
       }
     }
@@ -151,30 +151,37 @@ export class CombatSystem {
     try {
       this.player.startSwordSwing();
       
-      // Show debug hitbox when attack starts
+      // Show RED debug hitbox immediately when attack starts
       this.showDebugHitBox();
       
       // Hide debug hitbox after attack duration
       setTimeout(() => {
         this.hideDebugHitBox();
-      }, 600); // Hide after 600ms (typical sword swing duration)
+      }, 800); // Extended to 800ms for better visibility
       
-      console.log("⚔️ [CombatSystem] Melee attack started - hitbox debug visualization active");
+      console.log("⚔️ [CombatSystem] Melee attack started - RED hitbox debug visualization active");
     } catch (error) {
       console.error("⚔️ [CombatSystem] Error calling player.startSwordSwing()", error);
     }
   }
   
   private showDebugHitBox(): void {
-    if (!this.debugHitboxEnabled) return;
+    if (!this.debugHitboxEnabled) {
+      console.log("🔧 [CombatSystem] Debug hitbox disabled - not showing");
+      return;
+    }
     
     const currentWeapon = this.player.getEquippedWeapon();
     if (currentWeapon && ['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
       const sword = currentWeapon as any;
       if (sword.showHitBoxDebug) {
         sword.showHitBoxDebug();
-        console.log("🔧 [CombatSystem] Debug hitbox activated for attack");
+        console.log("🔧 [CombatSystem] RED debug hitbox activated for attack");
+      } else {
+        console.warn("🔧 [CombatSystem] Sword missing showHitBoxDebug method");
       }
+    } else {
+      console.log("🔧 [CombatSystem] No melee weapon equipped for debug hitbox");
     }
   }
   
@@ -184,7 +191,7 @@ export class CombatSystem {
       const sword = currentWeapon as any;
       if (sword.hideHitBoxDebug) {
         sword.hideHitBoxDebug();
-        console.log("🔧 [CombatSystem] Debug hitbox deactivated");
+        console.log("🔧 [CombatSystem] RED debug hitbox deactivated");
       }
     }
   }
@@ -198,7 +205,7 @@ export class CombatSystem {
         sword.setDebugMode(this.debugHitboxEnabled);
       }
     }
-    console.log(`🔧 [CombatSystem] Debug hitbox ${this.debugHitboxEnabled ? 'enabled' : 'disabled'}`);
+    console.log(`🔧 [CombatSystem] RED debug hitbox ${this.debugHitboxEnabled ? 'enabled' : 'disabled'}`);
   }
   
   private checkPlayerAttacks(): void {

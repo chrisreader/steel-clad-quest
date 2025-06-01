@@ -103,13 +103,13 @@ export class Sword extends BaseWeapon {
       color: 0xff0000, // Red color
       linewidth: 3,
       transparent: true,
-      opacity: 0.8
+      opacity: 1.0 // Full opacity when visible
     });
     
     this.debugHitBox = new THREE.LineSegments(edges, debugMaterial);
     this.debugHitBox.visible = false; // Hidden by default
     
-    console.log("🔧 [Sword] Debug hitbox visualization created");
+    console.log("🔧 [Sword] Debug hitbox visualization created - RED wireframe");
   }
 
   public getDebugHitBox(): THREE.LineSegments | null {
@@ -118,10 +118,7 @@ export class Sword extends BaseWeapon {
 
   public setDebugMode(enabled: boolean): void {
     this.debugMode = enabled;
-    if (this.debugHitBox) {
-      this.debugHitBox.visible = enabled;
-      console.log(`🔧 [Sword] Debug mode ${enabled ? 'enabled' : 'disabled'}`);
-    }
+    console.log(`🔧 [Sword] Debug mode ${enabled ? 'enabled' : 'disabled'}`);
   }
 
   public isDebugMode(): boolean {
@@ -131,14 +128,14 @@ export class Sword extends BaseWeapon {
   public showHitBoxDebug(): void {
     if (this.debugHitBox && this.debugMode) {
       this.debugHitBox.visible = true;
-      console.log("🔧 [Sword] Debug hitbox shown during attack");
+      console.log("🔧 [Sword] RED debug hitbox shown during attack");
     }
   }
 
   public hideHitBoxDebug(): void {
     if (this.debugHitBox) {
       this.debugHitBox.visible = false;
-      console.log("🔧 [Sword] Debug hitbox hidden");
+      console.log("🔧 [Sword] RED debug hitbox hidden");
     }
   }
 
