@@ -202,24 +202,4 @@ export class HuntingBow extends BaseBow {
   protected updateBowVisuals(): void {
     console.log("🏹 [HuntingBow] Bow visuals updated (simplified)");
   }
-
-  protected applyShakeEffect(): void {
-    if (!this.mesh || this.shakeIntensity === 0) return;
-    
-    const shakeX = Math.sin(this.shakeTime * 1.5) * this.shakeIntensity;
-    const shakeY = Math.sin(this.shakeTime * 2.1) * this.shakeIntensity * 0.8;
-    const shakeZ = Math.sin(this.shakeTime * 1.7) * this.shakeIntensity * 0.6;
-    
-    this.mesh.position.x += shakeX;
-    this.mesh.position.y += shakeY;
-    this.mesh.position.z += shakeZ;
-    
-    const rotShakeX = Math.sin(this.shakeTime * 1.3) * this.shakeIntensity * 0.4;
-    const rotShakeY = Math.sin(this.shakeTime * 1.9) * this.shakeIntensity * 0.3;
-    const rotShakeZ = Math.sin(this.shakeTime * 1.6) * this.shakeIntensity * 0.5;
-    
-    this.mesh.rotation.x += rotShakeX;
-    this.mesh.rotation.y += rotShakeY;
-    this.mesh.rotation.z += rotShakeZ;
-  }
 }

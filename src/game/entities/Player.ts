@@ -1018,8 +1018,8 @@ export class Player {
       isActuallyMoving,
       this.isSprinting,
       this.weaponSwing.isActive,
-      this.bowDrawAnimation.isActive,
-      this.isBowEquipped && this.equippedWeapon ? (this.equippedWeapon as BaseBow).getChargeLevel() : 0
+      false, // SIMPLIFIED: No bow draw animation state
+      0      // SIMPLIFIED: No charge level
     );
     
     // Play footstep sound
@@ -1209,172 +1209,19 @@ export class Player {
   private updateRealisticBowAnimation(deltaTime: number): void {
     if (!this.isBowEquipped || !this.equippedWeapon) return;
     
-    // Type guard and cast to BaseBow for bow-specific methods
-    if (this.equippedWeapon.getConfig().type !== 'bow') return;
-    const bow = this.equippedWeapon as BaseBow;
+    // SIMPLIFIED: No charge mechanics, just maintain bow holding stance
+    console.log(`🏹 [Player] Simplified bow animation - just maintaining stance`);
     
-    const chargeLevel = bow.getChargeLevel();
-    const lerpSpeed = deltaTime * 8;
-    
-    console.log(`🏹 [Player] FIXED bow animation update - Active: ${this.bowDrawAnimation.isActive}, Charge: ${chargeLevel.toFixed(2)}`);
-    
+    // Keep bow in ready position without any charging or drawing mechanics
     if (this.bowDrawAnimation.isActive) {
-      // Enhanced progressive draw animation with FIXED joint control - NO Y ROTATION
-      const drawProgress = Math.min(chargeLevel * 1.2, 1.0);
-      
-      // FIXED: Left shoulder: Stays steady holding the bow with slight adjustment - NO Y ROTATION
-      const leftShoulderRotation = new THREE.Euler(
-        this.bowDrawAnimation.leftArmRestRotation.x + (drawProgress * 0.1), // Slight lift
-        0, // FIXED: NO Y rotation - no inward/outward angle
-        this.bowDrawAnimation.leftArmRestRotation.z + (drawProgress * 0.05)
-      );
-      
-      // FIXED: Right shoulder: Major movement - pulls string back dramatically - NO Y ROTATION
-      const rightShoulderRotation = new THREE.Euler(
-        this.bowDrawAnimation.rightArmRestRotation.x + (drawProgress * 0.8),
-        0, // FIXED: NO Y rotation - no inward/outward angle
-        this.bowDrawAnimation.rightArmRestRotation.z - (drawProgress * 0.6)
-      );
-      
-      // Elbow movements for realistic drawing
-      const leftElbowRotation = new THREE.Euler(
-        0.2 + (drawProgress * 0.1), // Natural forward bend with slight adjustment
-        0,
-        0
-      );
-      
-      const rightElbowRotation = new THREE.Euler(
-        0.3 + (drawProgress * 0.5), // Natural forward bend that increases with draw
-        0,
-        0
-      );
-      
-      // Hand rotations - left hand maintains grip, right hand adjusts for string pull
-      const leftHandRotation = new THREE.Euler(
-        this.bowDrawAnimation.leftHandRestRotation.x + (drawProgress * 0.05), // Slight grip adjustment
-        this.bowDrawAnimation.leftHandRestRotation.y,
-        this.bowDrawAnimation.leftHandRestRotation.z
-      );
-      
-      const rightHandRotation = new THREE.Euler(
-        drawProgress * 0.2, // Slight curl for string grip
-        0,
-        drawProgress * -0.3 // Rotate for pulling motion
-      );
-      
-      // FIXED: Smooth interpolation for shoulders - ENSURE Y ROTATION STAYS 0
-      this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.leftArm.rotation.x, leftShoulderRotation.x, lerpSpeed
-      );
-      this.playerBody.leftArm.rotation.y = 0; // FIXED: Force Y rotation to 0
-      this.playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.leftArm.rotation.z, leftShoulderRotation.z, lerpSpeed
-      );
-      
-      this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.rightArm.rotation.x, rightShoulderRotation.x, lerpSpeed
-      );
-      this.playerBody.rightArm.rotation.y = 0; // FIXED: Force Y rotation to 0
-      this.playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.rightArm.rotation.z, rightShoulderRotation.z, lerpSpeed
-      );
-      
-      // Smooth interpolation for elbows
-      if (this.playerBody.leftElbow) {
-        this.playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
-          this.playerBody.leftElbow.rotation.x, leftElbowRotation.x, lerpSpeed
-        );
-      }
-      if (this.playerBody.rightElbow) {
-        this.playerBody.rightElbow.rotation.x = THREE.MathUtils.lerp(
-          this.playerBody.rightElbow.rotation.x, rightElbowRotation.x, lerpSpeed
-        );
-      }
-      
-      // Smooth interpolation for hands - maintain realistic gripping
-      this.playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.leftHand.rotation.x, leftHandRotation.x, lerpSpeed
-      );
-      this.playerBody.leftHand.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.leftHand.rotation.y, leftHandRotation.y, lerpSpeed
-      );
-      this.playerBody.leftHand.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.leftHand.rotation.z, leftHandRotation.z, lerpSpeed
-      );
-      
-      this.playerBody.rightHand.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.rightHand.rotation.x, rightHandRotation.x, lerpSpeed
-      );
-      this.playerBody.rightHand.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.rightHand.rotation.y, rightHandRotation.y, lerpSpeed
-      );
-      this.playerBody.rightHand.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.rightHand.rotation.z, rightHandRotation.z, lerpSpeed
-      );
-      
-      // Enhanced shake at full draw
-      if (drawProgress >= 1.0) {
-        const shakeAmount = 0.03 * Math.sin(Date.now() * 0.015);
-        this.playerBody.rightArm.rotation.x += shakeAmount;
-        this.playerBody.rightArm.rotation.z += shakeAmount * 0.5; // FIXED: Shake only X and Z, not Y
-        console.log("🏹 [Player] FIXED full draw shake effect - no Y rotation shake");
-      }
-      
+      // Simple bow holding stance
+      this.playerBody.leftArm.rotation.set(Math.PI / 3, 0, 0);   // Left arm raised
+      this.playerBody.rightArm.rotation.set(Math.PI / 6, 0, -Math.PI / 8); // Right arm ready
     } else {
-      // FIXED: Return to archery rest stance smoothly with all joints - NO Y ROTATION
-      this.playerBody.leftArm.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.leftArm.rotation.x, this.bowDrawAnimation.leftArmRestRotation.x, lerpSpeed
-      );
-      this.playerBody.leftArm.rotation.y = 0; // FIXED: Force Y rotation to 0
-      this.playerBody.leftArm.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.leftArm.rotation.z, this.bowDrawAnimation.leftArmRestRotation.z, lerpSpeed
-      );
-      
-      this.playerBody.rightArm.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.rightArm.rotation.x, this.bowDrawAnimation.rightArmRestRotation.x, lerpSpeed
-      );
-      this.playerBody.rightArm.rotation.y = 0; // FIXED: Force Y rotation to 0
-      this.playerBody.rightArm.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.rightArm.rotation.z, this.bowDrawAnimation.rightArmRestRotation.z, lerpSpeed
-      );
-      
-      // Return elbows to rest positions
-      if (this.playerBody.leftElbow) {
-        this.playerBody.leftElbow.rotation.x = THREE.MathUtils.lerp(
-          this.playerBody.leftElbow.rotation.x, 0.2, lerpSpeed
-        );
-      }
-      if (this.playerBody.rightElbow) {
-        this.playerBody.rightElbow.rotation.x = THREE.MathUtils.lerp(
-          this.playerBody.rightElbow.rotation.x, 0.3, lerpSpeed
-        );
-      }
-      
-      // Return hands to rest gripping position
-      this.playerBody.leftHand.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.leftHand.rotation.x, this.bowDrawAnimation.leftHandRestRotation.x, lerpSpeed
-      );
-      this.playerBody.leftHand.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.leftHand.rotation.y, this.bowDrawAnimation.leftHandRestRotation.y, lerpSpeed
-      );
-      this.playerBody.leftHand.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.leftHand.rotation.z, this.bowDrawAnimation.leftHandRestRotation.z, lerpSpeed
-      );
-      
-      this.playerBody.rightHand.rotation.x = THREE.MathUtils.lerp(
-        this.playerBody.rightHand.rotation.x, this.bowDrawAnimation.rightHandRestRotation.x, lerpSpeed
-      );
-      this.playerBody.rightHand.rotation.y = THREE.MathUtils.lerp(
-        this.playerBody.rightHand.rotation.y, this.bowDrawAnimation.rightHandRestRotation.y, lerpSpeed
-      );
-      this.playerBody.rightHand.rotation.z = THREE.MathUtils.lerp(
-        this.playerBody.rightHand.rotation.z, this.bowDrawAnimation.rightHandRestRotation.z, lerpSpeed
-      );
+      // Return to archery rest stance
+      this.playerBody.leftArm.rotation.set(Math.PI / 3, 0, 0);
+      this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
     }
-    
-    // REMOVED: The conflicting bow mesh rotation override that was causing the positioning difference
-    // This allows the bow to maintain its correct equipment rotation (30°, 50°, -85°) in both IDLE and DRAW states
-    console.log("🏹 [Player] FIXED: Bow mesh rotation override removed - bow maintains equipment rotation in both IDLE and DRAW states");
   }
   
   public startBowDraw(): void {
@@ -1383,18 +1230,14 @@ export class Player {
       return;
     }
     
-    // Type guard and cast to BaseBow for bow-specific methods
     if (this.equippedWeapon.getConfig().type !== 'bow') {
       console.log("🏹 [Player] Cannot draw bow - equipped weapon is not a bow");
       return;
     }
     
-    console.log("🏹 [Player] Starting TALLER realistic bow draw animation with enhanced joint control");
+    console.log("🏹 [Player] Starting simplified bow draw");
     this.bowDrawAnimation.isActive = true;
-    
-    const bow = this.equippedWeapon as BaseBow;
-    bow.startDrawing();
-    console.log("🏹 [Player] Weapon draw started on equipped bow with TALLER realistic arms");
+    // SIMPLIFIED: No weapon draw methods needed
   }
   
   public stopBowDraw(): void {
@@ -1402,16 +1245,12 @@ export class Player {
       return;
     }
     
-    // Type guard and cast to BaseBow for bow-specific methods
     if (this.equippedWeapon.getConfig().type !== 'bow') {
       return;
     }
     
-    console.log("🏹 [Player] Stopping TALLER realistic bow draw animation with enhanced joint control");
+    console.log("🏹 [Player] Stopping simplified bow draw");
     this.bowDrawAnimation.isActive = false;
-    
-    const bow = this.equippedWeapon as BaseBow;
-    bow.stopDrawing();
-    console.log("🏹 [Player] Weapon draw stopped on equipped bow with TALLER realistic arms");
+    // SIMPLIFIED: No weapon draw methods needed
   }
 }
