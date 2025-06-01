@@ -24,7 +24,7 @@ export class ProjectileSystem {
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
-    console.log("🏹 [ProjectileSystem] Initialized with enhanced arrow visibility and positioning");
+    console.log("🏹 [ProjectileSystem] Initialized for independent arrow entities");
   }
 
   public shootArrow(
@@ -33,17 +33,18 @@ export class ProjectileSystem {
     speed: number,
     damage: number
   ): void {
-    console.log("🏹 [ProjectileSystem] *** SHOOT ARROW CALLED ***");
+    console.log("🏹 [ProjectileSystem] *** CREATING INDEPENDENT ARROW ***");
     console.log("🏹 [ProjectileSystem] Start position:", startPosition);
     console.log("🏹 [ProjectileSystem] Direction:", direction);
     console.log("🏹 [ProjectileSystem] Speed:", speed);
     console.log("🏹 [ProjectileSystem] Damage:", damage);
     
-    // Ensure direction is normalized
+    // Ensure direction is normalized for consistent behavior
     const normalizedDirection = direction.clone().normalize();
     console.log("🏹 [ProjectileSystem] Normalized direction:", normalizedDirection);
     
     try {
+      // Create truly independent arrow entity
       const arrow = new Arrow(
         this.scene,
         startPosition,
@@ -55,34 +56,50 @@ export class ProjectileSystem {
       );
       
       this.arrows.push(arrow);
-      console.log(`🏹 [ProjectileSystem] ✅ ARROW CREATED SUCCESSFULLY - Total arrows: ${this.arrows.length}`);
-      console.log(`🏹 [ProjectileSystem] ✅ ARROW SHOULD BE VISIBLE IN SCENE`);
+      console.log(`🏹 [ProjectileSystem] ✅ INDEPENDENT ARROW CREATED - Total arrows: ${this.arrows.length}`);
+      console.log(`🏹 [ProjectileSystem] ✅ ARROW SHOULD FLY INDEPENDENTLY AT ${speed} UNITS/SECOND`);
     } catch (error) {
-      console.error("🏹 [ProjectileSystem] ❌ ERROR CREATING ARROW:", error);
+      console.error("🏹 [ProjectileSystem] ❌ ERROR CREATING INDEPENDENT ARROW:", error);
     }
   }
 
   public update(deltaTime: number): void {
-    // Update all arrows
+    // Validate deltaTime for all arrows
+    if (deltaTime <= 0 || deltaTime > 0.1) {
+      console.warn(`🏹 [ProjectileSystem] ⚠️ Invalid deltaTime: ${deltaTime}, using 0.016`);
+      deltaTime = 0.016;
+    }
+    
+    // Update all independent arrows
+    const activeArrowsBefore = this.arrows.length;
+    
     this.arrows = this.arrows.filter(arrow => {
+      // Each arrow updates independently
       const isActive = arrow.update(deltaTime);
       
+      // Check collisions only for active arrows
       if (arrow.isArrowActive()) {
         this.checkArrowCollisions(arrow);
       }
       
+      // Clean up inactive arrows
       if (!isActive) {
         arrow.dispose();
       }
       
       return isActive;
     });
+    
+    // Log arrow lifecycle for debugging
+    if (activeArrowsBefore !== this.arrows.length) {
+      console.log(`🏹 [ProjectileSystem] Arrow count changed: ${activeArrowsBefore} -> ${this.arrows.length}`);
+    }
   }
 
   private checkArrowCollisions(arrow: Arrow): void {
     const arrowPosition = arrow.getPosition();
     const arrowBox = new THREE.Box3();
-    arrowBox.setFromCenterAndSize(arrowPosition, new THREE.Vector3(0.1, 0.1, 0.1));
+    arrowBox.setFromCenterAndSize(arrowPosition, new THREE.Vector3(0.2, 0.2, 0.2));
     
     // Check collision with enemies
     this.enemies.forEach(enemy => {
@@ -99,15 +116,15 @@ export class ProjectileSystem {
         // Play hit sound
         this.audioManager.play('arrow_hit');
         
-        // Create blood effect with direction - added missing direction parameter
-        const direction = new THREE.Vector3(0, 0, 1); // Simple forward direction
+        // Create blood effect
+        const direction = new THREE.Vector3(0, 0, 1);
         this.effectsManager.createBloodEffect(arrowPosition, direction);
         
         // Remove arrow
         arrow.dispose();
         this.arrows = this.arrows.filter(a => a !== arrow);
         
-        console.log(`🏹 [ProjectileSystem] Arrow hit enemy for ${damage} damage`);
+        console.log(`🏹 [ProjectileSystem] Independent arrow hit enemy for ${damage} damage`);
         
         // Add experience if enemy dies
         if (enemy.isDead()) {
@@ -126,6 +143,7 @@ export class ProjectileSystem {
   }
 
   public clear(): void {
+    console.log(`🏹 [ProjectileSystem] Clearing ${this.arrows.length} arrows`);
     this.arrows.forEach(arrow => arrow.dispose());
     this.arrows = [];
   }

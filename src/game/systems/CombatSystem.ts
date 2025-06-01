@@ -38,7 +38,7 @@ export class CombatSystem {
     this.audioManager = audioManager;
     this.camera = camera;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with simplified FPS-style bow shooting");
+    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with independent arrow entities");
   }
   
   public update(deltaTime: number): void {
@@ -60,15 +60,12 @@ export class CombatSystem {
   public startPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK *** - FPS Style");
+    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK *** - Independent Arrow System");
     console.log("⚔️ [CombatSystem] Current weapon:", currentWeapon ? currentWeapon.getConfig().name : 'none');
-    console.log("⚔️ [CombatSystem] Weapon type:", currentWeapon?.getConfig().type || 'none');
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
-      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Setting ready to fire AND starting draw animation");
+      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Preparing independent arrow");
       this.bowReadyToFire = true;
-      
-      // NEW: Start bow draw animation
       this.player.startBowDraw();
     } else {
       console.log("⚔️ [CombatSystem] ⚔️ MELEE WEAPON - Starting melee attack");
@@ -79,28 +76,24 @@ export class CombatSystem {
   public stopPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] *** STOP PLAYER ATTACK *** - FPS Style");
-    console.log("⚔️ [CombatSystem] Current weapon:", currentWeapon ? currentWeapon.getConfig().name : 'none');
-    console.log("⚔️ [CombatSystem] Bow ready to fire:", this.bowReadyToFire);
+    console.log("⚔️ [CombatSystem] *** STOP PLAYER ATTACK *** - Firing Independent Arrow");
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.bowReadyToFire) {
-      console.log("⚔️ [CombatSystem] 🏹 FIRING ARROW - FPS Style");
+      console.log("⚔️ [CombatSystem] 🏹 FIRING INDEPENDENT ARROW");
       
-      // NEW: Stop bow draw animation
       this.player.stopBowDraw();
-      
-      this.fireArrowFPS();
+      this.fireIndependentArrow();
     }
     
     this.bowReadyToFire = false;
   }
   
-  private fireArrowFPS(): void {
-    console.log("🏹 [CombatSystem] *** FIRING ARROW FPS STYLE ***");
+  private fireIndependentArrow(): void {
+    console.log("🏹 [CombatSystem] *** FIRING INDEPENDENT ARROW ***");
     
     const currentWeapon = this.player.getEquippedWeapon();
     if (!currentWeapon || currentWeapon.getConfig().type !== 'bow') {
-      console.warn("🏹 [CombatSystem] ⚠️ Cannot fire arrow - no bow equipped");
+      console.warn("🏹 [CombatSystem] ⚠️ Cannot fire - no bow equipped");
       return;
     }
     
@@ -109,28 +102,26 @@ export class CombatSystem {
     // Get camera direction for FPS-style aiming
     const cameraDirection = new THREE.Vector3();
     this.camera.getWorldDirection(cameraDirection);
-    console.log("🏹 [CombatSystem] Camera direction:", cameraDirection);
     
-    // FIXED: Calculate arrow start position at proper height to prevent immediate ground collision
+    // ENHANCED: Calculate optimal arrow start position for independent flight
     const arrowStartPos = playerPosition.clone()
-      .add(new THREE.Vector3(0.3, 1.6, 0)) // Raised from 1.4 to 1.6 (eye level)
-      .add(cameraDirection.clone().multiplyScalar(0.5)); // Moved further forward from bow
+      .add(new THREE.Vector3(0.3, 1.7, 0)) // Eye level at 1.7, slightly to the right
+      .add(cameraDirection.clone().multiplyScalar(0.8)); // Further forward to clear bow
     
     console.log("🏹 [CombatSystem] Player position:", playerPosition);
-    console.log("🏹 [CombatSystem] Arrow start position (RAISED):", arrowStartPos);
-    console.log("🏹 [CombatSystem] Start position Y-level:", arrowStartPos.y);
+    console.log("🏹 [CombatSystem] Independent arrow start position:", arrowStartPos);
+    console.log("🏹 [CombatSystem] Camera direction:", cameraDirection);
     
-    // VERIFIED: Increased arrow speed from 30 to 150 for realistic projectile motion
+    // ENHANCED: High-speed arrow for realistic projectile physics
     const damage = currentWeapon.getConfig().stats.damage;
-    const speed = 150; // Confirmed fast arrow speed
+    const speed = 200; // Increased for better trajectory visibility
     
-    console.log(`🏹 [CombatSystem] FIRING - Damage: ${damage}, Speed: ${speed}`);
-    console.log(`🏹 [CombatSystem] Direction vector:`, cameraDirection);
-    console.log(`🏹 [CombatSystem] Direction length:`, cameraDirection.length());
+    console.log(`🏹 [CombatSystem] FIRING INDEPENDENT ARROW - Damage: ${damage}, Speed: ${speed}`);
     
+    // Fire the independent arrow through ProjectileSystem
     this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
     
-    console.log("🏹 [CombatSystem] ✅ ARROW FIRED SUCCESSFULLY - FPS Style");
+    console.log("🏹 [CombatSystem] ✅ INDEPENDENT ARROW FIRED SUCCESSFULLY");
     
     this.audioManager.play('bow_release');
   }
