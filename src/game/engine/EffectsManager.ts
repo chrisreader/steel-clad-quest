@@ -75,8 +75,7 @@ export class EffectsManager {
     const flashMaterial = new THREE.MeshBasicMaterial({
       color: color,
       transparent: true,
-      opacity: 0.6,
-      emissive: new THREE.Color(color).multiplyScalar(0.3)
+      opacity: 0.6
     });
     
     const flash = new THREE.Mesh(flashGeometry, flashMaterial);
