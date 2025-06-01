@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { ParticleSystem } from '../utils/ParticleSystem';
+import { SwordTrailEffect } from '../effects/SwordTrailEffect';
 
 export class EffectsManager {
   private scene: THREE.Scene;
   private particleSystems: ParticleSystem[] = [];
   private effects: Map<string, THREE.Object3D> = new Map();
+  private swordTrailEffects: SwordTrailEffect[] = [];
   private cameraShakeIntensity: number = 0;
   private cameraShakeDecay: number = 0.9;
   private cameraOriginalPosition: THREE.Vector3 = new THREE.Vector3();
@@ -216,29 +218,36 @@ export class EffectsManager {
     this.shakeCamera(0.04 * intensity);
   }
   
-  // UPDATED: Sword swoosh effect that follows the blade trail with proper path distribution
+  // UPDATED: Enhanced sword swoosh effect using trail system
   public createSwordSwooshEffect(swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): void {
     if (swordPath.length < 2) {
       console.log("🌪️ [EffectsManager] Insufficient sword path data for swoosh effect");
       return;
     }
     
-    console.log("🌪️ [EffectsManager] Creating white wind swoosh effect following blade trail from top-right to bottom-left");
+    console.log("🌪️ [EffectsManager] Creating trail-based sword swoosh effect following blade path");
     console.log("🌪️ [EffectsManager] Sword path points:", swordPath.length);
     console.log("🌪️ [EffectsManager] Path start:", swordPath[0]);
     console.log("🌪️ [EffectsManager] Path end:", swordPath[swordPath.length - 1]);
     
-    // Create wind displacement particles along the sword path
-    const windSwoosh = ParticleSystem.createWindSwoosh(this.scene, swordPath, swingDirection);
-    windSwoosh.start();
-    this.particleSystems.push(windSwoosh);
+    // Create trail-based effect that follows the sword path
+    const trailEffect = new SwordTrailEffect(this.scene);
+    trailEffect.createTrailFromPath(swordPath, swingDirection);
+    this.swordTrailEffects.push(trailEffect);
     
-    // Create air disturbance streaks for enhanced realism
-    const airStreaks = ParticleSystem.createAirStreaks(this.scene, swordPath, swingDirection);
-    airStreaks.start();
-    this.particleSystems.push(airStreaks);
+    // Clean up old trail effects
+    this.cleanupOldTrailEffects();
     
-    console.log("🌪️ [EffectsManager] White wind swoosh effect created following sword blade path");
+    console.log("🌪️ [EffectsManager] Trail-based sword swoosh effect created");
+  }
+  
+  private cleanupOldTrailEffects(): void {
+    // Remove trail effects older than 1 second
+    const now = Date.now();
+    this.swordTrailEffects = this.swordTrailEffects.filter(effect => {
+      // Trail effects will dispose themselves after their lifetime
+      return true; // Let them manage their own cleanup
+    });
   }
   
   // LEGACY METHODS UPDATED - REMOVED SLASH TRAIL EFFECTS
@@ -334,6 +343,12 @@ export class EffectsManager {
       system.stop();
     });
     this.particleSystems = [];
+    
+    // Clear trail effects
+    this.swordTrailEffects.forEach(effect => {
+      effect.dispose();
+    });
+    this.swordTrailEffects = [];
     
     this.cameraShakeIntensity = 0;
     if (this.camera) {
