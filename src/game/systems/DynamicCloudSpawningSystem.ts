@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { DynamicSpawningSystem } from './DynamicSpawningSystem';
 import { CloudEntity } from '../entities/CloudEntity';
-import { SpawningConfig } from '../../types/SpawnableEntity';
+import { SpawningConfig, SpawnZone } from '../../types/SpawnableEntity';
 
 export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntity> {
   private cloudMaterial: THREE.MeshLambertMaterial;
@@ -74,6 +74,19 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
     cloud.initialize(spawnPosition);
     
     return cloud;
+  }
+  
+  protected getRandomPositionInZone(zone: SpawnZone): THREE.Vector3 {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = this.config.minSpawnDistance + Math.random() * zone.radius;
+    
+    // Always use sky height for clouds instead of player's Y position
+    const cloudHeight = 35 + Math.random() * 15;
+    
+    const x = zone.center.x + Math.cos(angle) * distance;
+    const z = zone.center.z + Math.sin(angle) * distance;
+    
+    return new THREE.Vector3(x, cloudHeight, z);
   }
   
   protected getSystemName(): string {
