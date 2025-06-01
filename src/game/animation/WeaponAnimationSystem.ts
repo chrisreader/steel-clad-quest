@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { EmptyHandsWalkAnimation } from './animations/EmptyHandsWalkAnimation';
@@ -23,6 +22,11 @@ export class WeaponAnimationSystem {
       walkCycleSpeed: 4,
       armSwingIntensity: 0.1,
       legSwingIntensity: 0.25,
+      shoulderMovement: 0.1,
+      elbowMovement: 0.1,
+      handMovement: 0.05,
+      torsoSway: 0.02,
+      breathingIntensity: 0.01,
       sprintMultiplier: 1.5,
       returnSpeed: 3
     };
@@ -69,32 +73,23 @@ export class WeaponAnimationSystem {
     playerBody: PlayerBody,
     walkCycle: number,
     deltaTime: number,
-    isWalking: boolean,
-    isSprinting: boolean,
-    isAttacking: boolean,
-    isBowDrawing: boolean
+    isWalking: boolean
   ): void {
-    // Skip walk animation if bow is being drawn to avoid interference
-    if (isBowDrawing && this.currentWeaponType === 'bow') {
-      console.log("🏹 [WeaponAnimationSystem] Skipping walk animation - bow is being drawn");
-      return;
-    }
-
     // Apply appropriate walk animation based on weapon type
     switch (this.currentWeaponType) {
       case 'emptyHands':
         this.emptyHandsWalkAnimation.update(
-          playerBody, walkCycle, deltaTime, isWalking, isSprinting, isAttacking
+          playerBody, walkCycle, deltaTime, isWalking
         );
         break;
       case 'melee':
         this.meleeWalkAnimation.update(
-          playerBody, walkCycle, deltaTime, isWalking, isSprinting, isAttacking
+          playerBody, walkCycle, deltaTime, isWalking
         );
         break;
       case 'bow':
         this.bowWalkAnimation.update(
-          playerBody, walkCycle, deltaTime, isWalking, isSprinting, isAttacking
+          playerBody, walkCycle, deltaTime, isWalking
         );
         break;
     }

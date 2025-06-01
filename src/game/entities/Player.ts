@@ -1033,10 +1033,7 @@ export class Player {
       this.playerBody,
       this.walkCycle,
       deltaTime,
-      isActuallyMoving,
-      this.isSprinting,
-      this.weaponSwing.isActive,
-      this.bowDrawAnimation.isActive
+      isActuallyMoving
     );
     
     // Play footstep sound

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerStats } from '../../types/GameTypes';
 
@@ -53,6 +52,7 @@ export abstract class BaseWeapon {
   public getChargeLevel?(): number;
   public getChargeDamage?(): number;
   public getArrowSpeed?(): number;
+  public isDrawing?(): boolean;
 
   public getMesh(): THREE.Group {
     return this.mesh;

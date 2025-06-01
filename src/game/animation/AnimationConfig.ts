@@ -8,6 +8,8 @@ export interface WalkAnimationConfig {
   handMovement: number;
   torsoSway: number;
   breathingIntensity: number;
+  sprintMultiplier: number;
+  returnSpeed: number;
 }
 
 export interface WeaponAnimationConfigs {
@@ -25,7 +27,9 @@ export const ANIMATION_CONFIGS: WeaponAnimationConfigs = {
     elbowMovement: 0.1,
     handMovement: 0.05,
     torsoSway: 0.02,
-    breathingIntensity: 0.01
+    breathingIntensity: 0.01,
+    sprintMultiplier: 1.5,
+    returnSpeed: 3
   },
   melee: {
     armSwingIntensity: 0.1,
@@ -35,7 +39,9 @@ export const ANIMATION_CONFIGS: WeaponAnimationConfigs = {
     elbowMovement: 0.1,
     handMovement: 0.05,
     torsoSway: 0.02,
-    breathingIntensity: 0.01
+    breathingIntensity: 0.01,
+    sprintMultiplier: 1.5,
+    returnSpeed: 3
   },
   bow: {
     armSwingIntensity: 0.1, // Increased from 0.02 for visibility
@@ -45,6 +51,8 @@ export const ANIMATION_CONFIGS: WeaponAnimationConfigs = {
     elbowMovement: 0.1, // Increased from 0.02 for visibility
     handMovement: 0.05, // Increased from 0.01 for visibility
     torsoSway: 0.02, // Standardized with other weapons
-    breathingIntensity: 0.01 // Standardized with other weapons
+    breathingIntensity: 0.01, // Standardized with other weapons
+    sprintMultiplier: 1.5,
+    returnSpeed: 3
   }
 };
