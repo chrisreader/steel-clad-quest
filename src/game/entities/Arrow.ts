@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
@@ -195,8 +194,8 @@ export class Arrow {
       this.removeTrail();
     }
     
-    // Ground collision
-    const groundPlaneY = -1.0;
+    // Ground collision - fixed to match player floor level
+    const groundPlaneY = 0.0; // Changed from -1.0 to 0.0 to match player ground level
     const canHitGround = this.flightTime >= this.minFlightTime && this.hasMovedSignificantly;
     if (canHitGround && this.position.y <= groundPlaneY) {
       this.hitGround();
@@ -245,7 +244,7 @@ export class Arrow {
   private hitGround(): void {
     this.isGrounded = true;
     this.velocity.set(0, 0, 0);
-    this.position.y = -1.0;
+    this.position.y = 0.0; // Changed from -1.0 to 0.0 to match ground level
     this.mesh.position.copy(this.position);
     
     // Remove trail when hitting ground
