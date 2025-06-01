@@ -6,7 +6,7 @@ import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
 import { PhysicsManager } from '../engine/PhysicsManager';
 import { ProjectileSystem } from './ProjectileSystem';
-import { BaseBow } from '../weapons/bow/BaseBow';
+import { BaseBow } from '../weapons';
 
 export class CombatSystem {
   private player: Player;

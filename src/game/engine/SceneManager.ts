@@ -1,5 +1,6 @@
+
 import * as THREE from 'three';
-import { TextureGenerator } from '../utils/TextureGenerator';
+import { TextureGenerator } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
 import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
 import { PhysicsManager } from './PhysicsManager';
