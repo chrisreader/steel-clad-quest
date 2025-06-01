@@ -594,18 +594,15 @@ export class Player {
       // Attach bow to left HAND for proper control with TALLER realistic arm system
       this.playerBody.leftHand.add(weapon.getMesh());
       
-      // NEW: Set initial bow mesh rotation (same for all states currently)
+      // UPDATED: Clean bow rotation - X: 0° no forward tip, Y: 0° no twist, Z: 0° no tilt
       weapon.getMesh().position.set(0, -0.05, 0); // Position relative to left hand
-      weapon.getMesh().rotation.set(0, 0, 0); // Initial rotation - will be controlled by animation system
+      weapon.getMesh().rotation.set(0, 0, 0); // UPDATED: 0° X, 0° Y, 0° Z
       weapon.getMesh().scale.set(1.0, 1.0, 1.0);
-      
-      // NEW: Pass weapon reference to animation system for bow mesh control
-      this.weaponAnimationSystem.setEquippedWeapon(weapon);
       
       // Set bow ready stance - left arm raised outward
       this.setWeaponArmStance('bow');
       
-      console.log(`🏹 [Player] Bow equipped with separate mesh rotation control for each state`);
+      console.log(`🏹 [Player] Bow equipped with UPDATED rotation 0° X, 0° Y, 0° Z - completely flat positioning`);
     } else {
       weaponType = 'melee';
       // Attach melee weapon to right hand with TALLER realistic positioning
