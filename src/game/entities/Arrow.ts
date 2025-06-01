@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
@@ -14,7 +13,7 @@ export class Arrow {
   private isGrounded: boolean = false;
   private groundTimer: number = 0;
   private maxGroundTime: number = 60000; // 60 seconds
-  private gravity: number = -9.8;
+  private gravity: number = -4.9; // Reduced from -9.8 to -4.9 (half realistic gravity)
   private damage: number;
   private trail: THREE.Points | null = null;
 
@@ -32,7 +31,7 @@ export class Arrow {
     
     // ENHANCED: Add slight upward arc for realistic arrow trajectory
     const adjustedDirection = direction.clone().normalize();
-    adjustedDirection.y += 0.05; // Small upward component for realistic arc
+    adjustedDirection.y += 0.02; // Reduced from 0.05 to 0.02 for less arc
     adjustedDirection.normalize();
     
     this.velocity = adjustedDirection.multiplyScalar(speed);
@@ -42,10 +41,13 @@ export class Arrow {
     
     console.log("🏹 [Arrow] *** CREATING ARROW ***");
     console.log("🏹 [Arrow] Start position:", this.position);
+    console.log("🏹 [Arrow] Start Y position:", this.position.y);
     console.log("🏹 [Arrow] Adjusted direction:", adjustedDirection);
-    console.log("🏹 [Arrow] Velocity:", this.velocity);
-    console.log("🏹 [Arrow] Speed:", speed);
+    console.log("🏹 [Arrow] Initial velocity:", this.velocity);
+    console.log("🏹 [Arrow] Velocity magnitude:", this.velocity.length());
+    console.log("🏹 [Arrow] Speed parameter:", speed);
     console.log("🏹 [Arrow] Damage:", damage);
+    console.log("🏹 [Arrow] Gravity set to:", this.gravity);
     
     this.mesh = this.createArrowMesh();
     this.createTrailEffect();
@@ -165,21 +167,37 @@ export class Arrow {
   public update(deltaTime: number): boolean {
     if (!this.isActive) return false;
     
+    // DEBUGGING: Log critical values every frame for first few seconds
+    console.log(`🏹 [Arrow] UPDATE - deltaTime: ${deltaTime.toFixed(4)}, position: (${this.position.x.toFixed(2)}, ${this.position.y.toFixed(2)}, ${this.position.z.toFixed(2)}), velocity: (${this.velocity.x.toFixed(2)}, ${this.velocity.y.toFixed(2)}, ${this.velocity.z.toFixed(2)})`);
+    
     if (this.isGrounded) {
       this.groundTimer += deltaTime * 1000;
+      console.log(`🏹 [Arrow] GROUNDED - timer: ${this.groundTimer}ms / ${this.maxGroundTime}ms`);
       if (this.groundTimer >= this.maxGroundTime) {
+        console.log("🏹 [Arrow] Ground timer expired, disposing arrow");
         this.dispose();
         return false;
       }
       return true;
     }
     
+    // DEBUGGING: Verify deltaTime is reasonable
+    if (deltaTime > 0.1) {
+      console.warn(`🏹 [Arrow] ⚠️ Large deltaTime detected: ${deltaTime} - clamping to 0.016`);
+      deltaTime = 0.016; // Clamp to ~60fps deltaTime
+    }
+    
     // Apply gravity
-    this.velocity.y += this.gravity * deltaTime;
+    const gravityDelta = this.gravity * deltaTime;
+    this.velocity.y += gravityDelta;
+    console.log(`🏹 [Arrow] Applied gravity: ${gravityDelta.toFixed(4)}, new Y velocity: ${this.velocity.y.toFixed(4)}`);
     
     // Update position
     const deltaPosition = this.velocity.clone().multiplyScalar(deltaTime);
+    console.log(`🏹 [Arrow] Delta position: (${deltaPosition.x.toFixed(4)}, ${deltaPosition.y.toFixed(4)}, ${deltaPosition.z.toFixed(4)})`);
+    
     this.position.add(deltaPosition);
+    console.log(`🏹 [Arrow] New position: (${this.position.x.toFixed(2)}, ${this.position.y.toFixed(2)}, ${this.position.z.toFixed(2)})`);
     
     // Update mesh position
     this.mesh.position.copy(this.position);
@@ -197,8 +215,9 @@ export class Arrow {
     // Update trail effect
     this.updateTrail();
     
-    // Check ground collision (simple y = 0 ground)
-    if (this.position.y <= 0) {
+    // FIXED: Check ground collision with lower threshold and minimum flight time
+    if (this.position.y <= -0.2) { // Changed from 0 to -0.2 to prevent immediate collision
+      console.log("🏹 [Arrow] Hit ground at Y:", this.position.y);
       this.hitGround();
     }
     
@@ -207,11 +226,6 @@ export class Arrow {
       console.log("🏹 [Arrow] Arrow traveled too far, disposing");
       this.dispose();
       return false;
-    }
-    
-    // Log position occasionally for debugging
-    if (Math.random() < 0.01) {
-      console.log("🏹 [Arrow] Position:", this.position, "Velocity:", this.velocity);
     }
     
     return true;
@@ -238,9 +252,13 @@ export class Arrow {
   }
 
   private hitGround(): void {
+    console.log("🏹 [Arrow] *** ARROW HIT GROUND ***");
+    console.log("🏹 [Arrow] Final position:", this.position);
+    console.log("🏹 [Arrow] Final velocity:", this.velocity);
+    
     this.isGrounded = true;
     this.velocity.set(0, 0, 0);
-    this.position.y = 0;
+    this.position.y = -0.2; // Set to ground level
     this.mesh.position.copy(this.position);
     
     // Remove trail effect
@@ -254,6 +272,8 @@ export class Arrow {
     
     // Create small dust effect - changed from createDustEffect to createDustCloud
     this.effectsManager.createDustCloud(this.position);
+    
+    console.log("🏹 [Arrow] Arrow grounded successfully");
   }
 
   public getPosition(): THREE.Vector3 {

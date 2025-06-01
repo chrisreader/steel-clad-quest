@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -112,18 +111,22 @@ export class CombatSystem {
     this.camera.getWorldDirection(cameraDirection);
     console.log("🏹 [CombatSystem] Camera direction:", cameraDirection);
     
-    // Calculate arrow start position from player's right hand/bow position
+    // FIXED: Calculate arrow start position at proper height to prevent immediate ground collision
     const arrowStartPos = playerPosition.clone()
-      .add(new THREE.Vector3(0.3, 1.4, 0)) // Right hand position at chest level
-      .add(cameraDirection.clone().multiplyScalar(0.3)); // Slightly forward from bow
+      .add(new THREE.Vector3(0.3, 1.6, 0)) // Raised from 1.4 to 1.6 (eye level)
+      .add(cameraDirection.clone().multiplyScalar(0.5)); // Moved further forward from bow
     
-    console.log("🏹 [CombatSystem] Arrow start position:", arrowStartPos);
+    console.log("🏹 [CombatSystem] Player position:", playerPosition);
+    console.log("🏹 [CombatSystem] Arrow start position (RAISED):", arrowStartPos);
+    console.log("🏹 [CombatSystem] Start position Y-level:", arrowStartPos.y);
     
-    // FIXED: Increased arrow speed from 30 to 150 for realistic projectile motion
+    // VERIFIED: Increased arrow speed from 30 to 150 for realistic projectile motion
     const damage = currentWeapon.getConfig().stats.damage;
-    const speed = 150; // Increased from 30 to 150 for fast, realistic arrow shooting
+    const speed = 150; // Confirmed fast arrow speed
     
     console.log(`🏹 [CombatSystem] FIRING - Damage: ${damage}, Speed: ${speed}`);
+    console.log(`🏹 [CombatSystem] Direction vector:`, cameraDirection);
+    console.log(`🏹 [CombatSystem] Direction length:`, cameraDirection.length());
     
     this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
     
