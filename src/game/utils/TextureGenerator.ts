@@ -225,7 +225,7 @@ export class TextureGenerator {
   }
 
   /**
-   * Creates a sky texture with day/night cycle support - NO SUN OR MOON
+   * Creates a sky texture with day/night cycle support - NO SUN OR MOON - DEEPER BLUE
    */
   static createSkyTexture(
     timeOfDay: number = 0.5, // 0-1, 0 = midnight, 0.5 = noon
@@ -236,7 +236,7 @@ export class TextureGenerator {
     canvas.width = canvas.height = 1024;
     const ctx = canvas.getContext('2d')!;
     
-    // Time of day determines sky color - using deep blue tones for day
+    // Time of day determines sky color - using DEEPER blue tones for day
     let skyColor;
     let horizonColor;
     
@@ -248,16 +248,16 @@ export class TextureGenerator {
       const dawnProgress = (timeOfDay - 0.25) / 0.05;
       skyColor = `rgb(${70 + dawnProgress * 50}, ${90 + dawnProgress * 70}, ${150 + dawnProgress * 80})`; // Dawn blue
       horizonColor = `rgb(${180 + dawnProgress * 75}, ${120 + dawnProgress * 80}, ${100 + dawnProgress * 80})`;
-    } else if (timeOfDay < 0.7) { // Day - DEEP BLUE SKY
+    } else if (timeOfDay < 0.7) { // Day - MUCH DEEPER BLUE SKY
       const dayProgress = (timeOfDay - 0.3) / 0.4;
       const intensity = Math.sin(dayProgress * Math.PI);
-      // Deep blue sky colors - much more saturated and realistic
-      skyColor = `rgb(${70 + intensity * 10}, ${130 + intensity * 25}, ${250 + intensity * 5})`; // Deep azure blue
-      horizonColor = `rgb(${120 + intensity * 20}, ${170 + intensity * 25}, ${235 + intensity * 15})`; // Lighter blue horizon
+      // DEEPER blue sky colors - much more saturated and realistic
+      skyColor = `rgb(${40 + intensity * 20}, ${120 + intensity * 35}, ${180 + intensity * 20})`; // Much deeper azure blue
+      horizonColor = `rgb(${90 + intensity * 30}, ${140 + intensity * 30}, ${160 + intensity * 20})`; // Deeper blue horizon
     } else if (timeOfDay < 0.75) { // Dusk
       const duskProgress = (timeOfDay - 0.7) / 0.05;
-      skyColor = `rgb(${80 - duskProgress * 30}, ${140 - duskProgress * 50}, ${240 - duskProgress * 70})`; // Dusk blue
-      horizonColor = `rgb(${200 - duskProgress * 80}, ${140 - duskProgress * 40}, ${120 - duskProgress * 20})`;
+      skyColor = `rgb(${60 - duskProgress * 20}, ${120 - duskProgress * 40}, ${180 - duskProgress * 50})`; // Deeper dusk blue
+      horizonColor = `rgb(${180 - duskProgress * 60}, ${130 - duskProgress * 30}, ${140 - duskProgress * 20})`;
     } else { // Night
       const nightProgress = (timeOfDay - 0.75) / 0.25;
       skyColor = `rgb(${20 - nightProgress * 5}, ${30 - nightProgress * 5}, ${60 - nightProgress * 15})`; // Deep night blue
