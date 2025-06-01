@@ -38,6 +38,26 @@ export class PhysicsManager {
     return false;
   }
 
+  public checkRayCollision(
+    origin: THREE.Vector3, 
+    direction: THREE.Vector3, 
+    distance: number, 
+    excludeTypes: string[] = []
+  ): { object: any; distance: number; point: THREE.Vector3 } | null {
+    // Simple implementation - can be enhanced with actual raycasting
+    return null;
+  }
+
+  public getCollisionMaterial(objectId: string): 'wood' | 'stone' | 'metal' | 'fabric' | null {
+    // Simple implementation - return default material
+    return 'wood';
+  }
+
+  public checkPlayerMovement(position: THREE.Vector3, direction: THREE.Vector3, deltaTime: number): THREE.Vector3 {
+    // Simple implementation - return the intended movement
+    return direction.clone().multiplyScalar(deltaTime);
+  }
+
   public dispose(): void {
     this.collisionBoxes = [];
     this.collisionPlanes = [];

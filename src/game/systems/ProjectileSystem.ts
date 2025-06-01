@@ -1,11 +1,10 @@
-
 import * as THREE from 'three';
-import { Arrow } from '../entities/Arrow';
-import { Player } from '../entities/Player';
-import { Enemy } from '../entities/Enemy';
-import { EffectsManager } from '../engine/EffectsManager';
-import { AudioManager } from '../engine/AudioManager';
-import { PhysicsManager } from '../engine/PhysicsManager';
+import { Arrow } from '../entities/projectiles/Arrow';
+import { Player } from '../entities/characters/Player';
+import { Enemy } from '../entities/characters/Enemy';
+import { EffectsManager } from '../core/EffectsManager';
+import { AudioManager } from '../core/AudioManager';
+import { PhysicsManager } from '../core/PhysicsManager';
 
 export class ProjectileSystem {
   private arrows: Arrow[] = [];

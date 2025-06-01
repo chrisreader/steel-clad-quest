@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 export class PointerLockManager {
   private renderer: THREE.WebGLRenderer | null = null;
-  private isPointerLocked = false;
+  private pointerLocked = false;
   private eventDispatcher: (type: string, data?: any) => void;
 
   constructor(eventDispatcher: (type: string, data?: any) => void) {
@@ -20,12 +20,12 @@ export class PointerLockManager {
   }
 
   private handlePointerLockChange(): void {
-    this.isPointerLocked = document.pointerLockElement !== null;
-    this.eventDispatcher('pointerLockChange', { locked: this.isPointerLocked });
+    this.pointerLocked = document.pointerLockElement !== null;
+    this.eventDispatcher('pointerLockChange', { locked: this.pointerLocked });
   }
 
   public isPointerLocked(): boolean {
-    return this.isPointerLocked;
+    return this.pointerLocked;
   }
 
   public requestPointerLock(): void {

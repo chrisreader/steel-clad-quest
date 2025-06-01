@@ -72,6 +72,47 @@ export class EffectsManager {
     setTimeout(fadeOut, 100);
   }
 
+  public createAttackEffect(position: THREE.Vector3): void {
+    this.createSwordSlashEffect(position, new THREE.Vector3(1, 0, 0));
+  }
+
+  public createHitEffect(position: THREE.Vector3): void {
+    this.createBloodEffect(position, new THREE.Vector3(0, 1, 0));
+  }
+
+  public createExplosion(position: THREE.Vector3): void {
+    const particleGroup = new THREE.Group();
+    
+    const particleGeometry = new THREE.SphereGeometry(0.1);
+    const particleMaterial = new THREE.MeshBasicMaterial({ color: 0xff4500 });
+    
+    for (let i = 0; i < 10; i++) {
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+      particle.position.copy(position);
+      
+      const velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 10,
+        Math.random() * 10,
+        (Math.random() - 0.5) * 10
+      );
+      
+      (particle as any).velocity = velocity;
+      particleGroup.add(particle);
+    }
+    
+    this.scene.add(particleGroup);
+    this.particles.push(particleGroup);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      this.scene.remove(particleGroup);
+      const index = this.particles.indexOf(particleGroup);
+      if (index > -1) {
+        this.particles.splice(index, 1);
+      }
+    }, 3000);
+  }
+
   public update(deltaTime: number): void {
     // Update particle systems
     this.particles.forEach(particleGroup => {

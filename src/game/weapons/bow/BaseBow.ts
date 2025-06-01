@@ -1,6 +1,5 @@
-
 import * as THREE from 'three';
-import { BaseWeapon, WeaponConfig, WeaponStats } from '../BaseWeapon';
+import { BaseWeapon, WeaponConfig, WeaponStats } from '../base/BaseWeapon';
 
 export abstract class BaseBow extends BaseWeapon {
   protected readyToFire: boolean = false;

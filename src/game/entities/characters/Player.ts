@@ -1,7 +1,4 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import { EffectsManager } from '../../core/EffectsManager';
 import { AudioManager, SoundCategory } from '../../core/AudioManager';
 import { BaseWeapon } from '../../weapons/base/BaseWeapon';
@@ -120,6 +117,24 @@ export class Player {
     this.visualRotation.yaw = yaw;
     this.visualRotation.pitch = pitch;
   }
+
+  public getStats(): any {
+    return {
+      health: this.health,
+      maxHealth: this.maxHealth,
+      stamina: this.stamina,
+      maxStamina: this.maxStamina,
+      gold: this.gold,
+      experience: this.experience,
+      level: this.level,
+      attackPower: this.attackPower
+    };
+  }
+
+  public heal(amount: number): void {
+    this.health = Math.min(this.maxHealth, this.health + amount);
+    console.log(`🏥 [Player] Healed for ${amount}, health now: ${this.health}`);
+  }
   
   public update(deltaTime: number, isMoving: boolean): void {
     // Update stamina
@@ -192,7 +207,7 @@ export class Player {
       // Slash
       setTimeout(() => {
         this.body.startSlash(animationConfig.duration * animationConfig.phases.slash);
-        this.audioManager.playSound('sword_swing', SoundCategory.SFX);
+        this.audioManager.play('sword_swing');
       }, animationConfig.duration * animationConfig.phases.windup);
       
       // Recovery
