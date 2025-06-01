@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 interface ParticleOptions {
@@ -36,16 +37,12 @@ export class ParticleSystem {
   private scene: THREE.Scene;
   private particles: Particle[];
   private geometry: THREE.BufferGeometry;
-  private material: THREE.PointsMaterial | THREE.ShaderMaterial;
-  private mesh: THREE.Points;
+  private material: THREE.SpriteMaterial | THREE.ShaderMaterial;
+  private sprites: THREE.Sprite[] = [];
   private options: ParticleOptions;
   private startTime: number;
   private isActive: boolean;
-  private positionAttribute: THREE.BufferAttribute;
-  private colorAttribute: THREE.BufferAttribute;
-  private sizeAttribute: THREE.BufferAttribute;
-  private opacityAttribute: THREE.BufferAttribute;
-  private useShader: boolean;
+  private bloodTexture: THREE.Texture | null = null;
   
   constructor(scene: THREE.Scene, options: ParticleOptions) {
     this.scene = scene;
@@ -73,10 +70,32 @@ export class ParticleSystem {
     this.particles = [];
     this.startTime = 0;
     this.isActive = false;
-    this.useShader = true;
+    this.sprites = [];
     
+    this.createBloodTexture();
     this.initParticles();
-    this.createMesh();
+    this.createSprites();
+  }
+  
+  private createBloodTexture(): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Create circular blood droplet texture
+    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gradient.addColorStop(0, 'rgba(139, 0, 0, 1)');
+    gradient.addColorStop(0.7, 'rgba(100, 0, 0, 0.8)');
+    gradient.addColorStop(1, 'rgba(80, 0, 0, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(16, 16, 16, 0, Math.PI * 2);
+    ctx.fill();
+    
+    this.bloodTexture = new THREE.CanvasTexture(canvas);
+    this.bloodTexture.needsUpdate = true;
   }
   
   private initParticles(): void {
@@ -116,50 +135,28 @@ export class ParticleSystem {
     }
   }
   
-  private createMesh(): void {
-    this.geometry = new THREE.BufferGeometry();
+  private createSprites(): void {
+    this.sprites = [];
     
-    const positions = new Float32Array(this.options.count * 3);
-    const colors = new Float32Array(this.options.count * 3);
-    const sizes = new Float32Array(this.options.count);
-    const opacities = new Float32Array(this.options.count);
-    
-    for (let i = 0; i < this.options.count; i++) {
+    for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i];
       
-      positions[i * 3] = particle.position.x;
-      positions[i * 3 + 1] = particle.position.y;
-      positions[i * 3 + 2] = particle.position.z;
+      const material = new THREE.SpriteMaterial({
+        map: this.bloodTexture,
+        transparent: true,
+        opacity: particle.opacity,
+        color: particle.color,
+        blending: THREE.NormalBlending,
+        depthWrite: false
+      });
       
-      colors[i * 3] = particle.color.r;
-      colors[i * 3 + 1] = particle.color.g;
-      colors[i * 3 + 2] = particle.color.b;
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.setScalar(particle.size * 2); // Make sprites more visible
+      sprite.position.copy(particle.position);
+      sprite.visible = false; // Start invisible
       
-      sizes[i] = particle.size;
-      opacities[i] = particle.opacity;
+      this.sprites.push(sprite);
     }
-    
-    this.positionAttribute = new THREE.BufferAttribute(positions, 3);
-    this.colorAttribute = new THREE.BufferAttribute(colors, 3);
-    this.sizeAttribute = new THREE.BufferAttribute(sizes, 1);
-    this.opacityAttribute = new THREE.BufferAttribute(opacities, 1);
-    
-    this.geometry.setAttribute('position', this.positionAttribute);
-    this.geometry.setAttribute('color', this.colorAttribute);
-    this.geometry.setAttribute('size', this.sizeAttribute);
-    this.geometry.setAttribute('opacity', this.opacityAttribute);
-    
-    this.material = new THREE.PointsMaterial({
-      size: this.options.size!,
-      vertexColors: true,
-      transparent: true,
-      opacity: this.options.opacity,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    });
-    
-    this.mesh = new THREE.Points(this.geometry, this.material);
-    this.mesh.frustumCulled = false;
   }
   
   public start(): void {
@@ -167,7 +164,12 @@ export class ParticleSystem {
     
     this.isActive = true;
     this.startTime = Date.now();
-    this.scene.add(this.mesh);
+    
+    // Add sprites to scene
+    this.sprites.forEach(sprite => {
+      this.scene.add(sprite);
+    });
+    
     this.initParticles();
   }
   
@@ -175,7 +177,14 @@ export class ParticleSystem {
     if (!this.isActive) return;
     
     this.isActive = false;
-    this.scene.remove(this.mesh);
+    
+    // Remove sprites from scene and dispose materials
+    this.sprites.forEach(sprite => {
+      this.scene.remove(sprite);
+      if (sprite.material) {
+        sprite.material.dispose();
+      }
+    });
   }
   
   public update(): void {
@@ -191,11 +200,14 @@ export class ParticleSystem {
     
     for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i];
-      if (!particle.active) continue;
+      const sprite = this.sprites[i];
+      
+      if (!particle.active || !sprite) continue;
       
       particle.age += 16;
       const particleProgress = particle.age / this.options.duration;
       
+      // Calculate opacity with fade in/out
       if (particleProgress < this.options.fadeIn!) {
         particle.opacity = particleProgress / this.options.fadeIn! * this.options.opacity!;
       } else if (particleProgress > (1 - this.options.fadeOut!)) {
@@ -204,26 +216,31 @@ export class ParticleSystem {
         particle.opacity = this.options.opacity!;
       }
       
+      // Update physics
       particle.rotation += particle.rotationSpeed;
       particle.velocity.y -= this.options.gravity! * 0.016;
       particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
       
-      this.positionAttribute.setXYZ(i, particle.position.x, particle.position.y, particle.position.z);
-      this.opacityAttribute.setX(i, particle.opacity);
+      // Update sprite
+      sprite.position.copy(particle.position);
+      sprite.material.opacity = particle.opacity;
+      sprite.material.rotation = particle.rotation;
+      sprite.visible = particle.opacity > 0.01;
+      
+      // Scale down over time for more realism
+      const sizeMultiplier = 1 - particleProgress * 0.3;
+      sprite.scale.setScalar(particle.size * 2 * sizeMultiplier);
     }
-    
-    this.positionAttribute.needsUpdate = true;
-    this.opacityAttribute.needsUpdate = true;
   }
   
-  // Enhanced realistic blood effects
+  // Enhanced realistic blood effects with improved textures
   static createBloodSpray(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3, intensity: number = 1): ParticleSystem {
     return new ParticleSystem(scene, {
       position: position,
-      count: Math.floor(40 * intensity),
+      count: Math.floor(30 * intensity),
       duration: 1200,
-      size: 0.04,
-      sizeVariation: 0.02,
+      size: 0.08, // Increased size for visibility
+      sizeVariation: 0.04,
       speed: 4 * intensity,
       speedVariation: 2,
       color: 0x8B0000,
@@ -240,10 +257,10 @@ export class ParticleSystem {
   static createBloodDroplets(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
     return new ParticleSystem(scene, {
       position: position,
-      count: 25,
+      count: 20,
       duration: 2000,
-      size: 0.06,
-      sizeVariation: 0.03,
+      size: 0.12, // Increased size for visibility
+      sizeVariation: 0.06,
       speed: 2,
       speedVariation: 1.5,
       color: 0x660000,

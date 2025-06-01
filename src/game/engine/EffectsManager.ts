@@ -44,20 +44,27 @@ export class EffectsManager {
       this.camera.position.copy(this.cameraOriginalPosition);
     }
     
-    // Update time-based effects
+    // Update time-based effects with improved cleanup
     this.effects.forEach((effect, key) => {
       if (effect.userData.duration) {
         effect.userData.age += deltaTime * 1000;
         
         if (effect.userData.age >= effect.userData.duration) {
+          // Proper cleanup with geometry disposal
+          if (effect.geometry) {
+            effect.geometry.dispose();
+          }
+          if (effect.material) {
+            if (Array.isArray(effect.material)) {
+              effect.material.forEach(mat => mat.dispose());
+            } else {
+              effect.material.dispose();
+            }
+          }
           this.scene.remove(effect);
           this.effects.delete(key);
         } else {
-          if (effect.userData.type === 'slash_trail' && effect.userData.update) {
-            effect.userData.update(deltaTime);
-          } else if (effect.userData.type === 'blood_decal' && effect.userData.update) {
-            effect.userData.update(deltaTime);
-          } else if (effect.userData.type === 'metallic_spark' && effect.userData.update) {
+          if (effect.userData.update) {
             effect.userData.update(deltaTime);
           }
         }
@@ -66,7 +73,7 @@ export class EffectsManager {
   }
   
   public createSwordSlashEffect(startPos: THREE.Vector3, endPos: THREE.Vector3, direction: THREE.Vector3): void {
-    // Create realistic sword slash trail
+    // Create realistic sword slash trail with improved visuals
     const slashTrail = this.createSlashTrail(startPos, endPos);
     if (slashTrail) {
       this.scene.add(slashTrail);
@@ -95,19 +102,19 @@ export class EffectsManager {
     // Create curved slash geometry
     const curve = new THREE.QuadraticBezierCurve3(
       startPos,
-      startPos.clone().add(direction.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.3, 0)),
+      startPos.clone().add(direction.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.2, 0)),
       endPos
     );
     
-    const points = curve.getPoints(20);
+    const points = curve.getPoints(12);
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     
-    // Create gradient material for the slash
+    // Create subtle material for the slash - much less visible
     const material = new THREE.LineBasicMaterial({
-      color: 0xCCCCCC,
+      color: 0x888888,
       transparent: true,
-      opacity: 0.8,
-      linewidth: 3
+      opacity: 0.3,
+      linewidth: 1
     });
     
     const slashTrail = new THREE.Line(geometry, material);
@@ -115,10 +122,10 @@ export class EffectsManager {
     slashTrail.userData = {
       type: 'slash_trail',
       age: 0,
-      duration: 300,
+      duration: 100, // Reduced from 300ms to 100ms
       update: (deltaTime: number) => {
         const progress = slashTrail.userData.age / slashTrail.userData.duration;
-        material.opacity = 0.8 * (1 - progress);
+        material.opacity = 0.3 * (1 - progress);
       }
     };
     
@@ -366,6 +373,17 @@ export class EffectsManager {
   
   public clearEffects(): void {
     this.effects.forEach(effect => {
+      // Proper cleanup with geometry and material disposal
+      if (effect.geometry) {
+        effect.geometry.dispose();
+      }
+      if (effect.material) {
+        if (Array.isArray(effect.material)) {
+          effect.material.forEach(mat => mat.dispose());
+        } else {
+          effect.material.dispose();
+        }
+      }
       this.scene.remove(effect);
     });
     this.effects.clear();
