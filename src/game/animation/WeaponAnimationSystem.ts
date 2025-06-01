@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
@@ -263,9 +262,9 @@ export class WeaponAnimationSystem {
     
     // Apply hand positions for drawing states
     if (isBowDrawing) {
-      playerBody.leftHand.rotation.x = -Math.PI / 6;
-      playerBody.leftHand.rotation.y = 0;
-      playerBody.leftHand.rotation.z = Math.PI / 4;
+      playerBody.leftHand.rotation.x = Math.PI * 80 / 180; // UPDATED: +80° downward angle for grip
+      playerBody.leftHand.rotation.y = 0; // UPDATED: 0° no side rotation
+      playerBody.leftHand.rotation.z = Math.PI / 12; // UPDATED: 15° slight twist for bow grip
       
       // Right hand pulls string back with progressive intensity
       const drawAmount = this.easeInOutQuad(bowChargeLevel);
