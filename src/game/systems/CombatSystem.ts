@@ -65,7 +65,8 @@ export class CombatSystem {
     console.log("⚔️ [CombatSystem] Weapon type:", currentWeapon?.getConfig().type || 'none');
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
-      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Setting ready to fire");
+      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Starting visual draw animation");
+      this.player.startBowDraw();
       this.bowReadyToFire = true;
     } else {
       console.log("⚔️ [CombatSystem] ⚔️ MELEE WEAPON - Starting melee attack");
@@ -80,9 +81,13 @@ export class CombatSystem {
     console.log("⚔️ [CombatSystem] Current weapon:", currentWeapon ? currentWeapon.getConfig().name : 'none');
     console.log("⚔️ [CombatSystem] Bow ready to fire:", this.bowReadyToFire);
     
-    if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.bowReadyToFire) {
-      console.log("⚔️ [CombatSystem] 🏹 FIRING ARROW - FPS Style");
-      this.fireArrowFPS();
+    if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
+      console.log("⚔️ [CombatSystem] 🏹 Stopping bow draw and firing arrow");
+      this.player.stopBowDraw();
+      
+      if (this.bowReadyToFire) {
+        this.fireArrowFPS();
+      }
     }
     
     this.bowReadyToFire = false;
