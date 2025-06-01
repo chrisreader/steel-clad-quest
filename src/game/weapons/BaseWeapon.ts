@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerStats } from '../../types/GameTypes';
 
@@ -86,8 +87,40 @@ export abstract class BaseWeapon {
     return this.isEquipped;
   }
 
-  public updateHitBoxPosition(worldPosition: THREE.Vector3): void {
+  // Updated method signature to support dynamic positioning (backward compatible)
+  public updateHitBoxPosition(
+    worldPosition: THREE.Vector3, 
+    playerRotation?: number, 
+    swingProgress?: number
+  ): void {
     this.hitBox.position.copy(worldPosition);
+  }
+
+  // New methods for dynamic sword functionality (default implementations)
+  public resetHitBoxPosition?(): void {
+    // Optional method - only implemented by weapons that need it
+  }
+
+  public getDebugHitBox?(): THREE.LineSegments | null {
+    // Optional method - only implemented by weapons that need it
+    return null;
+  }
+
+  public setDebugMode?(enabled: boolean): void {
+    // Optional method - only implemented by weapons that need it
+  }
+
+  public showHitBoxDebug?(): void {
+    // Optional method - only implemented by weapons that need it
+  }
+
+  public hideHitBoxDebug?(): void {
+    // Optional method - only implemented by weapons that need it
+  }
+
+  public getHitBoxMesh?(): THREE.Mesh | null {
+    // Optional method - only implemented by weapons that need it
+    return this.hitBox;
   }
 
   public dispose(): void {
