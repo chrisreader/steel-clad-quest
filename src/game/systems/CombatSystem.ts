@@ -73,8 +73,9 @@ export class CombatSystem {
     this.projectileSystem.setEnemies(this.enemies);
     this.projectileSystem.update(deltaTime);
     
+    // FIXED: Only check attacks during slash phase with dynamic hitbox positioning
     if (this.player.isAttacking() && !this.bowReadyToFire && this.enemies.length > 0) {
-      this.checkPlayerAttacks();
+      this.checkDynamicSwordAttacks();
     }
     
     if (this.gold.length > 0) {
@@ -201,20 +202,54 @@ export class CombatSystem {
     console.log(`🔧 [CombatSystem] Debug hitbox ${this.debugHitboxEnabled ? 'enabled' : 'disabled'}`);
   }
   
-  private checkPlayerAttacks(): void {
+  private checkDynamicSwordAttacks(): void {
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (!currentWeapon || !['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
+      return;
+    }
+
+    // Get swing progress from player animation
+    const swingData = this.player.getSwordSwing();
+    if (!swingData || !swingData.isActive) {
+      return;
+    }
+
+    // Calculate swing progress (0 = start, 1 = end)
+    const elapsed = swingData.clock.getElapsedTime() - swingData.startTime;
+    const slashStart = swingData.phases.windup;
+    const slashEnd = swingData.phases.windup + swingData.phases.slash;
+    
+    // FIXED: Only check collisions during the actual slash phase
+    if (elapsed < slashStart || elapsed > slashEnd) {
+      // Reset hitbox position when not in slash phase
+      const sword = currentWeapon as any;
+      if (sword.resetHitBoxPosition) {
+        sword.resetHitBoxPosition();
+      }
+      return;
+    }
+
+    // Calculate swing progress within slash phase (0 to 1)
+    const slashProgress = (elapsed - slashStart) / swingData.phases.slash;
+    
+    // Update dynamic hitbox position based on swing progress
+    const playerPosition = this.player.getPosition();
+    const playerRotation = this.player.getRotation();
+    
+    const sword = currentWeapon as any;
+    if (sword.updateHitBoxPosition) {
+      sword.updateHitBoxPosition(playerPosition, playerRotation, slashProgress);
+    }
+
+    // Now check for collisions with the updated hitbox
     const swordHitBox = this.player.getSwordHitBox();
     const swordBox = new THREE.Box3().setFromObject(swordHitBox);
     
     const attackPower = this.player.getAttackPower();
-    const playerPosition = this.player.getPosition();
     
     let enemyHit = false;
     
-    console.log("🔧 [CombatSystem] Checking sword hitbox collision - box size:", {
-      min: swordBox.min,
-      max: swordBox.max,
-      size: swordBox.getSize(new THREE.Vector3())
-    });
+    console.log(`🔧 [CombatSystem] Dynamic sword hitbox collision check - slash progress: ${(slashProgress * 100).toFixed(1)}%`);
     
     this.enemies.forEach(enemy => {
       if (enemy.isDead()) return;
@@ -246,12 +281,12 @@ export class CombatSystem {
           this.player.addExperience(enemy.getExperienceReward());
         }
         
-        console.log("⚔️ [CombatSystem] Enemy hit - created blood effect only (no slash trail)");
+        console.log("⚔️ [CombatSystem] Enemy hit with dynamic sword hitbox during slash phase");
       }
     });
     
     if (!enemyHit) {
-      console.log("⚔️ [CombatSystem] No enemies hit - no effects created");
+      console.log(`⚔️ [CombatSystem] No enemies hit - dynamic hitbox at ${(slashProgress * 100).toFixed(1)}% slash progress`);
     }
   }
   

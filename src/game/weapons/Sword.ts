@@ -84,14 +84,17 @@ export class Sword extends BaseWeapon {
   }
 
   public createHitBox(): THREE.Mesh {
-    const swordHitBoxGeometry = new THREE.BoxGeometry(3.5, 3.5, 4);
+    // FIXED: Create smaller, sword-appropriate hitbox (was 3.5x3.5x4, now 0.4x0.4x2.2)
+    const swordHitBoxGeometry = new THREE.BoxGeometry(0.4, 0.4, 2.2);
     const swordHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
     const hitBox = new THREE.Mesh(swordHitBoxGeometry, swordHitBoxMaterial);
     
     this.hitBoxMesh = hitBox;
     
-    // Create debug visualization
+    // Create debug visualization with new smaller size
     this.createDebugHitBox(swordHitBoxGeometry);
+    
+    console.log("🗡️ [Sword] Created smaller dynamic hitbox (0.4x0.4x2.2) for realistic sword reach");
     
     return hitBox;
   }
@@ -109,7 +112,53 @@ export class Sword extends BaseWeapon {
     this.debugHitBox = new THREE.LineSegments(edges, debugMaterial);
     this.debugHitBox.visible = false; // Hidden by default
     
-    console.log("🔧 [Sword] Debug hitbox visualization created");
+    console.log("🔧 [Sword] Debug hitbox visualization created with smaller size");
+  }
+
+  public updateHitBoxPosition(playerPosition: THREE.Vector3, playerRotation: number, swingProgress: number): void {
+    if (!this.hitBoxMesh) return;
+
+    // Calculate swing arc position based on swing progress (0 = start, 1 = end)
+    // Swing goes from right side to left side in front of player
+    const swingAngle = THREE.MathUtils.lerp(-Math.PI / 3, Math.PI / 3, swingProgress); // -60° to +60°
+    const forwardDistance = 1.5; // Distance in front of player
+    
+    // Calculate position in front of player following swing arc
+    const swingX = Math.sin(playerRotation + swingAngle) * forwardDistance;
+    const swingZ = Math.cos(playerRotation + swingAngle) * forwardDistance;
+    
+    // Position hitbox in swing arc
+    this.hitBoxMesh.position.set(
+      playerPosition.x + swingX,
+      playerPosition.y + 0.5, // Chest height
+      playerPosition.z + swingZ
+    );
+    
+    // Rotate hitbox to face the swing direction
+    this.hitBoxMesh.rotation.y = playerRotation + swingAngle;
+    
+    // Update debug hitbox position if it exists
+    if (this.debugHitBox) {
+      this.debugHitBox.position.copy(this.hitBoxMesh.position);
+      this.debugHitBox.rotation.copy(this.hitBoxMesh.rotation);
+    }
+    
+    console.log(`🗡️ [Sword] Updated dynamic hitbox position - swing progress: ${(swingProgress * 100).toFixed(1)}%, angle: ${(swingAngle * 180 / Math.PI).toFixed(1)}°`);
+  }
+
+  public resetHitBoxPosition(): void {
+    if (!this.hitBoxMesh) return;
+    
+    // Reset hitbox to neutral position (will be hidden anyway)
+    this.hitBoxMesh.position.set(0, 0, 0);
+    this.hitBoxMesh.rotation.set(0, 0, 0);
+    
+    if (this.debugHitBox) {
+      this.debugHitBox.position.copy(this.hitBoxMesh.position);
+      this.debugHitBox.rotation.copy(this.hitBoxMesh.rotation);
+    }
+    
+    console.log("🗡️ [Sword] Reset hitbox to neutral position");
   }
 
   public getDebugHitBox(): THREE.LineSegments | null {
