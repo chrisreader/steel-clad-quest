@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig, WeaponStats } from '../BaseWeapon';
 
@@ -86,18 +87,19 @@ export class HuntingBow extends BaseWeapon {
   }
 
   private createEnhancedBowLimbs(bowGroup: THREE.Group): void {
-    // Create more realistic curved bow limbs using QuadraticBezierCurve3
-    // FIXED: Adjusted curves for vertical bow orientation
+    // FIXED: Create limb curves along X-axis so they point up/down after 90° Z rotation
+    // Upper limb extends in positive X direction (will become up after rotation)
     const upperLimbCurve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.05, 0.35, 0.15),
-      new THREE.Vector3(0.02, 0.75, 0.08)
+      new THREE.Vector3(0.35, 0.05, 0.15),
+      new THREE.Vector3(0.75, 0.02, 0.08)
     );
     
+    // Lower limb extends in negative X direction (will become down after rotation)
     const lowerLimbCurve = new THREE.QuadraticBezierCurve3(
       new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0.05, -0.35, 0.15),
-      new THREE.Vector3(0.02, -0.75, 0.08)
+      new THREE.Vector3(-0.35, 0.05, 0.15),
+      new THREE.Vector3(-0.75, 0.02, 0.08)
     );
     
     // Enhanced limb geometry with better detail
@@ -108,16 +110,16 @@ export class HuntingBow extends BaseWeapon {
       emissiveIntensity: 0.1
     });
     
-    // Upper limb with enhanced positioning
+    // Upper limb positioned for X-axis extension
     this.upperLimb = new THREE.Mesh(limbGeometry, limbMaterial);
-    this.upperLimb.position.set(0, 0.15, 0);
+    this.upperLimb.position.set(0.15, 0, 0); // Positioned along X instead of Y
     this.upperLimb.rotation.z = this.originalUpperLimbRotation;
     bowGroup.add(this.upperLimb);
     
     // Lower limb (using separate geometry for different curve)
     const lowerLimbGeometry = new THREE.TubeGeometry(lowerLimbCurve, 24, 0.03, 8, false);
     this.lowerLimb = new THREE.Mesh(lowerLimbGeometry, limbMaterial.clone());
-    this.lowerLimb.position.set(0, -0.15, 0);
+    this.lowerLimb.position.set(-0.15, 0, 0); // Positioned along X instead of Y
     this.lowerLimb.rotation.z = this.originalLowerLimbRotation;
     bowGroup.add(this.lowerLimb);
   }
@@ -149,12 +151,12 @@ export class HuntingBow extends BaseWeapon {
       bowGroup.add(wrap);
     }
     
-    // FIXED: Add sight window positioned for vertical bow orientation
+    // FIXED: Add sight window positioned for X-axis bow orientation (before rotation)
     const sightGeometry = new THREE.RingGeometry(0.06, 0.07, 8);
     const sightMaterial = new THREE.MeshLambertMaterial({ color: 0x2c1810 });
     const sight = new THREE.Mesh(sightGeometry, sightMaterial);
-    sight.position.set(0, 0.05, -0.08); // Adjusted for vertical orientation
-    sight.rotation.x = Math.PI / 2; // Rotated for proper facing
+    sight.position.set(0.05, 0, -0.08); // Adjusted for X-axis orientation
+    sight.rotation.x = Math.PI / 2;
     bowGroup.add(sight);
   }
 
@@ -174,7 +176,7 @@ export class HuntingBow extends BaseWeapon {
   }
 
   private createArrowRest(bowGroup: THREE.Group): void {
-    // FIXED: Enhanced arrow rest design positioned for vertical bow
+    // FIXED: Enhanced arrow rest design positioned for X-axis bow orientation
     const restGeometry = new THREE.BoxGeometry(0.025, 0.025, 0.1);
     const restMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x8d6e63,
@@ -183,18 +185,18 @@ export class HuntingBow extends BaseWeapon {
     });
     
     this.arrowRest = new THREE.Mesh(restGeometry, restMaterial);
-    this.arrowRest.position.set(0, 0.03, -0.08); // Adjusted for vertical orientation
+    this.arrowRest.position.set(0.03, 0, -0.08); // Adjusted for X-axis orientation
     bowGroup.add(this.arrowRest);
     
     // Add small notch detail
     const notchGeometry = new THREE.SphereGeometry(0.008, 6, 4);
     const notch = new THREE.Mesh(notchGeometry, restMaterial.clone());
-    notch.position.set(0, 0.03, -0.08);
+    notch.position.set(0.03, 0, -0.08);
     bowGroup.add(notch);
   }
 
   private addBowTips(bowGroup: THREE.Group): void {
-    // Enhanced bow tips (nocks) with better detail
+    // FIXED: Enhanced bow tips positioned for X-axis limb orientation
     const tipGeometry = new THREE.ConeGeometry(0.025, 0.06, 8);
     const tipMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xa0826d,
@@ -202,15 +204,16 @@ export class HuntingBow extends BaseWeapon {
       emissiveIntensity: 0.02
     });
     
-    // Upper tip
+    // Upper tip (positive X direction)
     const upperTip = new THREE.Mesh(tipGeometry, tipMaterial);
-    upperTip.position.set(0.02, 0.8, 0.08);
-    upperTip.rotation.x = Math.PI;
+    upperTip.position.set(0.8, 0.02, 0.08); // X-axis instead of Y-axis
+    upperTip.rotation.z = Math.PI / 2; // Rotate to point along X-axis
     bowGroup.add(upperTip);
     
-    // Lower tip
+    // Lower tip (negative X direction)
     const lowerTip = new THREE.Mesh(tipGeometry, tipMaterial.clone());
-    lowerTip.position.set(0.02, -0.8, 0.08);
+    lowerTip.position.set(-0.8, 0.02, 0.08); // X-axis instead of Y-axis
+    lowerTip.rotation.z = -Math.PI / 2; // Rotate to point along X-axis
     bowGroup.add(lowerTip);
     
     // Add string attachment points
@@ -218,11 +221,11 @@ export class HuntingBow extends BaseWeapon {
     const attachMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
     
     const upperAttach = new THREE.Mesh(attachGeometry, attachMaterial);
-    upperAttach.position.set(0.02, 0.75, 0.08);
+    upperAttach.position.set(0.75, 0.02, 0.08); // X-axis positioning
     bowGroup.add(upperAttach);
     
     const lowerAttach = new THREE.Mesh(attachGeometry, attachMaterial.clone());
-    lowerAttach.position.set(0.02, -0.75, 0.08);
+    lowerAttach.position.set(-0.75, 0.02, 0.08); // X-axis positioning
     bowGroup.add(lowerAttach);
   }
 
