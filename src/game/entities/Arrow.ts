@@ -252,7 +252,58 @@ export class Arrow {
     this.removeTrail();
     
     this.audioManager.play('arrow_impact');
-    this.effectsManager.createDustCloud(this.position);
+    
+    // Replace the problematic createDustCloud with a simple, safe impact effect
+    this.createSimpleImpactEffect();
+  }
+
+  private createSimpleImpactEffect(): void {
+    // Only create effect if arrow is within reasonable distance from origin (prevent distant artifacts)
+    const distanceFromOrigin = this.position.distanceTo(this.initialPosition);
+    if (distanceFromOrigin > 50) {
+      return; // Don't create effects too far away
+    }
+
+    // Create a few small, simple particles using basic geometry
+    for (let i = 0; i < 6; i++) {
+      const particleGeometry = new THREE.SphereGeometry(0.05, 6, 6);
+      const particleMaterial = new THREE.MeshBasicMaterial({
+        color: 0x8B7355, // Dirt brown color
+        transparent: true,
+        opacity: 0.7
+      });
+      
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+      particle.position.copy(this.position);
+      particle.position.x += (Math.random() - 0.5) * 0.5;
+      particle.position.z += (Math.random() - 0.5) * 0.5;
+      particle.position.y += Math.random() * 0.3;
+      
+      this.scene.add(particle);
+      
+      // Animate and remove the particle
+      const startTime = Date.now();
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / 1000; // 1 second duration
+        
+        if (progress >= 1) {
+          this.scene.remove(particle);
+          particle.geometry.dispose();
+          particle.material.dispose();
+          return;
+        }
+        
+        // Simple gravity and fade animation
+        particle.position.y -= 0.01;
+        particle.material.opacity = 0.7 * (1 - progress);
+        
+        requestAnimationFrame(animate);
+      };
+      
+      // Start animation after a small random delay
+      setTimeout(animate, i * 50);
+    }
   }
 
   public getPosition(): THREE.Vector3 {
