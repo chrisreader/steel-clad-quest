@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Arrow } from '../entities/Arrow';
 import { Player } from '../entities/Player';
@@ -24,7 +23,7 @@ export class ProjectileSystem {
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
-    console.log("🏹 [ProjectileSystem] Initialized for independent arrow entities");
+    console.log("🏹 [ProjectileSystem] Initialized with FIXED arrow physics");
   }
 
   public shootArrow(
@@ -33,9 +32,10 @@ export class ProjectileSystem {
     speed: number,
     damage: number
   ): void {
-    console.log("🏹 [ProjectileSystem] *** CREATING INDEPENDENT ARROW ***");
+    console.log("🏹 [ProjectileSystem] *** CREATING FIXED ARROW ***");
     console.log("🏹 [ProjectileSystem] Start position:", startPosition);
     console.log("🏹 [ProjectileSystem] Direction:", direction);
+    console.log("🏹 [ProjectileSystem] Direction magnitude:", direction.length());
     console.log("🏹 [ProjectileSystem] Speed:", speed);
     console.log("🏹 [ProjectileSystem] Damage:", damage);
     
@@ -44,7 +44,7 @@ export class ProjectileSystem {
     console.log("🏹 [ProjectileSystem] Normalized direction:", normalizedDirection);
     
     try {
-      // Create truly independent arrow entity
+      // Create FIXED arrow entity
       const arrow = new Arrow(
         this.scene,
         startPosition,
@@ -56,25 +56,27 @@ export class ProjectileSystem {
       );
       
       this.arrows.push(arrow);
-      console.log(`🏹 [ProjectileSystem] ✅ INDEPENDENT ARROW CREATED - Total arrows: ${this.arrows.length}`);
-      console.log(`🏹 [ProjectileSystem] ✅ ARROW SHOULD FLY INDEPENDENTLY AT ${speed} UNITS/SECOND`);
+      console.log(`🏹 [ProjectileSystem] ✅ FIXED ARROW CREATED - Total arrows: ${this.arrows.length}`);
+      console.log(`🏹 [ProjectileSystem] ✅ ARROW SHOULD FLY WITH FIXED PHYSICS AT ${speed} UNITS/SECOND`);
     } catch (error) {
-      console.error("🏹 [ProjectileSystem] ❌ ERROR CREATING INDEPENDENT ARROW:", error);
+      console.error("🏹 [ProjectileSystem] ❌ ERROR CREATING FIXED ARROW:", error);
     }
   }
 
   public update(deltaTime: number): void {
-    // Validate deltaTime for all arrows
-    if (deltaTime <= 0 || deltaTime > 0.1) {
-      console.warn(`🏹 [ProjectileSystem] ⚠️ Invalid deltaTime: ${deltaTime}, using 0.016`);
-      deltaTime = 0.016;
+    // Log that projectile system is updating
+    console.log(`🏹 [ProjectileSystem] Updating ${this.arrows.length} arrows with deltaTime ${deltaTime}`);
+    
+    // Skip if no arrows or invalid deltaTime
+    if (this.arrows.length === 0 || deltaTime <= 0) {
+      return;
     }
     
-    // Update all independent arrows
+    // Update each arrow and remove inactive ones
     const activeArrowsBefore = this.arrows.length;
     
     this.arrows = this.arrows.filter(arrow => {
-      // Each arrow updates independently
+      // Each arrow updates with FIXED physics
       const isActive = arrow.update(deltaTime);
       
       // Check collisions only for active arrows
@@ -124,7 +126,7 @@ export class ProjectileSystem {
         arrow.dispose();
         this.arrows = this.arrows.filter(a => a !== arrow);
         
-        console.log(`🏹 [ProjectileSystem] Independent arrow hit enemy for ${damage} damage`);
+        console.log(`🏹 [ProjectileSystem] FIXED arrow hit enemy for ${damage} damage`);
         
         // Add experience if enemy dies
         if (enemy.isDead()) {

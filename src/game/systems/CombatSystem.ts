@@ -38,15 +38,21 @@ export class CombatSystem {
     this.audioManager = audioManager;
     this.camera = camera;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with independent arrow entities");
+    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with FIXED arrow physics");
   }
   
   public update(deltaTime: number): void {
+    // Log that combat system is updating
+    console.log(`⚔️ [CombatSystem] Updating with deltaTime ${deltaTime}`);
+    
     if (this.enemies.length === 0 && this.gold.length === 0) return;
     
     this.lastAttackTime += deltaTime;
     
     this.projectileSystem.setEnemies(this.enemies);
+    
+    // CRITICAL: Ensure projectile system is updated
+    console.log(`⚔️ [CombatSystem] Updating projectile system...`);
     this.projectileSystem.update(deltaTime);
     
     if (this.player.isAttacking() && !this.bowReadyToFire) {
@@ -60,11 +66,11 @@ export class CombatSystem {
   public startPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK *** - Independent Arrow System");
+    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK *** - FIXED Arrow System");
     console.log("⚔️ [CombatSystem] Current weapon:", currentWeapon ? currentWeapon.getConfig().name : 'none');
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
-      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Preparing independent arrow");
+      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Preparing FIXED arrow");
       this.bowReadyToFire = true;
       this.player.startBowDraw();
     } else {
@@ -76,10 +82,10 @@ export class CombatSystem {
   public stopPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] *** STOP PLAYER ATTACK *** - Firing Independent Arrow");
+    console.log("⚔️ [CombatSystem] *** STOP PLAYER ATTACK *** - Firing FIXED Arrow");
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.bowReadyToFire) {
-      console.log("⚔️ [CombatSystem] 🏹 FIRING INDEPENDENT ARROW");
+      console.log("⚔️ [CombatSystem] 🏹 FIRING FIXED ARROW");
       
       this.player.stopBowDraw();
       this.fireIndependentArrow();
@@ -89,7 +95,13 @@ export class CombatSystem {
   }
   
   private fireIndependentArrow(): void {
-    console.log("🏹 [CombatSystem] *** FIRING INDEPENDENT ARROW ***");
+    console.log("🏹 [CombatSystem] *** FIRING FIXED ARROW ***");
+    
+    // Only fire if we have a valid player and camera
+    if (!this.player || !this.camera) {
+      console.error("🏹 [CombatSystem] Cannot fire arrow: missing player or camera");
+      return;
+    }
     
     const currentWeapon = this.player.getEquippedWeapon();
     if (!currentWeapon || currentWeapon.getConfig().type !== 'bow') {
@@ -97,31 +109,33 @@ export class CombatSystem {
       return;
     }
     
+    // Fix #4: Get proper player position and camera direction
     const playerPosition = this.player.getPosition();
+    const cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
     
-    // Get camera direction for FPS-style aiming
-    const cameraDirection = new THREE.Vector3();
-    this.camera.getWorldDirection(cameraDirection);
-    
-    // ENHANCED: Calculate optimal arrow start position for independent flight
+    // Improved arrow start position - higher up, further forward
     const arrowStartPos = playerPosition.clone()
-      .add(new THREE.Vector3(0.3, 1.7, 0)) // Eye level at 1.7, slightly to the right
-      .add(cameraDirection.clone().multiplyScalar(0.8)); // Further forward to clear bow
+      .add(new THREE.Vector3(0, 1.7, 0)) // Eye level at 1.7
+      .add(cameraDirection.clone().multiplyScalar(1.0)); // 1 unit in front of player
+    
+    // Make direction match camera exactly
+    const arrowDirection = cameraDirection.clone();
     
     console.log("🏹 [CombatSystem] Player position:", playerPosition);
-    console.log("🏹 [CombatSystem] Independent arrow start position:", arrowStartPos);
-    console.log("🏹 [CombatSystem] Camera direction:", cameraDirection);
+    console.log("🏹 [CombatSystem] FIXED arrow start position:", arrowStartPos);
+    console.log("🏹 [CombatSystem] Camera direction:", arrowDirection);
     
-    // ENHANCED: High-speed arrow for realistic projectile physics
+    // Use a reasonable speed for FPS games
     const damage = currentWeapon.getConfig().stats.damage;
-    const speed = 200; // Increased for better trajectory visibility
+    const speed = 40; // Realistic arrow speed for good gameplay
     
-    console.log(`🏹 [CombatSystem] FIRING INDEPENDENT ARROW - Damage: ${damage}, Speed: ${speed}`);
+    console.log(`🏹 [CombatSystem] FIRING FIXED ARROW - Damage: ${damage}, Speed: ${speed}`);
+    console.log(`🏹 [CombatSystem] Arrow direction magnitude: ${arrowDirection.length()}`);
     
-    // Fire the independent arrow through ProjectileSystem
-    this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
+    // Fire the FIXED arrow through ProjectileSystem
+    this.projectileSystem.shootArrow(arrowStartPos, arrowDirection, speed, damage);
     
-    console.log("🏹 [CombatSystem] ✅ INDEPENDENT ARROW FIRED SUCCESSFULLY");
+    console.log("🏹 [CombatSystem] ✅ FIXED ARROW FIRED SUCCESSFULLY");
     
     this.audioManager.play('bow_release');
   }

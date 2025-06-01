@@ -13,15 +13,20 @@ export class Arrow {
   private isGrounded: boolean = false;
   private groundTimer: number = 0;
   private maxGroundTime: number = 60000; // 60 seconds
-  private gravity: number = -9.8; // Restored to realistic gravity
+  private gravity: number = -9.8; // Standard gravity
   private damage: number;
   private trail: THREE.Points | null = null;
   
-  // NEW: Flight tracking to prevent immediate ground collision
+  // Enhanced flight tracking
   private flightTime: number = 0;
-  private minFlightTime: number = 0.1; // 100ms minimum flight before ground collision can occur
+  private minFlightTime: number = 0.2; // Increased minimum flight time
+  private maxFlightTime: number = 10.0; // Maximum flight time before cleanup
   private hasMovedSignificantly: boolean = false;
   private initialPosition: THREE.Vector3;
+  
+  // Enhanced physics parameters
+  private airResistance: number = 0.05;  // Air resistance coefficient
+  private arrowMass: number = 0.05;     // Arrow mass in kg
 
   constructor(
     scene: THREE.Scene,
@@ -33,24 +38,32 @@ export class Arrow {
     audioManager: AudioManager
   ) {
     this.scene = scene;
-    this.position = startPosition.clone();
-    this.initialPosition = startPosition.clone();
-    
-    // Enhanced: Create proper velocity vector for realistic arrow flight
-    const adjustedDirection = direction.clone().normalize();
-    // REMOVED: artificial upward arc - let physics handle trajectory naturally
-    this.velocity = adjustedDirection.multiplyScalar(speed);
-    this.damage = damage;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    this.damage = damage;
     
-    console.log("🏹 [Arrow] *** CREATING INDEPENDENT ARROW ENTITY ***");
-    console.log("🏹 [Arrow] Initial position:", this.position);
-    console.log("🏹 [Arrow] Direction:", adjustedDirection);
+    // Fix #3: Ensure direction is normalized before applying speed
+    if (direction.lengthSq() < 0.001) {
+      console.error("🏹 [Arrow] Direction vector is too small!");
+      direction = new THREE.Vector3(0, 0, -1); // Default forward direction
+    }
+    
+    // Normalize and scale by speed to get velocity
+    this.velocity = direction.clone().normalize().multiplyScalar(speed);
+    
+    // Fix starting position - ensure it's well above ground
+    this.position = startPosition.clone();
+    this.initialPosition = startPosition.clone();
+    if (this.position.y < 0) {
+      this.position.y = 1.5; // Ensure it starts well above ground
+    }
+    
+    console.log("🏹 [Arrow] *** CREATING ARROW WITH FIXED PHYSICS ***");
+    console.log("🏹 [Arrow] Start position:", this.position);
+    console.log("🏹 [Arrow] Direction:", direction);
     console.log("🏹 [Arrow] Speed:", speed);
     console.log("🏹 [Arrow] Initial velocity:", this.velocity);
     console.log("🏹 [Arrow] Velocity magnitude:", this.velocity.length());
-    console.log("🏹 [Arrow] Minimum flight time:", this.minFlightTime);
     
     this.mesh = this.createArrowMesh();
     this.createTrailEffect();
@@ -58,9 +71,9 @@ export class Arrow {
     
     // Position and orient the arrow
     this.mesh.position.copy(this.position);
-    this.orientArrow();
+    this.updateRotation();
     
-    console.log("🏹 [Arrow] ✅ INDEPENDENT ARROW ENTITY CREATED");
+    console.log("🏹 [Arrow] ✅ ARROW CREATED WITH IMPROVED PHYSICS");
     
     // Play arrow shoot sound
     this.audioManager.play('arrow_shoot');
@@ -69,53 +82,48 @@ export class Arrow {
   private createArrowMesh(): THREE.Group {
     const arrowGroup = new THREE.Group();
     
-    // FIXED: Reasonable arrow size (much smaller than before)
-    const scale = 0.8; // Reduced from 3.0 to 0.8 for realistic size
+    const scale = 0.8;
     
     // Arrow shaft - brown wood color
     const shaftGeometry = new THREE.CylinderGeometry(0.02 * scale, 0.02 * scale, 1.0 * scale);
     const shaftMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x8B4513, // Saddle brown for wood
+      color: 0x8B4513,
       emissive: 0x2d1810,
       emissiveIntensity: 0.1
     });
     const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
-    // FIXED: Shaft positioned correctly along X-axis (arrow points in +X direction)
     shaft.rotation.z = Math.PI / 2;
     arrowGroup.add(shaft);
     
     // Arrow head - metallic gray
     const headGeometry = new THREE.ConeGeometry(0.08 * scale, 0.2 * scale);
     const headMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xC0C0C0, // Silver metallic
+      color: 0xC0C0C0,
       emissive: 0x333333,
       emissiveIntensity: 0.2
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    // FIXED: Head positioned at front of arrow (+X direction)
     head.position.x = 0.6 * scale;
     head.rotation.z = -Math.PI / 2;
     arrowGroup.add(head);
     
-    // Fletching (feathers) - natural feather colors
+    // Fletching
     const fletchingGeometry = new THREE.PlaneGeometry(0.15 * scale, 0.2 * scale);
     const fletchingMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x654321, // Dark brown feathers
+      color: 0x654321,
       side: THREE.DoubleSide,
       emissive: 0x1a1105,
       emissiveIntensity: 0.1
     });
     
-    // Create 3 fletching pieces around the nock
     for (let i = 0; i < 3; i++) {
       const fletching = new THREE.Mesh(fletchingGeometry, fletchingMaterial);
-      // FIXED: Fletching positioned at back of arrow (-X direction)
       fletching.position.x = -0.4 * scale;
       fletching.rotation.y = (i * Math.PI * 2) / 3;
       arrowGroup.add(fletching);
     }
     
-    // Add nock (string notch) at back
+    // Nock
     const nockGeometry = new THREE.SphereGeometry(0.03 * scale, 6, 6);
     const nockMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x8B4513,
@@ -126,7 +134,6 @@ export class Arrow {
     nock.position.x = -0.5 * scale;
     arrowGroup.add(nock);
     
-    console.log("🏹 [Arrow] Arrow mesh created with proper size and orientation");
     return arrowGroup;
   }
 
@@ -154,35 +161,31 @@ export class Arrow {
     this.scene.add(this.trail);
   }
 
-  private orientArrow(): void {
-    if (this.velocity.length() > 0) {
-      const direction = this.velocity.clone().normalize();
-      const matrix = new THREE.Matrix4();
-      matrix.lookAt(this.position, this.position.clone().add(direction), new THREE.Vector3(0, 1, 0));
-      this.mesh.setRotationFromMatrix(matrix);
-      this.mesh.rotateY(Math.PI / 2);
+  // NEW: Improved rotation update method
+  private updateRotation(): void {
+    // Only update rotation if we have meaningful velocity
+    if (this.velocity.lengthSq() > 0.01) {
+      // Calculate forward direction from velocity
+      const forward = this.velocity.clone().normalize();
+      
+      // Use lookAt to point the arrow in its travel direction
+      const target = this.position.clone().add(forward);
+      this.mesh.lookAt(target);
+      
+      // Adjust for arrow model orientation
+      this.mesh.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
     }
   }
 
   public update(deltaTime: number): boolean {
     if (!this.isActive) return false;
     
-    // NEW: Track flight time to prevent immediate ground collision
-    this.flightTime += deltaTime;
+    // Fix #1: Better deltaTime handling - cap it but don't reset small values
+    const safeDeltatime = Math.min(deltaTime, 0.1); // Cap at 100ms to prevent huge jumps
     
-    // ENHANCED: Validate deltaTime for reasonable physics
-    if (deltaTime <= 0 || deltaTime > 0.1) {
-      console.warn(`🏹 [Arrow] ⚠️ Invalid deltaTime: ${deltaTime}, using 0.016`);
-      deltaTime = 0.016; // Use standard 60fps deltaTime
-    }
-    
-    // Debug logging for first 2 seconds to verify movement
-    if (this.flightTime < 2.0) {
-      console.log(`🏹 [Arrow] FLIGHT TRACKING [${(this.flightTime * 1000).toFixed(0)}ms] pos:(${this.position.x.toFixed(2)}, ${this.position.y.toFixed(2)}, ${this.position.z.toFixed(2)}) vel:(${this.velocity.x.toFixed(2)}, ${this.velocity.y.toFixed(2)}, ${this.velocity.z.toFixed(2)}) deltaTime:${(deltaTime * 1000).toFixed(1)}ms`);
-    }
-    
+    // Only process if arrow is active and not grounded
     if (this.isGrounded) {
-      this.groundTimer += deltaTime * 1000;
+      this.groundTimer += safeDeltatime * 1000;
       if (this.groundTimer >= this.maxGroundTime) {
         console.log("🏹 [Arrow] Ground timer expired, disposing arrow");
         this.dispose();
@@ -191,17 +194,25 @@ export class Arrow {
       return true;
     }
     
+    // Increment flight time
+    this.flightTime += safeDeltatime;
+    
+    // Debug logging for first 3 seconds
+    if (this.flightTime < 3.0) {
+      console.log(`🏹 [Arrow] FLIGHT [${(this.flightTime * 1000).toFixed(0)}ms] pos:(${this.position.x.toFixed(2)}, ${this.position.y.toFixed(2)}, ${this.position.z.toFixed(2)}) vel:(${this.velocity.x.toFixed(2)}, ${this.velocity.y.toFixed(2)}, ${this.velocity.z.toFixed(2)})`);
+    }
+    
     // Store previous position to track movement
     const previousPosition = this.position.clone();
     
-    // FIXED: Apply realistic gravity to Y velocity
-    this.velocity.y += this.gravity * deltaTime;
+    // Apply enhanced physics
+    this.applyPhysics(safeDeltatime);
     
-    // FIXED: Update position based on velocity (this is the core movement)
-    const deltaPosition = this.velocity.clone().multiplyScalar(deltaTime);
+    // Update position based on velocity
+    const deltaPosition = this.velocity.clone().multiplyScalar(safeDeltatime);
     this.position.add(deltaPosition);
     
-    // NEW: Track if arrow has moved significantly from start
+    // Track if arrow has moved significantly from start
     const distanceFromStart = this.position.distanceTo(this.initialPosition);
     if (distanceFromStart > 0.5) {
       this.hasMovedSignificantly = true;
@@ -210,35 +221,55 @@ export class Arrow {
     // Update mesh position immediately
     this.mesh.position.copy(this.position);
     
-    // Update arrow orientation to follow trajectory
-    this.orientArrow();
+    // Update arrow rotation to match trajectory
+    this.updateRotation();
     
     // Update trail effect
     this.updateTrail();
     
-    // FIXED: Ground collision with minimum flight time and lower threshold
+    // Fix #2: Improved ground collision check
+    const groundPlaneY = -1.0;
     const canHitGround = this.flightTime >= this.minFlightTime && this.hasMovedSignificantly;
-    if (canHitGround && this.position.y <= -1.0) { // Lowered threshold to -1.0
+    if (canHitGround && this.position.y <= groundPlaneY) {
       console.log(`🏹 [Arrow] Hit ground after ${(this.flightTime * 1000).toFixed(0)}ms flight at Y:${this.position.y}`);
       this.hitGround();
+      return true;
     }
     
-    // ENHANCED: Bounds checking for performance
-    if (this.position.length() > 1000) {
-      console.log("🏹 [Arrow] Arrow traveled beyond bounds, disposing");
+    // Check for max flight time
+    if (this.flightTime > this.maxFlightTime) {
+      console.log("🏹 [Arrow] Max flight time reached, disposing arrow");
       this.dispose();
       return false;
     }
     
     // Verify movement occurred
     const movementDistance = this.position.distanceTo(previousPosition);
-    if (this.flightTime < 2.0 && movementDistance > 0) {
+    if (this.flightTime < 3.0 && movementDistance > 0) {
       console.log(`🏹 [Arrow] ✅ MOVED ${movementDistance.toFixed(4)} units this frame`);
-    } else if (this.flightTime < 2.0 && movementDistance === 0) {
+    } else if (this.flightTime < 3.0 && movementDistance === 0) {
       console.warn(`🏹 [Arrow] ⚠️ NO MOVEMENT this frame - potential issue!`);
     }
     
     return true;
+  }
+
+  private applyPhysics(deltaTime: number): void {
+    // Apply gravity to Y velocity
+    this.velocity.y += this.gravity * deltaTime;
+    
+    // Apply air resistance (drag) for more realistic physics
+    if (this.velocity.lengthSq() > 0.01) {
+      // Calculate drag force: F = -kv² (opposite direction of velocity)
+      const dragMagnitude = this.airResistance * this.velocity.lengthSq();
+      const dragForce = this.velocity.clone().normalize().multiplyScalar(-dragMagnitude);
+      
+      // Calculate acceleration from drag: a = F/m
+      const dragAcceleration = dragForce.multiplyScalar(1/this.arrowMass);
+      
+      // Apply acceleration to velocity: v = v + a*t
+      this.velocity.add(dragAcceleration.multiplyScalar(deltaTime));
+    }
   }
 
   private updateTrail(): void {
@@ -268,7 +299,7 @@ export class Arrow {
     
     this.isGrounded = true;
     this.velocity.set(0, 0, 0);
-    this.position.y = -1.0; // Set to ground level
+    this.position.y = -1.0;
     this.mesh.position.copy(this.position);
     
     // Remove trail effect
@@ -282,8 +313,6 @@ export class Arrow {
     
     // Create dust effect
     this.effectsManager.createDustCloud(this.position);
-    
-    console.log("🏹 [Arrow] Arrow grounded successfully");
   }
 
   public getPosition(): THREE.Vector3 {
