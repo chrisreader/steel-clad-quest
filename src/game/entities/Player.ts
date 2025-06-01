@@ -897,23 +897,33 @@ export class Player {
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
     const { phases } = this.weaponSwing;
     
-    // FIXED: Track weapon tip throughout the ENTIRE swing motion - from windup start to slash end
+    // FIXED: Only track weapon tip during the SLASH phase, not windup or recovery
     const now = Date.now();
-    const isInSwingMotion = elapsed >= 0 && elapsed < (phases.windup + phases.slash);
+    const slashStartTime = phases.windup;
+    const slashEndTime = phases.windup + phases.slash;
+    const isInSlashPhase = elapsed >= slashStartTime && elapsed <= slashEndTime;
     
-    if (isInSwingMotion && now - this.lastTipTrackTime >= this.tipTrackInterval) {
+    if (isInSlashPhase && now - this.lastTipTrackTime >= this.tipTrackInterval) {
       this.trackWeaponTipHighFrequency();
       this.lastTipTrackTime = now;
       
-      // FIXED: Create sword swoosh effect during the ENTIRE slash phase, not just a narrow window
-      const slashProgress = Math.max(0, (elapsed - phases.windup) / phases.slash);
+      console.log("🗡️ [Player] Tracking weapon tip during SLASH phase - elapsed:", elapsed.toFixed(3), "slash window:", slashStartTime.toFixed(3), "-", slashEndTime.toFixed(3));
       
-      // Create swoosh effect once we have enough path data and are in the slash phase
-      if (slashProgress >= 0.1 && slashProgress <= 0.9 && !this.swooshEffectCreated && this.weaponTipPositions.length >= 8) {
+      // Create swoosh effect once we have enough path data during slash phase
+      const slashProgress = (elapsed - slashStartTime) / phases.slash;
+      
+      if (slashProgress >= 0.2 && slashProgress <= 0.8 && !this.swooshEffectCreated && this.weaponTipPositions.length >= 8) {
         this.createRealisticSwordSwoosh();
         this.swooshEffectCreated = true;
-        console.log("🌪️ [Player] Sword swoosh effect created during slash phase at progress:", slashProgress.toFixed(2));
+        console.log("🌪️ [Player] Sword swoosh effect created during SLASH phase at progress:", slashProgress.toFixed(2));
       }
+    }
+    
+    // Reset trail tracking when entering slash phase
+    if (elapsed >= slashStartTime && elapsed <= slashStartTime + 0.05 && this.weaponTipPositions.length === 0) {
+      console.log("🗡️ [Player] Starting fresh trail tracking for SLASH phase");
+      this.weaponTipPositions = [];
+      this.swooshEffectCreated = false;
     }
     
     // Complete animation if duration exceeded
