@@ -25,6 +25,10 @@ export class Player {
   private weaponAnimationSystem: WeaponAnimationSystem;
   private swordSwingAnimation: SwordSwingAnimation | null = null;
   
+  // NEW: Bow drawing state for animation
+  private bowDrawing: boolean = false;
+  private bowDrawStartTime: number = 0;
+  
   // Game state
   private stats: PlayerStats;
   private walkTime: number = 0;
@@ -1010,7 +1014,7 @@ export class Player {
       this.walkCycle += deltaTime * walkCycleSpeed * walkCycleMultiplier;
     }
     
-    // Use weapon animation system for walking animations
+    // Use weapon animation system for walking animations with bow drawing state
     this.weaponAnimationSystem.updateWalkAnimation(
       this.playerBody,
       this.walkCycle,
@@ -1018,8 +1022,8 @@ export class Player {
       isActuallyMoving,
       this.isSprinting,
       this.weaponSwing.isActive,
-      false, // SIMPLIFIED: No bow draw animation state
-      0      // SIMPLIFIED: No charge level
+      this.bowDrawing,        // Pass bow drawing state
+      this.getBowChargeLevel() // Pass charge level for animation
     );
     
     // Play footstep sound
@@ -1235,9 +1239,10 @@ export class Player {
       return;
     }
     
-    console.log("🏹 [Player] Starting simplified bow draw");
+    console.log("🏹 [Player] Starting bow draw animation");
+    this.bowDrawing = true;
+    this.bowDrawStartTime = Date.now();
     this.bowDrawAnimation.isActive = true;
-    // SIMPLIFIED: No weapon draw methods needed
   }
   
   public stopBowDraw(): void {
@@ -1249,8 +1254,24 @@ export class Player {
       return;
     }
     
-    console.log("🏹 [Player] Stopping simplified bow draw");
+    console.log("🏹 [Player] Stopping bow draw animation");
+    this.bowDrawing = false;
+    this.bowDrawStartTime = 0;
     this.bowDrawAnimation.isActive = false;
-    // SIMPLIFIED: No weapon draw methods needed
+  }
+  
+  public isBowDrawing(): boolean {
+    return this.bowDrawing;
+  }
+  
+  public getBowChargeLevel(): number {
+    if (!this.bowDrawing || this.bowDrawStartTime === 0) {
+      return 0;
+    }
+    
+    // Calculate charge level based on draw time (0.0 to 1.0)
+    const drawTime = Date.now() - this.bowDrawStartTime;
+    const maxDrawTime = 1000; // 1 second for full draw animation
+    return Math.min(1.0, drawTime / maxDrawTime);
   }
 }

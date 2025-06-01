@@ -44,6 +44,8 @@ export class WeaponAnimationSystem {
     console.log(`🎭 [WeaponAnimationSystem] Update: moving=${isMoving}, weapon=${this.currentWeaponType}, attacking=${isAttacking}, bowDrawing=${isBowDrawing}, chargeLevel=${bowChargeLevel.toFixed(2)}`);
     
     if (this.currentWeaponType === 'bow') {
+      console.log(`🏹 [WeaponAnimationSystem] Applying bow animation - Drawing: ${isBowDrawing}, Charge: ${(bowChargeLevel * 100).toFixed(1)}%`);
+      
       this.bowAnimationController.updateAnimation(
         playerBody,
         deltaTime,
