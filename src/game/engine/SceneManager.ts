@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
-import { DynamicCloudSystem } from '../utils/DynamicCloudSystem';
+import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 
 export class SceneManager {
@@ -17,9 +17,9 @@ export class SceneManager {
   private skybox: THREE.Mesh | null = null;
   private ground: THREE.Mesh | null = null;
   
-  // New 3D sun and clouds
+  // New 3D sun and cloud system
   private sun: THREE.Mesh | null = null;
-  private cloudSystem: DynamicCloudSystem | null = null;
+  private cloudSpawningSystem: DynamicCloudSpawningSystem | null = null;
   
   // Distance-based fog system
   private fog: THREE.Fog;
@@ -33,7 +33,7 @@ export class SceneManager {
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     
-    console.log("SceneManager initialized with 3D sun and dynamic clouds");
+    console.log("SceneManager initialized with new dynamic spawning system");
     
     // Setup distance-based fog
     this.setupDistanceFog();
@@ -41,8 +41,8 @@ export class SceneManager {
     // Setup basic lighting
     this.setupLighting();
     
-    // Initialize cloud system
-    this.cloudSystem = new DynamicCloudSystem(this.scene);
+    // Initialize cloud spawning system
+    this.cloudSpawningSystem = new DynamicCloudSpawningSystem(this.scene);
   }
   
   private setupDistanceFog(): void {
@@ -143,13 +143,13 @@ export class SceneManager {
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
-    // Update cloud system with player position for distance-based fading
-    if (this.cloudSystem && playerPosition) {
-      console.log(`Updating cloud system with player position: ${playerPosition.x.toFixed(2)}, ${playerPosition.y.toFixed(2)}, ${playerPosition.z.toFixed(2)}`);
-      this.cloudSystem.update(deltaTime, playerPosition);
-    } else if (this.cloudSystem) {
+    // Update cloud spawning system with player position
+    if (this.cloudSpawningSystem && playerPosition) {
+      console.log(`Updating cloud spawning system with player position: ${playerPosition.x.toFixed(2)}, ${playerPosition.y.toFixed(2)}, ${playerPosition.z.toFixed(2)}`);
+      this.cloudSpawningSystem.update(deltaTime, playerPosition);
+    } else if (this.cloudSpawningSystem) {
       // Fallback update without player position
-      this.cloudSystem.update(deltaTime);
+      this.cloudSpawningSystem.update(deltaTime);
     }
     
     // Update stored player position if provided
@@ -189,17 +189,17 @@ export class SceneManager {
     this.create3DSun();
     console.log('3D sun created');
     
-    // Initialize cloud system
-    if (this.cloudSystem) {
-      this.cloudSystem.initialize();
-      console.log('Dynamic cloud system initialized');
+    // Initialize cloud spawning system
+    if (this.cloudSpawningSystem) {
+      this.cloudSpawningSystem.initialize();
+      console.log('Dynamic cloud spawning system initialized');
     }
     
     // Force update skybox to apply new realistic blue colors
     this.updateSkybox();
     console.log('Skybox updated with realistic blue colors');
     
-    console.log('Default world creation complete with 3D sun and dynamic clouds. Total scene children:', this.scene.children.length);
+    console.log('Default world creation complete with dynamic spawning system. Total scene children:', this.scene.children.length);
   }
   
   private createTerrain(): void {
@@ -597,10 +597,10 @@ export class SceneManager {
     // Clean up fog
     this.scene.fog = null;
     
-    // Dispose cloud system
-    if (this.cloudSystem) {
-      this.cloudSystem.dispose();
-      this.cloudSystem = null;
+    // Dispose cloud spawning system
+    if (this.cloudSpawningSystem) {
+      this.cloudSpawningSystem.dispose();
+      this.cloudSpawningSystem = null;
     }
     
     // Clean up sun
@@ -614,6 +614,6 @@ export class SceneManager {
     }
     
     // The scene is managed by RenderEngine, so we don't dispose it here
-    console.log("SceneManager disposed with 3D sun and cloud cleanup");
+    console.log("SceneManager disposed with dynamic spawning system cleanup");
   }
 }
