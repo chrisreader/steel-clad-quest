@@ -1,21 +1,20 @@
-
 import * as THREE from 'three';
 import { Sword } from '../Sword';
 import { WeaponConfig } from '../BaseWeapon';
 
-export class WoodenSword extends Sword {
+export class SteelSword extends Sword {
   constructor() {
     const config: WeaponConfig = {
-      id: 'wooden_sword',
-      name: 'Wooden Sword',
+      id: 'steel_sword',
+      name: 'Steel Sword',
       type: 'sword',
       handRequirement: 'one-handed',
       stats: {
-        damage: 5,
-        attackSpeed: 1.2,
-        range: 1.8,
-        durability: 50,
-        weight: 2.0
+        damage: 15,
+        attackSpeed: 0.9,
+        range: 2.2,
+        durability: 150,
+        weight: 4.0
       }
       // swingAnimation removed - will use standardized animation
     };

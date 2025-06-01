@@ -1,10 +1,7 @@
-
 import * as THREE from 'three';
 import { BaseWeapon } from './BaseWeapon';
-import { IronSword } from './items/IronSword';
-import { WoodenSword } from './items/WoodenSword';
-import { SteelSword } from './items/SteelSword';
-import { HuntingBow } from './bow/HuntingBow';
+import { IronSword, WoodenSword, SteelSword } from './types';
+import { HuntingBow } from './ranged';
 
 export class WeaponManager {
   private weapons: Map<string, () => BaseWeapon> = new Map();
