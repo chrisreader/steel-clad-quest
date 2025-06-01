@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
+import { PhysicsManager } from '../engine/PhysicsManager';
 
 export class Arrow {
   private mesh: THREE.Group;
@@ -9,8 +10,11 @@ export class Arrow {
   private scene: THREE.Scene;
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
+  private physicsManager: PhysicsManager;
   private isActive: boolean = true;
   private isGrounded: boolean = false;
+  private isStuck: boolean = false;
+  private stuckInObject: string | null = null;
   private groundTimer: number = 0;
   private maxGroundTime: number = 60000;
   private gravity: number = -9.8;
@@ -22,7 +26,7 @@ export class Arrow {
   
   private flightTime: number = 0;
   private minFlightTime: number = 0.2;
-  private maxFlightTime: number = 60.0; // Changed from 10.0 to 60.0 for 1 minute despawn
+  private maxFlightTime: number = 60.0;
   private hasMovedSignificantly: boolean = false;
   private initialPosition: THREE.Vector3;
 
@@ -38,11 +42,13 @@ export class Arrow {
     speed: number,
     damage: number,
     effectsManager: EffectsManager,
-    audioManager: AudioManager
+    audioManager: AudioManager,
+    physicsManager: PhysicsManager
   ) {
     this.scene = scene;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    this.physicsManager = physicsManager;
     this.damage = damage;
     
     if (direction.lengthSq() < 0.001) {
@@ -206,7 +212,7 @@ export class Arrow {
     
     const safeDeltatime = Math.min(deltaTime, 0.1);
     
-    if (this.isGrounded) {
+    if (this.isGrounded || this.isStuck) {
       this.groundTimer += safeDeltatime * 1000;
       if (this.groundTimer >= this.maxGroundTime) {
         this.dispose();
@@ -221,9 +227,26 @@ export class Arrow {
     // Apply physics
     this.velocity.y += this.gravity * safeDeltatime;
     
-    // Update position
+    // Calculate next position
     const deltaPosition = this.velocity.clone().multiplyScalar(safeDeltatime);
-    this.position.add(deltaPosition);
+    const nextPosition = this.position.clone().add(deltaPosition);
+    
+    // Check for environment collision
+    const collision = this.physicsManager.checkRayCollision(
+      this.position,
+      this.velocity.clone().normalize(),
+      deltaPosition.length(),
+      ['player'] // Exclude player collisions for arrows
+    );
+    
+    if (collision) {
+      // Arrow hit an environment object
+      this.hitEnvironmentObject(collision);
+      return true;
+    }
+    
+    // Update position
+    this.position.copy(nextPosition);
     
     const distanceFromStart = this.position.distanceTo(this.initialPosition);
     if (distanceFromStart > 0.5) {
@@ -243,11 +266,10 @@ export class Arrow {
       this.removeTrail();
     }
     
-    // Ground collision - improved logic for direct downward shots
+    // Ground collision
     const groundPlaneY = 0.0;
     const canHitGround = this.flightTime >= this.minFlightTime && this.hasMovedSignificantly;
     
-    // Check if arrow has reached or passed through ground level
     if (canHitGround && this.position.y <= groundPlaneY) {
       this.hitGround();
       return true;
@@ -260,6 +282,106 @@ export class Arrow {
     }
     
     return true;
+  }
+
+  private hitEnvironmentObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
+    this.isStuck = true;
+    this.stuckInObject = collision.object.id;
+    this.velocity.set(0, 0, 0);
+    
+    // Position arrow at collision point
+    this.position.copy(collision.point);
+    this.mesh.position.copy(this.position);
+    
+    // Remove trail when stuck
+    this.removeTrail();
+    
+    // Play appropriate impact sound based on material
+    const material = this.physicsManager.getCollisionMaterial(collision.object.id);
+    this.playMaterialImpactSound(material);
+    
+    // Create material-specific impact effect
+    this.createMaterialImpactEffect(collision.point, material);
+    
+    console.log(`🏹 Arrow stuck in ${material} object at:`, collision.point);
+  }
+
+  private playMaterialImpactSound(material: 'wood' | 'stone' | 'metal' | 'fabric' | null): void {
+    switch (material) {
+      case 'wood':
+        this.audioManager.play('arrow_impact'); // Could be 'arrow_wood_impact' if you have specific sounds
+        break;
+      case 'stone':
+        this.audioManager.play('arrow_impact'); // Could be 'arrow_stone_impact'
+        break;
+      case 'metal':
+        this.audioManager.play('arrow_impact'); // Could be 'arrow_metal_impact'  
+        break;
+      default:
+        this.audioManager.play('arrow_impact');
+    }
+  }
+
+  private createMaterialImpactEffect(position: THREE.Vector3, material: 'wood' | 'stone' | 'metal' | 'fabric' | null): void {
+    const distanceFromOrigin = position.distanceTo(this.initialPosition);
+    if (distanceFromOrigin > 50) return;
+
+    // Create material-specific particles
+    const particleCount = 8;
+    const particleColor = this.getMaterialParticleColor(material);
+    
+    for (let i = 0; i < particleCount; i++) {
+      const particleGeometry = new THREE.SphereGeometry(0.03, 6, 6);
+      const particleMaterial = new THREE.MeshBasicMaterial({
+        color: particleColor,
+        transparent: true,
+        opacity: 0.8
+      });
+      
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+      particle.position.copy(position);
+      particle.position.x += (Math.random() - 0.5) * 0.3;
+      particle.position.y += (Math.random() - 0.5) * 0.3;
+      particle.position.z += (Math.random() - 0.5) * 0.3;
+      
+      this.scene.add(particle);
+      
+      // Animate particle
+      const startTime = Date.now();
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / 800; // 800ms duration
+        
+        if (progress >= 1) {
+          this.scene.remove(particle);
+          particle.geometry.dispose();
+          particle.material.dispose();
+          return;
+        }
+        
+        particle.position.y -= 0.008;
+        particle.material.opacity = 0.8 * (1 - progress);
+        
+        requestAnimationFrame(animate);
+      };
+      
+      setTimeout(animate, i * 30);
+    }
+  }
+
+  private getMaterialParticleColor(material: 'wood' | 'stone' | 'metal' | 'fabric' | null): number {
+    switch (material) {
+      case 'wood':
+        return 0x8B4513; // Brown wood chips
+      case 'stone':
+        return 0x808080; // Gray stone dust
+      case 'metal':
+        return 0xC0C0C0; // Silver sparks
+      case 'fabric':
+        return 0xF5F5DC; // Beige fabric fibers
+      default:
+        return 0x8B7355; // Default brownish
+    }
   }
 
   private updateWindTrail(): void {
@@ -329,22 +451,20 @@ export class Arrow {
     
     this.audioManager.play('arrow_impact');
     
-    // Replace the problematic createDustCloud with a simple, safe impact effect
+    // Create simple ground impact effect
     this.createSimpleImpactEffect();
   }
 
   private createSimpleImpactEffect(): void {
-    // Only create effect if arrow is within reasonable distance from origin (prevent distant artifacts)
     const distanceFromOrigin = this.position.distanceTo(this.initialPosition);
     if (distanceFromOrigin > 50) {
-      return; // Don't create effects too far away
+      return;
     }
 
-    // Create a few small, simple particles using basic geometry
     for (let i = 0; i < 6; i++) {
       const particleGeometry = new THREE.SphereGeometry(0.05, 6, 6);
       const particleMaterial = new THREE.MeshBasicMaterial({
-        color: 0x8B7355, // Dirt brown color
+        color: 0x8B7355,
         transparent: true,
         opacity: 0.7
       });
@@ -357,11 +477,10 @@ export class Arrow {
       
       this.scene.add(particle);
       
-      // Animate and remove the particle
       const startTime = Date.now();
       const animate = () => {
         const elapsed = Date.now() - startTime;
-        const progress = elapsed / 1000; // 1 second duration
+        const progress = elapsed / 1000;
         
         if (progress >= 1) {
           this.scene.remove(particle);
@@ -370,14 +489,12 @@ export class Arrow {
           return;
         }
         
-        // Simple gravity and fade animation
         particle.position.y -= 0.01;
         particle.material.opacity = 0.7 * (1 - progress);
         
         requestAnimationFrame(animate);
       };
       
-      // Start animation after a small random delay
       setTimeout(animate, i * 50);
     }
   }
@@ -391,7 +508,7 @@ export class Arrow {
   }
 
   public isArrowActive(): boolean {
-    return this.isActive && !this.isGrounded;
+    return this.isActive && !this.isGrounded && !this.isStuck;
   }
 
   public getMesh(): THREE.Group {

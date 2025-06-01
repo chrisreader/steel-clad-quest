@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
+import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
+import { PhysicsManager } from './PhysicsManager';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 
 export class SceneManager {
   private scene: THREE.Scene;
+  private physicsManager: PhysicsManager;
+  private environmentCollisionManager: EnvironmentCollisionManager;
   
   // Lighting
   private ambientLight: THREE.AmbientLight;
@@ -30,10 +34,11 @@ export class SceneManager {
   private dayNightCycleEnabled: boolean = false;
   private dayNightCycleSpeed: number = 0.001; // How quickly time passes
   
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
+    this.physicsManager = physicsManager;
     
-    console.log("SceneManager initialized with new dynamic spawning system");
+    console.log("SceneManager initialized with collision system");
     
     // Setup distance-based fog
     this.setupDistanceFog();
@@ -43,6 +48,9 @@ export class SceneManager {
     
     // Initialize cloud spawning system
     this.cloudSpawningSystem = new DynamicCloudSpawningSystem(this.scene);
+    
+    // Initialize environment collision manager
+    this.environmentCollisionManager = new EnvironmentCollisionManager(this.scene, this.physicsManager);
   }
   
   private setupDistanceFog(): void {
@@ -159,7 +167,7 @@ export class SceneManager {
   }
   
   public createDefaultWorld(): void {
-    console.log('Creating default world...');
+    console.log('Creating default world with collision detection...');
     
     // Create terrain
     this.createTerrain();
@@ -195,11 +203,15 @@ export class SceneManager {
       console.log('Dynamic cloud spawning system initialized');
     }
     
+    // IMPORTANT: Register all environment objects for collision after creating the world
+    this.environmentCollisionManager.registerEnvironmentCollisions();
+    console.log('Environment collision system initialized');
+    
     // Force update skybox to apply new realistic blue colors
     this.updateSkybox();
     console.log('Skybox updated with realistic blue colors');
     
-    console.log('Default world creation complete with dynamic spawning system. Total scene children:', this.scene.children.length);
+    console.log('Default world creation complete with collision system. Total scene children:', this.scene.children.length);
   }
   
   private createTerrain(): void {
@@ -414,7 +426,7 @@ export class SceneManager {
     const skyMaterial = new THREE.MeshBasicMaterial({
       map: TextureGenerator.createSkyTexture(this.timeOfDay),
       side: THREE.BackSide,
-      fog: false // Prevent fog from affecting skybox
+      fog: false
     });
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
@@ -425,18 +437,15 @@ export class SceneManager {
    */
   public updateSkybox(): void {
     if (this.skybox) {
-      // Create new sky texture with current time of day
       const newSkyTexture = TextureGenerator.createSkyTexture(this.timeOfDay);
       
-      // Dispose old texture to prevent memory leaks
       if (this.skybox.material instanceof THREE.MeshBasicMaterial && this.skybox.material.map) {
         this.skybox.material.map.dispose();
       }
       
-      // Apply new texture
       if (this.skybox.material instanceof THREE.MeshBasicMaterial) {
         this.skybox.material.map = newSkyTexture;
-        this.skybox.material.fog = false; // Ensure skybox ignores fog
+        this.skybox.material.fog = false;
         this.skybox.material.needsUpdate = true;
       }
       
@@ -470,7 +479,6 @@ export class SceneManager {
   }
 
   private clearScene(): void {
-    // Remove all meshes except lights and camera
     const objectsToRemove: THREE.Object3D[] = [];
     this.scene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -481,7 +489,6 @@ export class SceneManager {
   }
 
   private loadTavernLevel(): void {
-    // Create a simple tavern environment
     const floorGeometry = new THREE.PlaneGeometry(20, 20);
     const floorMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x8B4513,
@@ -492,12 +499,10 @@ export class SceneManager {
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    // Add some basic tavern furniture
     this.addTavernFurniture();
   }
 
   private loadForestLevel(): void {
-    // Create forest environment
     const floorGeometry = new THREE.PlaneGeometry(50, 50);
     const floorMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x228B22,
@@ -508,12 +513,10 @@ export class SceneManager {
     floor.receiveShadow = true;
     this.scene.add(floor);
 
-    // Add trees
     this.addTrees();
   }
 
   private loadDefaultLevel(): void {
-    // Create a basic ground plane
     const floorGeometry = new THREE.PlaneGeometry(30, 30);
     const floorMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x90EE90,
@@ -526,7 +529,6 @@ export class SceneManager {
   }
 
   private addTavernFurniture(): void {
-    // Add table
     const tableGeometry = new THREE.BoxGeometry(2, 0.1, 1);
     const tableMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x8B4513,
@@ -537,7 +539,6 @@ export class SceneManager {
     table.castShadow = true;
     this.scene.add(table);
 
-    // Add chairs
     for (let i = 0; i < 4; i++) {
       const chairGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
       const chairMaterial = new THREE.MeshLambertMaterial({ 
@@ -554,7 +555,6 @@ export class SceneManager {
 
   private addTrees(): void {
     for (let i = 0; i < 20; i++) {
-      // Tree trunk
       const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.3, 3);
       const trunkMaterial = new THREE.MeshLambertMaterial({ 
         color: 0x8B4513,
@@ -562,7 +562,6 @@ export class SceneManager {
       });
       const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
 
-      // Tree leaves
       const leavesGeometry = new THREE.SphereGeometry(1.5);
       const leavesMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
       const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
@@ -572,7 +571,6 @@ export class SceneManager {
       tree.add(trunk);
       tree.add(leaves);
 
-      // Random position
       tree.position.set(
         (Math.random() - 0.5) * 40,
         1.5,
@@ -597,6 +595,11 @@ export class SceneManager {
     // Clean up fog
     this.scene.fog = null;
     
+    // Dispose collision manager
+    if (this.environmentCollisionManager) {
+      this.environmentCollisionManager.dispose();
+    }
+    
     // Dispose cloud spawning system
     if (this.cloudSpawningSystem) {
       this.cloudSpawningSystem.dispose();
@@ -613,7 +616,10 @@ export class SceneManager {
       this.sun = null;
     }
     
-    // The scene is managed by RenderEngine, so we don't dispose it here
-    console.log("SceneManager disposed with dynamic spawning system cleanup");
+    console.log("SceneManager disposed with collision system cleanup");
+  }
+  
+  public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
+    return this.environmentCollisionManager;
   }
 }

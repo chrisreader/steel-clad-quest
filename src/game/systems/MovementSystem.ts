@@ -1,13 +1,14 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
+import { PhysicsManager } from '../engine/PhysicsManager';
 
 export class MovementSystem {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private player: Player;
   private inputManager: InputManager;
+  private physicsManager: PhysicsManager;
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
   
@@ -15,15 +16,16 @@ export class MovementSystem {
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
     player: Player,
-    inputManager: InputManager
+    inputManager: InputManager,
+    physicsManager: PhysicsManager
   ) {
     this.scene = scene;
     this.camera = camera;
     this.player = player;
     this.inputManager = inputManager;
+    this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with player at:", this.player.getPosition());
-    console.log("🏃 [MovementSystem] InputManager available:", !!this.inputManager);
+    console.log("🏃 [MovementSystem] Initialized with collision detection");
     
     // Set up sprint input handler
     this.setupSprintHandler();
@@ -40,7 +42,6 @@ export class MovementSystem {
   }
   
   private setupSprintHandler(): void {
-    // Listen for double-tap forward sprint activation
     document.addEventListener('gameInput', (event: Event) => {
       const customEvent = event as CustomEvent;
       const { type } = customEvent.detail;
@@ -96,26 +97,14 @@ export class MovementSystem {
       });
     }
     
-    // Debug log movement input when detected
-    if (hasMovementInput) {
-      console.log("🏃 [MovementSystem] Movement input detected:", {
-        direction: moveDirection,
-        playerPos: this.player.getPosition(),
-        deltaTime: deltaTime,
-        frame: this.frameCount
-      });
-    }
-    
-    // Handle sprint logic - FIXED: Double-tap W activation, stop when W released
+    // Handle sprint logic
     if (this.isSprintActivatedByDoubleTap) {
-      // Sprint continues only while W is held after double-tap activation
       if (forwardPressed && !backwardPressed) {
         if (!this.player.getSprinting()) {
           console.log("🏃 [MovementSystem] Continuing sprint - W still held after double-tap");
           this.player.startSprint();
         }
       } else {
-        // Stop sprint if W is released or moving backward
         console.log("🏃 [MovementSystem] Sprint stopped - W released or moving backward");
         this.isSprintActivatedByDoubleTap = false;
         this.player.stopSprint();
@@ -126,56 +115,52 @@ export class MovementSystem {
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
-      // Apply sprint multiplier ONLY if sprinting AND moving forward
+      // Apply sprint multiplier
       let speed = 1.0;
       if (this.player.getSprinting() && forwardPressed && !backwardPressed) {
         speed = 1.5;
       }
       moveDirection.multiplyScalar(speed);
       
-      // Transform movement direction relative to camera rotation (first-person)
+      // Transform movement direction relative to camera rotation
       const cameraDirection = new THREE.Vector3();
       this.camera.getWorldDirection(cameraDirection);
       
-      // Calculate right vector (perpendicular to camera direction)
       const rightVector = new THREE.Vector3().crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0)).normalize();
-      
-      // Calculate forward vector (camera direction but without Y component for ground movement)
       const forwardVector = new THREE.Vector3(cameraDirection.x, 0, cameraDirection.z).normalize();
       
       // Apply movement relative to camera orientation
       const worldMoveDirection = new THREE.Vector3();
-      worldMoveDirection.addScaledVector(forwardVector, -moveDirection.z); // Forward/backward
-      worldMoveDirection.addScaledVector(rightVector, moveDirection.x); // Left/right
+      worldMoveDirection.addScaledVector(forwardVector, -moveDirection.z);
+      worldMoveDirection.addScaledVector(rightVector, moveDirection.x);
       
-      // Store previous position for debugging
-      const previousPosition = this.player.getPosition().clone();
+      // Get current and target positions
+      const currentPosition = this.player.getPosition();
+      const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
+      const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
-      // Move player in world space with enhanced logging
-      console.log("🏃 [MovementSystem] Executing player movement:", {
-        worldDirection: worldMoveDirection,
-        speed: speed,
-        deltaTime: deltaTime,
-        previousPos: previousPosition,
-        sprinting: this.player.getSprinting(),
-        forwardPressed: forwardPressed,
-        sprintActivatedByDoubleTap: this.isSprintActivatedByDoubleTap
-      });
+      // Check collision and get safe position
+      const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4); // 0.4 is player radius
       
-      // FIXED: Movement no longer affects visual rotation
-      this.player.move(worldMoveDirection, deltaTime);
+      // Calculate actual movement vector
+      const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
       
-      // Log movement result
-      const newPosition = this.player.getPosition();
-      const actualMovement = newPosition.clone().sub(previousPosition);
-      
-      console.log("🏃 [MovementSystem] Movement result:", {
-        from: previousPosition,
-        to: newPosition,
-        movement: actualMovement,
-        distance: actualMovement.length(),
-        success: actualMovement.length() > 0.001
-      });
+      if (actualMovement.length() > 0.001) {
+        // Convert back to normalized direction for player.move()
+        const normalizedMovement = actualMovement.clone().normalize();
+        const movementScale = actualMovement.length() / (5.0 * deltaTime);
+        
+        console.log("🏃 [MovementSystem] Moving with collision detection:", {
+          from: currentPosition,
+          to: safePosition,
+          movement: actualMovement,
+          distance: actualMovement.length()
+        });
+        
+        this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
+      } else {
+        console.log("🏃 [MovementSystem] Movement blocked by collision");
+      }
     }
   }
   
@@ -190,7 +175,6 @@ export class MovementSystem {
   
   public checkInTavern(): boolean {
     const playerPosition = this.player.getPosition();
-    // Check if player is within tavern bounds
     return Math.abs(playerPosition.x) < 6 && Math.abs(playerPosition.z) < 6;
   }
   

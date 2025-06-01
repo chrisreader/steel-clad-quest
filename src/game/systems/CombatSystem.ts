@@ -1,10 +1,10 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { Gold } from '../entities/Gold';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
+import { PhysicsManager } from '../engine/PhysicsManager';
 import { ProjectileSystem } from './ProjectileSystem';
 import { BaseBow } from '../weapons/bow/BaseBow';
 
@@ -15,6 +15,7 @@ export class CombatSystem {
   private scene: THREE.Scene;
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
+  private physicsManager: PhysicsManager;
   private projectileSystem: ProjectileSystem;
   private camera: THREE.PerspectiveCamera;
   
@@ -31,34 +32,32 @@ export class CombatSystem {
     player: Player,
     effectsManager: EffectsManager,
     audioManager: AudioManager,
-    camera: THREE.PerspectiveCamera
+    camera: THREE.PerspectiveCamera,
+    physicsManager: PhysicsManager
   ) {
     this.scene = scene;
     this.player = player;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     this.camera = camera;
-    this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
+    this.physicsManager = physicsManager;
+    this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager, physicsManager);
   }
   
   public update(deltaTime: number): void {
     this.lastAttackTime += deltaTime;
     
-    // CRITICAL FIX: Always update projectile system regardless of enemy/gold presence
     this.projectileSystem.setEnemies(this.enemies);
     this.projectileSystem.update(deltaTime);
     
-    // Only check attacks if we have something to attack
     if (this.player.isAttacking() && !this.bowReadyToFire && this.enemies.length > 0) {
       this.checkPlayerAttacks();
     }
     
-    // Only check gold pickups if there is gold to pick up
     if (this.gold.length > 0) {
       this.checkGoldPickups();
     }
     
-    // Only cleanup entities if there are entities to cleanup
     if (this.enemies.length > 0) {
       this.cleanupEntities();
     }
@@ -105,15 +104,15 @@ export class CombatSystem {
     // Get player position and calculate arrow start position at eye level
     const playerPosition = this.player.getPosition();
     const arrowStartPos = playerPosition.clone()
-      .add(new THREE.Vector3(0, 1.2, 0)) // Lowered from 1.7 to 1.2 for eye level
+      .add(new THREE.Vector3(0, 1.2, 0))
       .add(cameraDirection.clone().multiplyScalar(1.0));
     
     const damage = currentWeapon.getConfig().stats.damage;
     const speed = 50;
     
-    console.log(`🏹 [CombatSystem] Firing arrow - damage: ${damage}, speed: ${speed}`);
+    console.log(`🏹 [CombatSystem] Firing arrow with collision detection - damage: ${damage}, speed: ${speed}`);
     
-    // Fire the arrow
+    // Fire the arrow with collision support
     this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
     
     this.audioManager.play('bow_release');
