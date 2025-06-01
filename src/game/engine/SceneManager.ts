@@ -144,8 +144,12 @@ export class SceneManager {
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     // Update cloud system with player position for distance-based fading
-    if (this.cloudSystem) {
+    if (this.cloudSystem && playerPosition) {
+      console.log(`Updating cloud system with player position: ${playerPosition.x.toFixed(2)}, ${playerPosition.y.toFixed(2)}, ${playerPosition.z.toFixed(2)}`);
       this.cloudSystem.update(deltaTime, playerPosition);
+    } else if (this.cloudSystem) {
+      // Fallback update without player position
+      this.cloudSystem.update(deltaTime);
     }
     
     // Update stored player position if provided

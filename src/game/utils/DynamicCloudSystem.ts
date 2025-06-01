@@ -109,18 +109,28 @@ export class DynamicCloudSystem {
     this.time += deltaTime;
     this.spawnTimer += deltaTime * 1000;
     
+    // Debug logging
+    if (this.clouds.length > 0 && Math.random() < 0.01) { // Log occasionally
+      console.log(`Cloud system update: ${this.clouds.length} clouds, deltaTime: ${deltaTime.toFixed(3)}, hasPlayerPos: ${!!playerPosition}`);
+      if (this.clouds[0]) {
+        console.log(`First cloud position: ${this.clouds[0].mesh.position.x.toFixed(2)}, ${this.clouds[0].mesh.position.z.toFixed(2)}, velocity: ${this.clouds[0].velocity.x.toFixed(2)}, ${this.clouds[0].velocity.z.toFixed(2)}`);
+      }
+    }
+    
     // Spawn new clouds periodically
     if (this.spawnTimer >= this.spawnInterval && this.clouds.length < 12) {
       this.createCloud();
       this.spawnTimer = 0;
+      console.log(`Spawned new cloud, total clouds: ${this.clouds.length}`);
     }
     
     // Update existing clouds
     for (let i = this.clouds.length - 1; i >= 0; i--) {
       const cloud = this.clouds[i];
       
-      // Update position
-      cloud.mesh.position.add(cloud.velocity.clone().multiplyScalar(deltaTime));
+      // Update position - this is where movement happens
+      const movement = cloud.velocity.clone().multiplyScalar(deltaTime);
+      cloud.mesh.position.add(movement);
       
       // Update age
       cloud.age += deltaTime * 1000;
@@ -179,6 +189,7 @@ export class DynamicCloudSystem {
           }
         });
         this.clouds.splice(i, 1);
+        console.log(`Removed cloud, remaining: ${this.clouds.length}`);
       }
       
       // Remove clouds that are too far away
@@ -194,6 +205,7 @@ export class DynamicCloudSystem {
           }
         });
         this.clouds.splice(i, 1);
+        console.log(`Removed distant cloud, remaining: ${this.clouds.length}`);
       }
     }
   }
