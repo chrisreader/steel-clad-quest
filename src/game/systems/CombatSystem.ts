@@ -52,7 +52,7 @@ export class CombatSystem {
   
   private setupHitboxDebugVisualization(): void {
     const currentWeapon = this.player.getEquippedWeapon();
-    if (currentWeapon && currentWeapon.getConfig().type === 'melee') {
+    if (currentWeapon && ['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
       const sword = currentWeapon as any; // Cast to access Sword methods
       if (sword.setDebugMode) {
         sword.setDebugMode(this.debugHitboxEnabled);
@@ -169,7 +169,7 @@ export class CombatSystem {
     if (!this.debugHitboxEnabled) return;
     
     const currentWeapon = this.player.getEquippedWeapon();
-    if (currentWeapon && currentWeapon.getConfig().type === 'melee') {
+    if (currentWeapon && ['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
       const sword = currentWeapon as any;
       if (sword.showHitBoxDebug) {
         sword.showHitBoxDebug();
@@ -180,7 +180,7 @@ export class CombatSystem {
   
   private hideDebugHitBox(): void {
     const currentWeapon = this.player.getEquippedWeapon();
-    if (currentWeapon && currentWeapon.getConfig().type === 'melee') {
+    if (currentWeapon && ['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
       const sword = currentWeapon as any;
       if (sword.hideHitBoxDebug) {
         sword.hideHitBoxDebug();
@@ -192,7 +192,7 @@ export class CombatSystem {
   public toggleDebugHitbox(): void {
     this.debugHitboxEnabled = !this.debugHitboxEnabled;
     const currentWeapon = this.player.getEquippedWeapon();
-    if (currentWeapon && currentWeapon.getConfig().type === 'melee') {
+    if (currentWeapon && ['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
       const sword = currentWeapon as any;
       if (sword.setDebugMode) {
         sword.setDebugMode(this.debugHitboxEnabled);
