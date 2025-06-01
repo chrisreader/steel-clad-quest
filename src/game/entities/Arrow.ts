@@ -17,13 +17,19 @@ export class Arrow {
   private damage: number;
   private trail: THREE.Line | null = null;
   private trailPositions: THREE.Vector3[] = [];
-  private maxTrailLength: number = 15;
+  private trailOpacities: number[] = [];
+  private maxTrailLength: number = 20; // Increased for smoother wind effect
   
   private flightTime: number = 0;
   private minFlightTime: number = 0.2;
   private maxFlightTime: number = 10.0;
   private hasMovedSignificantly: boolean = false;
   private initialPosition: THREE.Vector3;
+
+  // Wind effect properties
+  private windOffset: number = 0;
+  private windSpeed: number = 2.0;
+  private windStrength: number = 0.3;
 
   constructor(
     scene: THREE.Scene,
@@ -52,7 +58,7 @@ export class Arrow {
     }
     
     this.mesh = this.createArrowMesh();
-    this.createTrailEffect();
+    this.createWindTrailEffect();
     this.scene.add(this.mesh);
     
     this.mesh.position.copy(this.position);
@@ -119,24 +125,67 @@ export class Arrow {
     return arrowGroup;
   }
 
-  private createTrailEffect(): void {
-    // Initialize trail positions array
+  private createWindTrailEffect(): void {
+    // Initialize trail positions and opacities arrays
     this.trailPositions = [];
+    this.trailOpacities = [];
+    
     for (let i = 0; i < this.maxTrailLength; i++) {
       this.trailPositions.push(this.position.clone());
+      this.trailOpacities.push(0);
     }
     
-    // Create line geometry for trail
+    // Create line geometry for wind trail
     const geometry = new THREE.BufferGeometry().setFromPoints(this.trailPositions);
     
-    // Use a subtle gray color instead of white to reduce visibility of artifacts
-    const material = new THREE.LineBasicMaterial({
-      color: 0x888888,
+    // Add opacity attribute for varying transparency
+    const opacities = new Float32Array(this.maxTrailLength);
+    geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
+    
+    // Use shader material for wind-like effect
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 }
+      },
+      vertexShader: `
+        attribute float opacity;
+        varying float vOpacity;
+        varying vec3 vPosition;
+        uniform float time;
+        
+        void main() {
+          vOpacity = opacity;
+          vPosition = position;
+          
+          // Add subtle wind displacement
+          vec3 pos = position;
+          pos.x += sin(time * 2.0 + position.z * 0.5) * 0.1;
+          pos.y += cos(time * 1.5 + position.x * 0.3) * 0.05;
+          
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+          gl_PointSize = 3.0 + sin(time + position.z) * 1.0;
+        }
+      `,
+      fragmentShader: `
+        varying float vOpacity;
+        varying vec3 vPosition;
+        uniform float time;
+        
+        void main() {
+          // Create flowing wind-like pattern
+          float windPattern = sin(time * 3.0 + vPosition.z * 2.0) * 0.5 + 0.5;
+          float finalOpacity = vOpacity * windPattern * 0.8;
+          
+          // Soft blue-white color like moving air
+          vec3 windColor = mix(vec3(0.7, 0.9, 1.0), vec3(1.0, 1.0, 1.0), windPattern);
+          
+          gl_FragColor = vec4(windColor, finalOpacity);
+        }
+      `,
       transparent: true,
-      opacity: 0.6,
       depthTest: true,
       depthWrite: false,
-      blending: THREE.NormalBlending // Use normal blending instead of additive
+      blending: THREE.NormalBlending
     });
     
     this.trail = new THREE.Line(geometry, material);
@@ -167,6 +216,7 @@ export class Arrow {
     }
     
     this.flightTime += safeDeltatime;
+    this.windOffset += this.windSpeed * safeDeltatime;
     
     // Apply physics
     this.velocity.y += this.gravity * safeDeltatime;
@@ -186,16 +236,15 @@ export class Arrow {
     // Update rotation
     this.updateRotationWithQuaternion();
     
-    // Update trail with bounds checking
-    if (this.trail && distanceFromStart < 100) { // Only update trail if not too far
-      this.updateTrail();
+    // Update wind trail with bounds checking
+    if (this.trail && distanceFromStart < 100) {
+      this.updateWindTrail();
     } else if (this.trail && distanceFromStart >= 100) {
-      // Remove trail if arrow is too far to prevent distant artifacts
       this.removeTrail();
     }
     
     // Ground collision - fixed to match player floor level
-    const groundPlaneY = 0.0; // Changed from -1.0 to 0.0 to match player ground level
+    const groundPlaneY = 0.0;
     const canHitGround = this.flightTime >= this.minFlightTime && this.hasMovedSignificantly;
     if (canHitGround && this.position.y <= groundPlaneY) {
       this.hitGround();
@@ -211,19 +260,43 @@ export class Arrow {
     return true;
   }
 
-  private updateTrail(): void {
+  private updateWindTrail(): void {
     if (!this.trail) return;
     
-    // Shift trail positions
+    // Shift trail positions and opacities
     for (let i = this.trailPositions.length - 1; i > 0; i--) {
       this.trailPositions[i].copy(this.trailPositions[i - 1]);
+      this.trailOpacities[i] = this.trailOpacities[i - 1] * 0.95; // Gradual fade
     }
     
-    // Add current position to front
-    this.trailPositions[0].copy(this.position);
+    // Add current position with wind displacement to front
+    const windDisplacement = new THREE.Vector3(
+      Math.sin(this.windOffset * 2 + this.position.z * 0.1) * this.windStrength,
+      Math.cos(this.windOffset * 1.5 + this.position.x * 0.05) * this.windStrength * 0.5,
+      0
+    );
+    
+    this.trailPositions[0].copy(this.position).add(windDisplacement);
+    this.trailOpacities[0] = 1.0;
     
     // Update geometry
     const geometry = new THREE.BufferGeometry().setFromPoints(this.trailPositions);
+    
+    // Update opacity attribute
+    const opacities = new Float32Array(this.maxTrailLength);
+    for (let i = 0; i < this.maxTrailLength; i++) {
+      // Create smooth fade from front to back with wind variation
+      const fadeRatio = 1 - (i / this.maxTrailLength);
+      const windVariation = Math.sin(this.windOffset + i * 0.3) * 0.2 + 0.8;
+      opacities[i] = this.trailOpacities[i] * fadeRatio * windVariation;
+    }
+    geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
+    
+    // Update shader time uniform
+    if (this.trail.material instanceof THREE.ShaderMaterial) {
+      this.trail.material.uniforms.time.value = this.windOffset;
+    }
+    
     this.trail.geometry.dispose();
     this.trail.geometry = geometry;
   }
