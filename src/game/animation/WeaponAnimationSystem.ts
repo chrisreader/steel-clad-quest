@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PlayerBody } from '../../types/GameTypes';
 import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
@@ -260,17 +261,23 @@ export class WeaponAnimationSystem {
       playerBody.rightElbow.rotation.x = this.currentBowState.rightElbowX;
     }
     
+    // FIXED: Consistent left hand rotation across ALL bow states (+80°, 0°, 15°)
+    playerBody.leftHand.rotation.x = Math.PI * 80 / 180; // +80° downward angle for grip
+    playerBody.leftHand.rotation.y = 0; // 0° no side rotation
+    playerBody.leftHand.rotation.z = Math.PI / 12; // 15° slight twist for bow grip
+    
     // Apply hand positions for drawing states
     if (isBowDrawing) {
-      playerBody.leftHand.rotation.x = Math.PI * 80 / 180; // UPDATED: +80° downward angle for grip
-      playerBody.leftHand.rotation.y = 0; // UPDATED: 0° no side rotation
-      playerBody.leftHand.rotation.z = Math.PI / 12; // UPDATED: 15° slight twist for bow grip
-      
       // Right hand pulls string back with progressive intensity
       const drawAmount = this.easeInOutQuad(bowChargeLevel);
       playerBody.rightHand.rotation.x = drawAmount * Math.PI / 8;
       playerBody.rightHand.rotation.y = 0;
       playerBody.rightHand.rotation.z = drawAmount * Math.PI / 6;
+    } else {
+      // Right hand in neutral position for idle and walking
+      playerBody.rightHand.rotation.x = 0;
+      playerBody.rightHand.rotation.y = 0;
+      playerBody.rightHand.rotation.z = 0;
     }
     
     // Check if transition is complete
@@ -398,10 +405,10 @@ export class WeaponAnimationSystem {
       playerBody.body.rotation.z = torsoSway;
     }
     
-    // FIXED: Hand positions with corrected left hand Z-rotation (15° instead of 45°)
-    playerBody.leftHand.rotation.x = -Math.PI / 6;
-    playerBody.leftHand.rotation.y = 0;
-    playerBody.leftHand.rotation.z = Math.PI / 12; // FIXED: Changed from Math.PI / 4 to Math.PI / 12
+    // FIXED: Consistent left hand rotation (+80°, 0°, 15°) - same as all other bow states
+    playerBody.leftHand.rotation.x = Math.PI * 80 / 180; // +80° downward angle for grip
+    playerBody.leftHand.rotation.y = 0; // 0° no side rotation
+    playerBody.leftHand.rotation.z = Math.PI / 12; // 15° slight twist for bow grip
     
     playerBody.rightHand.rotation.x = 0;
     playerBody.rightHand.rotation.y = 0;
