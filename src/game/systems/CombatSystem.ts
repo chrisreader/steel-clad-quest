@@ -82,10 +82,16 @@ export class CombatSystem {
         if (currentWeapon.updateCharge) {
           currentWeapon.updateCharge(deltaTime);
           
-          // Debug charge level progression
+          // CRITICAL FIX: Get and log charge level progression
           if (currentWeapon.getChargeLevel) {
             const chargeLevel = currentWeapon.getChargeLevel();
-            console.log(`🏹 [CombatSystem] Bow charging continuously: ${(chargeLevel * 100).toFixed(1)}%`);
+            console.log(`🏹 [CombatSystem] Bow charging continuously: ${(chargeLevel * 100).toFixed(1)}% - Drawing state: ${this.isDrawingBow}`);
+            
+            // CRITICAL FIX: Ensure player bow drawing state is synchronized
+            if (chargeLevel > 0 && !this.player.getBody().leftArm.userData.bowDrawing) {
+              console.log("🏹 [CombatSystem] Synchronizing player bow drawing state");
+              this.player.getBody().leftArm.userData.bowDrawing = true;
+            }
           }
         }
       } else if (!isAttackHeld && this.isDrawingBow) {
@@ -137,8 +143,11 @@ export class CombatSystem {
     this.isDrawingBow = true;
     this.bowDrawStartTime = Date.now();
     
-    // Use player bow draw method
+    // CRITICAL FIX: Use player bow draw method and ensure state sync
     this.player.startBowDraw();
+    
+    // CRITICAL FIX: Mark bow drawing state on player body for animation system
+    this.player.getBody().leftArm.userData.bowDrawing = true;
     
     // Play bow draw sound
     this.audioManager.play('bow_draw');
@@ -149,6 +158,9 @@ export class CombatSystem {
   private releaseBowString(): void {
     console.log("🏹 [CombatSystem] Releasing bow string");
     this.isDrawingBow = false;
+    
+    // CRITICAL FIX: Clear bow drawing state on player body
+    this.player.getBody().leftArm.userData.bowDrawing = false;
     
     const currentWeapon = this.player.getEquippedWeapon();
     if (!currentWeapon || currentWeapon.getConfig().type !== 'bow') {

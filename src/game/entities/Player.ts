@@ -990,6 +990,27 @@ export class Player {
       this.debugArmPositions("UPDATE_LOOP");
     }
     
+    // CRITICAL FIX: Update bow drawing state based on equipped weapon
+    if (this.isBowEquipped && this.equippedWeapon) {
+      const chargeLevel = this.equippedWeapon.getChargeLevel ? this.equippedWeapon.getChargeLevel() : 0;
+      const isDrawing = this.equippedWeapon.isDrawing ? this.equippedWeapon.isDrawing() : false;
+      
+      // Update bow drawing state
+      this.bowDrawAnimation.isActive = isDrawing;
+      
+      // Debug charge level flow
+      if (isDrawing) {
+        console.log(`🏹 [Player] Update loop - Bow drawing: ${isDrawing}, Charge: ${(chargeLevel * 100).toFixed(1)}%`);
+      }
+      
+      // Update weapon animation system with current charge level
+      this.weaponAnimationSystem.updateBowDrawAnimation(
+        this.playerBody,
+        chargeLevel,
+        deltaTime
+      );
+    }
+    
     // Update weapon swing animation (for melee weapons) with SPATIAL MOVEMENT
     if (!this.isBowEquipped) {
       this.updateSwordSwingAnimation();
@@ -1388,6 +1409,10 @@ export class Player {
     } else {
       console.warn("🏹 [Player] Equipped weapon does not support startDrawing method");
     }
+    
+    // CRITICAL FIX: Immediately update animation system
+    this.weaponAnimationSystem.setWeaponType('bow');
+    console.log("🏹 [Player] Bow draw started - animation system updated");
   }
   
   public stopBowDraw(): void {
@@ -1404,5 +1429,8 @@ export class Player {
     } else {
       console.warn("🏹 [Player] Equipped weapon does not support stopDrawing method");
     }
+    
+    // CRITICAL FIX: Reset animation system
+    console.log("🏹 [Player] Bow draw stopped - animation system reset");
   }
 }
