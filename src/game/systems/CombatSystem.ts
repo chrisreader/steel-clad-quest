@@ -157,12 +157,16 @@ export class CombatSystem {
         enemyHit = true;
         
         const enemyPosition = enemy.getPosition();
+        const slashDirection = enemyPosition.clone().sub(playerPosition).normalize();
         
-        // Apply damage
+        // REMOVED: No slash trail effect - only blood on enemy hit
+        
+        // Apply damage and create blood effect
         enemy.takeDamage(attackPower, playerPosition);
         
-        // Create blood effect ONLY when hitting enemy
-        this.effectsManager.createBloodEffect(enemyPosition, enemyPosition.clone().sub(playerPosition).normalize());
+        // Create realistic blood effect ONLY when hitting enemy
+        const damageIntensity = Math.min(attackPower / 50, 2);
+        this.effectsManager.createRealisticBloodEffect(enemyPosition, slashDirection, damageIntensity);
         
         this.player.addEnemy(enemy);
         
@@ -173,12 +177,12 @@ export class CombatSystem {
           this.player.addExperience(enemy.getExperienceReward());
         }
         
-        console.log("⚔️ [CombatSystem] Enemy hit - created blood effect");
+        console.log("⚔️ [CombatSystem] Enemy hit - created blood effect only (no slash trail)");
       }
     });
     
     if (!enemyHit) {
-      console.log("⚔️ [CombatSystem] No enemies hit");
+      console.log("⚔️ [CombatSystem] No enemies hit - no effects created");
     }
   }
   

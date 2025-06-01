@@ -1,425 +1,476 @@
 import * as THREE from 'three';
 
+interface ParticleOptions {
+  position: THREE.Vector3;
+  count: number;
+  duration: number;
+  size?: number;
+  sizeVariation?: number;
+  speed?: number;
+  speedVariation?: number;
+  color?: THREE.Color | string | number;
+  colorVariation?: number;
+  gravity?: number;
+  texture?: THREE.Texture;
+  direction?: THREE.Vector3;
+  spread?: number;
+  opacity?: number;
+  fadeIn?: number;
+  fadeOut?: number;
+  rotationSpeed?: number;
+}
+
+interface Particle {
+  position: THREE.Vector3;
+  velocity: THREE.Vector3;
+  size: number;
+  color: THREE.Color;
+  opacity: number;
+  age: number;
+  rotation: number;
+  rotationSpeed: number;
+  active: boolean;
+}
+
 export class ParticleSystem {
   private scene: THREE.Scene;
+  private particles: Particle[];
   private geometry: THREE.BufferGeometry;
-  private material: THREE.PointsMaterial | THREE.ShaderMaterial;
-  private particles: THREE.Points;
-  private particleCount: number;
-  private positions: Float32Array;
-  private velocities: Float32Array;
-  private lifetimes: Float32Array;
-  private maxLifetime: number;
-  private isActive: boolean = false;
+  private material: THREE.SpriteMaterial | THREE.ShaderMaterial;
+  private sprites: THREE.Sprite[] = [];
+  private options: ParticleOptions;
+  private startTime: number;
+  private isActive: boolean;
+  private bloodTexture: THREE.Texture | null = null;
   
-  constructor(
-    scene: THREE.Scene,
-    particleCount: number,
-    material: THREE.PointsMaterial | THREE.ShaderMaterial,
-    maxLifetime: number = 2000
-  ) {
+  constructor(scene: THREE.Scene, options: ParticleOptions) {
     this.scene = scene;
-    this.particleCount = particleCount;
-    this.material = material;
-    this.maxLifetime = maxLifetime;
+    this.options = {
+      ...{
+        count: 100,
+        duration: 1000,
+        size: 0.1,
+        sizeVariation: 0.05,
+        speed: 1,
+        speedVariation: 0.5,
+        color: 0xffffff,
+        colorVariation: 0.2,
+        gravity: 0.5,
+        direction: new THREE.Vector3(0, 1, 0),
+        spread: 0.5,
+        opacity: 1,
+        fadeIn: 0.1,
+        fadeOut: 0.3,
+        rotationSpeed: 0
+      },
+      ...options
+    };
     
-    this.geometry = new THREE.BufferGeometry();
-    this.positions = new Float32Array(particleCount * 3);
-    this.velocities = new Float32Array(particleCount * 3);
-    this.lifetimes = new Float32Array(particleCount);
+    this.particles = [];
+    this.startTime = 0;
+    this.isActive = false;
+    this.sprites = [];
     
-    this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
-    this.particles = new THREE.Points(this.geometry, this.material);
+    this.createBloodTexture();
+    this.initParticles();
+    this.createSprites();
+  }
+  
+  private createBloodTexture(): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Create circular blood droplet texture
+    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gradient.addColorStop(0, 'rgba(139, 0, 0, 1)');
+    gradient.addColorStop(0.7, 'rgba(100, 0, 0, 0.8)');
+    gradient.addColorStop(1, 'rgba(80, 0, 0, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(16, 16, 16, 0, Math.PI * 2);
+    ctx.fill();
+    
+    this.bloodTexture = new THREE.CanvasTexture(canvas);
+    this.bloodTexture.needsUpdate = true;
+  }
+  
+  private initParticles(): void {
+    this.particles = [];
+    
+    for (let i = 0; i < this.options.count; i++) {
+      const direction = this.options.direction!.clone();
+      
+      if (this.options.spread! > 0) {
+        direction.x += (Math.random() - 0.5) * this.options.spread!;
+        direction.y += (Math.random() - 0.5) * this.options.spread!;
+        direction.z += (Math.random() - 0.5) * this.options.spread!;
+        direction.normalize();
+      }
+      
+      const speed = this.options.speed! + (Math.random() - 0.5) * this.options.speedVariation!;
+      
+      const particle: Particle = {
+        position: this.options.position.clone(),
+        velocity: direction.multiplyScalar(speed),
+        size: this.options.size! + (Math.random() - 0.5) * this.options.sizeVariation!,
+        color: new THREE.Color(this.options.color),
+        opacity: 0,
+        age: 0,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * this.options.rotationSpeed!,
+        active: true
+      };
+      
+      if (this.options.colorVariation! > 0) {
+        particle.color.r += (Math.random() - 0.5) * this.options.colorVariation!;
+        particle.color.g += (Math.random() - 0.5) * this.options.colorVariation!;
+        particle.color.b += (Math.random() - 0.5) * this.options.colorVariation!;
+      }
+      
+      this.particles.push(particle);
+    }
+  }
+  
+  private createSprites(): void {
+    this.sprites = [];
+    
+    for (let i = 0; i < this.particles.length; i++) {
+      const particle = this.particles[i];
+      
+      const material = new THREE.SpriteMaterial({
+        map: this.bloodTexture,
+        transparent: true,
+        opacity: particle.opacity,
+        color: particle.color,
+        blending: THREE.NormalBlending,
+        depthWrite: false
+      });
+      
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.setScalar(particle.size * 2); // Make sprites more visible
+      sprite.position.copy(particle.position);
+      sprite.visible = false; // Start invisible
+      
+      this.sprites.push(sprite);
+    }
   }
   
   public start(): void {
+    if (this.isActive) return;
+    
     this.isActive = true;
-    this.scene.add(this.particles);
+    this.startTime = Date.now();
+    
+    // Add sprites to scene
+    this.sprites.forEach(sprite => {
+      this.scene.add(sprite);
+    });
+    
+    this.initParticles();
   }
   
   public stop(): void {
+    if (!this.isActive) return;
+    
     this.isActive = false;
-    this.scene.remove(this.particles);
+    
+    // Remove sprites from scene and dispose materials
+    this.sprites.forEach(sprite => {
+      this.scene.remove(sprite);
+      if (sprite.material) {
+        sprite.material.dispose();
+      }
+    });
   }
   
   public update(): void {
     if (!this.isActive) return;
     
-    const deltaTime = 16; // Assume 60fps
+    const now = Date.now();
+    const elapsed = now - this.startTime;
     
-    for (let i = 0; i < this.particleCount; i++) {
-      const i3 = i * 3;
-      
-      // Update lifetime
-      this.lifetimes[i] -= deltaTime;
-      
-      if (this.lifetimes[i] <= 0) {
-        this.respawnParticle(i);
-      }
-      
-      // Update position
-      this.positions[i3] += this.velocities[i3] * deltaTime * 0.001;
-      this.positions[i3 + 1] += this.velocities[i3 + 1] * deltaTime * 0.001;
-      this.positions[i3 + 2] += this.velocities[i3 + 2] * deltaTime * 0.001;
+    if (elapsed >= this.options.duration) {
+      this.stop();
+      return;
     }
     
-    this.geometry.attributes.position.needsUpdate = true;
-  }
-  
-  protected respawnParticle(index: number): void {
-    // Override in subclasses
-  }
-  
-  public static createWindSwoosh(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
-    const particleCount = 30;
-    const material = new THREE.PointsMaterial({
-      color: 0xEEEEEE,
-      size: 0.05,
-      transparent: true,
-      opacity: 0.7,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 300);
-    
-    // Initialize wind swoosh particles
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
+    for (let i = 0; i < this.particles.length; i++) {
+      const particle = this.particles[i];
+      const sprite = this.sprites[i];
       
-      // Start particles along the sword path
-      const t = i / particleCount;
-      system.positions[i3] = position.x + direction.x * t * 1.5;
-      system.positions[i3 + 1] = position.y + Math.random() * 0.3 - 0.15;
-      system.positions[i3 + 2] = position.z + direction.z * t * 1.5;
+      if (!particle.active || !sprite) continue;
       
-      // Add wind-like velocity
-      const windSpeed = 3 + Math.random() * 2;
-      system.velocities[i3] = direction.x * windSpeed + (Math.random() - 0.5) * 2;
-      system.velocities[i3 + 1] = (Math.random() - 0.5) * 1;
-      system.velocities[i3 + 2] = direction.z * windSpeed + (Math.random() - 0.5) * 2;
+      particle.age += 16;
+      const particleProgress = particle.age / this.options.duration;
       
-      system.lifetimes[i] = 200 + Math.random() * 100;
-    }
-    
-    // Override respawn to not respawn particles (one-time effect)
-    system.respawnParticle = (index: number) => {
-      system.lifetimes[index] = -1; // Don't respawn
-    };
-    
-    return system;
-  }
-  
-  public static createBloodSpray(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3, intensity: number = 1): ParticleSystem {
-    const particleCount = Math.floor(20 * intensity);
-    const material = new THREE.PointsMaterial({
-      color: 0x8B0000,
-      size: 0.03,
-      transparent: true,
-      opacity: 0.8
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 1000);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      system.positions[i3] = position.x;
-      system.positions[i3 + 1] = position.y;
-      system.positions[i3 + 2] = position.z;
-      
-      const spread = 0.5;
-      system.velocities[i3] = direction.x * 2 + (Math.random() - 0.5) * spread;
-      system.velocities[i3 + 1] = direction.y * 2 + (Math.random() - 0.5) * spread;
-      system.velocities[i3 + 2] = direction.z * 2 + (Math.random() - 0.5) * spread;
-      
-      system.lifetimes[i] = 800 + Math.random() * 400;
-    }
-    
-    return system;
-  }
-  
-  public static createBloodDroplets(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
-    const particleCount = 15;
-    const material = new THREE.PointsMaterial({
-      color: 0x660000,
-      size: 0.02,
-      transparent: true,
-      opacity: 0.9
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 1500);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      system.positions[i3] = position.x;
-      system.positions[i3 + 1] = position.y;
-      system.positions[i3 + 2] = position.z;
-      
-      system.velocities[i3] = direction.x * 1.5 + (Math.random() - 0.5) * 0.8;
-      system.velocities[i3 + 1] = direction.y * 1.5 + Math.random() * 0.5;
-      system.velocities[i3 + 2] = direction.z * 1.5 + (Math.random() - 0.5) * 0.8;
-      
-      system.lifetimes[i] = 1200 + Math.random() * 600;
-    }
-    
-    return system;
-  }
-  
-  public static createDirectionalBloodSpray(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3, intensity: number): ParticleSystem {
-    const particleCount = Math.floor(25 * intensity);
-    const material = new THREE.PointsMaterial({
-      color: 0x8B0000,
-      size: 0.04,
-      transparent: true,
-      opacity: 0.8
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 1200);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      system.positions[i3] = position.x;
-      system.positions[i3 + 1] = position.y;
-      system.positions[i3 + 2] = position.z;
-      
-      system.velocities[i3] = direction.x * 3 + (Math.random() - 0.5) * 0.5;
-      system.velocities[i3 + 1] = direction.y * 3 + (Math.random() - 0.5) * 0.5;
-      system.velocities[i3 + 2] = direction.z * 3 + (Math.random() - 0.5) * 0.5;
-      
-      system.lifetimes[i] = 1000 + Math.random() * 400;
-    }
-    
-    return system;
-  }
-  
-  public static createBloodTrail(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
-    const particleCount = 10;
-    const material = new THREE.PointsMaterial({
-      color: 0x8B0000,
-      size: 0.03,
-      transparent: true,
-      opacity: 0.6
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 800);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      system.positions[i3] = position.x;
-      system.positions[i3 + 1] = position.y;
-      system.positions[i3 + 2] = position.z;
-      
-      system.velocities[i3] = direction.x * 1 + (Math.random() - 0.5) * 0.3;
-      system.velocities[i3 + 1] = direction.y * 1 + (Math.random() - 0.5) * 0.3;
-      system.velocities[i3 + 2] = direction.z * 1 + (Math.random() - 0.5) * 0.3;
-      
-      system.lifetimes[i] = 600 + Math.random() * 400;
-    }
-    
-    return system;
-  }
-  
-  public static createPainFeedback(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
-    const particleCount = 20;
-    const material = new THREE.PointsMaterial({
-      color: 0xFF0000,
-      size: 0.05,
-      transparent: true,
-      opacity: 0.7,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 500);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      system.positions[i3] = position.x + (Math.random() - 0.5) * 0.5;
-      system.positions[i3 + 1] = position.y + (Math.random() - 0.5) * 0.5;
-      system.positions[i3 + 2] = position.z + (Math.random() - 0.5) * 0.5;
-      
-      system.velocities[i3] = (Math.random() - 0.5) * 2;
-      system.velocities[i3 + 1] = Math.random() * 2;
-      system.velocities[i3 + 2] = (Math.random() - 0.5) * 2;
-      
-      system.lifetimes[i] = 400 + Math.random() * 200;
-    }
-    
-    return system;
-  }
-  
-  public static createFireball(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
-    const particleCount = 50;
-    const material = new THREE.PointsMaterial({
-      color: 0xFF4400,
-      size: 0.08,
-      transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 1000);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      system.positions[i3] = position.x;
-      system.positions[i3 + 1] = position.y;
-      system.positions[i3 + 2] = position.z;
-      
-      system.velocities[i3] = direction.x * 8 + (Math.random() - 0.5) * 2;
-      system.velocities[i3 + 1] = direction.y * 8 + (Math.random() - 0.5) * 2;
-      system.velocities[i3 + 2] = direction.z * 8 + (Math.random() - 0.5) * 2;
-      
-      system.lifetimes[i] = 800 + Math.random() * 400;
-    }
-    
-    return system;
-  }
-  
-  public static createDustCloud(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
-    const particleCount = 30;
-    const material = new THREE.PointsMaterial({
-      color: 0x8B7355,
-      size: 0.1,
-      transparent: true,
-      opacity: 0.4
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 2000);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      system.positions[i3] = position.x + (Math.random() - 0.5) * 2;
-      system.positions[i3 + 1] = position.y + Math.random() * 0.5;
-      system.positions[i3 + 2] = position.z + (Math.random() - 0.5) * 2;
-      
-      system.velocities[i3] = (Math.random() - 0.5) * 1;
-      system.velocities[i3 + 1] = Math.random() * 2;
-      system.velocities[i3 + 2] = (Math.random() - 0.5) * 1;
-      
-      system.lifetimes[i] = 1500 + Math.random() * 1000;
-    }
-    
-    return system;
-  }
-  
-  public static createExplosion(scene: THREE.Scene, position: THREE.Vector3, color: number = 0xFFFFFF, intensity: number = 1): ParticleSystem {
-    const particleCount = Math.floor(60 * intensity);
-    const material = new THREE.PointsMaterial({
-      color: color,
-      size: 0.1,
-      transparent: true,
-      opacity: 0.9,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 1500);
-    
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      system.positions[i3] = position.x;
-      system.positions[i3 + 1] = position.y;
-      system.positions[i3 + 2] = position.z;
-      
-      const speed = 5 * intensity;
-      system.velocities[i3] = (Math.random() - 0.5) * speed;
-      system.velocities[i3 + 1] = (Math.random() - 0.5) * speed;
-      system.velocities[i3 + 2] = (Math.random() - 0.5) * speed;
-      
-      system.lifetimes[i] = 1000 + Math.random() * 1000;
-    }
-    
-    return system;
-  }
-  
-  public static createRealisticSwordSwoosh(scene: THREE.Scene, swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): ParticleSystem {
-    const particleCount = 50;
-    const material = new THREE.PointsMaterial({
-      color: 0xE8E8E8,
-      size: 0.03,
-      transparent: true,
-      opacity: 0.9,
-      blending: THREE.AdditiveBlending
-    });
-    
-    const system = new ParticleSystem(scene, particleCount, material, 300);
-    
-    // Create particles along the sword path with realistic wind displacement
-    for (let i = 0; i < particleCount; i++) {
-      const i3 = i * 3;
-      
-      // Distribute particles along the sword path
-      const pathProgress = i / particleCount;
-      let basePosition: THREE.Vector3;
-      
-      if (swordPath.length >= 2) {
-        // Interpolate along the actual sword path
-        const segmentIndex = Math.floor(pathProgress * (swordPath.length - 1));
-        const localProgress = (pathProgress * (swordPath.length - 1)) - segmentIndex;
-        
-        if (segmentIndex < swordPath.length - 1) {
-          const start = swordPath[segmentIndex];
-          const end = swordPath[segmentIndex + 1];
-          basePosition = start.clone().lerp(end, localProgress);
-        } else {
-          basePosition = swordPath[swordPath.length - 1].clone();
-        }
-      } else if (swordPath.length === 1) {
-        basePosition = swordPath[0].clone();
+      // Calculate opacity with fade in/out
+      if (particleProgress < this.options.fadeIn!) {
+        particle.opacity = particleProgress / this.options.fadeIn! * this.options.opacity!;
+      } else if (particleProgress > (1 - this.options.fadeOut!)) {
+        particle.opacity = (1 - (particleProgress - (1 - this.options.fadeOut!)) / this.options.fadeOut!) * this.options.opacity!;
       } else {
-        basePosition = new THREE.Vector3(0, 0, 0);
+        particle.opacity = this.options.opacity!;
       }
       
-      // Add wind displacement perpendicular to swing direction
-      const perpendicular = new THREE.Vector3()
-        .crossVectors(swingDirection, new THREE.Vector3(0, 1, 0))
-        .normalize();
+      // Update physics
+      particle.rotation += particle.rotationSpeed;
+      particle.velocity.y -= this.options.gravity! * 0.016;
+      particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
       
-      const windOffset = perpendicular.clone()
-        .multiplyScalar((Math.random() - 0.5) * 0.15);
+      // Update sprite
+      sprite.position.copy(particle.position);
+      sprite.material.opacity = particle.opacity;
+      sprite.material.rotation = particle.rotation;
+      sprite.visible = particle.opacity > 0.01;
       
-      basePosition.add(windOffset);
-      
-      // Set particle position
-      system.positions[i3] = basePosition.x;
-      system.positions[i3 + 1] = basePosition.y + (Math.random() - 0.5) * 0.1;
-      system.positions[i3 + 2] = basePosition.z;
-      
-      // Set velocity to follow the swing direction with wind-like turbulence
-      const baseVelocity = swingDirection.clone().multiplyScalar(3 + Math.random() * 2);
-      const turbulence = new THREE.Vector3(
-        (Math.random() - 0.5) * 1.5,
-        (Math.random() - 0.5) * 1.0,
-        (Math.random() - 0.5) * 1.5
-      );
-      
-      const finalVelocity = baseVelocity.add(turbulence);
-      
-      system.velocities[i3] = finalVelocity.x;
-      system.velocities[i3 + 1] = finalVelocity.y;
-      system.velocities[i3 + 2] = finalVelocity.z;
-      
-      // Stagger lifetimes for more realistic fading
-      system.lifetimes[i] = 250 + Math.random() * 100;
+      // Scale down over time for more realism
+      const sizeMultiplier = 1 - particleProgress * 0.3;
+      sprite.scale.setScalar(particle.size * 2 * sizeMultiplier);
     }
-    
-    // Override respawn to not respawn particles (one-time effect)
-    system.respawnParticle = (index: number) => {
-      system.lifetimes[index] = -1; // Don't respawn
-    };
-    
-    return system;
   }
   
-  public dispose(): void {
-    this.stop();
-    this.geometry.dispose();
-    this.material.dispose();
+  // Enhanced realistic blood effects with improved textures
+  static createBloodSpray(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3, intensity: number = 1): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: Math.floor(30 * intensity),
+      duration: 1200,
+      size: 0.08, // Increased size for visibility
+      sizeVariation: 0.04,
+      speed: 4 * intensity,
+      speedVariation: 2,
+      color: 0x8B0000,
+      colorVariation: 0.15,
+      gravity: 8,
+      direction: direction,
+      spread: 0.6,
+      opacity: 0.9,
+      fadeIn: 0.05,
+      fadeOut: 0.4
+    });
+  }
+  
+  static createBloodDroplets(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 20,
+      duration: 2000,
+      size: 0.12, // Increased size for visibility
+      sizeVariation: 0.06,
+      speed: 2,
+      speedVariation: 1.5,
+      color: 0x660000,
+      colorVariation: 0.1,
+      gravity: 12,
+      direction: direction,
+      spread: 0.8,
+      opacity: 0.95,
+      fadeIn: 0.02,
+      fadeOut: 0.2
+    });
+  }
+  
+  static createDirectionalBloodSpray(scene: THREE.Scene, position: THREE.Vector3, arrowDirection: THREE.Vector3, intensity: number): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: Math.floor(30 * intensity),
+      duration: 1500,
+      size: 0.05,
+      sizeVariation: 0.025,
+      speed: 6 * intensity,
+      speedVariation: 1,
+      color: 0x8B0000,
+      colorVariation: 0.1,
+      gravity: 10,
+      direction: arrowDirection,
+      spread: 0.3,
+      opacity: 0.9,
+      fadeIn: 0.03,
+      fadeOut: 0.3
+    });
+  }
+  
+  static createBloodTrail(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 15,
+      duration: 800,
+      size: 0.03,
+      sizeVariation: 0.015,
+      speed: 1,
+      speedVariation: 0.5,
+      color: 0x4A0000,
+      colorVariation: 0.05,
+      gravity: 6,
+      direction: direction,
+      spread: 0.15,
+      opacity: 0.8,
+      fadeIn: 0.1,
+      fadeOut: 0.5
+    });
+  }
+  
+  static createMetallicSparks(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 35,
+      duration: 600,
+      size: 0.04,
+      sizeVariation: 0.02,
+      speed: 5,
+      speedVariation: 3,
+      color: 0xFFDD44,
+      colorVariation: 0.3,
+      gravity: 4,
+      direction: new THREE.Vector3(0, 0.8, 0),
+      spread: 1,
+      opacity: 0.8,
+      fadeIn: 0.02,
+      fadeOut: 0.7
+    });
+  }
+  
+  static createPainFeedback(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 20,
+      duration: 500,
+      size: 0.12,
+      sizeVariation: 0.06,
+      speed: 0.5,
+      speedVariation: 0.3,
+      color: 0xFF0000,
+      colorVariation: 0.2,
+      gravity: 0.1,
+      direction: new THREE.Vector3(0, 1, 0),
+      spread: 0.8,
+      opacity: 0.6,
+      fadeIn: 0.1,
+      fadeOut: 0.8
+    });
+  }
+  
+  static createExplosion(scene: THREE.Scene, position: THREE.Vector3, color: THREE.Color | string | number = 0xFF5500, scale: number = 1): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: Math.floor(50 * scale),
+      duration: 800,
+      size: 0.1 * scale,
+      sizeVariation: 0.05 * scale,
+      speed: 3 * scale,
+      speedVariation: 1.5 * scale,
+      color: color,
+      colorVariation: 0.2,
+      gravity: 2,
+      direction: new THREE.Vector3(0, 1, 0),
+      spread: 1,
+      opacity: 0.7,
+      fadeIn: 0.1,
+      fadeOut: 0.4
+    });
+  }
+  
+  static createImpactBurst(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 25,
+      duration: 400,
+      size: 0.08,
+      sizeVariation: 0.04,
+      speed: 4,
+      speedVariation: 2,
+      color: 0xFFAA44,
+      colorVariation: 0.3,
+      gravity: 1,
+      direction: new THREE.Vector3(0, 0.5, 0),
+      spread: 0.8,
+      opacity: 0.8,
+      fadeIn: 0.05,
+      fadeOut: 0.6
+    });
+  }
+  
+  static createBloodSplatter(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 30,
+      duration: 600,
+      size: 0.06,
+      sizeVariation: 0.03,
+      speed: 2,
+      speedVariation: 1,
+      color: 0x880000,
+      colorVariation: 0.1,
+      gravity: 6,
+      direction: direction,
+      spread: 0.4,
+      opacity: 0.9,
+      fadeIn: 0.05,
+      fadeOut: 0.3
+    });
+  }
+  
+  static createDustCloud(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 20,
+      duration: 1500,
+      size: 0.15,
+      sizeVariation: 0.1,
+      speed: 0.5,
+      speedVariation: 0.3,
+      color: 0xCCBB99,
+      colorVariation: 0.1,
+      gravity: 0.05,
+      direction: new THREE.Vector3(0, 1, 0),
+      spread: 0.6,
+      opacity: 0.4,
+      fadeIn: 0.3,
+      fadeOut: 0.5
+    });
+  }
+  
+  static createSwordTrail(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 15,
+      duration: 250,
+      size: 0.12,
+      sizeVariation: 0.04,
+      speed: 0.3,
+      speedVariation: 0.1,
+      color: 0xCCCCCC,
+      colorVariation: 0,
+      gravity: 0,
+      direction: direction,
+      spread: 0.1,
+      opacity: 0.6,
+      fadeIn: 0.1,
+      fadeOut: 0.7
+    });
+  }
+  
+  static createFireball(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 40,
+      duration: 800,
+      size: 0.2,
+      sizeVariation: 0.08,
+      speed: 0.2,
+      speedVariation: 0.1,
+      color: 0xFF6600,
+      colorVariation: 0.3,
+      gravity: -0.3,
+      direction: direction,
+      spread: 0.15,
+      opacity: 0.7,
+      fadeIn: 0.1,
+      fadeOut: 0.5,
+      rotationSpeed: 1
+    });
   }
 }

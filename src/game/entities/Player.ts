@@ -944,22 +944,16 @@ export class Player {
   private createEnhancedSwooshEffect(): void {
     if (!this.equippedWeapon || this.weaponTipPositions.length === 0) return;
     
-    // Calculate swing direction from sword movement
-    let swingDirection = new THREE.Vector3(1, 0, 0); // Default right-to-left
+    const tipPosition = this.weaponTipPositions[this.weaponTipPositions.length - 1];
+    let direction = new THREE.Vector3(1, 0, 0);
     
     if (this.weaponTipPositions.length >= 2) {
       const recent = this.weaponTipPositions[this.weaponTipPositions.length - 1];
-      const start = this.weaponTipPositions[0];
-      swingDirection = recent.clone().sub(start).normalize();
+      const previous = this.weaponTipPositions[this.weaponTipPositions.length - 2];
+      direction = recent.clone().sub(previous).normalize();
     }
     
-    // Create realistic sword swoosh effect that follows the actual blade path
-    this.effectsManager.createSwordSwooshEffect(
-      this.weaponTipPositions.slice(), // Copy of the sword path
-      swingDirection
-    );
-    
-    console.log("🌪️ [Player] Created realistic sword swoosh following blade trail from right to left");
+    console.log("🌪️ [Player] Sword swoosh effect removed - no effects on empty swings");
   }
   
   private createWeaponTrailEffect(): void {
