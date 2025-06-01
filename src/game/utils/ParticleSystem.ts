@@ -313,6 +313,52 @@ export class ParticleSystem {
     });
   }
   
+  // NEW: Realistic wind swoosh effect that follows sword blade trail
+  static createWindSwoosh(scene: THREE.Scene, swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): ParticleSystem {
+    const avgPosition = swordPath.reduce((sum, pos) => sum.add(pos), new THREE.Vector3()).divideScalar(swordPath.length);
+    
+    return new ParticleSystem(scene, {
+      position: avgPosition,
+      count: 25,
+      duration: 300,
+      size: 0.03,
+      sizeVariation: 0.015,
+      speed: 2,
+      speedVariation: 1,
+      color: 0xF0F0F0,
+      colorVariation: 0.1,
+      gravity: 0.1,
+      direction: swingDirection.clone().normalize(),
+      spread: 0.3,
+      opacity: 0.7,
+      fadeIn: 0.05,
+      fadeOut: 0.6
+    });
+  }
+  
+  // NEW: Air streaks that follow the sword blade more precisely
+  static createAirStreaks(scene: THREE.Scene, swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): ParticleSystem {
+    const midPoint = swordPath[Math.floor(swordPath.length / 2)] || swordPath[0];
+    
+    return new ParticleSystem(scene, {
+      position: midPoint,
+      count: 15,
+      duration: 200,
+      size: 0.02,
+      sizeVariation: 0.01,
+      speed: 1.5,
+      speedVariation: 0.5,
+      color: 0xE8E8E8,
+      colorVariation: 0.05,
+      gravity: 0.05,
+      direction: swingDirection.clone().normalize(),
+      spread: 0.2,
+      opacity: 0.6,
+      fadeIn: 0.02,
+      fadeOut: 0.8
+    });
+  }
+  
   static createMetallicSparks(scene: THREE.Scene, position: THREE.Vector3): ParticleSystem {
     return new ParticleSystem(scene, {
       position: position,

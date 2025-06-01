@@ -898,10 +898,10 @@ export class Player {
     if (elapsed >= phases.windup && elapsed < phases.windup + phases.slash) {
       this.trackWeaponTip();
       
-      // Create enhanced swoosh effect once during mid-slash
+      // Create sword swoosh effect once during mid-slash using tracked path
       const slashProgress = (elapsed - phases.windup) / phases.slash;
       if (slashProgress >= 0.3 && slashProgress <= 0.5 && !this.swooshEffectCreated) {
-        this.createEnhancedSwooshEffect();
+        this.createRealisticSwordSwoosh();
         this.swooshEffectCreated = true;
       }
     }
@@ -941,19 +941,25 @@ export class Player {
     }
   }
   
-  private createEnhancedSwooshEffect(): void {
-    if (!this.equippedWeapon || this.weaponTipPositions.length === 0) return;
-    
-    const tipPosition = this.weaponTipPositions[this.weaponTipPositions.length - 1];
-    let direction = new THREE.Vector3(1, 0, 0);
-    
-    if (this.weaponTipPositions.length >= 2) {
-      const recent = this.weaponTipPositions[this.weaponTipPositions.length - 1];
-      const previous = this.weaponTipPositions[this.weaponTipPositions.length - 2];
-      direction = recent.clone().sub(previous).normalize();
+  private createRealisticSwordSwoosh(): void {
+    if (!this.equippedWeapon || this.weaponTipPositions.length < 2) {
+      console.log("🌪️ [Player] Cannot create sword swoosh - insufficient weapon data");
+      return;
     }
     
-    console.log("🌪️ [Player] Sword swoosh effect removed - no effects on empty swings");
+    // Calculate swing direction from sword path
+    const pathStart = this.weaponTipPositions[0];
+    const pathEnd = this.weaponTipPositions[this.weaponTipPositions.length - 1];
+    const swingDirection = pathEnd.clone().sub(pathStart).normalize();
+    
+    console.log("🌪️ [Player] Creating sword swoosh effect with", this.weaponTipPositions.length, "tracked positions");
+    
+    // Create the swoosh effect following the sword trail
+    this.effectsManager.createSwordSwooshEffect(this.weaponTipPositions, swingDirection);
+  }
+  
+  private createEnhancedSwooshEffect(): void {
+    // ... keep existing code (empty method - swoosh now handled by createRealisticSwordSwoosh)
   }
   
   private createWeaponTrailEffect(): void {

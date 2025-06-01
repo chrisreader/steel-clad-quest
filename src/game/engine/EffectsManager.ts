@@ -216,6 +216,28 @@ export class EffectsManager {
     this.shakeCamera(0.04 * intensity);
   }
   
+  // NEW: Sword swoosh effect that follows the blade trail
+  public createSwordSwooshEffect(swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): void {
+    if (swordPath.length < 2) {
+      console.log("🌪️ [EffectsManager] Insufficient sword path data for swoosh effect");
+      return;
+    }
+    
+    console.log("🌪️ [EffectsManager] Creating realistic sword swoosh effect following blade trail");
+    
+    // Create wind displacement particles along the sword path
+    const windSwoosh = ParticleSystem.createWindSwoosh(this.scene, swordPath, swingDirection);
+    windSwoosh.start();
+    this.particleSystems.push(windSwoosh);
+    
+    // Create air disturbance streaks for enhanced realism
+    const airStreaks = ParticleSystem.createAirStreaks(this.scene, swordPath, swingDirection);
+    airStreaks.start();
+    this.particleSystems.push(airStreaks);
+    
+    console.log("🌪️ [EffectsManager] Sword swoosh effect created with", swordPath.length, "path points");
+  }
+  
   // Legacy methods updated - REMOVED slash trail effects
   public createAttackEffect(position: THREE.Vector3, color: number = 0xFF6B6B): void {
     // Empty method - no effects for empty attacks
