@@ -38,43 +38,38 @@ export class CombatSystem {
     this.audioManager = audioManager;
     this.camera = camera;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with FIXED arrow orientation and debug");
   }
   
   public update(deltaTime: number): void {
-    // Log that combat system is updating
-    console.log(`⚔️ [CombatSystem] Updating with deltaTime ${deltaTime}`);
-    
-    if (this.enemies.length === 0 && this.gold.length === 0) return;
-    
     this.lastAttackTime += deltaTime;
     
+    // CRITICAL FIX: Always update projectile system regardless of enemy/gold presence
     this.projectileSystem.setEnemies(this.enemies);
-    
-    // CRITICAL: Ensure projectile system is updated
-    console.log(`⚔️ [CombatSystem] Updating projectile system...`);
     this.projectileSystem.update(deltaTime);
     
-    if (this.player.isAttacking() && !this.bowReadyToFire) {
+    // Only check attacks if we have something to attack
+    if (this.player.isAttacking() && !this.bowReadyToFire && this.enemies.length > 0) {
       this.checkPlayerAttacks();
     }
     
-    this.checkGoldPickups();
-    this.cleanupEntities();
+    // Only check gold pickups if there is gold to pick up
+    if (this.gold.length > 0) {
+      this.checkGoldPickups();
+    }
+    
+    // Only cleanup entities if there are entities to cleanup
+    if (this.enemies.length > 0) {
+      this.cleanupEntities();
+    }
   }
   
   public startPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK *** - FIXED Arrow System");
-    console.log("⚔️ [CombatSystem] Current weapon:", currentWeapon ? currentWeapon.getConfig().name : 'none');
-    
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
-      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Preparing FIXED arrow");
       this.bowReadyToFire = true;
       this.player.startBowDraw();
     } else {
-      console.log("⚔️ [CombatSystem] ⚔️ MELEE WEAPON - Starting melee attack");
       this.startMeleeAttack();
     }
   }
@@ -82,11 +77,7 @@ export class CombatSystem {
   public stopPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] *** STOP PLAYER ATTACK *** - Firing FIXED Arrow");
-    
     if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.bowReadyToFire) {
-      console.log("⚔️ [CombatSystem] 🏹 FIRING FIXED ARROW");
-      
       this.player.stopBowDraw();
       this.fireIndependentArrow();
     }
@@ -95,9 +86,6 @@ export class CombatSystem {
   }
   
   private fireIndependentArrow(): void {
-    console.log("🏹 [CombatSystem] *** FIRING ARROW WITH FIXED ORIENTATION ***");
-    
-    // Only fire if we have a valid player and camera
     if (!this.player || !this.camera) {
       console.error("🏹 [CombatSystem] Cannot fire arrow: missing player or camera");
       return;
@@ -105,41 +93,27 @@ export class CombatSystem {
     
     const currentWeapon = this.player.getEquippedWeapon();
     if (!currentWeapon || currentWeapon.getConfig().type !== 'bow') {
-      console.warn("🏹 [CombatSystem] ⚠️ Cannot fire - no bow equipped");
+      console.warn("🏹 [CombatSystem] Cannot fire - no bow equipped");
       return;
     }
     
-    // CRITICAL: Get proper camera direction using getWorldDirection for accuracy
+    // Get accurate camera direction
     const cameraDirection = new THREE.Vector3();
     this.camera.getWorldDirection(cameraDirection);
     
-    // Get player position
+    // Get player position and calculate arrow start position
     const playerPosition = this.player.getPosition();
-    
-    // Improved arrow start position - eye level, forward offset
     const arrowStartPos = playerPosition.clone()
-      .add(new THREE.Vector3(0, 1.7, 0)) // Eye level at 1.7
-      .add(cameraDirection.clone().multiplyScalar(1.0)); // 1 unit in front of player
+      .add(new THREE.Vector3(0, 1.7, 0))
+      .add(cameraDirection.clone().multiplyScalar(1.0));
     
-    // Use camera direction directly (already normalized)
-    const arrowDirection = cameraDirection.clone();
-    
-    console.log("🏹 [CombatSystem] FIXED FIRING PARAMETERS:");
-    console.log("🏹 [CombatSystem] Player position:", playerPosition);
-    console.log("🏹 [CombatSystem] Camera direction:", arrowDirection);
-    console.log("🏹 [CombatSystem] Arrow start position:", arrowStartPos);
-    console.log("🏹 [CombatSystem] Direction magnitude:", arrowDirection.length());
-    
-    // Use a good speed for FPS games - increased for better visibility
     const damage = currentWeapon.getConfig().stats.damage;
-    const speed = 50; // Increased speed for better debugging
+    const speed = 50;
     
-    console.log(`🏹 [CombatSystem] FIRING ARROW - Damage: ${damage}, Speed: ${speed}`);
+    console.log(`🏹 [CombatSystem] Firing arrow - damage: ${damage}, speed: ${speed}`);
     
-    // Fire the arrow through ProjectileSystem
-    this.projectileSystem.shootArrow(arrowStartPos, arrowDirection, speed, damage);
-    
-    console.log("🏹 [CombatSystem] ✅ ARROW FIRED WITH FIXED ORIENTATION");
+    // Fire the arrow
+    this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
     
     this.audioManager.play('bow_release');
   }
@@ -148,21 +122,16 @@ export class CombatSystem {
     const now = Date.now();
     const timeSinceLastAttack = now - this.lastAttackTime;
     
-    console.log("⚔️ [CombatSystem] *** START MELEE ATTACK *** - Time since last attack:", timeSinceLastAttack, "Cooldown:", this.attackCooldownMs);
-    
     if (timeSinceLastAttack < this.attackCooldownMs) {
-      console.log("⚔️ [CombatSystem] *** ATTACK BLOCKED BY COOLDOWN ***");
       return;
     }
     
-    console.log("⚔️ [CombatSystem] *** COOLDOWN PASSED *** - calling player.startSwordSwing()");
     this.lastAttackTime = now;
     
     try {
       this.player.startSwordSwing();
-      console.log("⚔️ [CombatSystem] *** PLAYER.STARTSWORDSWING() CALLED SUCCESSFULLY ***");
     } catch (error) {
-      console.error("⚔️ [CombatSystem] *** ERROR CALLING PLAYER.STARTSWORDSWING() ***", error);
+      console.error("⚔️ [CombatSystem] Error calling player.startSwordSwing()", error);
     }
   }
   
