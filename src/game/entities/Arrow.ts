@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
@@ -23,7 +22,7 @@ export class Arrow {
   
   private flightTime: number = 0;
   private minFlightTime: number = 0.2;
-  private maxFlightTime: number = 10.0;
+  private maxFlightTime: number = 60.0; // Changed from 10.0 to 60.0 for 1 minute despawn
   private hasMovedSignificantly: boolean = false;
   private initialPosition: THREE.Vector3;
 
