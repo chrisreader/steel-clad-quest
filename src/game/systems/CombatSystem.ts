@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
@@ -101,10 +102,10 @@ export class CombatSystem {
     const cameraDirection = new THREE.Vector3();
     this.camera.getWorldDirection(cameraDirection);
     
-    // Get player position and calculate arrow start position
+    // Get player position and calculate arrow start position at eye level
     const playerPosition = this.player.getPosition();
     const arrowStartPos = playerPosition.clone()
-      .add(new THREE.Vector3(0, 1.7, 0))
+      .add(new THREE.Vector3(0, 1.2, 0)) // Lowered from 1.7 to 1.2 for eye level
       .add(cameraDirection.clone().multiplyScalar(1.0));
     
     const damage = currentWeapon.getConfig().stats.damage;
