@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig, WeaponStats } from '../BaseWeapon';
 
@@ -73,12 +72,11 @@ export class HuntingBow extends BaseWeapon {
     this.createYAxisArrowRest(bowGroup);
     this.addYAxisBowTips(bowGroup);
     
-    // Rotate the entire bow 90 degrees to the right (clockwise around Z-axis)
-    bowGroup.rotation.z = -Math.PI / 2;
+    // FIXED: No rotation needed - bow naturally points up/down along Y-axis
     bowGroup.scale.set(1.2, 1.2, 1.2);
     bowGroup.position.set(0, 0, 0);
     
-    console.log("🏹 [HuntingBow] Bow rotated 90° right from Y-axis alignment");
+    console.log("🏹 [HuntingBow] Bow naturally oriented along Y-axis (up/down)");
     
     return bowGroup;
   }
