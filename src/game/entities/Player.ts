@@ -897,7 +897,7 @@ export class Player {
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
     const { phases } = this.weaponSwing;
     
-    // FIXED: Only track weapon tip during the SLASH phase, not windup or recovery
+    // FIXED: Track weapon tip continuously during the ENTIRE SLASH phase (0% to 100%)
     const now = Date.now();
     const slashStartTime = phases.windup;
     const slashEndTime = phases.windup + phases.slash;
@@ -907,28 +907,62 @@ export class Player {
       this.trackWeaponTipHighFrequency();
       this.lastTipTrackTime = now;
       
-      console.log("🗡️ [Player] Tracking weapon tip during SLASH phase - elapsed:", elapsed.toFixed(3), "slash window:", slashStartTime.toFixed(3), "-", slashEndTime.toFixed(3));
-      
-      // Create swoosh effect once we have enough path data during slash phase
       const slashProgress = (elapsed - slashStartTime) / phases.slash;
+      console.log("🗡️ [Player] Tracking weapon tip during SLASH phase - elapsed:", elapsed.toFixed(3), "progress:", (slashProgress * 100).toFixed(1) + "%");
       
-      if (slashProgress >= 0.2 && slashProgress <= 0.8 && !this.swooshEffectCreated && this.weaponTipPositions.length >= 8) {
-        this.createRealisticSwordSwoosh();
-        this.swooshEffectCreated = true;
-        console.log("🌪️ [Player] Sword swoosh effect created during SLASH phase at progress:", slashProgress.toFixed(2));
+      // FIXED: Create continuous trail effect throughout the ENTIRE slash phase
+      // Start creating trail immediately when slash begins and continue until it ends
+      if (slashProgress >= 0 && slashProgress <= 1.0 && this.weaponTipPositions.length >= 3) {
+        // Calculate swing direction from recent positions for dynamic trail
+        const recentPositions = this.weaponTipPositions.slice(-5); // Use last 5 positions
+        if (recentPositions.length >= 2) {
+          const pathStart = recentPositions[0];
+          const pathEnd = recentPositions[recentPositions.length - 1];
+          const swingDirection = pathEnd.clone().sub(pathStart).normalize();
+          
+          console.log("🌪️ [Player] Creating CONTINUOUS trail effect at progress:", (slashProgress * 100).toFixed(1) + "% with", this.weaponTipPositions.length, "positions");
+          
+          // Create progressive trail that follows the blade continuously
+          this.createProgressiveTrailEffect(slashProgress);
+        }
       }
     }
     
     // Reset trail tracking when entering slash phase
     if (elapsed >= slashStartTime && elapsed <= slashStartTime + 0.05 && this.weaponTipPositions.length === 0) {
-      console.log("🗡️ [Player] Starting fresh trail tracking for SLASH phase");
+      console.log("🗡️ [Player] Starting fresh trail tracking for CONTINUOUS SLASH phase");
       this.weaponTipPositions = [];
-      this.swooshEffectCreated = false;
     }
     
     // Complete animation if duration exceeded
     if (elapsed >= this.weaponSwing.duration) {
       console.log("🗡️ [Player] Spatial sword swing animation completed");
+    }
+  }
+  
+  // NEW METHOD: Create progressive trail effect that builds continuously
+  private createProgressiveTrailEffect(slashProgress: number): void {
+    if (!this.equippedWeapon || this.weaponTipPositions.length < 3) {
+      return;
+    }
+    
+    // Calculate how many positions to include based on slash progress
+    const totalPositions = this.weaponTipPositions.length;
+    const progressiveLength = Math.max(3, Math.floor(totalPositions * (slashProgress + 0.2))); // +0.2 for smoother building
+    
+    // Get the progressive slice of positions (building trail as sword moves)
+    const progressivePositions = this.weaponTipPositions.slice(0, progressiveLength);
+    
+    if (progressivePositions.length >= 3) {
+      // Calculate swing direction from the progressive positions
+      const pathStart = progressivePositions[0];
+      const pathEnd = progressivePositions[progressivePositions.length - 1];
+      const swingDirection = pathEnd.clone().sub(pathStart).normalize();
+      
+      console.log("🌪️ [Player] Building PROGRESSIVE trail - using", progressiveLength, "of", totalPositions, "positions at", (slashProgress * 100).toFixed(1) + "% progress");
+      
+      // Create the progressive swoosh effect
+      this.effectsManager.createSwordSwooshEffect(progressivePositions.slice(), swingDirection);
     }
   }
   
@@ -984,7 +1018,7 @@ export class Player {
   }
   
   private createEnhancedSwooshEffect(): void {
-    // ... keep existing code (empty method - swoosh now handled by createRealisticSwordSwoosh)
+    // Empty method - swoosh now handled by createRealisticSwordSwoosh
   }
   
   private createWeaponTrailEffect(): void {

@@ -1,12 +1,14 @@
+
 import * as THREE from 'three';
 
 export class SwordTrailEffect {
   private scene: THREE.Scene;
   private trails: THREE.Line[] = [];
   private trailMaterials: THREE.LineBasicMaterial[] = [];
-  private maxTrails: number = 3;
-  private trailLifetime: number = 300; // milliseconds
+  private maxTrails: number = 5; // Increased for progressive building
+  private trailLifetime: number = 200; // Reduced for more frequent updates
   private creationTime: number;
+  private activeTrail: THREE.Line | null = null; // Track the main continuous trail
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -19,53 +21,77 @@ export class SwordTrailEffect {
       return;
     }
     
-    console.log("🌪️ [SwordTrailEffect] Creating SLASH PHASE trail from sword path with", swordPath.length, "points");
-    console.log("🌪️ [SwordTrailEffect] Trail follows blade during active slashing motion");
+    console.log("🌪️ [SwordTrailEffect] Creating PROGRESSIVE trail with", swordPath.length, "points");
     
-    // Create main sword trail following the exact slash path
-    this.createMainTrail(swordPath);
+    // UPDATED: Remove old trails before creating new ones for smooth progression
+    this.clearOldTrails();
     
-    // Create secondary air displacement trails during slash
-    this.createAirDisplacementTrails(swordPath, swingDirection);
+    // Create main progressive trail following the sword path
+    this.createProgressiveMainTrail(swordPath);
     
-    // Extended cleanup time to let trail be visible after slash completes
+    // Create lighter secondary trails for depth
+    this.createProgressiveSecondaryTrails(swordPath, swingDirection);
+    
+    // Shorter cleanup time for more frequent updates
     setTimeout(() => {
       this.dispose();
-    }, this.trailLifetime * 1.2); // Visible after slash ends
+    }, this.trailLifetime);
   }
   
-  private createMainTrail(swordPath: THREE.Vector3[]): void {
-    // Create geometry from sword slash path points
+  private clearOldTrails(): void {
+    // Remove trails older than a certain threshold to prevent buildup
+    const currentTime = Date.now();
+    const maxAge = 100; // 100ms max age for old trails
+    
+    this.trails.forEach((trail, index) => {
+      if (trail.userData.creationTime && currentTime - trail.userData.creationTime > maxAge) {
+        this.scene.remove(trail);
+        if (trail.geometry) {
+          trail.geometry.dispose();
+        }
+        this.trailMaterials[index]?.dispose();
+      }
+    });
+    
+    // Filter out disposed trails
+    this.trails = this.trails.filter(trail => trail.parent === this.scene);
+    this.trailMaterials = this.trailMaterials.filter(material => !material.disposed);
+  }
+  
+  private createProgressiveMainTrail(swordPath: THREE.Vector3[]): void {
+    // Create geometry from progressive sword path points
     const geometry = new THREE.BufferGeometry().setFromPoints(swordPath);
     
-    // Enhanced material for slash trail visibility
+    // Enhanced material for progressive trail visibility
     const material = new THREE.LineBasicMaterial({
       color: 0xFFFFFF,
       transparent: true,
-      opacity: 0.95, // High opacity for clear slash visibility
+      opacity: 0.9, // Slightly reduced for smoother blending
       blending: THREE.AdditiveBlending,
-      linewidth: 6  // Wider trail for better slash effect
+      linewidth: 5  // Slightly thinner for more refined look
     });
     
-    // Create the slash trail line
+    // Create the progressive trail line
     const trail = new THREE.Line(geometry, material);
+    trail.userData.creationTime = Date.now(); // Track creation time
     this.scene.add(trail);
     this.trails.push(trail);
     this.trailMaterials.push(material);
+    this.activeTrail = trail;
     
-    // Animate fade out after slash completes
+    // Quick fade out for continuous effect
     this.animateTrailFadeOut(material, 0);
     
-    console.log("🌪️ [SwordTrailEffect] Main slash trail created following blade path");
+    console.log("🌪️ [SwordTrailEffect] Progressive main trail created with", swordPath.length, "points");
   }
   
-  private createAirDisplacementTrails(swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): void {
-    // Create secondary trails that follow the main slash
-    const numSecondaryTrails = 3; // Focused trails for slash effect
+  private createProgressiveSecondaryTrails(swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): void {
+    // Create fewer, more focused secondary trails for progressive effect
+    const numSecondaryTrails = 2; // Reduced for cleaner look
     
     for (let i = 0; i < numSecondaryTrails; i++) {
-      // Create offset paths parallel to the main slash path
-      const offset = (i + 1) * 0.03;
+      // Create offset paths parallel to the progressive trail
+      const offset = (i + 1) * 0.025; // Slightly smaller offset
       const offsetDirection = new THREE.Vector3(-swingDirection.z, 0, swingDirection.x).normalize();
       const sign = i % 2 === 0 ? 1 : -1;
       
@@ -73,29 +99,30 @@ export class SwordTrailEffect {
         return point.clone().add(offsetDirection.clone().multiplyScalar(offset * sign));
       });
       
-      // Create geometry for offset slash trail
+      // Create geometry for offset progressive trail
       const geometry = new THREE.BufferGeometry().setFromPoints(offsetPath);
       
       // Material with decreasing intensity for depth
       const material = new THREE.LineBasicMaterial({
         color: i < 1 ? 0xF8F8FF : 0xF0F0F0,
         transparent: true,
-        opacity: 0.8 - (i * 0.15), // Decreasing opacity
+        opacity: 0.6 - (i * 0.2), // More subtle opacity
         blending: THREE.AdditiveBlending,
-        linewidth: 4 - (i * 0.7) // Decreasing width
+        linewidth: 3 - (i * 0.5) // Thinner secondary trails
       });
       
-      // Create the secondary slash trail
+      // Create the secondary progressive trail
       const trail = new THREE.Line(geometry, material);
+      trail.userData.creationTime = Date.now(); // Track creation time
       this.scene.add(trail);
       this.trails.push(trail);
       this.trailMaterials.push(material);
       
-      // Staggered fade animation
-      this.animateTrailFadeOut(material, (i + 1) * 25);
+      // Staggered fade animation for depth
+      this.animateTrailFadeOut(material, (i + 1) * 15);
     }
     
-    console.log("🌪️ [SwordTrailEffect] Secondary slash trails created for air displacement effect");
+    console.log("🌪️ [SwordTrailEffect] Progressive secondary trails created for continuous effect");
   }
   
   private animateTrailFadeOut(material: THREE.LineBasicMaterial, delay: number): void {
@@ -117,8 +144,8 @@ export class SwordTrailEffect {
         return;
       }
       
-      // Smooth fade out curve
-      material.opacity = startOpacity * (1 - progress * progress);
+      // Faster fade out for continuous effect
+      material.opacity = startOpacity * (1 - progress * progress * progress);
       requestAnimationFrame(fadeAnimation);
     };
     
@@ -140,7 +167,8 @@ export class SwordTrailEffect {
     
     this.trails = [];
     this.trailMaterials = [];
+    this.activeTrail = null;
     
-    console.log("🌪️ [SwordTrailEffect] Trail effect disposed");
+    console.log("🌪️ [SwordTrailEffect] Progressive trail effect disposed");
   }
 }
