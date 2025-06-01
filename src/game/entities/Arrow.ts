@@ -34,8 +34,11 @@ export class Arrow {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    console.log("🏹 [Arrow] Creating arrow at position:", this.position);
-    console.log("🏹 [Arrow] Arrow velocity:", this.velocity);
+    console.log("🏹 [Arrow] *** CREATING ARROW ***");
+    console.log("🏹 [Arrow] Start position:", this.position);
+    console.log("🏹 [Arrow] Velocity:", this.velocity);
+    console.log("🏹 [Arrow] Speed:", speed);
+    console.log("🏹 [Arrow] Damage:", damage);
     
     this.mesh = this.createArrowMesh();
     this.createTrailEffect();
@@ -50,7 +53,7 @@ export class Arrow {
       this.mesh.lookAt(this.position.clone().add(direction));
     }
     
-    console.log("🏹 [Arrow] Arrow mesh created and added to scene");
+    console.log("🏹 [Arrow] ✅ ARROW MESH CREATED AND ADDED TO SCENE");
     console.log("🏹 [Arrow] Arrow mesh position:", this.mesh.position);
     
     // Play arrow shoot sound
@@ -60,49 +63,49 @@ export class Arrow {
   private createArrowMesh(): THREE.Group {
     const arrowGroup = new THREE.Group();
     
-    // Make arrow larger and more visible
-    const scale = 1.5;
+    // Make arrow MUCH larger and more visible
+    const scale = 3.0; // Increased scale for better visibility
     
-    // Arrow shaft - make it more visible
-    const shaftGeometry = new THREE.CylinderGeometry(0.03 * scale, 0.03 * scale, 1.0 * scale);
+    // Arrow shaft - bright colored for visibility
+    const shaftGeometry = new THREE.CylinderGeometry(0.05 * scale, 0.05 * scale, 1.5 * scale);
     const shaftMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x8b4513,
-      emissive: 0x2d1810,
-      emissiveIntensity: 0.1
+      color: 0xffa500, // Orange color for high visibility
+      emissive: 0x4d2600,
+      emissiveIntensity: 0.3
     });
     const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
     shaft.rotation.z = Math.PI / 2;
     arrowGroup.add(shaft);
     
-    // Arrow head - make it more prominent
-    const headGeometry = new THREE.ConeGeometry(0.08 * scale, 0.2 * scale);
+    // Arrow head - bright metallic
+    const headGeometry = new THREE.ConeGeometry(0.12 * scale, 0.3 * scale);
     const headMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x888888,
-      emissive: 0x222222,
-      emissiveIntensity: 0.1
+      color: 0xffff00, // Bright yellow for visibility
+      emissive: 0x444400,
+      emissiveIntensity: 0.3
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.x = 0.6 * scale;
+    head.position.x = 0.9 * scale;
     head.rotation.z = -Math.PI / 2;
     arrowGroup.add(head);
     
-    // Fletching (feathers) - make them more visible
-    const fletchingGeometry = new THREE.PlaneGeometry(0.15 * scale, 0.2 * scale);
+    // Fletching (feathers) - bright red for visibility
+    const fletchingGeometry = new THREE.PlaneGeometry(0.2 * scale, 0.3 * scale);
     const fletchingMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xff6b6b, 
+      color: 0xff0000, // Bright red
       side: THREE.DoubleSide,
-      emissive: 0x331111,
-      emissiveIntensity: 0.05
+      emissive: 0x440000,
+      emissiveIntensity: 0.2
     });
     
     for (let i = 0; i < 3; i++) {
       const fletching = new THREE.Mesh(fletchingGeometry, fletchingMaterial);
-      fletching.position.x = -0.4 * scale;
+      fletching.position.x = -0.6 * scale;
       fletching.rotation.y = (i * Math.PI * 2) / 3;
       arrowGroup.add(fletching);
     }
     
-    console.log("🏹 [Arrow] Arrow mesh created with enhanced visibility");
+    console.log("🏹 [Arrow] Arrow mesh created with HIGH VISIBILITY (large scale, bright colors)");
     return arrowGroup;
   }
 
@@ -162,6 +165,11 @@ export class Arrow {
     // Check ground collision (simple y = 0 ground)
     if (this.position.y <= 0) {
       this.hitGround();
+    }
+    
+    // Log position for debugging
+    if (Math.random() < 0.01) { // Log occasionally to avoid spam
+      console.log("🏹 [Arrow] Position:", this.position, "Velocity:", this.velocity);
     }
     
     return true;

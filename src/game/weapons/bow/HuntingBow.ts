@@ -1,6 +1,5 @@
-
 import * as THREE from 'three';
-import { BaseBow, DrawStage } from './BaseBow';
+import { BaseBow } from './BaseBow';
 import { WeaponConfig, WeaponStats } from '../BaseWeapon';
 
 export class HuntingBow extends BaseBow {
@@ -9,11 +8,6 @@ export class HuntingBow extends BaseBow {
   private lowerLimb: THREE.Mesh | null = null;
   private handle: THREE.Mesh | null = null;
   private arrowRest: THREE.Mesh | null = null;
-  
-  // Original limb rotations for reset
-  private originalUpperLimbRotation: number = 0.15;
-  private originalLowerLimbRotation: number = -0.15;
-  private originalStringPosition: number = 0;
 
   constructor() {
     const config: WeaponConfig = {
@@ -22,29 +16,29 @@ export class HuntingBow extends BaseBow {
       type: 'bow',
       handRequirement: 'two-handed',
       stats: {
-        damage: 8,
+        damage: 15,
         attackSpeed: 1.0,
         range: 50,
         durability: 200,
         weight: 1.5
       } as WeaponStats,
       swingAnimation: {
-        duration: 1000,
+        duration: 500,
         phases: {
-          windup: 0.3,
-          slash: 0.4,
-          recovery: 0.3
+          windup: 0.2,
+          slash: 0.6,
+          recovery: 0.2
         },
         rotations: {
           neutral: { x: 0, y: 0, z: 0 },
-          windup: { x: -0.3, y: 0, z: 0 },
-          slash: { x: 0.3, y: 0, z: 0 }
+          windup: { x: -0.1, y: 0, z: 0 },
+          slash: { x: 0.1, y: 0, z: 0 }
         }
       }
     };
     
     super(config);
-    console.log("🏹 [HuntingBow] Initialized with unified bow system");
+    console.log("🏹 [HuntingBow] Initialized with simplified FPS-style shooting");
   }
 
   public createMesh(): THREE.Group {
@@ -59,7 +53,7 @@ export class HuntingBow extends BaseBow {
     bowGroup.scale.set(1.2, 1.2, 1.2);
     bowGroup.position.set(0, 0, 0);
     
-    console.log("🏹 [HuntingBow] Bow oriented vertically (up/down) - unified system");
+    console.log("🏹 [HuntingBow] Bow created with simplified system");
     
     return bowGroup;
   }
@@ -86,13 +80,11 @@ export class HuntingBow extends BaseBow {
     
     this.upperLimb = new THREE.Mesh(limbGeometry, limbMaterial);
     this.upperLimb.position.set(0, 0.15, 0);
-    this.upperLimb.rotation.z = this.originalUpperLimbRotation;
     bowGroup.add(this.upperLimb);
     
     const lowerLimbGeometry = new THREE.TubeGeometry(lowerLimbCurve, 24, 0.03, 8, false);
     this.lowerLimb = new THREE.Mesh(lowerLimbGeometry, limbMaterial.clone());
     this.lowerLimb.position.set(0, -0.15, 0);
-    this.lowerLimb.rotation.z = this.originalLowerLimbRotation;
     bowGroup.add(this.lowerLimb);
   }
 
@@ -139,7 +131,6 @@ export class HuntingBow extends BaseBow {
     
     this.bowString = new THREE.Mesh(stringGeometry, stringMaterial);
     this.bowString.position.set(0, 0, 0);
-    this.originalStringPosition = this.bowString.position.z;
     bowGroup.add(this.bowString);
   }
 
@@ -209,54 +200,7 @@ export class HuntingBow extends BaseBow {
   }
 
   protected updateBowVisuals(): void {
-    if (!this.bowString || !this.upperLimb || !this.lowerLimb) return;
-    
-    const pullback = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.8;
-    const limbBend = this.easeInOutQuad(Math.min(this.chargeLevel, 1.0)) * 0.5;
-    
-    this.bowString.position.z = this.originalStringPosition + pullback;
-    this.bowString.scale.y = 1 + (this.chargeLevel * 0.12);
-    
-    const upperLimbRotation = this.originalUpperLimbRotation + limbBend;
-    const lowerLimbRotation = this.originalLowerLimbRotation - limbBend;
-    
-    this.upperLimb.rotation.z = upperLimbRotation;
-    this.lowerLimb.rotation.z = lowerLimbRotation;
-    
-    this.updateStrainEffects();
-  }
-
-  private updateStrainEffects(): void {
-    if (!this.upperLimb || !this.lowerLimb) return;
-    
-    if (this.chargeLevel > 0.7) {
-      const strainIntensity = (this.chargeLevel - 0.7) * 3.33;
-      const strainColor = new THREE.Color().lerpColors(
-        new THREE.Color(0x4a3f35),
-        new THREE.Color(0x8d6e63),
-        strainIntensity
-      );
-      
-      const upperMaterial = this.upperLimb.material;
-      const lowerMaterial = this.lowerLimb.material;
-      
-      if (upperMaterial instanceof THREE.MeshLambertMaterial) {
-        upperMaterial.color.copy(strainColor);
-      }
-      if (lowerMaterial instanceof THREE.MeshLambertMaterial) {
-        lowerMaterial.color.copy(strainColor);
-      }
-    } else {
-      const upperMaterial = this.upperLimb.material;
-      const lowerMaterial = this.lowerLimb.material;
-      
-      if (upperMaterial instanceof THREE.MeshLambertMaterial) {
-        upperMaterial.color.setHex(0x4a3f35);
-      }
-      if (lowerMaterial instanceof THREE.MeshLambertMaterial) {
-        lowerMaterial.color.setHex(0x4a3f35);
-      }
-    }
+    console.log("🏹 [HuntingBow] Bow visuals updated (simplified)");
   }
 
   protected applyShakeEffect(): void {

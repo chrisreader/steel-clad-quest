@@ -22,9 +22,8 @@ export class CombatSystem {
   private attackCooldownMs: number = 768;
   private lastAttackTime: number = 0;
   
-  // Bow mechanics
-  private isDrawingBow: boolean = false;
-  private bowDrawStartTime: number = 0;
+  // FPS-style bow mechanics
+  private bowReadyToFire: boolean = false;
   
   constructor(
     scene: THREE.Scene,
@@ -39,7 +38,7 @@ export class CombatSystem {
     this.audioManager = audioManager;
     this.camera = camera;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager);
-    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with camera integration for arrow direction");
+    console.log("⚔️ [CombatSystem] *** INITIALIZED *** with simplified FPS-style bow shooting");
   }
   
   public update(deltaTime: number): void {
@@ -50,11 +49,7 @@ export class CombatSystem {
     this.projectileSystem.setEnemies(this.enemies);
     this.projectileSystem.update(deltaTime);
     
-    if (this.isDrawingBow) {
-      this.updateBowDrawing(deltaTime);
-    }
-    
-    if (this.player.isAttacking() && !this.isDrawingBow) {
+    if (this.player.isAttacking() && !this.bowReadyToFire) {
       this.checkPlayerAttacks();
     }
     
@@ -62,29 +57,16 @@ export class CombatSystem {
     this.cleanupEntities();
   }
   
-  private updateBowDrawing(deltaTime: number): void {
-    const currentWeapon = this.player.getEquippedWeapon();
-    if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
-      const bow = currentWeapon as BaseBow;
-      bow.updateCharge(deltaTime);
-      
-      const chargeLevel = bow.getChargeLevel();
-      if (chargeLevel > 0) {
-        console.log(`🏹 [CombatSystem] Bow charging: ${(chargeLevel * 100).toFixed(1)}%`);
-      }
-    }
-  }
-  
   public startPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK CALLED ***");
+    console.log("⚔️ [CombatSystem] *** START PLAYER ATTACK *** - FPS Style");
     console.log("⚔️ [CombatSystem] Current weapon:", currentWeapon ? currentWeapon.getConfig().name : 'none');
     console.log("⚔️ [CombatSystem] Weapon type:", currentWeapon?.getConfig().type || 'none');
     
     if (currentWeapon && currentWeapon.getConfig().type === 'bow') {
-      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Starting bow attack sequence");
-      this.startBowDraw();
+      console.log("⚔️ [CombatSystem] 🏹 BOW DETECTED - Setting ready to fire");
+      this.bowReadyToFire = true;
     } else {
       console.log("⚔️ [CombatSystem] ⚔️ MELEE WEAPON - Starting melee attack");
       this.startMeleeAttack();
@@ -94,79 +76,52 @@ export class CombatSystem {
   public stopPlayerAttack(): void {
     const currentWeapon = this.player.getEquippedWeapon();
     
-    console.log("⚔️ [CombatSystem] *** STOP PLAYER ATTACK CALLED ***");
+    console.log("⚔️ [CombatSystem] *** STOP PLAYER ATTACK *** - FPS Style");
     console.log("⚔️ [CombatSystem] Current weapon:", currentWeapon ? currentWeapon.getConfig().name : 'none');
-    console.log("⚔️ [CombatSystem] Is drawing bow:", this.isDrawingBow);
+    console.log("⚔️ [CombatSystem] Bow ready to fire:", this.bowReadyToFire);
     
-    if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.isDrawingBow) {
-      console.log("⚔️ [CombatSystem] 🏹 RELEASING BOW STRING");
-      this.releaseBowString();
-    } else {
-      console.log("⚔️ [CombatSystem] No bow release needed");
+    if (currentWeapon && currentWeapon.getConfig().type === 'bow' && this.bowReadyToFire) {
+      console.log("⚔️ [CombatSystem] 🏹 FIRING ARROW - FPS Style");
+      this.fireArrowFPS();
     }
+    
+    this.bowReadyToFire = false;
   }
   
-  private startBowDraw(): void {
-    console.log("🏹 [CombatSystem] *** STARTING BOW DRAW ***");
-    this.isDrawingBow = true;
-    this.bowDrawStartTime = Date.now();
-    
-    console.log("🏹 [CombatSystem] Calling player.startBowDraw()");
-    this.player.startBowDraw();
-    
-    console.log("🏹 [CombatSystem] Playing bow draw sound");
-    this.audioManager.play('bow_draw');
-    
-    console.log("🏹 [CombatSystem] Bow draw sequence completed successfully");
-  }
-  
-  private releaseBowString(): void {
-    console.log("🏹 [CombatSystem] *** RELEASING BOW STRING ***");
-    this.isDrawingBow = false;
+  private fireArrowFPS(): void {
+    console.log("🏹 [CombatSystem] *** FIRING ARROW FPS STYLE ***");
     
     const currentWeapon = this.player.getEquippedWeapon();
     if (!currentWeapon || currentWeapon.getConfig().type !== 'bow') {
-      console.warn("🏹 [CombatSystem] ⚠️ Cannot release bow - no bow equipped");
+      console.warn("🏹 [CombatSystem] ⚠️ Cannot fire arrow - no bow equipped");
       return;
     }
     
-    const bow = currentWeapon as BaseBow;
-    const chargeLevel = bow.getChargeLevel();
-    const damage = bow.getChargeDamage();
-    const speed = bow.getArrowSpeed();
+    const playerPosition = this.player.getPosition();
     
-    console.log(`🏹 [CombatSystem] BOW STATS - Charge: ${chargeLevel.toFixed(2)}, Damage: ${damage}, Speed: ${speed}`);
+    // Get camera direction for FPS-style aiming
+    const cameraDirection = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDirection);
+    console.log("🏹 [CombatSystem] Camera direction:", cameraDirection);
     
-    if (chargeLevel > 0.1) {
-      console.log("🏹 [CombatSystem] ✅ SUFFICIENT CHARGE - FIRING ARROW");
-      
-      const playerPosition = this.player.getPosition();
-      
-      // Get camera direction for arrow aiming
-      const cameraDirection = new THREE.Vector3();
-      this.camera.getWorldDirection(cameraDirection);
-      console.log("🏹 [CombatSystem] Camera direction:", cameraDirection);
-      
-      // Calculate arrow start position from bow in player's right hand
-      // Position it slightly forward and to the right of player, at chest height
-      const arrowStartPos = playerPosition.clone()
-        .add(new THREE.Vector3(0.3, 1.4, 0)) // Right hand position at chest level
-        .add(cameraDirection.clone().multiplyScalar(0.5)); // Slightly forward from bow
-      
-      console.log("🏹 [CombatSystem] Arrow start position:", arrowStartPos);
-      console.log("🏹 [CombatSystem] Arrow direction:", cameraDirection);
-      
-      this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
-      
-      console.log("🏹 [CombatSystem] ✅ ARROW FIRED SUCCESSFULLY with camera direction");
-      
-      this.audioManager.play('bow_release');
-    } else {
-      console.log("🏹 [CombatSystem] ❌ INSUFFICIENT CHARGE - Arrow not fired");
-    }
+    // Calculate arrow start position from player's right hand/bow position
+    const arrowStartPos = playerPosition.clone()
+      .add(new THREE.Vector3(0.3, 1.4, 0)) // Right hand position at chest level
+      .add(cameraDirection.clone().multiplyScalar(0.3)); // Slightly forward from bow
     
-    this.player.stopBowDraw();
-    console.log("🏹 [CombatSystem] Bow release sequence completed");
+    console.log("🏹 [CombatSystem] Arrow start position:", arrowStartPos);
+    
+    // Use fixed damage and speed (no charge mechanics)
+    const damage = currentWeapon.getConfig().stats.damage;
+    const speed = 30; // Fixed FPS-style arrow speed
+    
+    console.log(`🏹 [CombatSystem] FIRING - Damage: ${damage}, Speed: ${speed}`);
+    
+    this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
+    
+    console.log("🏹 [CombatSystem] ✅ ARROW FIRED SUCCESSFULLY - FPS Style");
+    
+    this.audioManager.play('bow_release');
   }
   
   private startMeleeAttack(): void {
