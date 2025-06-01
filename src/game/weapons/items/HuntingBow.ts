@@ -72,15 +72,14 @@ export class HuntingBow extends BaseWeapon {
     this.createArrowRest(bowGroup);
     this.addBowTips(bowGroup);
     
-    // FIXED: Rotate the entire bow to point up/down like a real bow
-    // Rotate 90 degrees around Z-axis so bow points vertically instead of horizontally
-    bowGroup.rotation.z = Math.PI / 2;
+    // FIXED: Removed the problematic rotation - bow now naturally points up/down
+    // bowGroup.rotation.z = Math.PI / 2; // REMOVED this line
     
     // Optimized positioning for realistic archery hold
     bowGroup.scale.set(1.2, 1.2, 1.2);
     bowGroup.position.set(0, 0, 0);
     
-    console.log("🏹 [HuntingBow] Bow oriented vertically like a real bow (up/down)");
+    console.log("🏹 [HuntingBow] Bow oriented vertically (up/down) - rotation removed");
     
     return bowGroup;
   }
