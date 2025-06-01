@@ -1,10 +1,11 @@
+
 import * as THREE from 'three';
-import { TextureGenerator } from '../utils/TextureGenerator';
+import { TextureGenerator } from '../utils';
 import { PlayerBody, WeaponSwingAnimation, PlayerStats } from '../../types/GameTypes';
 import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { EffectsManager } from '../engine/EffectsManager';
 import { BaseWeapon } from '../weapons/BaseWeapon';
-import { BaseBow } from '../weapons/bow/BaseBow';
+import { BaseBow } from '../weapons';
 import { WeaponManager } from '../weapons/WeaponManager';
 import { WeaponAnimationSystem, WeaponType } from '../animation/WeaponAnimationSystem';
 import { SwordSwingAnimation } from '../animation/animations/SwordSwingAnimation';
