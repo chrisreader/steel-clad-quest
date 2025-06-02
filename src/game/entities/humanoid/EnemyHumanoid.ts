@@ -410,6 +410,42 @@ export abstract class EnemyHumanoid {
     pelvis.castShadow = true;
     torsoGroup.add(pelvis);
 
+    // Trapezius muscle - positioned inline with shoulder joints
+    const shoulderJointY = bodyTopY; // Same height as shoulder joints
+    const shoulderJointX = bodyScale.body.radius + 0.1; // Same X position as shoulder joints
+    
+    const trapGeometry = new THREE.CylinderGeometry(
+      shoulderJointX * 0.8, // Top radius - narrower at neck
+      shoulderJointX * 1.2, // Bottom radius - wider at shoulders
+      0.5, 20, 6
+    );
+    
+    // Shape the trapezius to taper naturally from shoulders to neck
+    const trapPositions = trapGeometry.attributes.position.array;
+    for (let i = 0; i < trapPositions.length; i += 3) {
+      const x = trapPositions[i];
+      const y = trapPositions[i + 1];
+      const z = trapPositions[i + 2];
+      
+      // Normalize Y from -0.25 to 0.25 to 0 to 1
+      const normalizedY = (y / 0.5) + 0.5;
+      
+      // Create the characteristic trapezius shape
+      // Wider at the bottom (shoulders), narrower at top (neck)
+      const widthMultiplier = 0.6 + (1 - normalizedY) * 0.4;
+      const depthMultiplier = 0.8 + (1 - normalizedY) * 0.2;
+      
+      trapPositions[i] = x * widthMultiplier;
+      trapPositions[i + 2] = z * depthMultiplier;
+    }
+    trapGeometry.attributes.position.needsUpdate = true;
+    trapGeometry.computeVertexNormals();
+    
+    const trapezius = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
+    trapezius.position.y = shoulderJointY + 0.1; // Slightly above shoulder joint level
+    trapezius.castShadow = true;
+    torsoGroup.add(trapezius);
+
     return { parent: torsoGroup, mesh: mainTorso };
   }
 
