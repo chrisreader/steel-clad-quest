@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType } from '../../types/GameTypes';
@@ -248,9 +249,9 @@ export class EnemyBodyBuilder {
     let weapon: THREE.Group | undefined;
     if (features.hasWeapon) {
       weapon = this.createWeapon(type, woodTexture, metalTexture);
-      // FIXED: Center weapon in hand and orient it forward
-      weapon.position.set(0, -0.2, 0);  // Changed from (0.3, 0, 0) to center in hand
-      weapon.rotation.x = Math.PI / 2;  // Changed from rotation.z = -0.3 to point forward
+      // FIXED: Position weapon inside hand and angle slightly upward
+      weapon.position.set(0, -0.35, 0);  // Changed from (0, -0.2, 0) to move deeper into hand
+      weapon.rotation.x = Math.PI / 2 + 0.2;  // Added slight upward angle (+0.2 radians)
       rightWrist.add(weapon);
     }
 
