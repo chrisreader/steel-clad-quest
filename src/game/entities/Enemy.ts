@@ -52,7 +52,7 @@ export class Enemy {
       this.enemy = this.createEnhancedOrc(position);
       this.isEnhancedEnemy = true;
       
-      console.log(`🗡️ [Enemy] Enhanced orc created with auto-synced animation system`);
+      console.log(`🗡️ [Enemy] Enhanced orc created with fixed orientation system`);
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created basic goblin enemy");
@@ -70,13 +70,13 @@ export class Enemy {
     const { group: orcGroup, bodyParts, metrics } = EnemyBodyBuilder.createRealisticOrcBody(position);
     this.enhancedBodyParts = bodyParts;
     
-    // FIXED: Rotate the entire orc group to face forward (toward positive Z)
-    orcGroup.rotation.y = Math.PI; // 180 degrees to face forward
+    // FIXED: Remove the initial 180° rotation - let the orc spawn in its natural orientation
+    // orcGroup.rotation.y = Math.PI; // REMOVED - this was causing the double rotation issue
     
     // Pass metrics to animation system for auto-sync
     this.animationSystem = new EnemyAnimationSystem(bodyParts, metrics);
     
-    console.log(`🗡️ [Enemy] Fixed orc orientation - now facing forward`);
+    console.log(`🗡️ [Enemy] Fixed orc orientation - natural forward-facing spawn`);
     
     return {
       mesh: orcGroup,
@@ -480,20 +480,14 @@ export class Enemy {
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
-      // FIXED: Calculate target rotation to face player with corrected direction
+      // FIXED: Calculate target rotation with corrected direction (removed extra +Math.PI)
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.enemy.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
-      // FIXED: Correct rotation calculation for enemies that spawn facing forward
-      if (this.isEnhancedEnemy) {
-        // For enhanced orcs that are rotated 180°, we need to adjust the target rotation
-        this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z) + Math.PI;
-      } else {
-        // For goblins, use normal calculation
-        this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
-      }
+      // FIXED: Use normal rotation calculation for all enemies (no special case needed)
+      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
       // Move toward player if outside damage range
       if (distanceToPlayer > this.enemy.damageRange) {
@@ -529,12 +523,8 @@ export class Enemy {
           .normalize();
         direction.y = 0;
         
-        // FIXED: Calculate target rotation with corrected direction
-        if (this.isEnhancedEnemy) {
-          this.targetRotation = Math.atan2(direction.x, direction.z) + Math.PI;
-        } else {
-          this.targetRotation = Math.atan2(direction.x, direction.z);
-        }
+        // FIXED: Use normal rotation calculation for all enemies
+        this.targetRotation = Math.atan2(direction.x, direction.z);
         
         const slowMoveAmount = this.enemy.speed * deltaTime * 0.3; // Slower movement when far
         const newPosition = this.enemy.mesh.position.clone();
