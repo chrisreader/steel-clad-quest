@@ -217,7 +217,7 @@ export abstract class EnemyHumanoid {
     const headY = bodyTopY + bodyScale.head.radius;
     const shoulderHeight = bodyTopY;
 
-    // Create clean materials
+    // Create clean materials without textures
     const skinMaterial = new THREE.MeshPhongMaterial({
       color: colors.skin,
       shininess: 30,
