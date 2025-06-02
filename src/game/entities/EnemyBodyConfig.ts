@@ -1,10 +1,12 @@
 
 import { EnemyType } from '../../types/GameTypes';
-import { EnemyBodyMetrics, EnemyBodyMetricsCalculator } from './EnemyBodyMetrics';
+import { HumanoidType, HumanoidBodyMetrics, HumanoidBodyMetricsCalculator } from './humanoid/HumanoidBodyMetrics';
+import { HumanoidConfig, HumanoidConfiguration } from './humanoid/HumanoidConfig';
 
+// Legacy interface for backwards compatibility
 export interface EnemyConfiguration {
   type: EnemyType;
-  metrics: EnemyBodyMetrics;
+  metrics: HumanoidBodyMetrics; // Now uses humanoid metrics
   features: {
     hasEyes: boolean;
     hasTusks: boolean;
@@ -32,50 +34,19 @@ export class EnemyBodyConfig {
   private static configs: Map<EnemyType, EnemyConfiguration> = new Map();
 
   static {
-    // Initialize ORC configuration
+    // Map EnemyType to HumanoidType and use humanoid configs
+    const orcHumanoidConfig = HumanoidConfig.getConfig(HumanoidType.ORC);
     this.configs.set(EnemyType.ORC, {
       type: EnemyType.ORC,
-      metrics: EnemyBodyMetricsCalculator.calculateOrcMetrics(),
-      features: {
-        hasEyes: true,
-        hasTusks: true,
-        hasWeapon: true,
-        eyeConfig: {
-          radius: 0.12, // Larger eyes for intimidation
-          color: 0xFF0000,
-          emissiveIntensity: 0.4,
-          offsetX: 0.2,
-          offsetY: 0.05,
-          offsetZ: 0.85
-        },
-        tuskConfig: {
-          radius: 0.08,
-          height: 0.35,
-          color: 0xFFFACD,
-          offsetX: 0.2,
-          offsetY: -0.15,
-          offsetZ: 0.85
-        }
-      }
+      metrics: HumanoidBodyMetricsCalculator.calculateMetrics(HumanoidType.ORC),
+      features: orcHumanoidConfig.features
     });
 
-    // Initialize GOBLIN configuration
+    const goblinHumanoidConfig = HumanoidConfig.getConfig(HumanoidType.GOBLIN);
     this.configs.set(EnemyType.GOBLIN, {
       type: EnemyType.GOBLIN,
-      metrics: EnemyBodyMetricsCalculator.calculateGoblinMetrics(),
-      features: {
-        hasEyes: true,
-        hasTusks: false,
-        hasWeapon: true,
-        eyeConfig: {
-          radius: 0.08,
-          color: 0xFF0000,
-          emissiveIntensity: 0.3,
-          offsetX: 0.15,
-          offsetY: 0.05,
-          offsetZ: 0.8
-        }
-      }
+      metrics: HumanoidBodyMetricsCalculator.calculateMetrics(HumanoidType.GOBLIN),
+      features: goblinHumanoidConfig.features
     });
   }
 
@@ -84,6 +55,7 @@ export class EnemyBodyConfig {
     if (!config) {
       throw new Error(`No configuration found for enemy type: ${type}`);
     }
+    console.log(`🎭 [EnemyBodyConfig] Retrieved config for ${type} using humanoid system`);
     return config;
   }
 
