@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EnemyBodyParts } from '../entities/EnemyBody';
 import { STANDARD_SWORD_ANIMATION } from './StandardSwordAnimation';
@@ -18,12 +17,16 @@ export interface EnemySwingAnimation {
 export class EnemyAnimationSystem {
   private bodyParts: EnemyBodyParts;
   private walkTime: number = 0;
+  private idleTime: number = 0;
   private swingAnimation: EnemySwingAnimation | null = null;
   private animationConfigs = ANIMATION_CONFIGS.melee;
   
+  // FIXED: Store the intended body position for relative offsets
+  private originalBodyY: number = 0.7; // Body center position from EnemyBodyBuilder
+  
   constructor(bodyParts: EnemyBodyParts) {
     this.bodyParts = bodyParts;
-    console.log("🎭 [EnemyAnimationSystem] Initialized with realistic body parts for sophisticated animations");
+    console.log("🎭 [EnemyAnimationSystem] Initialized with FIXED positioning - using relative offsets");
   }
   
   public updateWalkAnimation(deltaTime: number, isMoving: boolean, movementSpeed: number): void {
@@ -34,10 +37,17 @@ export class EnemyAnimationSystem {
     
     this.walkTime += deltaTime * movementSpeed * this.animationConfigs.walkCycleSpeed;
     
-    // Enhanced walking animation using the same system as the player
+    // Enhanced walking animation using relative positioning
     const armSwing = Math.sin(this.walkTime) * this.animationConfigs.armSwingIntensity;
     const legSwing = Math.sin(this.walkTime + Math.PI) * this.animationConfigs.legSwingIntensity;
     const shoulderSway = Math.sin(this.walkTime * 0.5) * this.animationConfigs.shoulderMovement;
+    
+    // === BODY ANIMATION (FIXED) ===
+    // Apply walking bob as OFFSET from original position, not absolute
+    if (this.bodyParts.body) {
+      const walkingBob = Math.sin(this.walkTime * 2) * 0.05;
+      this.bodyParts.body.position.y = this.originalBodyY + walkingBob; // 0.7 + offset
+    }
     
     // ARM MOVEMENT - Coordinated shoulder, elbow, wrist
     if (this.bodyParts.leftArm && this.bodyParts.rightArm) {
@@ -65,7 +75,7 @@ export class EnemyAnimationSystem {
       }
     }
     
-    // LEG MOVEMENT - Coordinated hip, knee movement
+    // === LEG ANIMATIONS (UNCHANGED) ===
     if (this.bodyParts.leftLeg && this.bodyParts.rightLeg) {
       this.bodyParts.leftLeg.rotation.x = legSwing;
       this.bodyParts.rightLeg.rotation.x = -legSwing;
@@ -79,28 +89,24 @@ export class EnemyAnimationSystem {
       }
     }
     
-    // BODY MOVEMENT
-    if (this.bodyParts.body) {
-      this.bodyParts.body.position.y = 1.0 + Math.sin(this.walkTime * 2) * 0.05;
-      this.bodyParts.body.rotation.y = shoulderSway * 0.5;
-    }
-    
-    console.log(`🎭 [EnemyAnimationSystem] Applied sophisticated walking animation - armSwing: ${armSwing.toFixed(2)}, legSwing: ${legSwing.toFixed(2)}`);
+    console.log(`🎭 [EnemyAnimationSystem] FIXED walking: body Y=${this.bodyParts.body?.position.y.toFixed(3)} (${this.originalBodyY} + ${(this.bodyParts.body?.position.y! - this.originalBodyY).toFixed(3)} offset)`);
   }
   
   private updateIdleAnimation(deltaTime: number): void {
-    const idleTime = Date.now() * 0.001;
-    const breathingIntensity = this.animationConfigs.breathingIntensity;
+    this.idleTime += deltaTime;
+    const breathingIntensity = 0.02;
     
-    // Subtle breathing animation
+    // === IDLE BREATHING (FIXED) ===
+    // Apply breathing as OFFSET from original position
     if (this.bodyParts.body) {
-      this.bodyParts.body.position.y = 1.0 + Math.sin(idleTime * 4) * breathingIntensity;
+      const breathingOffset = Math.sin(this.idleTime * 4) * breathingIntensity;
+      this.bodyParts.body.position.y = this.originalBodyY + breathingOffset; // 0.7 + offset
     }
     
     // Subtle weapon sway
     if (this.bodyParts.weapon) {
       const baseRotation = -0.3;
-      this.bodyParts.weapon.rotation.z = baseRotation + Math.sin(idleTime * 2) * 0.1;
+      this.bodyParts.weapon.rotation.z = baseRotation + Math.sin(this.idleTime * 2) * 0.1;
     }
     
     // Return arms to neutral position gradually
