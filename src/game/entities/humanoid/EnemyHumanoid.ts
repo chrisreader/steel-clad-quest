@@ -239,18 +239,21 @@ export abstract class EnemyHumanoid {
     humanoidGroup.add(rightHipJoint);
 
     // Create torso
-    const body = this.createTorso(bodyScale, bodyY, bodyTopY, legTopY, baseSkinMaterial, baseMuscleMaterial);
+    const body = this.createTorso(bodyScale, bodyY, bodyTopY, legTopY, baseSkinMaterial, baseMuscleMaterial, baseAccentMaterial);
     humanoidGroup.add(body.parent);
 
     // Create head
     const head = this.createHead(bodyScale, headY, colors, features, baseMuscleMaterial, baseAccentMaterial);
     humanoidGroup.add(head.parent);
 
-    // Create arms
-    const { leftArm, rightArm, leftElbow, rightElbow, leftWrist, rightWrist } = this.createArms(
+    // Create arms and shoulder joints
+    const { leftArm, rightArm, leftElbow, rightElbow, leftWrist, rightWrist, leftShoulderJoint, rightShoulderJoint } = this.createArms(
       bodyScale, shoulderHeight, baseSkinMaterial, baseMuscleMaterial, baseAccentMaterial
     );
     humanoidGroup.add(leftArm, rightArm);
+    
+    // Add the shoulder joints that were missing!
+    humanoidGroup.add(leftShoulderJoint, rightShoulderJoint);
 
     // Create legs with knees and feet
     const { leftKnee, rightKnee } = this.createShinsAndFeet(
@@ -354,7 +357,8 @@ export abstract class EnemyHumanoid {
     bodyTopY: number, 
     legTopY: number,
     skinMaterial: THREE.MeshPhongMaterial,
-    muscleMaterial: THREE.MeshPhongMaterial
+    muscleMaterial: THREE.MeshPhongMaterial,
+    accentMaterial: THREE.MeshPhongMaterial
   ) {
     const torsoGroup = new THREE.Group();
     
@@ -405,6 +409,33 @@ export abstract class EnemyHumanoid {
     pelvis.position.y = legTopY + 0.2;
     pelvis.castShadow = true;
     torsoGroup.add(pelvis);
+
+    // Add trapezius muscles (traps) - the thick neck-to-shoulder muscles
+    const trapGeometry = new THREE.CylinderGeometry(
+      bodyScale.body.radius * 1.3,
+      bodyScale.body.radius * 0.9,
+      0.6, 16, 4
+    );
+    
+    // Shape the traps to be more triangular
+    const trapPositions = trapGeometry.attributes.position.array;
+    for (let i = 0; i < trapPositions.length; i += 3) {
+      const x = trapPositions[i];
+      const y = trapPositions[i + 1];
+      const z = trapPositions[i + 2];
+      
+      // Make it wider at the shoulders and narrower toward the neck
+      const widthMultiplier = Math.abs(y) > 0.2 ? 1.2 : 0.8;
+      trapPositions[i] = x * widthMultiplier;
+      trapPositions[i + 2] = z * (0.7 + Math.abs(y) * 0.3);
+    }
+    trapGeometry.attributes.position.needsUpdate = true;
+    trapGeometry.computeVertexNormals();
+    
+    const traps = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
+    traps.position.y = bodyTopY + 0.1;
+    traps.castShadow = true;
+    torsoGroup.add(traps);
 
     return { parent: torsoGroup, mesh: mainTorso };
   }
@@ -647,7 +678,7 @@ export abstract class EnemyHumanoid {
     rightArm.rotation.set(-0.393, 0, 0.3);
     rightArm.castShadow = true;
 
-    // Shoulder joints
+    // Shoulder joints - these were missing from the scene!
     const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 24, 20);
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
     leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
@@ -664,7 +695,7 @@ export abstract class EnemyHumanoid {
       leftArm, rightArm, bodyScale, skinMaterial, muscleMaterial, accentMaterial
     );
 
-    return { leftArm, rightArm, leftElbow, rightElbow, leftWrist, rightWrist };
+    return { leftArm, rightArm, leftElbow, rightElbow, leftWrist, rightWrist, leftShoulderJoint, rightShoulderJoint };
   }
 
   private createForearms(
