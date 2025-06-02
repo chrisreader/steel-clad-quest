@@ -152,15 +152,18 @@ export class EnemyAnimationSystem {
     }
     
     const elapsed = this.swingAnimation.clock.getElapsedTime() - this.swingAnimation.startTime;
-    const { phases, duration } = STANDARD_SWORD_ANIMATION;
+    const { phases, duration, rotations } = STANDARD_SWORD_ANIMATION;
     
     console.log(`🗡️ [EnemyAnimationSystem] STANDARDIZED attack animation - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
     
-    // Use adjusted rotations that keep the arm in front of the body
+    // Get enemy's actual neutral pose as baseline (same as player approach)
+    const enemyNeutral = this.metrics.neutralPoses.arms.right;
+    
+    // Use STANDARDIZED animation rotations (same as player)
     let shoulderRotation = { 
-      x: 0.2,  // Start with a more reasonable forward angle (≈11°)
-      y: 0, 
-      z: 0 
+      x: rotations.neutral.x, 
+      y: rotations.neutral.y, 
+      z: rotations.neutral.z 
     };
     
     // Elbow and wrist coordination (same as player)
@@ -169,14 +172,14 @@ export class EnemyAnimationSystem {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Adjusted shoulder rotations to keep arm forward
+      // WINDUP PHASE: Use STANDARDIZED windup rotations (same as player)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Use more conservative angles
-      shoulderRotation.x = THREE.MathUtils.lerp(0.2, 0.4, easedT);    // 11° to 23° (keep forward)
-      shoulderRotation.y = THREE.MathUtils.lerp(0, 0.17, easedT);     // 0° to 10° (slight right)
-      shoulderRotation.z = THREE.MathUtils.lerp(0, 0.35, easedT);     // 0° to 20° (moderate twist)
+      // SHOULDER: Use standardized windup position (same as player)
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.neutral.x, rotations.windup.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.neutral.y, rotations.windup.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.neutral.z, rotations.windup.z, easedT);
       
       // ELBOW: Extend to support right position (same as player)
       elbowRotation.x = THREE.MathUtils.lerp(0.05, -0.1, easedT);
@@ -184,22 +187,22 @@ export class EnemyAnimationSystem {
       
       // WRIST: Position for diagonal strike (same as player)
       wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 8, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0, 0.35, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(0, rotations.windup.z, easedT);
       
       // TORSO: Coil to the right for power (same as player)
       torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
       
-      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - Using adjusted forward-facing rotations`);
+      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - Using STANDARDIZED rotations (same as player)`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Adjusted slash movement to keep arm visible
+      // SLASH PHASE: Use STANDARDIZED slash movement (same as player)
       const t = (elapsed - phases.windup) / phases.slash;
       const aggressiveT = t * t * (3 - 2 * t); // Smoothstep for aggressive acceleration (same as player)
       
-      // SHOULDER: Movement from windup to adjusted slash end position
-      shoulderRotation.x = THREE.MathUtils.lerp(0.4, -0.1, aggressiveT);   // 23° to -6° (controlled downward)
-      shoulderRotation.y = THREE.MathUtils.lerp(0.17, 0.35, aggressiveT);  // 10° to 20° (sweep across)
-      shoulderRotation.z = THREE.MathUtils.lerp(0.35, -0.35, aggressiveT); // 20° to -20° (counter-twist)
+      // SHOULDER: Movement from windup to standardized slash end position (same as player)
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.windup.x, rotations.slash.x, aggressiveT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.windup.y, rotations.slash.y, aggressiveT);
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.windup.z, rotations.slash.z, aggressiveT);
       
       // ELBOW: Aggressive movement to support fast diagonal (same as player)
       elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.15, aggressiveT);
@@ -207,22 +210,22 @@ export class EnemyAnimationSystem {
       
       // WRIST: Aggressive movement with snap (same as player)
       wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 10, aggressiveT);
-      wristRotation.z = THREE.MathUtils.lerp(0.35, 0, aggressiveT);
+      wristRotation.z = THREE.MathUtils.lerp(rotations.windup.z, 0, aggressiveT);
       
       // TORSO: Aggressive rotation to support diagonal movement (same as player)
       torsoRotation = THREE.MathUtils.lerp(-0.3, 0.25, aggressiveT);
       
-      console.log(`🗡️ [EnemyAnimationSystem] SLASH PHASE t=${t.toFixed(2)} - Adjusted diagonal sweep keeping arm forward`);
+      console.log(`🗡️ [EnemyAnimationSystem] SLASH PHASE t=${t.toFixed(2)} - STANDARDIZED diagonal sweep (same as player)`);
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to neutral position
+      // RECOVERY PHASE: Return to neutral position (same as player)
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return from slash end position to neutral
-      shoulderRotation.x = THREE.MathUtils.lerp(-0.1, 0.2, easedT);   // -6° back to 11°
-      shoulderRotation.y = THREE.MathUtils.lerp(0.35, 0, easedT);     // 20° back to 0°
-      shoulderRotation.z = THREE.MathUtils.lerp(-0.35, 0, easedT);    // -20° back to 0°
+      // Return from slash end position to neutral (same as player)
+      shoulderRotation.x = THREE.MathUtils.lerp(rotations.slash.x, rotations.neutral.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(rotations.slash.y, rotations.neutral.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(rotations.slash.z, rotations.neutral.z, easedT);
       
       // Return elbow to neutral (same as player)
       elbowRotation.x = THREE.MathUtils.lerp(0.15, 0.05, easedT);
@@ -235,7 +238,7 @@ export class EnemyAnimationSystem {
       // Torso returns to center (same as player)
       torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT);
       
-      console.log(`🗡️ [EnemyAnimationSystem] RECOVERY PHASE t=${t.toFixed(2)} - Returning to adjusted neutral`);
+      console.log(`🗡️ [EnemyAnimationSystem] RECOVERY PHASE t=${t.toFixed(2)} - Returning to STANDARDIZED neutral (same as player)`);
       
     } else {
       // ANIMATION COMPLETE
@@ -246,7 +249,7 @@ export class EnemyAnimationSystem {
     // Apply the coordinated movement to enemy body parts (same as player)
     this.applyAttackMovement(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
     
-    console.log(`🗡️ [EnemyAnimationSystem] Attack animation progress: ${(elapsed / duration * 100).toFixed(1)}% - arm kept forward`);
+    console.log(`🗡️ [EnemyAnimationSystem] STANDARDIZED attack animation progress: ${(elapsed / duration * 100).toFixed(1)}% (same as player)`);
     return true;
   }
   
@@ -278,9 +281,11 @@ export class EnemyAnimationSystem {
   }
   
   private completeAttackAnimation(): void {
-    // Reset to adjusted neutral rotations that keep arm forward
+    // Reset to STANDARDIZED neutral rotations (same as player)
+    const neutralRotation = STANDARD_SWORD_ANIMATION.rotations.neutral;
+    
     if (this.bodyParts.rightArm) {
-      this.bodyParts.rightArm.rotation.set(0.2, 0, 0); // 11° forward instead of 60°
+      this.bodyParts.rightArm.rotation.set(neutralRotation.x, neutralRotation.y, neutralRotation.z);
     }
     
     // Reset other joints to standardized positions (same as player)
@@ -295,7 +300,7 @@ export class EnemyAnimationSystem {
     }
     
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] Attack animation completed, returned to adjusted neutral stance with arm forward");
+    console.log("🗡️ [EnemyAnimationSystem] STANDARDIZED attack animation completed, returned to neutral stance (same as player)");
   }
   
   public isAttacking(): boolean {
