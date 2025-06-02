@@ -259,16 +259,18 @@ export abstract class EnemyHumanoid {
     rightLeg.receiveShadow = true;
     humanoidGroup.add(rightLeg);
 
-    // === ENHANCED HIP JOINTS ===
+    // === ENHANCED HIP JOINTS - TAPERED FOR SMOOTH CONNECTION ===
     const hipJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
     const leftHipJoint = new THREE.Mesh(hipJointGeometry, accentMaterial);
     leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
+    leftHipJoint.scale.set(1, 0.8, 1); // Slightly flattened for better connection
     leftHipJoint.castShadow = true;
     leftHipJoint.receiveShadow = true;
     humanoidGroup.add(leftHipJoint);
 
     const rightHipJoint = new THREE.Mesh(hipJointGeometry, accentMaterial.clone());
     rightHipJoint.position.set(bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
+    rightHipJoint.scale.set(1, 0.8, 1); // Slightly flattened for better connection
     rightHipJoint.castShadow = true;
     rightHipJoint.receiveShadow = true;
     humanoidGroup.add(rightHipJoint);
@@ -529,30 +531,34 @@ export abstract class EnemyHumanoid {
     rightArm.receiveShadow = true;
     humanoidGroup.add(rightArm);
 
-    // === SMALLER CIRCULAR SHOULDER JOINTS ===
+    // === SHOULDER JOINTS - TAPERED FOR SMOOTH ARM CONNECTION ===
     const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 24, 20);
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial);
     leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
+    leftShoulderJoint.scale.set(0.9, 1, 0.9); // Slightly compressed for smoother arm connection
     leftShoulderJoint.castShadow = true;
     leftShoulderJoint.receiveShadow = true;
     humanoidGroup.add(leftShoulderJoint);
 
     const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
     rightShoulderJoint.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
+    rightShoulderJoint.scale.set(0.9, 1, 0.9); // Slightly compressed for smoother arm connection
     rightShoulderJoint.castShadow = true;
     rightShoulderJoint.receiveShadow = true;
     humanoidGroup.add(rightShoulderJoint);
 
-    // === ENHANCED ELBOW JOINTS ===
+    // === ENHANCED ELBOW JOINTS - TAPERED FOR SMOOTH FOREARM CONNECTION ===
     const elbowJointGeometry = new THREE.SphereGeometry(0.22, 24, 20);
     const leftElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial);
     leftElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
+    leftElbowJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother forearm connection
     leftElbowJoint.castShadow = true;
     leftElbowJoint.receiveShadow = true;
     leftArm.add(leftElbowJoint);
 
     const rightElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial.clone());
     rightElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
+    rightElbowJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother forearm connection
     rightElbowJoint.castShadow = true;
     rightElbowJoint.receiveShadow = true;
     rightArm.add(rightElbowJoint);
@@ -656,16 +662,18 @@ export abstract class EnemyHumanoid {
     rightKnee.receiveShadow = true;
     rightLeg.add(rightKnee);
 
-    // === ENHANCED KNEE JOINTS ===
+    // === ENHANCED KNEE JOINTS - TAPERED FOR SMOOTH SHIN CONNECTION ===
     const kneeJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
     const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial);
     leftKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
+    leftKneeJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother shin connection
     leftKneeJoint.castShadow = true;
     leftKneeJoint.receiveShadow = true;
     leftLeg.add(leftKneeJoint);
 
     const rightKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial.clone());
     rightKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
+    rightKneeJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother shin connection
     rightKneeJoint.castShadow = true;
     rightKneeJoint.receiveShadow = true;
     rightLeg.add(rightKneeJoint);
