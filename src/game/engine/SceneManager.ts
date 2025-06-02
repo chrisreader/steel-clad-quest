@@ -6,6 +6,9 @@ import { PhysicsManager } from './PhysicsManager';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
 import { RingQuadrantSystem, RegionCoordinates, Region } from '../world/RingQuadrantSystem';
+import { EffectsManager } from './EffectsManager';
+import { AudioManager } from './AudioManager';
+import { Enemy } from '../entities/Enemy';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -156,6 +159,32 @@ export class SceneManager {
     
     this.scene.add(this.sun);
     console.log("3D sun created at position:", this.sun.position);
+  }
+  
+  // NEW: Enemy spawning methods that GameEngine expects
+  public initializeEnemySpawning(effectsManager: EffectsManager, audioManager: AudioManager): void {
+    if (!this.enemySpawningSystem) {
+      this.enemySpawningSystem = new DynamicEnemySpawningSystem(
+        this.scene,
+        effectsManager,
+        audioManager
+      );
+      console.log("Enemy spawning system initialized");
+    }
+  }
+  
+  public startEnemySpawning(playerPosition: THREE.Vector3): void {
+    if (this.enemySpawningSystem) {
+      this.enemySpawningSystem.initialize(playerPosition);
+      console.log("Enemy spawning started at player position:", playerPosition);
+    }
+  }
+  
+  public getEnemies(): Enemy[] {
+    if (this.enemySpawningSystem) {
+      return this.enemySpawningSystem.getEnemies();
+    }
+    return [];
   }
   
   /**
