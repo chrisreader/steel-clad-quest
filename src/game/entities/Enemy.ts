@@ -35,6 +35,7 @@ export class Enemy {
   private stunDuration: number = 0;
   private targetRotation: number = 0;
   private rotationSpeed: number = 3.0;
+  private hasInitialOrientation: boolean = false; // NEW: Track if initial orientation is set
   
   constructor(
     scene: THREE.Scene,
@@ -69,8 +70,6 @@ export class Enemy {
     // Use new data-driven body builder
     const { group: orcGroup, bodyParts, metrics } = EnemyBodyBuilder.createRealisticOrcBody(position);
     this.enhancedBodyParts = bodyParts;
-    
-    // FIXED: No additional rotation needed - body is now aligned with head
     
     // Pass metrics to animation system for auto-sync
     this.animationSystem = new EnemyAnimationSystem(bodyParts, metrics);
@@ -381,6 +380,12 @@ export class Enemy {
       return;
     }
     
+    // FIXED: Set initial orientation toward player on first update
+    if (!this.hasInitialOrientation) {
+      this.setInitialOrientation(playerPosition);
+      this.hasInitialOrientation = true;
+    }
+    
     // Update movement state timers
     this.updateMovementState(deltaTime);
     
@@ -420,6 +425,27 @@ export class Enemy {
     
     // Update smooth rotation
     this.updateRotation(deltaTime);
+  }
+  
+  private setInitialOrientation(playerPosition: THREE.Vector3): void {
+    const directionToPlayer = new THREE.Vector3()
+      .subVectors(playerPosition, this.enemy.mesh.position)
+      .normalize();
+    directionToPlayer.y = 0;
+    
+    // FIXED: Different rotation calculations for enhanced vs legacy enemies
+    if (this.isEnhancedEnemy) {
+      // For enhanced orcs: body is already rotated 180°, so we need to account for that
+      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z) + Math.PI;
+    } else {
+      // For legacy goblins: use standard rotation
+      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
+    }
+    
+    // Set rotation immediately (no smooth interpolation for initial orientation)
+    this.enemy.mesh.rotation.y = this.targetRotation;
+    
+    console.log(`🎯 [Enemy] FIXED: Set initial orientation - Enhanced: ${this.isEnhancedEnemy}, Rotation: ${this.targetRotation.toFixed(2)}`);
   }
   
   private createHitFlashEffect(): void {
@@ -479,16 +505,20 @@ export class Enemy {
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
-      // FIXED: Calculate target rotation for aligned body-head orientation
+      // FIXED: Calculate target rotation with proper orientation for each enemy type
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.enemy.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
-      // FIXED: Since body is now rotated 180°, adjust rotation calculation
-      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z) + Math.PI;
-      
-      console.log(`🗡️ [Enemy] FIXED: Rotation calculation adjusted for aligned body orientation, target=${this.targetRotation.toFixed(2)}`);
+      // FIXED: Use different rotation calculations based on enemy body construction
+      if (this.isEnhancedEnemy) {
+        // For enhanced orcs: compensate for 180° body rotation
+        this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z) + Math.PI;
+      } else {
+        // For legacy goblins: standard rotation
+        this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
+      }
       
       // Move toward player if outside damage range
       if (distanceToPlayer > this.enemy.damageRange) {
@@ -524,8 +554,12 @@ export class Enemy {
           .normalize();
         direction.y = 0;
         
-        // FIXED: Adjust rotation calculation for aligned body orientation
-        this.targetRotation = Math.atan2(direction.x, direction.z) + Math.PI;
+        // FIXED: Use proper rotation calculation for each enemy type
+        if (this.isEnhancedEnemy) {
+          this.targetRotation = Math.atan2(direction.x, direction.z) + Math.PI;
+        } else {
+          this.targetRotation = Math.atan2(direction.x, direction.z);
+        }
         
         const slowMoveAmount = this.enemy.speed * deltaTime * 0.3; // Slower movement when far
         const newPosition = this.enemy.mesh.position.clone();
@@ -581,8 +615,11 @@ export class Enemy {
   }
   
   private updateRotation(deltaTime: number): void {
-    // Smooth rotation interpolation
-    if (this.movementState !== EnemyMovementState.KNOCKED_BACK && this.movementState !== EnemyMovementState.STUNNED) {
+    // FIXED: Only use smooth rotation for movement changes, not initial orientation
+    if (this.movementState !== EnemyMovementState.KNOCKED_BACK && 
+        this.movementState !== EnemyMovementState.STUNNED && 
+        this.hasInitialOrientation) {
+      
       const currentRotation = this.enemy.mesh.rotation.y;
       const rotationDiff = this.targetRotation - currentRotation;
       
@@ -591,10 +628,12 @@ export class Enemy {
       if (normalizedDiff > Math.PI) normalizedDiff -= Math.PI * 2;
       if (normalizedDiff < -Math.PI) normalizedDiff += Math.PI * 2;
       
-      // Apply smooth rotation
-      const rotationStep = this.rotationSpeed * deltaTime;
-      const newRotation = currentRotation + Math.sign(normalizedDiff) * Math.min(Math.abs(normalizedDiff), rotationStep);
-      this.enemy.mesh.rotation.y = newRotation;
+      // Only apply smooth rotation if the difference is significant
+      if (Math.abs(normalizedDiff) > 0.1) {
+        const rotationStep = this.rotationSpeed * deltaTime;
+        const newRotation = currentRotation + Math.sign(normalizedDiff) * Math.min(Math.abs(normalizedDiff), rotationStep);
+        this.enemy.mesh.rotation.y = newRotation;
+      }
     }
   }
   
@@ -805,7 +844,7 @@ export class Enemy {
     
     // Create enemy
     const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager);
-    console.log(`🗡️ [Enemy] Created ${type} at difficulty ${difficulty} - Enhanced: ${enemy.isEnhancedEnemy}`);
+    console.log(`🗡️ [Enemy] FIXED: Created ${type} with proper initial orientation - Enhanced: ${enemy.isEnhancedEnemy}`);
     return enemy;
   }
   
