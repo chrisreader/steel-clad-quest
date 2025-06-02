@@ -54,7 +54,7 @@ export class RealisticMovementSystem {
     const leftLegPhase = walkPhase;
     const rightLegPhase = (walkPhase + 0.5) % 1;
     
-    // Enhanced knee movement with realistic gait
+    // FIXED: Enhanced knee movement with proper joint constraints
     this.updateRealisticKnees(bodyParts, leftLegPhase, rightLegPhase);
     
     // Coordinated elbow movement
@@ -77,26 +77,86 @@ export class RealisticMovementSystem {
   ): void {
     if (!bodyParts.leftKnee || !bodyParts.rightKnee) return;
     
-    // Calculate realistic knee flexion for each leg
-    const leftKneeFlexion = JointAnimationHelpers.calculateRealisticKneeMovement(
-      leftLegPhase, false
-    ) * this.config.kneeFlexionIntensity;
+    // FIXED: Calculate knee flexion with proper limits to prevent glitching
+    const leftKneeFlexion = this.calculateSafeKneeMovement(leftLegPhase);
+    const rightKneeFlexion = this.calculateSafeKneeMovement(rightLegPhase);
     
-    const rightKneeFlexion = JointAnimationHelpers.calculateRealisticKneeMovement(
-      rightLegPhase, false
-    ) * this.config.kneeFlexionIntensity;
+    // Apply intensity scaling with safety limits
+    const leftFlexionScaled = leftKneeFlexion * this.config.kneeFlexionIntensity;
+    const rightFlexionScaled = rightKneeFlexion * this.config.kneeFlexionIntensity;
     
-    // Add subtle asymmetry for realism
-    const leftFlexionWithAsymmetry = JointAnimationHelpers.addAsymmetry(
-      leftKneeFlexion, this.config.characterSeed, this.config.asymmetryIntensity
+    // FIXED: Add subtle asymmetry with clamping to prevent extreme values
+    const leftFlexionWithAsymmetry = this.clampKneeRotation(
+      JointAnimationHelpers.addAsymmetry(
+        leftFlexionScaled, this.config.characterSeed, this.config.asymmetryIntensity
+      )
     );
-    const rightFlexionWithAsymmetry = JointAnimationHelpers.addAsymmetry(
-      rightKneeFlexion, this.config.characterSeed + 1, this.config.asymmetryIntensity
+    const rightFlexionWithAsymmetry = this.clampKneeRotation(
+      JointAnimationHelpers.addAsymmetry(
+        rightFlexionScaled, this.config.characterSeed + 1, this.config.asymmetryIntensity
+      )
     );
     
-    // Apply knee rotations
-    bodyParts.leftKnee.rotation.x = leftFlexionWithAsymmetry;
-    bodyParts.rightKnee.rotation.x = rightFlexionWithAsymmetry;
+    // FIXED: Apply knee rotations with smooth interpolation to prevent snapping
+    this.smoothApplyKneeRotation(bodyParts.leftKnee, leftFlexionWithAsymmetry);
+    this.smoothApplyKneeRotation(bodyParts.rightKnee, rightFlexionWithAsymmetry);
+  }
+
+  /**
+   * FIXED: Calculate safe knee movement that prevents glitching
+   */
+  private calculateSafeKneeMovement(legPhase: number): number {
+    // Use the same realistic gait calculation but with safety limits
+    let result: number;
+    
+    if (legPhase < 0.1) {
+      // Heel strike - slight flexion for impact absorption
+      const t = legPhase / 0.1;
+      result = THREE.MathUtils.lerp(0.1, 0.05, t);
+    } else if (legPhase < 0.4) {
+      // Stance phase - leg straightens for weight bearing
+      const t = (legPhase - 0.1) / 0.3;
+      result = THREE.MathUtils.lerp(0.05, 0, t);
+    } else if (legPhase < 0.6) {
+      // Toe-off - slight bend for power generation
+      const t = (legPhase - 0.4) / 0.2;
+      result = THREE.MathUtils.lerp(0, 0.15, t);
+    } else if (legPhase < 0.8) {
+      // Swing phase - controlled knee flexion
+      const t = (legPhase - 0.6) / 0.2;
+      // FIXED: Reduced maximum bend to prevent glitching (was 0.8, now 0.5)
+      const maxBend = 0.5;
+      result = THREE.MathUtils.lerp(0.15, maxBend, Math.sin(t * Math.PI));
+    } else {
+      // Leg extension - prepare for next heel strike
+      const t = (legPhase - 0.8) / 0.2;
+      const maxBend = 0.5;
+      result = THREE.MathUtils.lerp(maxBend, 0.1, t);
+    }
+    
+    // FIXED: Clamp to safe range to prevent extreme rotations
+    return THREE.MathUtils.clamp(result, 0, 0.6);
+  }
+
+  /**
+   * FIXED: Clamp knee rotation to prevent glitching
+   */
+  private clampKneeRotation(rotation: number): number {
+    // Prevent extreme knee bends that cause visual glitches
+    return THREE.MathUtils.clamp(rotation, 0, 0.7); // Max ~40 degrees
+  }
+
+  /**
+   * FIXED: Smooth application of knee rotation to prevent snapping
+   */
+  private smoothApplyKneeRotation(knee: THREE.Mesh, targetRotation: number): void {
+    const currentRotation = knee.rotation.x;
+    const maxChange = 0.1; // Limit rotation change per frame
+    
+    const rotationDiff = targetRotation - currentRotation;
+    const clampedDiff = THREE.MathUtils.clamp(rotationDiff, -maxChange, maxChange);
+    
+    knee.rotation.x = currentRotation + clampedDiff;
   }
 
   private updateRealisticElbows(
