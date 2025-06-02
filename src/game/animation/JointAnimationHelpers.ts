@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class JointAnimationHelpers {
@@ -171,8 +172,8 @@ export class JointAnimationHelpers {
     } else if (attackPhase < 0.6) {
       // Strike: aggressive downward snap for floor-level horizontal swing
       const t = (attackPhase - 0.3) / 0.3;
-      // Downward angle set to -0.7 as requested (approximately -126°)
-      const strikeWristX = -Math.PI * 0.7 * weaponWristMultiplier; // -0.7 downward angle
+      // Downward angle set to -5.7 as requested
+      const strikeWristX = -Math.PI * 5.7 * weaponWristMultiplier; // -5.7 downward angle
       const strikeWristY = Math.PI * 0.1 * weaponWristMultiplier; // Outward snap set to 0.1
       const windupWristX = -Math.PI * 0.1 * weaponWristMultiplier;
       const windupWristY = -Math.PI * 0.05 * weaponWristMultiplier;
@@ -185,7 +186,7 @@ export class JointAnimationHelpers {
     } else {
       // Recovery: return to neutral position
       const t = (attackPhase - 0.6) / 0.4;
-      const strikeWristX = -Math.PI * 0.7 * weaponWristMultiplier; // Match the strike angle
+      const strikeWristX = -Math.PI * 5.7 * weaponWristMultiplier; // Match the strike angle
       const strikeWristY = Math.PI * 0.1 * weaponWristMultiplier;
       
       return {
