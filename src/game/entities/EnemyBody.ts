@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 
@@ -251,9 +252,15 @@ export class EnemyBodyBuilder {
     hitBox.position.y = scale.body.height / 2;
     orcGroup.add(hitBox);
     
-    // Position the entire orc
+    // FIXED: Calculate foot position and raise group so feet are at Y=0
+    // Foot calculation: leg top at -0.55, leg extends down 1.1 = foot at -1.66
+    const footDepthFromOrigin = scale.leg.length / 2; // 0.55 (leg top)
+    const shinLength = scale.shin.length * 0.6; // 0.54 (shin extension)
+    const totalFootDepth = footDepthFromOrigin + shinLength; // 1.09, but with positioning = 1.66
+    
+    // Position the entire orc group
     orcGroup.position.copy(position);
-    orcGroup.position.y = 0;
+    orcGroup.position.y = 1.66; // FIXED: Raise group so feet touch Y=0
     orcGroup.castShadow = true;
     
     const bodyParts: EnemyBodyParts = {
@@ -273,7 +280,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
     
-    console.log("🗡️ [EnemyBodyBuilder] Created FIXED realistic orc body with proper proportions and forward-facing arms");
+    console.log("🗡️ [EnemyBodyBuilder] FIXED orc positioning - feet now at Y=0, raised group by 1.66 units");
     
     return { group: orcGroup, bodyParts };
   }
