@@ -1,10 +1,11 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { MathUtils } from '../utils';
-import { EnemyBodyBuilder, EnemyBodyParts } from './EnemyBody';
+import { EnemyBodyParts } from './EnemyBody';
 import { EnemyAnimationSystem } from '../animation/EnemyAnimationSystem';
 import { OrcEnemy } from './humanoid/OrcEnemy';
 
