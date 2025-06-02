@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
@@ -7,6 +8,7 @@ import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../type
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
 import { RingQuadrantSystem, RegionCoordinates, Region } from '../world/RingQuadrantSystem';
 import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
+import { StructureGenerator } from '../world/StructureGenerator';
 import { EffectsManager } from './EffectsManager';
 import { AudioManager } from './AudioManager';
 import { Enemy } from '../entities/Enemy';
@@ -19,6 +21,7 @@ export class SceneManager {
   // Ring-quadrant world system
   private ringSystem: RingQuadrantSystem;
   private terrainFeatureGenerator: TerrainFeatureGenerator;
+  private structureGenerator: StructureGenerator;
   private loadedRegions: Map<string, Region> = new Map();
   private renderDistance: number = 800; // How far to load terrain
   private debugMode: boolean = true; // Set to false for production
@@ -61,6 +64,9 @@ export class SceneManager {
     
     // Initialize terrain feature generator
     this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
+    
+    // Initialize structure generator
+    this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene);
     
     // Setup distance-based fog
     this.setupDistanceFog();
@@ -317,6 +323,9 @@ export class SceneManager {
     
     // Generate terrain features for this region
     this.terrainFeatureGenerator.generateFeaturesForRegion(region);
+    
+    // Generate structures for this region
+    this.structureGenerator.generateStructuresForRegion(region);
   }
   
   private unloadRegion(region: RegionCoordinates): void {
@@ -326,6 +335,9 @@ export class SceneManager {
     if (!loadedRegion) return;
     
     console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    
+    // Clean up structures first
+    this.structureGenerator.cleanupStructuresForRegion(region);
     
     // Clean up terrain features
     this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
@@ -859,6 +871,11 @@ export class SceneManager {
     // Dispose collision manager
     if (this.environmentCollisionManager) {
       this.environmentCollisionManager.dispose();
+    }
+    
+    // Dispose structure generator
+    if (this.structureGenerator) {
+      this.structureGenerator.dispose();
     }
     
     // Dispose terrain feature generator
