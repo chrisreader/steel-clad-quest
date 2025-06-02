@@ -310,33 +310,18 @@ export abstract class EnemyHumanoid {
     mainTorso.receiveShadow = true;
     torsoGroup.add(mainTorso);
 
-    // Chest Area: Pectoral muscles using partial spheres
-    const pectoralGeometry = new THREE.SphereGeometry(
-      0.3,   // Radius
-      16, 12,  // Width/height segments
-      0, Math.PI * 0.6,  // Phi start/length (partial sphere)
-      0, Math.PI * 0.5   // Theta start/length (partial sphere)
+    // Chest Area: Widened shape like inverted pelvis for shoulder connection
+    const chestGeometry = new THREE.CylinderGeometry(
+      bodyScale.body.radius * 1.2,  // Top radius (wider for shoulders)
+      bodyScale.body.radius * 0.85, // Bottom radius (connects to main torso)
+      0.5, // Height
+      16, 4
     );
-    
-    const leftPectoral = new THREE.Mesh(pectoralGeometry, muscleMaterial.clone());
-    leftPectoral.position.set(-0.25, bodyTopY - 0.2, 0.3);
-    leftPectoral.rotation.set(0, -Math.PI/4, 0);
-    leftPectoral.castShadow = true;
-    torsoGroup.add(leftPectoral);
-    
-    const rightPectoral = new THREE.Mesh(pectoralGeometry, muscleMaterial.clone());
-    rightPectoral.position.set(0.25, bodyTopY - 0.2, 0.3);
-    rightPectoral.rotation.set(0, Math.PI/4, 0);
-    rightPectoral.castShadow = true;
-    torsoGroup.add(rightPectoral);
-
-    // Abdominal Area: Subtle convex shape with muscle definition
-    const abdominalGeometry = new THREE.SphereGeometry(0.35, 16, 12);
-    const abdomen = new THREE.Mesh(abdominalGeometry, muscleMaterial.clone());
-    abdomen.position.set(0, bodyY - 0.2, 0.25);
-    abdomen.scale.set(0.8, 0.6, 0.7); // Flattened and elongated
-    abdomen.castShadow = true;
-    torsoGroup.add(abdomen);
+    const chest = new THREE.Mesh(chestGeometry, muscleMaterial.clone());
+    chest.position.y = bodyTopY - 0.25;
+    chest.castShadow = true;
+    chest.receiveShadow = true;
+    torsoGroup.add(chest);
 
     // Hip/Pelvis Area: Widened base for connection to legs
     const pelvisGeometry = new THREE.CylinderGeometry(
