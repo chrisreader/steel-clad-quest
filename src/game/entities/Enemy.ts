@@ -557,24 +557,24 @@ export class Enemy {
     // Enhanced attack effect at enemy position
     this.effectsManager.createAttackEffect(this.enemy.mesh.position.clone(), 0xFFD700);
     
-    // FIXED: Clean knockback direction calculation - always away from player
+    // FIXED: Consistent knockback for both sword and bow attacks
     const knockbackDirection = new THREE.Vector3()
       .subVectors(this.enemy.mesh.position, playerPosition)
       .normalize();
     knockbackDirection.y = 0; // Keep knockback horizontal only
     
-    // Calculate knockback intensity based on damage and resistance
-    const baseKnockback = 3.0; // Increased for more noticeable effect
-    const damageMultiplier = Math.min(damage / 20, 2.0);
+    // MATCHED: Same knockback intensity as sword attacks for all weapons
+    const baseKnockback = 3.0; // Same as sword knockback
+    const damageMultiplier = Math.min(damage / 20, 2.0); // Same scaling
     const knockbackIntensity = (baseKnockback * damageMultiplier) / this.knockbackResistance;
     
-    // FIXED: Set clean directional velocity without any random components
+    // FIXED: Set clean directional velocity for consistent knockback
     this.knockbackVelocity.copy(knockbackDirection).multiplyScalar(knockbackIntensity);
-    this.knockbackDuration = 300; // Shorter duration for snappier feel
-    this.stunDuration = 150; // Brief stun after knockback
+    this.knockbackDuration = 300; // Same duration as sword
+    this.stunDuration = 150; // Same stun duration as sword
     this.movementState = EnemyMovementState.KNOCKED_BACK;
     
-    console.log(`💥 [Enemy] Clean knockback applied: intensity=${knockbackIntensity.toFixed(2)}, direction=(${knockbackDirection.x.toFixed(2)}, ${knockbackDirection.z.toFixed(2)})`);
+    console.log(`💥 [Enemy] Consistent knockback applied: intensity=${knockbackIntensity.toFixed(2)}, direction=(${knockbackDirection.x.toFixed(2)}, ${knockbackDirection.z.toFixed(2)})`);
     
     // Blood effect
     const bloodDirection = knockbackDirection.clone();
