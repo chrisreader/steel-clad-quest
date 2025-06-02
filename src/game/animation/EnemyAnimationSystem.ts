@@ -143,7 +143,7 @@ export class EnemyAnimationSystem {
     this.swingAnimation.clock.start();
     this.swingAnimation.startTime = this.swingAnimation.clock.getElapsedTime();
     
-    console.log("🗡️ [EnemyAnimationSystem] Started FLIPPED enemy sword attack animation (left-to-right swing)");
+    console.log("🗡️ [EnemyAnimationSystem] Started REVERSED enemy sword attack animation (forward swing)");
   }
   
   public updateAttackAnimation(deltaTime: number): boolean {
@@ -154,88 +154,88 @@ export class EnemyAnimationSystem {
     const elapsed = this.swingAnimation.clock.getElapsedTime() - this.swingAnimation.startTime;
     const { phases, duration } = STANDARD_SWORD_ANIMATION;
     
-    console.log(`🗡️ [EnemyAnimationSystem] MIRRORED attack animation - LEFT ARM weapon attack (mirrored swing) - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
+    console.log(`🗡️ [EnemyAnimationSystem] REVERSED attack animation - LEFT ARM weapon attack (forward swing) - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
     
-    // CANONICALIZED: Start with LEFT arm pointing forward in neutral position
+    // REVERSED: Start with LEFT arm pointing forward in neutral position
     let shoulderRotation = { 
-      x: -Math.PI / 6,  // Negative angle to point forward (-30°)
+      x: Math.PI / 6,  // REVERSED: Positive angle to point forward (+30°)
       y: 0, 
       z: 0 
     };
     
     // Elbow and wrist coordination for proper forward swing (LEFT ARM)
     let elbowRotation = { x: 0.05, y: 0, z: 0 };
-    let wristRotation = { x: -Math.PI / 6, y: 0, z: 0 };
+    let wristRotation = { x: Math.PI / 6, y: 0, z: 0 }; // REVERSED: Positive angle
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Mirror the entire shoulder movement
+      // WINDUP PHASE: Prepare for forward swing
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Mirrored windup position (flip X, Y, and Z)
-      shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 3, easedT); // MIRRORED: was -Math.PI / 3, now Math.PI / 3
-      shoulderRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 18, easedT); // MIRRORED: was Math.PI / 18, now -Math.PI / 18
-      shoulderRotation.z = THREE.MathUtils.lerp(0, Math.PI / 9, easedT); // MIRRORED: was -Math.PI / 9, now Math.PI / 9
+      // SHOULDER: Pull back for forward windup
+      shoulderRotation.x = THREE.MathUtils.lerp(Math.PI / 6, -Math.PI / 3, easedT); // REVERSED: Pull back behind
+      shoulderRotation.y = THREE.MathUtils.lerp(0, Math.PI / 18, easedT); // REVERSED: Positive Y
+      shoulderRotation.z = THREE.MathUtils.lerp(0, -Math.PI / 9, easedT); // REVERSED: Negative Z
       
-      // ELBOW: Mirrored elbow movement
+      // ELBOW: Support the windup movement
       elbowRotation.x = THREE.MathUtils.lerp(0.05, -0.1, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 6, easedT); // MIRRORED: was Math.PI / 6, now -Math.PI / 6
+      elbowRotation.y = THREE.MathUtils.lerp(0, Math.PI / 6, easedT); // REVERSED: Positive Y
       
-      // WRIST: Mirrored wrist positioning
-      wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 8, easedT); // MIRRORED: was Math.PI / 8, now -Math.PI / 8
-      wristRotation.z = THREE.MathUtils.lerp(0, Math.PI / 9, easedT); // MIRRORED: was -Math.PI / 9, now Math.PI / 9
+      // WRIST: Position for forward strike
+      wristRotation.y = THREE.MathUtils.lerp(0, Math.PI / 8, easedT); // REVERSED: Positive Y
+      wristRotation.z = THREE.MathUtils.lerp(0, -Math.PI / 9, easedT); // REVERSED: Negative Z
       
-      // TORSO: Mirrored coiling direction
-      torsoRotation = THREE.MathUtils.lerp(0, 0.3, easedT); // MIRRORED: was -0.3, now 0.3
+      // TORSO: Coil in opposite direction
+      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT); // REVERSED: Negative coil
       
-      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - LEFT ARM pulling back for MIRRORED swing`);
+      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - LEFT ARM pulling back for FORWARD swing`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Mirrored forward diagonal strike
+      // SLASH PHASE: Forward diagonal strike
       const t = (elapsed - phases.windup) / phases.slash;
       const aggressiveT = t * t * (3 - 2 * t); // Smoothstep for aggressive acceleration
       
-      // SHOULDER: Mirrored strike movement (flip all axes)
-      shoulderRotation.x = THREE.MathUtils.lerp(Math.PI / 3, -Math.PI / 12, aggressiveT); // MIRRORED: was Math.PI / 12, now -Math.PI / 12
-      shoulderRotation.y = THREE.MathUtils.lerp(-Math.PI / 18, -Math.PI / 9, aggressiveT); // MIRRORED: was Math.PI / 9, now -Math.PI / 9
-      shoulderRotation.z = THREE.MathUtils.lerp(Math.PI / 9, -Math.PI / 9, aggressiveT); // MIRRORED: was Math.PI / 9, now -Math.PI / 9
+      // SHOULDER: Forward strike movement
+      shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 3, Math.PI / 12, aggressiveT); // REVERSED: Forward swing
+      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 18, Math.PI / 9, aggressiveT); // REVERSED: Positive Y
+      shoulderRotation.z = THREE.MathUtils.lerp(-Math.PI / 9, Math.PI / 9, aggressiveT); // REVERSED: Positive Z
       
-      // ELBOW: Mirrored aggressive movement
+      // ELBOW: Aggressive forward movement
       elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.15, aggressiveT);
-      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 6, aggressiveT); // MIRRORED: was Math.PI / 6 to -Math.PI / 6, now -Math.PI / 6 to Math.PI / 6
+      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 6, -Math.PI / 6, aggressiveT); // REVERSED: To negative
       
-      // WRIST: Mirrored forward strike
-      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 10, aggressiveT); // MIRRORED: was -Math.PI / 10, now Math.PI / 10
-      wristRotation.z = THREE.MathUtils.lerp(Math.PI / 9, 0, aggressiveT);
+      // WRIST: Forward strike
+      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 8, -Math.PI / 10, aggressiveT); // REVERSED: To negative
+      wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 9, 0, aggressiveT);
       
-      // TORSO: Mirrored aggressive rotation
-      torsoRotation = THREE.MathUtils.lerp(0.3, -0.25, aggressiveT); // MIRRORED: was 0.25, now -0.25
+      // TORSO: Forward rotation
+      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.25, aggressiveT); // REVERSED: To positive
       
-      console.log(`🗡️ [EnemyAnimationSystem] SLASH PHASE t=${t.toFixed(2)} - LEFT ARM MIRRORED diagonal strike`);
+      console.log(`🗡️ [EnemyAnimationSystem] SLASH PHASE t=${t.toFixed(2)} - LEFT ARM FORWARD diagonal strike`);
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE: Return to neutral forward position
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return from mirrored slash end position to neutral
-      shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 12, -Math.PI / 6, easedT); // MIRRORED: was Math.PI / 12, now -Math.PI / 12
-      shoulderRotation.y = THREE.MathUtils.lerp(-Math.PI / 9, 0, easedT); // MIRRORED: was Math.PI / 9, now -Math.PI / 9
-      shoulderRotation.z = THREE.MathUtils.lerp(-Math.PI / 9, 0, easedT); // MIRRORED: was Math.PI / 9, now -Math.PI / 9
+      // Return from slash end position to neutral
+      shoulderRotation.x = THREE.MathUtils.lerp(Math.PI / 12, Math.PI / 6, easedT); // REVERSED: To positive neutral
+      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 9, 0, easedT); // REVERSED: From positive
+      shoulderRotation.z = THREE.MathUtils.lerp(Math.PI / 9, 0, easedT); // REVERSED: From positive
       
       // Return elbow to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.15, 0.05, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 6, 0, easedT); // MIRRORED: was -Math.PI / 6, now Math.PI / 6
+      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, 0, easedT); // REVERSED: From negative
       
       // Return wrist to neutral
-      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 10, 0, easedT); // MIRRORED: was -Math.PI / 10, now Math.PI / 10
+      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 10, 0, easedT); // REVERSED: From negative
       wristRotation.z = THREE.MathUtils.lerp(0, 0, easedT);
       
       // Torso returns to center
-      torsoRotation = THREE.MathUtils.lerp(-0.25, 0, easedT); // MIRRORED: was 0.25, now -0.25
+      torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT); // REVERSED: From positive
       
-      console.log(`🗡️ [EnemyAnimationSystem] RECOVERY PHASE t=${t.toFixed(2)} - Returning to LEFT ARM forward neutral (MIRRORED)`);
+      console.log(`🗡️ [EnemyAnimationSystem] RECOVERY PHASE t=${t.toFixed(2)} - Returning to LEFT ARM forward neutral (REVERSED)`);
       
     } else {
       // ANIMATION COMPLETE
@@ -246,7 +246,7 @@ export class EnemyAnimationSystem {
     // Apply the coordinated movement to LEFT ARM enemy body parts
     this.applyAttackMovement(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
     
-    console.log(`🗡️ [EnemyAnimationSystem] MIRRORED LEFT ARM attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
+    console.log(`🗡️ [EnemyAnimationSystem] REVERSED LEFT ARM attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
     return true;
   }
   
@@ -278,9 +278,9 @@ export class EnemyAnimationSystem {
   }
   
   private completeAttackAnimation(): void {
-    // CANONICALIZED: Reset to proper forward-pointing neutral position for LEFT ARM
+    // REVERSED: Reset to proper forward-pointing neutral position for LEFT ARM
     if (this.bodyParts.leftArm) {
-      this.bodyParts.leftArm.rotation.set(-Math.PI / 6, 0, 0); // -30° forward neutral for LEFT ARM
+      this.bodyParts.leftArm.rotation.set(Math.PI / 6, 0, 0); // REVERSED: +30° forward neutral for LEFT ARM
     }
     
     // Reset other joints to proper forward-pointing positions
@@ -288,14 +288,14 @@ export class EnemyAnimationSystem {
       this.bodyParts.leftElbow.rotation.set(0.05, 0, 0);
     }
     if (this.bodyParts.leftWrist) {
-      this.bodyParts.leftWrist.rotation.set(-Math.PI / 6, 0, 0);
+      this.bodyParts.leftWrist.rotation.set(Math.PI / 6, 0, 0); // REVERSED: Positive angle
     }
     if (this.bodyParts.body) {
       this.bodyParts.body.rotation.y = 0;
     }
     
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] MIRRORED LEFT ARM attack animation completed, arm pointing forward");
+    console.log("🗡️ [EnemyAnimationSystem] REVERSED LEFT ARM attack animation completed, arm pointing forward");
   }
   
   public isAttacking(): boolean {
