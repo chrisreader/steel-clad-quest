@@ -414,62 +414,94 @@ export class SceneManager {
     return terrain;
   }
   
-  // Create quadrant geometry (quarter-circle segment) positioned in world coordinates
+  // Create quadrant geometry using RingGeometry and proper clipping
   private createQuadrantGeometry(innerRadius: number, outerRadius: number, quadrant: number): THREE.BufferGeometry {
-    // Create a custom geometry for the quadrant positioned relative to world center (0,0,0)
-    const geometry = new THREE.BufferGeometry();
+    // Create a full ring geometry first
+    const ringGeometry = new THREE.RingGeometry(innerRadius, outerRadius, 32, 1);
     
-    // Parameters for detail
-    const radialSegments = 20; // Segments from inner to outer radius
-    const heightSegments = 20; // Segments around the quadrant
+    // Get the position attribute
+    const positions = ringGeometry.getAttribute('position') as THREE.BufferAttribute;
+    const positionArray = positions.array as Float32Array;
     
-    // Calculate start and end angles for this quadrant
-    const startAngle = quadrant * Math.PI / 2;
-    const endAngle = startAngle + Math.PI / 2;
+    // Filter vertices to keep only those in the specified quadrant
+    const filteredVertices: number[] = [];
+    const filteredUVs: number[] = [];
+    const vertexMap = new Map<number, number>(); // old index -> new index
+    let newIndex = 0;
     
-    // Create vertices, uvs, and indices
-    const vertices = [];
-    const uvs = [];
-    const indices = [];
-    
-    // Generate vertices positioned relative to world center (0,0,0)
-    for (let r = 0; r <= radialSegments; r++) {
-      const radius = innerRadius + (outerRadius - innerRadius) * (r / radialSegments);
+    // Process vertices
+    for (let i = 0; i < positionArray.length; i += 3) {
+      const x = positionArray[i];
+      const z = positionArray[i + 2]; // Note: using z instead of y for horizontal plane
       
-      for (let a = 0; a <= heightSegments; a++) {
-        const angle = startAngle + (endAngle - startAngle) * (a / heightSegments);
+      // Determine if vertex is in the specified quadrant
+      let inQuadrant = false;
+      switch (quadrant) {
+        case 0: // NE: x >= 0, z >= 0
+          inQuadrant = x >= -0.001 && z >= -0.001;
+          break;
+        case 1: // SE: x >= 0, z <= 0
+          inQuadrant = x >= -0.001 && z <= 0.001;
+          break;
+        case 2: // SW: x <= 0, z <= 0
+          inQuadrant = x <= 0.001 && z <= 0.001;
+          break;
+        case 3: // NW: x <= 0, z >= 0
+          inQuadrant = x <= 0.001 && z >= -0.001;
+          break;
+      }
+      
+      if (inQuadrant) {
+        // Add vertex
+        filteredVertices.push(x, 0, z); // Y=0 for horizontal plane
         
-        // Vertex positioned relative to world center
-        vertices.push(
-          Math.cos(angle) * radius, // x relative to world center
-          0,                       // y (height will be added later)
-          Math.sin(angle) * radius  // z relative to world center
-        );
+        // Add UV coordinates
+        const uvs = ringGeometry.getAttribute('uv') as THREE.BufferAttribute;
+        const uvArray = uvs.array as Float32Array;
+        const uvIndex = (i / 3) * 2;
+        filteredUVs.push(uvArray[uvIndex], uvArray[uvIndex + 1]);
         
-        // UV (simple mapping)
-        uvs.push(
-          r / radialSegments,
-          a / heightSegments
-        );
+        // Map old index to new index
+        vertexMap.set(i / 3, newIndex);
+        newIndex++;
       }
     }
     
-    // Generate indices
-    for (let r = 0; r < radialSegments; r++) {
-      for (let a = 0; a < heightSegments; a++) {
-        const first = r * (heightSegments + 1) + a;
-        const second = first + heightSegments + 1;
+    // Create indices for the filtered vertices
+    const originalIndices = ringGeometry.getIndex();
+    const filteredIndices: number[] = [];
+    
+    if (originalIndices) {
+      const indexArray = originalIndices.array;
+      for (let i = 0; i < indexArray.length; i += 3) {
+        const a = indexArray[i];
+        const b = indexArray[i + 1];
+        const c = indexArray[i + 2];
         
-        // Two triangles per segment
-        indices.push(first, second, first + 1);
-        indices.push(second, second + 1, first + 1);
+        // Check if all three vertices of the triangle are in our filtered set
+        if (vertexMap.has(a) && vertexMap.has(b) && vertexMap.has(c)) {
+          filteredIndices.push(
+            vertexMap.get(a)!,
+            vertexMap.get(b)!,
+            vertexMap.get(c)!
+          );
+        }
       }
     }
     
-    // Set attributes
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    geometry.setIndex(indices);
+    // Create new geometry with filtered data
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(filteredVertices, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(filteredUVs, 2));
+    
+    if (filteredIndices.length > 0) {
+      geometry.setIndex(filteredIndices);
+    }
+    
+    // Compute normals for proper lighting
+    geometry.computeVertexNormals();
+    
+    console.log(`Created quadrant ${quadrant} geometry with ${filteredVertices.length / 3} vertices`);
     
     return geometry;
   }
