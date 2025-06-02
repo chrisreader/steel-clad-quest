@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { EnemyType } from '../../../types/GameTypes';
@@ -229,14 +230,14 @@ export abstract class EnemyHumanoid {
 
     // === ENHANCED LEGS WITH HIGHER DETAIL ===
     const leftLegGeometry = new THREE.CylinderGeometry(
-      bodyScale.leg.radius[0], bodyScale.leg.radius[1], bodyScale.leg.length, 24
+      bodyScale.leg.radius[0], bodyScale.leg.radius[1], bodyScale.leg.length, 32
     );
     const leftLegMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.muscle, 
-      shininess: 30,
+      shininess: 40,
       specular: 0x444444,
       bumpMap: skinTexture,
-      bumpScale: 0.1
+      bumpScale: 0.15
     });
     const leftLeg = new THREE.Mesh(leftLegGeometry, leftLegMaterial);
     leftLeg.position.set(-bodyScale.body.radius * 0.4, thighCenterY, 0);
@@ -245,14 +246,14 @@ export abstract class EnemyHumanoid {
     humanoidGroup.add(leftLeg);
 
     const rightLegGeometry = new THREE.CylinderGeometry(
-      bodyScale.leg.radius[0], bodyScale.leg.radius[1], bodyScale.leg.length, 24
+      bodyScale.leg.radius[0], bodyScale.leg.radius[1], bodyScale.leg.length, 32
     );
     const rightLegMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.muscle, 
-      shininess: 30,
+      shininess: 40,
       specular: 0x444444,
       bumpMap: skinTexture,
-      bumpScale: 0.1
+      bumpScale: 0.15
     });
     const rightLeg = new THREE.Mesh(rightLegGeometry, rightLegMaterial);
     rightLeg.position.set(bodyScale.body.radius * 0.4, thighCenterY, 0);
@@ -260,16 +261,38 @@ export abstract class EnemyHumanoid {
     rightLeg.receiveShadow = true;
     humanoidGroup.add(rightLeg);
 
+    // === ADD HIP JOINT SPHERES ===
+    const hipJointGeometry = new THREE.SphereGeometry(0.22, 20, 16);
+    const hipJointMaterial = new THREE.MeshPhongMaterial({
+      color: colors.accent,
+      shininess: 45,
+      specular: 0x333333,
+      bumpMap: skinTexture,
+      bumpScale: 0.1
+    });
+
+    const leftHipJoint = new THREE.Mesh(hipJointGeometry, hipJointMaterial);
+    leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY, 0);
+    leftHipJoint.castShadow = true;
+    leftHipJoint.receiveShadow = true;
+    humanoidGroup.add(leftHipJoint);
+
+    const rightHipJoint = new THREE.Mesh(hipJointGeometry, hipJointMaterial.clone());
+    rightHipJoint.position.set(bodyScale.body.radius * 0.4, legTopY, 0);
+    rightHipJoint.castShadow = true;
+    rightHipJoint.receiveShadow = true;
+    humanoidGroup.add(rightHipJoint);
+
     // === ENHANCED BODY WITH MUSCLE DEFINITION ===
     const bodyGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius, bodyScale.body.radius * 1.15, bodyScale.body.height, 24
+      bodyScale.body.radius, bodyScale.body.radius * 1.15, bodyScale.body.height, 32
     );
     const bodyMaterial = new THREE.MeshPhongMaterial({
       color: colors.skin,
-      shininess: 40,
+      shininess: 50,
       specular: 0x444444,
       bumpMap: skinTexture,
-      bumpScale: 0.15
+      bumpScale: 0.2
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = bodyY;
@@ -278,11 +301,13 @@ export abstract class EnemyHumanoid {
     humanoidGroup.add(body);
 
     // === ADD SHOULDER JOINTS ===
-    const shoulderGeometry = new THREE.SphereGeometry(0.25, 16, 12);
+    const shoulderGeometry = new THREE.SphereGeometry(0.28, 20, 16);
     const shoulderMaterial = new THREE.MeshPhongMaterial({
       color: colors.accent,
-      shininess: 35,
-      specular: 0x333333
+      shininess: 45,
+      specular: 0x333333,
+      bumpMap: skinTexture,
+      bumpScale: 0.1
     });
 
     const leftShoulder = new THREE.Mesh(shoulderGeometry, shoulderMaterial);
@@ -301,10 +326,10 @@ export abstract class EnemyHumanoid {
     const headGeometry = new THREE.SphereGeometry(bodyScale.head.radius, 32, 24);
     const headMaterial = new THREE.MeshPhongMaterial({
       color: colors.muscle,
-      shininess: 40,
+      shininess: 50,
       specular: 0x333333,
       bumpMap: skinTexture,
-      bumpScale: 0.2
+      bumpScale: 0.25
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = headY;
@@ -318,7 +343,7 @@ export abstract class EnemyHumanoid {
       const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.2, 16, 12);
       const eyeSocketMaterial = new THREE.MeshPhongMaterial({
         color: colors.accent,
-        shininess: 10
+        shininess: 20
       });
 
       const leftEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial);
@@ -368,10 +393,12 @@ export abstract class EnemyHumanoid {
       humanoidGroup.add(rightEye);
 
       // Add brow ridges
-      const browGeometry = new THREE.BoxGeometry(0.4, 0.1, 0.2);
+      const browGeometry = new THREE.BoxGeometry(0.4, 0.12, 0.25);
       const browMaterial = new THREE.MeshPhongMaterial({
         color: colors.muscle,
-        shininess: 20
+        shininess: 30,
+        bumpMap: skinTexture,
+        bumpScale: 0.1
       });
 
       const leftBrow = new THREE.Mesh(browGeometry, browMaterial);
@@ -401,7 +428,7 @@ export abstract class EnemyHumanoid {
       );
       const tuskMaterial = new THREE.MeshPhongMaterial({
         color: features.tuskConfig.color,
-        shininess: 80,
+        shininess: 90,
         specular: 0xFFFFFF
       });
 
@@ -430,20 +457,22 @@ export abstract class EnemyHumanoid {
     }
 
     // === ADD EARS ===
-    const earGeometry = new THREE.SphereGeometry(0.15, 12, 8);
+    const earGeometry = new THREE.SphereGeometry(0.18, 16, 12);
     const earMaterial = new THREE.MeshPhongMaterial({
       color: colors.muscle,
-      shininess: 25
+      shininess: 35,
+      bumpMap: skinTexture,
+      bumpScale: 0.15
     });
 
     const leftEar = new THREE.Mesh(earGeometry, earMaterial);
     leftEar.position.set(-bodyScale.head.radius * 0.9, headY + 0.1, 0);
-    leftEar.scale.set(0.6, 1.2, 0.4);
+    leftEar.scale.set(0.6, 1.4, 0.5);
     leftEar.castShadow = true;
 
     const rightEar = new THREE.Mesh(earGeometry, earMaterial.clone());
     rightEar.position.set(bodyScale.head.radius * 0.9, headY + 0.1, 0);
-    rightEar.scale.set(0.6, 1.2, 0.4);
+    rightEar.scale.set(0.6, 1.4, 0.5);
     rightEar.castShadow = true;
 
     humanoidGroup.add(leftEar);
@@ -451,15 +480,15 @@ export abstract class EnemyHumanoid {
 
     // === ENHANCED ARMS WITH HIGHER DETAIL ===
     const leftArmGeometry = new THREE.CylinderGeometry(
-      bodyScale.arm.radius[0], bodyScale.arm.radius[1], bodyScale.arm.length, 20
+      bodyScale.arm.radius[0], bodyScale.arm.radius[1], bodyScale.arm.length, 24
     );
     leftArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
     const leftArmMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.muscle, 
-      shininess: 30,
+      shininess: 40,
       specular: 0x444444,
       bumpMap: skinTexture,
-      bumpScale: 0.1
+      bumpScale: 0.15
     });
     const leftArm = new THREE.Mesh(leftArmGeometry, leftArmMaterial);
     leftArm.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
@@ -469,15 +498,15 @@ export abstract class EnemyHumanoid {
     humanoidGroup.add(leftArm);
 
     const rightArmGeometry = new THREE.CylinderGeometry(
-      bodyScale.arm.radius[0], bodyScale.arm.radius[1], bodyScale.arm.length, 20
+      bodyScale.arm.radius[0], bodyScale.arm.radius[1], bodyScale.arm.length, 24
     );
     rightArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
     const rightArmMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.muscle, 
-      shininess: 30,
+      shininess: 40,
       specular: 0x444444,
       bumpMap: skinTexture,
-      bumpScale: 0.1
+      bumpScale: 0.15
     });
     const rightArm = new THREE.Mesh(rightArmGeometry, rightArmMaterial);
     rightArm.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
@@ -487,11 +516,13 @@ export abstract class EnemyHumanoid {
     humanoidGroup.add(rightArm);
 
     // === ADD ELBOW JOINTS ===
-    const elbowJointGeometry = new THREE.SphereGeometry(0.18, 16, 12);
+    const elbowJointGeometry = new THREE.SphereGeometry(0.20, 20, 16);
     const elbowJointMaterial = new THREE.MeshPhongMaterial({
       color: colors.accent,
-      shininess: 35,
-      specular: 0x333333
+      shininess: 45,
+      specular: 0x333333,
+      bumpMap: skinTexture,
+      bumpScale: 0.1
     });
 
     const leftElbowJoint = new THREE.Mesh(elbowJointGeometry, elbowJointMaterial);
@@ -508,15 +539,15 @@ export abstract class EnemyHumanoid {
 
     // === ENHANCED FOREARMS ===
     const leftElbowGeometry = new THREE.CylinderGeometry(
-      bodyScale.forearm.radius[0], bodyScale.forearm.radius[1], bodyScale.forearm.length, 20
+      bodyScale.forearm.radius[0], bodyScale.forearm.radius[1], bodyScale.forearm.length, 24
     );
     leftElbowGeometry.translate(0, -bodyScale.forearm.length * 0.5, 0);
     const leftElbowMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.skin, 
-      shininess: 25,
+      shininess: 35,
       specular: 0x333333,
       bumpMap: skinTexture,
-      bumpScale: 0.1
+      bumpScale: 0.15
     });
     const leftElbow = new THREE.Mesh(leftElbowGeometry, leftElbowMaterial);
     leftElbow.position.set(0, -bodyScale.arm.length, 0);
@@ -525,15 +556,15 @@ export abstract class EnemyHumanoid {
     leftArm.add(leftElbow);
 
     const rightElbowGeometry = new THREE.CylinderGeometry(
-      bodyScale.forearm.radius[0], bodyScale.forearm.radius[1], bodyScale.forearm.length, 20
+      bodyScale.forearm.radius[0], bodyScale.forearm.radius[1], bodyScale.forearm.length, 24
     );
     rightElbowGeometry.translate(0, -bodyScale.forearm.length * 0.5, 0);
     const rightElbowMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.skin, 
-      shininess: 25,
+      shininess: 35,
       specular: 0x333333,
       bumpMap: skinTexture,
-      bumpScale: 0.1
+      bumpScale: 0.15
     });
     const rightElbow = new THREE.Mesh(rightElbowGeometry, rightElbowMaterial);
     rightElbow.position.set(0, -bodyScale.arm.length, 0);
@@ -541,12 +572,14 @@ export abstract class EnemyHumanoid {
     rightElbow.receiveShadow = true;
     rightArm.add(rightElbow);
 
-    // === ENHANCED HANDS WITH CLAWS ===
-    const leftWristGeometry = new THREE.SphereGeometry(0.15, 16, 12);
+    // === ENHANCED HANDS WITH IMPROVED CLAWS ===
+    const leftWristGeometry = new THREE.SphereGeometry(0.15, 20, 16);
     const leftWristMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.muscle, 
-      shininess: 35,
-      specular: 0x444444
+      shininess: 45,
+      specular: 0x444444,
+      bumpMap: skinTexture,
+      bumpScale: 0.1
     });
     const leftWrist = new THREE.Mesh(leftWristGeometry, leftWristMaterial);
     leftWrist.position.set(0, -bodyScale.forearm.length, 0);
@@ -554,11 +587,13 @@ export abstract class EnemyHumanoid {
     leftWrist.receiveShadow = true;
     leftElbow.add(leftWrist);
 
-    const rightWristGeometry = new THREE.SphereGeometry(0.15, 16, 12);
+    const rightWristGeometry = new THREE.SphereGeometry(0.15, 20, 16);
     const rightWristMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.muscle, 
-      shininess: 35,
-      specular: 0x444444
+      shininess: 45,
+      specular: 0x444444,
+      bumpMap: skinTexture,
+      bumpScale: 0.1
     });
     const rightWrist = new THREE.Mesh(rightWristGeometry, rightWristMaterial);
     rightWrist.position.set(0, -bodyScale.forearm.length, 0);
@@ -566,11 +601,12 @@ export abstract class EnemyHumanoid {
     rightWrist.receiveShadow = true;
     rightElbow.add(rightWrist);
 
-    // Add claws to hands
-    const clawGeometry = new THREE.ConeGeometry(0.02, 0.1, 8);
+    // Add improved claws positioned outside the hand spheres
+    const clawGeometry = new THREE.ConeGeometry(0.025, 0.15, 8);
     const clawMaterial = new THREE.MeshPhongMaterial({
       color: 0x2C1810,
-      shininess: 60
+      shininess: 80,
+      specular: 0x666666
     });
 
     for (let i = 0; i < 5; i++) {
@@ -578,21 +614,21 @@ export abstract class EnemyHumanoid {
       
       const leftClaw = new THREE.Mesh(clawGeometry, clawMaterial);
       leftClaw.position.set(
-        Math.cos(angle) * 0.12,
-        -0.05,
-        Math.sin(angle) * 0.12
+        Math.cos(angle) * 0.20, // Moved further out from the hand sphere
+        -0.10, // Moved down to be more visible
+        Math.sin(angle) * 0.20
       );
-      leftClaw.rotation.x = Math.PI;
+      leftClaw.rotation.x = Math.PI + 0.3; // Slight angle for more natural look
       leftClaw.castShadow = true;
       leftWrist.add(leftClaw);
 
       const rightClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
       rightClaw.position.set(
-        Math.cos(angle) * 0.12,
-        -0.05,
-        Math.sin(angle) * 0.12
+        Math.cos(angle) * 0.20,
+        -0.10,
+        Math.sin(angle) * 0.20
       );
-      rightClaw.rotation.x = Math.PI;
+      rightClaw.rotation.x = Math.PI + 0.3;
       rightClaw.castShadow = true;
       rightWrist.add(rightClaw);
     }
@@ -601,15 +637,15 @@ export abstract class EnemyHumanoid {
     const shinRelativeY = -bodyScale.leg.length / 2;
 
     const leftKneeGeometry = new THREE.CylinderGeometry(
-      bodyScale.shin.radius[0], bodyScale.shin.radius[1], bodyScale.shin.length, 20
+      bodyScale.shin.radius[0], bodyScale.shin.radius[1], bodyScale.shin.length, 24
     );
     leftKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
     const leftKneeMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.skin, 
-      shininess: 25,
+      shininess: 35,
       specular: 0x333333,
       bumpMap: skinTexture,
-      bumpScale: 0.1
+      bumpScale: 0.15
     });
     const leftKnee = new THREE.Mesh(leftKneeGeometry, leftKneeMaterial);
     leftKnee.position.set(0, shinRelativeY, 0);
@@ -618,15 +654,15 @@ export abstract class EnemyHumanoid {
     leftLeg.add(leftKnee);
 
     const rightKneeGeometry = new THREE.CylinderGeometry(
-      bodyScale.shin.radius[0], bodyScale.shin.radius[1], bodyScale.shin.length, 20
+      bodyScale.shin.radius[0], bodyScale.shin.radius[1], bodyScale.shin.length, 24
     );
     rightKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
     const rightKneeMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.skin, 
-      shininess: 25,
+      shininess: 35,
       specular: 0x333333,
       bumpMap: skinTexture,
-      bumpScale: 0.1
+      bumpScale: 0.15
     });
     const rightKnee = new THREE.Mesh(rightKneeGeometry, rightKneeMaterial);
     rightKnee.position.set(0, shinRelativeY, 0);
@@ -635,11 +671,13 @@ export abstract class EnemyHumanoid {
     rightLeg.add(rightKnee);
 
     // === ADD KNEE JOINTS ===
-    const kneeJointGeometry = new THREE.SphereGeometry(0.2, 16, 12);
+    const kneeJointGeometry = new THREE.SphereGeometry(0.22, 20, 16);
     const kneeJointMaterial = new THREE.MeshPhongMaterial({
       color: colors.accent,
-      shininess: 35,
-      specular: 0x333333
+      shininess: 45,
+      specular: 0x333333,
+      bumpMap: skinTexture,
+      bumpScale: 0.1
     });
 
     const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, kneeJointMaterial);
@@ -655,21 +693,23 @@ export abstract class EnemyHumanoid {
     rightLeg.add(rightKneeJoint);
 
     // === ADD FEET ===
-    const footGeometry = new THREE.BoxGeometry(0.3, 0.15, 0.5);
+    const footGeometry = new THREE.BoxGeometry(0.35, 0.18, 0.6);
     const footMaterial = new THREE.MeshPhongMaterial({
       color: colors.muscle,
-      shininess: 25,
-      specular: 0x333333
+      shininess: 35,
+      specular: 0x333333,
+      bumpMap: skinTexture,
+      bumpScale: 0.1
     });
 
     const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
-    leftFoot.position.set(0, -bodyScale.shin.length, 0.15);
+    leftFoot.position.set(0, -bodyScale.shin.length, 0.18);
     leftFoot.castShadow = true;
     leftFoot.receiveShadow = true;
     leftKnee.add(leftFoot);
 
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
-    rightFoot.position.set(0, -bodyScale.shin.length, 0.15);
+    rightFoot.position.set(0, -bodyScale.shin.length, 0.18);
     rightFoot.castShadow = true;
     rightFoot.receiveShadow = true;
     rightKnee.add(rightFoot);
@@ -677,37 +717,17 @@ export abstract class EnemyHumanoid {
     // Add toe claws
     for (let i = 0; i < 3; i++) {
       const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
-      toeClaw.position.set((i - 1) * 0.08, -0.075, 0.25);
+      toeClaw.position.set((i - 1) * 0.10, -0.09, 0.30);
       toeClaw.rotation.x = Math.PI / 2;
       toeClaw.castShadow = true;
       leftFoot.add(toeClaw);
 
       const rightToeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
-      rightToeClaw.position.set((i - 1) * 0.08, -0.075, 0.25);
+      rightToeClaw.position.set((i - 1) * 0.10, -0.09, 0.30);
       rightToeClaw.rotation.x = Math.PI / 2;
       rightToeClaw.castShadow = true;
       rightFoot.add(rightToeClaw);
     }
-
-    // === ADD BATTLE SCARS ===
-    const scarGeometry = new THREE.PlaneGeometry(0.15, 0.03);
-    const scarMaterial = new THREE.MeshPhongMaterial({
-      color: colors.accent,
-      transparent: true,
-      opacity: 0.8,
-      side: THREE.DoubleSide
-    });
-
-    const chestScar = new THREE.Mesh(scarGeometry, scarMaterial);
-    chestScar.position.set(0.1, bodyY + 0.2, bodyScale.body.radius * 1.1);
-    chestScar.rotation.z = Math.PI / 6;
-    humanoidGroup.add(chestScar);
-
-    const faceScar = new THREE.Mesh(scarGeometry, scarMaterial.clone());
-    faceScar.position.set(0.15, headY + 0.1, bodyScale.head.radius * 0.95);
-    faceScar.rotation.y = -Math.PI / 4;
-    faceScar.scale.set(0.7, 0.7, 1);
-    humanoidGroup.add(faceScar);
 
     // === WEAPON ===
     let weapon: THREE.Group | undefined;
