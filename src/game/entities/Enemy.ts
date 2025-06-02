@@ -320,12 +320,13 @@ export class Enemy {
     // Update movement state timers
     this.updateMovementState(deltaTime);
     
-    // Handle hit animation
+    // FIXED: Handle hit animation without shaking during knockback
     if (this.enemy.isHit && now - this.enemy.hitTime < 300) {
-      // Shake effect only
-      const shakeIntensity = 0.1;
-      this.enemy.mesh.position.x += (Math.random() - 0.5) * shakeIntensity;
-      this.enemy.mesh.position.z += (Math.random() - 0.5) * shakeIntensity;
+      // Only apply visual effects, no position shaking during knockback
+      if (this.movementState !== EnemyMovementState.KNOCKED_BACK) {
+        // Create hit flash effect instead of shake
+        this.createHitFlashEffect();
+      }
     } else if (this.enemy.isHit) {
       // Reset hit state
       this.enemy.isHit = false;
@@ -352,6 +353,29 @@ export class Enemy {
     this.updateRotation(deltaTime);
   }
   
+  private createHitFlashEffect(): void {
+    // Flash enemy red for hit feedback
+    this.enemy.mesh.children.forEach(child => {
+      if (child instanceof THREE.Mesh && child !== this.enemy.hitBox) {
+        const originalMaterial = child.material as THREE.MeshPhongMaterial;
+        if (originalMaterial) {
+          // Temporarily increase red component
+          const currentColor = originalMaterial.color.clone();
+          originalMaterial.color.setRGB(
+            Math.min(currentColor.r + 0.5, 1),
+            currentColor.g * 0.5,
+            currentColor.b * 0.5
+          );
+          
+          // Restore original color after a short time
+          setTimeout(() => {
+            originalMaterial.color.copy(currentColor);
+          }, 100);
+        }
+      }
+    });
+  }
+  
   private updateMovementState(deltaTime: number): void {
     if (this.knockbackDuration > 0) {
       this.knockbackDuration -= deltaTime * 1000;
@@ -370,16 +394,12 @@ export class Enemy {
   }
   
   private handleKnockbackMovement(deltaTime: number): void {
-    // Apply knockback velocity with decay
-    const decayFactor = Math.pow(0.1, deltaTime); // Exponential decay
-    this.knockbackVelocity.multiplyScalar(decayFactor);
-    
-    // Apply movement
+    // FIXED: Pure directional movement without decay for consistent knockback
     const movement = this.knockbackVelocity.clone().multiplyScalar(deltaTime);
     this.enemy.mesh.position.add(movement);
     this.enemy.mesh.position.y = 0; // Keep on ground
     
-    console.log(`🎯 [Enemy] Knockback movement: velocity=${this.knockbackVelocity.length().toFixed(2)}, duration=${this.knockbackDuration.toFixed(0)}ms`);
+    console.log(`🎯 [Enemy] Clean knockback movement: velocity=${this.knockbackVelocity.length().toFixed(2)}, duration=${this.knockbackDuration.toFixed(0)}ms`);
   }
   
   private handleNormalMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
@@ -541,24 +561,24 @@ export class Enemy {
     // Enhanced attack effect at enemy position
     this.effectsManager.createAttackEffect(this.enemy.mesh.position.clone(), 0xFFD700);
     
-    // FIXED: Proper knockback direction calculation
+    // FIXED: Clean knockback direction calculation - always away from player
     const knockbackDirection = new THREE.Vector3()
       .subVectors(this.enemy.mesh.position, playerPosition)
       .normalize();
-    knockbackDirection.y = 0; // Keep knockback horizontal
+    knockbackDirection.y = 0; // Keep knockback horizontal only
     
     // Calculate knockback intensity based on damage and resistance
-    const baseKnockback = 2.5;
-    const damageMultiplier = Math.min(damage / 20, 2.0); // Scale with damage, max 2x
+    const baseKnockback = 3.0; // Increased for more noticeable effect
+    const damageMultiplier = Math.min(damage / 20, 2.0);
     const knockbackIntensity = (baseKnockback * damageMultiplier) / this.knockbackResistance;
     
-    // Apply knockback velocity
-    this.knockbackVelocity = knockbackDirection.multiplyScalar(knockbackIntensity);
-    this.knockbackDuration = 400; // 400ms knockback
-    this.stunDuration = 200; // 200ms stun after knockback
+    // FIXED: Set clean directional velocity without any random components
+    this.knockbackVelocity.copy(knockbackDirection).multiplyScalar(knockbackIntensity);
+    this.knockbackDuration = 300; // Shorter duration for snappier feel
+    this.stunDuration = 150; // Brief stun after knockback
     this.movementState = EnemyMovementState.KNOCKED_BACK;
     
-    console.log(`💥 [Enemy] Taking damage: ${damage}, knockback intensity: ${knockbackIntensity.toFixed(2)}, direction: (${knockbackDirection.x.toFixed(2)}, ${knockbackDirection.z.toFixed(2)})`);
+    console.log(`💥 [Enemy] Clean knockback applied: intensity=${knockbackIntensity.toFixed(2)}, direction=(${knockbackDirection.x.toFixed(2)}, ${knockbackDirection.z.toFixed(2)})`);
     
     // Blood effect
     const bloodDirection = knockbackDirection.clone();
