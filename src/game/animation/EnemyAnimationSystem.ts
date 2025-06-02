@@ -158,7 +158,7 @@ export class EnemyAnimationSystem {
     // Get enemy's actual neutral pose as starting point
     const enemyNeutral = this.metrics.neutralPoses.arms.right;
     
-    // Create enemy-specific animation phases with CORRECTED CROSS-BODY SWING DIRECTION
+    // Create enemy-specific animation phases with FLIPPED CROSS-BODY SWING DIRECTION
     let shoulderRotation = { 
       x: enemyNeutral.x, 
       y: enemyNeutral.y, 
@@ -169,42 +169,42 @@ export class EnemyAnimationSystem {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE - CORRECTED: Wind up to the LEFT side for FORWARD cross-body swing
+      // WINDUP PHASE - FLIPPED: Wind up to the RIGHT side for cross-body swing to LEFT
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Much higher raise and position to the LEFT side (negative Z for forward swing)
+      // SHOULDER: Wind up to the RIGHT side (positive Z for cross-body swing to left)
       shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x, enemyNeutral.x - 1.4, easedT); // Higher up position
       shoulderRotation.y = THREE.MathUtils.lerp(enemyNeutral.y, 0.8, easedT); // More forward positioning
-      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z, enemyNeutral.z - 1.2, easedT); // CORRECTED: Far to the LEFT side for forward swing
+      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z, enemyNeutral.z + 1.2, easedT); // FLIPPED: Far to the RIGHT side for cross-body swing to left
       
       elbowRotation.x = THREE.MathUtils.lerp(0, -0.3, easedT); // Support the high position
-      elbowRotation.y = THREE.MathUtils.lerp(0, Math.PI / 4, easedT); // CORRECTED: Elbow positioning for left windup
+      elbowRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 4, easedT); // FLIPPED: Elbow positioning for right windup
       
-      wristRotation.y = THREE.MathUtils.lerp(0, Math.PI / 6, easedT); // CORRECTED: Wrist positioning
-      wristRotation.z = THREE.MathUtils.lerp(0, -0.4, easedT); // CORRECTED: Wrist positioning for left side
+      wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 6, easedT); // FLIPPED: Wrist positioning
+      wristRotation.z = THREE.MathUtils.lerp(0, 0.4, easedT); // FLIPPED: Wrist positioning for right side
       
-      // CORRECTED: Torso winds up to the LEFT to support the forward cross-body swing
-      torsoRotation = THREE.MathUtils.lerp(0, 0.6, easedT); // CORRECTED: Positive rotation to the left
+      // FLIPPED: Torso winds up to the RIGHT to support the cross-body swing to left
+      torsoRotation = THREE.MathUtils.lerp(0, -0.6, easedT); // FLIPPED: Negative rotation to the right
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE - CORRECTED: Massive cross-body swing from LEFT to RIGHT (forward across body)
+      // SLASH PHASE - FLIPPED: Cross-body swing from RIGHT to LEFT (across body forward)
       const t = (elapsed - phases.windup) / phases.slash;
       const aggressiveT = t * t * (3 - 2 * t);
       
-      // SHOULDER: Massive swing from left side to right side (FORWARD across body)
+      // SHOULDER: Swing from right side to left side (cross-body forward)
       shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x - 1.4, enemyNeutral.x + 0.8, aggressiveT); // Swing down and forward
       shoulderRotation.y = THREE.MathUtils.lerp(0.8, -0.7, aggressiveT); // Forward/back motion
-      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z - 1.2, enemyNeutral.z + 1.0, aggressiveT); // CORRECTED: From far LEFT to far RIGHT (~2.2 radian forward sweep!)
+      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z + 1.2, enemyNeutral.z - 1.0, aggressiveT); // FLIPPED: From far RIGHT to far LEFT (~2.2 radian cross-body sweep!)
       
       elbowRotation.x = THREE.MathUtils.lerp(-0.3, 0.3, aggressiveT); // Support the swing motion
-      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 4, -Math.PI / 3, aggressiveT); // CORRECTED: Elbow motion from left to right
+      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 4, Math.PI / 3, aggressiveT); // FLIPPED: Elbow motion from right to left
       
-      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 6, -Math.PI / 6, aggressiveT); // CORRECTED: Wrist follows the forward swing
-      wristRotation.z = THREE.MathUtils.lerp(-0.4, 0.3, aggressiveT); // CORRECTED: Wrist motion for forward swing
+      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 6, aggressiveT); // FLIPPED: Wrist follows the cross-body swing
+      wristRotation.z = THREE.MathUtils.lerp(0.4, -0.3, aggressiveT); // FLIPPED: Wrist motion for cross-body swing
       
-      // CORRECTED: Torso powerfully unwinds from LEFT to RIGHT to support the forward cross-body swing
-      torsoRotation = THREE.MathUtils.lerp(0.6, -0.5, aggressiveT); // CORRECTED: From +0.6 to -0.5 (forward swing rotation)
+      // FLIPPED: Torso powerfully unwinds from RIGHT to LEFT to support the cross-body swing
+      torsoRotation = THREE.MathUtils.lerp(-0.6, 0.5, aggressiveT); // FLIPPED: From -0.6 to +0.5 (cross-body swing rotation)
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE - Return to enemy's exact neutral position
@@ -214,15 +214,15 @@ export class EnemyAnimationSystem {
       // Return to actual enemy neutral pose
       shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x + 0.8, enemyNeutral.x, easedT);
       shoulderRotation.y = THREE.MathUtils.lerp(-0.7, enemyNeutral.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z + 1.0, enemyNeutral.z, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z - 1.0, enemyNeutral.z, easedT);
       
       elbowRotation.x = THREE.MathUtils.lerp(0.3, 0, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 3, 0, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 3, 0, easedT);
       
-      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, 0, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0.3, 0, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 6, 0, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(-0.3, 0, easedT);
       
-      torsoRotation = THREE.MathUtils.lerp(-0.5, 0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0.5, 0, easedT);
       
     } else {
       // ANIMATION COMPLETE
@@ -233,7 +233,7 @@ export class EnemyAnimationSystem {
     // Apply the coordinated movement to enemy body parts
     this.applyAttackMovement(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
     
-    console.log(`🗡️ [EnemyAnimationSystem] CORRECTED forward cross-body attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
+    console.log(`🗡️ [EnemyAnimationSystem] FLIPPED cross-body attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
     return true;
   }
   
@@ -285,7 +285,7 @@ export class EnemyAnimationSystem {
     }
     
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] CORRECTED forward cross-body attack animation completed, returned to enemy's actual neutral stance");
+    console.log("🗡️ [EnemyAnimationSystem] FLIPPED cross-body attack animation completed, returned to enemy's actual neutral stance");
   }
   
   public isAttacking(): boolean {
