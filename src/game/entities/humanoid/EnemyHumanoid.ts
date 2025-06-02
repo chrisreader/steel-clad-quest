@@ -398,11 +398,11 @@ export abstract class EnemyHumanoid {
     headGroup.add(neck);
 
     // Phase 3: Integrated Facial Features
-    // Improved nose structure - PUSHED FORWARD to be visible
-    const noseGeometry = new THREE.BoxGeometry(0.25, 0.15, 0.3);
+    // Improved nose structure - smaller circular nose
+    const noseGeometry = new THREE.SphereGeometry(0.12, 16, 12);
     const nose = new THREE.Mesh(noseGeometry, accentMaterial.clone());
-    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 1.2); // Increased from 0.95 to 1.2
-    nose.scale.set(1, 1, 0.8); // Flattened for orcish appearance
+    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 1.2);
+    nose.scale.set(1, 0.8, 1.2); // Slightly flattened and extended forward
     nose.castShadow = true;
     headGroup.add(nose);
 
@@ -422,7 +422,7 @@ export abstract class EnemyHumanoid {
       leftEyeSocket.position.set(
         -features.eyeConfig.offsetX,
         headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1 // Increased from 0.9 to 1.1
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
       );
       leftEyeSocket.scale.z = 0.5;
       headGroup.add(leftEyeSocket);
@@ -431,35 +431,50 @@ export abstract class EnemyHumanoid {
       rightEyeSocket.position.set(
         features.eyeConfig.offsetX,
         headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1 // Increased from 0.9 to 1.1
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
       );
       rightEyeSocket.scale.z = 0.5;
       headGroup.add(rightEyeSocket);
 
-      // Enhanced glowing eyes - PUSHED FORWARD
+      // Enhanced realistic eyes with pupils
       const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius, 16, 12);
       const eyeMaterial = new THREE.MeshPhongMaterial({
-        color: features.eyeConfig.color,
+        color: 0x8B0000, // Darker, more realistic red
         transparent: true,
         opacity: 1,
-        emissive: features.eyeConfig.color,
-        emissiveIntensity: features.eyeConfig.emissiveIntensity,
-        shininess: 100
+        emissive: 0x440000, // Subtle dark red glow
+        emissiveIntensity: 0.15, // Much less bright
+        shininess: 80
       });
 
       const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
       leftEye.position.set(
         -features.eyeConfig.offsetX,
         headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15 // Increased to 1.15
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
       );
 
       const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
       rightEye.position.set(
         features.eyeConfig.offsetX,
         headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15 // Increased to 1.15
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
       );
+
+      // Add black pupils
+      const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.4, 12, 10);
+      const pupilMaterial = new THREE.MeshPhongMaterial({
+        color: 0x000000,
+        shininess: 100
+      });
+
+      const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+      leftPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
+      leftEye.add(leftPupil);
+
+      const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial.clone());
+      rightPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
+      rightEye.add(rightPupil);
 
       headGroup.add(leftEye);
       headGroup.add(rightEye);
