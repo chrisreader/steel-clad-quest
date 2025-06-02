@@ -167,7 +167,7 @@ export class EnemyBodyBuilder {
     
     // FIXED: Create properly positioned legs so feet are at Y=0
     
-    // LEFT LEG SYSTEM - FIXED to calculate proper foot position
+    // LEFT LEG SYSTEM - positioned relative to body bottom
     const leftLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
     const leftLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftLeg = new THREE.Mesh(leftLegGeometry, leftLegMaterial);
@@ -186,7 +186,7 @@ export class EnemyBodyBuilder {
     leftKnee.receiveShadow = true;
     leftLeg.add(leftKnee);
     
-    // RIGHT LEG SYSTEM - FIXED to calculate proper foot position
+    // RIGHT LEG SYSTEM - positioned relative to body bottom
     const rightLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
     const rightLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightLeg = new THREE.Mesh(rightLegGeometry, rightLegMaterial);
@@ -251,16 +251,13 @@ export class EnemyBodyBuilder {
     hitBox.position.y = scale.body.height / 2;
     orcGroup.add(hitBox);
     
-    // FIXED: Calculate exact position so feet are at Y=0
-    // Leg bottom is at: leg.position.y - leg.length/2 = -0.55 - 0.55 = -1.1
-    // Shin bottom is at: leg bottom + shin.position.y - shin.length/2 = -1.1 + (-0.66) - 0.45 = -2.21
-    // So we need to raise the group by 2.21 to get feet at Y=0
-    const legBottom = -scale.leg.length / 2 - scale.leg.length / 2; // -1.1
-    const shinBottom = legBottom + (-scale.leg.length * 0.6) - (scale.shin.length / 2); // -2.21
-    const heightToRaise = Math.abs(shinBottom); // 2.21
+    // FIXED: Position the entire orc so feet are at Y=0
+    // Total leg length = leg.length + shin.length = 1.1 + 0.9 = 2.0
+    const totalLegLength = scale.leg.length + scale.shin.length;
     
     orcGroup.position.copy(position);
-    orcGroup.position.y = heightToRaise; // Raise so feet are at Y=0
+    // Raise the entire orc by total leg length so feet are at Y=0
+    orcGroup.position.y = totalLegLength; // 2.0 units above current position
     orcGroup.castShadow = true;
     
     const bodyParts: EnemyBodyParts = {
@@ -280,7 +277,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
     
-    console.log(`🗡️ [EnemyBodyBuilder] Created FIXED realistic orc body - feet now at Y=0, raised by ${heightToRaise.toFixed(2)}`);
+    console.log(`🗡️ [EnemyBodyBuilder] Created FIXED realistic orc body - raised by ${totalLegLength} units so feet are at Y=0`);
     
     return { group: orcGroup, bodyParts };
   }
