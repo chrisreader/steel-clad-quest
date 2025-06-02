@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { EnemyType } from '../../../types/GameTypes';
@@ -752,7 +751,7 @@ export abstract class EnemyHumanoid {
     const positions = geometry.attributes.position;
     const vertex = new THREE.Vector3();
     
-    for (let i = 0; i < positions.count; i++) {
+    for (let i = 0; i < positions.count; i += 3) {
       vertex.fromBufferAttribute(positions, i);
       
       // Calculate normalized height position (-1 to 1, where -1 is bottom, 1 is top)
@@ -772,14 +771,14 @@ export abstract class EnemyHumanoid {
         radiusMultiplier = 1.0 + factor * 0.08; // 8% expansion
       }
       
-      // Add very subtle anatomical curves based on limb type
+      // Add very subtle anatomical curves based on limb type - REMOVE THIGH CURVES
       let anatomicalOffset = 0;
       const angle = Math.atan2(vertex.z, vertex.x);
       
       switch (limbType) {
         case 'thigh':
-          // Slight forward curve for thigh muscles
-          anatomicalOffset = Math.sin(normalizedY * Math.PI) * 0.03 * Math.cos(angle);
+          // Remove curves - keep simple tapered cylinder
+          anatomicalOffset = 0;
           break;
         case 'upperarm':
           // Slight bicep bulge
