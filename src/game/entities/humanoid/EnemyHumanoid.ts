@@ -735,7 +735,7 @@ export abstract class EnemyHumanoid {
   }
 
   /**
-   * Creates anatomical limb geometry with proper tapering and joint connection zones
+   * Creates smooth tapered limb geometry with clean surfaces
    */
   private createAnatomicalLimbGeometry(
     topRadius: number,
@@ -743,9 +743,10 @@ export abstract class EnemyHumanoid {
     height: number,
     limbType: 'thigh' | 'shin' | 'upperarm' | 'forearm'
   ): THREE.CylinderGeometry {
-    // Create smooth tapered cylinder with enhanced joint connection areas
-    const segments = 32; // High quality for smooth curves
-    const geometry = new THREE.CylinderGeometry(topRadius, bottomRadius, height, segments, 8);
+    // Create smooth tapered cylinder with high segment count for smoothness
+    const radialSegments = 32; // High quality for smooth curves
+    const heightSegments = 16; // More height segments for smoother tapering
+    const geometry = new THREE.CylinderGeometry(topRadius, bottomRadius, height, radialSegments, heightSegments);
     
     // Get the position attribute to modify vertices for better joint connections
     const positions = geometry.attributes.position;
@@ -764,35 +765,15 @@ export abstract class EnemyHumanoid {
       if (normalizedY > 0.7) {
         // Near top - expand for joint connection
         const factor = (normalizedY - 0.7) / 0.3;
-        radiusMultiplier = 1.0 + factor * 0.08; // 8% expansion
+        radiusMultiplier = 1.0 + factor * 0.05; // Reduced to 5% expansion for smoother look
       } else if (normalizedY < -0.7) {
         // Near bottom - expand for joint connection  
         const factor = (-normalizedY - 0.7) / 0.3;
-        radiusMultiplier = 1.0 + factor * 0.08; // 8% expansion
+        radiusMultiplier = 1.0 + factor * 0.05; // Reduced to 5% expansion for smoother look
       }
       
-      // Add very subtle anatomical curves based on limb type - REMOVE THIGH CURVES
-      let anatomicalOffset = 0;
-      const angle = Math.atan2(vertex.z, vertex.x);
-      
-      switch (limbType) {
-        case 'thigh':
-          // Remove curves - keep simple tapered cylinder
-          anatomicalOffset = 0;
-          break;
-        case 'upperarm':
-          // Slight bicep bulge
-          anatomicalOffset = Math.sin(normalizedY * Math.PI * 0.8) * 0.02 * Math.cos(angle * 2);
-          break;
-        case 'forearm':
-          // Slight taper with muscle definition
-          anatomicalOffset = Math.sin(normalizedY * Math.PI * 0.6) * 0.015 * Math.cos(angle);
-          break;
-        case 'shin':
-          // Slight calf muscle curve
-          anatomicalOffset = Math.sin((normalizedY + 1) * Math.PI * 0.7) * 0.02 * Math.sin(angle);
-          break;
-      }
+      // Remove all anatomical curves - keep limbs perfectly smooth
+      const anatomicalOffset = 0;
       
       // Apply the transformations
       const distance = Math.sqrt(vertex.x * vertex.x + vertex.z * vertex.z);
