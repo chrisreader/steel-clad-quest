@@ -120,12 +120,6 @@ export class EnemyAnimationSystem {
       this.bodyParts.leftArm.rotation.x = leftNeutral.x + weaponArmSwing;
       this.bodyParts.leftArm.rotation.z = leftNeutral.z + shoulderSway;
       
-      // NEW: Move left shoulder with arm movement
-      if (this.bodyParts.leftShoulder) {
-        this.bodyParts.leftShoulder.rotation.x = weaponArmSwing * 0.3;
-        this.bodyParts.leftShoulder.rotation.z = shoulderSway * 0.4;
-      }
-      
       if (this.bodyParts.leftWrist) {
         this.bodyParts.leftWrist.rotation.x = -weaponArmSwing * 0.2;
       }
@@ -133,12 +127,6 @@ export class EnemyAnimationSystem {
       const rightNeutral = this.metrics.neutralPoses.arms.right;
       this.bodyParts.rightArm.rotation.x = rightNeutral.x + armSwing;
       this.bodyParts.rightArm.rotation.z = rightNeutral.z - shoulderSway;
-      
-      // NEW: Move right shoulder with arm movement
-      if (this.bodyParts.rightShoulder) {
-        this.bodyParts.rightShoulder.rotation.x = armSwing * 0.3;
-        this.bodyParts.rightShoulder.rotation.z = -shoulderSway * 0.4;
-      }
       
       if (this.bodyParts.rightWrist) {
         this.bodyParts.rightWrist.rotation.x = armSwing * 0.3;
@@ -346,16 +334,8 @@ export class EnemyAnimationSystem {
       this.bodyParts.body.rotation.y = 0;
     }
     
-    // NEW: Reset shoulder positions
-    if (this.bodyParts.leftShoulder) {
-      this.bodyParts.leftShoulder.rotation.set(0, 0, 0);
-    }
-    if (this.bodyParts.rightShoulder) {
-      this.bodyParts.rightShoulder.rotation.set(0, 0, 0);
-    }
-    
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] Enhanced attack animation completed with fixed elbow and shoulder positions");
+    console.log("🗡️ [EnemyAnimationSystem] Enhanced attack animation completed with fixed elbow positions");
   }
   
   public isAttacking(): boolean {

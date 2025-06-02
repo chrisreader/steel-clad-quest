@@ -19,9 +19,6 @@ export interface EnemyBodyParts {
   rightKnee: THREE.Mesh | undefined;
   weapon: THREE.Group | undefined;
   hitBox: THREE.Mesh | undefined;
-  // NEW: Add shoulder joints for animation
-  leftShoulder: THREE.Mesh | undefined;
-  rightShoulder: THREE.Mesh | undefined;
 }
 
 export interface EnemyBodyResult {
