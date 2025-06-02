@@ -251,13 +251,19 @@ export class EnemyBodyBuilder {
     hitBox.position.y = scale.body.height / 2;
     orcGroup.add(hitBox);
     
-    // FIXED: Position the entire orc so feet are at Y=0
-    // Total leg length = leg.length + shin.length = 1.1 + 0.9 = 2.0
-    const totalLegLength = scale.leg.length + scale.shin.length;
+    // FIXED: Calculate exact position so feet are at Y=0
+    // Leg center position: -scale.leg.length / 2 = -0.55
+    // Shin relative position: -scale.leg.length * 0.6 = -0.66 
+    // Shin bottom from center: -scale.shin.length / 2 = -0.45
+    // Total foot depth: 0.55 + 0.66 + 0.45 = 1.66 units below group origin
+    const legCenterDepth = scale.leg.length / 2; // 0.55
+    const shinRelativeDepth = scale.leg.length * 0.6; // 0.66
+    const shinHalfLength = scale.shin.length / 2; // 0.45
+    const totalFootDepth = legCenterDepth + shinRelativeDepth + shinHalfLength; // 1.66
     
     orcGroup.position.copy(position);
-    // Raise the entire orc by total leg length so feet are at Y=0
-    orcGroup.position.y = totalLegLength; // 2.0 units above current position
+    // Raise the entire orc by exact foot depth so feet are at Y=0
+    orcGroup.position.y = totalFootDepth; // 1.66 units above current position
     orcGroup.castShadow = true;
     
     const bodyParts: EnemyBodyParts = {
@@ -277,7 +283,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
     
-    console.log(`🗡️ [EnemyBodyBuilder] Created FIXED realistic orc body - raised by ${totalLegLength} units so feet are at Y=0`);
+    console.log(`🗡️ [EnemyBodyBuilder] Created FIXED realistic orc body - feet now at Y=0, raised by ${totalFootDepth.toFixed(2)}`);
     
     return { group: orcGroup, bodyParts };
   }
