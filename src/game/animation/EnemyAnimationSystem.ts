@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { EnemyBodyParts } from '../entities/EnemyBody';
 import { EnemyBodyMetrics } from '../entities/EnemyBodyMetrics';
@@ -194,14 +195,14 @@ export class EnemyAnimationSystem {
       console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - Pull back to (-60°, 0°, -80°)`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Forward strike to (+22.5°, 0°, 15°)
+      // SLASH PHASE: Forward strike to (+22.5°, 0°, 50°)
       const t = (elapsed - phases.windup) / phases.slash;
       const aggressiveT = t * t * (3 - 2 * t); // Smoothstep for aggressive acceleration
       
       // SHOULDER: Forward strike movement to precise angles
       shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 3, Math.PI / 8, aggressiveT); // -60° to +22.5°
       shoulderRotation.y = THREE.MathUtils.lerp(0, 0, aggressiveT); // 0° to 0°
-      shoulderRotation.z = THREE.MathUtils.lerp(-Math.PI * 80 / 180, Math.PI / 12, aggressiveT); // -80° to 15°
+      shoulderRotation.z = THREE.MathUtils.lerp(-Math.PI * 80 / 180, Math.PI * 50 / 180, aggressiveT); // -80° to 50°
       
       // ELBOW: Aggressive forward movement
       elbowRotation.x = THREE.MathUtils.lerp(-0.05, 0.1, aggressiveT);
@@ -215,7 +216,7 @@ export class EnemyAnimationSystem {
       // TORSO: Forward rotation
       torsoRotation = THREE.MathUtils.lerp(-0.2, 0.15, aggressiveT);
       
-      console.log(`🗡️ [EnemyAnimationSystem] SLASH PHASE t=${t.toFixed(2)} - Forward strike to (+22.5°, 0°, 15°)`);
+      console.log(`🗡️ [EnemyAnimationSystem] SLASH PHASE t=${t.toFixed(2)} - Forward strike to (+22.5°, 0°, 50°)`);
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE: Return to walking neutral (-22.5°, 0°, neutral Z)
@@ -225,7 +226,7 @@ export class EnemyAnimationSystem {
       // Return from slash end position to walking neutral
       shoulderRotation.x = THREE.MathUtils.lerp(Math.PI / 8, walkingNeutral.x, easedT); // +22.5° back to -22.5°
       shoulderRotation.y = THREE.MathUtils.lerp(0, 0, easedT); // 0° to 0° (stays at 0°)
-      shoulderRotation.z = THREE.MathUtils.lerp(Math.PI / 12, walkingNeutral.z, easedT); // 15° back to neutral Z
+      shoulderRotation.z = THREE.MathUtils.lerp(Math.PI * 50 / 180, walkingNeutral.z, easedT); // 50° back to neutral Z
       
       // Return elbow to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.1, 0.05, easedT);
