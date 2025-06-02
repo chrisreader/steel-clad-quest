@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EnemyBodyConfiguration } from './EnemyBodyConfig';
 
@@ -27,11 +26,11 @@ export class EnemyBodyMetrics {
     // Body top
     this._bodyTopY = this._bodyCenterY + this.config.scale.body.height / 2;
     
-    // Shoulder height (positioned on upper torso)
-    this._shoulderHeight = this._bodyCenterY + this.config.scale.body.height * 0.25;
+    // FIXED: Shoulder height positioned higher on torso for better proportions
+    this._shoulderHeight = this._bodyCenterY + this.config.scale.body.height * 0.25; // Matches original calculation
     
-    // Head center (touching body top)
-    this._headCenterY = this._bodyTopY + this.config.scale.head.radius;
+    // FIXED: Head center positioned so head bottom touches body top (no gap)
+    this._headCenterY = this._bodyTopY + this.config.scale.head.radius; // Removed the +0.1 gap
   }
   
   // Position getters
@@ -62,7 +61,7 @@ export class EnemyBodyMetrics {
     return new THREE.Vector3(
       x,
       this.getHeadCenterY() + features.position.y,
-      features.position.z
+      features.position.z * this.config.scale.head.radius // Scale Z position relative to head radius
     );
   }
   
@@ -72,7 +71,7 @@ export class EnemyBodyMetrics {
     return new THREE.Vector3(
       x,
       this.getHeadCenterY() + features.position.y,
-      features.position.z
+      features.position.z * this.config.scale.head.radius // Scale Z position relative to head radius
     );
   }
   

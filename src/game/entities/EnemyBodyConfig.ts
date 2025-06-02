@@ -76,7 +76,7 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       shin: { radius: [0.18, 0.20], length: 0.65 }
     },
     neutralPose: {
-      armRotation: { x: -0.2, z: 0.3 }, // Adjusted to match original appearance
+      armRotation: { x: 0.393, z: 0.3 }, // Changed to 22.5° forward (0.393 radians)
       legPosition: { x: 0.4 },
       shoulderOffset: 0.25
     },
@@ -85,23 +85,23 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       armSwingIntensity: 0.25,
       legSwingIntensity: 0.2,
       shoulderMovement: 0.1,
-      breathingIntensity: 0.02,
+      breathingIntensity: 0.02, // Matches original breathing intensity
       weaponArmSwingReduction: 0.6
     },
     facialFeatures: {
       eyes: {
         enabled: true,
-        radius: 0.08,
+        radius: 0.12, // Increased from 0.08 to match original larger eyes
         color: 0xFF0000,
-        emissiveIntensity: 0.3,
-        position: { x: 0.15, y: 0.05, z: 0.4 }
+        emissiveIntensity: 0.4, // Increased from 0.3 to match original intensity
+        position: { x: 0.2, y: 0.05, z: 0.425 } // Adjusted for larger eyes and corrected head position
       },
       tusks: {
         enabled: true,
-        radius: 0.05,
-        height: 0.25,
-        color: 0xfffacd,
-        position: { x: 0.15, y: -0.1, z: 0.4 }
+        radius: 0.08, // Increased from 0.05 to match original
+        height: 0.35, // Increased from 0.25 to match original
+        color: 0xFFFACD, // Changed to match original color (0xfffacd -> 0xFFFACD)
+        position: { x: 0.2, y: -0.15, z: 0.425 } // Adjusted for corrected head position
       }
     },
     colors: {
