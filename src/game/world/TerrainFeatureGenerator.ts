@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { TextureGenerator } from '../utils';
@@ -27,43 +26,52 @@ export class TerrainFeatureGenerator {
   }
   
   private loadModels(): void {
-    // Tree models (3 variations)
+    // Tree models (3 variations) - RESTORED ORIGINAL GRAPHICS
     for (let i = 0; i < 3; i++) {
-      const treeHeight = 3 + Math.random() * 2;
-      const treeWidth = 0.6 + Math.random() * 0.4;
+      const treeHeight = 8; // Fixed height for consistency
+      const treeWidth = 0.3 + Math.random() * 0.3; // 0.3-0.6 radius
       
+      // Tree trunk (larger than before)
       const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(treeWidth/3, treeWidth/2, treeHeight*0.4, 8),
+        new THREE.CylinderGeometry(treeWidth, treeWidth * 1.2, treeHeight, 12),
         new THREE.MeshLambertMaterial({ 
-          color: 0x8B4513,
+          color: 0x8B7355,
           map: TextureGenerator.createWoodTexture()
         })
       );
-      trunk.position.y = treeHeight*0.2;
+      trunk.position.y = treeHeight/2;
       trunk.castShadow = true;
       trunk.receiveShadow = true;
       
-      const leaves = new THREE.Mesh(
-        new THREE.ConeGeometry(treeWidth, treeHeight*0.6, 8),
-        new THREE.MeshLambertMaterial({ color: 0x2E8B57 })
-      );
-      leaves.position.y = treeHeight*0.7;
-      leaves.castShadow = true;
-      
       const tree = new THREE.Group();
       tree.add(trunk);
-      tree.add(leaves);
+      
+      // Tree leaves (3 layers like original) - RESTORED ORIGINAL GRAPHICS
+      for (let layer = 0; layer < 3; layer++) {
+        const leavesGeometry = new THREE.ConeGeometry(2.5 - layer * 0.3, 4, 8);
+        const leavesColor = new THREE.Color().setHSL(0.3, 0.7, 0.5 + Math.random() * 0.3);
+        const leavesMaterial = new THREE.MeshLambertMaterial({ 
+          color: leavesColor,
+          transparent: true,
+          opacity: 0.9
+        });
+        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+        leaves.position.y = 7 + layer * 1.5; // Heights: 7, 8.5, 10
+        leaves.castShadow = true;
+        leaves.receiveShadow = true;
+        tree.add(leaves);
+      }
       
       this.treeModels.push(tree);
     }
     
-    // Rock models (2 variations)
+    // Rock models (2 variations) - RESTORED ORIGINAL GRAPHICS
     for (let i = 0; i < 2; i++) {
-      const rockSize = 0.5 + Math.random() * 1.5;
+      const rockSize = 0.3 + Math.random() * 0.6; // Original sizing: 0.3-0.9
       const rock = new THREE.Mesh(
         new THREE.DodecahedronGeometry(rockSize, 1),
         new THREE.MeshLambertMaterial({ 
-          color: 0x808080,
+          color: new THREE.Color().setHSL(0, 0, 0.5 + Math.random() * 0.4), // Original HSL grayscale
           map: TextureGenerator.createStoneTexture()
         })
       );
@@ -75,15 +83,17 @@ export class TerrainFeatureGenerator {
       this.rockModels.push(rock);
     }
     
-    // Bush models (2 variations)
+    // Bush models (2 variations) - RESTORED ORIGINAL GRAPHICS
     for (let i = 0; i < 2; i++) {
-      const bushSize = 0.8 + Math.random() * 0.7;
+      const bushSize = 0.5 + Math.random() * 0.3; // Original sizing: 0.5-0.8
       const bush = new THREE.Mesh(
         new THREE.SphereGeometry(bushSize, 8, 6),
-        new THREE.MeshLambertMaterial({ color: 0x556B2F })
+        new THREE.MeshLambertMaterial({ 
+          color: new THREE.Color().setHSL(0.25, 0.6, 0.45 + Math.random() * 0.3) // Original HSL color system
+        })
       );
-      bush.scale.y = 0.7;
-      bush.position.y = bushSize * 0.7;
+      bush.scale.y = 0.6; // Make bushes flatter like original
+      bush.position.y = 0.4; // Ground level positioning like original
       bush.castShadow = true;
       bush.receiveShadow = true;
       
