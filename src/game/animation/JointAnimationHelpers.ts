@@ -153,9 +153,9 @@ export class JointAnimationHelpers {
     // Different weapons require different wrist angles for horizontal swings
     // INCREASED multipliers for more aggressive downward angles, especially for axes
     const weaponWristMultiplier = {
-      axe: 1.8,    // INCREASED from 1.4 - axes need much more downward angle for eye-level chops
+      axe: 2.2,    // INCREASED from 1.8 - axes need MUCH MORE downward angle for floor-angled chops
       sword: 1.2,  // Keep moderate horizontal angle for swords
-      club: 1.5    // INCREASED from 1.3 - clubs also need more aggressive angle
+      club: 1.7    // INCREASED from 1.5 - clubs also need more aggressive angle
     }[weaponType];
 
     if (attackPhase < 0.3) {
@@ -169,24 +169,24 @@ export class JointAnimationHelpers {
         z: 0
       };
     } else if (attackPhase < 0.6) {
-      // Strike: MUCH MORE aggressive downward snap for eye-level horizontal swing
+      // Strike: EXTREMELY aggressive downward snap for floor-angled horizontal swing
       const t = (attackPhase - 0.3) / 0.3;
-      // INCREASED downward angle from -0.3 to -0.5 for much lower blade position
-      const strikeWristX = -Math.PI * 0.5 * weaponWristMultiplier; // MUCH MORE negative = aggressive downward tilt
-      const strikeWristY = Math.PI * 0.08 * weaponWristMultiplier; // Slight outward snap
+      // INCREASED downward angle from -0.5 to -0.7 for blade angled towards floor
+      const strikeWristX = -Math.PI * 0.7 * weaponWristMultiplier; // EXTREMELY negative = blade angled towards floor
+      const strikeWristY = Math.PI * 0.1 * weaponWristMultiplier; // Slight outward snap
       const windupWristX = -Math.PI * 0.1 * weaponWristMultiplier;
       const windupWristY = -Math.PI * 0.05 * weaponWristMultiplier;
       
       return {
-        x: THREE.MathUtils.lerp(windupWristX, strikeWristX, t * t * t), // CUBIC for more aggressive snap
+        x: THREE.MathUtils.lerp(windupWristX, strikeWristX, t * t * t * t), // QUARTIC for extremely aggressive snap
         y: THREE.MathUtils.lerp(windupWristY, strikeWristY, t),
         z: 0
       };
     } else {
       // Recovery: return to neutral position
       const t = (attackPhase - 0.6) / 0.4;
-      const strikeWristX = -Math.PI * 0.5 * weaponWristMultiplier; // Match the strike angle
-      const strikeWristY = Math.PI * 0.08 * weaponWristMultiplier;
+      const strikeWristX = -Math.PI * 0.7 * weaponWristMultiplier; // Match the strike angle
+      const strikeWristY = Math.PI * 0.1 * weaponWristMultiplier;
       
       return {
         x: THREE.MathUtils.lerp(strikeWristX, -0.05, Math.sin(t * Math.PI * 0.5)),
