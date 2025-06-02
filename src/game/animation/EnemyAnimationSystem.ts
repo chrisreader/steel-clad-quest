@@ -21,12 +21,12 @@ export class EnemyAnimationSystem {
   private swingAnimation: EnemySwingAnimation | null = null;
   private animationConfigs = ANIMATION_CONFIGS.melee;
   
-  // FIXED: Updated to match new body position from EnemyBodyBuilder
-  private originalBodyY: number = 1.8; // Body center position (leg top 1.1 + body radius 0.7)
+  // FIXED: Updated to match correct body position from EnemyBodyBuilder
+  private originalBodyY: number = 2.1; // Body center position (correct value)
   
   constructor(bodyParts: EnemyBodyParts) {
     this.bodyParts = bodyParts;
-    console.log("🎭 [EnemyAnimationSystem] Initialized with FIXED body positioning - body sits on legs at Y=1.8");
+    console.log("🎭 [EnemyAnimationSystem] Initialized with FIXED body positioning - body center at Y=2.1");
   }
   
   public updateWalkAnimation(deltaTime: number, isMoving: boolean, movementSpeed: number): void {
@@ -46,7 +46,7 @@ export class EnemyAnimationSystem {
     // Apply walking bob as OFFSET from original position, not absolute
     if (this.bodyParts.body) {
       const walkingBob = Math.sin(this.walkTime * 2) * 0.05;
-      this.bodyParts.body.position.y = this.originalBodyY + walkingBob; // 1.8 + offset
+      this.bodyParts.body.position.y = this.originalBodyY + walkingBob; // 2.1 + offset
     }
     
     // ARM MOVEMENT - Coordinated shoulder, elbow, wrist
@@ -100,7 +100,7 @@ export class EnemyAnimationSystem {
     // Apply breathing as OFFSET from original position
     if (this.bodyParts.body) {
       const breathingOffset = Math.sin(this.idleTime * 4) * breathingIntensity;
-      this.bodyParts.body.position.y = this.originalBodyY + breathingOffset; // 1.8 + offset
+      this.bodyParts.body.position.y = this.originalBodyY + breathingOffset; // 2.1 + offset
     }
     
     // Subtle weapon sway
