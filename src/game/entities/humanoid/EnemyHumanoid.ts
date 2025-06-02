@@ -267,12 +267,12 @@ export abstract class EnemyHumanoid {
     mainTorsoGeometry.attributes.position.needsUpdate = true;
     
     const mainTorso = new THREE.Mesh(mainTorsoGeometry, skinMaterial.clone());
-    mainTorso.position.y = 0; // Position relative to torsoGroup
+    mainTorso.position.y = bodyY;
     mainTorso.castShadow = true;
     mainTorso.receiveShadow = true;
     torsoGroup.add(mainTorso);
 
-    // FIXED: Enhanced Chest Area - properly positioned relative to torsoGroup
+    // NEW: Enhanced Chest Area - separate trackable component
     const chestGeometry = new THREE.CylinderGeometry(
       bodyScale.body.radius * 1.2,
       bodyScale.body.radius * 0.85,
@@ -280,12 +280,12 @@ export abstract class EnemyHumanoid {
       16, 4
     );
     const chest = new THREE.Mesh(chestGeometry, muscleMaterial.clone());
-    chest.position.y = bodyScale.body.height * 0.35; // Position in upper torso area
+    chest.position.y = bodyTopY - 0.25;
     chest.castShadow = true;
     chest.receiveShadow = true;
     torsoGroup.add(chest);
 
-    // FIXED: Enhanced Hip/Pelvis Area - properly positioned relative to torsoGroup
+    // NEW: Enhanced Hip/Pelvis Area - separate trackable component
     const pelvisGeometry = new THREE.CylinderGeometry(
       bodyScale.body.radius * 0.75,
       bodyScale.body.radius * 0.9,
@@ -293,13 +293,11 @@ export abstract class EnemyHumanoid {
       16, 4
     );
     const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
-    pelvis.position.y = -bodyScale.body.height * 0.3; // Position in lower torso area
+    pelvis.position.y = legTopY + 0.2;
     pelvis.castShadow = true;
     pelvis.receiveShadow = true;
     torsoGroup.add(pelvis);
 
-    // FIXED: Position the entire torso group correctly
-    torsoGroup.position.y = bodyY;
     humanoidGroup.add(torsoGroup);
     const body = mainTorso; // Keep reference for animation system
 
