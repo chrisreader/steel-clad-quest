@@ -396,11 +396,14 @@ export abstract class EnemyHumanoid {
     rightElbow.add(rightWrist);
 
     // === SHINS ===
-    const shinRelativeY = (thighCenterY - bodyScale.leg.length / 2) - bodyScale.shin.length / 2 - thighCenterY;
+    // FIXED: Adjust shin positioning to account for corrected pivot point
+    const shinRelativeY = -bodyScale.leg.length / 2 - bodyScale.shin.length / 2;
 
     const leftKneeGeometry = new THREE.CylinderGeometry(
       bodyScale.shin.radius[0], bodyScale.shin.radius[1], bodyScale.shin.length, 16
     );
+    // FIXED: Translate geometry to move pivot point to top (knee joint)
+    leftKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
     const leftKneeMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const leftKnee = new THREE.Mesh(leftKneeGeometry, leftKneeMaterial);
     leftKnee.position.set(0, shinRelativeY, 0);
@@ -411,6 +414,8 @@ export abstract class EnemyHumanoid {
     const rightKneeGeometry = new THREE.CylinderGeometry(
       bodyScale.shin.radius[0], bodyScale.shin.radius[1], bodyScale.shin.length, 16
     );
+    // FIXED: Translate geometry to move pivot point to top (knee joint)
+    rightKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
     const rightKneeMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const rightKnee = new THREE.Mesh(rightKneeGeometry, rightKneeMaterial);
     rightKnee.position.set(0, shinRelativeY, 0);
