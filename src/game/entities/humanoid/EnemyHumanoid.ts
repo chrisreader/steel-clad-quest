@@ -195,12 +195,14 @@ export abstract class EnemyHumanoid {
     const bodyResult = this.createHumanoidBody(position);
     this.mesh = bodyResult.group;
     this.bodyParts = bodyResult.bodyParts;
-    this.animationSystem = new EnemyAnimationSystem(bodyResult.bodyParts, bodyResult.metrics);
+    
+    // Pass enemy type to animation system for realistic movement
+    this.animationSystem = new EnemyAnimationSystem(bodyResult.bodyParts, bodyResult.metrics, config.type);
     
     // Add to scene
     scene.add(this.mesh);
     
-    console.log(`🗡️ [EnemyHumanoid] Created ${config.type} humanoid enemy`);
+    console.log(`🗡️ [EnemyHumanoid] Created ${config.type} humanoid enemy with enhanced animations`);
   }
 
   protected createHumanoidBody(position: THREE.Vector3): EnemyBodyResult {

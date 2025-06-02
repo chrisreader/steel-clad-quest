@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EnemyType } from '../../../types/GameTypes';
 import { EffectsManager } from '../../engine/EffectsManager';
@@ -66,7 +65,7 @@ export class OrcEnemy extends EnemyHumanoid {
     audioManager: AudioManager
   ) {
     super(scene, OrcEnemy.ORC_CONFIG, position, effectsManager, audioManager);
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with preserved functionality");
+    console.log("🗡️ [OrcEnemy] Created enhanced orc with realistic movement animations");
   }
 
   protected createWeapon(woodTexture: THREE.Texture, metalTexture: THREE.Texture): THREE.Group {
