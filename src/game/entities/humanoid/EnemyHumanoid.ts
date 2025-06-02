@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { EnemyType } from '../../../types/GameTypes';
@@ -390,8 +391,9 @@ export abstract class EnemyHumanoid {
     torsoGroup.add(mainTorso);
 
     // Chest
+    const chestTopRadius = bodyScale.body.radius * 1.2;
     const chestGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 1.2,
+      chestTopRadius,
       bodyScale.body.radius * 0.85,
       0.5, 16, 4
     );
@@ -413,27 +415,26 @@ export abstract class EnemyHumanoid {
 
     // Trapezius muscle - positioned to taper into shoulder joints
     const shoulderJointX = bodyScale.body.radius + 0.1; // Match shoulder joint X position
-    const torsoTopRadius = bodyScale.body.radius * 1.1; // Define the torso top radius
     
     const trapGeometry = new THREE.CylinderGeometry(
       shoulderJointX * 0.6, // Top radius - taper into shoulder area
-      torsoTopRadius * 0.85, // Bottom radius - match torso connection
-      0.4, 20, 6
+      chestTopRadius * 0.9, // Bottom radius - match chest top radius for smooth transition
+      0.35, 20, 6
     );
     
-    // Shape the trapezius to taper naturally from shoulders to neck
+    // Shape the trapezius to taper naturally from chest to shoulders
     const trapPositions = trapGeometry.attributes.position.array;
     for (let i = 0; i < trapPositions.length; i += 3) {
       const x = trapPositions[i];
       const y = trapPositions[i + 1];
       const z = trapPositions[i + 2];
       
-      // Normalize Y from -0.2 to 0.2 to 0 to 1
-      const normalizedY = (y / 0.4) + 0.5;
+      // Normalize Y from -0.175 to 0.175 to 0 to 1
+      const normalizedY = (y / 0.35) + 0.5;
       
-      // Create the characteristic trapezius shape tapering into shoulders
-      const widthMultiplier = 0.8 + (1 - normalizedY) * 0.2;
-      const depthMultiplier = 0.85 + (1 - normalizedY) * 0.15;
+      // Create the characteristic trapezius shape tapering from chest to shoulders
+      const widthMultiplier = 0.85 + (1 - normalizedY) * 0.15;
+      const depthMultiplier = 0.9 + (1 - normalizedY) * 0.1;
       
       trapPositions[i] = x * widthMultiplier;
       trapPositions[i + 2] = z * depthMultiplier;
@@ -442,7 +443,7 @@ export abstract class EnemyHumanoid {
     trapGeometry.computeVertexNormals();
     
     const trapezius = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
-    trapezius.position.y = shoulderHeight + 0.1; // Position to connect with shoulder joints
+    trapezius.position.y = shoulderHeight + 0.05; // Position to connect smoothly with chest and shoulder joints
     trapezius.castShadow = true;
     torsoGroup.add(trapezius);
 
