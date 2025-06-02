@@ -432,7 +432,7 @@ export class SceneManager {
     const uvs: number[] = [];
     const indices: number[] = [];
     
-    // Generate vertices
+    // Generate vertices - CREATE IN XY PLANE so rotation works correctly
     for (let j = 0; j <= ringSegments; j++) {
       const radius = innerRadius + (outerRadius - innerRadius) * (j / ringSegments);
       
@@ -441,8 +441,9 @@ export class SceneManager {
         
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
-        const y = 0; // Keep flat on XZ plane
+        const y = 0; // Create in XY plane (y=0) so rotation to XZ works correctly
         
+        // Push vertices in XY plane format - this will be rotated to XZ by the mesh rotation
         vertices.push(x, y, z);
         
         // Generate UV coordinates
@@ -475,7 +476,7 @@ export class SceneManager {
     // Compute normals for proper lighting
     geometry.computeVertexNormals();
     
-    console.log(`Created quadrant ${quadrant} geometry with ${vertices.length / 3} vertices and ${indices.length / 3} triangles`);
+    console.log(`Created quadrant ${quadrant} geometry in XY plane with ${vertices.length / 3} vertices and ${indices.length / 3} triangles`);
     
     return geometry;
   }
