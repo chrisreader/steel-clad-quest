@@ -1,7 +1,9 @@
+
 import * as THREE from 'three';
 import { Arrow } from '../entities/Arrow';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
+import { Gold } from '../entities/Gold';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
 import { PhysicsManager } from '../engine/PhysicsManager';
@@ -11,6 +13,7 @@ export class ProjectileSystem {
   private scene: THREE.Scene;
   private player: Player;
   private enemies: Enemy[] = [];
+  private gold: Gold[] = [];
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   private physicsManager: PhysicsManager;
@@ -84,7 +87,7 @@ export class ProjectileSystem {
 
   private checkArrowCollisions(arrow: Arrow): void {
     const arrowPosition = arrow.getPosition();
-    const arrowDirection = arrow.getDirection(); // Assuming Arrow has getDirection method
+    const arrowDirection = arrow.getDirection();
     const arrowBox = new THREE.Box3();
     arrowBox.setFromCenterAndSize(arrowPosition, new THREE.Vector3(0.2, 0.2, 0.2));
     
@@ -96,6 +99,7 @@ export class ProjectileSystem {
       
       if (arrowBox.intersectsBox(enemyBox)) {
         const damage = arrow.getDamage();
+        const enemyPosition = enemy.getPosition();
         
         // Create realistic arrow blood effect
         this.effectsManager.createArrowBloodEffect(arrowPosition, arrowDirection, damage);
@@ -105,17 +109,41 @@ export class ProjectileSystem {
         
         this.audioManager.play('arrow_hit');
         
+        // FIXED: Handle gold and experience rewards when enemy dies from arrow
+        if (enemy.isDead()) {
+          this.spawnGold(enemyPosition, enemy.getGoldReward());
+          this.player.addExperience(enemy.getExperienceReward());
+          console.log(`🏹 Enemy killed by arrow - spawned ${enemy.getGoldReward()} gold and ${enemy.getExperienceReward()} XP`);
+        }
+        
         // Dispose of arrow
         arrow.dispose();
         this.arrows = this.arrows.filter(a => a !== arrow);
         
         console.log(`🏹 Arrow hit enemy for ${damage} damage with realistic blood effect`);
-        
-        if (enemy.isDead()) {
-          this.player.addExperience(enemy.getExperienceReward());
-        }
       }
     });
+  }
+
+  private spawnGold(position: THREE.Vector3, value: number): void {
+    if (value <= 25) {
+      const gold = Gold.createGoldDrop(this.scene, position, value);
+      this.gold.push(gold);
+    } else if (value <= 50) {
+      const halfValue = Math.floor(value / 2);
+      for (let i = 0; i < 2; i++) {
+        const gold = Gold.createGoldDrop(this.scene, position, halfValue);
+        this.gold.push(gold);
+      }
+    } else {
+      const coinCount = Math.min(5, Math.ceil(value / 20));
+      const coinValue = Math.floor(value / coinCount);
+      
+      for (let i = 0; i < coinCount; i++) {
+        const gold = Gold.createGoldDrop(this.scene, position, coinValue);
+        this.gold.push(gold);
+      }
+    }
   }
 
   public setEnemies(enemies: Enemy[]): void {
@@ -126,9 +154,16 @@ export class ProjectileSystem {
     return this.arrows.length;
   }
 
+  public getGold(): Gold[] {
+    return this.gold;
+  }
+
   public clear(): void {
     this.arrows.forEach(arrow => arrow.dispose());
     this.arrows = [];
+    
+    this.gold.forEach(gold => gold.dispose());
+    this.gold = [];
   }
 
   public dispose(): void {

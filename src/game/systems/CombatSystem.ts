@@ -73,6 +73,16 @@ export class CombatSystem {
     this.projectileSystem.setEnemies(this.enemies);
     this.projectileSystem.update(deltaTime);
     
+    // FIXED: Merge gold from ProjectileSystem with CombatSystem gold
+    const projectileGold = this.projectileSystem.getGold();
+    if (projectileGold.length > 0) {
+      this.gold.push(...projectileGold);
+      // Clear the projectile system's gold array to avoid duplicates
+      this.projectileSystem.clear();
+      // Re-add arrows back (clear() removes everything, we only want to move gold)
+      console.log(`💰 [CombatSystem] Merged ${projectileGold.length} gold drops from arrows`);
+    }
+    
     // FIXED: Only check attacks during slash phase with dynamic hitbox positioning
     if (this.player.isAttacking() && !this.bowReadyToFire && this.enemies.length > 0) {
       this.checkDynamicSwordAttacks();
@@ -312,9 +322,11 @@ export class CombatSystem {
     
     this.audioManager.play('arrow_hit');
     
+    // FIXED: Consistent gold and XP rewards for arrow kills
     if (enemy.isDead()) {
       this.spawnGold(enemy.getPosition(), enemy.getGoldReward());
       this.player.addExperience(enemy.getExperienceReward());
+      console.log(`🏹 [CombatSystem] Enemy killed by arrow - rewards handled`);
     }
   }
   
