@@ -380,12 +380,13 @@ export class SceneManager {
       terrainPosition = new THREE.Vector3(0, 0, 0); // Always at world origin
       console.log('Creating center ring terrain at origin');
     } else {
-      // For outer rings, create quadrant segments
+      // For outer rings, create quadrant segments positioned correctly in world space
       const innerRadius = ringDef.innerRadius;
       const outerRadius = ringDef.outerRadius;
       terrainGeometry = this.createQuadrantGeometry(innerRadius, outerRadius, region.quadrant);
-      terrainPosition = centerPosition.clone();
-      console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} at:`, terrainPosition);
+      // Don't offset the position since geometry is already in world coordinates
+      terrainPosition = new THREE.Vector3(0, 0, 0);
+      console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} with geometry in world coordinates`);
     }
     
     // Create material with appropriate color for the ring
@@ -413,9 +414,9 @@ export class SceneManager {
     return terrain;
   }
   
-  // Create quadrant geometry (quarter-circle segment)
+  // Create quadrant geometry (quarter-circle segment) positioned in world coordinates
   private createQuadrantGeometry(innerRadius: number, outerRadius: number, quadrant: number): THREE.BufferGeometry {
-    // Create a custom geometry for the quadrant
+    // Create a custom geometry for the quadrant positioned relative to world center (0,0,0)
     const geometry = new THREE.BufferGeometry();
     
     // Parameters for detail
@@ -431,18 +432,18 @@ export class SceneManager {
     const uvs = [];
     const indices = [];
     
-    // Generate vertices
+    // Generate vertices positioned relative to world center (0,0,0)
     for (let r = 0; r <= radialSegments; r++) {
       const radius = innerRadius + (outerRadius - innerRadius) * (r / radialSegments);
       
       for (let a = 0; a <= heightSegments; a++) {
         const angle = startAngle + (endAngle - startAngle) * (a / heightSegments);
         
-        // Vertex
+        // Vertex positioned relative to world center
         vertices.push(
-          Math.cos(angle) * radius, // x
+          Math.cos(angle) * radius, // x relative to world center
           0,                       // y (height will be added later)
-          Math.sin(angle) * radius  // z
+          Math.sin(angle) * radius  // z relative to world center
         );
         
         // UV (simple mapping)
