@@ -412,7 +412,7 @@ export abstract class EnemyHumanoid {
     pelvis.castShadow = true;
     torsoGroup.add(pelvis);
 
-    // Trapezius muscle - positioned to taper into shoulder joints
+    // Trapezius muscle - positioned to align bottom edge with chest top edge
     const shoulderJointX = bodyScale.body.radius + 0.1; // Match shoulder joint X position
     
     const trapGeometry = new THREE.CylinderGeometry(
@@ -442,7 +442,8 @@ export abstract class EnemyHumanoid {
     trapGeometry.computeVertexNormals();
     
     const trapezius = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
-    trapezius.position.y = shoulderHeight + 0.05; // Position to connect smoothly with chest and shoulder joints
+    // Position trapezius so its bottom edge aligns with the top edge of the chest
+    trapezius.position.y = bodyTopY + 0.175; // bodyTopY + (trapezius height / 2)
     trapezius.castShadow = true;
     torsoGroup.add(trapezius);
 
