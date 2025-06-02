@@ -1,5 +1,4 @@
 
-
 import * as THREE from 'three';
 import { SpawnableEntity, SpawningConfig, SpawnZone, EntityLifecycleState } from '../../types/SpawnableEntity';
 
@@ -77,8 +76,8 @@ export abstract class DynamicSpawningSystem<T extends SpawnableEntity> {
     // Update all entities
     this.updateEntities(deltaTime, playerPosition);
     
-    // Cleanup dead entities (more lenient)
-    this.cleanupEntities(playerPosition);
+    // Cleanup dead entities
+    this.cleanupEntities();
   }
   
   protected createAndAddEntity(isInitial: boolean, playerPosition?: THREE.Vector3): void {
@@ -89,7 +88,7 @@ export abstract class DynamicSpawningSystem<T extends SpawnableEntity> {
   
   protected spawnEntitiesAroundPlayer(playerPosition: THREE.Vector3, count: number): void {
     console.log(`[${this.getSystemName()}] Immediate spawn of ${count} entities around player`);
-    for (let i = 0; i < count && this.entities.length < this.config.maxEntities; i++) {
+    for (let i = 0; i < count; i++) {
       this.createAndAddEntity(false, playerPosition);
     }
   }
@@ -98,7 +97,7 @@ export abstract class DynamicSpawningSystem<T extends SpawnableEntity> {
     let repositioned = 0;
     this.entities.forEach(entity => {
       const distance = entity.mesh.position.distanceTo(playerPosition);
-      if (distance > this.config.maxEntityDistance * 0.9) { // More lenient threshold
+      if (distance > this.config.maxEntityDistance * 0.8) {
         // Move entity to new position around player
         const spawnZone = this.generateSpawnZone(playerPosition);
         const newPosition = this.getRandomPositionInZone(spawnZone);
@@ -139,28 +138,26 @@ export abstract class DynamicSpawningSystem<T extends SpawnableEntity> {
     }
   }
   
-  protected cleanupEntities(playerPosition?: THREE.Vector3): void {
+  protected cleanupEntities(): void {
     for (let i = this.entities.length - 1; i >= 0; i--) {
       const entity = this.entities[i];
       
       let shouldRemove = false;
       let removeReason = '';
       
-      // More lenient cleanup conditions
-      
-      // Remove entities that are extremely far (increased threshold)
-      if (entity.distanceFromPlayer > this.config.aggressiveCleanupDistance) {
+      // Remove entities that are too far
+      if (entity.distanceFromPlayer > this.config.maxEntityDistance) {
         shouldRemove = true;
-        removeReason = 'extremely-far';
+        removeReason = 'too-far';
       }
       
-      // Remove dead entities that have been dead for a long time
-      if (entity.state === EntityLifecycleState.DEAD && entity.age > 30000) { // 30 seconds after death
+      // Remove dead entities
+      if (entity.state === EntityLifecycleState.DEAD) {
         shouldRemove = true;
-        removeReason = 'long-dead';
+        removeReason = 'dead';
       }
       
-      // Remove very old entities (but with longer threshold)
+      // Remove aged entities
       if (entity.age > entity.maxAge) {
         shouldRemove = true;
         removeReason = 'max-age';

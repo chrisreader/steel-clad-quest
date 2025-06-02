@@ -57,13 +57,7 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
           engine.setOnUpdateStamina(onUpdateStamina);
           engine.setOnUpdateScore(onUpdateScore);
           engine.setOnGameOver(onGameOver);
-          
-          // Enhanced location change callback to include safe zone status
-          engine.setOnLocationChange((isInTavern) => {
-            console.log(`[GameEngineController] Location change: ${isInTavern ? 'entered' : 'left'} safe zone`);
-            onLocationChange(isInTavern);
-          });
-          
+          engine.setOnLocationChange(onLocationChange);
           console.log('[GameEngineController] Engine callbacks configured');
           
           console.log('[GameEngineController] Calling engine.initialize()...');
@@ -82,7 +76,7 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
           
           // Set up input event listeners
           document.addEventListener('gameInput', handleGameInput);
-          console.log('[GameEngineController] Input event listeners set up with safe zone support');
+          console.log('[GameEngineController] Input event listeners set up');
           
         } catch (error) {
           console.error("[GameEngineController] Failed to initialize game engine:", error);
