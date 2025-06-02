@@ -497,7 +497,7 @@ export abstract class EnemyHumanoid {
       headGroup.add(rightEye);
     }
 
-    // Enhanced tusks attached to lower jaw
+    // Enhanced tusks attached to head (since no lower jaw)
     if (features.hasTusks && features.tuskConfig) {
       const tuskGeometry = new THREE.ConeGeometry(
         features.tuskConfig.radius, features.tuskConfig.height, 12
@@ -511,24 +511,24 @@ export abstract class EnemyHumanoid {
       const leftTusk = new THREE.Mesh(tuskGeometry, tuskMaterial);
       leftTusk.position.set(
         -features.tuskConfig.offsetX,
-        -0.1, // Relative to jaw position
-        0.2
+        headY - 0.3, // Attach to lower part of head
+        bodyScale.head.radius * 0.8
       );
       leftTusk.rotation.x = Math.PI;
       leftTusk.rotation.z = -0.1;
       leftTusk.castShadow = true;
-      lowerJaw.add(leftTusk); // Attach to jaw for animation
+      headGroup.add(leftTusk); // Attach directly to head group
 
       const rightTusk = new THREE.Mesh(tuskGeometry, tuskMaterial.clone());
       rightTusk.position.set(
         features.tuskConfig.offsetX,
-        -0.1, // Relative to jaw position
-        0.2
+        headY - 0.3, // Attach to lower part of head
+        bodyScale.head.radius * 0.8
       );
       rightTusk.rotation.x = Math.PI;
       rightTusk.rotation.z = 0.1;
       rightTusk.castShadow = true;
-      lowerJaw.add(rightTusk); // Attach to jaw for animation
+      headGroup.add(rightTusk); // Attach directly to head group
     }
 
     // === ENHANCED POINTED EARS ===
