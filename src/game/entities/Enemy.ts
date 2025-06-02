@@ -320,13 +320,9 @@ export class Enemy {
     // Update movement state timers
     this.updateMovementState(deltaTime);
     
-    // FIXED: Handle hit animation without shaking during knockback
+    // FIXED: Handle hit animation without visual effects during knockback
     if (this.enemy.isHit && now - this.enemy.hitTime < 300) {
-      // Only apply visual effects, no position shaking during knockback
-      if (this.movementState !== EnemyMovementState.KNOCKED_BACK) {
-        // Create hit flash effect instead of shake
-        this.createHitFlashEffect();
-      }
+      // No visual effects needed - hit feedback comes from blood effects and sounds
     } else if (this.enemy.isHit) {
       // Reset hit state
       this.enemy.isHit = false;
