@@ -58,7 +58,7 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       shin: { radius: [0.18, 0.20], length: 0.65 }
     },
     neutralPose: {
-      armRotation: { x: -0.393, z: 0.3 }, // Forward-facing combat stance
+      armRotation: { x: -0.393, z: 0.3 },
       legPosition: { x: 0.4 },
       shoulderOffset: 0.25
     },
@@ -121,6 +121,82 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       damageRange: 1.5,
       attackCooldown: 2000,
       knockbackResistance: 1.0
+    }
+  },
+  [EnemyType.SKELETON]: {
+    type: EnemyType.SKELETON,
+    scale: {
+      body: { radius: 0.4, height: 1.3 },
+      head: { radius: 0.4 },
+      arm: { radius: [0.12, 0.14], length: 0.9 },
+      forearm: { radius: [0.10, 0.12], length: 0.7 },
+      leg: { radius: [0.14, 0.16], length: 0.9 },
+      shin: { radius: [0.12, 0.14], length: 0.7 }
+    },
+    neutralPose: {
+      armRotation: { x: -0.3, z: 0.2 },
+      legPosition: { x: 0.45 },
+      shoulderOffset: 0.22
+    },
+    animationParams: {
+      walkCycleSpeed: 2.8,
+      armSwingIntensity: 0.35,
+      legSwingIntensity: 0.3,
+      shoulderMovement: 0.12,
+      breathingIntensity: 0.01,
+      weaponArmSwingReduction: 0.65
+    },
+    colors: {
+      skin: 0xF5F5DC,
+      muscle: 0xE6E6FA,
+      accent: 0xDDD0C0
+    },
+    stats: {
+      health: 30,
+      speed: 3.5,
+      damage: 15,
+      attackRange: 3.0,
+      damageRange: 2.0,
+      attackCooldown: 1800,
+      knockbackResistance: 0.8
+    }
+  },
+  [EnemyType.BOSS]: {
+    type: EnemyType.BOSS,
+    scale: {
+      body: { radius: 0.8, height: 2.0 },
+      head: { radius: 0.7 },
+      arm: { radius: [0.25, 0.3], length: 1.5 },
+      forearm: { radius: [0.22, 0.25], length: 1.2 },
+      leg: { radius: [0.3, 0.35], length: 1.0 },
+      shin: { radius: [0.25, 0.28], length: 0.9 }
+    },
+    neutralPose: {
+      armRotation: { x: -0.5, z: 0.4 },
+      legPosition: { x: 0.35 },
+      shoulderOffset: 0.3
+    },
+    animationParams: {
+      walkCycleSpeed: 2.0,
+      armSwingIntensity: 0.2,
+      legSwingIntensity: 0.15,
+      shoulderMovement: 0.08,
+      breathingIntensity: 0.025,
+      weaponArmSwingReduction: 0.5
+    },
+    colors: {
+      skin: 0x2F1B14,
+      muscle: 0x8B0000,
+      accent: 0x654321
+    },
+    stats: {
+      health: 200,
+      speed: 2,
+      damage: 50,
+      attackRange: 5.0,
+      damageRange: 3.5,
+      attackCooldown: 3000,
+      knockbackResistance: 0.3
     }
   }
 };
