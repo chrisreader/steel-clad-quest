@@ -84,11 +84,11 @@ export class EnemyBodyMetricsCalculator {
       shoulderHeight
     };
 
-    // FIXED: Arms should point forward for proper attack animation
+    // FIXED: Arms pointing forward in front of the orc (negative X rotation)
     const neutralPoses: NeutralPoses = {
       arms: {
-        left: { x: 0.393, y: 0, z: 0.3 }, // Forward-facing +22.5 degrees (was -0.393)
-        right: { x: 0.393, y: 0, z: -0.3 } // Forward-facing +22.5 degrees (was -0.393)
+        left: { x: -0.393, y: 0, z: 0.3 }, // Forward-facing -22.5 degrees (pointing forward)
+        right: { x: -0.393, y: 0, z: -0.3 } // Forward-facing -22.5 degrees (pointing forward)
       },
       elbows: {
         left: { x: 0, y: 0, z: 0 },
@@ -154,11 +154,11 @@ export class EnemyBodyMetricsCalculator {
       shoulderHeight
     };
 
-    // FIXED: Goblin arms also pointing forward (more aggressive stance)
+    // FIXED: Goblin arms also pointing forward (negative X rotation)
     const neutralPoses: NeutralPoses = {
       arms: {
-        left: { x: 0.2, y: 0, z: 0.3 }, // Forward-facing (was -0.2)
-        right: { x: 0.2, y: 0, z: -0.3 } // Forward-facing (was -0.2)
+        left: { x: -0.2, y: 0, z: 0.3 }, // Forward-facing (pointing forward)
+        right: { x: -0.2, y: 0, z: -0.3 } // Forward-facing (pointing forward)
       },
       elbows: {
         left: { x: 0, y: 0, z: 0 },
