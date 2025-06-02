@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerBody, WeaponSwingAnimation } from '../../../types/GameTypes';
 import { STANDARD_SWORD_CONFIG } from '../configs/StandardSwordConfig';
@@ -220,6 +219,11 @@ export class StandardSwordBehavior {
     
     try {
       const bladeReference = this.equippedWeapon.getBladeReference();
+      if (!bladeReference) {
+        console.warn('🗡️ [StandardSwordBehavior] No blade reference available for tip tracking');
+        return;
+      }
+      
       const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
       
       const worldTipPosition = bladeLocalTip.clone();
@@ -233,13 +237,20 @@ export class StandardSwordBehavior {
       
       this.lastTipTrackTime = now;
       
+      console.log(`🗡️ [StandardSwordBehavior] Tracked weapon tip: ${this.weaponTipPositions.length} positions`);
+      
     } catch (error) {
-      console.warn('Could not track weapon tip:', error);
+      console.warn('🗡️ [StandardSwordBehavior] Could not track weapon tip:', error);
     }
   }
 
   private updateSwooshEffect(slashProgress: number): void {
-    if (!this.effectsManager || this.swooshEffectCreated || this.weaponTipPositions.length < 3) {
+    if (!this.effectsManager) {
+      console.warn('🌪️ [StandardSwordBehavior] No EffectsManager available for swoosh effect');
+      return;
+    }
+    
+    if (this.swooshEffectCreated || this.weaponTipPositions.length < 3) {
       return;
     }
     
@@ -253,7 +264,7 @@ export class StandardSwordBehavior {
       this.effectsManager.createSwordSwooshEffect(this.weaponTipPositions.slice(), swingDirection);
       this.swooshEffectCreated = true;
       
-      console.log('🌪️ [StandardSwordBehavior] Created standardized swoosh effect');
+      console.log('🌪️ [StandardSwordBehavior] Created standardized swoosh effect with', this.weaponTipPositions.length, 'tip positions');
     }
   }
 

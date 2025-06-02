@@ -56,13 +56,14 @@ export class CombatSystem {
     this.projectileSystem.setEnemies(this.enemies);
     this.projectileSystem.update(deltaTime);
     
-    // Use specialized sword combat handler for melee attacks
+    // Use specialized sword combat handler for melee attacks with death callback
     if (this.player.isAttacking() && !this.bowReadyToFire && this.enemies.length > 0) {
       this.swordCombatHandler.checkDynamicSwordAttacks(
         this.player,
         this.enemies,
         this.player.getPosition(),
-        this.player.getRotation()
+        this.player.getRotation(),
+        (enemy: Enemy) => this.handleEnemyDeath(enemy) // Add death callback
       );
     }
     
@@ -73,6 +74,22 @@ export class CombatSystem {
     if (this.enemies.length > 0) {
       this.cleanupEntities();
     }
+  }
+  
+  private handleEnemyDeath(enemy: Enemy): void {
+    if (!enemy.isDead()) return;
+    
+    const enemyPosition = enemy.getPosition();
+    const goldReward = enemy.getGoldReward();
+    const expReward = enemy.getExperienceReward();
+    
+    // Spawn gold drops
+    this.spawnGold(enemyPosition, goldReward);
+    
+    // Award experience to player
+    this.player.addExperience(expReward);
+    
+    console.log(`💰 [CombatSystem] Enemy death handled: ${goldReward} gold, ${expReward} XP`);
   }
   
   public startPlayerAttack(): void {
@@ -165,12 +182,12 @@ export class CombatSystem {
   
   public handleArrowHit(enemy: Enemy, arrowPosition: THREE.Vector3, arrowDirection: THREE.Vector3, damage: number): void {
     this.effectsManager.createArrowBloodEffect(arrowPosition, arrowDirection, damage);
+    const wasAlive = !enemy.isDead();
     enemy.takeDamage(damage, arrowPosition);
     this.audioManager.play('arrow_hit');
     
-    if (enemy.isDead()) {
-      this.spawnGold(enemy.getPosition(), enemy.getGoldReward());
-      this.player.addExperience(enemy.getExperienceReward());
+    if (wasAlive && enemy.isDead()) {
+      this.handleEnemyDeath(enemy); // Use shared death handling
     }
   }
   

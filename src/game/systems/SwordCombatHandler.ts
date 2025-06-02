@@ -21,7 +21,8 @@ export class SwordCombatHandler {
     player: Player,
     enemies: Enemy[],
     playerPosition: THREE.Vector3,
-    playerRotation: number
+    playerRotation: number,
+    onEnemyKilled?: (enemy: Enemy) => void
   ): void {
     const currentWeapon = player.getEquippedWeapon();
     if (!currentWeapon || !['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
@@ -76,6 +77,7 @@ export class SwordCombatHandler {
         const slashDirection = enemyPosition.clone().sub(playerPosition).normalize();
         
         // Apply damage and effects
+        const wasAlive = !enemy.isDead();
         enemy.takeDamage(attackPower, playerPosition);
         
         const damageIntensity = Math.min(attackPower / 50, 2);
@@ -83,6 +85,14 @@ export class SwordCombatHandler {
         
         player.addEnemy(enemy);
         this.audioManager.play('sword_hit');
+        
+        // Check if enemy died from this hit and handle death
+        if (wasAlive && enemy.isDead()) {
+          if (onEnemyKilled) {
+            onEnemyKilled(enemy);
+          }
+          console.log("⚔️ [SwordCombatHandler] Enemy killed - triggering death handling");
+        }
         
         console.log("⚔️ [SwordCombatHandler] Enemy hit with standardized sword system");
       }
