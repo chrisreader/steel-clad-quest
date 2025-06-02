@@ -276,10 +276,10 @@ export abstract class EnemyHumanoid {
     // === ENHANCED COMPOSITE ANATOMICAL TORSO ===
     const torsoGroup = new THREE.Group();
     
-    // Main torso - truncated elliptical cone (widest at shoulders, narrows at waist)
+    // Main torso - truncated elliptical cone (widest at shoulders, narrows at waist) - made thicker
     const mainTorsoGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 1.0,  // Top radius (shoulders)
-      bodyScale.body.radius * 0.75, // Bottom radius (waist)
+      bodyScale.body.radius * 1.1,  // Top radius (increased from 1.0 to 1.1)
+      bodyScale.body.radius * 0.85, // Bottom radius (increased from 0.75 to 0.85)
       bodyScale.body.height,
       32, // More segments for smooth elliptical shape
       8
