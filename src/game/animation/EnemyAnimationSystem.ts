@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { EnemyBodyParts } from '../entities/EnemyBody';
 import { EnemyBodyMetrics } from '../entities/EnemyBodyMetrics';
@@ -47,8 +48,10 @@ export class EnemyAnimationSystem {
       this.bodyParts.body.position.y = this.metrics.positions.bodyY + walkingBob;
     }
     
-    // === ARM MOVEMENT (AUTO-SYNCED TO NEUTRAL POSES) ===
-    if (this.bodyParts.leftArm && this.bodyParts.rightArm) {
+    // === ARM MOVEMENT (AUTO-SYNCED TO NEUTRAL POSES) - SKIP DURING ATTACKS ===
+    const isAttacking = this.swingAnimation?.isActive || false;
+    
+    if (this.bodyParts.leftArm && this.bodyParts.rightArm && !isAttacking) {
       // Left arm system - use neutral pose as base
       const leftNeutral = this.metrics.neutralPoses.arms.left;
       this.bodyParts.leftArm.rotation.x = leftNeutral.x + armSwing;
@@ -75,7 +78,7 @@ export class EnemyAnimationSystem {
       }
     }
     
-    // === LEG ANIMATIONS (UNCHANGED) ===
+    // === LEG ANIMATIONS (CONTINUE DURING ATTACKS) ===
     if (this.bodyParts.leftLeg && this.bodyParts.rightLeg) {
       this.bodyParts.leftLeg.rotation.x = legSwing;
       this.bodyParts.rightLeg.rotation.x = -legSwing;
@@ -89,7 +92,7 @@ export class EnemyAnimationSystem {
       }
     }
     
-    console.log(`🎭 [EnemyAnimationSystem] Auto-synced walking: body Y=${this.bodyParts.body?.position.y.toFixed(3)}`);
+    console.log(`🎭 [EnemyAnimationSystem] Independent walking: body Y=${this.bodyParts.body?.position.y.toFixed(3)}, attacking=${isAttacking}`);
   }
   
   private updateIdleAnimation(deltaTime: number): void {
@@ -107,9 +110,11 @@ export class EnemyAnimationSystem {
       this.bodyParts.weapon.rotation.z = baseRotation + Math.sin(this.idleTime * 2) * 0.1;
     }
     
-    // Return arms to neutral position gradually (AUTO-SYNCED)
+    // Return arms to neutral position gradually (AUTO-SYNCED) - SKIP DURING ATTACKS
+    const isAttacking = this.swingAnimation?.isActive || false;
     const returnSpeed = deltaTime * 2;
-    if (this.bodyParts.leftArm && this.bodyParts.rightArm) {
+    
+    if (this.bodyParts.leftArm && this.bodyParts.rightArm && !isAttacking) {
       const leftNeutral = this.metrics.neutralPoses.arms.left;
       const rightNeutral = this.metrics.neutralPoses.arms.right;
       
