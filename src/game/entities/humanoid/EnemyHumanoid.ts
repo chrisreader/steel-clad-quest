@@ -330,26 +330,6 @@ export abstract class EnemyHumanoid {
     rightPectoral.castShadow = true;
     torsoGroup.add(rightPectoral);
 
-    // Shoulders: Partial spheres for deltoid connection - positioned on top of upper arms
-    const shoulderGeometry = new THREE.SphereGeometry(
-      0.32,   // Radius
-      16, 12,  // Segments
-      0, Math.PI * 0.7,  // Phi range
-      0, Math.PI * 0.6   // Theta range
-    );
-    
-    const leftShoulder = new THREE.Mesh(shoulderGeometry, accentMaterial.clone());
-    leftShoulder.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight - 0.1, 0);
-    leftShoulder.rotation.set(0, Math.PI/2, 0);
-    leftShoulder.castShadow = true;
-    torsoGroup.add(leftShoulder);
-    
-    const rightShoulder = new THREE.Mesh(shoulderGeometry, accentMaterial.clone());
-    rightShoulder.position.set(bodyScale.body.radius + 0.1, shoulderHeight - 0.1, 0);
-    rightShoulder.rotation.set(0, -Math.PI/2, 0);
-    rightShoulder.castShadow = true;
-    torsoGroup.add(rightShoulder);
-
     // Abdominal Area: Subtle convex shape with muscle definition
     const abdominalGeometry = new THREE.SphereGeometry(0.35, 16, 12);
     const abdomen = new THREE.Mesh(abdominalGeometry, muscleMaterial.clone());
@@ -563,6 +543,20 @@ export abstract class EnemyHumanoid {
     rightArm.castShadow = true;
     rightArm.receiveShadow = true;
     humanoidGroup.add(rightArm);
+
+    // === SMALLER CIRCULAR SHOULDER JOINTS ===
+    const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 24, 20);
+    const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial);
+    leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
+    leftShoulderJoint.castShadow = true;
+    leftShoulderJoint.receiveShadow = true;
+    humanoidGroup.add(leftShoulderJoint);
+
+    const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
+    rightShoulderJoint.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
+    rightShoulderJoint.castShadow = true;
+    rightShoulderJoint.receiveShadow = true;
+    humanoidGroup.add(rightShoulderJoint);
 
     // === ENHANCED ELBOW JOINTS ===
     const elbowJointGeometry = new THREE.SphereGeometry(0.22, 24, 20);
