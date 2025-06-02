@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PlayerStats } from '../../types/GameTypes';
 
@@ -121,6 +120,10 @@ export abstract class BaseWeapon {
   public getHitBoxMesh?(): THREE.Mesh | null {
     // Optional method - only implemented by weapons that need it
     return this.hitBox;
+  }
+
+  public updateAnimation?(): void {
+    // Default implementation - can be overridden by specific weapon types
   }
 
   public dispose(): void {

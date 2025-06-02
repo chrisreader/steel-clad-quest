@@ -1,9 +1,24 @@
 
 import * as THREE from 'three';
-import { Capsule } from 'three/examples/jsm/math/Capsule';
+// Remove problematic import and create a simple capsule alternative
+// import { Capsule } from 'three/examples/jsm/math/Capsule';
 import { BaseWeapon } from '../weapons/BaseWeapon';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
+import { PlayerStats } from '../../types/GameTypes';
+
+// Simple capsule replacement to avoid import issues
+class SimpleCapsule {
+  public start: THREE.Vector3;
+  public end: THREE.Vector3;
+  public radius: number;
+
+  constructor(start: THREE.Vector3, end: THREE.Vector3, radius: number) {
+    this.start = start.clone();
+    this.end = end.clone();
+    this.radius = radius;
+  }
+}
 
 interface PlayerBody {
   body: THREE.Mesh | null;
@@ -19,18 +34,8 @@ interface WeaponSwingAnimation {
   clock: THREE.Clock;
 }
 
-interface PlayerStats {
-  health: number;
-  maxHealth: number;
-  gold: number;
-  experience: number;
-  level: number;
-  stamina: number;
-  maxStamina: number;
-}
-
 export class Player {
-  public playerCollider: Capsule;
+  public playerCollider: SimpleCapsule;
   public playerVelocity: THREE.Vector3 = new THREE.Vector3();
   public playerDirection: THREE.Vector3 = new THREE.Vector3();
   public playerOnFloor: boolean = false;
@@ -83,8 +88,8 @@ export class Player {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    // Setup player collider
-    this.playerCollider = new Capsule(new THREE.Vector3(0, 1.1, 0), new THREE.Vector3(0, 1.9, 0), 0.35);
+    // Setup player collider with simple capsule
+    this.playerCollider = new SimpleCapsule(new THREE.Vector3(0, 1.1, 0), new THREE.Vector3(0, 1.9, 0), 0.35);
     
     // Create player group
     this.playerGroup = new THREE.Group();
@@ -108,7 +113,12 @@ export class Player {
       experience: this.experience,
       level: this.level,
       stamina: this.stamina,
-      maxStamina: this.maxStamina
+      maxStamina: this.maxStamina,
+      experienceToNext: this.getRequiredExperienceForNextLevel() - this.experience,
+      attack: this.attackPower,
+      defense: 5, // Default defense value
+      speed: this.speed,
+      attackPower: this.attackPower
     };
   }
   
@@ -294,8 +304,8 @@ export class Player {
   }
   
   public update(deltaTime: number, isMoving: boolean = false): void {
-    // Update weapon animations if equipped
-    if (this.equippedWeapon && typeof this.equippedWeapon.updateAnimation === 'function') {
+    // Update weapon animations if equipped and method exists
+    if (this.equippedWeapon && 'updateAnimation' in this.equippedWeapon && typeof this.equippedWeapon.updateAnimation === 'function') {
       this.equippedWeapon.updateAnimation();
     }
     
