@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EnemyBodyParts } from '../entities/EnemyBody';
 import { EnemyBodyMetrics } from '../entities/EnemyBodyMetrics';
@@ -171,13 +170,13 @@ export class EnemyAnimationSystem {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Pull back to (-45°, -10°, -80°)
+      // WINDUP PHASE: Pull back to (-60°, 0°, -80°)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
       // SHOULDER: Pull back from walking neutral to windup position
-      shoulderRotation.x = THREE.MathUtils.lerp(walkingNeutral.x, -Math.PI / 4, easedT); // -22.5° to -45°
-      shoulderRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 18, easedT); // 0° to -10°
+      shoulderRotation.x = THREE.MathUtils.lerp(walkingNeutral.x, -Math.PI / 3, easedT); // -22.5° to -60°
+      shoulderRotation.y = THREE.MathUtils.lerp(0, 0, easedT); // 0° to 0°
       shoulderRotation.z = THREE.MathUtils.lerp(walkingNeutral.z, -Math.PI * 80 / 180, easedT); // To -80°
       
       // ELBOW: Support the windup movement
@@ -192,7 +191,7 @@ export class EnemyAnimationSystem {
       // TORSO: Small coil for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.2, easedT);
       
-      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - Pull back to (-45°, -10°, -80°)`);
+      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - Pull back to (-60°, 0°, -80°)`);
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE: Forward strike to (+22.5°, 0°, 15°)
@@ -200,8 +199,8 @@ export class EnemyAnimationSystem {
       const aggressiveT = t * t * (3 - 2 * t); // Smoothstep for aggressive acceleration
       
       // SHOULDER: Forward strike movement to precise angles
-      shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 4, Math.PI / 8, aggressiveT); // -45° to +22.5°
-      shoulderRotation.y = THREE.MathUtils.lerp(-Math.PI / 18, 0, aggressiveT); // -10° to 0°
+      shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 3, Math.PI / 8, aggressiveT); // -60° to +22.5°
+      shoulderRotation.y = THREE.MathUtils.lerp(0, 0, aggressiveT); // 0° to 0°
       shoulderRotation.z = THREE.MathUtils.lerp(-Math.PI * 80 / 180, Math.PI / 12, aggressiveT); // -80° to 15°
       
       // ELBOW: Aggressive forward movement
