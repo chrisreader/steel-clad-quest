@@ -410,33 +410,6 @@ export abstract class EnemyHumanoid {
     pelvis.castShadow = true;
     torsoGroup.add(pelvis);
 
-    // Add trapezius muscles (traps) - the thick neck-to-shoulder muscles
-    const trapGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 1.3,
-      bodyScale.body.radius * 0.9,
-      0.6, 16, 4
-    );
-    
-    // Shape the traps to be more triangular
-    const trapPositions = trapGeometry.attributes.position.array;
-    for (let i = 0; i < trapPositions.length; i += 3) {
-      const x = trapPositions[i];
-      const y = trapPositions[i + 1];
-      const z = trapPositions[i + 2];
-      
-      // Make it wider at the shoulders and narrower toward the neck
-      const widthMultiplier = Math.abs(y) > 0.2 ? 1.2 : 0.8;
-      trapPositions[i] = x * widthMultiplier;
-      trapPositions[i + 2] = z * (0.7 + Math.abs(y) * 0.3);
-    }
-    trapGeometry.attributes.position.needsUpdate = true;
-    trapGeometry.computeVertexNormals();
-    
-    const traps = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
-    traps.position.y = bodyTopY + 0.1;
-    traps.castShadow = true;
-    torsoGroup.add(traps);
-
     return { parent: torsoGroup, mesh: mainTorso };
   }
 
