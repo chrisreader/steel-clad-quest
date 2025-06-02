@@ -197,6 +197,11 @@ export class RealisticMovementSystem {
       attackProgress, this.config.weaponType
     );
     
+    // Calculate weapon wrist movement to control weapon angle
+    const weaponWristRotation = JointAnimationHelpers.calculateWeaponWristMovement(
+      attackProgress, this.config.weaponType
+    );
+    
     // Calculate supporting elbow movement (already returns negative values)
     const supportElbowAngle = JointAnimationHelpers.calculateBalanceElbowMovement(attackProgress);
     
@@ -206,6 +211,13 @@ export class RealisticMovementSystem {
     }
     if (bodyParts.rightElbow) {
       bodyParts.rightElbow.rotation.x = supportElbowAngle;
+    }
+    
+    // Apply wrist movements to control weapon angle
+    if (bodyParts.leftWrist) {
+      bodyParts.leftWrist.rotation.x = weaponWristRotation.x;
+      bodyParts.leftWrist.rotation.y = weaponWristRotation.y;
+      bodyParts.leftWrist.rotation.z = weaponWristRotation.z;
     }
     
     // Add body weight shift
