@@ -410,14 +410,13 @@ export abstract class EnemyHumanoid {
     pelvis.castShadow = true;
     torsoGroup.add(pelvis);
 
-    // Trapezius muscle - positioned inline with shoulder joints
-    const shoulderJointY = bodyTopY; // Same height as shoulder joints
-    const shoulderJointX = bodyScale.body.radius + 0.1; // Same X position as shoulder joints
+    // Trapezius muscle - properly sized to match torso
+    const torsoTopRadius = bodyScale.body.radius * 1.1; // Match the top radius of main torso
     
     const trapGeometry = new THREE.CylinderGeometry(
-      shoulderJointX * 0.8, // Top radius - narrower at neck
-      shoulderJointX * 1.2, // Bottom radius - wider at shoulders
-      0.5, 20, 6
+      torsoTopRadius * 0.4, // Top radius - much smaller at neck
+      torsoTopRadius * 0.9, // Bottom radius - match torso top but slightly smaller
+      0.3, 20, 6 // Reduced height
     );
     
     // Shape the trapezius to taper naturally from shoulders to neck
@@ -427,12 +426,12 @@ export abstract class EnemyHumanoid {
       const y = trapPositions[i + 1];
       const z = trapPositions[i + 2];
       
-      // Normalize Y from -0.25 to 0.25 to 0 to 1
-      const normalizedY = (y / 0.5) + 0.5;
+      // Normalize Y from -0.15 to 0.15 to 0 to 1
+      const normalizedY = (y / 0.3) + 0.5;
       
       // Create the characteristic trapezius shape
       // Wider at the bottom (shoulders), narrower at top (neck)
-      const widthMultiplier = 0.6 + (1 - normalizedY) * 0.4;
+      const widthMultiplier = 0.7 + (1 - normalizedY) * 0.3;
       const depthMultiplier = 0.8 + (1 - normalizedY) * 0.2;
       
       trapPositions[i] = x * widthMultiplier;
@@ -442,7 +441,7 @@ export abstract class EnemyHumanoid {
     trapGeometry.computeVertexNormals();
     
     const trapezius = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
-    trapezius.position.y = shoulderJointY + 0.1; // Slightly above shoulder joint level
+    trapezius.position.y = bodyTopY + 0.05; // Just above the torso top
     trapezius.castShadow = true;
     torsoGroup.add(trapezius);
 
