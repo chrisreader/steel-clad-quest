@@ -570,7 +570,7 @@ export abstract class EnemyHumanoid {
     const leftTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     leftTrap.position.set(
       -(bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight, // Same height as shoulder joints
+      shoulderHeight + 0.15, // Raised higher above shoulder joints
       0
     );
     leftTrap.rotation.z = -0.4; // Angled towards shoulder
@@ -582,7 +582,7 @@ export abstract class EnemyHumanoid {
     const rightTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     rightTrap.position.set(
       (bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight, // Same height as shoulder joints
+      shoulderHeight + 0.15, // Raised higher above shoulder joints
       0
     );
     rightTrap.rotation.z = 0.4; // Angled towards shoulder
