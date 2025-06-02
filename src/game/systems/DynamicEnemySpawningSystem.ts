@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Enemy } from '../entities/Enemy';
 import { DynamicSpawningSystem } from './DynamicSpawningSystem';
@@ -178,52 +179,13 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
         entity.distanceFromPlayer = entity.mesh.position.distanceTo(playerPosition);
       }
       
-      // Prevent enemies from entering safe zone
-      const enemy = entity.getEnemy();
-      const enemyPosition = enemy.getPosition();
-      
-      if (this.safeZoneManager.isPositionInSafeZone(enemyPosition)) {
-        // Push enemy out of safe zone
-        const safeZoneCenter = this.safeZoneManager.getSafeZoneCenter();
-        const direction = new THREE.Vector3()
-          .subVectors(enemyPosition, safeZoneCenter)
-          .normalize();
-        
-        const safeDistance = this.safeZoneManager.getSafeZoneRadius() + 2;
-        const safePosition = safeZoneCenter.clone().add(direction.multiplyScalar(safeDistance));
-        safePosition.y = 0;
-        
-        enemy.getMesh().position.copy(safePosition);
-        console.log(`🛡️ [DynamicEnemySpawningSystem] Pushed enemy out of safe zone`);
-      }
-      
-      // Update entity
+      // Update entity - let the enemy handle its own safe zone avoidance
       entity.update(deltaTime, playerPosition || new THREE.Vector3());
     }
   }
 
   protected getSystemName(): string {
     return 'DynamicEnemySpawningSystem';
-  }
-  
-  private calculateSpawnPosition(playerPosition?: THREE.Vector3): THREE.Vector3 {
-    if (!playerPosition) {
-      return new THREE.Vector3(
-        (Math.random() - 0.5) * 40,
-        0,
-        (Math.random() - 0.5) * 40
-      );
-    }
-    
-    const angle = Math.random() * Math.PI * 2;
-    const distance = this.config.minSpawnDistance + 
-                    Math.random() * (this.config.maxSpawnDistance - this.config.minSpawnDistance);
-    
-    return new THREE.Vector3(
-      playerPosition.x + Math.cos(angle) * distance,
-      0,
-      playerPosition.z + Math.sin(angle) * distance
-    );
   }
   
   public getEnemies(): Enemy[] {

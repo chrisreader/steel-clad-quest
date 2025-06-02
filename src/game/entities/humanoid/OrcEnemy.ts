@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { EnemyType } from '../../../types/GameTypes';
 import { EffectsManager } from '../../engine/EffectsManager';
@@ -58,6 +59,13 @@ export class OrcEnemy extends EnemyHumanoid {
     }
   };
 
+  // Passive mode state for safe zone behavior
+  private isPassive: boolean = false;
+  private passiveWanderTimer: number = 0;
+  private passiveWanderDirection: THREE.Vector3 = new THREE.Vector3();
+  private spawnPosition: THREE.Vector3 = new THREE.Vector3();
+  private maxWanderDistance: number = 25;
+
   constructor(
     scene: THREE.Scene,
     position: THREE.Vector3,
@@ -65,7 +73,126 @@ export class OrcEnemy extends EnemyHumanoid {
     audioManager: AudioManager
   ) {
     super(scene, OrcEnemy.ORC_CONFIG, position, effectsManager, audioManager);
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with realistic movement animations");
+    this.spawnPosition.copy(position);
+    console.log("🗡️ [OrcEnemy] Created enhanced orc with safe zone awareness");
+  }
+
+  public setPassiveMode(passive: boolean): void {
+    if (this.isPassive !== passive) {
+      this.isPassive = passive;
+      
+      if (passive) {
+        console.log(`🛡️ [OrcEnemy] Switching to passive mode - will wander peacefully`);
+        this.generateNewWanderDirection();
+        this.passiveWanderTimer = 0;
+      } else {
+        console.log(`⚔️ [OrcEnemy] Switching to aggressive mode - will pursue player`);
+      }
+    }
+  }
+
+  public getPassiveMode(): boolean {
+    return this.isPassive;
+  }
+
+  private generateNewWanderDirection(): void {
+    // Generate random direction
+    const angle = Math.random() * Math.PI * 2;
+    this.passiveWanderDirection.set(
+      Math.cos(angle),
+      0,
+      Math.sin(angle)
+    );
+    
+    // 30% chance to stop and idle
+    if (Math.random() < 0.3) {
+      this.passiveWanderDirection.set(0, 0, 0);
+    }
+    
+    console.log(`🚶 [OrcEnemy] Generated new wander direction:`, this.passiveWanderDirection);
+  }
+
+  private handlePassiveMovement(deltaTime: number): void {
+    this.passiveWanderTimer += deltaTime * 1000;
+    
+    // Change direction every 3-5 seconds
+    if (this.passiveWanderTimer > 3000 + Math.random() * 2000) {
+      this.generateNewWanderDirection();
+      this.passiveWanderTimer = 0;
+    }
+    
+    // Move in wander direction
+    if (this.passiveWanderDirection.length() > 0) {
+      const wanderSpeed = this.config.speed * 0.3; // Much slower than normal movement
+      const movement = this.passiveWanderDirection.clone().multiplyScalar(wanderSpeed * deltaTime);
+      const newPosition = this.mesh.position.clone().add(movement);
+      newPosition.y = 0;
+      
+      // Check if we're getting too far from spawn point
+      const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
+      if (distanceFromSpawn < this.maxWanderDistance) {
+        // Check if new position would be in safe zone - if so, avoid it
+        const safeZoneCenter = new THREE.Vector3(0, 0, 0);
+        const distanceToSafeZone = newPosition.distanceTo(safeZoneCenter);
+        
+        if (distanceToSafeZone > 16) { // Stay outside safe zone (15 + 1 buffer)
+          this.mesh.position.copy(newPosition);
+          this.updateMovementAnimation(deltaTime);
+        } else {
+          // Too close to safe zone, head away from it
+          const directionAwayFromSafeZone = new THREE.Vector3()
+            .subVectors(newPosition, safeZoneCenter)
+            .normalize();
+          directionAwayFromSafeZone.y = 0;
+          
+          this.passiveWanderDirection.copy(directionAwayFromSafeZone);
+        }
+      } else {
+        // Too far from spawn, head back
+        const directionToSpawn = new THREE.Vector3()
+          .subVectors(this.spawnPosition, this.mesh.position)
+          .normalize();
+        directionToSpawn.y = 0;
+        
+        this.passiveWanderDirection.copy(directionToSpawn);
+      }
+    }
+  }
+
+  public update(deltaTime: number, playerPosition: THREE.Vector3): void {
+    if (this.isDead) {
+      this.updateDeathAnimation(deltaTime);
+      return;
+    }
+
+    // Handle passive movement if in passive mode
+    if (this.isPassive) {
+      this.handlePassiveMovement(deltaTime);
+      return;
+    }
+
+    // Check if we should avoid safe zone when in aggressive mode
+    const safeZoneCenter = new THREE.Vector3(0, 0, 0);
+    const distanceToSafeZone = this.mesh.position.distanceTo(safeZoneCenter);
+    
+    if (distanceToSafeZone < 18) { // Close to safe zone
+      // Move away from safe zone instead of towards player
+      const directionAwayFromSafeZone = new THREE.Vector3()
+        .subVectors(this.mesh.position, safeZoneCenter)
+        .normalize();
+      directionAwayFromSafeZone.y = 0;
+      
+      const moveAmount = this.config.speed * deltaTime;
+      const newPosition = this.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
+      newPosition.y = 0;
+      
+      this.mesh.position.copy(newPosition);
+      this.updateMovementAnimation(deltaTime);
+      return;
+    }
+
+    // Normal aggressive behavior
+    super.update(deltaTime, playerPosition);
   }
 
   protected createWeapon(woodTexture: THREE.Texture, metalTexture: THREE.Texture): THREE.Group {

@@ -119,7 +119,7 @@ export class Enemy {
       weapon: bodyParts.weapon,
       body: bodyParts.body,
       head: bodyParts.head,
-      attackRange: 3.5,
+      attackRange: 8.0, // Increased aggression distance
       damageRange: 2.5,
       attackCooldown: 2000,
       points: 50,
@@ -135,7 +135,7 @@ export class Enemy {
     let body: THREE.Mesh, head: THREE.Mesh, weapon: THREE.Group;
     const originalMaterials: THREE.Material[] = [];
     
-    // Set enemy stats based on type
+    // Set enemy stats based on type with increased aggression range
     const stats = isGoblin ? {
       health: 20,
       maxHealth: 20,
@@ -144,7 +144,7 @@ export class Enemy {
       experienceReward: 10,
       goldReward: 25,
       points: 25,
-      attackRange: 2.5,
+      attackRange: 6.0, // Increased from 2.5
       damageRange: 1.5,
       attackCooldown: 2000,
       bodyRadius: 0.35,
@@ -166,7 +166,7 @@ export class Enemy {
       experienceReward: 25,
       goldReward: 50,
       points: 50,
-      attackRange: 3.0,
+      attackRange: 8.0, // Increased from 3.0
       damageRange: 2.0,
       attackCooldown: 2500,
       bodyRadius: 0.5,
@@ -442,11 +442,26 @@ export class Enemy {
       // Check if we're getting too far from spawn point
       const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
       if (distanceFromSpawn < this.maxWanderDistance) {
-        this.enemy.mesh.position.copy(newPosition);
-        this.updateLegacyWalkAnimation(deltaTime);
+        // Check if new position would be in safe zone - if so, avoid it
+        const safeZoneCenter = new THREE.Vector3(0, 0, 0);
+        const distanceToSafeZone = newPosition.distanceTo(safeZoneCenter);
         
-        // Update target rotation for smooth turning
-        this.targetRotation = Math.atan2(this.passiveWanderDirection.x, this.passiveWanderDirection.z);
+        if (distanceToSafeZone > 16) { // Stay outside safe zone (15 + 1 buffer)
+          this.enemy.mesh.position.copy(newPosition);
+          this.updateLegacyWalkAnimation(deltaTime);
+          
+          // Update target rotation for smooth turning
+          this.targetRotation = Math.atan2(this.passiveWanderDirection.x, this.passiveWanderDirection.z);
+        } else {
+          // Too close to safe zone, head away from it
+          const directionAwayFromSafeZone = new THREE.Vector3()
+            .subVectors(newPosition, safeZoneCenter)
+            .normalize();
+          directionAwayFromSafeZone.y = 0;
+          
+          this.passiveWanderDirection.copy(directionAwayFromSafeZone);
+          this.targetRotation = Math.atan2(directionAwayFromSafeZone.x, directionAwayFromSafeZone.z);
+        }
       } else {
         // Too far from spawn, head back
         const directionToSpawn = new THREE.Vector3()
@@ -480,6 +495,12 @@ export class Enemy {
   }
 
   public setPassiveMode(passive: boolean): void {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      // Delegate to humanoid enemy
+      this.humanoidEnemy.setPassiveMode(passive);
+      return;
+    }
+    
     if (this.isPassive !== passive) {
       this.isPassive = passive;
       this.lastPassiveStateChange = Date.now();
@@ -496,6 +517,9 @@ export class Enemy {
   }
 
   public getPassiveMode(): boolean {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getPassiveMode();
+    }
     return this.isPassive;
   }
 
@@ -536,6 +560,28 @@ export class Enemy {
   
   private handleNormalMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
     this.enemy.idleTime += deltaTime;
+    
+    // Check if we should avoid safe zone when in aggressive mode
+    const safeZoneCenter = new THREE.Vector3(0, 0, 0);
+    const distanceToSafeZone = this.enemy.mesh.position.distanceTo(safeZoneCenter);
+    
+    if (distanceToSafeZone < 18) { // Close to safe zone
+      // Move away from safe zone instead of towards player
+      const directionAwayFromSafeZone = new THREE.Vector3()
+        .subVectors(this.enemy.mesh.position, safeZoneCenter)
+        .normalize();
+      directionAwayFromSafeZone.y = 0;
+      
+      this.targetRotation = Math.atan2(directionAwayFromSafeZone.x, directionAwayFromSafeZone.z);
+      
+      const moveAmount = this.enemy.speed * deltaTime;
+      const newPosition = this.enemy.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
+      newPosition.y = 0;
+      
+      this.enemy.mesh.position.copy(newPosition);
+      this.updateLegacyWalkAnimation(deltaTime);
+      return;
+    }
     
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
