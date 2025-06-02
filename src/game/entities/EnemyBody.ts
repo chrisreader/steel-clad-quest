@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 
@@ -26,9 +25,9 @@ export class EnemyBodyBuilder {
   } {
     const orcGroup = new THREE.Group();
     
-    // Orc scale factors (larger and more muscular than humans)
+    // FIXED: More proportional orc scale factors
     const scale = {
-      body: { radius: 0.55, height: 2.0 },
+      body: { radius: 0.55, height: 1.4 }, // REDUCED from 2.0 to 1.4
       head: { radius: 0.5 },
       arm: { radius: [0.18, 0.22], length: 1.1 },
       forearm: { radius: [0.16, 0.18], length: 0.9 },
@@ -46,7 +45,7 @@ export class EnemyBodyBuilder {
     const woodTexture = TextureGenerator.createWoodTexture(0x5D4037);
     const metalTexture = TextureGenerator.createMetalTexture(0x444444);
     
-    // Create body (torso)
+    // Create body (torso) - now properly proportioned
     const bodyGeometry = new THREE.CylinderGeometry(scale.body.radius, scale.body.radius * 1.15, scale.body.height, 16);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.skin,
@@ -59,7 +58,7 @@ export class EnemyBodyBuilder {
     body.receiveShadow = true;
     orcGroup.add(body);
     
-    // Create head (larger and more menacing)
+    // Create head (positioned relative to new shorter body)
     const headGeometry = new THREE.SphereGeometry(scale.head.radius, 20, 16);
     const headMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.muscle,
@@ -105,15 +104,16 @@ export class EnemyBodyBuilder {
     orcGroup.add(leftTusk);
     orcGroup.add(rightTusk);
     
-    // Create articulated arms (shoulder -> elbow -> wrist structure)
-    const shoulderHeight = scale.body.height * 0.85;
+    // FIXED: Create properly positioned arms (hanging forward like player)
+    const shoulderHeight = scale.body.height * 0.85; // Adjusted for shorter body
     
-    // LEFT ARM SYSTEM
+    // LEFT ARM SYSTEM - FIXED positioning
     const leftArmGeometry = new THREE.CylinderGeometry(scale.arm.radius[0], scale.arm.radius[1], scale.arm.length, 16);
     const leftArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftArm = new THREE.Mesh(leftArmGeometry, leftArmMaterial);
     leftArm.position.set(-(scale.body.radius + 0.25), shoulderHeight, 0);
-    leftArm.rotation.z = 0.3;
+    // FIXED: Forward rotation like player (removed backward Z rotation)
+    leftArm.rotation.x = 0.393; // ~22.5 degrees forward like player
     leftArm.castShadow = true;
     leftArm.receiveShadow = true;
     orcGroup.add(leftArm);
@@ -136,12 +136,13 @@ export class EnemyBodyBuilder {
     leftWrist.receiveShadow = true;
     leftElbow.add(leftWrist);
     
-    // RIGHT ARM SYSTEM (weapon arm)
+    // RIGHT ARM SYSTEM - FIXED positioning (weapon arm)
     const rightArmGeometry = new THREE.CylinderGeometry(scale.arm.radius[0], scale.arm.radius[1], scale.arm.length, 16);
     const rightArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightArm = new THREE.Mesh(rightArmGeometry, rightArmMaterial);
     rightArm.position.set(scale.body.radius + 0.25, shoulderHeight, 0);
-    rightArm.rotation.z = -0.3;
+    // FIXED: Forward rotation like player (removed backward Z rotation)
+    rightArm.rotation.x = 0.393; // ~22.5 degrees forward like player
     rightArm.castShadow = true;
     rightArm.receiveShadow = true;
     orcGroup.add(rightArm);
@@ -164,13 +165,14 @@ export class EnemyBodyBuilder {
     rightWrist.receiveShadow = true;
     rightElbow.add(rightWrist);
     
-    // Create articulated legs (hip -> knee -> ankle structure)
+    // FIXED: Create properly positioned legs (now visible below shorter body)
     
-    // LEFT LEG SYSTEM
+    // LEFT LEG SYSTEM - properly positioned for shorter body
     const leftLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
     const leftLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftLeg = new THREE.Mesh(leftLegGeometry, leftLegMaterial);
-    leftLeg.position.set(-scale.body.radius * 0.4, scale.leg.length / 2, 0);
+    // FIXED: Position at bottom of shorter body
+    leftLeg.position.set(-scale.body.radius * 0.4, -scale.leg.length / 2, 0);
     leftLeg.castShadow = true;
     leftLeg.receiveShadow = true;
     orcGroup.add(leftLeg);
@@ -184,11 +186,12 @@ export class EnemyBodyBuilder {
     leftKnee.receiveShadow = true;
     leftLeg.add(leftKnee);
     
-    // RIGHT LEG SYSTEM
+    // RIGHT LEG SYSTEM - properly positioned for shorter body
     const rightLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
     const rightLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightLeg = new THREE.Mesh(rightLegGeometry, rightLegMaterial);
-    rightLeg.position.set(scale.body.radius * 0.4, scale.leg.length / 2, 0);
+    // FIXED: Position at bottom of shorter body
+    rightLeg.position.set(scale.body.radius * 0.4, -scale.leg.length / 2, 0);
     rightLeg.castShadow = true;
     rightLeg.receiveShadow = true;
     orcGroup.add(rightLeg);
@@ -241,8 +244,8 @@ export class EnemyBodyBuilder {
     weapon.rotation.z = -0.3;
     rightWrist.add(weapon);
     
-    // Create invisible hitbox for collision detection
-    const hitBoxGeometry = new THREE.BoxGeometry(1.8, 2.8, 1.8);
+    // FIXED: Adjust hitbox for shorter body
+    const hitBoxGeometry = new THREE.BoxGeometry(1.8, 2.2, 1.8); // Reduced height from 2.8 to 2.2
     const hitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
     const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
     hitBox.position.y = scale.body.height / 2;
@@ -270,7 +273,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
     
-    console.log("🗡️ [EnemyBodyBuilder] Created realistic orc body with articulated joints and weapon");
+    console.log("🗡️ [EnemyBodyBuilder] Created FIXED realistic orc body with proper proportions and forward-facing arms");
     
     return { group: orcGroup, bodyParts };
   }
