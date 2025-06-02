@@ -569,6 +569,27 @@ export class Player {
     // Debug arm positions after setting weapon stance
     this.debugArmPositions("AFTER_WEAPON_READY_STANCE");
   }
+
+  // Add the missing resetToRealisticNormalStance method
+  private resetToRealisticNormalStance(): void {
+    // Reset both arms to neutral position
+    this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0);
+    this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0);
+    
+    // Reset elbow positions
+    if (this.playerBody.leftElbow) {
+      this.playerBody.leftElbow.rotation.set(0, 0, 0);
+    }
+    if (this.playerBody.rightElbow) {
+      this.playerBody.rightElbow.rotation.set(0, 0, 0);
+    }
+    
+    // Reset hand rotations
+    this.playerBody.leftHand.rotation.set(0, 0, 0);
+    this.playerBody.rightHand.rotation.set(0, 0, 0);
+    
+    console.log("🧍 [Player] Reset to realistic normal stance");
+  }
   
   public equipWeapon(weaponId: string): boolean {
     console.log(`🗡️ [Player] Equipping weapon: ${weaponId}`);
@@ -760,7 +781,8 @@ export class Player {
       console.warn("Could not update weapon hitbox:", error);
     }
   }
-  
+
+  // FIXED: Only keep one getAttackPower method
   public getAttackPower(): number {
     if (this.equippedWeapon) {
       return this.stats.attackPower + this.equippedWeapon.getStats().damage;
@@ -1111,12 +1133,5 @@ export class Player {
   
   public getEquippedWeapon(): BaseWeapon | null {
     return this.equippedWeapon;
-  }
-  
-  public getAttackPower(): number {
-    if (this.equippedWeapon) {
-      return this.stats.attackPower + this.equippedWeapon.getStats().damage;
-    }
-    return this.stats.attackPower;
   }
 }
