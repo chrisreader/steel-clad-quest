@@ -562,31 +562,31 @@ export abstract class EnemyHumanoid {
 
     // === TRAPEZIUS MUSCLES ===
     const trapGeometry = new THREE.ConeGeometry(
-      bodyScale.body.radius * 0.8,  // Base radius (connects to torso)
-      0.6, // Height
+      bodyScale.body.radius * 0.6,  // Base radius (smaller for better proportions)
+      0.5, // Height (reduced)
       16, 4
     );
     
     const leftTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     leftTrap.position.set(
-      -(bodyScale.body.radius + 0.1) * 0.7, // Positioned between shoulder and torso
-      shoulderHeight - 0.2,
+      -(bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
+      shoulderHeight, // Same height as shoulder joints
       0
     );
-    leftTrap.rotation.z = -0.3; // Angled towards shoulder
-    leftTrap.scale.set(0.8, 1, 0.6); // Flattened for more natural muscle shape
+    leftTrap.rotation.z = -0.4; // Angled towards shoulder
+    leftTrap.scale.set(0.7, 1, 0.5); // More compressed for natural muscle shape
     leftTrap.castShadow = true;
     leftTrap.receiveShadow = true;
     humanoidGroup.add(leftTrap);
 
     const rightTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     rightTrap.position.set(
-      (bodyScale.body.radius + 0.1) * 0.7, // Positioned between shoulder and torso
-      shoulderHeight - 0.2,
+      (bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
+      shoulderHeight, // Same height as shoulder joints
       0
     );
-    rightTrap.rotation.z = 0.3; // Angled towards shoulder
-    rightTrap.scale.set(0.8, 1, 0.6); // Flattened for more natural muscle shape
+    rightTrap.rotation.z = 0.4; // Angled towards shoulder
+    rightTrap.scale.set(0.7, 1, 0.5); // More compressed for natural muscle shape
     rightTrap.castShadow = true;
     rightTrap.receiveShadow = true;
     humanoidGroup.add(rightTrap);
