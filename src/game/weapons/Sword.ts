@@ -1,12 +1,11 @@
 import * as THREE from 'three';
 import { BaseWeapon, WeaponConfig } from './BaseWeapon';
 import { TextureGenerator } from '../utils/graphics/TextureGenerator';
+import { StandardSwordBehavior } from './systems/StandardSwordBehavior';
 
 export class Sword extends BaseWeapon {
   private bladeMesh: THREE.Mesh | null = null;
-  private hitBoxMesh: THREE.Mesh | null = null;
-  private debugHitBox: THREE.LineSegments | null = null;
-  private debugMode: boolean = false;
+  private standardBehavior: StandardSwordBehavior | null = null;
 
   constructor(config: WeaponConfig) {
     super(config);
@@ -60,7 +59,6 @@ export class Sword extends BaseWeapon {
     blade.castShadow = true;
     swordGroup.add(blade);
 
-    // Store blade reference
     this.bladeMesh = blade;
 
     // Pommel
@@ -75,119 +73,84 @@ export class Sword extends BaseWeapon {
     pommel.castShadow = true;
     swordGroup.add(pommel);
 
-    // FIXED: Sword orientation for forward-pointing blade with proper slashing motion
-    swordGroup.position.set(0, -0.2, -0.3); // Adjusted position for new rotation
-    swordGroup.rotation.x = -Math.PI / 6; // Tilt blade forward and down (~-30°) so tip points forward
+    swordGroup.position.set(0, -0.2, -0.3);
+    swordGroup.rotation.x = -Math.PI / 6;
 
     this.mesh = swordGroup;
     return swordGroup;
   }
 
   public createHitBox(): THREE.Mesh {
-    // FIXED: Create smaller, sword-appropriate hitbox (was 3.5x3.5x4, now 0.4x0.4x2.2)
-    const swordHitBoxGeometry = new THREE.BoxGeometry(0.4, 0.4, 2.2);
-    const swordHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
-    const hitBox = new THREE.Mesh(swordHitBoxGeometry, swordHitBoxMaterial);
-    
-    this.hitBoxMesh = hitBox;
-    
-    // Create debug visualization with new smaller size
-    this.createDebugHitBox(swordHitBoxGeometry);
-    
-    console.log("🗡️ [Sword] Created smaller dynamic hitbox (0.4x0.4x2.2) for realistic sword reach");
-    
-    return hitBox;
-  }
-
-  private createDebugHitBox(geometry: THREE.BoxGeometry): void {
-    // Create wireframe geometry for debug visualization
-    const edges = new THREE.EdgesGeometry(geometry);
-    const debugMaterial = new THREE.LineBasicMaterial({ 
-      color: 0xff0000, // Red color
-      linewidth: 3,
-      transparent: true,
-      opacity: 0.8
-    });
-    
-    this.debugHitBox = new THREE.LineSegments(edges, debugMaterial);
-    this.debugHitBox.visible = false; // Hidden by default
-    
-    console.log("🔧 [Sword] Debug hitbox visualization created with smaller size");
-  }
-
-  public updateHitBoxPosition(playerPosition: THREE.Vector3, playerRotation: number, swingProgress: number): void {
-    if (!this.hitBoxMesh) return;
-
-    // Calculate swing arc position based on swing progress (0 = start, 1 = end)
-    // Swing goes from right side to left side in front of player
-    const swingAngle = THREE.MathUtils.lerp(-Math.PI / 3, Math.PI / 3, swingProgress); // -60° to +60°
-    const forwardDistance = 1.5; // Distance in front of player
-    
-    // Calculate position in front of player following swing arc
-    const swingX = Math.sin(playerRotation + swingAngle) * forwardDistance;
-    const swingZ = Math.cos(playerRotation + swingAngle) * forwardDistance;
-    
-    // Position hitbox in swing arc
-    this.hitBoxMesh.position.set(
-      playerPosition.x + swingX,
-      playerPosition.y + 0.5, // Chest height
-      playerPosition.z + swingZ
-    );
-    
-    // Rotate hitbox to face the swing direction
-    this.hitBoxMesh.rotation.y = playerRotation + swingAngle;
-    
-    // Update debug hitbox position if it exists
-    if (this.debugHitBox) {
-      this.debugHitBox.position.copy(this.hitBoxMesh.position);
-      this.debugHitBox.rotation.copy(this.hitBoxMesh.rotation);
+    // Delegate to standardized behavior if available
+    if (this.standardBehavior) {
+      return this.standardBehavior.createHitBox();
     }
     
-    console.log(`🗡️ [Sword] Updated dynamic hitbox position - swing progress: ${(swingProgress * 100).toFixed(1)}%, angle: ${(swingAngle * 180 / Math.PI).toFixed(1)}°`);
+    // Fallback to basic hitbox
+    const fallbackGeometry = new THREE.BoxGeometry(0.4, 0.4, 2.2);
+    const fallbackMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    return new THREE.Mesh(fallbackGeometry, fallbackMaterial);
+  }
+
+  public initializeStandardBehavior(weaponSwing: any, playerBody: any, effectsManager?: any): void {
+    this.standardBehavior = new StandardSwordBehavior(
+      weaponSwing,
+      playerBody,
+      this,
+      effectsManager
+    );
+    
+    console.log('🗡️ [Sword] Initialized with standardized behavior system');
+  }
+
+  // Delegate methods to standard behavior
+  public updateHitBoxPosition(playerPosition: THREE.Vector3, playerRotation?: number, swingProgress?: number): void {
+    if (this.standardBehavior && playerRotation !== undefined && swingProgress !== undefined) {
+      this.standardBehavior.updateHitBoxPosition(playerPosition, playerRotation, swingProgress);
+    } else {
+      super.updateHitBoxPosition(playerPosition, playerRotation, swingProgress);
+    }
   }
 
   public resetHitBoxPosition(): void {
-    if (!this.hitBoxMesh) return;
-    
-    // Reset hitbox to neutral position (will be hidden anyway)
-    this.hitBoxMesh.position.set(0, 0, 0);
-    this.hitBoxMesh.rotation.set(0, 0, 0);
-    
-    if (this.debugHitBox) {
-      this.debugHitBox.position.copy(this.hitBoxMesh.position);
-      this.debugHitBox.rotation.copy(this.hitBoxMesh.rotation);
+    if (this.standardBehavior) {
+      this.standardBehavior.resetHitBoxPosition();
     }
-    
-    console.log("🗡️ [Sword] Reset hitbox to neutral position");
   }
 
   public getDebugHitBox(): THREE.LineSegments | null {
-    return this.debugHitBox;
+    return this.standardBehavior?.getDebugHitBox() || null;
   }
 
   public setDebugMode(enabled: boolean): void {
-    this.debugMode = enabled;
-    if (this.debugHitBox) {
-      this.debugHitBox.visible = enabled;
-      console.log(`🔧 [Sword] Debug mode ${enabled ? 'enabled' : 'disabled'}`);
+    if (this.standardBehavior) {
+      this.standardBehavior.setDebugMode(enabled);
     }
   }
 
   public isDebugMode(): boolean {
-    return this.debugMode;
+    return this.standardBehavior?.isDebugMode() || false;
   }
 
   public showHitBoxDebug(): void {
-    if (this.debugHitBox && this.debugMode) {
-      this.debugHitBox.visible = true;
-      console.log("🔧 [Sword] Debug hitbox shown during attack");
+    if (this.standardBehavior) {
+      this.standardBehavior.showHitBoxDebug();
     }
   }
 
   public hideHitBoxDebug(): void {
-    if (this.debugHitBox) {
-      this.debugHitBox.visible = false;
-      console.log("🔧 [Sword] Debug hitbox hidden");
+    if (this.standardBehavior) {
+      this.standardBehavior.hideHitBoxDebug();
+    }
+  }
+
+  public getHitBoxMesh(): THREE.Mesh | null {
+    return this.standardBehavior?.getHitBoxMesh() || null;
+  }
+
+  public updateAnimation(): void {
+    if (this.standardBehavior) {
+      this.standardBehavior.updateAnimation();
     }
   }
 
@@ -196,9 +159,5 @@ export class Sword extends BaseWeapon {
       throw new Error('Blade mesh not created. Call createMesh() first.');
     }
     return this.bladeMesh;
-  }
-
-  public getHitBoxMesh(): THREE.Mesh | null {
-    return this.hitBoxMesh;
   }
 }

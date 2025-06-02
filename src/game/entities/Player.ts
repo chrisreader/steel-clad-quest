@@ -7,8 +7,7 @@ import { BaseWeapon } from '../weapons/BaseWeapon';
 import { BaseBow } from '../weapons';
 import { WeaponManager } from '../weapons/WeaponManager';
 import { WeaponAnimationSystem, WeaponType } from '../animation/WeaponAnimationSystem';
-import { SwordSwingAnimation } from '../animation/animations/SwordSwingAnimation';
-import { STANDARD_SWORD_ANIMATION } from '../animation/StandardSwordAnimation';
+import { STANDARD_SWORD_CONFIG } from '../weapons/configs/StandardSwordConfig';
 
 export class Player {
   // THREE.js objects
@@ -21,9 +20,8 @@ export class Player {
   private weaponManager: WeaponManager;
   private swordHitBox: THREE.Mesh;
   
-  // Animation system
+  // Animation system - REMOVED swordSwingAnimation (now handled by StandardSwordBehavior)
   private weaponAnimationSystem: WeaponAnimationSystem;
-  private swordSwingAnimation: SwordSwingAnimation | null = null;
   
   // NEW: Bow drawing state for animation
   private bowDrawing: boolean = false;
@@ -128,7 +126,7 @@ export class Player {
     this.swordHitBox = new THREE.Mesh(fallbackHitBoxGeometry, fallbackHitBoxMaterial);
     scene.add(this.swordHitBox);
     
-    // Initialize weapon swing animation
+    // Initialize weapon swing animation using standardized config
     this.weaponSwing = this.initializeWeaponSwing();
     
     // Initialize bow animation positions
@@ -624,196 +622,41 @@ export class Player {
       
       console.log(`🗡️ [Player] Melee weapon equipped with raised right arm ready stance`);
       
-      // CRITICAL: Initialize SwordSwingAnimation for melee weapons
-      this.swordSwingAnimation = new SwordSwingAnimation(
-        this.weaponSwing, 
-        this.playerBody, 
-        this.equippedWeapon
-      );
-      console.log("🗡️ [Player] SwordSwingAnimation created for spatial arm movement");
+      // UPDATED: Initialize StandardSwordBehavior for sword-type weapons
+      if (['sword', 'axe', 'mace'].includes(weapon.getConfig().type)) {
+        const swordWeapon = weapon as any;
+        if (swordWeapon.initializeStandardBehavior) {
+          swordWeapon.initializeStandardBehavior(
+            this.weaponSwing,
+            this.playerBody,
+            this.effectsManager
+          );
+          console.log("🗡️ [Player] StandardSwordBehavior initialized for unified sword system");
+        }
+      }
     }
     
     // Update animation system weapon type
     this.weaponAnimationSystem.setWeaponType(weaponType);
     
-    // FIXED: Use standardized sword animation for all swords
-    const weaponConfig = weapon.getConfig();
-    if (weaponConfig.type === 'sword') {
-      // Use standardized sword animation configuration
-      this.weaponSwing.duration = STANDARD_SWORD_ANIMATION.duration;
-      this.weaponSwing.phases = STANDARD_SWORD_ANIMATION.phases;
-      this.weaponSwing.rotations = STANDARD_SWORD_ANIMATION.rotations;
+    // Use standardized sword animation configuration
+    if (weapon.getConfig().type === 'sword') {
+      this.weaponSwing.duration = STANDARD_SWORD_CONFIG.animation.duration;
+      this.weaponSwing.phases = STANDARD_SWORD_CONFIG.animation.phases;
+      this.weaponSwing.rotations = STANDARD_SWORD_CONFIG.animation.rotations;
       console.log("🗡️ [Player] Using standardized sword animation configuration");
-    } else if (weaponConfig.swingAnimation) {
-      // Use weapon-specific animation for non-sword weapons
-      this.weaponSwing.duration = weaponConfig.swingAnimation.duration;
-      this.weaponSwing.phases = weaponConfig.swingAnimation.phases;
-      this.weaponSwing.rotations = weaponConfig.swingAnimation.rotations;
+    } else if (weapon.getConfig().swingAnimation) {
+      this.weaponSwing.duration = weapon.getConfig().swingAnimation.duration;
+      this.weaponSwing.phases = weapon.getConfig().swingAnimation.phases;
+      this.weaponSwing.rotations = weapon.getConfig().swingAnimation.rotations;
       console.log("🗡️ [Player] Using weapon-specific animation configuration");
     }
     
     // Update hitbox reference
     this.swordHitBox = weapon.getHitBox();
     
-    console.log(`🗡️ [Player] Successfully equipped ${weaponConfig.name} with weapon-specific ready stance and animation type: ${weaponType}`);
+    console.log(`🗡️ [Player] Successfully equipped ${weapon.getConfig().name} with standardized sword system`);
     return true;
-  }
-  
-  private setRealisticArcheryStance(): void {
-    // Debug arm positions before setting archery stance
-    this.debugArmPositions("BEFORE_ARCHERY_STANCE");
-    
-    // Keep arms at normal shoulder positions for proper shadow connection
-    this.playerBody.leftArm.position.set(-0.3, 0.8, 0);
-    this.playerBody.rightArm.position.set(0.3, 0.8, 0);
-    
-    // CRITICAL FIX: Set shoulder rotations for archery stance with 80° chest-level position
-    
-    // FIXED: Left shoulder: 80° chest-level bow holding position - NO Y ROTATION, parallel with body
-    this.bowDrawAnimation.leftArmRestRotation.set(
-      Math.PI * 80 / 180, // 80° upward angle (chest level)
-      0,                  // FIXED: NO Y rotation - parallel with body
-      0                   // FIXED: NO Z rotation - parallel with body
-    );
-    
-    // FIXED: Right shoulder: Ready to draw position - NO Y ROTATION
-    this.bowDrawAnimation.rightArmRestRotation.set(
-      Math.PI / 6,        // Moderate upward angle
-      0,                  // FIXED: NO Y rotation - parallel with body
-      -Math.PI / 8        // Forward angle for better POV visibility
-    );
-    
-    // Apply rotations to shoulder joints (the main arm groups)
-    this.playerBody.leftArm.rotation.copy(this.bowDrawAnimation.leftArmRestRotation);
-    this.playerBody.rightArm.rotation.copy(this.bowDrawAnimation.rightArmRestRotation);
-    
-    // Set elbow positions for natural arm bend
-    if (this.playerBody.leftElbow) {
-      this.playerBody.leftElbow.rotation.set(0.2, 0, 0);
-    }
-    if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(0.3, 0, 0);
-    }
-    
-    // Set realistic hand rotations for bow gripping
-    this.playerBody.leftHand.rotation.copy(this.bowDrawAnimation.leftHandRestRotation);
-    this.playerBody.rightHand.rotation.copy(this.bowDrawAnimation.rightHandRestRotation);
-    
-    // Initialize targets
-    this.bowDrawAnimation.leftHandTarget.copy(this.bowDrawAnimation.leftHandRestPosition);
-    this.bowDrawAnimation.rightHandTarget.copy(this.bowDrawAnimation.rightHandRestPosition);
-    this.bowDrawAnimation.bowRotationTarget.copy(this.bowDrawAnimation.bowRestRotation);
-    
-    console.log("🏹 [Player] UPDATED archery stance to 80° chest-level position - matches WeaponAnimationSystem");
-    
-    // Debug arm positions after setting archery stance
-    this.debugArmPositions("AFTER_ARCHERY_STANCE");
-  }
-  
-  private resetToRealisticNormalStance(): void {
-    // Debug arm positions before reset
-    this.debugArmPositions("BEFORE_NORMAL_STANCE_RESET");
-    
-    // Reset arms to normal positions with TALLER realistic joint control
-    this.playerBody.leftArm.position.set(-0.3, 0.8, 0); // Keep new TALLER shoulder height
-    this.playerBody.rightArm.position.set(0.3, 0.8, 0); // Keep new TALLER shoulder height
-    
-    // FIXED: Reset shoulder rotations to SIDE-POSITIONED empty hands stance with NO Y ROTATION
-    this.playerBody.leftArm.rotation.set(Math.PI / 8, 0, 0); // Back to side position (22.5°)
-    this.playerBody.rightArm.rotation.set(Math.PI / 8, 0, 0); // Back to side position (22.5°)
-    
-    // Reset elbow positions
-    if (this.playerBody.leftElbow) {
-      this.playerBody.leftElbow.rotation.set(0, 0, 0);
-    }
-    if (this.playerBody.rightElbow) {
-      this.playerBody.rightElbow.rotation.set(0, 0, 0);
-    }
-    
-    // Reset hand rotations
-    this.playerBody.leftHand.rotation.set(0, 0, 0);
-    this.playerBody.rightHand.rotation.set(0, 0, 0);
-    
-    console.log("🗡️ [Player] FIXED reset to SIDE-POSITIONED empty hands stance with NO Y ROTATION");
-    
-    // Debug arm positions after reset
-    this.debugArmPositions("AFTER_NORMAL_STANCE_RESET");
-  }
-  
-  public unequipWeapon(): boolean {
-    if (!this.equippedWeapon) {
-      return false;
-    }
-    
-    console.log(`🗡️ [Player] Unequipping weapon: ${this.equippedWeapon.getConfig().name}`);
-    
-    // Remove weapon from appropriate hand
-    if (this.isBowEquipped) {
-      this.playerBody.leftHand.remove(this.equippedWeapon.getMesh());
-      this.resetToRealisticNormalStance(); // Reset stance when unequipping bow
-    } else {
-      this.playerBody.rightHand.remove(this.equippedWeapon.getMesh());
-      // Clear sword swing animation
-      this.swordSwingAnimation = null;
-      console.log("🗡️ [Player] SwordSwingAnimation cleared");
-    }
-    
-    // Reset bow state
-    this.isBowEquipped = false;
-    this.bowDrawAnimation.isActive = false;
-    
-    // Update animation system to empty hands
-    this.weaponAnimationSystem.setWeaponType('emptyHands');
-    
-    // Reset to default hitbox
-    const fallbackHitBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const fallbackHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
-    this.swordHitBox = new THREE.Mesh(fallbackHitBoxGeometry, fallbackHitBoxMaterial);
-    this.scene.add(this.swordHitBox);
-    
-    this.equippedWeapon = null;
-    
-    console.log(`🗡️ [Player] Weapon unequipped from TALLER realistic arm system, animation type set to emptyHands`);
-    return true;
-  }
-  
-  public getEquippedWeapon(): BaseWeapon | null {
-    return this.equippedWeapon;
-  }
-  
-  private initializeWeaponSwing(): WeaponSwingAnimation {
-    const duration = 0.64;
-    
-    return {
-      isActive: false,
-      mixer: null,
-      action: null,
-      startTime: 0,
-      duration: duration,
-      phases: {
-        windup: duration * 0.2,
-        slash: duration * 0.5,
-        recovery: duration * 0.3
-      },
-      rotations: {
-        neutral: { x: Math.PI / 8, y: 0, z: 0 },
-        windup: { 
-          x: Math.PI / 8 + THREE.MathUtils.degToRad(50),
-          y: THREE.MathUtils.degToRad(-40),
-          z: 0
-        },
-        slash: { 
-          x: Math.PI / 8 + THREE.MathUtils.degToRad(-15),
-          y: THREE.MathUtils.degToRad(70),
-          z: 0
-        }
-      },
-      clock: new THREE.Clock(),
-      trail: null,
-      trailPoints: [],
-      cameraShakeIntensity: 0.05,
-      wristSnapIntensity: THREE.MathUtils.degToRad(10)
-    };
   }
   
   public startSwordSwing(): void {
@@ -839,7 +682,7 @@ export class Player {
       return;
     }
     
-    console.log("🗡️ [Player] Starting SPATIAL MOVEMENT sword swing animation");
+    console.log("🗡️ [Player] Starting standardized sword swing animation");
     this.weaponSwing.isActive = true;
     this.weaponSwing.startTime = this.weaponSwing.clock.getElapsedTime();
     this.lastAttackTime = now;
@@ -861,7 +704,28 @@ export class Player {
       this.weaponSwing.trailPoints.push(new THREE.Vector3());
     }
     
-    console.log("🗡️ [Player] SPATIAL MOVEMENT sword swing animation started with enhanced trail tracking");
+    console.log("🗡️ [Player] Standardized sword swing animation started");
+  }
+  
+  private updateSwordSwingAnimation(): void {
+    if (!this.weaponSwing.isActive || !this.equippedWeapon || this.isBowEquipped) return;
+    
+    console.log("🗡️ [Player] *** UPDATING STANDARDIZED SWORD SWING ***");
+    
+    // Use StandardSwordBehavior for unified animation and hitbox management
+    if (['sword', 'axe', 'mace'].includes(this.equippedWeapon.getConfig().type)) {
+      const swordWeapon = this.equippedWeapon as any;
+      if (swordWeapon.updateAnimation) {
+        swordWeapon.updateAnimation();
+        console.log("🗡️ [Player] Using StandardSwordBehavior for unified animation");
+      }
+    }
+    
+    // Check if animation completed
+    const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
+    if (elapsed >= this.weaponSwing.duration) {
+      console.log("🗡️ [Player] Standardized sword swing animation completed");
+    }
   }
   
   public isAttacking(): boolean {
@@ -878,156 +742,6 @@ export class Player {
   
   public addEnemy(enemy: any): void {
     this.hitEnemiesThisSwing.add(enemy);
-  }
-  
-  private updateSwordSwingAnimation(): void {
-    if (!this.weaponSwing.isActive || !this.equippedWeapon || this.isBowEquipped) return;
-    
-    console.log("🗡️ [Player] *** UPDATING SWORD SWING WITH SPATIAL MOVEMENT ***");
-    
-    // Use SwordSwingAnimation for spatial movement if available
-    if (this.swordSwingAnimation) {
-      console.log("🗡️ [Player] Using SwordSwingAnimation for spatial arm movement");
-      this.swordSwingAnimation.update();
-    } else {
-      console.warn("🗡️ [Player] SwordSwingAnimation not available, weapon swing may not work properly");
-    }
-    
-    // Continue with existing weapon tip tracking and effects
-    const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
-    const { phases } = this.weaponSwing;
-    
-    // FIXED: Track weapon tip continuously during the ENTIRE SLASH phase (0% to 100%)
-    const now = Date.now();
-    const slashStartTime = phases.windup;
-    const slashEndTime = phases.windup + phases.slash;
-    const isInSlashPhase = elapsed >= slashStartTime && elapsed <= slashEndTime;
-    
-    if (isInSlashPhase && now - this.lastTipTrackTime >= this.tipTrackInterval) {
-      this.trackWeaponTipHighFrequency();
-      this.lastTipTrackTime = now;
-      
-      const slashProgress = (elapsed - slashStartTime) / phases.slash;
-      console.log("🗡️ [Player] Tracking weapon tip during SLASH phase - elapsed:", elapsed.toFixed(3), "progress:", (slashProgress * 100).toFixed(1) + "%");
-      
-      // FIXED: Create continuous trail effect throughout the ENTIRE slash phase
-      // Start creating trail immediately when slash begins and continue until it ends
-      if (slashProgress >= 0 && slashProgress <= 1.0 && this.weaponTipPositions.length >= 3) {
-        // Calculate swing direction from recent positions for dynamic trail
-        const recentPositions = this.weaponTipPositions.slice(-5); // Use last 5 positions
-        if (recentPositions.length >= 2) {
-          const pathStart = recentPositions[0];
-          const pathEnd = recentPositions[recentPositions.length - 1];
-          const swingDirection = pathEnd.clone().sub(pathStart).normalize();
-          
-          console.log("🌪️ [Player] Creating CONTINUOUS trail effect at progress:", (slashProgress * 100).toFixed(1) + "% with", this.weaponTipPositions.length, "positions");
-          
-          // Create progressive trail that follows the blade continuously
-          this.createProgressiveTrailEffect(slashProgress);
-        }
-      }
-    }
-    
-    // Reset trail tracking when entering slash phase
-    if (elapsed >= slashStartTime && elapsed <= slashStartTime + 0.05 && this.weaponTipPositions.length === 0) {
-      console.log("🗡️ [Player] Starting fresh trail tracking for CONTINUOUS SLASH phase");
-      this.weaponTipPositions = [];
-    }
-    
-    // Complete animation if duration exceeded
-    if (elapsed >= this.weaponSwing.duration) {
-      console.log("🗡️ [Player] Spatial sword swing animation completed");
-    }
-  }
-  
-  // NEW METHOD: Create progressive trail effect that builds continuously
-  private createProgressiveTrailEffect(slashProgress: number): void {
-    if (!this.equippedWeapon || this.weaponTipPositions.length < 3) {
-      return;
-    }
-    
-    // Calculate how many positions to include based on slash progress
-    const totalPositions = this.weaponTipPositions.length;
-    const progressiveLength = Math.max(3, Math.floor(totalPositions * (slashProgress + 0.2))); // +0.2 for smoother building
-    
-    // Get the progressive slice of positions (building trail as sword moves)
-    const progressivePositions = this.weaponTipPositions.slice(0, progressiveLength);
-    
-    if (progressivePositions.length >= 3) {
-      // Calculate swing direction from the progressive positions
-      const pathStart = progressivePositions[0];
-      const pathEnd = progressivePositions[progressivePositions.length - 1];
-      const swingDirection = pathEnd.clone().sub(pathStart).normalize();
-      
-      console.log("🌪️ [Player] Building PROGRESSIVE trail - using", progressiveLength, "of", totalPositions, "positions at", (slashProgress * 100).toFixed(1) + "% progress");
-      
-      // Create the progressive swoosh effect
-      this.effectsManager.createSwordSwooshEffect(progressivePositions.slice(), swingDirection);
-    }
-  }
-  
-  private trackWeaponTipHighFrequency(): void {
-    if (!this.equippedWeapon) return;
-    
-    try {
-      // Get weapon tip position using blade reference
-      const bladeReference = this.equippedWeapon.getBladeReference();
-      const bladeLocalTip = new THREE.Vector3(0, 0, -0.9);
-      
-      // Transform to world coordinates
-      const worldTipPosition = bladeLocalTip.clone();
-      bladeReference.localToWorld(worldTipPosition);
-      
-      // Add to trail positions with high frequency tracking
-      this.weaponTipPositions.push(worldTipPosition.clone());
-      
-      // Limit trail length but keep more points for smoother trails
-      if (this.weaponTipPositions.length > this.maxTrailLength) {
-        this.weaponTipPositions.shift();
-      }
-      
-      console.log("🗡️ [Player] High-frequency weapon tip tracking - total positions:", this.weaponTipPositions.length);
-    } catch (error) {
-      console.warn("Could not track weapon tip:", error);
-    }
-  }
-  
-  // LEGACY METHOD: Keep for backward compatibility but use high-frequency version
-  private trackWeaponTip(): void {
-    this.trackWeaponTipHighFrequency();
-  }
-  
-  private createRealisticSwordSwoosh(): void {
-    if (!this.equippedWeapon || this.weaponTipPositions.length < 5) {
-      console.log("🌪️ [Player] Cannot create sword swoosh - insufficient weapon data");
-      return;
-    }
-    
-    // Calculate swing direction from the sword path (top-right to bottom-left)
-    const pathStart = this.weaponTipPositions[0];
-    const pathEnd = this.weaponTipPositions[this.weaponTipPositions.length - 1];
-    const swingDirection = pathEnd.clone().sub(pathStart).normalize();
-    
-    console.log("🌪️ [Player] Creating TRAIL-BASED sword swoosh effect with", this.weaponTipPositions.length, "tracked positions");
-    console.log("🌪️ [Player] Swing direction from top-right to bottom-left:", swingDirection);
-    console.log("🌪️ [Player] Path start (top-right):", pathStart);
-    console.log("🌪️ [Player] Path end (bottom-left):", pathEnd);
-    
-    // Create the TRAIL-BASED swoosh effect following the sword trail
-    this.effectsManager.createSwordSwooshEffect(this.weaponTipPositions.slice(), swingDirection);
-  }
-  
-  private createEnhancedSwooshEffect(): void {
-    // Empty method - swoosh now handled by createRealisticSwordSwoosh
-  }
-  
-  private createWeaponTrailEffect(): void {
-    if (this.weaponTipPositions.length < 2) return;
-    
-    const trail = this.effectsManager.createSwordTrail(this.weaponTipPositions);
-    if (trail) {
-      console.log("⚡ [Player] Weapon trail created with", this.weaponTipPositions.length, "positions");
-    }
   }
   
   private updateSwordHitBox(): void {
@@ -1062,7 +776,7 @@ export class Player {
       this.debugArmPositions("UPDATE_LOOP");
     }
     
-    // Update weapon swing animation (for melee weapons) with SPATIAL MOVEMENT
+    // Update weapon swing animation (for melee weapons) with STANDARDIZED BEHAVIOR
     if (!this.isBowEquipped) {
       this.updateSwordSwingAnimation();
     }
@@ -1338,5 +1052,71 @@ export class Player {
     const drawTime = Date.now() - this.bowDrawStartTime;
     const maxDrawTime = 1000; // 1 second for full draw animation
     return Math.min(1.0, drawTime / maxDrawTime);
+  }
+  
+  private initializeWeaponSwing(): WeaponSwingAnimation {
+    // Use standardized sword animation configuration
+    const { animation } = STANDARD_SWORD_CONFIG;
+    
+    return {
+      isActive: false,
+      mixer: null,
+      action: null,
+      startTime: 0,
+      duration: animation.duration,
+      phases: animation.phases,
+      rotations: animation.rotations,
+      clock: new THREE.Clock(),
+      trail: null,
+      trailPoints: [],
+      cameraShakeIntensity: 0.05,
+      wristSnapIntensity: THREE.MathUtils.degToRad(10)
+    };
+  }
+  
+  public unequipWeapon(): boolean {
+    if (!this.equippedWeapon) {
+      return false;
+    }
+    
+    console.log(`🗡️ [Player] Unequipping weapon: ${this.equippedWeapon.getConfig().name}`);
+    
+    // Remove weapon from appropriate hand
+    if (this.isBowEquipped) {
+      this.playerBody.leftHand.remove(this.equippedWeapon.getMesh());
+      this.resetToRealisticNormalStance(); // Reset stance when unequipping bow
+    } else {
+      this.playerBody.rightHand.remove(this.equippedWeapon.getMesh());
+      console.log("🗡️ [Player] StandardSwordBehavior cleared");
+    }
+    
+    // Reset bow state
+    this.isBowEquipped = false;
+    this.bowDrawAnimation.isActive = false;
+    
+    // Update animation system to empty hands
+    this.weaponAnimationSystem.setWeaponType('emptyHands');
+    
+    // Reset to default hitbox
+    const fallbackHitBoxGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const fallbackHitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    this.swordHitBox = new THREE.Mesh(fallbackHitBoxGeometry, fallbackHitBoxMaterial);
+    this.scene.add(this.swordHitBox);
+    
+    this.equippedWeapon = null;
+    
+    console.log(`🗡️ [Player] Weapon unequipped from TALLER realistic arm system, animation type set to emptyHands`);
+    return true;
+  }
+  
+  public getEquippedWeapon(): BaseWeapon | null {
+    return this.equippedWeapon;
+  }
+  
+  public getAttackPower(): number {
+    if (this.equippedWeapon) {
+      return this.stats.attackPower + this.equippedWeapon.getStats().damage;
+    }
+    return this.stats.attackPower;
   }
 }
