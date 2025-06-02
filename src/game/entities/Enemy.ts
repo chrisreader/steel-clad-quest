@@ -51,6 +51,14 @@ export class Enemy {
     if (type === EnemyType.ORC) {
       this.enemy = this.createEnhancedOrc(position);
       this.isEnhancedEnemy = true;
+      
+      // FIXED: Ensure orc is positioned correctly with feet on ground
+      // The EnemyBodyBuilder already sets the correct Y position (1.66), but we need to preserve X,Z from position parameter
+      this.enemy.mesh.position.x = position.x;
+      this.enemy.mesh.position.z = position.z;
+      // Keep the Y position as set by EnemyBodyBuilder (1.66) for correct foot placement
+      
+      console.log(`🗡️ [Enemy] Enhanced orc positioned at (${this.enemy.mesh.position.x.toFixed(2)}, ${this.enemy.mesh.position.y.toFixed(2)}, ${this.enemy.mesh.position.z.toFixed(2)}) - feet should be at Y=0`);
       console.log("🗡️ [Enemy] Created enhanced orc with realistic body and combat system");
     } else {
       this.enemy = this.createEnemy(type, position);
@@ -65,7 +73,9 @@ export class Enemy {
   }
   
   private createEnhancedOrc(position: THREE.Vector3): EnemyInterface {
-    const { group: orcGroup, bodyParts } = EnemyBodyBuilder.createRealisticOrcBody(position);
+    // FIXED: Pass position for X,Z coordinates only, let EnemyBodyBuilder handle Y positioning
+    const positionForBuilder = new THREE.Vector3(position.x, 0, position.z); // Y=0 will be corrected by builder
+    const { group: orcGroup, bodyParts } = EnemyBodyBuilder.createRealisticOrcBody(positionForBuilder);
     this.enhancedBodyParts = bodyParts;
     this.animationSystem = new EnemyAnimationSystem(bodyParts);
     
