@@ -30,7 +30,7 @@ export class RingQuadrantSystem {
   private rings: RingDefinition[] = [
     {
       innerRadius: 0,
-      outerRadius: 200,
+      outerRadius: 50, // Reduced from 200 to 50
       difficulty: 1,
       terrainColor: 0x5FAD5F, // Match existing green terrain
       enemyTypes: ['goblin', 'wolf'],
@@ -38,8 +38,8 @@ export class RingQuadrantSystem {
       eventChance: 0.1
     },
     {
-      innerRadius: 200,
-      outerRadius: 400,
+      innerRadius: 50, // Updated to match new center ring size
+      outerRadius: 150, // Reduced proportionally
       difficulty: 2,
       terrainColor: 0x4A9A4A, // Slightly darker green
       enemyTypes: ['goblin', 'wolf', 'orc'],
@@ -47,8 +47,8 @@ export class RingQuadrantSystem {
       eventChance: 0.2
     },
     {
-      innerRadius: 400,
-      outerRadius: 800,
+      innerRadius: 150, // Updated to match previous ring
+      outerRadius: 300, // Reduced proportionally
       difficulty: 3,
       terrainColor: 0x3A8A3A, // Even darker green
       enemyTypes: ['orc', 'bandit', 'troll'],
@@ -56,8 +56,8 @@ export class RingQuadrantSystem {
       eventChance: 0.3
     },
     {
-      innerRadius: 800,
-      outerRadius: 1600,
+      innerRadius: 300, // Updated to match previous ring
+      outerRadius: 600, // Reduced proportionally
       difficulty: 4,
       terrainColor: 0x2A7A2A, // Darkest green
       enemyTypes: ['troll', 'warlord', 'witch'],
