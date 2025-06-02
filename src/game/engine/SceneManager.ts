@@ -248,6 +248,10 @@ export class SceneManager {
   public createDefaultWorld(): void {
     console.log('Creating default world with ring-quadrant system...');
     
+    // Create simple ground plane at origin as fallback
+    this.createSimpleGround();
+    console.log('Simple ground plane created at origin');
+    
     // Create starting region (center ring, NE quadrant)
     const startRegion = { ringIndex: 0, quadrant: 0 };
     this.loadRegion(startRegion);
@@ -347,16 +351,42 @@ export class SceneManager {
     this.loadedRegions.delete(regionKey);
   }
   
+  // Add simple ground plane at origin as safety measure
+  private createSimpleGround(): void {
+    const groundGeometry = new THREE.PlaneGeometry(100, 100);
+    const groundMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x5FAD5F,
+      map: TextureGenerator.createGrassTexture(),
+      transparent: false
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2; // Make it horizontal
+    ground.position.set(0, 0, 0); // At world origin
+    ground.receiveShadow = true;
+    this.scene.add(ground);
+  }
+  
   // Create terrain for a specific region
   private createRegionTerrain(region: RegionCoordinates, centerPosition: THREE.Vector3): THREE.Mesh {
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     
-    // Calculate region size based on ring dimensions and quadrant (90-degree section)
-    const innerRadius = ringDef.innerRadius;
-    const outerRadius = ringDef.outerRadius;
+    let terrainGeometry: THREE.BufferGeometry;
+    let terrainPosition: THREE.Vector3;
     
-    // Create a quarter-circle segment for the quadrant
-    const terrainGeometry = this.createQuadrantGeometry(innerRadius, outerRadius, region.quadrant);
+    // Handle center ring differently - create full circle at origin
+    if (region.ringIndex === 0) {
+      // For center ring, create a simple circle at the origin
+      terrainGeometry = new THREE.CircleGeometry(ringDef.outerRadius, 32);
+      terrainPosition = new THREE.Vector3(0, 0, 0); // Always at world origin
+      console.log('Creating center ring terrain at origin');
+    } else {
+      // For outer rings, create quadrant segments
+      const innerRadius = ringDef.innerRadius;
+      const outerRadius = ringDef.outerRadius;
+      terrainGeometry = this.createQuadrantGeometry(innerRadius, outerRadius, region.quadrant);
+      terrainPosition = centerPosition.clone();
+      console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} at:`, terrainPosition);
+    }
     
     // Create material with appropriate color for the ring
     const terrainMaterial = new THREE.MeshLambertMaterial({ 
@@ -365,13 +395,15 @@ export class SceneManager {
       transparent: false
     });
     
-    // Add height variation
-    this.addTerrainHeightVariation(terrainGeometry);
+    // Add height variation only for outer rings
+    if (region.ringIndex > 0) {
+      this.addTerrainHeightVariation(terrainGeometry);
+    }
     
     // Create mesh
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
     terrain.rotation.x = -Math.PI / 2; // Make it horizontal
-    terrain.position.copy(centerPosition);
+    terrain.position.copy(terrainPosition);
     terrain.position.y = 0; // Ensure at ground level
     terrain.receiveShadow = true;
     
