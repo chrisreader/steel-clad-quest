@@ -55,6 +55,27 @@ export class EnemyBodyMetrics {
     return this.getShinCenterY() - this.getThighCenterY();
   }
   
+  // Facial feature positions
+  public getEyePosition(isLeft: boolean): THREE.Vector3 {
+    const features = this.config.facialFeatures.eyes;
+    const x = isLeft ? -features.position.x : features.position.x;
+    return new THREE.Vector3(
+      x,
+      this.getHeadCenterY() + features.position.y,
+      features.position.z
+    );
+  }
+  
+  public getTuskPosition(isLeft: boolean): THREE.Vector3 {
+    const features = this.config.facialFeatures.tusks;
+    const x = isLeft ? -features.position.x : features.position.x;
+    return new THREE.Vector3(
+      x,
+      this.getHeadCenterY() + features.position.y,
+      features.position.z
+    );
+  }
+  
   // Neutral pose calculations
   public getNeutralArmRotation(): { left: THREE.Euler; right: THREE.Euler } {
     const base = this.config.neutralPose.armRotation;
@@ -107,4 +128,5 @@ export class EnemyBodyMetrics {
   public getScale() { return this.config.scale; }
   public getColors() { return this.config.colors; }
   public getStats() { return this.config.stats; }
+  public getFacialFeatures() { return this.config.facialFeatures; }
 }
