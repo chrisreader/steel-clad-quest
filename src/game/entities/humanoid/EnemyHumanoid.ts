@@ -396,8 +396,8 @@ export abstract class EnemyHumanoid {
     rightElbow.add(rightWrist);
 
     // === SHINS ===
-    // FIXED: Adjust shin positioning to account for corrected pivot point
-    const shinRelativeY = -bodyScale.leg.length / 2 - bodyScale.shin.length / 2;
+    // FIXED: Correct shin positioning to eliminate gap between upper and lower leg
+    const shinRelativeY = -bodyScale.leg.length / 2;
 
     const leftKneeGeometry = new THREE.CylinderGeometry(
       bodyScale.shin.radius[0], bodyScale.shin.radius[1], bodyScale.shin.length, 16
