@@ -1,10 +1,10 @@
-
 import * as THREE from 'three';
 import { EnemyType } from '../../../types/GameTypes';
 import { EffectsManager } from '../../engine/EffectsManager';
 import { AudioManager } from '../../engine/AudioManager';
 import { TextureGenerator } from '../../utils';
 import { EnemyHumanoid, HumanoidConfig } from './EnemyHumanoid';
+import { PassiveNPCBehavior, PassiveBehaviorState } from '../../ai/PassiveNPCBehavior';
 
 export class OrcEnemy extends EnemyHumanoid {
   private static readonly ORC_CONFIG: HumanoidConfig = {
@@ -59,10 +59,9 @@ export class OrcEnemy extends EnemyHumanoid {
     }
   };
 
-  // Passive mode state for safe zone behavior
+  // Enhanced passive mode with AI behavior
   private isPassive: boolean = false;
-  private passiveWanderTimer: number = 0;
-  private passiveWanderDirection: THREE.Vector3 = new THREE.Vector3();
+  private passiveAI: PassiveNPCBehavior;
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
 
@@ -74,7 +73,16 @@ export class OrcEnemy extends EnemyHumanoid {
   ) {
     super(scene, OrcEnemy.ORC_CONFIG, position, effectsManager, audioManager);
     this.spawnPosition.copy(position);
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with safe zone awareness");
+    
+    // Initialize advanced passive AI
+    this.passiveAI = new PassiveNPCBehavior(
+      this.spawnPosition,
+      this.maxWanderDistance,
+      new THREE.Vector3(0, 0, 0), // Safe zone center
+      8 // Safe zone radius
+    );
+    
+    console.log("🗡️ [OrcEnemy] Created enhanced orc with advanced passive AI");
   }
 
   public setPassiveMode(passive: boolean): void {
@@ -82,9 +90,9 @@ export class OrcEnemy extends EnemyHumanoid {
       this.isPassive = passive;
       
       if (passive) {
-        console.log(`🛡️ [OrcEnemy] Switching to passive mode - will wander peacefully`);
-        this.generateNewWanderDirection();
-        this.passiveWanderTimer = 0;
+        console.log(`🛡️ [OrcEnemy] Switching to passive mode - starting advanced AI behavior`);
+        // Regenerate waypoints when entering passive mode
+        this.passiveAI.regenerateWaypoints();
       } else {
         console.log(`⚔️ [OrcEnemy] Switching to aggressive mode - will pursue player`);
       }
@@ -95,70 +103,60 @@ export class OrcEnemy extends EnemyHumanoid {
     return this.isPassive;
   }
 
-  private generateNewWanderDirection(): void {
-    // Generate random direction
-    const angle = Math.random() * Math.PI * 2;
-    this.passiveWanderDirection.set(
-      Math.cos(angle),
-      0,
-      Math.sin(angle)
-    );
-    
-    // 30% chance to stop and idle
-    if (Math.random() < 0.3) {
-      this.passiveWanderDirection.set(0, 0, 0);
-    }
-    
-    console.log(`🚶 [OrcEnemy] Generated new wander direction:`, this.passiveWanderDirection);
-  }
+  private handleAdvancedPassiveMovement(deltaTime: number): void {
+    const currentPosition = this.mesh.position.clone();
+    const aiDecision = this.passiveAI.update(deltaTime, currentPosition);
 
-  private handlePassiveMovement(deltaTime: number): void {
-    this.passiveWanderTimer += deltaTime * 1000;
-    
-    // Change direction every 3-5 seconds
-    if (this.passiveWanderTimer > 3000 + Math.random() * 2000) {
-      this.generateNewWanderDirection();
-      this.passiveWanderTimer = 0;
-    }
-    
-    // Move in wander direction
-    if (this.passiveWanderDirection.length() > 0) {
-      const wanderSpeed = this.config.speed * 0.3; // Much slower than normal movement
-      const movement = this.passiveWanderDirection.clone().multiplyScalar(wanderSpeed * deltaTime);
-      const newPosition = this.mesh.position.clone().add(movement);
-      newPosition.y = 0;
+    // Handle different AI behaviors
+    if (aiDecision.shouldMove && aiDecision.targetPosition) {
+      const direction = new THREE.Vector3()
+        .subVectors(aiDecision.targetPosition, currentPosition)
+        .normalize();
+      direction.y = 0;
+
+      // Calculate movement based on AI speed
+      const baseSpeed = this.config.speed * 0.4; // Base passive speed
+      const aiSpeed = baseSpeed * aiDecision.movementSpeed;
       
-      // Check if we're getting too far from spawn point
+      const movement = direction.multiplyScalar(aiSpeed * deltaTime);
+      const newPosition = currentPosition.add(movement);
+      newPosition.y = 0;
+
+      // Safety checks
       const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
-      if (distanceFromSpawn < this.maxWanderDistance) {
-        // Check if new position would be in safe zone - if so, avoid it
-        const safeZoneCenter = new THREE.Vector3(0, 0, 0);
-        const distanceToSafeZone = newPosition.distanceTo(safeZoneCenter);
+      const safeZoneCenter = new THREE.Vector3(0, 0, 0);
+      const distanceToSafeZone = newPosition.distanceTo(safeZoneCenter);
+
+      if (distanceFromSpawn < this.maxWanderDistance && distanceToSafeZone > 9) {
+        this.mesh.position.copy(newPosition);
         
-        if (distanceToSafeZone > 9) { // Stay outside tavern-sized safe zone (8 + 1 buffer)
-          this.mesh.position.copy(newPosition);
-          // Use animation system for movement animation
-          this.animationSystem.updateWalkAnimation(deltaTime, true, wanderSpeed);
-        } else {
-          // Too close to safe zone, head away from it
-          const directionAwayFromSafeZone = new THREE.Vector3()
-            .subVectors(newPosition, safeZoneCenter)
-            .normalize();
-          directionAwayFromSafeZone.y = 0;
-          
-          this.passiveWanderDirection.copy(directionAwayFromSafeZone);
+        // Set rotation to face movement direction
+        const targetRotation = Math.atan2(direction.x, direction.z);
+        this.mesh.rotation.y = targetRotation;
+        
+        // Use animation system with behavior-specific speed
+        this.animationSystem.updateWalkAnimation(deltaTime, true, aiSpeed);
+        
+        // Debug log for behavior state changes
+        const currentState = aiDecision.behaviorState;
+        if (Math.random() < 0.01) { // 1% chance to log current behavior
+          console.log(`🤖 [OrcEnemy] Current behavior: ${currentState}, speed: ${aiSpeed.toFixed(2)}`);
         }
-      } else {
-        // Too far from spawn, head back
-        const directionToSpawn = new THREE.Vector3()
-          .subVectors(this.spawnPosition, this.mesh.position)
-          .normalize();
-        directionToSpawn.y = 0;
-        
-        this.passiveWanderDirection.copy(directionToSpawn);
       }
     } else {
-      // Idle animation when not moving
+      // Handle stationary behaviors (resting, etc.)
+      const currentState = aiDecision.behaviorState;
+      
+      if (currentState === PassiveBehaviorState.RESTING) {
+        // Occasionally look around while resting
+        if (Math.random() < 0.02) {
+          const lookDirection = aiDecision.lookDirection;
+          const targetRotation = Math.atan2(lookDirection.x, lookDirection.z);
+          this.mesh.rotation.y = targetRotation;
+        }
+      }
+      
+      // Use idle animation when not moving
       this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
     }
   }
@@ -170,9 +168,9 @@ export class OrcEnemy extends EnemyHumanoid {
       return;
     }
 
-    // Handle passive movement if in passive mode
+    // Handle advanced passive movement if in passive mode
     if (this.isPassive) {
-      this.handlePassiveMovement(deltaTime);
+      this.handleAdvancedPassiveMovement(deltaTime);
       return;
     }
 
@@ -238,6 +236,17 @@ export class OrcEnemy extends EnemyHumanoid {
     weapon.add(blade2);
 
     return weapon;
+  }
+
+  // Get AI behavior info for debugging
+  public getAIBehaviorInfo(): {
+    currentState: PassiveBehaviorState;
+    personality: any;
+  } {
+    return {
+      currentState: this.passiveAI.getCurrentState(),
+      personality: this.passiveAI.getPersonality()
+    };
   }
 
   public static create(

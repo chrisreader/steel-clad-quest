@@ -7,6 +7,7 @@ import { MathUtils } from '../utils';
 import { EnemyBodyParts } from './EnemyBody';
 import { EnemyAnimationSystem } from '../animation/EnemyAnimationSystem';
 import { OrcEnemy } from './humanoid/OrcEnemy';
+import { PassiveNPCBehavior, PassiveBehaviorState } from '../ai/PassiveNPCBehavior';
 
 // Enhanced enemy states for better movement control
 enum EnemyMovementState {
@@ -42,11 +43,10 @@ export class Enemy {
   private rotationSpeed: number = 3.0;
   private hasInitialOrientation: boolean = false;
 
-  // Safe zone passive behavior
+  // Enhanced passive behavior with AI for legacy enemies
   private isPassive: boolean = false;
   private lastPassiveStateChange: number = 0;
-  private passiveWanderTimer: number = 0;
-  private passiveWanderDirection: THREE.Vector3 = new THREE.Vector3();
+  private passiveAI: PassiveNPCBehavior | null = null;
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
 
@@ -73,6 +73,14 @@ export class Enemy {
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created legacy goblin enemy");
+      
+      // Initialize AI behavior for legacy enemies
+      this.passiveAI = new PassiveNPCBehavior(
+        position,
+        this.maxWanderDistance,
+        new THREE.Vector3(0, 0, 0), // Safe zone center
+        8 // Safe zone radius
+      );
     }
     
     // Set knockback resistance based on enemy type
@@ -119,7 +127,7 @@ export class Enemy {
       weapon: bodyParts.weapon,
       body: bodyParts.body,
       head: bodyParts.head,
-      attackRange: 8.0, // Increased aggression distance
+      attackRange: 8.0,
       damageRange: 2.5,
       attackCooldown: 2000,
       points: 50,
@@ -144,7 +152,7 @@ export class Enemy {
       experienceReward: 10,
       goldReward: 25,
       points: 25,
-      attackRange: 6.0, // Increased from 2.5
+      attackRange: 6.0,
       damageRange: 1.5,
       attackCooldown: 2000,
       bodyRadius: 0.35,
@@ -166,7 +174,7 @@ export class Enemy {
       experienceReward: 25,
       goldReward: 50,
       points: 50,
-      attackRange: 8.0, // Increased from 3.0
+      attackRange: 8.0,
       damageRange: 2.0,
       attackCooldown: 2500,
       bodyRadius: 0.5,
@@ -414,7 +422,7 @@ export class Enemy {
     
     // Choose behavior based on passive state
     if (this.isPassive) {
-      this.handlePassiveMovement(deltaTime);
+      this.handleAdvancedPassiveMovement(deltaTime);
     } else {
       const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
       this.handleNormalMovement(deltaTime, playerPosition, distanceToPlayer, now);
@@ -423,75 +431,62 @@ export class Enemy {
     this.updateRotation(deltaTime);
   }
 
-  private handlePassiveMovement(deltaTime: number): void {
-    this.passiveWanderTimer += deltaTime * 1000;
-    
-    // Change direction every 3-5 seconds
-    if (this.passiveWanderTimer > 3000 + Math.random() * 2000) {
-      this.generateNewWanderDirection();
-      this.passiveWanderTimer = 0;
-    }
-    
-    // Move in wander direction
-    if (this.passiveWanderDirection.length() > 0) {
-      const wanderSpeed = this.enemy.speed * 0.3; // Much slower than normal movement
-      const movement = this.passiveWanderDirection.clone().multiplyScalar(wanderSpeed * deltaTime);
-      const newPosition = this.enemy.mesh.position.clone().add(movement);
-      newPosition.y = 0;
+  private handleAdvancedPassiveMovement(deltaTime: number): void {
+    if (!this.passiveAI) return;
+
+    const currentPosition = this.enemy.mesh.position.clone();
+    const aiDecision = this.passiveAI.update(deltaTime, currentPosition);
+
+    // Handle different AI behaviors
+    if (aiDecision.shouldMove && aiDecision.targetPosition) {
+      const direction = new THREE.Vector3()
+        .subVectors(aiDecision.targetPosition, currentPosition)
+        .normalize();
+      direction.y = 0;
+
+      // Calculate movement based on AI speed
+      const baseSpeed = this.enemy.speed * 0.4; // Base passive speed
+      const aiSpeed = baseSpeed * aiDecision.movementSpeed;
       
-      // Check if we're getting too far from spawn point
+      const movement = direction.multiplyScalar(aiSpeed * deltaTime);
+      const newPosition = currentPosition.add(movement);
+      newPosition.y = 0;
+
+      // Safety checks
       const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
-      if (distanceFromSpawn < this.maxWanderDistance) {
-        // Check if new position would be in safe zone - if so, avoid it
-        const safeZoneCenter = new THREE.Vector3(0, 0, 0);
-        const distanceToSafeZone = newPosition.distanceTo(safeZoneCenter);
+      const safeZoneCenter = new THREE.Vector3(0, 0, 0);
+      const distanceToSafeZone = newPosition.distanceTo(safeZoneCenter);
+
+      if (distanceFromSpawn < this.maxWanderDistance && distanceToSafeZone > 9) {
+        this.enemy.mesh.position.copy(newPosition);
         
-        if (distanceToSafeZone > 16) { // Stay outside safe zone (15 + 1 buffer)
-          this.enemy.mesh.position.copy(newPosition);
-          this.updateLegacyWalkAnimation(deltaTime);
-          
-          // Update target rotation for smooth turning
-          this.targetRotation = Math.atan2(this.passiveWanderDirection.x, this.passiveWanderDirection.z);
-        } else {
-          // Too close to safe zone, head away from it
-          const directionAwayFromSafeZone = new THREE.Vector3()
-            .subVectors(newPosition, safeZoneCenter)
-            .normalize();
-          directionAwayFromSafeZone.y = 0;
-          
-          this.passiveWanderDirection.copy(directionAwayFromSafeZone);
-          this.targetRotation = Math.atan2(directionAwayFromSafeZone.x, directionAwayFromSafeZone.z);
+        // Set rotation to face movement direction
+        this.targetRotation = Math.atan2(direction.x, direction.z);
+        
+        // Use legacy animation system
+        this.updateLegacyWalkAnimation(deltaTime);
+        
+        // Debug log for behavior state changes
+        const currentState = aiDecision.behaviorState;
+        if (Math.random() < 0.01) { // 1% chance to log current behavior
+          console.log(`🤖 [Enemy] ${this.enemy.type} behavior: ${currentState}, speed: ${aiSpeed.toFixed(2)}`);
         }
-      } else {
-        // Too far from spawn, head back
-        const directionToSpawn = new THREE.Vector3()
-          .subVectors(this.spawnPosition, this.enemy.mesh.position)
-          .normalize();
-        directionToSpawn.y = 0;
-        
-        this.passiveWanderDirection.copy(directionToSpawn);
-        this.targetRotation = Math.atan2(directionToSpawn.x, directionToSpawn.z);
       }
     } else {
+      // Handle stationary behaviors (resting, etc.)
+      const currentState = aiDecision.behaviorState;
+      
+      if (currentState === PassiveBehaviorState.RESTING) {
+        // Occasionally look around while resting
+        if (Math.random() < 0.02) {
+          const lookDirection = aiDecision.lookDirection;
+          this.targetRotation = Math.atan2(lookDirection.x, lookDirection.z);
+        }
+      }
+      
+      // Use idle animation when not moving
       this.updateLegacyIdleAnimation();
     }
-  }
-
-  private generateNewWanderDirection(): void {
-    // Generate random direction
-    const angle = Math.random() * Math.PI * 2;
-    this.passiveWanderDirection.set(
-      Math.cos(angle),
-      0,
-      Math.sin(angle)
-    );
-    
-    // 30% chance to stop and idle
-    if (Math.random() < 0.3) {
-      this.passiveWanderDirection.set(0, 0, 0);
-    }
-    
-    console.log(`🚶 [Enemy] Generated new wander direction:`, this.passiveWanderDirection);
   }
 
   public setPassiveMode(passive: boolean): void {
@@ -506,11 +501,13 @@ export class Enemy {
       this.lastPassiveStateChange = Date.now();
       
       if (passive) {
-        console.log(`🛡️ [Enemy] Switching to passive mode - will wander peacefully`);
-        this.generateNewWanderDirection();
-        this.passiveWanderTimer = 0;
+        console.log(`🛡️ [Enemy] Switching ${this.enemy.type} to passive mode - starting advanced AI behavior`);
+        // Regenerate waypoints when entering passive mode
+        if (this.passiveAI) {
+          this.passiveAI.regenerateWaypoints();
+        }
       } else {
-        console.log(`⚔️ [Enemy] Switching to aggressive mode - will pursue player`);
+        console.log(`⚔️ [Enemy] Switching ${this.enemy.type} to aggressive mode - will pursue player`);
         this.movementState = EnemyMovementState.IDLE;
       }
     }
@@ -565,7 +562,7 @@ export class Enemy {
     const safeZoneCenter = new THREE.Vector3(0, 0, 0);
     const distanceToSafeZone = this.enemy.mesh.position.distanceTo(safeZoneCenter);
     
-    if (distanceToSafeZone < 18) { // Close to safe zone
+    if (distanceToSafeZone < 11) { // Close to safe zone
       // Move away from safe zone instead of towards player
       const directionAwayFromSafeZone = new THREE.Vector3()
         .subVectors(this.enemy.mesh.position, safeZoneCenter)
@@ -930,5 +927,24 @@ export class Enemy {
       return this.humanoidEnemy.getBodyParts();
     }
     return this.enhancedBodyParts;
+  }
+
+  // Get AI behavior info for debugging (for legacy enemies)
+  public getAIBehaviorInfo(): {
+    currentState: PassiveBehaviorState | null;
+    personality: any;
+  } | null {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getAIBehaviorInfo();
+    }
+    
+    if (this.passiveAI) {
+      return {
+        currentState: this.passiveAI.getCurrentState(),
+        personality: this.passiveAI.getPersonality()
+      };
+    }
+    
+    return null;
   }
 }
