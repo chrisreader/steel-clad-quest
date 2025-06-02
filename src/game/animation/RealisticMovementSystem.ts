@@ -1,7 +1,7 @@
-
 import * as THREE from 'three';
 import { JointAnimationHelpers } from './JointAnimationHelpers';
 import { EnemyBodyParts } from '../entities/humanoid/EnemyHumanoid';
+import { BodyCohesionSystem } from './BodyCohesionSystem';
 
 export interface RealisticMovementConfig {
   // Walking configuration
@@ -28,9 +28,11 @@ export class RealisticMovementSystem {
   private config: RealisticMovementConfig;
   private walkTime: number = 0;
   private idleTime: number = 0;
+  private bodyCohesionSystem: BodyCohesionSystem;
   
   constructor(config: RealisticMovementConfig) {
     this.config = config;
+    this.bodyCohesionSystem = new BodyCohesionSystem();
   }
 
   public updateRealisticWalk(
@@ -58,8 +60,14 @@ export class RealisticMovementSystem {
     // Coordinated elbow movement
     this.updateRealisticElbows(bodyParts, leftLegPhase, rightLegPhase, neutralPoses);
     
-    // Body sway and weight transfer
-    this.updateBodyDynamics(bodyParts, walkPhase, neutralPoses);
+    // NEW: Apply unified body cohesion system
+    this.bodyCohesionSystem.updateBodyCohesion(
+      bodyParts, 
+      walkPhase, 
+      deltaTime, 
+      isMoving, 
+      neutralPoses
+    );
   }
 
   private updateRealisticKnees(
@@ -125,29 +133,6 @@ export class RealisticMovementSystem {
     bodyParts.rightElbow.rotation.y = Math.sin(this.walkTime * 1.3) * 0.03;
   }
 
-  private updateBodyDynamics(
-    bodyParts: EnemyBodyParts,
-    walkPhase: number,
-    neutralPoses: any
-  ): void {
-    if (!bodyParts.body) return;
-    
-    // Weight transfer creates body sway
-    const hipSway = Math.sin(walkPhase * Math.PI * 2) * 0.03;
-    const verticalBob = Math.sin(walkPhase * Math.PI * 4) * 0.05;
-    
-    // Apply body movement
-    bodyParts.body.rotation.z = hipSway;
-    bodyParts.body.position.y = neutralPoses.bodyY + verticalBob;
-    
-    // Shoulder compensation for hip movement
-    if (bodyParts.leftArm && bodyParts.rightArm) {
-      const shoulderCompensation = -hipSway * 0.5;
-      bodyParts.leftArm.rotation.z = neutralPoses.arms.left.z + shoulderCompensation;
-      bodyParts.rightArm.rotation.z = neutralPoses.arms.right.z - shoulderCompensation;
-    }
-  }
-
   private updateRealisticIdle(
     bodyParts: EnemyBodyParts,
     deltaTime: number,
@@ -155,11 +140,8 @@ export class RealisticMovementSystem {
   ): void {
     this.idleTime += deltaTime;
     
-    // Breathing animation
-    if (bodyParts.body) {
-      const breathingOffset = Math.sin(this.idleTime * 4) * 0.02;
-      bodyParts.body.position.y = neutralPoses.bodyY + breathingOffset;
-    }
+    // NEW: Use unified body cohesion for idle animations
+    this.bodyCohesionSystem.updateIdleCohesion(bodyParts, deltaTime, neutralPoses);
     
     // Subtle idle movements with FIXED elbow bending
     if (bodyParts.leftElbow && bodyParts.rightElbow) {
