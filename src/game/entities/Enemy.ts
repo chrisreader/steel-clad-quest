@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
@@ -53,7 +52,7 @@ export class Enemy {
       this.enemy = this.createEnhancedOrc(position);
       this.isEnhancedEnemy = true;
       
-      console.log(`🗡️ [Enemy] Enhanced orc created with FIXED orientation system`);
+      console.log(`🗡️ [Enemy] FIXED: Enhanced orc created with aligned body-head orientation`);
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created basic goblin enemy");
@@ -71,13 +70,12 @@ export class Enemy {
     const { group: orcGroup, bodyParts, metrics } = EnemyBodyBuilder.createRealisticOrcBody(position);
     this.enhancedBodyParts = bodyParts;
     
-    // FIXED: Remove the initial 180° rotation - let the orc spawn in its natural orientation
-    // NO ROTATION APPLIED HERE - orc spawns naturally forward-facing
+    // FIXED: No additional rotation needed - body is now aligned with head
     
     // Pass metrics to animation system for auto-sync
     this.animationSystem = new EnemyAnimationSystem(bodyParts, metrics);
     
-    console.log(`🗡️ [Enemy] FIXED orc orientation - natural forward-facing spawn, no initial rotation`);
+    console.log(`🗡️ [Enemy] FIXED: Orc body and head now properly aligned - no extra rotation applied`);
     
     return {
       mesh: orcGroup,
@@ -481,16 +479,16 @@ export class Enemy {
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
-      // FIXED: Calculate target rotation with corrected direction
+      // FIXED: Calculate target rotation for aligned body-head orientation
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.enemy.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
-      // FIXED: Use normal rotation calculation for all enemies (removed extra Math.PI)
-      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
+      // FIXED: Since body is now rotated 180°, adjust rotation calculation
+      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z) + Math.PI;
       
-      console.log(`🗡️ [Enemy] FIXED rotation calculation - no extra rotation added, target=${this.targetRotation.toFixed(2)}`);
+      console.log(`🗡️ [Enemy] FIXED: Rotation calculation adjusted for aligned body orientation, target=${this.targetRotation.toFixed(2)}`);
       
       // Move toward player if outside damage range
       if (distanceToPlayer > this.enemy.damageRange) {
@@ -526,8 +524,8 @@ export class Enemy {
           .normalize();
         direction.y = 0;
         
-        // FIXED: Use normal rotation calculation for all enemies
-        this.targetRotation = Math.atan2(direction.x, direction.z);
+        // FIXED: Adjust rotation calculation for aligned body orientation
+        this.targetRotation = Math.atan2(direction.x, direction.z) + Math.PI;
         
         const slowMoveAmount = this.enemy.speed * deltaTime * 0.3; // Slower movement when far
         const newPosition = this.enemy.mesh.position.clone();

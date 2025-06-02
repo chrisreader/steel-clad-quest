@@ -1,5 +1,3 @@
-
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType } from '../../types/GameTypes';
@@ -168,7 +166,7 @@ export class EnemyBodyBuilder {
     );
     const leftArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftArm = new THREE.Mesh(leftArmGeometry, leftArmMaterial);
-    leftArm.position.set(-(scale.body.radius + 0.1), positions.shoulderHeight, 0); // FIXED: Reduced from 0.25 to 0.1
+    leftArm.position.set(-(scale.body.radius + 0.1), positions.shoulderHeight, 0);
     leftArm.rotation.set(neutralPoses.arms.left.x, neutralPoses.arms.left.y, neutralPoses.arms.left.z);
     leftArm.castShadow = true;
     leftArm.receiveShadow = true;
@@ -179,7 +177,7 @@ export class EnemyBodyBuilder {
     );
     const rightArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightArm = new THREE.Mesh(rightArmGeometry, rightArmMaterial);
-    rightArm.position.set(scale.body.radius + 0.1, positions.shoulderHeight, 0); // FIXED: Reduced from 0.25 to 0.1
+    rightArm.position.set(scale.body.radius + 0.1, positions.shoulderHeight, 0);
     rightArm.rotation.set(neutralPoses.arms.right.x, neutralPoses.arms.right.y, neutralPoses.arms.right.z);
     rightArm.castShadow = true;
     rightArm.receiveShadow = true;
@@ -250,9 +248,8 @@ export class EnemyBodyBuilder {
     let weapon: THREE.Group | undefined;
     if (features.hasWeapon) {
       weapon = this.createWeapon(type, woodTexture, metalTexture);
-      // FIXED: Position weapon properly inside hand and angle slightly upward
-      weapon.position.set(0, 0.1, 0);  // Changed from (0, -0.35, 0) to move into hand properly
-      weapon.rotation.x = Math.PI / 2 + 0.2;  // Keep slight upward angle (+0.2 radians)
+      weapon.position.set(0, 0.1, 0);
+      weapon.rotation.x = Math.PI / 2 + 0.2;
       rightWrist.add(weapon);
     }
 
@@ -262,6 +259,9 @@ export class EnemyBodyBuilder {
     const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
     hitBox.position.y = positions.bodyY;
     enemyGroup.add(hitBox);
+
+    // FIXED: Rotate entire orc body 180° to match head's forward direction
+    enemyGroup.rotation.y = Math.PI;
 
     // === POSITIONING ===
     enemyGroup.position.copy(position);
@@ -284,7 +284,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
 
-    console.log(`🗡️ [EnemyBodyBuilder] Created ${type} with data-driven metrics - body center Y=${positions.bodyY}`);
+    console.log(`🗡️ [EnemyBodyBuilder] FIXED: ${type} body rotated 180° to align with head orientation`);
 
     return { group: enemyGroup, bodyParts, metrics };
   }
@@ -366,4 +366,3 @@ export class EnemyBodyBuilder {
     return weapon;
   }
 }
-
