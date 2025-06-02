@@ -175,8 +175,8 @@ export class MovementSystem {
   
   public checkInTavern(): boolean {
     const playerPosition = this.player.getPosition();
-    // Expanded safe zone radius to match SafeZoneManager
-    return Math.abs(playerPosition.x) < 15 && Math.abs(playerPosition.z) < 15;
+    // Updated to match tavern-sized safe zone radius
+    return Math.abs(playerPosition.x) < 8 && Math.abs(playerPosition.z) < 8;
   }
   
   public dispose(): void {

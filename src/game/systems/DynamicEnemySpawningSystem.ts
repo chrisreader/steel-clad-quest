@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Enemy } from '../entities/Enemy';
 import { DynamicSpawningSystem } from './DynamicSpawningSystem';
@@ -89,10 +88,10 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    // Initialize safe zone manager (tavern area)
+    // Initialize safe zone manager with tavern-sized radius
     this.safeZoneManager = new SafeZoneManager({
       center: new THREE.Vector3(0, 0, 0),
-      radius: 15
+      radius: 8 // Reduced to match actual tavern size
     });
 
     // Set up safe zone callbacks
@@ -101,7 +100,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       () => this.onPlayerExitSafeZone()
     );
     
-    console.log(`[DynamicEnemySpawningSystem] Initialized with safe zone protection`);
+    console.log(`[DynamicEnemySpawningSystem] Initialized with tavern-sized safe zone (radius: 8)`);
   }
 
   private onPlayerEnterSafeZone(): void {

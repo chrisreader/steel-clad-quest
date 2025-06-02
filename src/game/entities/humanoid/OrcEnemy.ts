@@ -135,7 +135,7 @@ export class OrcEnemy extends EnemyHumanoid {
         const safeZoneCenter = new THREE.Vector3(0, 0, 0);
         const distanceToSafeZone = newPosition.distanceTo(safeZoneCenter);
         
-        if (distanceToSafeZone > 16) { // Stay outside safe zone (15 + 1 buffer)
+        if (distanceToSafeZone > 9) { // Stay outside tavern-sized safe zone (8 + 1 buffer)
           this.mesh.position.copy(newPosition);
           // Use animation system for movement animation
           this.animationSystem.updateWalkAnimation(deltaTime, true, wanderSpeed);
@@ -180,7 +180,7 @@ export class OrcEnemy extends EnemyHumanoid {
     const safeZoneCenter = new THREE.Vector3(0, 0, 0);
     const distanceToSafeZone = this.mesh.position.distanceTo(safeZoneCenter);
     
-    if (distanceToSafeZone < 18) { // Close to safe zone
+    if (distanceToSafeZone < 11) { // Close to tavern-sized safe zone (8 + 3 buffer)
       // Move away from safe zone instead of towards player
       const directionAwayFromSafeZone = new THREE.Vector3()
         .subVectors(this.mesh.position, safeZoneCenter)
