@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface BodyScale {
@@ -72,7 +73,7 @@ export class EnemyBodyMetricsCalculator {
     const bodyY = legTopY + scale.body.height / 2; // 1.4 + 0.7 = 2.1
     const bodyTopY = bodyY + scale.body.height / 2; // 2.1 + 0.7 = 2.8
     const headY = bodyTopY + scale.head.radius; // 2.8 + 0.5 = 3.3 (no gap)
-    const shoulderHeight = bodyY + scale.body.height * 0.15; // FIXED: Lowered from 0.25 to 0.15
+    const shoulderHeight = bodyTopY; // FIXED: Position shoulders at the top of the torso
 
     const positions: BodyPositions = {
       legTopY,
@@ -142,7 +143,7 @@ export class EnemyBodyMetricsCalculator {
     const bodyY = legTopY + scale.body.height / 2;
     const bodyTopY = bodyY + scale.body.height / 2;
     const headY = bodyTopY + scale.head.radius;
-    const shoulderHeight = bodyY + scale.body.height * 0.2; // FIXED: Lowered from 0.3 to 0.2
+    const shoulderHeight = bodyTopY; // FIXED: Position shoulders at the top of the torso
 
     const positions: BodyPositions = {
       legTopY,
