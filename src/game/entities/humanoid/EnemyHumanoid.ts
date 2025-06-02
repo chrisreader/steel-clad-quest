@@ -3,8 +3,85 @@ import { TextureGenerator } from '../../utils';
 import { EnemyType } from '../../../types/GameTypes';
 import { EffectsManager } from '../../engine/EffectsManager';
 import { AudioManager } from '../../engine/AudioManager';
-import { EnemyBodyParts } from '../EnemyBody';
 import { EnemyAnimationSystem } from '../../animation/EnemyAnimationSystem';
+
+// Export all necessary types and interfaces
+export interface EnemyBodyParts {
+  body: THREE.Mesh | undefined;
+  head: THREE.Mesh | undefined;
+  leftArm: THREE.Mesh | undefined;
+  rightArm: THREE.Mesh | undefined;
+  leftElbow: THREE.Mesh | undefined;
+  rightElbow: THREE.Mesh | undefined;
+  leftWrist: THREE.Mesh | undefined;
+  rightWrist: THREE.Mesh | undefined;
+  leftLeg: THREE.Mesh | undefined;
+  rightLeg: THREE.Mesh | undefined;
+  leftKnee: THREE.Mesh | undefined;
+  rightKnee: THREE.Mesh | undefined;
+  weapon: THREE.Group | undefined;
+  hitBox: THREE.Mesh | undefined;
+}
+
+export interface BodyScale {
+  body: { radius: number; height: number };
+  head: { radius: number };
+  arm: { radius: [number, number]; length: number };
+  forearm: { radius: [number, number]; length: number };
+  leg: { radius: [number, number]; length: number };
+  shin: { radius: [number, number]; length: number };
+}
+
+export interface BodyPositions {
+  legTopY: number;
+  thighCenterY: number;
+  bodyY: number;
+  bodyTopY: number;
+  headY: number;
+  shoulderHeight: number;
+}
+
+export interface NeutralPoses {
+  arms: {
+    left: { x: number; y: number; z: number };
+    right: { x: number; y: number; z: number };
+  };
+  elbows: {
+    left: { x: number; y: number; z: number };
+    right: { x: number; y: number; z: number };
+  };
+  wrists: {
+    left: { x: number; y: number; z: number };
+    right: { x: number; y: number; z: number };
+  };
+}
+
+export interface AnimationMetrics {
+  walkCycleSpeed: number;
+  armSwingIntensity: number;
+  legSwingIntensity: number;
+  shoulderMovement: number;
+  elbowMovement: number;
+  breathingIntensity: number;
+}
+
+export interface EnemyBodyMetrics {
+  scale: BodyScale;
+  positions: BodyPositions;
+  neutralPoses: NeutralPoses;
+  animationMetrics: AnimationMetrics;
+  colors: {
+    skin: number;
+    muscle: number;
+    accent: number;
+  };
+}
+
+export interface EnemyBodyResult {
+  group: THREE.Group;
+  bodyParts: EnemyBodyParts;
+  metrics: EnemyBodyMetrics;
+}
 
 export interface HumanoidConfig {
   type: EnemyType;
@@ -21,14 +98,7 @@ export interface HumanoidConfig {
   knockbackResistance: number;
   
   // Body proportions
-  bodyScale: {
-    body: { radius: number; height: number };
-    head: { radius: number };
-    arm: { radius: [number, number]; length: number };
-    forearm: { radius: [number, number]; length: number };
-    leg: { radius: [number, number]; length: number };
-    shin: { radius: [number, number]; length: number };
-  };
+  bodyScale: BodyScale;
   
   // Colors
   colors: {
@@ -133,7 +203,7 @@ export abstract class EnemyHumanoid {
     console.log(`🗡️ [EnemyHumanoid] Created ${config.type} humanoid enemy`);
   }
 
-  protected createHumanoidBody(position: THREE.Vector3) {
+  protected createHumanoidBody(position: THREE.Vector3): EnemyBodyResult {
     const humanoidGroup = new THREE.Group();
     const { bodyScale, colors, features } = this.config;
     
@@ -384,7 +454,7 @@ export abstract class EnemyHumanoid {
     };
 
     // Create metrics for animation system
-    const metrics = {
+    const metrics: EnemyBodyMetrics = {
       scale: bodyScale,
       positions: {
         legTopY,
