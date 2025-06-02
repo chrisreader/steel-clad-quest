@@ -116,9 +116,9 @@ export class JointAnimationHelpers {
     weaponType: 'axe' | 'sword' | 'club' = 'axe'
   ): number {
     // Different weapons require different elbow mechanics
-    // UPDATED: Reduced multipliers for less dramatic upper arm movement
+    // UPDATED: Reduced multipliers for less dramatic upper arm movement - optimized for orcs
     const weaponMultiplier = {
-      axe: 0.6,    // REDUCED from 0.8 - less dramatic movement for axes  
+      axe: 0.6,    // OPTIMIZED for orc attacks - balanced movement
       sword: 0.4,  // REDUCED from 0.6 - more controlled sword movement
       club: 0.5    // REDUCED from 0.7 - less dramatic than before
     }[weaponType];
@@ -126,12 +126,12 @@ export class JointAnimationHelpers {
     if (attackPhase < 0.3) {
       // Windup: elbow pulls back and up (more bend = more negative) - REDUCED angles
       const t = attackPhase / 0.3;
-      const windupAngle = -Math.PI * 0.15 * weaponMultiplier; // REDUCED from 0.25 to 0.15
+      const windupAngle = -Math.PI * 0.15 * weaponMultiplier; // OPTIMIZED for orc windup
       return THREE.MathUtils.lerp(-0.1, windupAngle, Math.sin(t * Math.PI * 0.5)); // REDUCED base from -0.15
     } else if (attackPhase < 0.6) {
-      // Strike: rapid extension (less bend = less negative) - REDUCED angles
+      // Strike: rapid extension (less bend = less negative) - OPTIMIZED for orc strikes
       const t = (attackPhase - 0.3) / 0.3;
-      const strikeAngle = -Math.PI * 0.03 * weaponMultiplier; // REDUCED from 0.05 to 0.03
+      const strikeAngle = -Math.PI * 0.03 * weaponMultiplier; // OPTIMIZED for orc strike power
       const windupAngle = -Math.PI * 0.15 * weaponMultiplier;
       return THREE.MathUtils.lerp(windupAngle, strikeAngle, t * t); // Quadratic for rapid acceleration
     } else {
