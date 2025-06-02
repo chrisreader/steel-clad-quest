@@ -544,28 +544,57 @@ export abstract class EnemyHumanoid {
     rightArm.receiveShadow = true;
     humanoidGroup.add(rightArm);
 
-    // === SHOULDER JOINTS - TAPERED FOR SMOOTH ARM CONNECTION ===
+    // === TAPERED SHOULDER JOINTS - ELLIPTICAL FOR SMOOTH ARM-TRAP CONNECTION ===
     const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 24, 20);
+    
+    // Apply elliptical deformation to shoulder joints for smoother transitions
+    const shoulderPositions = shoulderJointGeometry.attributes.position.array;
+    for (let i = 0; i < shoulderPositions.length; i += 3) {
+      const x = shoulderPositions[i];
+      const y = shoulderPositions[i + 1];
+      const z = shoulderPositions[i + 2];
+      
+      // Create elliptical shape: flatten vertically, extend horizontally toward trap
+      shoulderPositions[i] = x * 1.2; // Extend horizontally toward center for trap connection
+      shoulderPositions[i + 1] = y * 0.7; // Flatten vertically
+      shoulderPositions[i + 2] = z * 0.8; // Slightly compress depth
+    }
+    shoulderJointGeometry.attributes.position.needsUpdate = true;
+    
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial);
     leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
-    leftShoulderJoint.scale.set(0.9, 1, 0.9); // Slightly compressed for smoother arm connection
     leftShoulderJoint.castShadow = true;
     leftShoulderJoint.receiveShadow = true;
     humanoidGroup.add(leftShoulderJoint);
 
-    const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
+    const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry.clone(), accentMaterial.clone());
     rightShoulderJoint.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
-    rightShoulderJoint.scale.set(0.9, 1, 0.9); // Slightly compressed for smoother arm connection
     rightShoulderJoint.castShadow = true;
     rightShoulderJoint.receiveShadow = true;
     humanoidGroup.add(rightShoulderJoint);
 
-    // === TRAPEZIUS MUSCLES ===
+    // === TRAPEZIUS MUSCLES - TAPERED TO BLEND WITH SHOULDERS ===
     const trapGeometry = new THREE.ConeGeometry(
-      bodyScale.body.radius * 0.6,  // Base radius (smaller for better proportions)
-      0.5, // Height (reduced)
+      bodyScale.body.radius * 0.6,  // Base radius
+      0.5, // Height
       16, 4
     );
+    
+    // Apply tapering to trap geometry for smoother shoulder blending
+    const trapPositions = trapGeometry.attributes.position.array;
+    for (let i = 0; i < trapPositions.length; i += 3) {
+      const x = trapPositions[i];
+      const y = trapPositions[i + 1];
+      const z = trapPositions[i + 2];
+      
+      // Taper the trap base to blend better with shoulder joints
+      const heightFactor = (y + 0.25) / 0.5; // Normalize height from 0 to 1
+      const taperFactor = 0.7 + (heightFactor * 0.3); // More tapered at top, wider at base
+      
+      trapPositions[i] = x * taperFactor;
+      trapPositions[i + 2] = z * taperFactor;
+    }
+    trapGeometry.attributes.position.needsUpdate = true;
     
     const leftTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     leftTrap.position.set(
@@ -579,7 +608,7 @@ export abstract class EnemyHumanoid {
     leftTrap.receiveShadow = true;
     humanoidGroup.add(leftTrap);
 
-    const rightTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
+    const rightTrap = new THREE.Mesh(trapGeometry.clone(), muscleMaterial.clone());
     rightTrap.position.set(
       (bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
       shoulderHeight + 0.15, // Raised higher above shoulder joints
