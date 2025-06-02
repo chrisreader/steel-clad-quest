@@ -4,7 +4,7 @@ import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { MathUtils } from '../utils';
-import { EnemyBodyBuilder, EnemyBodyParts } from './EnemyBody';
+import { EnemyBodyBuilder, EnemyBodyParts, EnemyBodyMetrics } from './EnemyBody';
 import { EnemyAnimationSystem } from '../animation/EnemyAnimationSystem';
 
 // Enhanced enemy states for better movement control
@@ -22,8 +22,9 @@ export class Enemy {
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   
-  // NEW: Enhanced body and animation systems
+  // ENHANCED: Body metrics system for data-driven configuration
   private enhancedBodyParts: EnemyBodyParts | null = null;
+  private bodyMetrics: EnemyBodyMetrics | null = null;
   private animationSystem: EnemyAnimationSystem | null = null;
   private isEnhancedEnemy: boolean = false;
   
@@ -47,51 +48,57 @@ export class Enemy {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    // Create enemy based on type with enhanced system for orcs
-    if (type === EnemyType.ORC) {
-      this.enemy = this.createEnhancedOrc(position);
+    // ENHANCED: Use new data-driven system for both enemy types
+    if (type === EnemyType.ORC || type === EnemyType.GOBLIN) {
+      this.enemy = this.createEnhancedEnemy(type, position);
       this.isEnhancedEnemy = true;
       
-      console.log(`🗡️ [Enemy] FIXED: Enhanced orc positioned correctly at (${this.enemy.mesh.position.x.toFixed(2)}, ${this.enemy.mesh.position.y.toFixed(2)}, ${this.enemy.mesh.position.z.toFixed(2)})`);
-      console.log("🗡️ [Enemy] Created enhanced orc with ground-relative positioning");
+      console.log(`🗡️ [Enemy] Enhanced ${type} created with data-driven positioning`);
+      console.log(`🗡️ [Enemy] Body center Y: ${this.bodyMetrics?.getBodyCenterY()}`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created basic goblin enemy");
+      console.log("🗡️ [Enemy] Created legacy enemy");
     }
     
-    // Set knockback resistance based on enemy type
-    this.knockbackResistance = type === EnemyType.ORC ? 0.7 : 1.0;
+    // Set knockback resistance from configuration
+    if (this.bodyMetrics) {
+      this.knockbackResistance = this.bodyMetrics.getStats().knockbackResistance;
+    } else {
+      this.knockbackResistance = type === EnemyType.ORC ? 0.7 : 1.0;
+    }
     
-    // Add to scene
     scene.add(this.enemy.mesh);
   }
   
-  private createEnhancedOrc(position: THREE.Vector3): EnemyInterface {
-    // FIXED: Pass the exact spawn position - let EnemyBodyBuilder handle all positioning
-    const { group: orcGroup, bodyParts } = EnemyBodyBuilder.createRealisticOrcBody(position);
+  private createEnhancedEnemy(type: EnemyType, position: THREE.Vector3): EnemyInterface {
+    // ENHANCED: Use new data-driven body builder
+    const { group: bodyGroup, bodyParts, metrics } = EnemyBodyBuilder.createRealisticBody(type, position);
     this.enhancedBodyParts = bodyParts;
-    this.animationSystem = new EnemyAnimationSystem(bodyParts);
+    this.bodyMetrics = metrics;
+    this.animationSystem = new EnemyAnimationSystem(bodyParts, metrics);
     
-    // Don't override any positions - trust the builder's ground-relative positioning
+    const config = metrics.getConfig();
+    const stats = metrics.getStats();
+    
     return {
-      mesh: orcGroup,
-      health: 60,
-      maxHealth: 60,
-      speed: 3,
-      damage: 20,
-      goldReward: 50,
-      experienceReward: 25,
+      mesh: bodyGroup,
+      health: stats.health,
+      maxHealth: stats.health,
+      speed: stats.speed,
+      damage: stats.damage,
+      goldReward: 50, // TODO: Move to config
+      experienceReward: 25, // TODO: Move to config
       lastAttackTime: 0,
       isDead: false,
       deathTime: 0,
-      type: EnemyType.ORC,
+      type: type,
       leftArm: bodyParts.leftArm,
       rightArm: bodyParts.rightArm,
       leftLeg: bodyParts.leftLeg,
       rightLeg: bodyParts.rightLeg,
       walkTime: 0,
       hitBox: bodyParts.hitBox,
-      originalMaterials: [], // Enhanced body uses different material system
+      originalMaterials: [],
       isHit: false,
       hitTime: 0,
       deathAnimation: {
@@ -102,10 +109,10 @@ export class Enemy {
       weapon: bodyParts.weapon,
       body: bodyParts.body,
       head: bodyParts.head,
-      attackRange: 3.5, // Increased range for enhanced orc
-      damageRange: 2.5, // Increased damage range
-      attackCooldown: 2000, // Faster attacks
-      points: 50,
+      attackRange: stats.attackRange,
+      damageRange: stats.damageRange,
+      attackCooldown: stats.attackCooldown,
+      points: 50, // TODO: Move to config
       idleTime: 0
     };
   }
@@ -371,21 +378,19 @@ export class Enemy {
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
     const now = Date.now();
     
-    // Skip update if enemy is dead
     if (this.enemy.isDead) {
       this.updateDeathAnimation(deltaTime);
       return;
     }
     
-    // Update movement state timers
     this.updateMovementState(deltaTime);
     
-    // ENHANCED: Update animation system for enhanced enemies
+    // ENHANCED: Use metrics-driven animation system
     if (this.isEnhancedEnemy && this.animationSystem) {
       if (this.animationSystem.isAttacking()) {
         const animationContinues = this.animationSystem.updateAttackAnimation(deltaTime);
         if (!animationContinues) {
-          console.log("🗡️ [Enemy] Enhanced orc attack animation completed");
+          console.log(`🗡️ [Enemy] Enhanced ${this.bodyMetrics?.getConfig().type} attack animation completed`);
         }
       }
     }
@@ -399,14 +404,12 @@ export class Enemy {
     
     const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
     
-    // Handle different movement states
     switch (this.movementState) {
       case EnemyMovementState.KNOCKED_BACK:
         this.handleKnockbackMovement(deltaTime);
         break;
         
       case EnemyMovementState.STUNNED:
-        // Just wait, don't move
         break;
         
       default:
@@ -414,7 +417,6 @@ export class Enemy {
         break;
     }
     
-    // Update smooth rotation
     this.updateRotation(deltaTime);
   }
   
@@ -468,46 +470,39 @@ export class Enemy {
   }
   
   private handleNormalMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
-    // Update idle time
     this.enemy.idleTime += deltaTime;
     
-    // Enhanced AI behavior with proper attack ranges and movement
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
-      // Calculate target rotation to face player smoothly
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.enemy.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
-      // Move toward player if outside damage range
       if (distanceToPlayer > this.enemy.damageRange) {
         const moveAmount = this.enemy.speed * deltaTime;
         const newPosition = this.enemy.mesh.position.clone();
         newPosition.add(directionToPlayer.multiplyScalar(moveAmount));
-        newPosition.y = 0; // Ensure enemies stay on ground
+        newPosition.y = 0;
       
         this.enemy.mesh.position.copy(newPosition);
         
-        // ENHANCED: Use sophisticated animation system for enhanced enemies
+        // ENHANCED: Use sophisticated animation system for all enhanced enemies
         if (this.isEnhancedEnemy && this.animationSystem) {
           this.animationSystem.updateWalkAnimation(deltaTime, true, this.enemy.speed);
         } else {
-          // Legacy walking animation for goblins
           this.updateLegacyWalkAnimation(deltaTime);
         }
       }
       
-      // Attack if within damage range
       if (distanceToPlayer <= this.enemy.damageRange && now - this.enemy.lastAttackTime > this.enemy.attackCooldown) {
         this.movementState = EnemyMovementState.ATTACKING;
         this.attack(playerPosition);
         this.enemy.lastAttackTime = now;
       }
     } else {
-      // If enemy is far from player but not in attack range, still move toward player slowly
       if (distanceToPlayer > this.enemy.attackRange && distanceToPlayer < 50) {
         this.movementState = EnemyMovementState.PURSUING;
         
@@ -516,28 +511,24 @@ export class Enemy {
           .normalize();
         direction.y = 0;
         
-        // Calculate target rotation
         this.targetRotation = Math.atan2(direction.x, direction.z);
         
-        const slowMoveAmount = this.enemy.speed * deltaTime * 0.3; // Slower movement when far
+        const slowMoveAmount = this.enemy.speed * deltaTime * 0.3;
         const newPosition = this.enemy.mesh.position.clone();
         newPosition.add(direction.multiplyScalar(slowMoveAmount));
         newPosition.y = 0;
         
         this.enemy.mesh.position.copy(newPosition);
         
-        // ENHANCED: Use sophisticated animation for movement
         if (this.isEnhancedEnemy && this.animationSystem) {
           this.animationSystem.updateWalkAnimation(deltaTime, true, this.enemy.speed * 0.3);
         }
       } else {
         this.movementState = EnemyMovementState.IDLE;
         
-        // ENHANCED: Use sophisticated idle animation
         if (this.isEnhancedEnemy && this.animationSystem) {
           this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
         } else {
-          // Legacy idle animations for goblins
           this.updateLegacyIdleAnimation();
         }
       }
@@ -594,18 +585,15 @@ export class Enemy {
     // ENHANCED: Start sophisticated attack animation for enhanced enemies
     if (this.isEnhancedEnemy && this.animationSystem) {
       this.animationSystem.startAttackAnimation();
-      console.log("🗡️ [Enemy] Enhanced orc started sophisticated attack animation");
+      console.log(`🗡️ [Enemy] Enhanced ${this.bodyMetrics?.getConfig().type} started sophisticated attack animation`);
     } else {
-      // Legacy weapon swing animation for goblins
       this.startLegacyAttackAnimation();
     }
     
-    // Create attack effect
     const attackPosition = this.enemy.mesh.position.clone();
     attackPosition.y += 1;
     this.effectsManager.createAttackEffect(attackPosition, 0x880000);
     
-    // Play attack sound
     this.audioManager.play('enemy_hurt');
   }
   
@@ -782,11 +770,9 @@ export class Enemy {
     audioManager: AudioManager,
     difficulty: number = 1
   ): Enemy {
-    // ENHANCED: Favor orcs at higher difficulty for better visual experience
     const typeRoll = Math.random() * (1 + difficulty * 0.3);
     const type = typeRoll < 0.5 ? EnemyType.GOBLIN : EnemyType.ORC;
     
-    // Determine spawn position (at distance from player)
     const spawnDistance = 20 + Math.random() * 15;
     const angle = Math.random() * Math.PI * 2;
     const spawnPosition = new THREE.Vector3(
@@ -795,9 +781,8 @@ export class Enemy {
       playerPosition.z + Math.sin(angle) * spawnDistance
     );
     
-    // Create enemy
     const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager);
-    console.log(`🗡️ [Enemy] Created ${type} at difficulty ${difficulty} - Enhanced: ${enemy.isEnhancedEnemy}`);
+    console.log(`🗡️ [Enemy] Created data-driven ${type} at difficulty ${difficulty}`);
     return enemy;
   }
   
@@ -834,5 +819,9 @@ export class Enemy {
   
   public getBodyParts(): EnemyBodyParts | null {
     return this.enhancedBodyParts;
+  }
+  
+  public getBodyMetrics(): EnemyBodyMetrics | null {
+    return this.bodyMetrics;
   }
 }

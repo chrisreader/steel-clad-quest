@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { EnemyBodyParts } from '../entities/EnemyBody';
+import { EnemyBodyMetrics } from '../entities/EnemyBodyMetrics';
 import { STANDARD_SWORD_ANIMATION } from './StandardSwordAnimation';
 import { ANIMATION_CONFIGS } from './AnimationConfig';
 
@@ -16,17 +17,17 @@ export interface EnemySwingAnimation {
 
 export class EnemyAnimationSystem {
   private bodyParts: EnemyBodyParts;
+  private metrics: EnemyBodyMetrics;
   private walkTime: number = 0;
   private idleTime: number = 0;
   private swingAnimation: EnemySwingAnimation | null = null;
   private animationConfigs = ANIMATION_CONFIGS.melee;
   
-  // FIXED: Updated to match correct body position from EnemyBodyBuilder
-  private originalBodyY: number = 2.1; // Body center position (correct value)
-  
-  constructor(bodyParts: EnemyBodyParts) {
+  constructor(bodyParts: EnemyBodyParts, metrics: EnemyBodyMetrics) {
     this.bodyParts = bodyParts;
-    console.log("🎭 [EnemyAnimationSystem] Initialized with FIXED body positioning - body center at Y=2.1");
+    this.metrics = metrics;
+    console.log(`🎭 [EnemyAnimationSystem] Initialized with data-driven metrics for ${metrics.getConfig().type}`);
+    console.log(`🎭 [EnemyAnimationSystem] Body center Y: ${metrics.getBodyCenterY()}`);
   }
   
   public updateWalkAnimation(deltaTime: number, isMoving: boolean, movementSpeed: number): void {
@@ -35,25 +36,27 @@ export class EnemyAnimationSystem {
       return;
     }
     
-    this.walkTime += deltaTime * movementSpeed * this.animationConfigs.walkCycleSpeed;
+    const animParams = this.metrics.getAnimationParams();
+    this.walkTime += deltaTime * movementSpeed * animParams.walkCycleSpeed;
     
-    // Enhanced walking animation using relative positioning
-    const armSwing = Math.sin(this.walkTime) * this.animationConfigs.armSwingIntensity;
-    const legSwing = Math.sin(this.walkTime + Math.PI) * this.animationConfigs.legSwingIntensity;
-    const shoulderSway = Math.sin(this.walkTime * 0.5) * this.animationConfigs.shoulderMovement;
+    // Get calculated animation values from metrics
+    const armSwing = this.metrics.getArmSwing(this.walkTime);
+    const legSwing = this.metrics.getLegSwing(this.walkTime);
+    const shoulderSway = this.metrics.getShoulderSway(this.walkTime);
+    const walkingBobOffset = this.metrics.getWalkingBobOffset(this.walkTime);
     
-    // === BODY ANIMATION (FIXED) ===
-    // Apply walking bob as OFFSET from original position, not absolute
+    // === BODY ANIMATION (METRICS-DRIVEN) ===
     if (this.bodyParts.body) {
-      const walkingBob = Math.sin(this.walkTime * 2) * 0.05;
-      this.bodyParts.body.position.y = this.originalBodyY + walkingBob; // 2.1 + offset
+      this.bodyParts.body.position.y = this.metrics.getBodyCenterY() + walkingBobOffset;
     }
     
-    // ARM MOVEMENT - Coordinated shoulder, elbow, wrist (FIXED: FORWARD-FACING)
+    // === ARM MOVEMENT - AUTOMATICALLY ADAPTED TO BODY CONFIGURATION ===
     if (this.bodyParts.leftArm && this.bodyParts.rightArm) {
-      // Left arm system - FIXED: Use negative base rotation for forward-facing
-      this.bodyParts.leftArm.rotation.x = armSwing - Math.PI / 8; // FIXED: negative base for forward
-      this.bodyParts.leftArm.rotation.z = 0.3 + shoulderSway;
+      const neutralRotations = this.metrics.getNeutralArmRotation();
+      
+      // Left arm system - uses calculated neutral position + swing
+      this.bodyParts.leftArm.rotation.x = armSwing + neutralRotations.left.x;
+      this.bodyParts.leftArm.rotation.z = neutralRotations.left.z + shoulderSway;
       
       if (this.bodyParts.leftElbow) {
         this.bodyParts.leftElbow.rotation.x = -Math.abs(armSwing) * 0.5;
@@ -62,10 +65,10 @@ export class EnemyAnimationSystem {
         this.bodyParts.leftWrist.rotation.x = armSwing * 0.3;
       }
       
-      // Right arm system (weapon arm - less swing when holding weapon) - FIXED: FORWARD-FACING
-      const weaponArmSwing = armSwing * 0.6; // Reduced swing for weapon control
-      this.bodyParts.rightArm.rotation.x = -weaponArmSwing - Math.PI / 6; // FIXED: negative base for forward
-      this.bodyParts.rightArm.rotation.z = -0.3 - shoulderSway;
+      // Right arm system (weapon arm) - reduced swing for weapon control
+      const weaponArmSwing = armSwing * animParams.weaponArmSwingReduction;
+      this.bodyParts.rightArm.rotation.x = -weaponArmSwing + neutralRotations.right.x;
+      this.bodyParts.rightArm.rotation.z = neutralRotations.right.z - shoulderSway;
       
       if (this.bodyParts.rightElbow) {
         this.bodyParts.rightElbow.rotation.x = -Math.abs(weaponArmSwing) * 0.4;
@@ -75,7 +78,7 @@ export class EnemyAnimationSystem {
       }
     }
     
-    // === LEG ANIMATIONS (UNCHANGED) ===
+    // === LEG ANIMATIONS (UNCHANGED - ALREADY RELATIVE) ===
     if (this.bodyParts.leftLeg && this.bodyParts.rightLeg) {
       this.bodyParts.leftLeg.rotation.x = legSwing;
       this.bodyParts.rightLeg.rotation.x = -legSwing;
@@ -89,18 +92,16 @@ export class EnemyAnimationSystem {
       }
     }
     
-    console.log(`🎭 [EnemyAnimationSystem] FIXED walking: body Y=${this.bodyParts.body?.position.y.toFixed(3)} (${this.originalBodyY} + ${(this.bodyParts.body?.position.y! - this.originalBodyY).toFixed(3)} offset)`);
+    console.log(`🎭 [EnemyAnimationSystem] Walking: body Y=${this.bodyParts.body?.position.y.toFixed(3)} (${this.metrics.getBodyCenterY()} + ${walkingBobOffset.toFixed(3)} offset)`);
   }
   
   private updateIdleAnimation(deltaTime: number): void {
     this.idleTime += deltaTime;
-    const breathingIntensity = 0.02;
+    const breathingOffset = this.metrics.getBreathingOffset(this.idleTime);
     
-    // === IDLE BREATHING (FIXED) ===
-    // Apply breathing as OFFSET from original position
+    // === IDLE BREATHING (METRICS-DRIVEN) ===
     if (this.bodyParts.body) {
-      const breathingOffset = Math.sin(this.idleTime * 4) * breathingIntensity;
-      this.bodyParts.body.position.y = this.originalBodyY + breathingOffset; // 2.1 + offset
+      this.bodyParts.body.position.y = this.metrics.getBodyCenterY() + breathingOffset;
     }
     
     // Subtle weapon sway
@@ -109,14 +110,16 @@ export class EnemyAnimationSystem {
       this.bodyParts.weapon.rotation.z = baseRotation + Math.sin(this.idleTime * 2) * 0.1;
     }
     
-    // Return arms to neutral position gradually (FIXED: FORWARD-FACING)
+    // Return arms to neutral position gradually (METRICS-DRIVEN)
     const returnSpeed = deltaTime * 2;
     if (this.bodyParts.leftArm && this.bodyParts.rightArm) {
+      const neutralRotations = this.metrics.getNeutralArmRotation();
+      
       this.bodyParts.leftArm.rotation.x = THREE.MathUtils.lerp(
-        this.bodyParts.leftArm.rotation.x, -Math.PI / 8, returnSpeed // FIXED: negative for forward
+        this.bodyParts.leftArm.rotation.x, neutralRotations.left.x, returnSpeed
       );
       this.bodyParts.rightArm.rotation.x = THREE.MathUtils.lerp(
-        this.bodyParts.rightArm.rotation.x, -Math.PI / 6, returnSpeed // FIXED: negative for forward
+        this.bodyParts.rightArm.rotation.x, neutralRotations.right.x, returnSpeed
       );
     }
   }
@@ -134,7 +137,6 @@ export class EnemyAnimationSystem {
       phases: STANDARD_SWORD_ANIMATION.phases
     };
     
-    // Reset clock and set start time
     this.swingAnimation.clock.start();
     this.swingAnimation.startTime = this.swingAnimation.clock.getElapsedTime();
     
@@ -150,7 +152,6 @@ export class EnemyAnimationSystem {
     const { phases } = this.swingAnimation;
     const { duration, rotations } = STANDARD_SWORD_ANIMATION;
     
-    // Use the same standardized animation system as the player
     let shoulderRotation = { 
       x: rotations.neutral.x, 
       y: rotations.neutral.y, 
@@ -161,7 +162,6 @@ export class EnemyAnimationSystem {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
@@ -178,7 +178,6 @@ export class EnemyAnimationSystem {
       torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE
       const t = (elapsed - phases.windup) / phases.slash;
       const aggressiveT = t * t * (3 - 2 * t);
       
@@ -195,7 +194,6 @@ export class EnemyAnimationSystem {
       torsoRotation = THREE.MathUtils.lerp(-0.3, 0.25, aggressiveT);
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
@@ -212,12 +210,10 @@ export class EnemyAnimationSystem {
       torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT);
       
     } else {
-      // ANIMATION COMPLETE
       this.completeAttackAnimation();
       return false;
     }
     
-    // Apply the coordinated movement to enemy body parts
     this.applyAttackMovement(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
     
     console.log(`🗡️ [EnemyAnimationSystem] Attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
@@ -230,34 +226,30 @@ export class EnemyAnimationSystem {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    // Apply SHOULDER rotations (right arm for weapon)
     if (this.bodyParts.rightArm) {
       this.bodyParts.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z - 0.3, 'XYZ');
     }
     
-    // Apply ELBOW rotations
     if (this.bodyParts.rightElbow) {
       this.bodyParts.rightElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
     }
     
-    // Apply WRIST rotations
     if (this.bodyParts.rightWrist) {
       this.bodyParts.rightWrist.rotation.set(wristRotation.x, wristRotation.y, wristRotation.z);
     }
     
-    // Apply TORSO rotation
     if (this.bodyParts.body) {
       this.bodyParts.body.rotation.y = torsoRotation;
     }
   }
   
   private completeAttackAnimation(): void {
-    // Reset to neutral positions using standardized values (FIXED: FORWARD-FACING)
+    // METRICS-DRIVEN: Reset to calculated neutral positions
+    const neutralRotations = this.metrics.getNeutralArmRotation();
     const neutralRotation = STANDARD_SWORD_ANIMATION.rotations.neutral;
     
     if (this.bodyParts.rightArm) {
-      // FIXED: Use negative rotation for forward-facing neutral position
-      this.bodyParts.rightArm.rotation.set(-Math.PI / 6, neutralRotation.y, neutralRotation.z - 0.3);
+      this.bodyParts.rightArm.rotation.set(neutralRotations.right.x, neutralRotation.y, neutralRotation.z - 0.3);
     }
     
     if (this.bodyParts.rightElbow) {
@@ -271,7 +263,7 @@ export class EnemyAnimationSystem {
     }
     
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] Attack animation completed, returned to forward-facing neutral stance");
+    console.log("🗡️ [EnemyAnimationSystem] Attack animation completed, returned to metrics-driven neutral stance");
   }
   
   public isAttacking(): boolean {
