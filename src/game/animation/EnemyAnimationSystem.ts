@@ -170,14 +170,14 @@ export class EnemyAnimationSystem {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Pull back to (-45°, -10°, -20°)
+      // WINDUP PHASE: Pull back to (-45°, -10°, +50°)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
       // SHOULDER: Pull back from walking neutral to windup position
       shoulderRotation.x = THREE.MathUtils.lerp(walkingNeutral.x, -Math.PI / 4, easedT); // -22.5° to -45°
       shoulderRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 18, easedT); // 0° to -10°
-      shoulderRotation.z = THREE.MathUtils.lerp(walkingNeutral.z, -Math.PI / 9, easedT); // To -20°
+      shoulderRotation.z = THREE.MathUtils.lerp(walkingNeutral.z, Math.PI * 50 / 180, easedT); // To +50°
       
       // ELBOW: Support the windup movement
       elbowRotation.x = THREE.MathUtils.lerp(0.05, -0.05, easedT);
@@ -191,7 +191,7 @@ export class EnemyAnimationSystem {
       // TORSO: Small coil for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.2, easedT);
       
-      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - Pull back to (-45°, -10°, -20°)`);
+      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - Pull back to (-45°, -10°, +50°)`);
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE: Forward strike to (+22.5°, 0°, 15°)
@@ -201,7 +201,7 @@ export class EnemyAnimationSystem {
       // SHOULDER: Forward strike movement to precise angles
       shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 4, Math.PI / 8, aggressiveT); // -45° to +22.5°
       shoulderRotation.y = THREE.MathUtils.lerp(-Math.PI / 18, 0, aggressiveT); // -10° to 0°
-      shoulderRotation.z = THREE.MathUtils.lerp(-Math.PI / 9, Math.PI / 12, aggressiveT); // -20° to 15°
+      shoulderRotation.z = THREE.MathUtils.lerp(Math.PI * 50 / 180, Math.PI / 12, aggressiveT); // +50° to 15°
       
       // ELBOW: Aggressive forward movement
       elbowRotation.x = THREE.MathUtils.lerp(-0.05, 0.1, aggressiveT);
