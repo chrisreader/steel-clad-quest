@@ -1,21 +1,16 @@
+
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import { Capsule } from 'three/examples/jsm/math/Capsule';
-import { Weapon, BaseBow, Sword } from '../weapons';
-import { WeaponConfig } from '../weapons/BaseWeapon';
-import { BowConfig } from '../weapons/Bow';
-import { SwordConfig } from '../weapons/Sword';
+import { BaseWeapon } from '../weapons/BaseWeapon';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
-import { LevelManager } from '../managers/LevelManager';
 
 interface PlayerBody {
   body: THREE.Mesh | null;
   rightArm: THREE.Mesh | null;
   rightElbow: THREE.Mesh | null;
   rightWrist: THREE.Mesh | null;
+  leftArm: THREE.Mesh | null;
 }
 
 interface WeaponSwingAnimation {
@@ -24,14 +19,21 @@ interface WeaponSwingAnimation {
   clock: THREE.Clock;
 }
 
+interface PlayerStats {
+  health: number;
+  maxHealth: number;
+  gold: number;
+  experience: number;
+  level: number;
+  stamina: number;
+  maxStamina: number;
+}
+
 export class Player {
   public playerCollider: Capsule;
   public playerVelocity: THREE.Vector3 = new THREE.Vector3();
   public playerDirection: THREE.Vector3 = new THREE.Vector3();
   public playerOnFloor: boolean = false;
-  public camera: THREE.PerspectiveCamera;
-  public controls: OrbitControls;
-  public scene: THREE.Scene;
   public health: number = 100;
   public maxHealth: number = 100;
   public attackPower: number = 20;
@@ -40,57 +42,53 @@ export class Player {
   public gold: number = 0;
   public experience: number = 0;
   public level: number = 1;
+  public stamina: number = 100;
+  public maxStamina: number = 100;
   public isAttackingVar: boolean = false;
   public isBlocking: boolean = false;
   public isDead: boolean = false;
   public lastAttackTime: number = 0;
-  public equippedWeapon: Weapon | null = null;
+  public equippedWeapon: BaseWeapon | null = null;
   public weaponHolstered: boolean = true;
   public playerBody: PlayerBody = {
     body: null,
     rightArm: null,
     rightElbow: null,
-    rightWrist: null
+    rightWrist: null,
+    leftArm: null
   };
   public weaponSwing: WeaponSwingAnimation = {
     isActive: false,
     startTime: 0,
     clock: new THREE.Clock()
   };
-  private enemiesHitThisSwing: Set<any> = new Set();
+  
+  private scene: THREE.Scene;
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
-  private levelManager: LevelManager;
+  private enemiesHitThisSwing: Set<any> = new Set();
   private swordHitBox: THREE.Mesh;
   private bowDrawStartTime: number = 0;
   private bowDrawProgress: number = 0;
   private bowFullyDrawn: boolean = false;
+  private playerGroup: THREE.Group;
+  private isSprinting: boolean = false;
   
   constructor(
     scene: THREE.Scene,
-    camera: THREE.PerspectiveCamera,
     effectsManager: EffectsManager,
-    audioManager: AudioManager,
-    levelManager: LevelManager
+    audioManager: AudioManager
   ) {
     this.scene = scene;
-    this.camera = camera;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
-    this.levelManager = levelManager;
     
     // Setup player collider
     this.playerCollider = new Capsule(new THREE.Vector3(0, 1.1, 0), new THREE.Vector3(0, 1.9, 0), 0.35);
     
-    // Setup camera controls
-    this.controls = new OrbitControls(camera, scene.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.screenSpacePanning = false;
-    this.controls.minDistance = 1;
-    this.controls.maxDistance = 5;
-    this.controls.maxPolarAngle = Math.PI / 2;
-    this.controls.target.set(0, 1.2, 0);
+    // Create player group
+    this.playerGroup = new THREE.Group();
+    this.scene.add(this.playerGroup);
     
     // Load player model
     this.loadModel();
@@ -102,6 +100,77 @@ export class Player {
     console.log('Player initialized');
   }
   
+  public getStats(): PlayerStats {
+    return {
+      health: this.health,
+      maxHealth: this.maxHealth,
+      gold: this.gold,
+      experience: this.experience,
+      level: this.level,
+      stamina: this.stamina,
+      maxStamina: this.maxStamina
+    };
+  }
+  
+  public isAlive(): boolean {
+    return !this.isDead && this.health > 0;
+  }
+  
+  public getBody(): PlayerBody {
+    return this.playerBody;
+  }
+  
+  public setVisualRotation(yaw: number, pitch: number): void {
+    // Update player visual rotation based on camera
+    if (this.playerGroup) {
+      this.playerGroup.rotation.y = yaw;
+    }
+  }
+  
+  public dispose(): void {
+    if (this.playerGroup) {
+      this.scene.remove(this.playerGroup);
+    }
+    if (this.swordHitBox) {
+      this.scene.remove(this.swordHitBox);
+    }
+    if (this.equippedWeapon) {
+      this.scene.remove(this.equippedWeapon.getMesh());
+    }
+  }
+  
+  public getGroup(): THREE.Group {
+    return this.playerGroup;
+  }
+  
+  public startSprint(): void {
+    this.isSprinting = true;
+    console.log("🏃 [Player] Started sprinting");
+  }
+  
+  public stopSprint(): void {
+    this.isSprinting = false;
+    console.log("🏃 [Player] Stopped sprinting");
+  }
+  
+  public getSprinting(): boolean {
+    return this.isSprinting;
+  }
+  
+  public move(direction: THREE.Vector3, deltaTime: number): void {
+    const moveSpeed = this.isSprinting ? this.speed * 1.5 : this.speed;
+    const movement = direction.clone().multiplyScalar(moveSpeed * deltaTime);
+    
+    // Update collider position
+    this.playerCollider.start.add(movement);
+    this.playerCollider.end.add(movement);
+    
+    // Update player group position
+    if (this.playerGroup) {
+      this.playerGroup.position.copy(this.playerCollider.start);
+    }
+  }
+  
   public getSwordHitBox(): THREE.Mesh {
     return this.swordHitBox;
   }
@@ -111,32 +180,34 @@ export class Player {
   }
   
   public loadModel(): void {
-    const gltfLoader = new GLTFLoader();
-    gltfLoader.load('/models/character/scene.gltf', (gltf) => {
-      const model = gltf.scene;
-      model.traverse((object: any) => {
-        if (object.isMesh) {
-          object.castShadow = true;
-          object.receiveShadow = true;
-        }
-      });
-      
-      model.scale.set(0.02, 0.02, 0.02);
-      model.rotation.y = Math.PI;
-      this.scene.add(model);
-      
-      // Assign player body parts
-      this.playerBody = {
-        body: model.getObjectByName('Body') as THREE.Mesh,
-        rightArm: model.getObjectByName('RightArm') as THREE.Mesh,
-        rightElbow: model.getObjectByName('RightForeArm') as THREE.Mesh,
-        rightWrist: model.getObjectByName('RightHand') as THREE.Mesh
-      };
-      
-      console.log('Player model loaded');
-    }, undefined, (error) => {
-      console.error('An error happened while loading the player model', error);
-    });
+    // Create a simple placeholder for now - in a real implementation this would load a GLTF model
+    const geometry = new THREE.CapsuleGeometry(0.35, 1.8, 4, 8);
+    const material = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const playerMesh = new THREE.Mesh(geometry, material);
+    
+    this.playerGroup.add(playerMesh);
+    
+    // Create placeholder body parts
+    this.playerBody = {
+      body: playerMesh,
+      rightArm: new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.2), material),
+      rightElbow: new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.4, 0.15), material),
+      rightWrist: new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.2, 0.1), material),
+      leftArm: new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.2), material)
+    };
+    
+    // Position arms
+    if (this.playerBody.rightArm) {
+      this.playerBody.rightArm.position.set(0.4, 0.5, 0);
+      this.playerGroup.add(this.playerBody.rightArm);
+    }
+    
+    if (this.playerBody.leftArm) {
+      this.playerBody.leftArm.position.set(-0.4, 0.5, 0);
+      this.playerGroup.add(this.playerBody.leftArm);
+    }
+    
+    console.log('Player model loaded');
   }
   
   public addEnemy(enemy: any): void {
@@ -159,47 +230,34 @@ export class Player {
     return new THREE.Mesh(geometry, material);
   }
   
-  public equipWeapon(weapon: Weapon): void {
-    if (this.equippedWeapon) {
-      this.unequipWeapon();
+  public equipWeapon(weaponId: string): void {
+    console.log(`🗡️ [Player] Equipping weapon: ${weaponId}`);
+    // For now, just create a simple sword representation
+    if (weaponId.includes('sword')) {
+      const swordGeometry = new THREE.BoxGeometry(0.1, 0.1, 1.5);
+      const swordMaterial = new THREE.MeshLambertMaterial({ color: 0xC0C0C0 });
+      const swordMesh = new THREE.Mesh(swordGeometry, swordMaterial);
+      
+      // Position sword in right hand
+      if (this.playerBody.rightWrist) {
+        swordMesh.position.set(0, 0, 0.8);
+        this.playerBody.rightWrist.add(swordMesh);
+      }
     }
-    
-    this.equippedWeapon = weapon;
-    this.scene.add(weapon.getMesh());
-    this.weaponHolstered = false;
-    
-    // Update sword hitbox
-    this.scene.remove(this.swordHitBox);
-    this.swordHitBox = this.createSwordHitBox();
-    this.scene.add(this.swordHitBox);
-    
-    console.log(`Equipped weapon: ${weapon.getConfig().name}`);
   }
   
   public unequipWeapon(): void {
+    console.log('🗡️ [Player] Unequipping weapon');
     if (this.equippedWeapon) {
       this.scene.remove(this.equippedWeapon.getMesh());
       this.equippedWeapon = null;
       this.weaponHolstered = true;
-      
-      // Update sword hitbox
-      this.scene.remove(this.swordHitBox);
-      this.swordHitBox = this.createSwordHitBox();
-      this.scene.add(this.swordHitBox);
-      
-      console.log('Unequipped weapon');
     }
   }
   
   public startSwordSwing(): void {
-    if (!this.equippedWeapon || this.weaponSwing.isActive) {
-      console.log("🗡️ [Player] Cannot start sword swing - no weapon or already swinging");
-      return;
-    }
-    
-    const weaponType = this.equippedWeapon.getConfig().type;
-    if (!['sword', 'axe', 'mace'].includes(weaponType)) {
-      console.log("🗡️ [Player] Cannot start sword swing - weapon is not melee type");
+    if (this.weaponSwing.isActive) {
+      console.log("🗡️ [Player] Cannot start sword swing - already swinging");
       return;
     }
     
@@ -207,14 +265,7 @@ export class Player {
     this.weaponSwing.startTime = this.weaponSwing.clock.getElapsedTime();
     this.enemiesHitThisSwing.clear();
     
-    // Initialize StandardSwordBehavior with EffectsManager if not already done
-    const sword = this.equippedWeapon as any;
-    if (sword.initializeStandardBehavior && !sword.standardBehavior) {
-      sword.initializeStandardBehavior(this.weaponSwing, this.playerBody, this.effectsManager);
-      console.log("🗡️ [Player] Initialized StandardSwordBehavior with EffectsManager");
-    }
-    
-    console.log("🗡️ [Player] Started sword swing with standardized system");
+    console.log("🗡️ [Player] Started sword swing");
   }
   
   public stopSwordSwing(): void {
@@ -222,11 +273,6 @@ export class Player {
   }
   
   public startBowDraw(): void {
-    if (!this.equippedWeapon || this.equippedWeapon.getConfig().type !== 'bow') {
-      console.warn("🏹 [Player] Cannot start bow draw - no bow equipped");
-      return;
-    }
-    
     this.bowDrawStartTime = Date.now();
     this.bowDrawProgress = 0;
     this.bowFullyDrawn = false;
@@ -234,11 +280,6 @@ export class Player {
   }
   
   public stopBowDraw(): void {
-    if (!this.equippedWeapon || this.equippedWeapon.getConfig().type !== 'bow') {
-      console.warn("🏹 [Player] Cannot stop bow draw - no bow equipped");
-      return;
-    }
-    
     this.bowDrawProgress = Math.min((Date.now() - this.bowDrawStartTime) / 1000, 1);
     this.bowFullyDrawn = this.bowDrawProgress >= 1;
     console.log(`🏹 [Player] Stopped bow draw at ${this.bowDrawProgress * 100}%`);
@@ -252,19 +293,29 @@ export class Player {
     return this.bowFullyDrawn;
   }
   
-  public update(deltaTime: number): void {
-    this.controls.update();
-    
-    if (this.equippedWeapon && ['sword', 'axe', 'mace'].includes(this.equippedWeapon.getConfig().type)) {
+  public update(deltaTime: number, isMoving: boolean = false): void {
+    // Update weapon animations if equipped
+    if (this.equippedWeapon && typeof this.equippedWeapon.updateAnimation === 'function') {
       this.equippedWeapon.updateAnimation();
+    }
+    
+    // Update stamina
+    if (this.isSprinting && isMoving) {
+      this.stamina = Math.max(0, this.stamina - 20 * deltaTime);
+      if (this.stamina <= 0) {
+        this.stopSprint();
+      }
+    } else if (!this.isSprinting) {
+      this.stamina = Math.min(this.maxStamina, this.stamina + 30 * deltaTime);
     }
   }
   
   public setPosition(x: number, y: number, z: number): void {
     this.playerCollider.start.set(x, y, z);
     this.playerCollider.end.set(x, y + 1, z);
-    this.camera.position.set(x, y + 0.8, z);
-    this.controls.target.set(x, y + 1.2, z);
+    if (this.playerGroup) {
+      this.playerGroup.position.set(x, y, z);
+    }
   }
   
   public getPosition(): THREE.Vector3 {
@@ -272,7 +323,7 @@ export class Player {
   }
   
   public getRotation(): number {
-    return this.controls.getAzimuthalAngle();
+    return this.playerGroup ? this.playerGroup.rotation.y : 0;
   }
   
   public takeDamage(damage: number): void {
@@ -327,7 +378,6 @@ export class Player {
     
     this.effectsManager.createLevelUpEffect(this.getPosition());
     this.audioManager.play('level_up');
-    this.levelManager.updateLevelUI();
     
     console.log(`Player leveled up! Level: ${this.level}, Max Health: ${this.maxHealth}, Attack Power: ${this.attackPower}, Speed: ${this.speed}`);
   }
@@ -356,8 +406,7 @@ export class Player {
     return this.attackPower;
   }
   
-  public getEquippedWeapon(): Weapon | null {
+  public getEquippedWeapon(): BaseWeapon | null {
     return this.equippedWeapon;
   }
 }
-
