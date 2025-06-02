@@ -165,19 +165,19 @@ export class EnemyBodyBuilder {
     rightWrist.receiveShadow = true;
     rightElbow.add(rightWrist);
     
-    // FIXED: Create properly positioned legs so feet are at Y=0
+    // FIXED: Create properly positioned legs (now visible below shorter body)
     
-    // LEFT LEG SYSTEM - positioned relative to body bottom
+    // LEFT LEG SYSTEM - properly positioned for shorter body
     const leftLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
     const leftLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftLeg = new THREE.Mesh(leftLegGeometry, leftLegMaterial);
-    // Position leg so it starts at body bottom and extends down
+    // FIXED: Position at bottom of shorter body
     leftLeg.position.set(-scale.body.radius * 0.4, -scale.leg.length / 2, 0);
     leftLeg.castShadow = true;
     leftLeg.receiveShadow = true;
     orcGroup.add(leftLeg);
     
-    // Left knee (shin) - positioned relative to leg
+    // Left knee (shin)
     const leftKneeGeometry = new THREE.CylinderGeometry(scale.shin.radius[0], scale.shin.radius[1], scale.shin.length, 16);
     const leftKneeMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const leftKnee = new THREE.Mesh(leftKneeGeometry, leftKneeMaterial);
@@ -186,17 +186,17 @@ export class EnemyBodyBuilder {
     leftKnee.receiveShadow = true;
     leftLeg.add(leftKnee);
     
-    // RIGHT LEG SYSTEM - positioned relative to body bottom
+    // RIGHT LEG SYSTEM - properly positioned for shorter body
     const rightLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
     const rightLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightLeg = new THREE.Mesh(rightLegGeometry, rightLegMaterial);
-    // Position leg so it starts at body bottom and extends down
+    // FIXED: Position at bottom of shorter body
     rightLeg.position.set(scale.body.radius * 0.4, -scale.leg.length / 2, 0);
     rightLeg.castShadow = true;
     rightLeg.receiveShadow = true;
     orcGroup.add(rightLeg);
     
-    // Right knee (shin) - positioned relative to leg
+    // Right knee (shin)
     const rightKneeGeometry = new THREE.CylinderGeometry(scale.shin.radius[0], scale.shin.radius[1], scale.shin.length, 16);
     const rightKneeMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const rightKnee = new THREE.Mesh(rightKneeGeometry, rightKneeMaterial);
@@ -244,26 +244,16 @@ export class EnemyBodyBuilder {
     weapon.rotation.z = -0.3;
     rightWrist.add(weapon);
     
-    // FIXED: Adjust hitbox for proper proportions
-    const hitBoxGeometry = new THREE.BoxGeometry(1.8, 2.2, 1.8);
+    // FIXED: Adjust hitbox for shorter body
+    const hitBoxGeometry = new THREE.BoxGeometry(1.8, 2.2, 1.8); // Reduced height from 2.8 to 2.2
     const hitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
     const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
     hitBox.position.y = scale.body.height / 2;
     orcGroup.add(hitBox);
     
-    // FIXED: Calculate exact position so feet are at Y=0
-    // Leg center position: -scale.leg.length / 2 = -0.55
-    // Shin relative position: -scale.leg.length * 0.6 = -0.66 
-    // Shin bottom from center: -scale.shin.length / 2 = -0.45
-    // Total foot depth: 0.55 + 0.66 + 0.45 = 1.66 units below group origin
-    const legCenterDepth = scale.leg.length / 2; // 0.55
-    const shinRelativeDepth = scale.leg.length * 0.6; // 0.66
-    const shinHalfLength = scale.shin.length / 2; // 0.45
-    const totalFootDepth = legCenterDepth + shinRelativeDepth + shinHalfLength; // 1.66
-    
+    // Position the entire orc
     orcGroup.position.copy(position);
-    // Raise the entire orc by exact foot depth so feet are at Y=0
-    orcGroup.position.y = totalFootDepth; // 1.66 units above current position
+    orcGroup.position.y = 0;
     orcGroup.castShadow = true;
     
     const bodyParts: EnemyBodyParts = {
@@ -283,7 +273,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
     
-    console.log(`🗡️ [EnemyBodyBuilder] Created FIXED realistic orc body - feet now at Y=0, raised by ${totalFootDepth.toFixed(2)}`);
+    console.log("🗡️ [EnemyBodyBuilder] Created FIXED realistic orc body with proper proportions and forward-facing arms");
     
     return { group: orcGroup, bodyParts };
   }
