@@ -11,6 +11,25 @@ export interface BodyMovementState {
   momentum: THREE.Vector3;
 }
 
+export interface EnhancedNeutralPoses {
+  bodyY: number;
+  headY?: number;
+  shoulderHeight?: number;
+  bodyRadius?: number;
+  arms: {
+    left: { x: number; y: number; z: number };
+    right: { x: number; y: number; z: number };
+  };
+  elbows?: {
+    left: { x: number; y: number; z: number };
+    right: { x: number; y: number; z: number };
+  };
+  wrists?: {
+    left: { x: number; y: number; z: number };
+    right: { x: number; y: number; z: number };
+  };
+}
+
 export class BodyCohesionSystem {
   private previousBodyState: BodyMovementState;
   private breathingTime: number = 0;
@@ -31,7 +50,7 @@ export class BodyCohesionSystem {
     walkPhase: number,
     deltaTime: number,
     isMoving: boolean,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): BodyMovementState {
     this.breathingTime += deltaTime;
     
@@ -71,7 +90,7 @@ export class BodyCohesionSystem {
   private updateTorsoMovement(
     bodyParts: EnemyBodyParts,
     state: BodyMovementState,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): void {
     if (!bodyParts.body) return;
 
@@ -83,7 +102,7 @@ export class BodyCohesionSystem {
   private updateHeadMovement(
     bodyParts: EnemyBodyParts,
     state: BodyMovementState,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): void {
     if (!bodyParts.head) return;
 
@@ -93,7 +112,8 @@ export class BodyCohesionSystem {
     
     // Head bob follows body movement with slight delay
     const headBob = state.verticalBob * 0.8 + state.momentum.y;
-    bodyParts.head.position.y = neutralPoses.headY + headBob + state.breathingPhase * 0.5;
+    const baseHeadY = neutralPoses.headY || (neutralPoses.bodyY + 1.5); // Fallback if headY not provided
+    bodyParts.head.position.y = baseHeadY + headBob + state.breathingPhase * 0.5;
     
     // Subtle head sway for realism
     bodyParts.head.rotation.y = Math.sin(state.walkPhase * Math.PI * 2) * 0.05;
@@ -105,7 +125,7 @@ export class BodyCohesionSystem {
   private updateShoulderMovement(
     bodyParts: EnemyBodyParts,
     state: BodyMovementState,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): void {
     if (!bodyParts.leftArm || !bodyParts.rightArm) return;
 
@@ -122,20 +142,22 @@ export class BodyCohesionSystem {
     
     // Vertical movement follows body with slight delay
     const shoulderBob = state.verticalBob * 0.9 + state.momentum.y * 0.5;
-    bodyParts.leftArm.position.y = neutralPoses.shoulderHeight + shoulderBob + state.breathingPhase * 0.3;
-    bodyParts.rightArm.position.y = neutralPoses.shoulderHeight + shoulderBob + state.breathingPhase * 0.3;
+    const baseShoulderHeight = neutralPoses.shoulderHeight || (neutralPoses.bodyY + 0.8); // Fallback
+    bodyParts.leftArm.position.y = baseShoulderHeight + shoulderBob + state.breathingPhase * 0.3;
+    bodyParts.rightArm.position.y = baseShoulderHeight + shoulderBob + state.breathingPhase * 0.3;
     
     // Breathing affects shoulder width slightly
     const breathingExpansion = state.breathingPhase * 0.02;
-    bodyParts.leftArm.position.x = -(neutralPoses.bodyRadius + 0.1) - breathingExpansion;
-    bodyParts.rightArm.position.x = (neutralPoses.bodyRadius + 0.1) + breathingExpansion;
+    const baseBodyRadius = neutralPoses.bodyRadius || 0.55; // Fallback
+    bodyParts.leftArm.position.x = -(baseBodyRadius + 0.1) - breathingExpansion;
+    bodyParts.rightArm.position.x = (baseBodyRadius + 0.1) + breathingExpansion;
   }
 
   private updateArmCohesion(
     bodyParts: EnemyBodyParts,
     state: BodyMovementState,
     isMoving: boolean,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): void {
     if (!bodyParts.leftElbow || !bodyParts.rightElbow) return;
 
@@ -179,7 +201,7 @@ export class BodyCohesionSystem {
   public updateIdleCohesion(
     bodyParts: EnemyBodyParts,
     deltaTime: number,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): void {
     this.breathingTime += deltaTime;
     
@@ -193,20 +215,23 @@ export class BodyCohesionSystem {
     }
     
     if (bodyParts.head) {
-      bodyParts.head.position.y = neutralPoses.headY + breathingPhase * 0.5;
+      const baseHeadY = neutralPoses.headY || (neutralPoses.bodyY + 1.5);
+      bodyParts.head.position.y = baseHeadY + breathingPhase * 0.5;
       bodyParts.head.rotation.x = breathingPhase * 0.3;
       bodyParts.head.rotation.z = microMovement * 0.5;
     }
     
     if (bodyParts.leftArm && bodyParts.rightArm) {
-      const shoulderHeight = neutralPoses.shoulderHeight + breathingPhase * 0.3;
+      const baseShoulderHeight = neutralPoses.shoulderHeight || (neutralPoses.bodyY + 0.8);
+      const shoulderHeight = baseShoulderHeight + breathingPhase * 0.3;
       bodyParts.leftArm.position.y = shoulderHeight;
       bodyParts.rightArm.position.y = shoulderHeight;
       
       // Subtle breathing expansion
       const expansion = breathingPhase * 0.01;
-      bodyParts.leftArm.position.x = -(neutralPoses.bodyRadius + 0.1) - expansion;
-      bodyParts.rightArm.position.x = (neutralPoses.bodyRadius + 0.1) + expansion;
+      const baseBodyRadius = neutralPoses.bodyRadius || 0.55;
+      bodyParts.leftArm.position.x = -(baseBodyRadius + 0.1) - expansion;
+      bodyParts.rightArm.position.x = (baseBodyRadius + 0.1) + expansion;
     }
   }
 }

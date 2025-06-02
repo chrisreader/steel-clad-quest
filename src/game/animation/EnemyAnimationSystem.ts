@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import { EnemyBodyParts } from '../entities/EnemyBody';
-import { EnemyBodyMetrics } from '../entities/EnemyBodyMetrics';
+import { EnemyBodyParts, EnemyBodyMetrics } from '../entities/humanoid/EnemyHumanoid';
 import { STANDARD_SWORD_ANIMATION } from './StandardSwordAnimation';
 import { RealisticMovementSystem, RealisticMovementConfig } from './RealisticMovementSystem';
 
@@ -78,16 +77,24 @@ export class EnemyAnimationSystem {
   }
   
   public updateWalkAnimation(deltaTime: number, isMoving: boolean, movementSpeed: number): void {
+    // Create complete neutral poses structure for the realistic movement system
+    const enhancedNeutralPoses = {
+      bodyY: this.metrics.positions.bodyY,
+      headY: this.metrics.positions.headY,
+      shoulderHeight: this.metrics.positions.shoulderHeight,
+      bodyRadius: this.metrics.scale.body.radius,
+      arms: this.metrics.neutralPoses.arms,
+      elbows: this.metrics.neutralPoses.elbows,
+      wrists: this.metrics.neutralPoses.wrists
+    };
+
     // Use the new realistic movement system
     this.realisticMovement.updateRealisticWalk(
       this.bodyParts,
       deltaTime,
       isMoving,
       movementSpeed,
-      {
-        bodyY: this.metrics.positions.bodyY,
-        arms: this.metrics.neutralPoses.arms
-      }
+      enhancedNeutralPoses
     );
 
     // Keep the old walkTime for backward compatibility
@@ -130,10 +137,25 @@ export class EnemyAnimationSystem {
   private updateIdleAnimation(deltaTime: number): void {
     this.idleTime += deltaTime;
     
-    if (this.bodyParts.body) {
-      const breathingOffset = Math.sin(this.idleTime * 4) * this.metrics.animationMetrics.breathingIntensity;
-      this.bodyParts.body.position.y = this.metrics.positions.bodyY + breathingOffset;
-    }
+    // Create enhanced neutral poses for idle animation
+    const enhancedNeutralPoses = {
+      bodyY: this.metrics.positions.bodyY,
+      headY: this.metrics.positions.headY,
+      shoulderHeight: this.metrics.positions.shoulderHeight,
+      bodyRadius: this.metrics.scale.body.radius,
+      arms: this.metrics.neutralPoses.arms,
+      elbows: this.metrics.neutralPoses.elbows,
+      wrists: this.metrics.neutralPoses.wrists
+    };
+    
+    // Use realistic movement system for idle animations
+    this.realisticMovement.updateRealisticWalk(
+      this.bodyParts,
+      deltaTime,
+      false,
+      0,
+      enhancedNeutralPoses
+    );
     
     if (this.bodyParts.weapon) {
       const baseRotation = -0.3;
@@ -153,14 +175,6 @@ export class EnemyAnimationSystem {
       this.bodyParts.rightArm.rotation.x = THREE.MathUtils.lerp(
         this.bodyParts.rightArm.rotation.x, rightNeutral.x, returnSpeed
       );
-    }
-    
-    // FIXED: Ensure elbows have proper idle bending when not attacking
-    if (this.bodyParts.leftElbow && this.bodyParts.rightElbow && !isAttacking) {
-      // Apply subtle idle elbow movement with negative values for natural bending
-      const idleElbowMovement = Math.sin(this.idleTime * 2) * 0.02;
-      this.bodyParts.leftElbow.rotation.x = -0.05 - idleElbowMovement; // Weapon arm slightly more bent
-      this.bodyParts.rightElbow.rotation.x = -0.03 + idleElbowMovement * 0.7; // Supporting arm less bent
     }
   }
   
@@ -193,14 +207,22 @@ export class EnemyAnimationSystem {
     
     const attackProgress = Math.min(elapsed / duration, 1);
     
+    // Create enhanced neutral poses for attack animation
+    const enhancedNeutralPoses = {
+      bodyY: this.metrics.positions.bodyY,
+      headY: this.metrics.positions.headY,
+      shoulderHeight: this.metrics.positions.shoulderHeight,
+      bodyRadius: this.metrics.scale.body.radius,
+      arms: this.metrics.neutralPoses.arms,
+      elbows: this.metrics.neutralPoses.elbows,
+      wrists: this.metrics.neutralPoses.wrists
+    };
+    
     // Use realistic movement system for attack animations
     this.realisticMovement.updateRealisticAttack(
       this.bodyParts,
       attackProgress,
-      {
-        bodyY: this.metrics.positions.bodyY,
-        arms: this.metrics.neutralPoses.arms
-      }
+      enhancedNeutralPoses
     );
     
     // Keep existing arm animation logic for weapon swing

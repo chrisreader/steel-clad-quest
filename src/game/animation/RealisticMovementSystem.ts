@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { JointAnimationHelpers } from './JointAnimationHelpers';
 import { EnemyBodyParts } from '../entities/humanoid/EnemyHumanoid';
-import { BodyCohesionSystem } from './BodyCohesionSystem';
+import { BodyCohesionSystem, EnhancedNeutralPoses } from './BodyCohesionSystem';
 
 export interface RealisticMovementConfig {
   // Walking configuration
@@ -40,7 +40,7 @@ export class RealisticMovementSystem {
     deltaTime: number,
     isMoving: boolean,
     movementSpeed: number,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): void {
     if (!isMoving) {
       this.updateRealisticIdle(bodyParts, deltaTime, neutralPoses);
@@ -103,7 +103,7 @@ export class RealisticMovementSystem {
     bodyParts: EnemyBodyParts,
     leftLegPhase: number,
     rightLegPhase: number,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): void {
     if (!bodyParts.leftElbow || !bodyParts.rightElbow) return;
     
@@ -136,7 +136,7 @@ export class RealisticMovementSystem {
   private updateRealisticIdle(
     bodyParts: EnemyBodyParts,
     deltaTime: number,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): void {
     this.idleTime += deltaTime;
     
@@ -161,7 +161,7 @@ export class RealisticMovementSystem {
   public updateRealisticAttack(
     bodyParts: EnemyBodyParts,
     attackProgress: number,
-    neutralPoses: any
+    neutralPoses: EnhancedNeutralPoses
   ): void {
     // Calculate combat stance
     const stanceData = JointAnimationHelpers.calculateCombatStance(
