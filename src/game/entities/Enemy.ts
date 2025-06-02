@@ -51,7 +51,11 @@ export class Enemy {
     if (type === EnemyType.ORC) {
       this.enemy = this.createEnhancedOrc(position);
       this.isEnhancedEnemy = true;
-      console.log("🗡️ [Enemy] Created enhanced orc with realistic body and combat system");
+      
+      // FIXED: Force correct positioning for all enhanced orcs
+      this.forceCorrectOrcPositioning();
+      
+      console.log("🗡️ [Enemy] Created enhanced orc with realistic body and FORCED ground positioning");
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created basic goblin enemy");
@@ -62,6 +66,27 @@ export class Enemy {
     
     // Add to scene
     scene.add(this.enemy.mesh);
+  }
+  
+  // NEW: Force correct positioning for enhanced orcs
+  private forceCorrectOrcPositioning(): void {
+    if (!this.isEnhancedEnemy || !this.enemy.mesh) return;
+    
+    // Calculate the exact same values as in EnemyBodyBuilder
+    const scale = {
+      leg: { length: 1.1 },
+      shin: { length: 0.9 }
+    };
+    
+    const legCenterDepth = scale.leg.length / 2; // 0.55
+    const shinRelativeDepth = scale.leg.length * 0.6; // 0.66
+    const shinHalfLength = scale.shin.length / 2; // 0.45
+    const totalFootDepth = legCenterDepth + shinRelativeDepth + shinHalfLength; // 1.66
+    
+    // Force the mesh to be at the correct height so feet are at Y=0
+    this.enemy.mesh.position.y = totalFootDepth;
+    
+    console.log(`🔧 [Enemy] FORCED orc positioning: raised by ${totalFootDepth.toFixed(2)} units, feet now at Y=0`);
   }
   
   private createEnhancedOrc(position: THREE.Vector3): EnemyInterface {
