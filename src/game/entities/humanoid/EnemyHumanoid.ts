@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { EnemyType } from '../../../types/GameTypes';
@@ -418,7 +417,7 @@ export abstract class EnemyHumanoid {
     
     const trapGeometry = new THREE.CylinderGeometry(
       shoulderJointX * 0.6, // Top radius - taper into shoulder area
-      chestTopRadius * 0.9, // Bottom radius - match chest top radius for smooth transition
+      chestTopRadius, // Bottom radius - EXACTLY match chest top radius for seamless transition
       0.35, 20, 6
     );
     
