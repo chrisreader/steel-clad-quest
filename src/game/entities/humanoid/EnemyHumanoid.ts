@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { EnemyType } from '../../../types/GameTypes';
@@ -331,7 +330,7 @@ export abstract class EnemyHumanoid {
     rightPectoral.castShadow = true;
     torsoGroup.add(rightPectoral);
 
-    // Shoulders: Partial spheres for deltoid connection
+    // Shoulders: Partial spheres for deltoid connection - positioned on top of upper arms
     const shoulderGeometry = new THREE.SphereGeometry(
       0.32,   // Radius
       16, 12,  // Segments
@@ -340,13 +339,13 @@ export abstract class EnemyHumanoid {
     );
     
     const leftShoulder = new THREE.Mesh(shoulderGeometry, accentMaterial.clone());
-    leftShoulder.position.set(-bodyScale.body.radius * 0.9, shoulderHeight - 0.1, 0);
+    leftShoulder.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight - 0.1, 0);
     leftShoulder.rotation.set(0, Math.PI/2, 0);
     leftShoulder.castShadow = true;
     torsoGroup.add(leftShoulder);
     
     const rightShoulder = new THREE.Mesh(shoulderGeometry, accentMaterial.clone());
-    rightShoulder.position.set(bodyScale.body.radius * 0.9, shoulderHeight - 0.1, 0);
+    rightShoulder.position.set(bodyScale.body.radius + 0.1, shoulderHeight - 0.1, 0);
     rightShoulder.rotation.set(0, -Math.PI/2, 0);
     rightShoulder.castShadow = true;
     torsoGroup.add(rightShoulder);
