@@ -154,6 +154,14 @@ export class EnemyAnimationSystem {
         this.bodyParts.rightArm.rotation.x, rightNeutral.x, returnSpeed
       );
     }
+    
+    // FIXED: Ensure elbows have proper idle bending when not attacking
+    if (this.bodyParts.leftElbow && this.bodyParts.rightElbow && !isAttacking) {
+      // Apply subtle idle elbow movement with negative values for natural bending
+      const idleElbowMovement = Math.sin(this.idleTime * 2) * 0.02;
+      this.bodyParts.leftElbow.rotation.x = -0.05 - idleElbowMovement; // Weapon arm slightly more bent
+      this.bodyParts.rightElbow.rotation.x = -0.03 + idleElbowMovement * 0.7; // Supporting arm less bent
+    }
   }
   
   public startAttackAnimation(): void {
@@ -290,8 +298,12 @@ export class EnemyAnimationSystem {
       this.bodyParts.leftArm.rotation.set(walkingNeutralX, walkingNeutralY, walkingNeutralZ);
     }
     
+    // FIXED: Reset elbows to natural bent position (negative values)
     if (this.bodyParts.leftElbow) {
-      this.bodyParts.leftElbow.rotation.set(0.05, 0, 0);
+      this.bodyParts.leftElbow.rotation.set(-0.05, 0, 0); // Natural slight bend
+    }
+    if (this.bodyParts.rightElbow) {
+      this.bodyParts.rightElbow.rotation.set(-0.03, 0, 0); // Natural slight bend
     }
     if (this.bodyParts.leftWrist) {
       this.bodyParts.leftWrist.rotation.set(walkingNeutralX, 0, 0);
@@ -301,7 +313,7 @@ export class EnemyAnimationSystem {
     }
     
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] Enhanced attack animation completed");
+    console.log("🗡️ [EnemyAnimationSystem] Enhanced attack animation completed with fixed elbow positions");
   }
   
   public isAttacking(): boolean {

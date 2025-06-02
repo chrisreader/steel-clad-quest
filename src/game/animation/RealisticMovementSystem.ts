@@ -116,7 +116,7 @@ export class RealisticMovementSystem {
       rightElbowMovement, this.config.characterSeed + 3, this.config.asymmetryIntensity
     );
     
-    // Apply elbow rotations
+    // Apply elbow rotations (these are already negative from the helper functions)
     bodyParts.leftElbow.rotation.x = leftElbowWithAsymmetry;
     bodyParts.rightElbow.rotation.x = rightElbowWithAsymmetry;
     
@@ -161,11 +161,12 @@ export class RealisticMovementSystem {
       bodyParts.body.position.y = neutralPoses.bodyY + breathingOffset;
     }
     
-    // Subtle idle movements
+    // Subtle idle movements with FIXED elbow bending
     if (bodyParts.leftElbow && bodyParts.rightElbow) {
       const idleElbowMovement = Math.sin(this.idleTime * 2) * 0.05;
-      bodyParts.leftElbow.rotation.x = 0.05 + idleElbowMovement;
-      bodyParts.rightElbow.rotation.x = 0.05 - idleElbowMovement * 0.7;
+      // FIXED: Use negative values for natural elbow bend
+      bodyParts.leftElbow.rotation.x = -0.05 - idleElbowMovement; // Weapon arm slightly more bent
+      bodyParts.rightElbow.rotation.x = -0.05 + idleElbowMovement * 0.7; // Supporting arm less bent
     }
     
     // Weapon sway
@@ -191,15 +192,15 @@ export class RealisticMovementSystem {
       bodyParts.rightKnee.rotation.x = stanceData.backKnee;
     }
     
-    // Calculate weapon elbow movement
+    // Calculate weapon elbow movement (already returns negative values)
     const weaponElbowAngle = JointAnimationHelpers.calculateWeaponElbowMovement(
       attackProgress, this.config.weaponType
     );
     
-    // Calculate supporting elbow movement
+    // Calculate supporting elbow movement (already returns negative values)
     const supportElbowAngle = JointAnimationHelpers.calculateBalanceElbowMovement(attackProgress);
     
-    // Apply elbow movements
+    // Apply elbow movements (values are already negative from helper functions)
     if (bodyParts.leftElbow) {
       bodyParts.leftElbow.rotation.x = weaponElbowAngle;
     }

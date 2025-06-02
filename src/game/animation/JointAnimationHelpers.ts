@@ -53,6 +53,7 @@ export class JointAnimationHelpers {
   ): number {
     // Natural arm swing opposes leg movement
     // Weapon arm has different movement pattern due to weight and grip
+    // FIXED: Use NEGATIVE values for natural elbow bending
     
     const baseSwing = Math.sin(opposingLegPhase * Math.PI * 2) * 0.3;
     
@@ -60,11 +61,13 @@ export class JointAnimationHelpers {
       // Weapon arm: more controlled movement, less swing due to weight
       const weightedSwing = baseSwing * (1 - weaponWeight * 0.5);
       const gripTension = Math.sin(opposingLegPhase * Math.PI * 4) * 0.1 * weaponWeight;
-      return weightedSwing + gripTension + 0.2; // Base flexion for weapon grip
+      // FIXED: Use negative values for natural elbow bend
+      return -(Math.abs(weightedSwing + gripTension) + 0.2); // Base flexion for weapon grip
     } else {
       // Supporting arm: more natural swing for balance
       const balanceCompensation = Math.sin(opposingLegPhase * Math.PI * 2 + Math.PI) * 0.2;
-      return baseSwing + balanceCompensation + 0.1; // Slight base flexion
+      // FIXED: Use negative values for natural elbow bend
+      return -(Math.abs(baseSwing + balanceCompensation) + 0.1); // Slight base flexion
     }
   }
 
@@ -113,6 +116,7 @@ export class JointAnimationHelpers {
     weaponType: 'axe' | 'sword' | 'club' = 'axe'
   ): number {
     // Different weapons require different elbow mechanics
+    // FIXED: Use negative values for natural elbow bending
     const weaponMultiplier = {
       axe: 1.2,    // More dramatic movement for heavy weapons
       sword: 1.0,  // Standard movement
@@ -120,21 +124,21 @@ export class JointAnimationHelpers {
     }[weaponType];
 
     if (attackPhase < 0.3) {
-      // Windup: elbow pulls back and up
+      // Windup: elbow pulls back and up (more bend = more negative)
       const t = attackPhase / 0.3;
-      const windupAngle = Math.PI * 0.4 * weaponMultiplier;
-      return THREE.MathUtils.lerp(0.2, windupAngle, Math.sin(t * Math.PI * 0.5));
+      const windupAngle = -Math.PI * 0.4 * weaponMultiplier; // NEGATIVE for natural bend
+      return THREE.MathUtils.lerp(-0.2, windupAngle, Math.sin(t * Math.PI * 0.5));
     } else if (attackPhase < 0.6) {
-      // Strike: rapid extension with power
+      // Strike: rapid extension (less bend = less negative)
       const t = (attackPhase - 0.3) / 0.3;
-      const strikeAngle = Math.PI * 0.1 * weaponMultiplier;
-      const windupAngle = Math.PI * 0.4 * weaponMultiplier;
+      const strikeAngle = -Math.PI * 0.1 * weaponMultiplier; // NEGATIVE for natural bend
+      const windupAngle = -Math.PI * 0.4 * weaponMultiplier;
       return THREE.MathUtils.lerp(windupAngle, strikeAngle, t * t); // Quadratic for rapid acceleration
     } else {
       // Recovery: controlled return to neutral
       const t = (attackPhase - 0.6) / 0.4;
-      const strikeAngle = Math.PI * 0.1 * weaponMultiplier;
-      return THREE.MathUtils.lerp(strikeAngle, 0.2, Math.sin(t * Math.PI * 0.5));
+      const strikeAngle = -Math.PI * 0.1 * weaponMultiplier;
+      return THREE.MathUtils.lerp(strikeAngle, -0.2, Math.sin(t * Math.PI * 0.5));
     }
   }
 
@@ -144,18 +148,19 @@ export class JointAnimationHelpers {
    */
   public static calculateBalanceElbowMovement(attackPhase: number): number {
     // Supporting arm provides balance and counter-movement
+    // FIXED: Use negative values for natural elbow bending
     if (attackPhase < 0.3) {
-      // Windup: supporting arm extends for balance
+      // Windup: supporting arm extends for balance (less bend)
       const t = attackPhase / 0.3;
-      return THREE.MathUtils.lerp(0.1, 0.05, t);
+      return THREE.MathUtils.lerp(-0.1, -0.05, t);
     } else if (attackPhase < 0.6) {
-      // Strike: supporting arm pulls in for stability
+      // Strike: supporting arm pulls in for stability (more bend)
       const t = (attackPhase - 0.3) / 0.3;
-      return THREE.MathUtils.lerp(0.05, 0.3, t);
+      return THREE.MathUtils.lerp(-0.05, -0.3, t);
     } else {
       // Recovery: return to neutral position
       const t = (attackPhase - 0.6) / 0.4;
-      return THREE.MathUtils.lerp(0.3, 0.1, t);
+      return THREE.MathUtils.lerp(-0.3, -0.1, t);
     }
   }
 
