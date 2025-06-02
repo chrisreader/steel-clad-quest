@@ -341,17 +341,80 @@ export abstract class EnemyHumanoid {
     humanoidGroup.add(torsoGroup);
     const body = mainTorso; // Keep reference for animation system
 
-    // === ENHANCED ORCISH HEAD ===
+    // === ENHANCED REALISTIC ORC HEAD ===
     const headGroup = new THREE.Group();
     
-    // Main skull - elongated and more angular
-    const skullGeometry = new THREE.SphereGeometry(bodyScale.head.radius, 24, 20);
-    const skull = new THREE.Mesh(skullGeometry, muscleMaterial.clone());
-    skull.scale.set(1, 1.1, 1.2); // elongated
-    skull.position.y = headY;
-    skull.castShadow = true;
-    skull.receiveShadow = true;
-    headGroup.add(skull);
+    // Phase 1: Multi-Part Skull Structure
+    // Upper Cranium - elongated and more angular with integrated brow ridge
+    const upperSkullGeometry = new THREE.SphereGeometry(bodyScale.head.radius, 24, 20);
+    
+    // Modify skull geometry for realistic orc proportions
+    const skullPositions = upperSkullGeometry.attributes.position.array;
+    for (let i = 0; i < skullPositions.length; i += 3) {
+      const x = skullPositions[i];
+      const y = skullPositions[i + 1];
+      const z = skullPositions[i + 2];
+      
+      // Elongate skull front-to-back and create sloped forehead
+      skullPositions[i + 2] = z * 1.3; // Elongate depth
+      
+      // Create sloped forehead and wider temples
+      if (y > 0) {
+        // Upper skull modifications
+        skullPositions[i] = x * (1 + Math.abs(y) * 0.2); // Wider temples
+        skullPositions[i + 1] = y * 1.1; // Taller skull
+        
+        // Slope the forehead back
+        if (z > 0) {
+          skullPositions[i + 2] = z * (1.3 - y * 0.3);
+        }
+      }
+      
+      // Create integrated brow ridge
+      if (y > 0.2 && y < 0.4 && z > 0.3) {
+        skullPositions[i + 2] = z * 1.5; // Prominent brow
+      }
+    }
+    upperSkullGeometry.attributes.position.needsUpdate = true;
+    upperSkullGeometry.computeVertexNormals();
+    
+    const upperSkull = new THREE.Mesh(upperSkullGeometry, muscleMaterial.clone());
+    upperSkull.position.y = headY;
+    upperSkull.castShadow = true;
+    upperSkull.receiveShadow = true;
+    headGroup.add(upperSkull);
+
+    // Phase 2: Enhanced Lower Jaw Design
+    // Create anatomically correct mandible
+    const lowerJawGeometry = new THREE.BoxGeometry(0.8, 0.4, 0.7);
+    
+    // Modify jaw to be U-shaped rather than box-like
+    const jawPositions = lowerJawGeometry.attributes.position.array;
+    for (let i = 0; i < jawPositions.length; i += 3) {
+      const x = jawPositions[i];
+      const y = jawPositions[i + 1];
+      const z = jawPositions[i + 2];
+      
+      // Create U-shaped jaw curve
+      const distanceFromCenter = Math.abs(x);
+      if (z < 0) {
+        // Back of jaw - narrow it
+        jawPositions[i + 2] = z * (1 - distanceFromCenter * 0.3);
+      }
+      
+      // Round the jaw corners
+      if (Math.abs(x) > 0.3 && z > 0) {
+        jawPositions[i + 2] = z * 0.8;
+      }
+    }
+    lowerJawGeometry.attributes.position.needsUpdate = true;
+    lowerJawGeometry.computeVertexNormals();
+    
+    const lowerJaw = new THREE.Mesh(lowerJawGeometry, muscleMaterial.clone());
+    lowerJaw.position.set(0, headY - 0.35, bodyScale.head.radius * 0.4);
+    lowerJaw.castShadow = true;
+    lowerJaw.receiveShadow = true;
+    headGroup.add(lowerJaw);
 
     // === NECK CONNECTION ===
     const neckGeometry = new THREE.CylinderGeometry(
@@ -366,48 +429,22 @@ export abstract class EnemyHumanoid {
     neck.receiveShadow = true;
     headGroup.add(neck);
 
-    // Prominent brow ridge
-    const browRidgeGeometry = new THREE.BoxGeometry(0.8, 0.15, 0.4);
-    const browRidge = new THREE.Mesh(browRidgeGeometry, accentMaterial.clone());
-    browRidge.position.set(0, headY + 0.2, bodyScale.head.radius * 0.7);
-    browRidge.castShadow = true;
-    headGroup.add(browRidge);
-
-    // Protruding jaw
-    const jawGeometry = new THREE.BoxGeometry(0.6, 0.3, 0.5);
-    const jaw = new THREE.Mesh(jawGeometry, muscleMaterial.clone());
-    jaw.position.set(0, headY - 0.25, bodyScale.head.radius * 0.6);
-    jaw.castShadow = true;
-    headGroup.add(jaw);
-
-    // Flattened nose area
-    const noseGeometry = new THREE.BoxGeometry(0.3, 0.2, 0.25);
+    // Phase 3: Integrated Facial Features
+    // Improved nose structure - integrated into skull
+    const noseGeometry = new THREE.BoxGeometry(0.25, 0.15, 0.3);
     const nose = new THREE.Mesh(noseGeometry, accentMaterial.clone());
-    nose.position.set(0, headY, bodyScale.head.radius * 0.9);
+    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 0.95);
+    nose.scale.set(1, 1, 0.8); // Flattened for orcish appearance
     nose.castShadow = true;
     headGroup.add(nose);
 
-    // Defined cheekbones
-    const cheekGeometry = new THREE.SphereGeometry(0.2, 16, 12);
-    const leftCheek = new THREE.Mesh(cheekGeometry, accentMaterial.clone());
-    leftCheek.position.set(-0.3, headY - 0.1, bodyScale.head.radius * 0.6);
-    leftCheek.scale.set(1, 0.8, 1.2);
-    leftCheek.castShadow = true;
-    headGroup.add(leftCheek);
-
-    const rightCheek = new THREE.Mesh(cheekGeometry, accentMaterial.clone());
-    rightCheek.position.set(0.3, headY - 0.1, bodyScale.head.radius * 0.6);
-    rightCheek.scale.set(1, 0.8, 1.2);
-    rightCheek.castShadow = true;
-    headGroup.add(rightCheek);
-
     humanoidGroup.add(headGroup);
-    const head = skull; // Keep reference for animation system
+    const head = upperSkull; // Keep reference for animation system
 
     // === ENHANCED FACIAL FEATURES ===
     if (features.hasEyes && features.eyeConfig) {
-      // Enhanced eye sockets in brow ridge
-      const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.3, 16, 12);
+      // Enhanced eye sockets integrated into brow ridge
+      const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.2, 16, 12);
       const eyeSocketMaterial = new THREE.MeshPhongMaterial({
         color: colors.accent,
         shininess: 20
@@ -416,19 +453,19 @@ export abstract class EnemyHumanoid {
       const leftEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial);
       leftEyeSocket.position.set(
         -features.eyeConfig.offsetX,
-        headY + features.eyeConfig.offsetY - 0.05,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 0.8
+        headY + features.eyeConfig.offsetY,
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 0.9
       );
-      leftEyeSocket.scale.z = 0.4;
+      leftEyeSocket.scale.z = 0.5;
       headGroup.add(leftEyeSocket);
 
       const rightEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial.clone());
       rightEyeSocket.position.set(
         features.eyeConfig.offsetX,
-        headY + features.eyeConfig.offsetY - 0.05,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 0.8
+        headY + features.eyeConfig.offsetY,
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 0.9
       );
-      rightEyeSocket.scale.z = 0.4;
+      rightEyeSocket.scale.z = 0.5;
       headGroup.add(rightEyeSocket);
 
       // Enhanced glowing eyes
@@ -460,7 +497,7 @@ export abstract class EnemyHumanoid {
       headGroup.add(rightEye);
     }
 
-    // Enhanced tusks
+    // Enhanced tusks attached to lower jaw
     if (features.hasTusks && features.tuskConfig) {
       const tuskGeometry = new THREE.ConeGeometry(
         features.tuskConfig.radius, features.tuskConfig.height, 12
@@ -474,25 +511,24 @@ export abstract class EnemyHumanoid {
       const leftTusk = new THREE.Mesh(tuskGeometry, tuskMaterial);
       leftTusk.position.set(
         -features.tuskConfig.offsetX,
-        headY + features.tuskConfig.offsetY,
-        bodyScale.head.radius * features.tuskConfig.offsetZ
+        -0.1, // Relative to jaw position
+        0.2
       );
       leftTusk.rotation.x = Math.PI;
       leftTusk.rotation.z = -0.1;
       leftTusk.castShadow = true;
+      lowerJaw.add(leftTusk); // Attach to jaw for animation
 
       const rightTusk = new THREE.Mesh(tuskGeometry, tuskMaterial.clone());
       rightTusk.position.set(
         features.tuskConfig.offsetX,
-        headY + features.tuskConfig.offsetY,
-        bodyScale.head.radius * features.tuskConfig.offsetZ
+        -0.1, // Relative to jaw position
+        0.2
       );
       rightTusk.rotation.x = Math.PI;
       rightTusk.rotation.z = 0.1;
       rightTusk.castShadow = true;
-
-      headGroup.add(leftTusk);
-      headGroup.add(rightTusk);
+      lowerJaw.add(rightTusk); // Attach to jaw for animation
     }
 
     // === ENHANCED POINTED EARS ===
@@ -570,7 +606,7 @@ export abstract class EnemyHumanoid {
     const leftTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     leftTrap.position.set(
       -(bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight + 0.15, // Raised higher above shoulder joints
+      shoulderHeight + 0.25, // Raised higher above shoulder joints
       0
     );
     leftTrap.rotation.z = -0.4; // Angled towards shoulder
@@ -582,7 +618,7 @@ export abstract class EnemyHumanoid {
     const rightTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     rightTrap.position.set(
       (bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight + 0.15, // Raised higher above shoulder joints
+      shoulderHeight + 0.25, // Raised higher above shoulder joints
       0
     );
     rightTrap.rotation.z = 0.4; // Angled towards shoulder
