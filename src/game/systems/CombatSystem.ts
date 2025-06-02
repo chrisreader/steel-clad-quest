@@ -6,7 +6,6 @@ import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
 import { PhysicsManager } from '../engine/PhysicsManager';
 import { ProjectileSystem } from './ProjectileSystem';
-import { SwordCombatHandler } from './SwordCombatHandler';
 import { BaseBow } from '../weapons';
 
 export class CombatSystem {
@@ -19,7 +18,6 @@ export class CombatSystem {
   private physicsManager: PhysicsManager;
   private projectileSystem: ProjectileSystem;
   private camera: THREE.PerspectiveCamera;
-  private swordCombatHandler: SwordCombatHandler;
   
   // Combat parameters
   private pickupRange: number = 2;
@@ -28,6 +26,9 @@ export class CombatSystem {
   
   // FPS-style bow mechanics
   private bowReadyToFire: boolean = false;
+  
+  // Debug hitbox visualization
+  private debugHitboxEnabled: boolean = true; // Enable by default for testing
   
   constructor(
     scene: THREE.Scene,
@@ -44,10 +45,26 @@ export class CombatSystem {
     this.camera = camera;
     this.physicsManager = physicsManager;
     this.projectileSystem = new ProjectileSystem(scene, player, effectsManager, audioManager, physicsManager);
-    this.swordCombatHandler = new SwordCombatHandler(effectsManager, audioManager);
     
-    // Setup standardized sword debug visualization
-    this.swordCombatHandler.setupHitboxDebugVisualization(player, scene);
+    // Enable debug mode for sword hitbox
+    this.setupHitboxDebugVisualization();
+  }
+  
+  private setupHitboxDebugVisualization(): void {
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (currentWeapon && ['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
+      const sword = currentWeapon as any; // Cast to access Sword methods
+      if (sword.setDebugMode) {
+        sword.setDebugMode(this.debugHitboxEnabled);
+        
+        // Add debug hitbox to scene if it exists
+        const debugHitBox = sword.getDebugHitBox();
+        if (debugHitBox && !this.scene.getObjectById(debugHitBox.id)) {
+          this.scene.add(debugHitBox);
+          console.log("🔧 [CombatSystem] Added debug hitbox to scene");
+        }
+      }
+    }
   }
   
   public update(deltaTime: number): void {
@@ -56,15 +73,9 @@ export class CombatSystem {
     this.projectileSystem.setEnemies(this.enemies);
     this.projectileSystem.update(deltaTime);
     
-    // Use specialized sword combat handler for melee attacks with death callback
+    // FIXED: Only check attacks during slash phase with dynamic hitbox positioning
     if (this.player.isAttacking() && !this.bowReadyToFire && this.enemies.length > 0) {
-      this.swordCombatHandler.checkDynamicSwordAttacks(
-        this.player,
-        this.enemies,
-        this.player.getPosition(),
-        this.player.getRotation(),
-        (enemy: Enemy) => this.handleEnemyDeath(enemy) // Add death callback
-      );
+      this.checkDynamicSwordAttacks();
     }
     
     if (this.gold.length > 0) {
@@ -74,22 +85,6 @@ export class CombatSystem {
     if (this.enemies.length > 0) {
       this.cleanupEntities();
     }
-  }
-  
-  private handleEnemyDeath(enemy: Enemy): void {
-    if (!enemy.isDead()) return;
-    
-    const enemyPosition = enemy.getPosition();
-    const goldReward = enemy.getGoldReward();
-    const expReward = enemy.getExperienceReward();
-    
-    // Spawn gold drops
-    this.spawnGold(enemyPosition, goldReward);
-    
-    // Award experience to player
-    this.player.addExperience(expReward);
-    
-    console.log(`💰 [CombatSystem] Enemy death handled: ${goldReward} gold, ${expReward} XP`);
   }
   
   public startPlayerAttack(): void {
@@ -112,36 +107,6 @@ export class CombatSystem {
     }
     
     this.bowReadyToFire = false;
-  }
-  
-  private startMeleeAttack(): void {
-    const now = Date.now();
-    const timeSinceLastAttack = now - this.lastAttackTime;
-    
-    if (timeSinceLastAttack < this.attackCooldownMs) {
-      return;
-    }
-    
-    this.lastAttackTime = now;
-    
-    try {
-      this.player.startSwordSwing();
-      
-      // Use standardized debug visualization
-      this.swordCombatHandler.showDebugHitBox(this.player);
-      
-      setTimeout(() => {
-        this.swordCombatHandler.hideDebugHitBox(this.player);
-      }, 600);
-      
-      console.log("⚔️ [CombatSystem] Melee attack started with standardized sword system");
-    } catch (error) {
-      console.error("⚔️ [CombatSystem] Error calling player.startSwordSwing()", error);
-    }
-  }
-  
-  public toggleDebugHitbox(): void {
-    this.swordCombatHandler.toggleDebugHitbox(this.player);
   }
   
   private fireIndependentArrow(): void {
@@ -167,8 +132,162 @@ export class CombatSystem {
     const damage = currentWeapon.getConfig().stats.damage;
     const speed = 50;
     
+    console.log(`🏹 [CombatSystem] Firing arrow with collision detection - damage: ${damage}, speed: ${speed}`);
+    
     this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
+    
     this.audioManager.play('bow_release');
+  }
+  
+  private startMeleeAttack(): void {
+    const now = Date.now();
+    const timeSinceLastAttack = now - this.lastAttackTime;
+    
+    if (timeSinceLastAttack < this.attackCooldownMs) {
+      return;
+    }
+    
+    this.lastAttackTime = now;
+    
+    try {
+      this.player.startSwordSwing();
+      
+      // Show debug hitbox when attack starts
+      this.showDebugHitBox();
+      
+      // Hide debug hitbox after attack duration
+      setTimeout(() => {
+        this.hideDebugHitBox();
+      }, 600); // Hide after 600ms (typical sword swing duration)
+      
+      console.log("⚔️ [CombatSystem] Melee attack started - hitbox debug visualization active");
+    } catch (error) {
+      console.error("⚔️ [CombatSystem] Error calling player.startSwordSwing()", error);
+    }
+  }
+  
+  private showDebugHitBox(): void {
+    if (!this.debugHitboxEnabled) return;
+    
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (currentWeapon && ['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
+      const sword = currentWeapon as any;
+      if (sword.showHitBoxDebug) {
+        sword.showHitBoxDebug();
+        console.log("🔧 [CombatSystem] Debug hitbox activated for attack");
+      }
+    }
+  }
+  
+  private hideDebugHitBox(): void {
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (currentWeapon && ['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
+      const sword = currentWeapon as any;
+      if (sword.hideHitBoxDebug) {
+        sword.hideHitBoxDebug();
+        console.log("🔧 [CombatSystem] Debug hitbox deactivated");
+      }
+    }
+  }
+  
+  public toggleDebugHitbox(): void {
+    this.debugHitboxEnabled = !this.debugHitboxEnabled;
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (currentWeapon && ['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
+      const sword = currentWeapon as any;
+      if (sword.setDebugMode) {
+        sword.setDebugMode(this.debugHitboxEnabled);
+      }
+    }
+    console.log(`🔧 [CombatSystem] Debug hitbox ${this.debugHitboxEnabled ? 'enabled' : 'disabled'}`);
+  }
+  
+  private checkDynamicSwordAttacks(): void {
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (!currentWeapon || !['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
+      return;
+    }
+
+    // Get swing progress from player animation
+    const swingData = this.player.getSwordSwing();
+    if (!swingData || !swingData.isActive) {
+      return;
+    }
+
+    // Calculate swing progress (0 = start, 1 = end)
+    const elapsed = swingData.clock.getElapsedTime() - swingData.startTime;
+    const slashStart = swingData.phases.windup;
+    const slashEnd = swingData.phases.windup + swingData.phases.slash;
+    
+    // FIXED: Only check collisions during the actual slash phase
+    if (elapsed < slashStart || elapsed > slashEnd) {
+      // Reset hitbox position when not in slash phase
+      const sword = currentWeapon as any;
+      if (sword.resetHitBoxPosition) {
+        sword.resetHitBoxPosition();
+      }
+      return;
+    }
+
+    // Calculate swing progress within slash phase (0 to 1)
+    const slashProgress = (elapsed - slashStart) / swingData.phases.slash;
+    
+    // Update dynamic hitbox position based on swing progress
+    const playerPosition = this.player.getPosition();
+    const playerRotation = this.player.getRotation();
+    
+    const sword = currentWeapon as any;
+    if (sword.updateHitBoxPosition) {
+      sword.updateHitBoxPosition(playerPosition, playerRotation, slashProgress);
+    }
+
+    // Now check for collisions with the updated hitbox
+    const swordHitBox = this.player.getSwordHitBox();
+    const swordBox = new THREE.Box3().setFromObject(swordHitBox);
+    
+    const attackPower = this.player.getAttackPower();
+    
+    let enemyHit = false;
+    
+    console.log(`🔧 [CombatSystem] Dynamic sword hitbox collision check - slash progress: ${(slashProgress * 100).toFixed(1)}%`);
+    
+    this.enemies.forEach(enemy => {
+      if (enemy.isDead()) return;
+      
+      if (this.player.hasHitEnemy(enemy)) return;
+      
+      const enemyMesh = enemy.getMesh();
+      const enemyBox = new THREE.Box3().setFromObject(enemyMesh);
+      
+      if (swordBox.intersectsBox(enemyBox)) {
+        enemyHit = true;
+        
+        const enemyPosition = enemy.getPosition();
+        const slashDirection = enemyPosition.clone().sub(playerPosition).normalize();
+        
+        // Apply damage and create blood effect
+        enemy.takeDamage(attackPower, playerPosition);
+        
+        // Create realistic blood effect ONLY when hitting enemy
+        const damageIntensity = Math.min(attackPower / 50, 2);
+        this.effectsManager.createRealisticBloodEffect(enemyPosition, slashDirection, damageIntensity);
+        
+        this.player.addEnemy(enemy);
+        
+        this.audioManager.play('sword_hit');
+        
+        if (enemy.isDead()) {
+          this.spawnGold(enemy.getPosition(), enemy.getGoldReward());
+          this.player.addExperience(enemy.getExperienceReward());
+        }
+        
+        console.log("⚔️ [CombatSystem] Enemy hit with dynamic sword hitbox during slash phase");
+      }
+    });
+    
+    if (!enemyHit) {
+      console.log(`⚔️ [CombatSystem] No enemies hit - dynamic hitbox at ${(slashProgress * 100).toFixed(1)}% slash progress`);
+    }
   }
   
   public handlePlayerDamage(damage: number, damageSource: THREE.Vector3): void {
@@ -176,18 +295,26 @@ export class CombatSystem {
     const damageDirection = damageSource.clone().sub(playerPosition).normalize();
     const intensity = Math.min(damage / 30, 2);
     
+    // Create player damage effect
     this.effectsManager.createPlayerDamageEffect(damageDirection, intensity);
+    
+    // Apply damage to player
+    // Note: This would need to be connected to player health system
     console.log(`Player takes ${damage} damage from direction:`, damageDirection);
   }
   
   public handleArrowHit(enemy: Enemy, arrowPosition: THREE.Vector3, arrowDirection: THREE.Vector3, damage: number): void {
+    // Create arrow-specific blood effect
     this.effectsManager.createArrowBloodEffect(arrowPosition, arrowDirection, damage);
-    const wasAlive = !enemy.isDead();
+    
+    // Apply damage
     enemy.takeDamage(damage, arrowPosition);
+    
     this.audioManager.play('arrow_hit');
     
-    if (wasAlive && enemy.isDead()) {
-      this.handleEnemyDeath(enemy); // Use shared death handling
+    if (enemy.isDead()) {
+      this.spawnGold(enemy.getPosition(), enemy.getGoldReward());
+      this.player.addExperience(enemy.getExperienceReward());
     }
   }
   
@@ -197,6 +324,7 @@ export class CombatSystem {
     this.gold.forEach(gold => {
       if (gold.isInRange(playerPosition, this.pickupRange)) {
         this.player.addGold(gold.getValue());
+        
         gold.dispose();
         this.gold = this.gold.filter(g => g !== gold);
       }

@@ -90,7 +90,7 @@ export class GameEngine {
         console.warn("🎮 [GameEngine] Audio preloading failed, continuing:", audioError);
       }
       
-      // CRITICAL: Create the player with the correct constructor signature
+      // CRITICAL: Create the player with extensive debugging
       console.log("🎮 [GameEngine] Creating player with NEW ARM POSITIONING...");
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
       console.log("🎮 [GameEngine] Player created successfully with new arm positioning");
