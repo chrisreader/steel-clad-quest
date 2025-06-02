@@ -5,11 +5,18 @@ import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionMana
 import { PhysicsManager } from './PhysicsManager';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
+import { RingQuadrantSystem, RegionCoordinates, Region } from '../world/RingQuadrantSystem';
 
 export class SceneManager {
   private scene: THREE.Scene;
   private physicsManager: PhysicsManager;
   private environmentCollisionManager: EnvironmentCollisionManager;
+  
+  // Ring-quadrant world system
+  private ringSystem: RingQuadrantSystem;
+  private loadedRegions: Map<string, Region> = new Map();
+  private renderDistance: number = 800; // How far to load terrain
+  private debugMode: boolean = true; // Set to false for production
   
   // Lighting
   private ambientLight: THREE.AmbientLight;
@@ -44,11 +51,19 @@ export class SceneManager {
     
     console.log("SceneManager initialized with collision system");
     
+    // Initialize ring-quadrant system
+    this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
+    
     // Setup distance-based fog
     this.setupDistanceFog();
     
     // Setup basic lighting
     this.setupLighting();
+    
+    // Add debug ring markers
+    if (this.debugMode) {
+      this.ringSystem.createDebugRingMarkers(this.scene);
+    }
     
     // Initialize cloud spawning system
     this.cloudSpawningSystem = new DynamicCloudSpawningSystem(this.scene);
@@ -169,6 +184,32 @@ export class SceneManager {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
     }
     
+    // NEW: Manage region loading/unloading based on player position
+    if (playerPosition) {
+      // Get regions that should be active
+      const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
+      
+      // Track current region keys for comparison
+      const activeRegionKeys = new Set<string>();
+      
+      // Load new regions
+      for (const region of activeRegions) {
+        const regionKey = this.ringSystem.getRegionKey(region);
+        activeRegionKeys.add(regionKey);
+        
+        if (!this.loadedRegions.has(regionKey)) {
+          this.loadRegion(region);
+        }
+      }
+      
+      // Unload regions that are no longer active
+      for (const [regionKey, region] of this.loadedRegions.entries()) {
+        if (!activeRegionKeys.has(regionKey)) {
+          this.unloadRegion(region.coordinates);
+        }
+      }
+    }
+    
     // Update stored player position if provided
     if (playerPosition) {
       this.lastPlayerPosition.copy(playerPosition);
@@ -176,26 +217,24 @@ export class SceneManager {
   }
   
   public createDefaultWorld(): void {
-    console.log('Creating default world with collision detection...');
+    console.log('Creating default world with ring-quadrant system...');
     
-    // Create terrain
-    this.createTerrain();
-    console.log('Terrain created');
+    // Create starting region (center ring, NE quadrant)
+    const startRegion = { ringIndex: 0, quadrant: 0 };
+    this.loadRegion(startRegion);
     
-    // Create tavern
+    // Place tavern at center
     this.createTavern();
-    console.log('Tavern created');
+    console.log('Tavern created at center');
     
-    // Create forest
-    this.createForest();
-    console.log('Forest created');
+    // Create some basic decoration around starting area
+    this.createForestTrees(10);
+    console.log('Forest trees created');
     
-    // Create rocks
-    this.createRocks();
+    this.createRocks(5);
     console.log('Rocks created');
     
-    // Create bushes
-    this.createBushes();
+    this.createBushes(15);
     console.log('Bushes created');
     
     // Create skybox
@@ -220,63 +259,174 @@ export class SceneManager {
     this.updateSkybox();
     console.log('Skybox updated with realistic blue colors');
     
-    console.log('Default world creation complete with collision system. Total scene children:', this.scene.children.length);
+    console.log('Default world creation complete with ring-quadrant system. Total scene children:', this.scene.children.length);
   }
   
-  // New method to initialize enemy spawning system
-  public initializeEnemySpawning(effectsManager: any, audioManager: any): void {
-    if (!this.enemySpawningSystem) {
-      this.enemySpawningSystem = new DynamicEnemySpawningSystem(
-        this.scene,
-        effectsManager,
-        audioManager
-      );
+  // NEW: Region management methods
+  private loadRegion(region: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(region);
+    
+    // Skip if already loaded
+    if (this.loadedRegions.has(regionKey)) return;
+    
+    console.log(`Loading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    
+    // Get region center
+    const centerPosition = this.ringSystem.getRegionCenter(region);
+    
+    // Create terrain for this region
+    const terrain = this.createRegionTerrain(region, centerPosition);
+    
+    // Store region data
+    const newRegion: Region = {
+      coordinates: region,
+      centerPosition,
+      terrain,
+      isLoaded: true
+    };
+    
+    this.loadedRegions.set(regionKey, newRegion);
+  }
+  
+  private unloadRegion(region: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(region);
+    const loadedRegion = this.loadedRegions.get(regionKey);
+    
+    if (!loadedRegion) return;
+    
+    console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    
+    // Remove terrain
+    if (loadedRegion.terrain) {
+      this.scene.remove(loadedRegion.terrain);
       
-      console.log('Enemy spawning system initialized in SceneManager');
+      // Clean up geometry and materials
+      if (loadedRegion.terrain.geometry) {
+        loadedRegion.terrain.geometry.dispose();
+      }
+      
+      if (loadedRegion.terrain.material) {
+        if (Array.isArray(loadedRegion.terrain.material)) {
+          loadedRegion.terrain.material.forEach(m => m.dispose());
+        } else {
+          loadedRegion.terrain.material.dispose();
+        }
+      }
     }
+    
+    // Remove from loaded regions
+    this.loadedRegions.delete(regionKey);
   }
   
-  // New method to start enemy spawning
-  public startEnemySpawning(playerPosition?: THREE.Vector3): void {
-    if (this.enemySpawningSystem) {
-      this.enemySpawningSystem.initialize(playerPosition);
-      console.log('Enemy spawning started');
-    }
-  }
-  
-  // New method to get enemies for combat system
-  public getEnemies(): any[] {
-    return this.enemySpawningSystem ? this.enemySpawningSystem.getEnemies() : [];
-  }
-  
-  // New method to get enemy count
-  public getEnemyCount(): number {
-    return this.enemySpawningSystem ? this.enemySpawningSystem.getEntityCount() : 0;
-  }
-  
-  private createTerrain(): void {
-    const groundGeometry = new THREE.PlaneGeometry(100, 100, 50, 50);
-    const groundMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x5FAD5F,
+  // Create terrain for a specific region
+  private createRegionTerrain(region: RegionCoordinates, centerPosition: THREE.Vector3): THREE.Mesh {
+    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
+    
+    // Calculate region size based on ring dimensions and quadrant (90-degree section)
+    const innerRadius = ringDef.innerRadius;
+    const outerRadius = ringDef.outerRadius;
+    
+    // Create a quarter-circle segment for the quadrant
+    const terrainGeometry = this.createQuadrantGeometry(innerRadius, outerRadius, region.quadrant);
+    
+    // Create material with appropriate color for the ring
+    const terrainMaterial = new THREE.MeshLambertMaterial({ 
+      color: ringDef.terrainColor,
       map: TextureGenerator.createGrassTexture(),
       transparent: false
     });
     
     // Add height variation
-    const positions = groundGeometry.attributes.position.array as Float32Array;
-    for (let i = 0; i < positions.length; i += 3) {
-      positions[i + 2] = Math.random() * 0.3 - 0.15;
-    }
-    groundGeometry.attributes.position.needsUpdate = true;
-    groundGeometry.computeVertexNormals();
+    this.addTerrainHeightVariation(terrainGeometry);
     
-    this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    this.ground.rotation.x = -Math.PI / 2;
-    this.ground.receiveShadow = true;
-    this.scene.add(this.ground);
+    // Create mesh
+    const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+    terrain.rotation.x = -Math.PI / 2; // Make it horizontal
+    terrain.position.copy(centerPosition);
+    terrain.position.y = 0; // Ensure at ground level
+    terrain.receiveShadow = true;
+    
+    // Add to scene
+    this.scene.add(terrain);
+    
+    return terrain;
   }
   
-  private createTavern(): void {
+  // Create quadrant geometry (quarter-circle segment)
+  private createQuadrantGeometry(innerRadius: number, outerRadius: number, quadrant: number): THREE.BufferGeometry {
+    // Create a custom geometry for the quadrant
+    const geometry = new THREE.BufferGeometry();
+    
+    // Parameters for detail
+    const radialSegments = 20; // Segments from inner to outer radius
+    const heightSegments = 20; // Segments around the quadrant
+    
+    // Calculate start and end angles for this quadrant
+    const startAngle = quadrant * Math.PI / 2;
+    const endAngle = startAngle + Math.PI / 2;
+    
+    // Create vertices, uvs, and indices
+    const vertices = [];
+    const uvs = [];
+    const indices = [];
+    
+    // Generate vertices
+    for (let r = 0; r <= radialSegments; r++) {
+      const radius = innerRadius + (outerRadius - innerRadius) * (r / radialSegments);
+      
+      for (let a = 0; a <= heightSegments; a++) {
+        const angle = startAngle + (endAngle - startAngle) * (a / heightSegments);
+        
+        // Vertex
+        vertices.push(
+          Math.cos(angle) * radius, // x
+          0,                       // y (height will be added later)
+          Math.sin(angle) * radius  // z
+        );
+        
+        // UV (simple mapping)
+        uvs.push(
+          r / radialSegments,
+          a / heightSegments
+        );
+      }
+    }
+    
+    // Generate indices
+    for (let r = 0; r < radialSegments; r++) {
+      for (let a = 0; a < heightSegments; a++) {
+        const first = r * (heightSegments + 1) + a;
+        const second = first + heightSegments + 1;
+        
+        // Two triangles per segment
+        indices.push(first, second, first + 1);
+        indices.push(second, second + 1, first + 1);
+      }
+    }
+    
+    // Set attributes
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    
+    return geometry;
+  }
+  
+  // Add height variation to terrain
+  private addTerrainHeightVariation(geometry: THREE.BufferGeometry): void {
+    const positions = geometry.attributes.position.array as Float32Array;
+    
+    // Add random height variation
+    for (let i = 0; i < positions.length; i += 3) {
+      // Keep y-coordinate at index i+1
+      positions[i + 1] = Math.random() * 0.3 - 0.15;
+    }
+    
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+  }
+  
+  public createTavern(): void {
     const tavernGroup = new THREE.Group();
     
     // Tavern floor
@@ -377,8 +527,8 @@ export class SceneManager {
     this.scene.add(tavernGroup);
   }
   
-  private createForest(): void {
-    for (let i = 0; i < 80; i++) {
+  private createForestTrees(count: number): void {
+    for (let i = 0; i < count; i++) {
       // Tree trunk
       const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.6, 8, 12);
       const trunkMaterial = new THREE.MeshLambertMaterial({ 
@@ -389,8 +539,8 @@ export class SceneManager {
       
       let x, z;
       do {
-        x = (Math.random() - 0.5) * 160;
-        z = (Math.random() - 0.5) * 160;
+        x = (Math.random() - 0.5) * 80;
+        z = (Math.random() - 0.5) * 80;
       } while (Math.sqrt(x * x + z * z) < 20 || (Math.abs(x) < 15 && Math.abs(z) < 15));
       
       trunk.position.set(x, 4, z);
@@ -416,8 +566,8 @@ export class SceneManager {
     }
   }
   
-  private createRocks(): void {
-    for (let i = 0; i < 40; i++) {
+  private createRocks(count: number): void {
+    for (let i = 0; i < count; i++) {
       const rockGeometry = new THREE.DodecahedronGeometry(Math.random() * 0.6 + 0.3, 1);
       const rockMaterial = new THREE.MeshLambertMaterial({ 
         color: new THREE.Color().setHSL(0, 0, 0.5 + Math.random() * 0.4),
@@ -427,8 +577,8 @@ export class SceneManager {
       
       let x, z;
       do {
-        x = (Math.random() - 0.5) * 120;
-        z = (Math.random() - 0.5) * 120;
+        x = (Math.random() - 0.5) * 60;
+        z = (Math.random() - 0.5) * 60;
       } while (Math.abs(x) < 10 && Math.abs(z) < 10);
       
       rock.position.set(x, Math.random() * 0.3 + 0.2, z);
@@ -439,8 +589,8 @@ export class SceneManager {
     }
   }
   
-  private createBushes(): void {
-    for (let i = 0; i < 30; i++) {
+  private createBushes(count: number): void {
+    for (let i = 0; i < count; i++) {
       const bushGeometry = new THREE.SphereGeometry(0.5 + Math.random() * 0.3, 8, 6);
       const bushMaterial = new THREE.MeshLambertMaterial({ 
         color: new THREE.Color().setHSL(0.25, 0.6, 0.45 + Math.random() * 0.3)
@@ -449,8 +599,8 @@ export class SceneManager {
       
       let x, z;
       do {
-        x = (Math.random() - 0.5) * 100;
-        z = (Math.random() - 0.5) * 100;
+        x = (Math.random() - 0.5) * 50;
+        z = (Math.random() - 0.5) * 50;
       } while (Math.abs(x) < 12 && Math.abs(z) < 12);
       
       bush.position.set(x, 0.4, z);
@@ -661,6 +811,12 @@ export class SceneManager {
       this.enemySpawningSystem.dispose();
       this.enemySpawningSystem = null;
     }
+    
+    // Clean up loaded regions
+    for (const [regionKey, region] of this.loadedRegions.entries()) {
+      this.unloadRegion(region.coordinates);
+    }
+    this.loadedRegions.clear();
     
     console.log("SceneManager disposed with collision system cleanup");
   }

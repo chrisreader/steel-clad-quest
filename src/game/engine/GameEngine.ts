@@ -297,7 +297,7 @@ export class GameEngine {
     // Update camera to follow player
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // Update scene manager (includes dynamic spawning systems and distance-based fog)
+    // NEW: Update scene manager with player position for ring-quadrant system
     if (this.sceneManager) {
       this.sceneManager.update(deltaTime, this.player.getPosition());
     }
