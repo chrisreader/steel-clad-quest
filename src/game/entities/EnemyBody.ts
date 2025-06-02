@@ -278,7 +278,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
     
-    console.log("🗡️ [EnemyBodyBuilder] FIXED: Simplified positioning - legs at ground level, body above");
+    console.log("🗡️ [EnemyBodyBuilder] FIXED: Ground-relative positioning - legs properly positioned");
     console.log(`🗡️ [EnemyBodyBuilder] Body at Y=${body.position.y}, legs at Y=${leftLeg.position.y}, feet calculation: leg center ${leftLeg.position.y} - leg radius ${scale.leg.length/2} = ${leftLeg.position.y - scale.leg.length/2} (should be 0)`);
     
     return { group: orcGroup, bodyParts };

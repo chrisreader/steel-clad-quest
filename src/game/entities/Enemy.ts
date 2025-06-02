@@ -53,7 +53,7 @@ export class Enemy {
       this.isEnhancedEnemy = true;
       
       console.log(`🗡️ [Enemy] FIXED: Enhanced orc positioned correctly at (${this.enemy.mesh.position.x.toFixed(2)}, ${this.enemy.mesh.position.y.toFixed(2)}, ${this.enemy.mesh.position.z.toFixed(2)})`);
-      console.log("🗡️ [Enemy] Created enhanced orc with simplified positioning system");
+      console.log("🗡️ [Enemy] Created enhanced orc with ground-relative positioning");
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created basic goblin enemy");
@@ -72,7 +72,7 @@ export class Enemy {
     this.enhancedBodyParts = bodyParts;
     this.animationSystem = new EnemyAnimationSystem(bodyParts);
     
-    // Don't override any positions - trust the builder
+    // Don't override any positions - trust the builder's ground-relative positioning
     return {
       mesh: orcGroup,
       health: 60,
