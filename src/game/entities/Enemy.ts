@@ -52,8 +52,7 @@ export class Enemy {
       this.enemy = this.createEnhancedOrc(position);
       this.isEnhancedEnemy = true;
       
-      console.log(`🗡️ [Enemy] FIXED: Enhanced orc positioned correctly at (${this.enemy.mesh.position.x.toFixed(2)}, ${this.enemy.mesh.position.y.toFixed(2)}, ${this.enemy.mesh.position.z.toFixed(2)})`);
-      console.log("🗡️ [Enemy] Created enhanced orc with ground-relative positioning");
+      console.log(`🗡️ [Enemy] Enhanced orc created with auto-synced animation system`);
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created basic goblin enemy");
@@ -67,12 +66,13 @@ export class Enemy {
   }
   
   private createEnhancedOrc(position: THREE.Vector3): EnemyInterface {
-    // FIXED: Pass the exact spawn position - let EnemyBodyBuilder handle all positioning
-    const { group: orcGroup, bodyParts } = EnemyBodyBuilder.createRealisticOrcBody(position);
+    // Use new data-driven body builder
+    const { group: orcGroup, bodyParts, metrics } = EnemyBodyBuilder.createRealisticOrcBody(position);
     this.enhancedBodyParts = bodyParts;
-    this.animationSystem = new EnemyAnimationSystem(bodyParts);
     
-    // Don't override any positions - trust the builder's ground-relative positioning
+    // Pass metrics to animation system for auto-sync
+    this.animationSystem = new EnemyAnimationSystem(bodyParts, metrics);
+    
     return {
       mesh: orcGroup,
       health: 60,
@@ -102,9 +102,9 @@ export class Enemy {
       weapon: bodyParts.weapon,
       body: bodyParts.body,
       head: bodyParts.head,
-      attackRange: 3.5, // Increased range for enhanced orc
-      damageRange: 2.5, // Increased damage range
-      attackCooldown: 2000, // Faster attacks
+      attackRange: 3.5,
+      damageRange: 2.5,
+      attackCooldown: 2000,
       points: 50,
       idleTime: 0
     };
