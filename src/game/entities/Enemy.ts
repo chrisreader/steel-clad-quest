@@ -53,7 +53,7 @@ export class Enemy {
       this.enemy = this.createEnhancedOrc(position);
       this.isEnhancedEnemy = true;
       
-      console.log(`🗡️ [Enemy] FIXED: Enhanced orc created with aligned body-head orientation`);
+      console.log(`🗡️ [Enemy] FLIPPED: Enhanced orc created with new default orientation (body flipped 180°)`);
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created basic goblin enemy");
@@ -433,19 +433,19 @@ export class Enemy {
       .normalize();
     directionToPlayer.y = 0;
     
-    // FIXED: Different rotation calculations for enhanced vs legacy enemies
+    // FLIPPED: Since orc body is now flipped, use standard rotation for enhanced orcs
     if (this.isEnhancedEnemy) {
-      // For enhanced orcs: body is already rotated 180°, so we need to account for that
-      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z) + Math.PI;
+      // For enhanced orcs: now use standard rotation (body is flipped so no compensation needed)
+      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
     } else {
-      // For legacy goblins: use standard rotation
+      // For legacy goblins: still use standard rotation
       this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
     }
     
     // Set rotation immediately (no smooth interpolation for initial orientation)
     this.enemy.mesh.rotation.y = this.targetRotation;
     
-    console.log(`🎯 [Enemy] FIXED: Set initial orientation - Enhanced: ${this.isEnhancedEnemy}, Rotation: ${this.targetRotation.toFixed(2)}`);
+    console.log(`🎯 [Enemy] FLIPPED: Set initial orientation - Enhanced: ${this.isEnhancedEnemy}, Rotation: ${this.targetRotation.toFixed(2)}`);
   }
   
   private createHitFlashEffect(): void {
@@ -505,20 +505,14 @@ export class Enemy {
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
-      // FIXED: Calculate target rotation with proper orientation for each enemy type
+      // FLIPPED: Calculate target rotation with standard logic for both enemy types now
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.enemy.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
-      // FIXED: Use different rotation calculations based on enemy body construction
-      if (this.isEnhancedEnemy) {
-        // For enhanced orcs: compensate for 180° body rotation
-        this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z) + Math.PI;
-      } else {
-        // For legacy goblins: standard rotation
-        this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
-      }
+      // FLIPPED: Both enemy types now use standard rotation calculation
+      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
       // Move toward player if outside damage range
       if (distanceToPlayer > this.enemy.damageRange) {
@@ -554,12 +548,8 @@ export class Enemy {
           .normalize();
         direction.y = 0;
         
-        // FIXED: Use proper rotation calculation for each enemy type
-        if (this.isEnhancedEnemy) {
-          this.targetRotation = Math.atan2(direction.x, direction.z) + Math.PI;
-        } else {
-          this.targetRotation = Math.atan2(direction.x, direction.z);
-        }
+        // FLIPPED: Both enemy types now use standard rotation calculation
+        this.targetRotation = Math.atan2(direction.x, direction.z);
         
         const slowMoveAmount = this.enemy.speed * deltaTime * 0.3; // Slower movement when far
         const newPosition = this.enemy.mesh.position.clone();
@@ -844,7 +834,7 @@ export class Enemy {
     
     // Create enemy
     const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager);
-    console.log(`🗡️ [Enemy] FIXED: Created ${type} with proper initial orientation - Enhanced: ${enemy.isEnhancedEnemy}`);
+    console.log(`🗡️ [Enemy] FLIPPED: Created ${type} with new flipped orientation - Enhanced: ${enemy.isEnhancedEnemy}`);
     return enemy;
   }
   

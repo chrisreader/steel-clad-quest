@@ -260,8 +260,8 @@ export class EnemyBodyBuilder {
     hitBox.position.y = positions.bodyY;
     enemyGroup.add(hitBox);
 
-    // FIXED: Rotate entire orc body 180° to match head's forward direction
-    enemyGroup.rotation.y = Math.PI;
+    // FLIPPED: Remove the 180° rotation - orc now faces default forward direction (opposite of before)
+    // enemyGroup.rotation.y = Math.PI; // REMOVED - this was the old rotation
 
     // === POSITIONING ===
     enemyGroup.position.copy(position);
@@ -284,7 +284,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
 
-    console.log(`🗡️ [EnemyBodyBuilder] FIXED: ${type} body rotated 180° to align with head orientation`);
+    console.log(`🗡️ [EnemyBodyBuilder] FLIPPED: ${type} body now faces opposite direction (removed 180° rotation)`);
 
     return { group: enemyGroup, bodyParts, metrics };
   }
