@@ -398,10 +398,10 @@ export abstract class EnemyHumanoid {
     headGroup.add(neck);
 
     // Phase 3: Integrated Facial Features
-    // Improved nose structure - integrated into skull
+    // Improved nose structure - PUSHED FORWARD to be visible
     const noseGeometry = new THREE.BoxGeometry(0.25, 0.15, 0.3);
     const nose = new THREE.Mesh(noseGeometry, accentMaterial.clone());
-    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 0.95);
+    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 1.2); // Increased from 0.95 to 1.2
     nose.scale.set(1, 1, 0.8); // Flattened for orcish appearance
     nose.castShadow = true;
     headGroup.add(nose);
@@ -411,7 +411,7 @@ export abstract class EnemyHumanoid {
 
     // === ENHANCED FACIAL FEATURES ===
     if (features.hasEyes && features.eyeConfig) {
-      // Enhanced eye sockets integrated into brow ridge
+      // Enhanced eye sockets integrated into brow ridge - PUSHED FORWARD
       const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.2, 16, 12);
       const eyeSocketMaterial = new THREE.MeshPhongMaterial({
         color: colors.accent,
@@ -422,7 +422,7 @@ export abstract class EnemyHumanoid {
       leftEyeSocket.position.set(
         -features.eyeConfig.offsetX,
         headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 0.9
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1 // Increased from 0.9 to 1.1
       );
       leftEyeSocket.scale.z = 0.5;
       headGroup.add(leftEyeSocket);
@@ -431,12 +431,12 @@ export abstract class EnemyHumanoid {
       rightEyeSocket.position.set(
         features.eyeConfig.offsetX,
         headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 0.9
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1 // Increased from 0.9 to 1.1
       );
       rightEyeSocket.scale.z = 0.5;
       headGroup.add(rightEyeSocket);
 
-      // Enhanced glowing eyes
+      // Enhanced glowing eyes - PUSHED FORWARD
       const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius, 16, 12);
       const eyeMaterial = new THREE.MeshPhongMaterial({
         color: features.eyeConfig.color,
@@ -451,21 +451,21 @@ export abstract class EnemyHumanoid {
       leftEye.position.set(
         -features.eyeConfig.offsetX,
         headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15 // Increased to 1.15
       );
 
       const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
       rightEye.position.set(
         features.eyeConfig.offsetX,
         headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15 // Increased to 1.15
       );
 
       headGroup.add(leftEye);
       headGroup.add(rightEye);
     }
 
-    // Enhanced tusks attached to head (since no lower jaw)
+    // Enhanced tusks attached to head - PUSHED FORWARD to be visible
     if (features.hasTusks && features.tuskConfig) {
       const tuskGeometry = new THREE.ConeGeometry(
         features.tuskConfig.radius, features.tuskConfig.height, 12
@@ -480,7 +480,7 @@ export abstract class EnemyHumanoid {
       leftTusk.position.set(
         -features.tuskConfig.offsetX,
         headY - 0.3, // Attach to lower part of head
-        bodyScale.head.radius * 0.8
+        bodyScale.head.radius * 1.0 // Increased from 0.8 to 1.0
       );
       leftTusk.rotation.x = Math.PI;
       leftTusk.rotation.z = -0.1;
@@ -491,7 +491,7 @@ export abstract class EnemyHumanoid {
       rightTusk.position.set(
         features.tuskConfig.offsetX,
         headY - 0.3, // Attach to lower part of head
-        bodyScale.head.radius * 0.8
+        bodyScale.head.radius * 1.0 // Increased from 0.8 to 1.0
       );
       rightTusk.rotation.x = Math.PI;
       rightTusk.rotation.z = 0.1;
