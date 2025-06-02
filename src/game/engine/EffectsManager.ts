@@ -53,6 +53,7 @@ export class EffectsManager {
         
         if (effect.userData.age >= effect.userData.duration) {
           // Proper cleanup with geometry disposal and type guards
+          console.log(`🩸 [EffectsManager] Removing expired effect: ${effect.userData.type} after ${effect.userData.age}ms`);
           this.disposeEffectSafely(effect);
           this.scene.remove(effect);
           this.effects.delete(key);
@@ -134,7 +135,8 @@ export class EffectsManager {
       map: texture,
       transparent: true,
       alphaTest: 0.1,
-      depthWrite: false
+      depthWrite: false,
+      opacity: 0.8 // Set initial opacity to match fade calculation
     });
     
     const decal = new THREE.Mesh(geometry, material);
@@ -142,20 +144,33 @@ export class EffectsManager {
     decal.position.y = 0.01; // Slightly above ground
     decal.rotation.x = -Math.PI / 2; // Lay flat on ground
     
+    const decalKey = `blood_decal_${Date.now()}_${Math.random()}`;
+    
     decal.userData = {
       type: 'blood_decal',
       age: 0,
       duration: 8000,
       update: (deltaTime: number) => {
         const progress = decal.userData.age / decal.userData.duration;
-        if (progress > 0.7) {
-          material.opacity = 0.8 * (1 - (progress - 0.7) / 0.3);
+        
+        // Start fading at 50% progress for smoother transition
+        if (progress > 0.5) {
+          const fadeProgress = (progress - 0.5) / 0.5; // 0 to 1 over the last 50%
+          const newOpacity = 0.8 * (1 - fadeProgress);
+          material.opacity = Math.max(0, newOpacity);
+          
+          // Debug logging every 2 seconds
+          if (Math.floor(decal.userData.age / 2000) > Math.floor((decal.userData.age - deltaTime * 1000) / 2000)) {
+            console.log(`🩸 [EffectsManager] Blood decal ${decalKey} - Progress: ${(progress * 100).toFixed(1)}%, Opacity: ${material.opacity.toFixed(2)}`);
+          }
         }
       }
     };
     
     this.scene.add(decal);
-    this.effects.set(`blood_decal_${Date.now()}`, decal);
+    this.effects.set(decalKey, decal);
+    
+    console.log(`🩸 [EffectsManager] Created blood decal ${decalKey} at position:`, position, `with ${decal.userData.duration}ms duration`);
   }
   
   public createArrowBloodEffect(position: THREE.Vector3, arrowDirection: THREE.Vector3, damage: number): void {
