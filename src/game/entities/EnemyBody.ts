@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 
@@ -32,8 +31,8 @@ export class EnemyBodyBuilder {
       head: { radius: 0.5 },
       arm: { radius: [0.18, 0.22], length: 1.1 },
       forearm: { radius: [0.16, 0.18], length: 0.9 },
-      leg: { radius: [0.22, 0.26], length: 0.7 },     // Upper leg (thigh)
-      shin: { radius: [0.18, 0.20], length: 0.65 }    // Lower leg (shin)
+      leg: { radius: [0.22, 0.26], length: 0.55 },     // Reduced upper leg length
+      shin: { radius: [0.18, 0.20], length: 0.65 }     // Lower leg (shin)
     };
     
     // Orc colors (darker, more menacing)
@@ -46,17 +45,16 @@ export class EnemyBodyBuilder {
     const woodTexture = TextureGenerator.createWoodTexture(0x5D4037);
     const metalTexture = TextureGenerator.createMetalTexture(0x444444);
     
-    // === LEG POSITIONING IMPROVED ===
-    // Calculate proper thigh positioning: higher up, connected to body
-    const legTopY = 1.4; // Higher position - top of legs should connect to body bottom
-    const thighCenterY = legTopY - scale.leg.length / 2; // 1.4 - 0.35 = 1.05
+    // === LEG POSITIONING ===
+    const legTopY = 1.6; // Higher position for better proportions
+    const thighCenterY = legTopY - scale.leg.length / 2; // 1.6 - 0.275 = 1.325
     
     const leftLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
     const leftLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftLeg = new THREE.Mesh(leftLegGeometry, leftLegMaterial);
     leftLeg.position.set(
-      -scale.body.radius * 0.4,  // X offset from center
-      thighCenterY,              // Thigh center at Y=1.05 (top at 1.4, bottom at 0.7)
+      -scale.body.radius * 0.4,
+      thighCenterY,
       0
     );
     leftLeg.castShadow = true;
@@ -67,15 +65,15 @@ export class EnemyBodyBuilder {
     const rightLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightLeg = new THREE.Mesh(rightLegGeometry, rightLegMaterial);
     rightLeg.position.set(
-      scale.body.radius * 0.4,   // X offset from center
-      thighCenterY,              // Thigh center at Y=1.05 (top at 1.4, bottom at 0.7)
+      scale.body.radius * 0.4,
+      thighCenterY,
       0
     );
     rightLeg.castShadow = true;
     rightLeg.receiveShadow = true;
     orcGroup.add(rightLeg);
     
-    // === BODY POSITIONING (FIXED - SITS ON LEGS) ===
+    // === BODY POSITIONING (SITS ON LEGS) ===
     const bodyGeometry = new THREE.CylinderGeometry(scale.body.radius, scale.body.radius * 1.15, scale.body.height, 16);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.skin,
@@ -83,13 +81,13 @@ export class EnemyBodyBuilder {
       specular: 0x333333
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = legTopY + scale.body.height / 2; // 1.4 + 0.7 = 2.1
+    body.position.y = legTopY + scale.body.height / 2; // 1.6 + 0.7 = 2.3
     body.castShadow = true;
     body.receiveShadow = true;
     orcGroup.add(body);
     
-    // === HEAD POSITIONING (RELATIVE TO BODY) ===
-    const bodyTopY = body.position.y + scale.body.height / 2; // 2.1 + 0.7 = 2.8
+    // === HEAD POSITIONING (FIXED - PROPERLY CONNECTED TO BODY) ===
+    const bodyTopY = body.position.y + scale.body.height / 2; // 2.3 + 0.7 = 3.0
     const headGeometry = new THREE.SphereGeometry(scale.head.radius, 20, 16);
     const headMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.muscle,
@@ -97,7 +95,8 @@ export class EnemyBodyBuilder {
       specular: 0x222222
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = bodyTopY + scale.head.radius + 0.1; // 2.8 + 0.5 + 0.1 = 3.4
+    // Position head to sit directly on top of body with minimal gap
+    head.position.y = bodyTopY + scale.head.radius * 0.85; // 3.0 + 0.425 = 3.425 (reduced gap)
     head.castShadow = true;
     head.receiveShadow = true;
     orcGroup.add(head);
@@ -136,7 +135,7 @@ export class EnemyBodyBuilder {
     orcGroup.add(rightTusk);
     
     // === ARM POSITIONING (RELATIVE TO BODY) ===
-    const shoulderHeight = body.position.y + scale.body.height * 0.35; // 2.1 + 0.49 = 2.59
+    const shoulderHeight = body.position.y + scale.body.height * 0.35; // 2.3 + 0.49 = 2.79
     
     // LEFT ARM SYSTEM
     const leftArmGeometry = new THREE.CylinderGeometry(scale.arm.radius[0], scale.arm.radius[1], scale.arm.length, 16);
@@ -194,19 +193,15 @@ export class EnemyBodyBuilder {
     rightWrist.receiveShadow = true;
     rightElbow.add(rightWrist);
     
-    // === SHIN/FOOT POSITIONING (FIXED TO CONNECT TO THIGH BOTTOM) ===
-    // Position shins to connect to the bottom of the thighs
-    const thighBottomY = thighCenterY - scale.leg.length / 2; // 1.05 - 0.35 = 0.7
-    const shinCenterY = thighBottomY - scale.shin.length / 2; // 0.7 - 0.325 = 0.375
-    
-    // Calculate relative position from thigh center to shin center
-    const shinRelativeY = shinCenterY - thighCenterY; // 0.375 - 1.05 = -0.675
+    // === SHIN/FOOT POSITIONING (PROPERLY CONNECTED TO THIGH) ===
+    const thighBottomY = thighCenterY - scale.leg.length / 2; // 1.325 - 0.275 = 1.05
+    const shinCenterY = thighBottomY - scale.shin.length / 2; // 1.05 - 0.325 = 0.725
+    const shinRelativeY = shinCenterY - thighCenterY; // 0.725 - 1.325 = -0.6
     
     const leftKneeGeometry = new THREE.CylinderGeometry(scale.shin.radius[0], scale.shin.radius[1], scale.shin.length, 16);
     const leftKneeMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const leftKnee = new THREE.Mesh(leftKneeGeometry, leftKneeMaterial);
-    // Position shin so its top connects to thigh bottom
-    leftKnee.position.set(0, shinRelativeY, 0); // Relative to thigh center
+    leftKnee.position.set(0, shinRelativeY, 0);
     leftKnee.castShadow = true;
     leftKnee.receiveShadow = true;
     leftLeg.add(leftKnee);
@@ -215,7 +210,7 @@ export class EnemyBodyBuilder {
     const rightKneeGeometry = new THREE.CylinderGeometry(scale.shin.radius[0], scale.shin.radius[1], scale.shin.length, 16);
     const rightKneeMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const rightKnee = new THREE.Mesh(rightKneeGeometry, rightKneeMaterial);
-    rightKnee.position.set(0, shinRelativeY, 0); // Relative to thigh center
+    rightKnee.position.set(0, shinRelativeY, 0);
     rightKnee.castShadow = true;
     rightKnee.receiveShadow = true;
     rightLeg.add(rightKnee);
@@ -263,7 +258,7 @@ export class EnemyBodyBuilder {
     const hitBoxGeometry = new THREE.BoxGeometry(1.8, 2.2, 1.8);
     const hitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
     const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
-    hitBox.position.y = body.position.y; // Center hitbox on body
+    hitBox.position.y = body.position.y;
     orcGroup.add(hitBox);
     
     // === FINAL GROUP POSITIONING ===
@@ -287,10 +282,9 @@ export class EnemyBodyBuilder {
       hitBox
     };
     
-    console.log("🗡️ [EnemyBodyBuilder] FIXED: Proper leg connection implemented");
-    console.log(`🗡️ [EnemyBodyBuilder] Thigh: center=${thighCenterY}, bottom=${thighBottomY}`);
-    console.log(`🗡️ [EnemyBodyBuilder] Shin: center=${shinCenterY}, top=${shinCenterY + scale.shin.length/2}, bottom=${shinCenterY - scale.shin.length/2}`);
-    console.log(`🗡️ [EnemyBodyBuilder] Shin connects to thigh bottom: ${thighBottomY} = ${shinCenterY + scale.shin.length/2}`);
+    console.log("🗡️ [EnemyBodyBuilder] FIXED: Head now properly connected to torso");
+    console.log(`🗡️ [EnemyBodyBuilder] Body top at Y=${bodyTopY}, head at Y=${head.position.y}`);
+    console.log(`🗡️ [EnemyBodyBuilder] Head gap reduced to: ${(head.position.y - bodyTopY).toFixed(3)}`);
     
     return { group: orcGroup, bodyParts };
   }
