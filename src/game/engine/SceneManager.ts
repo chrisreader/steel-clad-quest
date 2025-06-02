@@ -414,7 +414,7 @@ export class SceneManager {
     return terrain;
   }
   
-  // Create quadrant geometry using proper mathematical approach
+  // Create quadrant geometry using XY plane (like CircleGeometry)
   private createQuadrantGeometry(innerRadius: number, outerRadius: number, quadrant: number): THREE.BufferGeometry {
     // Define quadrant angles (in radians)
     const quadrantAngles = [
@@ -432,18 +432,19 @@ export class SceneManager {
     const uvs: number[] = [];
     const indices: number[] = [];
     
-    // Generate vertices - CREATE IN XY PLANE so rotation works correctly
+    // FIXED: Generate vertices in XY plane (like CircleGeometry does)
     for (let j = 0; j <= ringSegments; j++) {
       const radius = innerRadius + (outerRadius - innerRadius) * (j / ringSegments);
       
       for (let i = 0; i <= radialSegments; i++) {
         const angle = angles.start + (angles.end - angles.start) * (i / radialSegments);
         
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        const y = 0; // Create in XY plane (y=0) so rotation to XZ works correctly
+        // CORRECTED: Create in XY plane to match CircleGeometry behavior
+        const x = Math.cos(angle) * radius;  // X coordinate
+        const y = Math.sin(angle) * radius;  // Y coordinate (NOT Z!)
+        const z = 0;                         // Z is always 0 in XY plane
         
-        // Push vertices in XY plane format - this will be rotated to XZ by the mesh rotation
+        // Push vertices in XY plane format (matches CircleGeometry)
         vertices.push(x, y, z);
         
         // Generate UV coordinates
@@ -481,14 +482,14 @@ export class SceneManager {
     return geometry;
   }
   
-  // Add height variation to terrain
+  // Add height variation to Z coordinate (since we're in XY plane before rotation)
   private addTerrainHeightVariation(geometry: THREE.BufferGeometry): void {
     const positions = geometry.attributes.position.array as Float32Array;
     
-    // Add random height variation
+    // Add random height variation to Z coordinate (since we're in XY plane before rotation)
     for (let i = 0; i < positions.length; i += 3) {
-      // Keep y-coordinate at index i+1
-      positions[i + 1] = Math.random() * 0.3 - 0.15;
+      // CORRECTED: Modify Z coordinate (index i+2) instead of Y coordinate
+      positions[i + 2] = Math.random() * 0.3 - 0.15;  // Add height variation to Z
     }
     
     geometry.attributes.position.needsUpdate = true;
