@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { EnemyType } from '../../../types/GameTypes';
@@ -209,7 +210,7 @@ export abstract class EnemyHumanoid {
     const humanoidGroup = new THREE.Group();
     const { bodyScale, colors, features } = this.config;
     
-    // Calculate positions based on body scale
+    // Calculate positions based on body scale - MAINTAIN EXACT SAME VALUES
     const legTopY = 1.4;
     const thighCenterY = legTopY - bodyScale.leg.length / 2;
     const bodyY = legTopY + bodyScale.body.height / 2;
@@ -231,11 +232,11 @@ export abstract class EnemyHumanoid {
     });
 
     // === ENHANCED TAPERED LEGS ===
-    const leftLegGeometry = this.createTaperedLimbGeometry(
+    const leftLegGeometry = this.createAnatomicalLimbGeometry(
       bodyScale.leg.radius[1], // wider at hip
       bodyScale.leg.radius[0], // narrower at knee
       bodyScale.leg.length,
-      32
+      'thigh'
     );
     const leftLeg = new THREE.Mesh(leftLegGeometry, muscleMaterial.clone());
     leftLeg.position.set(-bodyScale.body.radius * 0.4, thighCenterY, 0);
@@ -243,11 +244,11 @@ export abstract class EnemyHumanoid {
     leftLeg.receiveShadow = true;
     humanoidGroup.add(leftLeg);
 
-    const rightLegGeometry = this.createTaperedLimbGeometry(
+    const rightLegGeometry = this.createAnatomicalLimbGeometry(
       bodyScale.leg.radius[1],
       bodyScale.leg.radius[0],
       bodyScale.leg.length,
-      32
+      'thigh'
     );
     const rightLeg = new THREE.Mesh(rightLegGeometry, muscleMaterial.clone());
     rightLeg.position.set(bodyScale.body.radius * 0.4, thighCenterY, 0);
@@ -255,8 +256,8 @@ export abstract class EnemyHumanoid {
     rightLeg.receiveShadow = true;
     humanoidGroup.add(rightLeg);
 
-    // === ENHANCED HIP JOINT SPHERES (slightly embedded) ===
-    const hipJointGeometry = new THREE.SphereGeometry(0.24, 20, 16); // slightly larger
+    // === ENHANCED HIP JOINTS (slightly embedded) ===
+    const hipJointGeometry = new THREE.SphereGeometry(0.22, 20, 16);
     const hipJointMaterial = new THREE.MeshPhongMaterial({
       color: colors.accent,
       shininess: 45,
@@ -264,13 +265,13 @@ export abstract class EnemyHumanoid {
     });
 
     const leftHipJoint = new THREE.Mesh(hipJointGeometry, hipJointMaterial);
-    leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY - 0.05, 0); // slightly embedded
+    leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY - 0.03, 0); // slightly embedded
     leftHipJoint.castShadow = true;
     leftHipJoint.receiveShadow = true;
     humanoidGroup.add(leftHipJoint);
 
     const rightHipJoint = new THREE.Mesh(hipJointGeometry, hipJointMaterial.clone());
-    rightHipJoint.position.set(bodyScale.body.radius * 0.4, legTopY - 0.05, 0);
+    rightHipJoint.position.set(bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
     rightHipJoint.castShadow = true;
     rightHipJoint.receiveShadow = true;
     humanoidGroup.add(rightHipJoint);
@@ -286,7 +287,7 @@ export abstract class EnemyHumanoid {
     humanoidGroup.add(body);
 
     // === ENHANCED SHOULDER JOINTS (slightly embedded) ===
-    const shoulderGeometry = new THREE.SphereGeometry(0.30, 20, 16); // slightly larger
+    const shoulderGeometry = new THREE.SphereGeometry(0.28, 20, 16);
     const shoulderMaterial = new THREE.MeshPhongMaterial({
       color: colors.accent,
       shininess: 45,
@@ -451,11 +452,11 @@ export abstract class EnemyHumanoid {
     humanoidGroup.add(rightEar);
 
     // === ENHANCED TAPERED ARMS ===
-    const leftArmGeometry = this.createTaperedLimbGeometry(
+    const leftArmGeometry = this.createAnatomicalLimbGeometry(
       bodyScale.arm.radius[1], // wider at shoulder
       bodyScale.arm.radius[0], // narrower at elbow
       bodyScale.arm.length,
-      32
+      'upperarm'
     );
     leftArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
     const leftArm = new THREE.Mesh(leftArmGeometry, muscleMaterial.clone());
@@ -465,11 +466,11 @@ export abstract class EnemyHumanoid {
     leftArm.receiveShadow = true;
     humanoidGroup.add(leftArm);
 
-    const rightArmGeometry = this.createTaperedLimbGeometry(
+    const rightArmGeometry = this.createAnatomicalLimbGeometry(
       bodyScale.arm.radius[1],
       bodyScale.arm.radius[0],
       bodyScale.arm.length,
-      32
+      'upperarm'
     );
     rightArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
     const rightArm = new THREE.Mesh(rightArmGeometry, muscleMaterial.clone());
@@ -480,7 +481,7 @@ export abstract class EnemyHumanoid {
     humanoidGroup.add(rightArm);
 
     // === ENHANCED ELBOW JOINTS (slightly embedded) ===
-    const elbowJointGeometry = new THREE.SphereGeometry(0.22, 20, 16); // slightly larger
+    const elbowJointGeometry = new THREE.SphereGeometry(0.20, 20, 16);
     const elbowJointMaterial = new THREE.MeshPhongMaterial({
       color: colors.accent,
       shininess: 45,
@@ -488,23 +489,23 @@ export abstract class EnemyHumanoid {
     });
 
     const leftElbowJoint = new THREE.Mesh(elbowJointGeometry, elbowJointMaterial);
-    leftElbowJoint.position.set(0, -bodyScale.arm.length + 0.05, 0); // slightly embedded
+    leftElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0); // slightly embedded
     leftElbowJoint.castShadow = true;
     leftElbowJoint.receiveShadow = true;
     leftArm.add(leftElbowJoint);
 
     const rightElbowJoint = new THREE.Mesh(elbowJointGeometry, elbowJointMaterial.clone());
-    rightElbowJoint.position.set(0, -bodyScale.arm.length + 0.05, 0);
+    rightElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
     rightElbowJoint.castShadow = true;
     rightElbowJoint.receiveShadow = true;
     rightArm.add(rightElbowJoint);
 
     // === ENHANCED TAPERED FOREARMS ===
-    const leftElbowGeometry = this.createTaperedLimbGeometry(
+    const leftElbowGeometry = this.createAnatomicalLimbGeometry(
       bodyScale.forearm.radius[1], // wider at elbow
       bodyScale.forearm.radius[0], // narrower at wrist
       bodyScale.forearm.length,
-      28
+      'forearm'
     );
     leftElbowGeometry.translate(0, -bodyScale.forearm.length * 0.5, 0);
     const leftElbow = new THREE.Mesh(leftElbowGeometry, skinMaterial.clone());
@@ -513,11 +514,11 @@ export abstract class EnemyHumanoid {
     leftElbow.receiveShadow = true;
     leftArm.add(leftElbow);
 
-    const rightElbowGeometry = this.createTaperedLimbGeometry(
+    const rightElbowGeometry = this.createAnatomicalLimbGeometry(
       bodyScale.forearm.radius[1],
       bodyScale.forearm.radius[0],
       bodyScale.forearm.length,
-      28
+      'forearm'
     );
     rightElbowGeometry.translate(0, -bodyScale.forearm.length * 0.5, 0);
     const rightElbow = new THREE.Mesh(rightElbowGeometry, skinMaterial.clone());
@@ -576,11 +577,11 @@ export abstract class EnemyHumanoid {
     // === ENHANCED TAPERED SHINS ===
     const shinRelativeY = -bodyScale.leg.length / 2;
 
-    const leftKneeGeometry = this.createTaperedLimbGeometry(
+    const leftKneeGeometry = this.createAnatomicalLimbGeometry(
       bodyScale.shin.radius[1], // wider at knee
       bodyScale.shin.radius[0], // narrower at ankle
       bodyScale.shin.length,
-      32
+      'shin'
     );
     leftKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
     const leftKnee = new THREE.Mesh(leftKneeGeometry, skinMaterial.clone());
@@ -589,11 +590,11 @@ export abstract class EnemyHumanoid {
     leftKnee.receiveShadow = true;
     leftLeg.add(leftKnee);
 
-    const rightKneeGeometry = this.createTaperedLimbGeometry(
+    const rightKneeGeometry = this.createAnatomicalLimbGeometry(
       bodyScale.shin.radius[1],
       bodyScale.shin.radius[0],
       bodyScale.shin.length,
-      32
+      'shin'
     );
     rightKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
     const rightKnee = new THREE.Mesh(rightKneeGeometry, skinMaterial.clone());
@@ -603,7 +604,7 @@ export abstract class EnemyHumanoid {
     rightLeg.add(rightKnee);
 
     // === ENHANCED KNEE JOINTS (slightly embedded) ===
-    const kneeJointGeometry = new THREE.SphereGeometry(0.24, 20, 16); // slightly larger
+    const kneeJointGeometry = new THREE.SphereGeometry(0.22, 20, 16);
     const kneeJointMaterial = new THREE.MeshPhongMaterial({
       color: colors.accent,
       shininess: 45,
@@ -611,13 +612,13 @@ export abstract class EnemyHumanoid {
     });
 
     const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, kneeJointMaterial);
-    leftKneeJoint.position.set(0, shinRelativeY + 0.05, 0); // slightly embedded
+    leftKneeJoint.position.set(0, shinRelativeY + 0.03, 0); // slightly embedded
     leftKneeJoint.castShadow = true;
     leftKneeJoint.receiveShadow = true;
     leftLeg.add(leftKneeJoint);
 
     const rightKneeJoint = new THREE.Mesh(kneeJointGeometry, kneeJointMaterial.clone());
-    rightKneeJoint.position.set(0, shinRelativeY + 0.05, 0);
+    rightKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
     rightKneeJoint.castShadow = true;
     rightKneeJoint.receiveShadow = true;
     rightLeg.add(rightKneeJoint);
@@ -735,18 +736,19 @@ export abstract class EnemyHumanoid {
   }
 
   /**
-   * Creates a tapered cylindrical limb geometry that widens near joints
+   * Creates anatomical limb geometry with proper tapering and joint connection zones
    */
-  private createTaperedLimbGeometry(
+  private createAnatomicalLimbGeometry(
     topRadius: number,
     bottomRadius: number, 
     height: number,
-    segments: number = 32
+    limbType: 'thigh' | 'shin' | 'upperarm' | 'forearm'
   ): THREE.CylinderGeometry {
     // Create smooth tapered cylinder with enhanced joint connection areas
-    const geometry = new THREE.CylinderGeometry(topRadius, bottomRadius, height, segments);
+    const segments = 32; // High quality for smooth curves
+    const geometry = new THREE.CylinderGeometry(topRadius, bottomRadius, height, segments, 8);
     
-    // Get the position attribute to modify vertices for smoother joint connections
+    // Get the position attribute to modify vertices for better joint connections
     const positions = geometry.attributes.position;
     const vertex = new THREE.Vector3();
     
@@ -756,28 +758,56 @@ export abstract class EnemyHumanoid {
       // Calculate normalized height position (-1 to 1, where -1 is bottom, 1 is top)
       const normalizedY = (vertex.y + height / 2) / height * 2 - 1;
       
-      // Apply subtle bulging near the ends for more organic joint connections
+      // Apply subtle expansion near connection points for smooth joint transitions
       let radiusMultiplier = 1.0;
       
-      // Add slight bulging near the ends (top and bottom 20% of the limb)
-      if (normalizedY > 0.6) {
-        // Near top - bulge slightly for joint connection
-        const factor = (normalizedY - 0.6) / 0.4;
-        radiusMultiplier = 1.0 + factor * 0.15;
-      } else if (normalizedY < -0.6) {
-        // Near bottom - bulge slightly for joint connection  
-        const factor = (-normalizedY - 0.6) / 0.4;
-        radiusMultiplier = 1.0 + factor * 0.15;
+      // Expand near the ends (top and bottom 15% of the limb) for joint connection
+      if (normalizedY > 0.7) {
+        // Near top - expand for joint connection
+        const factor = (normalizedY - 0.7) / 0.3;
+        radiusMultiplier = 1.0 + factor * 0.08; // 8% expansion
+      } else if (normalizedY < -0.7) {
+        // Near bottom - expand for joint connection  
+        const factor = (-normalizedY - 0.7) / 0.3;
+        radiusMultiplier = 1.0 + factor * 0.08; // 8% expansion
       }
       
-      // Apply the multiplier to x and z coordinates
-      vertex.x *= radiusMultiplier;
-      vertex.z *= radiusMultiplier;
+      // Add very subtle anatomical curves based on limb type
+      let anatomicalOffset = 0;
+      const angle = Math.atan2(vertex.z, vertex.x);
+      
+      switch (limbType) {
+        case 'thigh':
+          // Slight forward curve for thigh muscles
+          anatomicalOffset = Math.sin(normalizedY * Math.PI) * 0.03 * Math.cos(angle);
+          break;
+        case 'upperarm':
+          // Slight bicep bulge
+          anatomicalOffset = Math.sin(normalizedY * Math.PI * 0.8) * 0.02 * Math.cos(angle * 2);
+          break;
+        case 'forearm':
+          // Slight taper with muscle definition
+          anatomicalOffset = Math.sin(normalizedY * Math.PI * 0.6) * 0.015 * Math.cos(angle);
+          break;
+        case 'shin':
+          // Slight calf muscle curve
+          anatomicalOffset = Math.sin((normalizedY + 1) * Math.PI * 0.7) * 0.02 * Math.sin(angle);
+          break;
+      }
+      
+      // Apply the transformations
+      const distance = Math.sqrt(vertex.x * vertex.x + vertex.z * vertex.z);
+      const finalRadius = (radiusMultiplier * distance) + anatomicalOffset;
+      
+      if (distance > 0) {
+        vertex.x = (vertex.x / distance) * finalRadius;
+        vertex.z = (vertex.z / distance) * finalRadius;
+      }
       
       positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
     
-    geometry.attributes.position.needsUpdate = true;
+    positions.needsUpdate = true;
     geometry.computeVertexNormals(); // Recompute normals for proper lighting
     
     return geometry;
