@@ -46,8 +46,35 @@ export class EnemyBodyBuilder {
     const woodTexture = TextureGenerator.createWoodTexture(0x5D4037);
     const metalTexture = TextureGenerator.createMetalTexture(0x444444);
     
-    // === BODY POSITIONING (GROUND-RELATIVE) ===
-    // Position body so its bottom is at ground level, top extends upward
+    // === LEG POSITIONING FIRST (FOUNDATION) ===
+    // Position legs so they extend from body bottom to ground level
+    const leftLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
+    const leftLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
+    const leftLeg = new THREE.Mesh(leftLegGeometry, leftLegMaterial);
+    leftLeg.position.set(
+      -scale.body.radius * 0.4,  // X offset from center
+      scale.leg.length / 2,      // Leg center at 0.55 (leg top at 1.1)
+      0
+    );
+    leftLeg.castShadow = true;
+    leftLeg.receiveShadow = true;
+    orcGroup.add(leftLeg);
+    
+    const rightLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
+    const rightLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
+    const rightLeg = new THREE.Mesh(rightLegGeometry, rightLegMaterial);
+    rightLeg.position.set(
+      scale.body.radius * 0.4,   // X offset from center
+      scale.leg.length / 2,      // Leg center at 0.55 (leg top at 1.1)
+      0
+    );
+    rightLeg.castShadow = true;
+    rightLeg.receiveShadow = true;
+    orcGroup.add(rightLeg);
+    
+    // === BODY POSITIONING (FIXED - SITS ON LEGS) ===
+    // Calculate: leg top (1.1) + body radius (0.7) = body center at 1.8
+    const legTopY = scale.leg.length; // 1.1
     const bodyGeometry = new THREE.CylinderGeometry(scale.body.radius, scale.body.radius * 1.15, scale.body.height, 16);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.skin,
@@ -55,12 +82,13 @@ export class EnemyBodyBuilder {
       specular: 0x333333
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = scale.body.height / 2; // Body center at 0.7 units above ground
+    body.position.y = legTopY + scale.body.height / 2; // 1.1 + 0.7 = 1.8
     body.castShadow = true;
     body.receiveShadow = true;
     orcGroup.add(body);
     
-    // === HEAD POSITIONING ===
+    // === HEAD POSITIONING (RELATIVE TO BODY) ===
+    const bodyTopY = body.position.y + scale.body.height / 2; // 1.8 + 0.7 = 2.5
     const headGeometry = new THREE.SphereGeometry(scale.head.radius, 20, 16);
     const headMaterial = new THREE.MeshPhongMaterial({ 
       color: colors.muscle,
@@ -68,7 +96,7 @@ export class EnemyBodyBuilder {
       specular: 0x222222
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = scale.body.height + scale.head.radius + 0.1; // 2.0 units above ground
+    head.position.y = bodyTopY + scale.head.radius + 0.1; // 2.5 + 0.5 + 0.1 = 3.1
     head.castShadow = true;
     head.receiveShadow = true;
     orcGroup.add(head);
@@ -106,8 +134,8 @@ export class EnemyBodyBuilder {
     orcGroup.add(leftTusk);
     orcGroup.add(rightTusk);
     
-    // === ARM POSITIONING ===
-    const shoulderHeight = scale.body.height * 0.85; // 1.19 units above ground
+    // === ARM POSITIONING (RELATIVE TO BODY) ===
+    const shoulderHeight = body.position.y + scale.body.height * 0.35; // 1.8 + 0.49 = 2.29
     
     // LEFT ARM SYSTEM
     const leftArmGeometry = new THREE.CylinderGeometry(scale.arm.radius[0], scale.arm.radius[1], scale.arm.length, 16);
@@ -165,21 +193,7 @@ export class EnemyBodyBuilder {
     rightWrist.receiveShadow = true;
     rightElbow.add(rightWrist);
     
-    // === LEG POSITIONING (FIXED) ===
-    // Position legs so they extend from body bottom to ground level
-    const leftLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
-    const leftLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
-    const leftLeg = new THREE.Mesh(leftLegGeometry, leftLegMaterial);
-    leftLeg.position.set(
-      -scale.body.radius * 0.4,  // X offset from center
-      scale.leg.length / 2,      // POSITIVE Y: leg center above ground (0.55)
-      0
-    );
-    leftLeg.castShadow = true;
-    leftLeg.receiveShadow = true;
-    orcGroup.add(leftLeg);
-    
-    // === SHIN/FOOT POSITIONING (FIXED) ===
+    // === SHIN/FOOT POSITIONING ===
     const leftKneeGeometry = new THREE.CylinderGeometry(scale.shin.radius[0], scale.shin.radius[1], scale.shin.length, 16);
     const leftKneeMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const leftKnee = new THREE.Mesh(leftKneeGeometry, leftKneeMaterial);
@@ -187,19 +201,6 @@ export class EnemyBodyBuilder {
     leftKnee.castShadow = true;
     leftKnee.receiveShadow = true;
     leftLeg.add(leftKnee);
-    
-    // RIGHT LEG SYSTEM (FIXED)
-    const rightLegGeometry = new THREE.CylinderGeometry(scale.leg.radius[0], scale.leg.radius[1], scale.leg.length, 16);
-    const rightLegMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
-    const rightLeg = new THREE.Mesh(rightLegGeometry, rightLegMaterial);
-    rightLeg.position.set(
-      scale.body.radius * 0.4,   // X offset from center
-      scale.leg.length / 2,      // POSITIVE Y: leg center above ground (0.55)
-      0
-    );
-    rightLeg.castShadow = true;
-    rightLeg.receiveShadow = true;
-    orcGroup.add(rightLeg);
     
     // Right knee (shin)
     const rightKneeGeometry = new THREE.CylinderGeometry(scale.shin.radius[0], scale.shin.radius[1], scale.shin.length, 16);
@@ -249,15 +250,14 @@ export class EnemyBodyBuilder {
     weapon.rotation.z = -0.3;
     rightWrist.add(weapon);
     
-    // === HITBOX POSITIONING (SIMPLIFIED) ===
+    // === HITBOX POSITIONING ===
     const hitBoxGeometry = new THREE.BoxGeometry(1.8, 2.2, 1.8);
     const hitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
     const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
-    hitBox.position.y = scale.body.height / 2;
+    hitBox.position.y = body.position.y; // Center hitbox on body
     orcGroup.add(hitBox);
     
     // === FINAL GROUP POSITIONING ===
-    // Simply copy the spawn position - no additional Y offset needed
     orcGroup.position.copy(position);
     orcGroup.castShadow = true;
     
@@ -278,8 +278,8 @@ export class EnemyBodyBuilder {
       hitBox
     };
     
-    console.log("🗡️ [EnemyBodyBuilder] FIXED: Ground-relative positioning - legs properly positioned");
-    console.log(`🗡️ [EnemyBodyBuilder] Body at Y=${body.position.y}, legs at Y=${leftLeg.position.y}, feet calculation: leg center ${leftLeg.position.y} - leg radius ${scale.leg.length/2} = ${leftLeg.position.y - scale.leg.length/2} (should be 0)`);
+    console.log("🗡️ [EnemyBodyBuilder] FIXED: Body properly sits on legs - proper anatomical connection");
+    console.log(`🗡️ [EnemyBodyBuilder] Leg top at Y=${legTopY}, Body center at Y=${body.position.y}, Body bottom at Y=${body.position.y - scale.body.height/2} (should equal leg top)`);
     
     return { group: orcGroup, bodyParts };
   }
