@@ -272,7 +272,7 @@ export abstract class EnemyHumanoid {
     mainTorso.receiveShadow = true;
     torsoGroup.add(mainTorso);
 
-    // NEW: Enhanced Chest Area - separate trackable component
+    // REVERTED: Enhanced Chest Area - positioned relative to torso group (back to original position)
     const chestGeometry = new THREE.CylinderGeometry(
       bodyScale.body.radius * 1.2,
       bodyScale.body.radius * 0.85,
@@ -280,12 +280,12 @@ export abstract class EnemyHumanoid {
       16, 4
     );
     const chest = new THREE.Mesh(chestGeometry, muscleMaterial.clone());
-    chest.position.y = bodyTopY - 0.25;
+    chest.position.y = bodyScale.body.height * 0.3; // Relative to torso group, not world
     chest.castShadow = true;
     chest.receiveShadow = true;
     torsoGroup.add(chest);
 
-    // NEW: Enhanced Hip/Pelvis Area - separate trackable component
+    // REVERTED: Enhanced Hip/Pelvis Area - positioned relative to torso group (back to original position)
     const pelvisGeometry = new THREE.CylinderGeometry(
       bodyScale.body.radius * 0.75,
       bodyScale.body.radius * 0.9,
@@ -293,11 +293,13 @@ export abstract class EnemyHumanoid {
       16, 4
     );
     const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
-    pelvis.position.y = legTopY + 0.2;
+    pelvis.position.y = -bodyScale.body.height * 0.3; // Relative to torso group, not world
     pelvis.castShadow = true;
     pelvis.receiveShadow = true;
     torsoGroup.add(pelvis);
 
+    // Position the entire torso group
+    torsoGroup.position.y = bodyY;
     humanoidGroup.add(torsoGroup);
     const body = mainTorso; // Keep reference for animation system
 
@@ -748,9 +750,9 @@ export abstract class EnemyHumanoid {
       rightFoot,
       weapon,
       hitBox,
-      // NEW: Enhanced anatomical parts for realistic movement
-      chest, // Separate chest component for breathing and rotation
-      pelvis // Separate pelvis component for hip movement and weight transfer
+      // Enhanced anatomical parts for realistic movement - now properly positioned
+      chest, // Chest component for breathing and rotation
+      pelvis // Pelvis component for hip movement and weight transfer
     };
 
     // Create metrics for animation system
