@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EnemyBodyParts } from '../entities/EnemyBody';
 import { EnemyBodyMetrics } from '../entities/EnemyBodyMetrics';
@@ -161,63 +160,63 @@ export class EnemyAnimationSystem {
       y: enemyNeutral.y, 
       z: enemyNeutral.z 
     };
-    let elbowRotation = { x: 0.05, y: 0, z: 0 };
-    let wristRotation = { x: -Math.PI / 6, y: 0, z: 0 };
+    let elbowRotation = { x: 0, y: 0, z: 0 };
+    let wristRotation = { x: 0, y: 0, z: 0 };
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE - Move from neutral to raised position for forward swing
+      // WINDUP PHASE - Raise arm up and back slightly for forward swing preparation
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Raise arm forward and up from enemy's neutral position
-      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x, enemyNeutral.x - 0.8, easedT); // Raise up
-      shoulderRotation.y = THREE.MathUtils.lerp(enemyNeutral.y, 0.3, easedT); // Move to right side
-      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z, enemyNeutral.z + 0.4, easedT); // Twist for power
+      // Raise arm up from enemy's neutral position (more upward, less backward)
+      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x, enemyNeutral.x - 0.5, easedT); // Raise up moderately
+      shoulderRotation.y = THREE.MathUtils.lerp(enemyNeutral.y, 0.2, easedT); // Slight right position
+      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z, enemyNeutral.z + 0.3, easedT); // Twist for power
       
-      elbowRotation.x = THREE.MathUtils.lerp(0.05, -0.1, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 6, easedT);
+      elbowRotation.x = THREE.MathUtils.lerp(0, -0.1, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 8, easedT);
       
-      wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 8, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0, 0.3, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 10, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(0, 0.2, easedT);
       
-      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0, -0.2, easedT);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE - Forward diagonal slash from raised position
+      // SLASH PHASE - Forward swing down from raised position
       const t = (elapsed - phases.windup) / phases.slash;
       const aggressiveT = t * t * (3 - 2 * t);
       
-      // Swing down and forward in a diagonal motion
-      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x - 0.8, enemyNeutral.x + 0.6, aggressiveT); // Swing down
-      shoulderRotation.y = THREE.MathUtils.lerp(0.3, -0.4, aggressiveT); // Sweep across to left
-      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z + 0.4, enemyNeutral.z - 0.4, aggressiveT); // Counter-twist
+      // Swing forward and down from windup position
+      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x - 0.5, enemyNeutral.x + 0.3, aggressiveT); // Swing down and slightly forward
+      shoulderRotation.y = THREE.MathUtils.lerp(0.2, -0.3, aggressiveT); // Sweep across to left
+      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z + 0.3, enemyNeutral.z - 0.2, aggressiveT); // Counter-twist
       
-      elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.15, aggressiveT);
-      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 6, aggressiveT);
+      elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.1, aggressiveT);
+      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 8, aggressiveT);
       
-      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 10, aggressiveT);
-      wristRotation.z = THREE.MathUtils.lerp(0.3, -0.2, aggressiveT);
+      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 10, Math.PI / 12, aggressiveT);
+      wristRotation.z = THREE.MathUtils.lerp(0.2, -0.1, aggressiveT);
       
-      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.25, aggressiveT);
+      torsoRotation = THREE.MathUtils.lerp(-0.2, 0.15, aggressiveT);
       
     } else if (elapsed < duration) {
-      // RECOVERY PHASE - Return to enemy's neutral position
+      // RECOVERY PHASE - Return to enemy's exact neutral position
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
       // Return to actual enemy neutral pose
-      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x + 0.6, enemyNeutral.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(-0.4, enemyNeutral.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z - 0.4, enemyNeutral.z, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x + 0.3, enemyNeutral.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(-0.3, enemyNeutral.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z - 0.2, enemyNeutral.z, easedT);
       
-      elbowRotation.x = THREE.MathUtils.lerp(0.15, 0.05, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 6, 0, easedT);
+      elbowRotation.x = THREE.MathUtils.lerp(0.1, 0, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 8, 0, easedT);
       
-      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 10, 0, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(-0.2, 0, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 12, 0, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(-0.1, 0, easedT);
       
-      torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0.15, 0, easedT);
       
     } else {
       // ANIMATION COMPLETE
@@ -238,9 +237,9 @@ export class EnemyAnimationSystem {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    // Apply SHOULDER rotations (right arm for weapon)
+    // Apply SHOULDER rotations (right arm for weapon) - use actual neutral Z value
     if (this.bodyParts.rightArm) {
-      this.bodyParts.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z - 0.3, 'XYZ');
+      this.bodyParts.rightArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
     }
     
     // Apply ELBOW rotations
@@ -260,18 +259,20 @@ export class EnemyAnimationSystem {
   }
   
   private completeAttackAnimation(): void {
-    // Reset to enemy's actual neutral positions
+    // Reset to enemy's actual neutral positions using metrics
     const rightNeutral = this.metrics.neutralPoses.arms.right;
+    const rightElbowNeutral = this.metrics.neutralPoses.elbows.right;
+    const rightWristNeutral = this.metrics.neutralPoses.wrists.right;
     
     if (this.bodyParts.rightArm) {
-      this.bodyParts.rightArm.rotation.set(rightNeutral.x, rightNeutral.y, rightNeutral.z - 0.3);
+      this.bodyParts.rightArm.rotation.set(rightNeutral.x, rightNeutral.y, rightNeutral.z);
     }
     
     if (this.bodyParts.rightElbow) {
-      this.bodyParts.rightElbow.rotation.set(0.05, 0, 0);
+      this.bodyParts.rightElbow.rotation.set(rightElbowNeutral.x, rightElbowNeutral.y, rightElbowNeutral.z);
     }
     if (this.bodyParts.rightWrist) {
-      this.bodyParts.rightWrist.rotation.set(-Math.PI / 6, 0, 0);
+      this.bodyParts.rightWrist.rotation.set(rightWristNeutral.x, rightWristNeutral.y, rightWristNeutral.z);
     }
     if (this.bodyParts.body) {
       this.bodyParts.body.rotation.y = 0;
