@@ -160,20 +160,17 @@ export class EnemyBodyBuilder {
       enemyGroup.add(rightTusk);
     }
 
-    // === ARMS - FIXED PIVOT POINTS ===
+    // === ARMS - CORRECT PIVOT POINTS ===
     const leftArmGeometry = new THREE.CylinderGeometry(
       scale.arm.radius[0], scale.arm.radius[1], scale.arm.length, 16
     );
+    // FIXED: Translate geometry so pivot is at TOP (shoulder end) not center
+    leftArmGeometry.translate(0, -scale.arm.length * 0.5, 0);
     const leftArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftArm = new THREE.Mesh(leftArmGeometry, leftArmMaterial);
     
-    // FIXED: Position the arm so its TOP is at shoulder height, not its center
-    // Move arm down by half its length so shoulder joint is at the actual top
-    leftArm.position.set(
-      -(scale.body.radius + 0.1), 
-      positions.shoulderHeight - scale.arm.length * 0.5, // FIXED: Moved down by half arm length
-      0
-    );
+    // Now position at shoulder height - pivot is already at the top due to geometry translation
+    leftArm.position.set(-(scale.body.radius + 0.1), positions.shoulderHeight, 0);
     leftArm.rotation.set(neutralPoses.arms.left.x, neutralPoses.arms.left.y, neutralPoses.arms.left.z);
     leftArm.castShadow = true;
     leftArm.receiveShadow = true;
@@ -182,30 +179,29 @@ export class EnemyBodyBuilder {
     const rightArmGeometry = new THREE.CylinderGeometry(
       scale.arm.radius[0], scale.arm.radius[1], scale.arm.length, 16
     );
+    // FIXED: Translate geometry so pivot is at TOP (shoulder end) not center
+    rightArmGeometry.translate(0, -scale.arm.length * 0.5, 0);
     const rightArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightArm = new THREE.Mesh(rightArmGeometry, rightArmMaterial);
     
-    // FIXED: Position the arm so its TOP is at shoulder height, not its center
-    rightArm.position.set(
-      scale.body.radius + 0.1, 
-      positions.shoulderHeight - scale.arm.length * 0.5, // FIXED: Moved down by half arm length
-      0
-    );
+    // Now position at shoulder height - pivot is already at the top due to geometry translation
+    rightArm.position.set(scale.body.radius + 0.1, positions.shoulderHeight, 0);
     rightArm.rotation.set(neutralPoses.arms.right.x, neutralPoses.arms.right.y, neutralPoses.arms.right.z);
     rightArm.castShadow = true;
     rightArm.receiveShadow = true;
     enemyGroup.add(rightArm);
 
-    // === FOREARMS - ADJUSTED FOR NEW ARM POSITIONING ===
+    // === FOREARMS - CORRECT PIVOT POINTS ===
     const leftElbowGeometry = new THREE.CylinderGeometry(
       scale.forearm.radius[0], scale.forearm.radius[1], scale.forearm.length, 16
     );
+    // FIXED: Translate geometry so pivot is at TOP (elbow end) not center
+    leftElbowGeometry.translate(0, -scale.forearm.length * 0.5, 0);
     const leftElbowMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const leftElbow = new THREE.Mesh(leftElbowGeometry, leftElbowMaterial);
     
-    // ADJUSTED: Elbow position relative to the new arm positioning
-    // Position elbow at the bottom of the upper arm
-    leftElbow.position.set(0, -scale.arm.length * 0.5 - scale.forearm.length * 0.5, 0);
+    // Position at bottom of upper arm - pivot is already at the top due to geometry translation
+    leftElbow.position.set(0, -scale.arm.length, 0);
     leftElbow.castShadow = true;
     leftElbow.receiveShadow = true;
     leftArm.add(leftElbow);
@@ -213,11 +209,13 @@ export class EnemyBodyBuilder {
     const rightElbowGeometry = new THREE.CylinderGeometry(
       scale.forearm.radius[0], scale.forearm.radius[1], scale.forearm.length, 16
     );
+    // FIXED: Translate geometry so pivot is at TOP (elbow end) not center
+    rightElbowGeometry.translate(0, -scale.forearm.length * 0.5, 0);
     const rightElbowMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const rightElbow = new THREE.Mesh(rightElbowGeometry, rightElbowMaterial);
     
-    // ADJUSTED: Elbow position relative to the new arm positioning
-    rightElbow.position.set(0, -scale.arm.length * 0.5 - scale.forearm.length * 0.5, 0);
+    // Position at bottom of upper arm - pivot is already at the top due to geometry translation
+    rightElbow.position.set(0, -scale.arm.length, 0);
     rightElbow.castShadow = true;
     rightElbow.receiveShadow = true;
     rightArm.add(rightElbow);
@@ -226,7 +224,7 @@ export class EnemyBodyBuilder {
     const leftWristGeometry = new THREE.SphereGeometry(0.15, 12, 10);
     const leftWristMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 30 });
     const leftWrist = new THREE.Mesh(leftWristGeometry, leftWristMaterial);
-    leftWrist.position.set(0, -scale.forearm.length * 0.5, 0);
+    leftWrist.position.set(0, -scale.forearm.length, 0);
     leftWrist.castShadow = true;
     leftWrist.receiveShadow = true;
     leftElbow.add(leftWrist);
@@ -234,7 +232,7 @@ export class EnemyBodyBuilder {
     const rightWristGeometry = new THREE.SphereGeometry(0.15, 12, 10);
     const rightWristMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 30 });
     const rightWrist = new THREE.Mesh(rightWristGeometry, rightWristMaterial);
-    rightWrist.position.set(0, -scale.forearm.length * 0.5, 0);
+    rightWrist.position.set(0, -scale.forearm.length, 0);
     rightWrist.castShadow = true;
     rightWrist.receiveShadow = true;
     rightElbow.add(rightWrist);
@@ -268,7 +266,7 @@ export class EnemyBodyBuilder {
       weapon = this.createWeapon(type, woodTexture, metalTexture);
       weapon.position.set(0, 0.1, 0);
       weapon.rotation.x = Math.PI / 2 + 0.2;
-      leftWrist.add(weapon); // FIXED: Changed from rightWrist to leftWrist - left arm is now weapon arm
+      leftWrist.add(weapon);
     }
 
     // === HITBOX ===
@@ -277,9 +275,6 @@ export class EnemyBodyBuilder {
     const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
     hitBox.position.y = positions.bodyY;
     enemyGroup.add(hitBox);
-
-    // FLIPPED: Remove the 180° rotation - orc now faces default forward direction (opposite of before)
-    // enemyGroup.rotation.y = Math.PI; // REMOVED - this was the old rotation
 
     // === POSITIONING ===
     enemyGroup.position.copy(position);
@@ -302,7 +297,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
 
-    console.log(`🗡️ [EnemyBodyBuilder] FIXED: ${type} shoulder joint now at TOP of upper arm - proper pivot point for attacks`);
+    console.log(`🗡️ [EnemyBodyBuilder] FIXED: ${type} arm/forearm pivot points corrected via geometry translation - shoulder rotations now pivot from connection points`);
 
     return { group: enemyGroup, bodyParts, metrics };
   }
