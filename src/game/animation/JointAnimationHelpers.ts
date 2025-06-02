@@ -151,11 +151,11 @@ export class JointAnimationHelpers {
     weaponType: 'axe' | 'sword' | 'club' = 'axe'
   ): { x: number; y: number; z: number } {
     // Different weapons require different wrist angles for horizontal swings
-    // INCREASED multipliers for more aggressive downward angles, especially for axes
+    // FURTHER INCREASED multipliers for EXTREME downward angles, especially for axes
     const weaponWristMultiplier = {
-      axe: 2.2,    // INCREASED from 1.8 - axes need MUCH MORE downward angle for floor-angled chops
+      axe: 2.8,    // MASSIVELY INCREASED from 2.2 - axes need EXTREME downward angle for floor-level chops
       sword: 1.2,  // Keep moderate horizontal angle for swords
-      club: 1.7    // INCREASED from 1.5 - clubs also need more aggressive angle
+      club: 2.0    // INCREASED from 1.7 - clubs also need more aggressive angle
     }[weaponType];
 
     if (attackPhase < 0.3) {
@@ -169,24 +169,24 @@ export class JointAnimationHelpers {
         z: 0
       };
     } else if (attackPhase < 0.6) {
-      // Strike: EXTREMELY aggressive downward snap for floor-angled horizontal swing
+      // Strike: MASSIVELY aggressive downward snap for floor-level horizontal swing
       const t = (attackPhase - 0.3) / 0.3;
-      // INCREASED downward angle from -0.5 to -0.7 for blade angled towards floor
-      const strikeWristX = -Math.PI * 0.7 * weaponWristMultiplier; // EXTREMELY negative = blade angled towards floor
-      const strikeWristY = Math.PI * 0.1 * weaponWristMultiplier; // Slight outward snap
+      // MASSIVELY INCREASED downward angle from -0.7 to -1.0 for blade angled towards floor
+      const strikeWristX = -Math.PI * 1.0 * weaponWristMultiplier; // MASSIVE negative = blade severely angled towards floor
+      const strikeWristY = Math.PI * 0.12 * weaponWristMultiplier; // Increased outward snap
       const windupWristX = -Math.PI * 0.1 * weaponWristMultiplier;
       const windupWristY = -Math.PI * 0.05 * weaponWristMultiplier;
       
       return {
-        x: THREE.MathUtils.lerp(windupWristX, strikeWristX, t * t * t * t), // QUARTIC for extremely aggressive snap
+        x: THREE.MathUtils.lerp(windupWristX, strikeWristX, t * t * t * t * t), // QUINTIC for extremely sharp snap
         y: THREE.MathUtils.lerp(windupWristY, strikeWristY, t),
         z: 0
       };
     } else {
       // Recovery: return to neutral position
       const t = (attackPhase - 0.6) / 0.4;
-      const strikeWristX = -Math.PI * 0.7 * weaponWristMultiplier; // Match the strike angle
-      const strikeWristY = Math.PI * 0.1 * weaponWristMultiplier;
+      const strikeWristX = -Math.PI * 1.0 * weaponWristMultiplier; // Match the strike angle
+      const strikeWristY = Math.PI * 0.12 * weaponWristMultiplier;
       
       return {
         x: THREE.MathUtils.lerp(strikeWristX, -0.05, Math.sin(t * Math.PI * 0.5)),
