@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
@@ -42,7 +41,8 @@ export class Enemy {
     type: EnemyType,
     position: THREE.Vector3,
     effectsManager: EffectsManager,
-    audioManager: AudioManager
+    audioManager: AudioManager,
+    playerPosition?: THREE.Vector3
   ) {
     this.scene = scene;
     this.effectsManager = effectsManager;
@@ -50,10 +50,10 @@ export class Enemy {
     
     // Create enemy based on type with enhanced system for orcs
     if (type === EnemyType.ORC) {
-      this.enemy = this.createEnhancedOrc(position);
+      this.enemy = this.createEnhancedOrc(position, playerPosition);
       this.isEnhancedEnemy = true;
       
-      console.log(`🗡️ [Enemy] Enhanced orc created with FIXED orientation system`);
+      console.log(`🗡️ [Enemy] Enhanced orc created with IMMEDIATE player-facing orientation`);
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created basic goblin enemy");
@@ -66,18 +66,35 @@ export class Enemy {
     scene.add(this.enemy.mesh);
   }
   
-  private createEnhancedOrc(position: THREE.Vector3): EnemyInterface {
+  private createEnhancedOrc(position: THREE.Vector3, playerPosition?: THREE.Vector3): EnemyInterface {
     // Use new data-driven body builder
     const { group: orcGroup, bodyParts, metrics } = EnemyBodyBuilder.createRealisticOrcBody(position);
     this.enhancedBodyParts = bodyParts;
     
-    // FIXED: Remove the initial 180° rotation - let the orc spawn in its natural orientation
-    // NO ROTATION APPLIED HERE - orc spawns naturally forward-facing
+    // FIXED: Calculate and set initial rotation to face player immediately
+    if (playerPosition) {
+      const directionToPlayer = new THREE.Vector3()
+        .subVectors(playerPosition, position)
+        .normalize();
+      directionToPlayer.y = 0;
+      
+      // Calculate the rotation needed to face the player
+      const initialRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
+      
+      // Set both the mesh rotation and target rotation immediately
+      orcGroup.rotation.y = initialRotation;
+      this.targetRotation = initialRotation;
+      
+      console.log(`🗡️ [Enemy] FIXED orc spawns facing player immediately - rotation=${initialRotation.toFixed(2)}, no animation needed`);
+    } else {
+      // Fallback: face forward (positive Z)
+      orcGroup.rotation.y = 0;
+      this.targetRotation = 0;
+      console.log(`🗡️ [Enemy] Orc spawns facing forward (no player position provided)`);
+    }
     
     // Pass metrics to animation system for auto-sync
     this.animationSystem = new EnemyAnimationSystem(bodyParts, metrics);
-    
-    console.log(`🗡️ [Enemy] FIXED orc orientation - natural forward-facing spawn, no initial rotation`);
     
     return {
       mesh: orcGroup,
@@ -420,8 +437,15 @@ export class Enemy {
         break;
     }
     
-    // Update smooth rotation
-    this.updateRotation(deltaTime);
+    // Update smooth rotation (but skip for enhanced enemies that already face the player)
+    if (!this.isEnhancedEnemy) {
+      this.updateRotation(deltaTime);
+    } else {
+      // Enhanced enemies only update rotation when actively pursuing
+      if (this.movementState === EnemyMovementState.PURSUING) {
+        this.updateRotation(deltaTime);
+      }
+    }
   }
   
   private createHitFlashEffect(): void {
@@ -481,16 +505,21 @@ export class Enemy {
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
-      // FIXED: Calculate target rotation with corrected direction
+      // Calculate target rotation for movement (only update when actively moving)
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.enemy.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
-      // FIXED: Use normal rotation calculation for all enemies (removed extra Math.PI)
-      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
+      // Only update target rotation if the enemy needs to turn significantly
+      const newTargetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
+      const rotationDiff = Math.abs(newTargetRotation - this.enemy.mesh.rotation.y);
       
-      console.log(`🗡️ [Enemy] FIXED rotation calculation - no extra rotation added, target=${this.targetRotation.toFixed(2)}`);
+      // Update target rotation for movement tracking
+      if (rotationDiff > 0.1) { // Only update if significant rotation needed
+        this.targetRotation = newTargetRotation;
+        console.log(`🗡️ [Enemy] Updating rotation for movement - target=${this.targetRotation.toFixed(2)}`);
+      }
       
       // Move toward player if outside damage range
       if (distanceToPlayer > this.enemy.damageRange) {
@@ -526,7 +555,7 @@ export class Enemy {
           .normalize();
         direction.y = 0;
         
-        // FIXED: Use normal rotation calculation for all enemies
+        // Update target rotation for distant pursuit
         this.targetRotation = Math.atan2(direction.x, direction.z);
         
         const slowMoveAmount = this.enemy.speed * deltaTime * 0.3; // Slower movement when far
@@ -805,9 +834,9 @@ export class Enemy {
       playerPosition.z + Math.sin(angle) * spawnDistance
     );
     
-    // Create enemy
-    const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager);
-    console.log(`🗡️ [Enemy] Created ${type} at difficulty ${difficulty} - Enhanced: ${enemy.isEnhancedEnemy}`);
+    // FIXED: Pass player position to enemy constructor for immediate facing
+    const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager, playerPosition);
+    console.log(`🗡️ [Enemy] Created ${type} at difficulty ${difficulty} - Enhanced: ${enemy.isEnhancedEnemy}, faces player immediately`);
     return enemy;
   }
   
