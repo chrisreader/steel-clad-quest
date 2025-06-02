@@ -371,22 +371,18 @@ export class SceneManager {
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     
     let terrainGeometry: THREE.BufferGeometry;
-    let terrainPosition: THREE.Vector3;
     
     // Handle center ring differently - create full circle at origin
     if (region.ringIndex === 0) {
-      // For center ring, create a simple circle at the origin
-      terrainGeometry = new THREE.CircleGeometry(ringDef.outerRadius, 32);
-      terrainPosition = new THREE.Vector3(0, 0, 0); // Always at world origin
-      console.log('Creating center ring terrain at origin');
+      // For center ring, create a smooth circle with many segments
+      terrainGeometry = new THREE.CircleGeometry(ringDef.outerRadius, 64);
+      console.log('Creating center ring terrain with 64 segments for smooth circle');
     } else {
-      // For outer rings, create quadrant segments positioned correctly in world space
+      // For outer rings, create quadrant segments
       const innerRadius = ringDef.innerRadius;
       const outerRadius = ringDef.outerRadius;
       terrainGeometry = this.createQuadrantGeometry(innerRadius, outerRadius, region.quadrant);
-      // Don't offset the position since geometry is already in world coordinates
-      terrainPosition = new THREE.Vector3(0, 0, 0);
-      console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} with geometry in world coordinates`);
+      console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} terrain`);
     }
     
     // Create material with appropriate color for the ring
@@ -401,12 +397,18 @@ export class SceneManager {
       this.addTerrainHeightVariation(terrainGeometry);
     }
     
-    // Create mesh
+    // Create mesh - all terrain positioned at origin since geometry is in world coordinates
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
-    terrain.rotation.x = -Math.PI / 2; // Make it horizontal
-    terrain.position.copy(terrainPosition);
-    terrain.position.y = 0; // Ensure at ground level
+    terrain.rotation.x = -Math.PI / 2; // Make it horizontal (XZ plane)
+    terrain.position.set(0, 0, 0); // At world origin
     terrain.receiveShadow = true;
+    
+    // Debug: Log terrain creation
+    console.log(`Terrain created for ring ${region.ringIndex}, quadrant ${region.quadrant}:`, {
+      position: terrain.position,
+      rotation: terrain.rotation,
+      vertexCount: terrainGeometry.attributes.position.count
+    });
     
     // Add to scene
     this.scene.add(terrain);
@@ -414,14 +416,13 @@ export class SceneManager {
     return terrain;
   }
   
-  // Create quadrant geometry (quarter-circle segment) positioned in world coordinates
+  // Create quadrant geometry (quarter-circle segment) in XZ plane
   private createQuadrantGeometry(innerRadius: number, outerRadius: number, quadrant: number): THREE.BufferGeometry {
-    // Create a custom geometry for the quadrant positioned relative to world center (0,0,0)
     const geometry = new THREE.BufferGeometry();
     
     // Parameters for detail
     const radialSegments = 20; // Segments from inner to outer radius
-    const heightSegments = 20; // Segments around the quadrant
+    const angularSegments = 20; // Segments around the quadrant arc
     
     // Calculate start and end angles for this quadrant
     const startAngle = quadrant * Math.PI / 2;
@@ -432,37 +433,37 @@ export class SceneManager {
     const uvs = [];
     const indices = [];
     
-    // Generate vertices positioned relative to world center (0,0,0)
+    // Generate vertices in XZ plane (Y=0) positioned relative to world center
     for (let r = 0; r <= radialSegments; r++) {
       const radius = innerRadius + (outerRadius - innerRadius) * (r / radialSegments);
       
-      for (let a = 0; a <= heightSegments; a++) {
-        const angle = startAngle + (endAngle - startAngle) * (a / heightSegments);
+      for (let a = 0; a <= angularSegments; a++) {
+        const angle = startAngle + (endAngle - startAngle) * (a / angularSegments);
         
-        // Vertex positioned relative to world center
+        // Vertex in XZ plane (horizontal ground plane)
         vertices.push(
-          Math.cos(angle) * radius, // x relative to world center
-          0,                       // y (height will be added later)
-          Math.sin(angle) * radius  // z relative to world center
+          Math.cos(angle) * radius, // x coordinate
+          0,                       // y coordinate (ground level)
+          Math.sin(angle) * radius  // z coordinate
         );
         
-        // UV (simple mapping)
+        // UV mapping
         uvs.push(
           r / radialSegments,
-          a / heightSegments
+          a / angularSegments
         );
       }
     }
     
-    // Generate indices
+    // Generate indices for triangles (ensuring correct winding order)
     for (let r = 0; r < radialSegments; r++) {
-      for (let a = 0; a < heightSegments; a++) {
-        const first = r * (heightSegments + 1) + a;
-        const second = first + heightSegments + 1;
+      for (let a = 0; a < angularSegments; a++) {
+        const first = r * (angularSegments + 1) + a;
+        const second = first + angularSegments + 1;
         
-        // Two triangles per segment
-        indices.push(first, second, first + 1);
-        indices.push(second, second + 1, first + 1);
+        // Two triangles per quad (counter-clockwise winding for upward-facing normals)
+        indices.push(first, first + 1, second);
+        indices.push(second, first + 1, second + 1);
       }
     }
     
@@ -470,6 +471,19 @@ export class SceneManager {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
+    
+    // Compute normals for proper lighting
+    geometry.computeVertexNormals();
+    
+    // Debug: Log geometry creation
+    console.log(`Quadrant geometry created for quadrant ${quadrant}:`, {
+      vertexCount: vertices.length / 3,
+      triangleCount: indices.length / 3,
+      innerRadius,
+      outerRadius,
+      startAngle: startAngle * 180 / Math.PI,
+      endAngle: endAngle * 180 / Math.PI
+    });
     
     return geometry;
   }
