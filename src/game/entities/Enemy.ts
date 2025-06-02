@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
@@ -376,11 +377,18 @@ export class Enemy {
   
   public update(deltaTime: number, playerPosition: THREE.Vector3, playerInSafeZone: boolean = false): void {
     if (this.isHumanoidEnemy && this.humanoidEnemy) {
-      // Delegate to humanoid enemy with safe zone info
-      this.humanoidEnemy.update(deltaTime, playerPosition, playerInSafeZone);
+      // Delegate to humanoid enemy (without safe zone parameter since it doesn't support it yet)
+      this.humanoidEnemy.update(deltaTime, playerPosition);
       
       // Update interface properties
       this.enemy.isDead = this.humanoidEnemy.getIsDead();
+      
+      // Handle safe zone behavior for humanoid enemies manually
+      if (playerInSafeZone !== this.isPassive) {
+        this.isPassive = playerInSafeZone;
+        console.log(`🗡️ [Enemy] Humanoid enemy switching to ${this.isPassive ? 'passive' : 'aggressive'} mode`);
+      }
+      
       return;
     }
     
