@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
@@ -52,7 +53,7 @@ export class Enemy {
       this.enemy = this.createEnhancedOrc(position);
       this.isEnhancedEnemy = true;
       
-      console.log(`🗡️ [Enemy] Enhanced orc created with fixed orientation system`);
+      console.log(`🗡️ [Enemy] Enhanced orc created with FIXED orientation system`);
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created basic goblin enemy");
@@ -71,12 +72,12 @@ export class Enemy {
     this.enhancedBodyParts = bodyParts;
     
     // FIXED: Remove the initial 180° rotation - let the orc spawn in its natural orientation
-    // orcGroup.rotation.y = Math.PI; // REMOVED - this was causing the double rotation issue
+    // NO ROTATION APPLIED HERE - orc spawns naturally forward-facing
     
     // Pass metrics to animation system for auto-sync
     this.animationSystem = new EnemyAnimationSystem(bodyParts, metrics);
     
-    console.log(`🗡️ [Enemy] Fixed orc orientation - natural forward-facing spawn`);
+    console.log(`🗡️ [Enemy] FIXED orc orientation - natural forward-facing spawn, no initial rotation`);
     
     return {
       mesh: orcGroup,
@@ -480,14 +481,16 @@ export class Enemy {
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
-      // FIXED: Calculate target rotation with corrected direction (removed extra +Math.PI)
+      // FIXED: Calculate target rotation with corrected direction
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.enemy.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
-      // FIXED: Use normal rotation calculation for all enemies (no special case needed)
+      // FIXED: Use normal rotation calculation for all enemies (removed extra Math.PI)
       this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
+      
+      console.log(`🗡️ [Enemy] FIXED rotation calculation - no extra rotation added, target=${this.targetRotation.toFixed(2)}`);
       
       // Move toward player if outside damage range
       if (distanceToPlayer > this.enemy.damageRange) {
