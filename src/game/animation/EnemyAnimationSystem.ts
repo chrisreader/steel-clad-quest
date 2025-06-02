@@ -30,7 +30,7 @@ export class EnemyAnimationSystem {
     const movementConfig: RealisticMovementConfig = this.createMovementConfig(enemyType);
     this.realisticMovement = new RealisticMovementSystem(movementConfig);
     
-    console.log(`🎭 [EnemyAnimationSystem] Initialized with enhanced realistic movement for ${enemyType}`);
+    console.log(`🎭 [EnemyAnimationSystem] Initialized with shoulder movement for ${enemyType}`);
   }
 
   private createMovementConfig(enemyType: string): RealisticMovementConfig {
@@ -102,7 +102,10 @@ export class EnemyAnimationSystem {
       this.walkTime += deltaTime * movementSpeed * this.metrics.animationMetrics.walkCycleSpeed;
     }
 
-    // Update leg swing using enhanced system for legs
+    // ENHANCED: Add shoulder movement during walking
+    this.updateShoulderWalkAnimation(deltaTime, isMoving);
+
+    // Enhanced leg animation
     if (isMoving && this.bodyParts.leftLeg && this.bodyParts.rightLeg) {
       const legSwing = Math.sin(this.walkTime + Math.PI) * this.metrics.animationMetrics.legSwingIntensity;
       this.bodyParts.leftLeg.rotation.x = legSwing;
@@ -130,6 +133,48 @@ export class EnemyAnimationSystem {
       
       if (this.bodyParts.rightWrist) {
         this.bodyParts.rightWrist.rotation.x = armSwing * 0.3;
+      }
+    }
+  }
+
+  /**
+   * NEW: Shoulder movement during walking animation
+   */
+  private updateShoulderWalkAnimation(deltaTime: number, isMoving: boolean): void {
+    if (!this.bodyParts.leftShoulder || !this.bodyParts.rightShoulder) return;
+    
+    if (isMoving && !this.isAttacking()) {
+      // Calculate shoulder movement based on arm swing
+      const armSwing = Math.sin(this.walkTime) * this.metrics.animationMetrics.armSwingIntensity;
+      const shoulderRoll = Math.sin(this.walkTime * 0.5) * this.metrics.animationMetrics.shoulderMovement;
+      
+      // Left shoulder (weapon side) - moves with left arm
+      const leftShoulderMovement = armSwing * 0.4; // Reduced intensity for natural look
+      this.bodyParts.leftShoulder.rotation.x = leftShoulderMovement * 0.5;
+      this.bodyParts.leftShoulder.rotation.y = shoulderRoll * 0.3;
+      this.bodyParts.leftShoulder.rotation.z = leftShoulderMovement * 0.2;
+      
+      // Right shoulder - counter-movement to left shoulder
+      const rightShoulderMovement = -armSwing * 0.3; // Opposite direction
+      this.bodyParts.rightShoulder.rotation.x = rightShoulderMovement * 0.5;
+      this.bodyParts.rightShoulder.rotation.y = -shoulderRoll * 0.3;
+      this.bodyParts.rightShoulder.rotation.z = rightShoulderMovement * 0.2;
+      
+      console.log('🏃 [EnemyAnimationSystem] Updated shoulder movement for walking');
+    } else {
+      // Return shoulders to neutral position when not moving
+      const returnSpeed = deltaTime * 3;
+      
+      if (this.bodyParts.leftShoulder) {
+        this.bodyParts.leftShoulder.rotation.x = THREE.MathUtils.lerp(this.bodyParts.leftShoulder.rotation.x, 0, returnSpeed);
+        this.bodyParts.leftShoulder.rotation.y = THREE.MathUtils.lerp(this.bodyParts.leftShoulder.rotation.y, 0, returnSpeed);
+        this.bodyParts.leftShoulder.rotation.z = THREE.MathUtils.lerp(this.bodyParts.leftShoulder.rotation.z, 0, returnSpeed);
+      }
+      
+      if (this.bodyParts.rightShoulder) {
+        this.bodyParts.rightShoulder.rotation.x = THREE.MathUtils.lerp(this.bodyParts.rightShoulder.rotation.x, 0, returnSpeed);
+        this.bodyParts.rightShoulder.rotation.y = THREE.MathUtils.lerp(this.bodyParts.rightShoulder.rotation.y, 0, returnSpeed);
+        this.bodyParts.rightShoulder.rotation.z = THREE.MathUtils.lerp(this.bodyParts.rightShoulder.rotation.z, 0, returnSpeed);
       }
     }
   }

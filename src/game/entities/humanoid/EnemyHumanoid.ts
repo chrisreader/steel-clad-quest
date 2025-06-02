@@ -4,6 +4,7 @@ import { EnemyType } from '../../../types/GameTypes';
 import { EffectsManager } from '../../engine/EffectsManager';
 import { AudioManager } from '../../engine/AudioManager';
 import { EnemyAnimationSystem } from '../../animation/EnemyAnimationSystem';
+import { EnemyBodyParts } from '../EnemyBody';
 
 // Export all necessary types and interfaces
 export interface EnemyBodyParts {
@@ -19,6 +20,12 @@ export interface EnemyBodyParts {
   rightLeg: THREE.Mesh | undefined;
   leftKnee: THREE.Mesh | undefined;
   rightKnee: THREE.Mesh | undefined;
+  leftShoulder: THREE.Mesh | undefined;
+  rightShoulder: THREE.Mesh | undefined;
+  leftHip: THREE.Mesh | undefined;
+  rightHip: THREE.Mesh | undefined;
+  leftFoot: THREE.Mesh | undefined;
+  rightFoot: THREE.Mesh | undefined;
   weapon: THREE.Group | undefined;
   hitBox: THREE.Mesh | undefined;
 }
@@ -51,6 +58,10 @@ export interface NeutralPoses {
     right: { x: number; y: number; z: number };
   };
   wrists: {
+    left: { x: number; y: number; z: number };
+    right: { x: number; y: number; z: number };
+  };
+  shoulders: {
     left: { x: number; y: number; z: number };
     right: { x: number; y: number; z: number };
   };
@@ -202,14 +213,14 @@ export abstract class EnemyHumanoid {
     // Add to scene
     scene.add(this.mesh);
     
-    console.log(`🗡️ [EnemyHumanoid] Created ${config.type} humanoid enemy with enhanced visuals`);
+    console.log(`🗡️ [EnemyHumanoid] Created ${config.type} humanoid enemy with enhanced shoulder movement`);
   }
 
   protected createHumanoidBody(position: THREE.Vector3): EnemyBodyResult {
     const humanoidGroup = new THREE.Group();
     const { bodyScale, colors, features } = this.config;
     
-    // Calculate positions based on body scale - MAINTAIN EXACT SAME VALUES
+    // Calculate positions based on body scale
     const legTopY = 1.4;
     const thighCenterY = legTopY - bodyScale.leg.length / 2;
     const bodyY = legTopY + bodyScale.body.height / 2;
@@ -263,14 +274,14 @@ export abstract class EnemyHumanoid {
     const hipJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
     const leftHipJoint = new THREE.Mesh(hipJointGeometry, accentMaterial);
     leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
-    leftHipJoint.scale.set(1, 0.8, 1); // Slightly flattened for better connection
+    leftHipJoint.scale.set(1, 0.8, 1);
     leftHipJoint.castShadow = true;
     leftHipJoint.receiveShadow = true;
     humanoidGroup.add(leftHipJoint);
 
     const rightHipJoint = new THREE.Mesh(hipJointGeometry, accentMaterial.clone());
     rightHipJoint.position.set(bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
-    rightHipJoint.scale.set(1, 0.8, 1); // Slightly flattened for better connection
+    rightHipJoint.scale.set(1, 0.8, 1);
     rightHipJoint.castShadow = true;
     rightHipJoint.receiveShadow = true;
     humanoidGroup.add(rightHipJoint);
@@ -544,23 +555,24 @@ export abstract class EnemyHumanoid {
     rightArm.receiveShadow = true;
     humanoidGroup.add(rightArm);
 
-    // === SHOULDER JOINTS - TAPERED FOR SMOOTH ARM CONNECTION ===
-    const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 24, 20);
+    // === MORE SPHERICAL SHOULDER JOINTS ===
+    const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 20, 16);
+    // Make shoulders more spherical by reducing scale distortion
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial);
     leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
-    leftShoulderJoint.scale.set(0.9, 1, 0.9); // Slightly compressed for smoother arm connection
+    leftShoulderJoint.scale.set(0.95, 1.05, 0.95); // Minimal distortion for more spherical shape
     leftShoulderJoint.castShadow = true;
     leftShoulderJoint.receiveShadow = true;
     humanoidGroup.add(leftShoulderJoint);
 
     const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
     rightShoulderJoint.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
-    rightShoulderJoint.scale.set(0.9, 1, 0.9); // Slightly compressed for smoother arm connection
+    rightShoulderJoint.scale.set(0.95, 1.05, 0.95); // Minimal distortion for more spherical shape
     rightShoulderJoint.castShadow = true;
     rightShoulderJoint.receiveShadow = true;
     humanoidGroup.add(rightShoulderJoint);
 
-    // === TRAPEZIUS MUSCLES ===
+    // === RAISED TRAPEZIUS MUSCLES ===
     const trapGeometry = new THREE.ConeGeometry(
       bodyScale.body.radius * 0.6,  // Base radius (smaller for better proportions)
       0.5, // Height (reduced)
@@ -570,7 +582,7 @@ export abstract class EnemyHumanoid {
     const leftTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     leftTrap.position.set(
       -(bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight + 0.15, // Raised higher above shoulder joints
+      shoulderHeight + 0.25, // Raised higher from +0.15 to +0.25
       0
     );
     leftTrap.rotation.z = -0.4; // Angled towards shoulder
@@ -582,7 +594,7 @@ export abstract class EnemyHumanoid {
     const rightTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     rightTrap.position.set(
       (bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight + 0.15, // Raised higher above shoulder joints
+      shoulderHeight + 0.25, // Raised higher from +0.15 to +0.25
       0
     );
     rightTrap.rotation.z = 0.4; // Angled towards shoulder
@@ -791,6 +803,12 @@ export abstract class EnemyHumanoid {
       rightLeg,
       leftKnee,
       rightKnee,
+      leftShoulder: leftShoulderJoint,
+      rightShoulder: rightShoulderJoint,
+      leftHip: leftHipJoint,
+      rightHip: rightHipJoint,
+      leftFoot,
+      rightFoot,
       weapon,
       hitBox
     };
@@ -816,6 +834,10 @@ export abstract class EnemyHumanoid {
           right: { x: 0, y: 0, z: 0 }
         },
         wrists: {
+          left: { x: 0, y: 0, z: 0 },
+          right: { x: 0, y: 0, z: 0 }
+        },
+        shoulders: {
           left: { x: 0, y: 0, z: 0 },
           right: { x: 0, y: 0, z: 0 }
         }

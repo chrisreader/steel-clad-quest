@@ -17,6 +17,12 @@ export interface EnemyBodyParts {
   rightLeg: THREE.Mesh | undefined;
   leftKnee: THREE.Mesh | undefined;
   rightKnee: THREE.Mesh | undefined;
+  leftShoulder: THREE.Mesh | undefined;
+  rightShoulder: THREE.Mesh | undefined;
+  leftHip: THREE.Mesh | undefined;
+  rightHip: THREE.Mesh | undefined;
+  leftFoot: THREE.Mesh | undefined;
+  rightFoot: THREE.Mesh | undefined;
   weapon: THREE.Group | undefined;
   hitBox: THREE.Mesh | undefined;
 }
