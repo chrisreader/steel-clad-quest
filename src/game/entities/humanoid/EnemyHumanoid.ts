@@ -423,7 +423,7 @@ export abstract class EnemyHumanoid {
     if (features.hasWeapon) {
       weapon = this.createWeapon(woodTexture, metalTexture);
       weapon.position.set(0, 0.1, 0);
-      weapon.rotation.x = Math.PI / 2 - 0.3; // More horizontal instead of Math.PI / 2 + 0.2
+      weapon.rotation.x = Math.PI / 2 + 0.2; // Back to approximately 111.5°
       leftWrist.add(weapon);
     }
 
