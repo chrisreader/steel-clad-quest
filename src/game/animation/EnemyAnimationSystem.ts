@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EnemyBodyParts } from '../entities/EnemyBody';
 import { EnemyBodyMetrics } from '../entities/EnemyBodyMetrics';
@@ -170,40 +169,40 @@ export class EnemyAnimationSystem {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE - Raise arm up and back slightly for forward swing preparation
+      // WINDUP PHASE - INCREASED: Raise arm up and back much higher for dramatic wind-up
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Raise arm up from enemy's neutral position (more upward, less backward)
-      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x, enemyNeutral.x - 0.5, easedT); // Raise up moderately
-      shoulderRotation.y = THREE.MathUtils.lerp(enemyNeutral.y, 0.2, easedT); // Slight right position
-      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z, enemyNeutral.z + 0.3, easedT); // Twist for power
+      // INCREASED: Much higher raise (from -0.5 to -1.0) and more backward positioning
+      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x, enemyNeutral.x - 1.0, easedT); // INCREASED from -0.5 to -1.0
+      shoulderRotation.y = THREE.MathUtils.lerp(enemyNeutral.y, 0.4, easedT); // INCREASED from 0.2 to 0.4
+      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z, enemyNeutral.z + 0.5, easedT); // INCREASED from 0.3 to 0.5
       
-      elbowRotation.x = THREE.MathUtils.lerp(0, -0.1, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 8, easedT);
+      elbowRotation.x = THREE.MathUtils.lerp(0, -0.2, easedT); // INCREASED from -0.1 to -0.2
+      elbowRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 6, easedT);
       
-      wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 10, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(0, 0.2, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 8, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(0, 0.3, easedT); // INCREASED from 0.2 to 0.3
       
-      torsoRotation = THREE.MathUtils.lerp(0, -0.2, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0, -0.35, easedT); // INCREASED from -0.2 to -0.35
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE - Forward swing down from raised position
+      // SLASH PHASE - INCREASED: Much more dramatic forward swing with greater range
       const t = (elapsed - phases.windup) / phases.slash;
       const aggressiveT = t * t * (3 - 2 * t);
       
-      // Swing forward and down from windup position
-      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x - 0.5, enemyNeutral.x + 0.3, aggressiveT); // Swing down and slightly forward
-      shoulderRotation.y = THREE.MathUtils.lerp(0.2, -0.3, aggressiveT); // Sweep across to left
-      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z + 0.3, enemyNeutral.z - 0.2, aggressiveT); // Counter-twist
+      // INCREASED: Much more dramatic swing range
+      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x - 1.0, enemyNeutral.x + 0.6, aggressiveT); // INCREASED end position from 0.3 to 0.6
+      shoulderRotation.y = THREE.MathUtils.lerp(0.4, -0.5, aggressiveT); // INCREASED from -0.3 to -0.5
+      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z + 0.5, enemyNeutral.z - 0.4, aggressiveT); // INCREASED from -0.2 to -0.4
       
-      elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.1, aggressiveT);
-      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 8, aggressiveT);
+      elbowRotation.x = THREE.MathUtils.lerp(-0.2, 0.2, aggressiveT); // INCREASED from 0.1 to 0.2
+      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 5, aggressiveT); // INCREASED from PI/8 to PI/5
       
-      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 10, Math.PI / 12, aggressiveT);
-      wristRotation.z = THREE.MathUtils.lerp(0.2, -0.1, aggressiveT);
+      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 8, aggressiveT); // INCREASED from PI/12 to PI/8
+      wristRotation.z = THREE.MathUtils.lerp(0.3, -0.2, aggressiveT); // INCREASED from -0.1 to -0.2
       
-      torsoRotation = THREE.MathUtils.lerp(-0.2, 0.15, aggressiveT);
+      torsoRotation = THREE.MathUtils.lerp(-0.35, 0.3, aggressiveT); // INCREASED from 0.15 to 0.3
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE - Return to enemy's exact neutral position
@@ -211,17 +210,17 @@ export class EnemyAnimationSystem {
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
       // Return to actual enemy neutral pose
-      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x + 0.3, enemyNeutral.x, easedT);
-      shoulderRotation.y = THREE.MathUtils.lerp(-0.3, enemyNeutral.y, easedT);
-      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z - 0.2, enemyNeutral.z, easedT);
+      shoulderRotation.x = THREE.MathUtils.lerp(enemyNeutral.x + 0.6, enemyNeutral.x, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(-0.5, enemyNeutral.y, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(enemyNeutral.z - 0.4, enemyNeutral.z, easedT);
       
-      elbowRotation.x = THREE.MathUtils.lerp(0.1, 0, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 8, 0, easedT);
+      elbowRotation.x = THREE.MathUtils.lerp(0.2, 0, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 5, 0, easedT);
       
-      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 12, 0, easedT);
-      wristRotation.z = THREE.MathUtils.lerp(-0.1, 0, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 8, 0, easedT);
+      wristRotation.z = THREE.MathUtils.lerp(-0.2, 0, easedT);
       
-      torsoRotation = THREE.MathUtils.lerp(0.15, 0, easedT);
+      torsoRotation = THREE.MathUtils.lerp(0.3, 0, easedT);
       
     } else {
       // ANIMATION COMPLETE
@@ -232,7 +231,7 @@ export class EnemyAnimationSystem {
     // Apply the coordinated movement to enemy body parts
     this.applyAttackMovement(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
     
-    console.log(`🗡️ [EnemyAnimationSystem] Forward attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
+    console.log(`🗡️ [EnemyAnimationSystem] ENHANCED forward attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
     return true;
   }
   
@@ -284,7 +283,7 @@ export class EnemyAnimationSystem {
     }
     
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] Attack animation completed, returned to enemy's actual neutral stance");
+    console.log("🗡️ [EnemyAnimationSystem] ENHANCED attack animation completed, returned to enemy's actual neutral stance");
   }
   
   public isAttacking(): boolean {
