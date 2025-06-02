@@ -142,7 +142,7 @@ export class JointAnimationHelpers {
   }
 
   /**
-   * Calculate weapon wrist rotation during attacks to control weapon angle
+   * Calculate weapon wrist rotation during attacks to control weapon angle for HORIZONTAL eye-level swings
    * @param attackPhase - current phase of attack (0-1)
    * @param weaponType - type of weapon affecting movement
    */
@@ -150,44 +150,44 @@ export class JointAnimationHelpers {
     attackPhase: number, 
     weaponType: 'axe' | 'sword' | 'club' = 'axe'
   ): { x: number; y: number; z: number } {
-    // Different weapons require different wrist angles to look natural
+    // Different weapons require different wrist angles for horizontal swings
     const weaponWristMultiplier = {
-      axe: 1.2,    // Axes need more wrist adjustment due to weight
-      sword: 1.0,  // Standard wrist movement
-      club: 1.1    // Clubs need moderate adjustment
+      axe: 1.4,    // Axes need more downward angle for chopping motion
+      sword: 1.2,  // Swords need moderate horizontal angle
+      club: 1.3    // Clubs similar to axes but slightly less
     }[weaponType];
 
     if (attackPhase < 0.3) {
-      // Windup: wrist tilts back to prepare for strike
+      // Windup: wrist tilts slightly upward to prepare for downward strike
       const t = attackPhase / 0.3;
-      const windupWristX = -Math.PI * 0.15 * weaponWristMultiplier; // Tilt back
+      const windupWristX = -Math.PI * 0.1 * weaponWristMultiplier; // Slight upward tilt
       const windupWristY = -Math.PI * 0.05 * weaponWristMultiplier; // Slight inward turn
       return {
-        x: THREE.MathUtils.lerp(-0.1, windupWristX, Math.sin(t * Math.PI * 0.5)),
+        x: THREE.MathUtils.lerp(-0.05, windupWristX, Math.sin(t * Math.PI * 0.5)),
         y: THREE.MathUtils.lerp(0, windupWristY, t),
         z: 0
       };
     } else if (attackPhase < 0.6) {
-      // Strike: wrist snaps forward and DOWN to control weapon angle
+      // Strike: wrist snaps DOWNWARD for horizontal eye-level swing - FIXED
       const t = (attackPhase - 0.3) / 0.3;
-      const strikeWristX = Math.PI * 0.2 * weaponWristMultiplier; // Tilt DOWN during strike
-      const strikeWristY = Math.PI * 0.1 * weaponWristMultiplier; // Outward snap
-      const windupWristX = -Math.PI * 0.15 * weaponWristMultiplier;
+      const strikeWristX = -Math.PI * 0.3 * weaponWristMultiplier; // NEGATIVE = downward tilt for horizontal swing
+      const strikeWristY = Math.PI * 0.08 * weaponWristMultiplier; // Slight outward snap
+      const windupWristX = -Math.PI * 0.1 * weaponWristMultiplier;
       const windupWristY = -Math.PI * 0.05 * weaponWristMultiplier;
       
       return {
-        x: THREE.MathUtils.lerp(windupWristX, strikeWristX, t * t), // Quadratic for snap
+        x: THREE.MathUtils.lerp(windupWristX, strikeWristX, t * t), // Quadratic for aggressive snap
         y: THREE.MathUtils.lerp(windupWristY, strikeWristY, t),
         z: 0
       };
     } else {
       // Recovery: return to neutral position
       const t = (attackPhase - 0.6) / 0.4;
-      const strikeWristX = Math.PI * 0.2 * weaponWristMultiplier;
-      const strikeWristY = Math.PI * 0.1 * weaponWristMultiplier;
+      const strikeWristX = -Math.PI * 0.3 * weaponWristMultiplier;
+      const strikeWristY = Math.PI * 0.08 * weaponWristMultiplier;
       
       return {
-        x: THREE.MathUtils.lerp(strikeWristX, -0.1, Math.sin(t * Math.PI * 0.5)),
+        x: THREE.MathUtils.lerp(strikeWristX, -0.05, Math.sin(t * Math.PI * 0.5)),
         y: THREE.MathUtils.lerp(strikeWristY, 0, t),
         z: 0
       };
