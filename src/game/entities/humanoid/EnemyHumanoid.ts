@@ -4,9 +4,7 @@ import { EnemyType } from '../../../types/GameTypes';
 import { EffectsManager } from '../../engine/EffectsManager';
 import { AudioManager } from '../../engine/AudioManager';
 import { EnemyAnimationSystem } from '../../animation/EnemyAnimationSystem';
-import { EnemyBodyParts } from '../EnemyBody';
-
-// Remove duplicate EnemyBodyParts interface - using the one from EnemyBody.ts
+import { EnemyBodyParts, EnemyBodyMetrics } from '../EnemyBody';
 
 export interface BodyScale {
   body: { radius: number; height: number };
@@ -54,18 +52,6 @@ export interface AnimationMetrics {
   breathingIntensity: number;
 }
 
-export interface EnemyBodyMetrics {
-  scale: BodyScale;
-  positions: BodyPositions;
-  neutralPoses: NeutralPoses;
-  animationMetrics: AnimationMetrics;
-  colors: {
-    skin: number;
-    muscle: number;
-    accent: number;
-  };
-}
-
 export interface EnemyBodyResult {
   group: THREE.Group;
   bodyParts: EnemyBodyParts;
@@ -86,17 +72,14 @@ export interface HumanoidConfig {
   points: number;
   knockbackResistance: number;
   
-  // Body proportions
   bodyScale: BodyScale;
   
-  // Colors
   colors: {
     skin: number;
     muscle: number;
     accent: number;
   };
   
-  // Features
   features: {
     hasEyes: boolean;
     hasTusks: boolean;
@@ -134,7 +117,6 @@ export abstract class EnemyHumanoid {
   protected audioManager: AudioManager;
   protected config: HumanoidConfig;
   
-  // Core enemy data
   protected mesh: THREE.Group;
   protected health: number;
   protected isDead: boolean = false;
@@ -143,11 +125,9 @@ export abstract class EnemyHumanoid {
   protected isHit: boolean = false;
   protected hitTime: number = 0;
   
-  // Enhanced body and animation systems
   protected bodyParts: EnemyBodyParts;
   protected animationSystem: EnemyAnimationSystem;
   
-  // Movement state management
   protected movementState: EnemyMovementState = EnemyMovementState.IDLE;
   protected knockbackVelocity: THREE.Vector3 = new THREE.Vector3();
   protected knockbackDuration: number = 0;
@@ -156,11 +136,9 @@ export abstract class EnemyHumanoid {
   protected rotationSpeed: number = 3.0;
   protected hasInitialOrientation: boolean = false;
   
-  // Animation timers
   protected walkTime: number = 0;
   protected idleTime: number = 0;
   
-  // Death animation
   protected deathAnimation = {
     falling: false,
     rotationSpeed: Math.random() * 0.1 + 0.05,
@@ -180,18 +158,15 @@ export abstract class EnemyHumanoid {
     this.audioManager = audioManager;
     this.health = config.health;
     
-    // Create the humanoid body and animation system
     const bodyResult = this.createHumanoidBody(position);
     this.mesh = bodyResult.group;
     this.bodyParts = bodyResult.bodyParts;
     
-    // Pass enemy type to animation system for realistic movement
     this.animationSystem = new EnemyAnimationSystem(bodyResult.bodyParts, bodyResult.metrics, config.type);
     
-    // Add to scene
     scene.add(this.mesh);
     
-    console.log(`🗡️ [EnemyHumanoid] Created ${config.type} humanoid enemy with enhanced shoulder movement`);
+    console.log(`🗡️ [EnemyHumanoid] Created ${config.type} humanoid enemy with enhanced anatomical structure`);
   }
 
   protected createHumanoidBody(position: THREE.Vector3): EnemyBodyResult {
@@ -248,7 +223,7 @@ export abstract class EnemyHumanoid {
     rightLeg.receiveShadow = true;
     humanoidGroup.add(rightLeg);
 
-    // === ENHANCED HIP JOINTS - TAPERED FOR SMOOTH CONNECTION ===
+    // === ENHANCED HIP JOINTS ===
     const hipJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
     const leftHipJoint = new THREE.Mesh(hipJointGeometry, accentMaterial);
     leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
@@ -267,29 +242,25 @@ export abstract class EnemyHumanoid {
     // === ENHANCED COMPOSITE ANATOMICAL TORSO ===
     const torsoGroup = new THREE.Group();
     
-    // Main torso - truncated elliptical cone (widest at shoulders, narrows at waist) - made thicker
+    // Main torso - keep existing design but track reference
     const mainTorsoGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 1.1,  // Top radius (increased from 1.0 to 1.1)
-      bodyScale.body.radius * 0.85, // Bottom radius (increased from 0.75 to 0.85)
+      bodyScale.body.radius * 1.1,
+      bodyScale.body.radius * 0.85,
       bodyScale.body.height,
-      32, // More segments for smooth elliptical shape
+      32,
       8
     );
     
-    // Make it elliptical (flatter front-to-back)
     const positions = mainTorsoGeometry.attributes.position.array;
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const z = positions[i + 2];
       
-      // Calculate angle and radius in the XZ plane
       const angle = Math.atan2(z, x);
       const radius = Math.sqrt(x * x + z * z);
       
-      // Modify radius to create elliptical shape (0.8 depth ratio for flatter front-to-back)
       const newRadius = radius * (Math.abs(Math.sin(angle)) * 0.2 + 0.8);
       
-      // Apply new coordinates
       positions[i] = Math.cos(angle) * newRadius;
       positions[i + 2] = Math.sin(angle) * newRadius;
     }
@@ -301,11 +272,11 @@ export abstract class EnemyHumanoid {
     mainTorso.receiveShadow = true;
     torsoGroup.add(mainTorso);
 
-    // Chest Area: Widened shape like inverted pelvis for shoulder connection
+    // NEW: Enhanced Chest Area - separate trackable component
     const chestGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 1.2,  // Top radius (wider for shoulders)
-      bodyScale.body.radius * 0.85, // Bottom radius (connects to main torso)
-      0.5, // Height
+      bodyScale.body.radius * 1.2,
+      bodyScale.body.radius * 0.85,
+      0.5,
       16, 4
     );
     const chest = new THREE.Mesh(chestGeometry, muscleMaterial.clone());
@@ -314,11 +285,11 @@ export abstract class EnemyHumanoid {
     chest.receiveShadow = true;
     torsoGroup.add(chest);
 
-    // Hip/Pelvis Area: Widened base for connection to legs
+    // NEW: Enhanced Hip/Pelvis Area - separate trackable component
     const pelvisGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 0.75, // Top radius (connects to waist)
-      bodyScale.body.radius * 0.9,  // Bottom radius (wider hips)
-      0.4, // Height
+      bodyScale.body.radius * 0.75,
+      bodyScale.body.radius * 0.9,
+      0.4,
       16, 4
     );
     const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
@@ -333,20 +304,18 @@ export abstract class EnemyHumanoid {
     // === ENHANCED ORCISH HEAD ===
     const headGroup = new THREE.Group();
     
-    // Main skull - elongated and more angular
     const skullGeometry = new THREE.SphereGeometry(bodyScale.head.radius, 24, 20);
     const skull = new THREE.Mesh(skullGeometry, muscleMaterial.clone());
-    skull.scale.set(1, 1.1, 1.2); // elongated
+    skull.scale.set(1, 1.1, 1.2);
     skull.position.y = headY;
     skull.castShadow = true;
     skull.receiveShadow = true;
     headGroup.add(skull);
 
-    // === NECK CONNECTION ===
     const neckGeometry = new THREE.CylinderGeometry(
-      bodyScale.head.radius * 0.5,  // Top radius (connects to head)
-      bodyScale.body.radius * 0.4,  // Bottom radius (connects to torso)
-      0.4, // Height
+      bodyScale.head.radius * 0.5,
+      bodyScale.body.radius * 0.4,
+      0.4,
       16, 4
     );
     const neck = new THREE.Mesh(neckGeometry, skinMaterial.clone());
@@ -355,28 +324,24 @@ export abstract class EnemyHumanoid {
     neck.receiveShadow = true;
     headGroup.add(neck);
 
-    // Prominent brow ridge
     const browRidgeGeometry = new THREE.BoxGeometry(0.8, 0.15, 0.4);
     const browRidge = new THREE.Mesh(browRidgeGeometry, accentMaterial.clone());
     browRidge.position.set(0, headY + 0.2, bodyScale.head.radius * 0.7);
     browRidge.castShadow = true;
     headGroup.add(browRidge);
 
-    // Protruding jaw
     const jawGeometry = new THREE.BoxGeometry(0.6, 0.3, 0.5);
     const jaw = new THREE.Mesh(jawGeometry, muscleMaterial.clone());
     jaw.position.set(0, headY - 0.25, bodyScale.head.radius * 0.6);
     jaw.castShadow = true;
     headGroup.add(jaw);
 
-    // Flattened nose area
     const noseGeometry = new THREE.BoxGeometry(0.3, 0.2, 0.25);
     const nose = new THREE.Mesh(noseGeometry, accentMaterial.clone());
     nose.position.set(0, headY, bodyScale.head.radius * 0.9);
     nose.castShadow = true;
     headGroup.add(nose);
 
-    // Defined cheekbones
     const cheekGeometry = new THREE.SphereGeometry(0.2, 16, 12);
     const leftCheek = new THREE.Mesh(cheekGeometry, accentMaterial.clone());
     leftCheek.position.set(-0.3, headY - 0.1, bodyScale.head.radius * 0.6);
@@ -391,11 +356,10 @@ export abstract class EnemyHumanoid {
     headGroup.add(rightCheek);
 
     humanoidGroup.add(headGroup);
-    const head = skull; // Keep reference for animation system
+    const head = skull;
 
     // === ENHANCED FACIAL FEATURES ===
     if (features.hasEyes && features.eyeConfig) {
-      // Enhanced eye sockets in brow ridge
       const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.3, 16, 12);
       const eyeSocketMaterial = new THREE.MeshPhongMaterial({
         color: colors.accent,
@@ -420,7 +384,6 @@ export abstract class EnemyHumanoid {
       rightEyeSocket.scale.z = 0.4;
       headGroup.add(rightEyeSocket);
 
-      // Enhanced glowing eyes
       const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius, 16, 12);
       const eyeMaterial = new THREE.MeshPhongMaterial({
         color: features.eyeConfig.color,
@@ -449,7 +412,6 @@ export abstract class EnemyHumanoid {
       headGroup.add(rightEye);
     }
 
-    // Enhanced tusks
     if (features.hasTusks && features.tuskConfig) {
       const tuskGeometry = new THREE.ConeGeometry(
         features.tuskConfig.radius, features.tuskConfig.height, 12
@@ -533,71 +495,72 @@ export abstract class EnemyHumanoid {
     rightArm.receiveShadow = true;
     humanoidGroup.add(rightArm);
 
-    // === MORE SPHERICAL SHOULDER JOINTS ===
-    const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 20, 16);
-    // Make shoulders more spherical by reducing scale distortion
+    // === NEW: ENHANCED ANATOMICAL SHOULDER JOINTS ===
+    const shoulderJointGeometry = new THREE.SphereGeometry(0.28, 24, 20); // Larger for more realistic anatomy
+    
+    // Left shoulder joint with enhanced anatomy
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial);
     leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
-    leftShoulderJoint.scale.set(0.95, 1.05, 0.95); // Minimal distortion for more spherical shape
+    leftShoulderJoint.scale.set(0.9, 1.1, 0.9); // Slightly elongated for natural shoulder socket
     leftShoulderJoint.castShadow = true;
     leftShoulderJoint.receiveShadow = true;
     humanoidGroup.add(leftShoulderJoint);
 
+    // Right shoulder joint with enhanced anatomy
     const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
     rightShoulderJoint.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
-    rightShoulderJoint.scale.set(0.95, 1.05, 0.95); // Minimal distortion for more spherical shape
+    rightShoulderJoint.scale.set(0.9, 1.1, 0.9); // Slightly elongated for natural shoulder socket
     rightShoulderJoint.castShadow = true;
     rightShoulderJoint.receiveShadow = true;
     humanoidGroup.add(rightShoulderJoint);
 
-    // === RAISED TRAPEZIUS MUSCLES ===
+    // === ENHANCED TRAPEZIUS MUSCLES ===
     const trapGeometry = new THREE.ConeGeometry(
-      bodyScale.body.radius * 0.6,  // Base radius (smaller for better proportions)
-      0.5, // Height (reduced)
+      bodyScale.body.radius * 0.6,
+      0.5,
       16, 4
     );
     
     const leftTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     leftTrap.position.set(
-      -(bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight + 0.25, // Raised higher from +0.15 to +0.25
+      -(bodyScale.body.radius + 0.1) * 0.5,
+      shoulderHeight + 0.25,
       0
     );
-    leftTrap.rotation.z = -0.4; // Angled towards shoulder
-    leftTrap.scale.set(0.7, 1, 0.5); // More compressed for natural muscle shape
+    leftTrap.rotation.z = -0.4;
+    leftTrap.scale.set(0.7, 1, 0.5);
     leftTrap.castShadow = true;
     leftTrap.receiveShadow = true;
     humanoidGroup.add(leftTrap);
 
     const rightTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     rightTrap.position.set(
-      (bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight + 0.25, // Raised higher from +0.15 to +0.25
+      (bodyScale.body.radius + 0.1) * 0.5,
+      shoulderHeight + 0.25,
       0
     );
-    rightTrap.rotation.z = 0.4; // Angled towards shoulder
-    rightTrap.scale.set(0.7, 1, 0.5); // More compressed for natural muscle shape
+    rightTrap.rotation.z = 0.4;
+    rightTrap.scale.set(0.7, 1, 0.5);
     rightTrap.castShadow = true;
     rightTrap.receiveShadow = true;
     humanoidGroup.add(rightTrap);
 
-    // === ENHANCED ELBOW JOINTS - TAPERED FOR SMOOTH FOREARM CONNECTION ===
+    // === ENHANCED ELBOW JOINTS ===
     const elbowJointGeometry = new THREE.SphereGeometry(0.22, 24, 20);
     const leftElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial);
     leftElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
-    leftElbowJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother forearm connection
+    leftElbowJoint.scale.set(0.8, 1.2, 0.8);
     leftElbowJoint.castShadow = true;
     leftElbowJoint.receiveShadow = true;
     leftArm.add(leftElbowJoint);
 
     const rightElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial.clone());
     rightElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
-    rightElbowJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother forearm connection
+    rightElbowJoint.scale.set(0.8, 1.2, 0.8);
     rightElbowJoint.castShadow = true;
     rightElbowJoint.receiveShadow = true;
     rightArm.add(rightElbowJoint);
 
-    // === ENHANCED MUSCULAR FOREARMS ===
     const leftElbowGeometry = this.createTaperedLimbGeometry(
       bodyScale.forearm.radius[1], 
       bodyScale.forearm.radius[0], 
@@ -637,7 +600,6 @@ export abstract class EnemyHumanoid {
     rightWrist.receiveShadow = true;
     rightElbow.add(rightWrist);
 
-    // Enhanced claws
     const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
     const clawMaterial = new THREE.MeshPhongMaterial({
       color: 0x2C1810,
@@ -669,7 +631,6 @@ export abstract class EnemyHumanoid {
       rightWrist.add(rightClaw);
     }
 
-    // === ENHANCED MUSCULAR SHINS ===
     const shinRelativeY = -bodyScale.leg.length / 2;
 
     const leftKneeGeometry = this.createTaperedLimbGeometry(
@@ -696,23 +657,21 @@ export abstract class EnemyHumanoid {
     rightKnee.receiveShadow = true;
     rightLeg.add(rightKnee);
 
-    // === ENHANCED KNEE JOINTS - TAPERED FOR SMOOTH SHIN CONNECTION ===
     const kneeJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
     const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial);
     leftKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
-    leftKneeJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother shin connection
+    leftKneeJoint.scale.set(0.8, 1.2, 0.8);
     leftKneeJoint.castShadow = true;
     leftKneeJoint.receiveShadow = true;
     leftLeg.add(leftKneeJoint);
 
     const rightKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial.clone());
     rightKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
-    rightKneeJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother shin connection
+    rightKneeJoint.scale.set(0.8, 1.2, 0.8);
     rightKneeJoint.castShadow = true;
     rightKneeJoint.receiveShadow = true;
     rightLeg.add(rightKneeJoint);
 
-    // === ENHANCED FEET ===
     const footGeometry = new THREE.BoxGeometry(0.4, 0.2, 0.7);
     const footMaterial = new THREE.MeshPhongMaterial({
       color: colors.muscle,
@@ -731,7 +690,6 @@ export abstract class EnemyHumanoid {
     rightFoot.receiveShadow = true;
     rightKnee.add(rightFoot);
 
-    // Enhanced toe claws
     for (let i = 0; i < 3; i++) {
       const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
       toeClaw.position.set((i - 1) * 0.12, -0.1, 0.35);
@@ -768,6 +726,7 @@ export abstract class EnemyHumanoid {
     humanoidGroup.position.copy(position);
     humanoidGroup.castShadow = true;
 
+    // NEW: Enhanced bodyParts with anatomical components
     const bodyParts: EnemyBodyParts = {
       body,
       head,
@@ -788,7 +747,10 @@ export abstract class EnemyHumanoid {
       leftFoot,
       rightFoot,
       weapon,
-      hitBox
+      hitBox,
+      // NEW: Enhanced anatomical parts for realistic movement
+      chest, // Separate chest component for breathing and rotation
+      pelvis // Separate pelvis component for hip movement and weight transfer
     };
 
     // Create metrics for animation system
@@ -834,15 +796,11 @@ export abstract class EnemyHumanoid {
     return { group: humanoidGroup, bodyParts, metrics };
   }
 
-  /**
-   * Creates simple tapered limb geometry without spiral textures
-   */
   private createTaperedLimbGeometry(
     topRadius: number,
     bottomRadius: number, 
     height: number
   ): THREE.CylinderGeometry {
-    // Simple tapered cylinder - no complex muscle definition to avoid spiral texture
     return new THREE.CylinderGeometry(topRadius, bottomRadius, height, 24, 8);
   }
 
@@ -866,7 +824,7 @@ export abstract class EnemyHumanoid {
     if (this.animationSystem.isAttacking()) {
       const animationContinues = this.animationSystem.updateAttackAnimation(deltaTime);
       if (!animationContinues) {
-        console.log("🗡️ [EnemyHumanoid] Attack animation completed");
+        console.log("🗡️ [EnemyHumanoid] Enhanced anatomical attack animation completed");
       }
     }
     
@@ -1073,7 +1031,6 @@ export abstract class EnemyHumanoid {
     }
   }
 
-  // Public interface methods
   public isInRange(playerPosition: THREE.Vector3, range: number): boolean {
     return this.mesh.position.distanceTo(playerPosition) <= range;
   }

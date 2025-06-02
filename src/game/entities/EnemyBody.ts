@@ -25,12 +25,27 @@ export interface EnemyBodyParts {
   rightFoot: THREE.Mesh | undefined;
   weapon: THREE.Group | undefined;
   hitBox: THREE.Mesh | undefined;
+  // NEW: Enhanced anatomical body parts
+  chest: THREE.Mesh | undefined;
+  pelvis: THREE.Mesh | undefined;
+}
+
+export interface EnemyBodyMetrics {
+  scale: any;
+  positions: any;
+  neutralPoses: any;
+  animationMetrics: any;
+  colors: {
+    skin: number;
+    muscle: number;
+    accent: number;
+  };
 }
 
 export interface EnemyBodyResult {
   group: THREE.Group;
   bodyParts: EnemyBodyParts;
-  metrics: any;
+  metrics: EnemyBodyMetrics;
 }
 
 // Legacy re-exports for backward compatibility  
