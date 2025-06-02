@@ -6,6 +6,7 @@ import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { MathUtils } from '../utils';
 import { EnemyBodyBuilder, EnemyBodyParts } from './EnemyBody';
 import { EnemyAnimationSystem } from '../animation/EnemyAnimationSystem';
+import { OrcEnemy } from './humanoid/OrcEnemy';
 
 // Enhanced enemy states for better movement control
 enum EnemyMovementState {
@@ -22,7 +23,11 @@ export class Enemy {
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   
-  // NEW: Enhanced body and animation systems
+  // Enhanced humanoid enemy (for orcs)
+  private humanoidEnemy: OrcEnemy | null = null;
+  private isHumanoidEnemy: boolean = false;
+  
+  // Legacy properties for non-humanoid enemies
   private enhancedBodyParts: EnemyBodyParts | null = null;
   private animationSystem: EnemyAnimationSystem | null = null;
   private isEnhancedEnemy: boolean = false;
@@ -35,7 +40,7 @@ export class Enemy {
   private stunDuration: number = 0;
   private targetRotation: number = 0;
   private rotationSpeed: number = 3.0;
-  private hasInitialOrientation: boolean = false; // NEW: Track if initial orientation is set
+  private hasInitialOrientation: boolean = false;
   
   constructor(
     scene: THREE.Scene,
@@ -48,36 +53,34 @@ export class Enemy {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    // Create enemy based on type with enhanced system for orcs
+    // Create enemy based on type with humanoid system for orcs
     if (type === EnemyType.ORC) {
-      this.enemy = this.createEnhancedOrc(position);
-      this.isEnhancedEnemy = true;
+      this.humanoidEnemy = OrcEnemy.create(scene, position, effectsManager, audioManager);
+      this.isHumanoidEnemy = true;
       
-      console.log(`🗡️ [Enemy] FLIPPED: Enhanced orc created with new default orientation (body flipped 180°)`);
+      // Create interface wrapper for backward compatibility
+      this.enemy = this.createEnemyInterface(this.humanoidEnemy);
+      
+      console.log(`🗡️ [Enemy] Created humanoid orc with preserved functionality`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created basic goblin enemy");
+      console.log("🗡️ [Enemy] Created legacy goblin enemy");
     }
     
     // Set knockback resistance based on enemy type
     this.knockbackResistance = type === EnemyType.ORC ? 0.7 : 1.0;
     
-    // Add to scene
-    scene.add(this.enemy.mesh);
+    // Add to scene (only for legacy enemies, humanoid enemies handle their own scene management)
+    if (!this.isHumanoidEnemy) {
+      scene.add(this.enemy.mesh);
+    }
   }
   
-  private createEnhancedOrc(position: THREE.Vector3): EnemyInterface {
-    // Use new data-driven body builder
-    const { group: orcGroup, bodyParts, metrics } = EnemyBodyBuilder.createRealisticOrcBody(position);
-    this.enhancedBodyParts = bodyParts;
-    
-    // Pass metrics to animation system for auto-sync
-    this.animationSystem = new EnemyAnimationSystem(bodyParts, metrics);
-    
-    console.log(`🗡️ [Enemy] FIXED: Orc body and head now properly aligned - no extra rotation applied`);
+  private createEnemyInterface(humanoidEnemy: OrcEnemy): EnemyInterface {
+    const bodyParts = humanoidEnemy.getBodyParts();
     
     return {
-      mesh: orcGroup,
+      mesh: humanoidEnemy.getMesh(),
       health: 60,
       maxHealth: 60,
       speed: 3,
@@ -94,7 +97,7 @@ export class Enemy {
       rightLeg: bodyParts.rightLeg,
       walkTime: 0,
       hitBox: bodyParts.hitBox,
-      originalMaterials: [], // Enhanced body uses different material system
+      originalMaterials: [],
       isHit: false,
       hitTime: 0,
       deathAnimation: {
@@ -123,7 +126,7 @@ export class Enemy {
     
     // Set enemy stats based on type
     const stats = isGoblin ? {
-      health: 20, // Dies in 1 hit (20 damage)
+      health: 20,
       maxHealth: 20,
       speed: 4,
       damage: 10,
@@ -145,7 +148,7 @@ export class Enemy {
       headColor: 0x6B8E6B,
       limbColor: 0x4A7C4A
     } : {
-      health: 60, // Takes 3 hits (20 damage each = 60 total)
+      health: 60,
       maxHealth: 60,
       speed: 3,
       damage: 20,
@@ -267,7 +270,6 @@ export class Enemy {
     // Weapon
     weapon = new THREE.Group();
     
-    // Create wood texture
     const woodTexture = TextureGenerator.createWoodTexture(0x5D4037);
     
     const shaftGeometry = new THREE.CylinderGeometry(0.05, 0.1, 0.8, 12);
@@ -281,10 +283,8 @@ export class Enemy {
     shaft.castShadow = true;
     weapon.add(shaft);
     
-    // Create metal texture
     const metalTexture = TextureGenerator.createMetalTexture(0x444444);
     
-    // Spikes
     const spikeGeometry = new THREE.ConeGeometry(0.025, 0.12, 8);
     const spikeMaterial = new THREE.MeshPhongMaterial({ 
       color: 0x444444,
@@ -311,7 +311,6 @@ export class Enemy {
     weapon.rotation.z = -0.5;
     enemyGroup.add(weapon);
     
-    // Add tusks for orcs
     if (!isGoblin) {
       const tuskGeometry = new THREE.ConeGeometry(0.05, 0.25, 8);
       const tuskMaterial = new THREE.MeshPhongMaterial({ 
@@ -372,58 +371,49 @@ export class Enemy {
   }
   
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      // Delegate to humanoid enemy
+      this.humanoidEnemy.update(deltaTime, playerPosition);
+      
+      // Update interface properties
+      this.enemy.isDead = this.humanoidEnemy.getIsDead();
+      return;
+    }
+    
+    // Legacy update logic for non-humanoid enemies
     const now = Date.now();
     
-    // Skip update if enemy is dead
     if (this.enemy.isDead) {
       this.updateDeathAnimation(deltaTime);
       return;
     }
     
-    // FIXED: Set initial orientation toward player on first update
     if (!this.hasInitialOrientation) {
       this.setInitialOrientation(playerPosition);
       this.hasInitialOrientation = true;
     }
     
-    // Update movement state timers
     this.updateMovementState(deltaTime);
     
-    // ENHANCED: Update animation system for enhanced enemies
-    if (this.isEnhancedEnemy && this.animationSystem) {
-      if (this.animationSystem.isAttacking()) {
-        const animationContinues = this.animationSystem.updateAttackAnimation(deltaTime);
-        if (!animationContinues) {
-          console.log("🗡️ [Enemy] Enhanced orc attack animation completed");
-        }
-      }
-    }
-    
-    // Handle hit animation
     if (this.enemy.isHit && now - this.enemy.hitTime < 300) {
-      // No visual effects needed - hit feedback comes from blood effects and sounds
+      // Hit feedback
     } else if (this.enemy.isHit) {
       this.enemy.isHit = false;
     }
     
     const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
     
-    // Handle different movement states
     switch (this.movementState) {
       case EnemyMovementState.KNOCKED_BACK:
         this.handleKnockbackMovement(deltaTime);
         break;
-        
       case EnemyMovementState.STUNNED:
-        // Just wait, don't move
         break;
-        
       default:
         this.handleNormalMovement(deltaTime, playerPosition, distanceToPlayer, now);
         break;
     }
     
-    // Update smooth rotation
     this.updateRotation(deltaTime);
   }
   
@@ -433,42 +423,10 @@ export class Enemy {
       .normalize();
     directionToPlayer.y = 0;
     
-    // FLIPPED: Since orc body is now flipped, use standard rotation for enhanced orcs
-    if (this.isEnhancedEnemy) {
-      // For enhanced orcs: now use standard rotation (body is flipped so no compensation needed)
-      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
-    } else {
-      // For legacy goblins: still use standard rotation
-      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
-    }
-    
-    // Set rotation immediately (no smooth interpolation for initial orientation)
+    this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
     this.enemy.mesh.rotation.y = this.targetRotation;
     
-    console.log(`🎯 [Enemy] FLIPPED: Set initial orientation - Enhanced: ${this.isEnhancedEnemy}, Rotation: ${this.targetRotation.toFixed(2)}`);
-  }
-  
-  private createHitFlashEffect(): void {
-    // Flash enemy red for hit feedback
-    this.enemy.mesh.children.forEach(child => {
-      if (child instanceof THREE.Mesh && child !== this.enemy.hitBox) {
-        const originalMaterial = child.material as THREE.MeshPhongMaterial;
-        if (originalMaterial) {
-          // Temporarily increase red component
-          const currentColor = originalMaterial.color.clone();
-          originalMaterial.color.setRGB(
-            Math.min(currentColor.r + 0.5, 1),
-            currentColor.g * 0.5,
-            currentColor.b * 0.5
-          );
-          
-          // Restore original color after a short time
-          setTimeout(() => {
-            originalMaterial.color.copy(currentColor);
-          }, 100);
-        }
-      }
-    });
+    console.log(`🎯 [Enemy] Set initial orientation - Humanoid: ${this.isHumanoidEnemy}, Rotation: ${this.targetRotation.toFixed(2)}`);
   }
   
   private updateMovementState(deltaTime: number): void {
@@ -489,57 +447,40 @@ export class Enemy {
   }
   
   private handleKnockbackMovement(deltaTime: number): void {
-    // FIXED: Pure directional movement without decay for consistent knockback
     const movement = this.knockbackVelocity.clone().multiplyScalar(deltaTime);
     this.enemy.mesh.position.add(movement);
-    this.enemy.mesh.position.y = 0; // Keep on ground
-    
-    console.log(`🎯 [Enemy] Clean knockback movement: velocity=${this.knockbackVelocity.length().toFixed(2)}, duration=${this.knockbackDuration.toFixed(0)}ms`);
+    this.enemy.mesh.position.y = 0;
   }
   
   private handleNormalMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
-    // Update idle time
     this.enemy.idleTime += deltaTime;
     
-    // Enhanced AI behavior with proper attack ranges and movement
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
-      // FLIPPED: Calculate target rotation with standard logic for both enemy types now
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.enemy.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
-      // FLIPPED: Both enemy types now use standard rotation calculation
       this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
-      // Move toward player if outside damage range
       if (distanceToPlayer > this.enemy.damageRange) {
         const moveAmount = this.enemy.speed * deltaTime;
         const newPosition = this.enemy.mesh.position.clone();
         newPosition.add(directionToPlayer.multiplyScalar(moveAmount));
-        newPosition.y = 0; // Ensure enemies stay on ground
+        newPosition.y = 0;
       
         this.enemy.mesh.position.copy(newPosition);
-        
-        // ENHANCED: Use sophisticated animation system for enhanced enemies
-        if (this.isEnhancedEnemy && this.animationSystem) {
-          this.animationSystem.updateWalkAnimation(deltaTime, true, this.enemy.speed);
-        } else {
-          // Legacy walking animation for goblins
-          this.updateLegacyWalkAnimation(deltaTime);
-        }
+        this.updateLegacyWalkAnimation(deltaTime);
       }
       
-      // Attack if within damage range
       if (distanceToPlayer <= this.enemy.damageRange && now - this.enemy.lastAttackTime > this.enemy.attackCooldown) {
         this.movementState = EnemyMovementState.ATTACKING;
         this.attack(playerPosition);
         this.enemy.lastAttackTime = now;
       }
     } else {
-      // If enemy is far from player but not in attack range, still move toward player slowly
       if (distanceToPlayer > this.enemy.attackRange && distanceToPlayer < 50) {
         this.movementState = EnemyMovementState.PURSUING;
         
@@ -548,36 +489,22 @@ export class Enemy {
           .normalize();
         direction.y = 0;
         
-        // FLIPPED: Both enemy types now use standard rotation calculation
         this.targetRotation = Math.atan2(direction.x, direction.z);
         
-        const slowMoveAmount = this.enemy.speed * deltaTime * 0.3; // Slower movement when far
+        const slowMoveAmount = this.enemy.speed * deltaTime * 0.3;
         const newPosition = this.enemy.mesh.position.clone();
         newPosition.add(direction.multiplyScalar(slowMoveAmount));
         newPosition.y = 0;
         
         this.enemy.mesh.position.copy(newPosition);
-        
-        // ENHANCED: Use sophisticated animation for movement
-        if (this.isEnhancedEnemy && this.animationSystem) {
-          this.animationSystem.updateWalkAnimation(deltaTime, true, this.enemy.speed * 0.3);
-        }
       } else {
         this.movementState = EnemyMovementState.IDLE;
-        
-        // ENHANCED: Use sophisticated idle animation
-        if (this.isEnhancedEnemy && this.animationSystem) {
-          this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
-        } else {
-          // Legacy idle animations for goblins
-          this.updateLegacyIdleAnimation();
-        }
+        this.updateLegacyIdleAnimation();
       }
     }
   }
   
   private updateLegacyWalkAnimation(deltaTime: number): void {
-    // Walking animation for legacy enemies (goblins)
     this.enemy.walkTime += deltaTime * this.enemy.speed * 2.5;
   
     if (this.enemy.leftArm && this.enemy.rightArm && this.enemy.leftLeg && this.enemy.rightLeg) {
@@ -592,12 +519,10 @@ export class Enemy {
   }
   
   private updateLegacyIdleAnimation(): void {
-    // Idle animations for legacy enemies
     if (this.enemy.body) {
       this.enemy.body.position.y = (this.enemy.type === EnemyType.GOBLIN ? 1.2 : 1.8) / 2 + Math.sin(this.enemy.idleTime * 4) * 0.05;
     }
     
-    // Weapon swing animation
     if (this.enemy.weapon) {
       const baseRotation = -0.5;
       this.enemy.weapon.rotation.z = baseRotation + Math.sin(this.enemy.idleTime * 3) * 0.2;
@@ -605,7 +530,6 @@ export class Enemy {
   }
   
   private updateRotation(deltaTime: number): void {
-    // FIXED: Only use smooth rotation for movement changes, not initial orientation
     if (this.movementState !== EnemyMovementState.KNOCKED_BACK && 
         this.movementState !== EnemyMovementState.STUNNED && 
         this.hasInitialOrientation) {
@@ -613,12 +537,10 @@ export class Enemy {
       const currentRotation = this.enemy.mesh.rotation.y;
       const rotationDiff = this.targetRotation - currentRotation;
       
-      // Handle rotation wrapping around -π to π
       let normalizedDiff = rotationDiff;
       if (normalizedDiff > Math.PI) normalizedDiff -= Math.PI * 2;
       if (normalizedDiff < -Math.PI) normalizedDiff += Math.PI * 2;
       
-      // Only apply smooth rotation if the difference is significant
       if (Math.abs(normalizedDiff) > 0.1) {
         const rotationStep = this.rotationSpeed * deltaTime;
         const newRotation = currentRotation + Math.sign(normalizedDiff) * Math.min(Math.abs(normalizedDiff), rotationStep);
@@ -628,21 +550,12 @@ export class Enemy {
   }
   
   private attack(playerPosition: THREE.Vector3): void {
-    // ENHANCED: Start sophisticated attack animation for enhanced enemies
-    if (this.isEnhancedEnemy && this.animationSystem) {
-      this.animationSystem.startAttackAnimation();
-      console.log("🗡️ [Enemy] Enhanced orc started sophisticated attack animation");
-    } else {
-      // Legacy weapon swing animation for goblins
-      this.startLegacyAttackAnimation();
-    }
+    this.startLegacyAttackAnimation();
     
-    // Create attack effect
     const attackPosition = this.enemy.mesh.position.clone();
     attackPosition.y += 1;
     this.effectsManager.createAttackEffect(attackPosition, 0x880000);
     
-    // Play attack sound
     this.audioManager.play('enemy_hurt');
   }
   
@@ -650,7 +563,6 @@ export class Enemy {
     if (this.enemy.weapon) {
       const originalRotation = this.enemy.weapon.rotation.z;
       
-      // Weapon swing animation
       const swingAnimation = () => {
         const startTime = Date.now();
         const duration = 300;
@@ -664,16 +576,12 @@ export class Enemy {
             return;
           }
           
-          // Swing back, then forward
           if (progress < 0.3) {
-            // Wind up
             this.enemy.weapon.rotation.z = originalRotation + progress / 0.3 * 0.5;
           } else if (progress < 0.7) {
-            // Swing
             const swingProgress = (progress - 0.3) / 0.4;
             this.enemy.weapon.rotation.z = originalRotation + 0.5 - swingProgress * 1.5;
           } else {
-            // Return
             const returnProgress = (progress - 0.7) / 0.3;
             this.enemy.weapon.rotation.z = originalRotation - 1 + returnProgress;
           }
@@ -689,43 +597,41 @@ export class Enemy {
   }
   
   public takeDamage(damage: number, playerPosition: THREE.Vector3): void {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      // Delegate to humanoid enemy
+      this.humanoidEnemy.takeDamage(damage, playerPosition);
+      return;
+    }
+    
+    // Legacy damage handling for non-humanoid enemies
     if (this.enemy.isDead) return;
     
     this.enemy.health -= damage;
     this.enemy.isHit = true;
     this.enemy.hitTime = Date.now();
     
-    // Enhanced attack effect at enemy position
     this.effectsManager.createAttackEffect(this.enemy.mesh.position.clone(), 0xFFD700);
     
-    // FIXED: Consistent knockback for both sword and bow attacks
     const knockbackDirection = new THREE.Vector3()
       .subVectors(this.enemy.mesh.position, playerPosition)
       .normalize();
-    knockbackDirection.y = 0; // Keep knockback horizontal only
+    knockbackDirection.y = 0;
     
-    // MATCHED: Same knockback intensity as sword attacks for all weapons
-    const baseKnockback = 3.0; // Same as sword knockback
-    const damageMultiplier = Math.min(damage / 20, 2.0); // Same scaling
+    const baseKnockback = 3.0;
+    const damageMultiplier = Math.min(damage / 20, 2.0);
     const knockbackIntensity = (baseKnockback * damageMultiplier) / this.knockbackResistance;
     
-    // FIXED: Set clean directional velocity for consistent knockback
     this.knockbackVelocity.copy(knockbackDirection).multiplyScalar(knockbackIntensity);
-    this.knockbackDuration = 300; // Same duration as sword
-    this.stunDuration = 150; // Same stun duration as sword
+    this.knockbackDuration = 300;
+    this.stunDuration = 150;
     this.movementState = EnemyMovementState.KNOCKED_BACK;
     
-    console.log(`💥 [Enemy] Consistent knockback applied: intensity=${knockbackIntensity.toFixed(2)}, direction=(${knockbackDirection.x.toFixed(2)}, ${knockbackDirection.z.toFixed(2)})`);
-    
-    // Blood effect
     const bloodDirection = knockbackDirection.clone();
     bloodDirection.y = 0.5;
     this.effectsManager.createBloodEffect(this.enemy.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), bloodDirection);
     
-    // Play hit sound
     this.audioManager.play('enemy_hurt');
     
-    // Check if enemy is dead
     if (this.enemy.health <= 0) {
       this.die();
     }
@@ -735,26 +641,20 @@ export class Enemy {
     this.enemy.isDead = true;
     this.enemy.deathTime = Date.now();
     this.enemy.deathAnimation.falling = true;
-    this.movementState = EnemyMovementState.STUNNED; // Stop all movement
+    this.movementState = EnemyMovementState.STUNNED;
     
-    // Enhanced death explosion effect
     this.effectsManager.createHitEffect(this.enemy.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)));
-    
-    // Play death sound
     this.audioManager.play('enemy_death');
   }
   
   private updateDeathAnimation(deltaTime: number): void {
     if (!this.enemy.deathAnimation.falling) return;
     
-    // Update fall speed
-    this.enemy.deathAnimation.fallSpeed += deltaTime * 2; // Gravity
+    this.enemy.deathAnimation.fallSpeed += deltaTime * 2;
     
-    // Rotate and fall
     this.enemy.mesh.rotation.x += this.enemy.deathAnimation.rotationSpeed;
     this.enemy.mesh.position.y -= this.enemy.deathAnimation.fallSpeed;
     
-    // Fade out
     const fadeProgress = Math.min((Date.now() - this.enemy.deathTime) / 5000, 1);
     this.enemy.mesh.children.forEach(child => {
       if (child instanceof THREE.Mesh && child !== this.enemy.hitBox) {
@@ -763,38 +663,58 @@ export class Enemy {
       }
     });
     
-    // Stop falling when below ground
     if (this.enemy.mesh.position.y < -2) {
       this.enemy.deathAnimation.falling = false;
     }
   }
   
   public isInRange(playerPosition: THREE.Vector3, range: number): boolean {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.isInRange(playerPosition, range);
+    }
     return this.enemy.mesh.position.distanceTo(playerPosition) <= range;
   }
   
   public isDeadFor(time: number): boolean {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.isDeadFor(time);
+    }
     if (!this.enemy.isDead) return false;
     return Date.now() - this.enemy.deathTime > time;
   }
   
   public isDead(): boolean {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getIsDead();
+    }
     return this.enemy.isDead;
   }
   
   public getPosition(): THREE.Vector3 {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getPosition();
+    }
     return this.enemy.mesh.position.clone();
   }
   
   public getGoldReward(): number {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getGoldReward();
+    }
     return this.enemy.goldReward;
   }
   
   public getExperienceReward(): number {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getExperienceReward();
+    }
     return this.enemy.experienceReward;
   }
   
   public getMesh(): THREE.Group {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getMesh();
+    }
     return this.enemy.mesh;
   }
   
@@ -803,10 +723,16 @@ export class Enemy {
   }
   
   public getDistanceFromPlayer(playerPosition: THREE.Vector3): number {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getDistanceFromPlayer(playerPosition);
+    }
     return this.enemy.mesh.position.distanceTo(playerPosition);
   }
   
   public shouldCleanup(maxDistance: number, playerPosition: THREE.Vector3): boolean {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.shouldCleanup(maxDistance, playerPosition);
+    }
     if (this.enemy.isDead && this.isDeadFor(30000)) return true;
     if (this.getDistanceFromPlayer(playerPosition) > maxDistance) return true;
     return false;
@@ -819,11 +745,9 @@ export class Enemy {
     audioManager: AudioManager,
     difficulty: number = 1
   ): Enemy {
-    // ENHANCED: Favor orcs at higher difficulty for better visual experience
     const typeRoll = Math.random() * (1 + difficulty * 0.3);
     const type = typeRoll < 0.5 ? EnemyType.GOBLIN : EnemyType.ORC;
     
-    // Determine spawn position (at distance from player)
     const spawnDistance = 20 + Math.random() * 15;
     const angle = Math.random() * Math.PI * 2;
     const spawnPosition = new THREE.Vector3(
@@ -832,17 +756,19 @@ export class Enemy {
       playerPosition.z + Math.sin(angle) * spawnDistance
     );
     
-    // Create enemy
     const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager);
-    console.log(`🗡️ [Enemy] FLIPPED: Created ${type} with new flipped orientation - Enhanced: ${enemy.isEnhancedEnemy}`);
+    console.log(`🗡️ [Enemy] Created ${type} - Humanoid: ${enemy.isHumanoidEnemy}`);
     return enemy;
   }
   
   public dispose(): void {
-    // Remove from scene
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      this.humanoidEnemy.dispose();
+      return;
+    }
+    
     this.scene.remove(this.enemy.mesh);
     
-    // Dispose geometries and materials
     this.enemy.mesh.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         if (child.geometry) {
@@ -860,16 +786,21 @@ export class Enemy {
     });
   }
   
-  // NEW: Enhanced enemy methods
   public isEnhanced(): boolean {
-    return this.isEnhancedEnemy;
+    return this.isHumanoidEnemy || this.isEnhancedEnemy;
   }
   
   public getAnimationSystem(): EnemyAnimationSystem | null {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getAnimationSystem();
+    }
     return this.animationSystem;
   }
   
   public getBodyParts(): EnemyBodyParts | null {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.getBodyParts();
+    }
     return this.enhancedBodyParts;
   }
 }

@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { EnemyBodyParts } from '../entities/EnemyBody';
 import { EnemyBodyMetrics } from '../entities/EnemyBodyMetrics';
@@ -25,7 +26,7 @@ export class EnemyAnimationSystem {
     this.bodyParts = bodyParts;
     this.metrics = metrics;
     
-    console.log(`🎭 [EnemyAnimationSystem] Initialized with data-driven metrics - body Y=${this.metrics.positions.bodyY}`);
+    console.log(`🎭 [EnemyAnimationSystem] Initialized with preserved functionality`);
   }
   
   public updateWalkAnimation(deltaTime: number, isMoving: boolean, movementSpeed: number): void {
@@ -36,24 +37,20 @@ export class EnemyAnimationSystem {
     
     this.walkTime += deltaTime * movementSpeed * this.metrics.animationMetrics.walkCycleSpeed;
     
-    // Enhanced walking animation using metrics
     const armSwing = Math.sin(this.walkTime) * this.metrics.animationMetrics.armSwingIntensity;
     const legSwing = Math.sin(this.walkTime + Math.PI) * this.metrics.animationMetrics.legSwingIntensity;
     const shoulderSway = Math.sin(this.walkTime * 0.5) * this.metrics.animationMetrics.shoulderMovement;
     
-    // === BODY ANIMATION (AUTO-SYNCED) ===
     if (this.bodyParts.body) {
       const walkingBob = Math.sin(this.walkTime * 2) * 0.05;
       this.bodyParts.body.position.y = this.metrics.positions.bodyY + walkingBob;
     }
     
-    // === ARM MOVEMENT (AUTO-SYNCED TO NEUTRAL POSES) - SKIP DURING ATTACKS ===
     const isAttacking = this.swingAnimation?.isActive || false;
     
     if (this.bodyParts.leftArm && this.bodyParts.rightArm && !isAttacking) {
-      // CANONICALIZED: Left arm system - weapon arm (reduced swing for weapon control)
       const leftNeutral = this.metrics.neutralPoses.arms.left;
-      const weaponArmSwing = armSwing * 0.6; // Reduced swing for weapon control
+      const weaponArmSwing = armSwing * 0.6;
       this.bodyParts.leftArm.rotation.x = leftNeutral.x + weaponArmSwing;
       this.bodyParts.leftArm.rotation.z = leftNeutral.z + shoulderSway;
       
@@ -64,7 +61,6 @@ export class EnemyAnimationSystem {
         this.bodyParts.leftWrist.rotation.x = -weaponArmSwing * 0.2;
       }
       
-      // Right arm system (free arm - normal swing)
       const rightNeutral = this.metrics.neutralPoses.arms.right;
       this.bodyParts.rightArm.rotation.x = rightNeutral.x + armSwing;
       this.bodyParts.rightArm.rotation.z = rightNeutral.z - shoulderSway;
@@ -77,12 +73,10 @@ export class EnemyAnimationSystem {
       }
     }
     
-    // === LEG ANIMATIONS (CONTINUE DURING ATTACKS) ===
     if (this.bodyParts.leftLeg && this.bodyParts.rightLeg) {
       this.bodyParts.leftLeg.rotation.x = legSwing;
       this.bodyParts.rightLeg.rotation.x = -legSwing;
       
-      // Knee movement for more realistic gait
       if (this.bodyParts.leftKnee) {
         this.bodyParts.leftKnee.rotation.x = Math.max(0, legSwing) * 0.8;
       }
@@ -90,26 +84,21 @@ export class EnemyAnimationSystem {
         this.bodyParts.rightKnee.rotation.x = Math.max(0, -legSwing) * 0.8;
       }
     }
-    
-    console.log(`🎭 [EnemyAnimationSystem] CANONICALIZED walking: LEFT arm is weapon arm, attacking=${isAttacking}`);
   }
   
   private updateIdleAnimation(deltaTime: number): void {
     this.idleTime += deltaTime;
     
-    // === IDLE BREATHING (AUTO-SYNCED) ===
     if (this.bodyParts.body) {
       const breathingOffset = Math.sin(this.idleTime * 4) * this.metrics.animationMetrics.breathingIntensity;
       this.bodyParts.body.position.y = this.metrics.positions.bodyY + breathingOffset;
     }
     
-    // Subtle weapon sway
     if (this.bodyParts.weapon) {
       const baseRotation = -0.3;
       this.bodyParts.weapon.rotation.z = baseRotation + Math.sin(this.idleTime * 2) * 0.1;
     }
     
-    // Return arms to neutral position gradually (AUTO-SYNCED) - SKIP DURING ATTACKS
     const isAttacking = this.swingAnimation?.isActive || false;
     const returnSpeed = deltaTime * 2;
     
@@ -139,11 +128,10 @@ export class EnemyAnimationSystem {
       phases: STANDARD_SWORD_ANIMATION.phases
     };
     
-    // Reset clock and set start time
     this.swingAnimation.clock.start();
     this.swingAnimation.startTime = this.swingAnimation.clock.getElapsedTime();
     
-    console.log("🗡️ [EnemyAnimationSystem] Started NEW FLOW orc sword attack animation");
+    console.log("🗡️ [EnemyAnimationSystem] Started attack animation with preserved flow");
   }
   
   public updateAttackAnimation(deltaTime: number): boolean {
@@ -154,106 +142,77 @@ export class EnemyAnimationSystem {
     const elapsed = this.swingAnimation.clock.getElapsedTime() - this.swingAnimation.startTime;
     const { phases, duration } = STANDARD_SWORD_ANIMATION;
     
-    console.log(`🗡️ [EnemyAnimationSystem] NEW FLOW attack animation - LEFT ARM weapon attack - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
-    
-    // NEW FLOW: Start with precise walking neutral position
-    const walkingNeutralX = THREE.MathUtils.degToRad(-22.5); // -22.5°
-    const walkingNeutralY = 0; // 0°
-    const walkingNeutralZ = THREE.MathUtils.degToRad(-17.2); // -17.2°
+    const walkingNeutralX = THREE.MathUtils.degToRad(-22.5);
+    const walkingNeutralY = 0;
+    const walkingNeutralZ = THREE.MathUtils.degToRad(-17.2);
     
     let shoulderRotation = { 
-      x: walkingNeutralX, // Start from walking neutral (-22.5°)
-      y: walkingNeutralY, // Always 0° for Y axis
-      z: walkingNeutralZ // Consistent -17.2°
+      x: walkingNeutralX,
+      y: walkingNeutralY,
+      z: walkingNeutralZ
     };
     
-    // Elbow and wrist coordination for proper forward swing (LEFT ARM)
     let elbowRotation = { x: 0.05, y: 0, z: 0 };
     let wristRotation = { x: walkingNeutralX, y: 0, z: 0 };
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Pull back to (-60°, 0°, -80°)
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Pull back from walking neutral to windup position
-      shoulderRotation.x = THREE.MathUtils.lerp(walkingNeutralX, THREE.MathUtils.degToRad(-60), easedT); // -22.5° to -60°
-      shoulderRotation.y = THREE.MathUtils.lerp(walkingNeutralY, 0, easedT); // 0° to 0°
-      shoulderRotation.z = THREE.MathUtils.lerp(walkingNeutralZ, THREE.MathUtils.degToRad(-80), easedT); // -17.2° to -80°
+      shoulderRotation.x = THREE.MathUtils.lerp(walkingNeutralX, THREE.MathUtils.degToRad(-60), easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(walkingNeutralY, 0, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(walkingNeutralZ, THREE.MathUtils.degToRad(-80), easedT);
       
-      // ELBOW: Support the windup movement
       elbowRotation.x = THREE.MathUtils.lerp(0.05, -0.05, easedT);
       elbowRotation.y = THREE.MathUtils.lerp(0, Math.PI / 8, easedT);
       
-      // WRIST: Position for forward strike
       wristRotation.x = THREE.MathUtils.lerp(walkingNeutralX, -Math.PI / 6, easedT);
       wristRotation.y = THREE.MathUtils.lerp(0, Math.PI / 12, easedT);
       wristRotation.z = THREE.MathUtils.lerp(0, -Math.PI / 12, easedT);
       
-      // TORSO: Small coil for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.2, easedT);
       
-      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - Pull back to (-60°, 0°, -80°)`);
-      
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Forward strike to (-52.5°, 0°, +50°)
       const t = (elapsed - phases.windup) / phases.slash;
-      const aggressiveT = t * t * (3 - 2 * t); // Smoothstep for aggressive acceleration
+      const aggressiveT = t * t * (3 - 2 * t);
       
-      // SHOULDER: Forward strike movement to NEW FLOW precise angles
-      shoulderRotation.x = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-60), THREE.MathUtils.degToRad(-52.5), aggressiveT); // -60° to -52.5°
-      shoulderRotation.y = THREE.MathUtils.lerp(0, 0, aggressiveT); // 0° to 0°
-      shoulderRotation.z = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-80), THREE.MathUtils.degToRad(50), aggressiveT); // -80° to +50°
+      shoulderRotation.x = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-60), THREE.MathUtils.degToRad(-52.5), aggressiveT);
+      shoulderRotation.y = THREE.MathUtils.lerp(0, 0, aggressiveT);
+      shoulderRotation.z = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-80), THREE.MathUtils.degToRad(50), aggressiveT);
       
-      // ELBOW: Aggressive forward movement
       elbowRotation.x = THREE.MathUtils.lerp(-0.05, 0.1, aggressiveT);
       elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 8, -Math.PI / 12, aggressiveT);
       
-      // WRIST: Forward strike
       wristRotation.x = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 12, aggressiveT);
       wristRotation.y = THREE.MathUtils.lerp(Math.PI / 12, -Math.PI / 16, aggressiveT);
       wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 12, 0, aggressiveT);
       
-      // TORSO: Forward rotation
       torsoRotation = THREE.MathUtils.lerp(-0.2, 0.15, aggressiveT);
       
-      console.log(`🗡️ [EnemyAnimationSystem] SLASH PHASE t=${t.toFixed(2)} - Forward strike to (-52.5°, 0°, +50°)`);
-      
     } else if (elapsed < duration) {
-      // RECOVERY PHASE: Return to walking neutral (-22.5°, 0°, -17.2°)
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return from slash end position to walking neutral
-      shoulderRotation.x = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-52.5), walkingNeutralX, easedT); // -52.5° back to -22.5°
-      shoulderRotation.y = THREE.MathUtils.lerp(0, walkingNeutralY, easedT); // 0° to 0° (stays at 0°)
-      shoulderRotation.z = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(50), walkingNeutralZ, easedT); // +50° back to -17.2°
+      shoulderRotation.x = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(-52.5), walkingNeutralX, easedT);
+      shoulderRotation.y = THREE.MathUtils.lerp(0, walkingNeutralY, easedT);
+      shoulderRotation.z = THREE.MathUtils.lerp(THREE.MathUtils.degToRad(50), walkingNeutralZ, easedT);
       
-      // Return elbow to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.1, 0.05, easedT);
       elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 12, 0, easedT);
       
-      // Return wrist to walking neutral
       wristRotation.x = THREE.MathUtils.lerp(Math.PI / 12, walkingNeutralX, easedT);
       wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 16, 0, easedT);
       wristRotation.z = THREE.MathUtils.lerp(0, 0, easedT);
       
-      // Torso returns to center
       torsoRotation = THREE.MathUtils.lerp(0.15, 0, easedT);
       
-      console.log(`🗡️ [EnemyAnimationSystem] RECOVERY PHASE t=${t.toFixed(2)} - Return to walking neutral (-22.5°, 0°, -17.2°)`);
-      
     } else {
-      // ANIMATION COMPLETE
       this.completeAttackAnimation();
       return false;
     }
     
-    // Apply the coordinated movement to LEFT ARM enemy body parts
     this.applyAttackMovement(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
-    
-    console.log(`🗡️ [EnemyAnimationSystem] NEW FLOW LEFT ARM attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
     return true;
   }
   
@@ -263,50 +222,44 @@ export class EnemyAnimationSystem {
     wristRotation: any, 
     torsoRotation: number
   ): void {
-    // Apply SHOULDER rotations (LEFT arm for weapon) - forward-pointing attack
     if (this.bodyParts.leftArm) {
       this.bodyParts.leftArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
     }
     
-    // Apply ELBOW rotations
     if (this.bodyParts.leftElbow) {
       this.bodyParts.leftElbow.rotation.set(elbowRotation.x, elbowRotation.y, elbowRotation.z);
     }
     
-    // Apply WRIST rotations
     if (this.bodyParts.leftWrist) {
       this.bodyParts.leftWrist.rotation.set(wristRotation.x, wristRotation.y, wristRotation.z);
     }
     
-    // Apply TORSO rotation
     if (this.bodyParts.body) {
       this.bodyParts.body.rotation.y = torsoRotation;
     }
   }
   
   private completeAttackAnimation(): void {
-    // NEW FLOW: Reset to precise walking neutral position for LEFT ARM
-    const walkingNeutralX = THREE.MathUtils.degToRad(-22.5); // -22.5°
-    const walkingNeutralY = 0; // 0°
-    const walkingNeutralZ = THREE.MathUtils.degToRad(-17.2); // -17.2°
+    const walkingNeutralX = THREE.MathUtils.degToRad(-22.5);
+    const walkingNeutralY = 0;
+    const walkingNeutralZ = THREE.MathUtils.degToRad(-17.2);
     
     if (this.bodyParts.leftArm) {
-      this.bodyParts.leftArm.rotation.set(walkingNeutralX, walkingNeutralY, walkingNeutralZ); // Use precise neutral
+      this.bodyParts.leftArm.rotation.set(walkingNeutralX, walkingNeutralY, walkingNeutralZ);
     }
     
-    // Reset other joints to neutral positions
     if (this.bodyParts.leftElbow) {
       this.bodyParts.leftElbow.rotation.set(0.05, 0, 0);
     }
     if (this.bodyParts.leftWrist) {
-      this.bodyParts.leftWrist.rotation.set(walkingNeutralX, 0, 0); // Use precise neutral
+      this.bodyParts.leftWrist.rotation.set(walkingNeutralX, 0, 0);
     }
     if (this.bodyParts.body) {
       this.bodyParts.body.rotation.y = 0;
     }
     
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] NEW FLOW LEFT ARM attack animation completed, returned to walking neutral (-22.5°, 0°, -17.2°)");
+    console.log("🗡️ [EnemyAnimationSystem] Attack animation completed with preserved flow");
   }
   
   public isAttacking(): boolean {
