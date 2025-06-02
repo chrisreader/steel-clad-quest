@@ -34,8 +34,7 @@ export class PassiveNPCBehavior {
   private position: THREE.Vector3;
   private spawnPosition: THREE.Vector3;
   private maxRoamDistance: number;
-  private safeZoneCenter: THREE.Vector3;
-  private safeZoneRadius: number;
+  private safeZoneBounds: { minX: number; maxX: number; minZ: number; maxZ: number };
   private lookDirection: THREE.Vector3 = new THREE.Vector3();
   private headRotation: number = 0;
   private targetHeadRotation: number = 0;
@@ -49,8 +48,14 @@ export class PassiveNPCBehavior {
     this.position = spawnPosition.clone();
     this.spawnPosition = spawnPosition.clone();
     this.maxRoamDistance = maxRoamDistance;
-    this.safeZoneCenter = safeZoneCenter;
-    this.safeZoneRadius = safeZoneRadius;
+    
+    // Convert circular safe zone to rectangular bounds for exact tavern match
+    this.safeZoneBounds = {
+      minX: -6,
+      maxX: 6,
+      minZ: -6,
+      maxZ: 6
+    };
     
     // Generate random personality
     this.personality = this.generatePersonality();
@@ -88,9 +93,13 @@ export class PassiveNPCBehavior {
         this.spawnPosition.z + Math.sin(angle) * distance
       );
 
-      // Avoid safe zone
-      const distanceToSafeZone = position.distanceTo(this.safeZoneCenter);
-      if (distanceToSafeZone <= this.safeZoneRadius + 2) {
+      // Avoid safe zone using rectangular bounds
+      const isInSafeZone = position.x >= this.safeZoneBounds.minX && 
+                          position.x <= this.safeZoneBounds.maxX && 
+                          position.z >= this.safeZoneBounds.minZ && 
+                          position.z <= this.safeZoneBounds.maxZ;
+      
+      if (isInSafeZone) {
         continue; // Skip this waypoint
       }
 

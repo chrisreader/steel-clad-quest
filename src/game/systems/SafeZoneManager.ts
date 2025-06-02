@@ -2,8 +2,10 @@
 import * as THREE from 'three';
 
 export interface SafeZoneConfig {
-  center: THREE.Vector3;
-  radius: number;
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
 }
 
 export class SafeZoneManager {
@@ -14,12 +16,14 @@ export class SafeZoneManager {
 
   constructor(config: SafeZoneConfig) {
     this.config = config;
-    console.log(`🛡️ [SafeZoneManager] Initialized safe zone at center (${config.center.x}, ${config.center.z}) with radius ${config.radius}`);
+    console.log(`🛡️ [SafeZoneManager] Initialized rectangular safe zone: X(${config.minX} to ${config.maxX}), Z(${config.minZ} to ${config.maxZ})`);
   }
 
   public isPositionInSafeZone(position: THREE.Vector3): boolean {
-    const distance = new THREE.Vector2(position.x - this.config.center.x, position.z - this.config.center.z).length();
-    return distance <= this.config.radius;
+    return position.x >= this.config.minX && 
+           position.x <= this.config.maxX && 
+           position.z >= this.config.minZ && 
+           position.z <= this.config.maxZ;
   }
 
   public updatePlayerPosition(playerPosition: THREE.Vector3): void {
@@ -40,11 +44,13 @@ export class SafeZoneManager {
   }
 
   public getSafeZoneCenter(): THREE.Vector3 {
-    return this.config.center.clone();
+    const centerX = (this.config.minX + this.config.maxX) / 2;
+    const centerZ = (this.config.minZ + this.config.maxZ) / 2;
+    return new THREE.Vector3(centerX, 0, centerZ);
   }
 
-  public getSafeZoneRadius(): number {
-    return this.config.radius;
+  public getSafeZoneBounds(): SafeZoneConfig {
+    return { ...this.config };
   }
 
   public setCallbacks(onEnter?: () => void, onExit?: () => void): void {
@@ -82,13 +88,14 @@ export class SafeZoneManager {
       attempts++;
     }
 
-    // Fallback: spawn far from safe zone
+    // Fallback: spawn far from safe zone center
+    const center = this.getSafeZoneCenter();
     const angle = Math.random() * Math.PI * 2;
-    const distance = this.config.radius + minDistance + 10;
+    const distance = minDistance + 10;
     return new THREE.Vector3(
-      this.config.center.x + Math.cos(angle) * distance,
+      center.x + Math.cos(angle) * distance,
       0,
-      this.config.center.z + Math.sin(angle) * distance
+      center.z + Math.sin(angle) * distance
     );
   }
 }

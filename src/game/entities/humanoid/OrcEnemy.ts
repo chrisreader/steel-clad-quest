@@ -124,10 +124,12 @@ export class OrcEnemy extends EnemyHumanoid {
 
       // Safety checks
       const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
-      const safeZoneCenter = new THREE.Vector3(0, 0, 0);
-      const distanceToSafeZone = newPosition.distanceTo(safeZoneCenter);
+      
+      // Updated to use rectangular safe zone bounds
+      const isInSafeZone = newPosition.x >= -6 && newPosition.x <= 6 && 
+                          newPosition.z >= -6 && newPosition.z <= 6;
 
-      if (distanceFromSpawn < this.maxWanderDistance && distanceToSafeZone > 9) {
+      if (distanceFromSpawn < this.maxWanderDistance && !isInSafeZone) {
         this.mesh.position.copy(newPosition);
         
         // Set rotation to face movement direction
@@ -175,11 +177,13 @@ export class OrcEnemy extends EnemyHumanoid {
     }
 
     // Check if we should avoid safe zone when in aggressive mode
-    const safeZoneCenter = new THREE.Vector3(0, 0, 0);
-    const distanceToSafeZone = this.mesh.position.distanceTo(safeZoneCenter);
+    // Updated to use rectangular safe zone bounds
+    const isInSafeZone = this.mesh.position.x >= -6 && this.mesh.position.x <= 6 && 
+                        this.mesh.position.z >= -6 && this.mesh.position.z <= 6;
     
-    if (distanceToSafeZone < 11) { // Close to tavern-sized safe zone (8 + 3 buffer)
+    if (isInSafeZone) {
       // Move away from safe zone instead of towards player
+      const safeZoneCenter = new THREE.Vector3(0, 0, 0);
       const directionAwayFromSafeZone = new THREE.Vector3()
         .subVectors(this.mesh.position, safeZoneCenter)
         .normalize();

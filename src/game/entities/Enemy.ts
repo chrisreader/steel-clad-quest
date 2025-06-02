@@ -454,10 +454,12 @@ export class Enemy {
 
       // Safety checks
       const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
-      const safeZoneCenter = new THREE.Vector3(0, 0, 0);
-      const distanceToSafeZone = newPosition.distanceTo(safeZoneCenter);
+      
+      // Updated to use rectangular safe zone bounds
+      const isInSafeZone = newPosition.x >= -6 && newPosition.x <= 6 && 
+                          newPosition.z >= -6 && newPosition.z <= 6;
 
-      if (distanceFromSpawn < this.maxWanderDistance && distanceToSafeZone > 9) {
+      if (distanceFromSpawn < this.maxWanderDistance && !isInSafeZone) {
         this.enemy.mesh.position.copy(newPosition);
         
         // Set rotation to face movement direction
@@ -559,11 +561,13 @@ export class Enemy {
     this.enemy.idleTime += deltaTime;
     
     // Check if we should avoid safe zone when in aggressive mode
-    const safeZoneCenter = new THREE.Vector3(0, 0, 0);
-    const distanceToSafeZone = this.enemy.mesh.position.distanceTo(safeZoneCenter);
+    // Updated to use rectangular safe zone bounds
+    const isInSafeZone = this.enemy.mesh.position.x >= -6 && this.enemy.mesh.position.x <= 6 && 
+                        this.enemy.mesh.position.z >= -6 && this.enemy.mesh.position.z <= 6;
     
-    if (distanceToSafeZone < 11) { // Close to safe zone
+    if (isInSafeZone) {
       // Move away from safe zone instead of towards player
+      const safeZoneCenter = new THREE.Vector3(0, 0, 0);
       const directionAwayFromSafeZone = new THREE.Vector3()
         .subVectors(this.enemy.mesh.position, safeZoneCenter)
         .normalize();
