@@ -772,6 +772,14 @@ export class Enemy {
     this.enemy.deathAnimation.falling = true;
     this.movementState = EnemyMovementState.STUNNED;
     
+    // Create ground blood decal on death
+    const bloodDirection = new THREE.Vector3(0, -1, 0); // Downward for ground splatter
+    this.effectsManager.createRealisticBloodEffect(
+      this.enemy.mesh.position.clone(), 
+      bloodDirection
+    );
+    console.log(`🩸 [Enemy] Created death blood decal at position:`, this.enemy.mesh.position);
+    
     this.effectsManager.createHitEffect(this.enemy.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)));
     this.audioManager.play('enemy_death');
   }

@@ -1094,7 +1094,11 @@ export abstract class EnemyHumanoid {
     
     const bloodDirection = knockbackDirection.clone();
     bloodDirection.y = 0.5;
-    this.effectsManager.createBloodEffect(this.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), bloodDirection);
+    this.effectsManager.createRealisticBloodEffect(
+      this.mesh.position.clone(), 
+      bloodDirection
+    );
+    console.log(`🩸 [EnemyHumanoid] Created death blood decal at position:`, this.mesh.position);
     
     this.audioManager.play('enemy_hurt');
     
