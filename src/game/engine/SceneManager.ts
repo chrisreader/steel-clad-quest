@@ -375,8 +375,8 @@ export class SceneManager {
     // Handle center ring differently - create full circle at origin
     if (region.ringIndex === 0) {
       // For center ring, create a smooth circle with many segments
-      terrainGeometry = new THREE.CircleGeometry(ringDef.outerRadius, 64);
-      console.log('Creating center ring terrain with 64 segments for smooth circle');
+      terrainGeometry = new THREE.CircleGeometry(ringDef.outerRadius, 128);
+      console.log('Creating center ring terrain with 128 segments for smooth circle');
     } else {
       // For outer rings, create quadrant segments
       const innerRadius = ringDef.innerRadius;
@@ -433,18 +433,18 @@ export class SceneManager {
     const uvs = [];
     const indices = [];
     
-    // Generate vertices in XZ plane (Y=0) positioned relative to world center
+    // Generate vertices in XY plane (Z=0) which will become XZ plane after rotation
     for (let r = 0; r <= radialSegments; r++) {
       const radius = innerRadius + (outerRadius - innerRadius) * (r / radialSegments);
       
       for (let a = 0; a <= angularSegments; a++) {
         const angle = startAngle + (endAngle - startAngle) * (a / angularSegments);
         
-        // Vertex in XZ plane (horizontal ground plane)
+        // Vertex in XY plane (will become XZ after mesh rotation)
         vertices.push(
           Math.cos(angle) * radius, // x coordinate
-          0,                       // y coordinate (ground level)
-          Math.sin(angle) * radius  // z coordinate
+          Math.sin(angle) * radius, // y coordinate (will become z after rotation)
+          0                         // z coordinate (will become -y after rotation)
         );
         
         // UV mapping
