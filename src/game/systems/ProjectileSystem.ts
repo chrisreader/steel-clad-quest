@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Arrow } from '../entities/Arrow';
 import { Player } from '../entities/Player';
