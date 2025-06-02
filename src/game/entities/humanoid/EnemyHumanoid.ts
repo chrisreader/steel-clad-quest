@@ -384,38 +384,6 @@ export abstract class EnemyHumanoid {
     upperSkull.receiveShadow = true;
     headGroup.add(upperSkull);
 
-    // Phase 2: Enhanced Lower Jaw Design
-    // Create anatomically correct mandible
-    const lowerJawGeometry = new THREE.BoxGeometry(0.8, 0.4, 0.7);
-    
-    // Modify jaw to be U-shaped rather than box-like
-    const jawPositions = lowerJawGeometry.attributes.position.array;
-    for (let i = 0; i < jawPositions.length; i += 3) {
-      const x = jawPositions[i];
-      const y = jawPositions[i + 1];
-      const z = jawPositions[i + 2];
-      
-      // Create U-shaped jaw curve
-      const distanceFromCenter = Math.abs(x);
-      if (z < 0) {
-        // Back of jaw - narrow it
-        jawPositions[i + 2] = z * (1 - distanceFromCenter * 0.3);
-      }
-      
-      // Round the jaw corners
-      if (Math.abs(x) > 0.3 && z > 0) {
-        jawPositions[i + 2] = z * 0.8;
-      }
-    }
-    lowerJawGeometry.attributes.position.needsUpdate = true;
-    lowerJawGeometry.computeVertexNormals();
-    
-    const lowerJaw = new THREE.Mesh(lowerJawGeometry, muscleMaterial.clone());
-    lowerJaw.position.set(0, headY - 0.35, bodyScale.head.radius * 0.4);
-    lowerJaw.castShadow = true;
-    lowerJaw.receiveShadow = true;
-    headGroup.add(lowerJaw);
-
     // === NECK CONNECTION ===
     const neckGeometry = new THREE.CylinderGeometry(
       bodyScale.head.radius * 0.5,  // Top radius (connects to head)
