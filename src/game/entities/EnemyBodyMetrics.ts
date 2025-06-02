@@ -84,11 +84,11 @@ export class EnemyBodyMetricsCalculator {
       shoulderHeight
     };
 
-    // Extract neutral poses from current EnemyBodyBuilder
+    // FIXED: Arms should point forward for proper attack animation
     const neutralPoses: NeutralPoses = {
       arms: {
-        left: { x: -0.393, y: 0, z: 0.3 }, // Forward-facing ~22.5 degrees
-        right: { x: -0.393, y: 0, z: -0.3 } // Forward-facing ~22.5 degrees
+        left: { x: 0.393, y: 0, z: 0.3 }, // Forward-facing +22.5 degrees (was -0.393)
+        right: { x: 0.393, y: 0, z: -0.3 } // Forward-facing +22.5 degrees (was -0.393)
       },
       elbows: {
         left: { x: 0, y: 0, z: 0 },
@@ -154,11 +154,11 @@ export class EnemyBodyMetricsCalculator {
       shoulderHeight
     };
 
-    // Goblin neutral poses (more aggressive stance)
+    // FIXED: Goblin arms also pointing forward (more aggressive stance)
     const neutralPoses: NeutralPoses = {
       arms: {
-        left: { x: -0.2, y: 0, z: 0.3 },
-        right: { x: -0.2, y: 0, z: -0.3 }
+        left: { x: 0.2, y: 0, z: 0.3 }, // Forward-facing (was -0.2)
+        right: { x: 0.2, y: 0, z: -0.3 } // Forward-facing (was -0.2)
       },
       elbows: {
         left: { x: 0, y: 0, z: 0 },
