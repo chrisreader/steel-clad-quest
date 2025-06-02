@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { EnemyType } from '../../../types/GameTypes';
@@ -273,74 +274,106 @@ export abstract class EnemyHumanoid {
     rightHipJoint.receiveShadow = true;
     humanoidGroup.add(rightHipJoint);
 
-    // === ENHANCED ANATOMICAL TORSO ===
+    // === ENHANCED COMPOSITE ANATOMICAL TORSO ===
     const torsoGroup = new THREE.Group();
     
-    // Main torso with anatomical shape - wider at shoulders, narrower at waist
+    // Main torso - truncated elliptical cone (widest at shoulders, narrows at waist)
     const mainTorsoGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 0.85, // narrower at top (waist)
-      bodyScale.body.radius * 1.05, // wider at bottom (hips)
-      bodyScale.body.height * 0.6, 
-      32, 16
+      bodyScale.body.radius * 1.0,  // Top radius (shoulders)
+      bodyScale.body.radius * 0.75, // Bottom radius (waist)
+      bodyScale.body.height,
+      32, // More segments for smooth elliptical shape
+      8
     );
+    
+    // Make it elliptical (flatter front-to-back)
+    const positions = mainTorsoGeometry.attributes.position.array;
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const z = positions[i + 2];
+      
+      // Calculate angle and radius in the XZ plane
+      const angle = Math.atan2(z, x);
+      const radius = Math.sqrt(x * x + z * z);
+      
+      // Modify radius to create elliptical shape (0.8 depth ratio for flatter front-to-back)
+      const newRadius = radius * (Math.abs(Math.sin(angle)) * 0.2 + 0.8);
+      
+      // Apply new coordinates
+      positions[i] = Math.cos(angle) * newRadius;
+      positions[i + 2] = Math.sin(angle) * newRadius;
+    }
+    mainTorsoGeometry.attributes.position.needsUpdate = true;
+    
     const mainTorso = new THREE.Mesh(mainTorsoGeometry, skinMaterial.clone());
-    mainTorso.position.y = bodyY - bodyScale.body.height * 0.1;
+    mainTorso.position.y = bodyY;
     mainTorso.castShadow = true;
     mainTorso.receiveShadow = true;
     torsoGroup.add(mainTorso);
 
-    // Upper chest/shoulder area - broader
-    const upperTorsoGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 1.0, // shoulder width
-      bodyScale.body.radius * 0.85, // connects to waist
-      bodyScale.body.height * 0.4, 
-      32, 16
+    // Chest Area: Pectoral muscles using partial spheres
+    const pectoralGeometry = new THREE.SphereGeometry(
+      0.3,   // Radius
+      16, 12,  // Width/height segments
+      0, Math.PI * 0.6,  // Phi start/length (partial sphere)
+      0, Math.PI * 0.5   // Theta start/length (partial sphere)
     );
-    const upperTorso = new THREE.Mesh(upperTorsoGeometry, skinMaterial.clone());
-    upperTorso.position.y = bodyY + bodyScale.body.height * 0.2;
-    upperTorso.castShadow = true;
-    upperTorso.receiveShadow = true;
-    torsoGroup.add(upperTorso);
-
-    // Square pectoral muscles - more anatomical
-    const pectoralGeometry = new THREE.BoxGeometry(0.35, 0.25, 0.15);
+    
     const leftPectoral = new THREE.Mesh(pectoralGeometry, muscleMaterial.clone());
-    leftPectoral.position.set(-0.22, bodyTopY - 0.15, 0.25);
-    leftPectoral.rotation.y = -0.1;
+    leftPectoral.position.set(-0.25, bodyTopY - 0.2, 0.3);
+    leftPectoral.rotation.set(0, -Math.PI/4, 0);
     leftPectoral.castShadow = true;
     torsoGroup.add(leftPectoral);
-
+    
     const rightPectoral = new THREE.Mesh(pectoralGeometry, muscleMaterial.clone());
-    rightPectoral.position.set(0.22, bodyTopY - 0.15, 0.25);
-    rightPectoral.rotation.y = 0.1;
+    rightPectoral.position.set(0.25, bodyTopY - 0.2, 0.3);
+    rightPectoral.rotation.set(0, Math.PI/4, 0);
     rightPectoral.castShadow = true;
     torsoGroup.add(rightPectoral);
 
-    // Abdominal definition
-    const abGeometry = new THREE.BoxGeometry(0.4, 0.15, 0.12);
-    for (let i = 0; i < 3; i++) {
-      const abMuscle = new THREE.Mesh(abGeometry, muscleMaterial.clone());
-      abMuscle.position.set(0, bodyY + 0.2 - (i * 0.2), 0.3);
-      abMuscle.castShadow = true;
-      torsoGroup.add(abMuscle);
-    }
+    // Shoulders: Partial spheres for deltoid connection
+    const shoulderGeometry = new THREE.SphereGeometry(
+      0.32,   // Radius
+      16, 12,  // Segments
+      0, Math.PI * 0.7,  // Phi range
+      0, Math.PI * 0.6   // Theta range
+    );
+    
+    const leftShoulder = new THREE.Mesh(shoulderGeometry, accentMaterial.clone());
+    leftShoulder.position.set(-bodyScale.body.radius * 0.9, shoulderHeight - 0.1, 0);
+    leftShoulder.rotation.set(0, Math.PI/2, 0);
+    leftShoulder.castShadow = true;
+    torsoGroup.add(leftShoulder);
+    
+    const rightShoulder = new THREE.Mesh(shoulderGeometry, accentMaterial.clone());
+    rightShoulder.position.set(bodyScale.body.radius * 0.9, shoulderHeight - 0.1, 0);
+    rightShoulder.rotation.set(0, -Math.PI/2, 0);
+    rightShoulder.castShadow = true;
+    torsoGroup.add(rightShoulder);
+
+    // Abdominal Area: Subtle convex shape with muscle definition
+    const abdominalGeometry = new THREE.SphereGeometry(0.35, 16, 12);
+    const abdomen = new THREE.Mesh(abdominalGeometry, muscleMaterial.clone());
+    abdomen.position.set(0, bodyY - 0.2, 0.25);
+    abdomen.scale.set(0.8, 0.6, 0.7); // Flattened and elongated
+    abdomen.castShadow = true;
+    torsoGroup.add(abdomen);
+
+    // Hip/Pelvis Area: Widened base for connection to legs
+    const pelvisGeometry = new THREE.CylinderGeometry(
+      bodyScale.body.radius * 0.75, // Top radius (connects to waist)
+      bodyScale.body.radius * 0.9,  // Bottom radius (wider hips)
+      0.4, // Height
+      16, 4
+    );
+    const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
+    pelvis.position.y = legTopY + 0.2;
+    pelvis.castShadow = true;
+    pelvis.receiveShadow = true;
+    torsoGroup.add(pelvis);
 
     humanoidGroup.add(torsoGroup);
     const body = mainTorso; // Keep reference for animation system
-
-    // === ENHANCED SHOULDER JOINTS ===
-    const shoulderGeometry = new THREE.SphereGeometry(0.30, 24, 20);
-    const leftShoulder = new THREE.Mesh(shoulderGeometry, accentMaterial);
-    leftShoulder.position.set(-(bodyScale.body.radius + 0.05), shoulderHeight, 0);
-    leftShoulder.castShadow = true;
-    leftShoulder.receiveShadow = true;
-    humanoidGroup.add(leftShoulder);
-
-    const rightShoulder = new THREE.Mesh(shoulderGeometry, accentMaterial.clone());
-    rightShoulder.position.set(bodyScale.body.radius + 0.05, shoulderHeight, 0);
-    rightShoulder.castShadow = true;
-    rightShoulder.receiveShadow = true;
-    humanoidGroup.add(rightShoulder);
 
     // === ENHANCED ORCISH HEAD ===
     const headGroup = new THREE.Group();
