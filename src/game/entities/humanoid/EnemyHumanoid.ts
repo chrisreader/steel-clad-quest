@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
-import { EnemyType } from '../../types/GameTypes';
+import { EnemyType } from '../../../types/GameTypes';
 
 // Define interfaces locally to avoid circular imports
 export interface EnemyBodyParts {
@@ -90,6 +90,196 @@ export interface EnemyBodyMetrics {
   animationMetrics: EnemyAnimationMetrics;
 }
 
+export interface HumanoidConfig {
+  type: EnemyType;
+  health: number;
+  maxHealth: number;
+  speed: number;
+  damage: number;
+  goldReward: number;
+  experienceReward: number;
+  attackRange: number;
+  damageRange: number;
+  attackCooldown: number;
+  points: number;
+  knockbackResistance: number;
+  
+  bodyScale: {
+    body: { radius: number; height: number };
+    head: { radius: number };
+    arm: { radius: [number, number]; length: number };
+    forearm: { radius: [number, number]; length: number };
+    leg: { radius: [number, number]; length: number };
+    shin: { radius: [number, number]; length: number };
+  };
+  
+  colors: {
+    skin: number;
+    muscle: number;
+    accent: number;
+  };
+  
+  features: {
+    hasEyes: boolean;
+    hasTusks: boolean;
+    hasWeapon: boolean;
+    eyeConfig?: {
+      radius: number;
+      color: number;
+      emissiveIntensity: number;
+      offsetX: number;
+      offsetY: number;
+      offsetZ: number;
+    };
+    tuskConfig?: {
+      radius: number;
+      height: number;
+      color: number;
+      offsetX: number;
+      offsetY: number;
+      offsetZ: number;
+    };
+  };
+}
+
+export class EnemyHumanoid {
+  protected scene: THREE.Scene;
+  protected config: HumanoidConfig;
+  protected group: THREE.Group;
+  protected bodyParts: EnemyBodyParts;
+  protected metrics: EnemyBodyMetrics;
+  protected isDead: boolean = false;
+  protected deathTime: number = 0;
+  protected walkTime: number = 0;
+  
+  constructor(
+    scene: THREE.Scene,
+    config: HumanoidConfig,
+    position: THREE.Vector3,
+    effectsManager: any,
+    audioManager: any
+  ) {
+    this.scene = scene;
+    this.config = config;
+    
+    const bodyResult = createEnemyHumanoidBody(
+      this.convertToBodyScale(config.bodyScale),
+      this.createMaterials(config.colors),
+      scene
+    );
+    
+    this.group = bodyResult.group;
+    this.bodyParts = bodyResult.bodyParts;
+    this.metrics = bodyResult.metrics;
+    
+    this.group.position.copy(position);
+    scene.add(this.group);
+  }
+  
+  private convertToBodyScale(scale: any): EnemyBodyScale {
+    return {
+      body: scale.body,
+      head: scale.head,
+      arm: {
+        upperRadius: scale.arm.radius[0],
+        lowerRadius: scale.arm.radius[1],
+        length: scale.arm.length
+      },
+      leg: {
+        upperRadius: scale.leg.radius[0],
+        lowerRadius: scale.leg.radius[1],
+        length: scale.leg.length
+      }
+    };
+  }
+  
+  private createMaterials(colors: any): EnemyBodyMaterials {
+    return {
+      primary: new THREE.MeshPhongMaterial({ color: colors.skin }),
+      accent: new THREE.MeshPhongMaterial({ color: colors.muscle })
+    };
+  }
+  
+  public update(deltaTime: number, playerPosition: THREE.Vector3): void {
+    // Basic update logic - can be overridden by subclasses
+  }
+  
+  public takeDamage(damage: number, playerPosition: THREE.Vector3): void {
+    // Basic damage logic - can be overridden by subclasses
+  }
+  
+  public getMesh(): THREE.Group {
+    return this.group;
+  }
+  
+  public getBodyParts(): EnemyBodyParts {
+    return this.bodyParts;
+  }
+  
+  public getIsDead(): boolean {
+    return this.isDead;
+  }
+  
+  public getPosition(): THREE.Vector3 {
+    return this.group.position.clone();
+  }
+  
+  public getGoldReward(): number {
+    return this.config.goldReward;
+  }
+  
+  public getExperienceReward(): number {
+    return this.config.experienceReward;
+  }
+  
+  public isInRange(playerPosition: THREE.Vector3, range: number): boolean {
+    return this.group.position.distanceTo(playerPosition) <= range;
+  }
+  
+  public isDeadFor(time: number): boolean {
+    if (!this.isDead) return false;
+    return Date.now() - this.deathTime > time;
+  }
+  
+  public getDistanceFromPlayer(playerPosition: THREE.Vector3): number {
+    return this.group.position.distanceTo(playerPosition);
+  }
+  
+  public shouldCleanup(maxDistance: number, playerPosition: THREE.Vector3): boolean {
+    if (this.isDead && this.isDeadFor(30000)) return true;
+    if (this.getDistanceFromPlayer(playerPosition) > maxDistance) return true;
+    return false;
+  }
+  
+  public dispose(): void {
+    this.scene.remove(this.group);
+    // Cleanup geometry and materials
+    this.group.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        if (child.geometry) {
+          child.geometry.dispose();
+        }
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(material => material.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      }
+    });
+  }
+  
+  public getAnimationSystem(): any {
+    return null; // Can be overridden by subclasses
+  }
+  
+  protected createWeapon(woodTexture: THREE.Texture, metalTexture: THREE.Texture): THREE.Group {
+    // Base weapon creation - should be overridden by subclasses
+    return new THREE.Group();
+  }
+}
+
 export function createEnemyHumanoidBody(
   bodyScale: EnemyBodyScale,
   bodyMaterials: EnemyBodyMaterials,
@@ -164,28 +354,32 @@ export function createEnemyHumanoidBody(
   rightArm.receiveShadow = true;
   humanoidGroup.add(rightArm);
 
-  // === CURVED SHOULDER JOINTS - ROUNDED ON OUTSIDE, TAPERED TOWARD CENTER ===
+  // === CURVED SHOULDER JOINTS ===
   const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 24, 20);
   
   // Apply custom deformation to create more natural shoulder curve
-  const shoulderPositions = shoulderJointGeometry.attributes.position.array;
+  const shoulderPositions = shoulderJointGeometry.attributes.position.array as Float32Array;
   for (let i = 0; i < shoulderPositions.length; i += 3) {
     const x = shoulderPositions[i];
     const y = shoulderPositions[i + 1];
     const z = shoulderPositions[i + 2];
     
-    // Create more natural shoulder shape:
-    // - Rounder/fuller on the outside (away from center)
-    // - More tapered toward the center for trap connection
+    // Create more natural shoulder shape with better outer curve
     const distanceFromCenter = Math.abs(x);
-    const roundnessFactor = 1.0 + (distanceFromCenter * 0.4); // More volume on outside
-    const taperedFactor = 1.0 - (distanceFromCenter * 0.2); // Less volume toward center
     
-    shoulderPositions[i] = x * (x > 0 ? roundnessFactor : taperedFactor); // Apply based on side
-    shoulderPositions[i + 1] = y * 0.8; // Slightly flatten vertically
+    // More curved/rounded on the outside
+    if (x > 0) { // Right side (positive X)
+      shoulderPositions[i] = x * (1.0 + distanceFromCenter * 0.3); // Expand outward
+    } else { // Left side (negative X) 
+      shoulderPositions[i] = x * (1.0 + distanceFromCenter * 0.3); // Expand outward
+    }
+    
+    // Taper toward center for trap connection
+    const centerTaper = 1.0 - (distanceFromCenter * 0.15);
+    shoulderPositions[i + 1] = y * 0.85 * centerTaper; // Slightly flatten and taper vertically
     shoulderPositions[i + 2] = z * 0.9; // Slightly compress depth
   }
-  shoulderPositions.needsUpdate = true;
+  shoulderJointGeometry.attributes.position.needsUpdate = true;
   
   const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial);
   leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
@@ -200,17 +394,19 @@ export function createEnemyHumanoidBody(
   humanoidGroup.add(rightShoulderJoint);
 
   // === TRAPEZIUS MUSCLES ===
-  const trapeziusGeometry = new THREE.PlaneGeometry(0.5, 0.3);
+  const trapeziusGeometry = new THREE.PlaneGeometry(0.6, 0.4);
   const leftTrapezius = new THREE.Mesh(trapeziusGeometry, accentMaterial.clone());
-  leftTrapezius.position.set(-(bodyScale.body.radius + 0.3), shoulderHeight + 0.1, -0.15);
-  leftTrapezius.rotation.y = THREE.MathUtils.degToRad(-30);
+  leftTrapezius.position.set(-(bodyScale.body.radius + 0.25), shoulderHeight + 0.15, -0.1);
+  leftTrapezius.rotation.y = THREE.MathUtils.degToRad(-25);
+  leftTrapezius.rotation.x = THREE.MathUtils.degToRad(-10);
   leftTrapezius.castShadow = true;
   leftTrapezius.receiveShadow = true;
   humanoidGroup.add(leftTrapezius);
 
   const rightTrapezius = new THREE.Mesh(trapeziusGeometry.clone(), accentMaterial.clone());
-  rightTrapezius.position.set(bodyScale.body.radius + 0.3, shoulderHeight + 0.1, -0.15);
-  rightTrapezius.rotation.y = THREE.MathUtils.degToRad(30);
+  rightTrapezius.position.set(bodyScale.body.radius + 0.25, shoulderHeight + 0.15, -0.1);
+  rightTrapezius.rotation.y = THREE.MathUtils.degToRad(25);
+  rightTrapezius.rotation.x = THREE.MathUtils.degToRad(-10);
   rightTrapezius.castShadow = true;
   rightTrapezius.receiveShadow = true;
   humanoidGroup.add(rightTrapezius);
