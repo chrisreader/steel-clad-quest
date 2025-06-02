@@ -6,29 +6,7 @@ import { AudioManager } from '../../engine/AudioManager';
 import { EnemyAnimationSystem } from '../../animation/EnemyAnimationSystem';
 import { EnemyBodyParts } from '../EnemyBody';
 
-// Export all necessary types and interfaces
-export interface EnemyBodyParts {
-  body: THREE.Mesh | undefined;
-  head: THREE.Mesh | undefined;
-  leftArm: THREE.Mesh | undefined;
-  rightArm: THREE.Mesh | undefined;
-  leftElbow: THREE.Mesh | undefined;
-  rightElbow: THREE.Mesh | undefined;
-  leftWrist: THREE.Mesh | undefined;
-  rightWrist: THREE.Mesh | undefined;
-  leftLeg: THREE.Mesh | undefined;
-  rightLeg: THREE.Mesh | undefined;
-  leftKnee: THREE.Mesh | undefined;
-  rightKnee: THREE.Mesh | undefined;
-  leftShoulder: THREE.Mesh | undefined;
-  rightShoulder: THREE.Mesh | undefined;
-  leftHip: THREE.Mesh | undefined;
-  rightHip: THREE.Mesh | undefined;
-  leftFoot: THREE.Mesh | undefined;
-  rightFoot: THREE.Mesh | undefined;
-  weapon: THREE.Group | undefined;
-  hitBox: THREE.Mesh | undefined;
-}
+// Remove duplicate EnemyBodyParts interface - using the one from EnemyBody.ts
 
 export interface BodyScale {
   body: { radius: number; height: number };
