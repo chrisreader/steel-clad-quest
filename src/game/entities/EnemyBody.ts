@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 
@@ -135,7 +134,7 @@ export class EnemyBodyBuilder {
     orcGroup.add(leftTusk);
     orcGroup.add(rightTusk);
     
-    // === ARM POSITIONING (FIXED - HIGHER SHOULDERS) ===
+    // === ARM POSITIONING (FIXED - FORWARD-FACING COMBAT STANCE) ===
     // Position shoulders higher up on the torso for better proportions
     const shoulderHeight = body.position.y + scale.body.height * 0.25; // 2.1 + 0.35 = 2.45 (was 2.59, now higher)
     
@@ -144,7 +143,7 @@ export class EnemyBodyBuilder {
     const leftArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftArm = new THREE.Mesh(leftArmGeometry, leftArmMaterial);
     leftArm.position.set(-(scale.body.radius + 0.25), shoulderHeight, 0);
-    leftArm.rotation.x = 0.393; // ~22.5 degrees forward
+    leftArm.rotation.x = -0.393; // FIXED: ~22.5 degrees forward (was 0.393 backward)
     leftArm.castShadow = true;
     leftArm.receiveShadow = true;
     orcGroup.add(leftArm);
@@ -172,7 +171,7 @@ export class EnemyBodyBuilder {
     const rightArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightArm = new THREE.Mesh(rightArmGeometry, rightArmMaterial);
     rightArm.position.set(scale.body.radius + 0.25, shoulderHeight, 0);
-    rightArm.rotation.x = 0.393; // ~22.5 degrees forward
+    rightArm.rotation.x = -0.393; // FIXED: ~22.5 degrees forward (was 0.393 backward)
     rightArm.castShadow = true;
     rightArm.receiveShadow = true;
     orcGroup.add(rightArm);
@@ -284,9 +283,9 @@ export class EnemyBodyBuilder {
       hitBox
     };
     
-    console.log("🗡️ [EnemyBodyBuilder] FIXED: Head and arms positioned properly - no floating gaps");
-    console.log(`🗡️ [EnemyBodyBuilder] Head: Y=${head.position.y} (sits on body top at Y=${bodyTopY})`);
-    console.log(`🗡️ [EnemyBodyBuilder] Shoulders: Y=${shoulderHeight} (higher on torso for better proportions)`);
+    console.log("🗡️ [EnemyBodyBuilder] FIXED: Arms now point forward for proper combat stance");
+    console.log(`🗡️ [EnemyBodyBuilder] Left arm rotation: X=${leftArm.rotation.x} (forward-facing)`);
+    console.log(`🗡️ [EnemyBodyBuilder] Right arm rotation: X=${rightArm.rotation.x} (weapon ready)`);
     
     return { group: orcGroup, bodyParts };
   }
