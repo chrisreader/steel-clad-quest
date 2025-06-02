@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class JointAnimationHelpers {
@@ -118,27 +117,27 @@ export class JointAnimationHelpers {
     // Different weapons require different elbow mechanics
     // FIXED: Use negative values for natural elbow bending
     const weaponMultiplier = {
-      axe: 1.2,    // More dramatic movement for heavy weapons
-      sword: 1.0,  // Standard movement
-      club: 1.1    // Slightly more dramatic than sword
+      axe: 0.8,    // Reduced from 1.2 - less dramatic movement for axes
+      sword: 0.6,  // Reduced from 1.0 - more controlled sword movement
+      club: 0.7    // Reduced from 1.1 - less dramatic than before
     }[weaponType];
 
     if (attackPhase < 0.3) {
-      // Windup: elbow pulls back and up (more bend = more negative)
+      // Windup: elbow pulls back and up (more bend = more negative) - REDUCED angles
       const t = attackPhase / 0.3;
-      const windupAngle = -Math.PI * 0.4 * weaponMultiplier; // NEGATIVE for natural bend
-      return THREE.MathUtils.lerp(-0.2, windupAngle, Math.sin(t * Math.PI * 0.5));
+      const windupAngle = -Math.PI * 0.25 * weaponMultiplier; // REDUCED from 0.4 to 0.25
+      return THREE.MathUtils.lerp(-0.15, windupAngle, Math.sin(t * Math.PI * 0.5)); // REDUCED base from -0.2
     } else if (attackPhase < 0.6) {
-      // Strike: rapid extension (less bend = less negative)
+      // Strike: rapid extension (less bend = less negative) - REDUCED angles
       const t = (attackPhase - 0.3) / 0.3;
-      const strikeAngle = -Math.PI * 0.1 * weaponMultiplier; // NEGATIVE for natural bend
-      const windupAngle = -Math.PI * 0.4 * weaponMultiplier;
+      const strikeAngle = -Math.PI * 0.05 * weaponMultiplier; // REDUCED from 0.1 to 0.05
+      const windupAngle = -Math.PI * 0.25 * weaponMultiplier;
       return THREE.MathUtils.lerp(windupAngle, strikeAngle, t * t); // Quadratic for rapid acceleration
     } else {
-      // Recovery: controlled return to neutral
+      // Recovery: controlled return to neutral - REDUCED angles
       const t = (attackPhase - 0.6) / 0.4;
-      const strikeAngle = -Math.PI * 0.1 * weaponMultiplier;
-      return THREE.MathUtils.lerp(strikeAngle, -0.2, Math.sin(t * Math.PI * 0.5));
+      const strikeAngle = -Math.PI * 0.05 * weaponMultiplier;
+      return THREE.MathUtils.lerp(strikeAngle, -0.15, Math.sin(t * Math.PI * 0.5)); // REDUCED base from -0.2
     }
   }
 
