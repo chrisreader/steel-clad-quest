@@ -167,7 +167,7 @@ export class EnemyBodyBuilder {
     );
     const leftArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftArm = new THREE.Mesh(leftArmGeometry, leftArmMaterial);
-    leftArm.position.set(-(scale.body.radius + 0.25), positions.shoulderHeight, 0);
+    leftArm.position.set(-(scale.body.radius + 0.1), positions.shoulderHeight, 0); // FIXED: Reduced from 0.25 to 0.1
     leftArm.rotation.set(neutralPoses.arms.left.x, neutralPoses.arms.left.y, neutralPoses.arms.left.z);
     leftArm.castShadow = true;
     leftArm.receiveShadow = true;
@@ -178,7 +178,7 @@ export class EnemyBodyBuilder {
     );
     const rightArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightArm = new THREE.Mesh(rightArmGeometry, rightArmMaterial);
-    rightArm.position.set(scale.body.radius + 0.25, positions.shoulderHeight, 0);
+    rightArm.position.set(scale.body.radius + 0.1, positions.shoulderHeight, 0); // FIXED: Reduced from 0.25 to 0.1
     rightArm.rotation.set(neutralPoses.arms.right.x, neutralPoses.arms.right.y, neutralPoses.arms.right.z);
     rightArm.castShadow = true;
     rightArm.receiveShadow = true;
