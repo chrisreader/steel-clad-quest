@@ -19,6 +19,10 @@ export class TerrainFeatureGenerator {
   // Track spawned objects by region for cleanup
   private spawnedFeatures: Map<string, THREE.Object3D[]> = new Map();
   
+  // Tavern exclusion zone
+  private tavernPosition: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
+  private tavernExclusionRadius: number = 15; // Keep clear area around tavern
+  
   constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
@@ -267,8 +271,8 @@ export class TerrainFeatureGenerator {
         cluster.position.z + Math.sin(angle) * distance
       );
       
-      // Check if position is within the region boundaries
-      if (this.isPositionInRegion(position, region)) {
+      // Check if position is within the region boundaries AND not near tavern
+      if (this.isPositionInRegion(position, region) && !this.isPositionNearTavern(position)) {
         // Spawn feature
         const feature = this.spawnFeature(type, position);
         if (feature) {
@@ -289,11 +293,14 @@ export class TerrainFeatureGenerator {
     for (let i = 0; i < count; i++) {
       const position = this.getRandomPositionInRegion(region);
       
-      // Spawn feature
-      const feature = this.spawnFeature(type, position);
-      if (feature) {
-        features.push(feature);
-        this.scene.add(feature);
+      // Check if position is not near tavern
+      if (!this.isPositionNearTavern(position)) {
+        // Spawn feature
+        const feature = this.spawnFeature(type, position);
+        if (feature) {
+          features.push(feature);
+          this.scene.add(feature);
+        }
       }
     }
   }
@@ -367,6 +374,12 @@ export class TerrainFeatureGenerator {
     
     return positionRegion.ringIndex === region.ringIndex && 
            positionRegion.quadrant === region.quadrant;
+  }
+  
+  // Check if position is too close to tavern/spawn building
+  private isPositionNearTavern(position: THREE.Vector3): boolean {
+    const distance = position.distanceTo(this.tavernPosition);
+    return distance < this.tavernExclusionRadius;
   }
   
   // Cleanup features for a region
