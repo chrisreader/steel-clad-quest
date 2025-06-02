@@ -1,6 +1,5 @@
 
 import * as THREE from 'three';
-import { TextureGenerator } from '../utils';
 import { EnemyType } from '../../types/GameTypes';
 
 // Define interfaces locally to avoid circular imports
@@ -26,6 +25,3 @@ export interface EnemyBodyResult {
   bodyParts: EnemyBodyParts;
   metrics: any;
 }
-
-// Legacy re-exports for backward compatibility  
-export { EnemyBodyBuilder } from './EnemyBodyConfig';

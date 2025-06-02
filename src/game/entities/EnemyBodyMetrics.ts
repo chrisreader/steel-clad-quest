@@ -1,7 +1,6 @@
 
 import * as THREE from 'three';
 
-// Re-export types from EnemyHumanoid without circular import
 export interface BodyScale {
   body: { radius: number; height: number };
   head: { radius: number };
@@ -55,6 +54,3 @@ export interface EnemyBodyMetrics {
     accent: number;
   };
 }
-
-// Legacy re-exports for backward compatibility
-export { EnemyBodyMetricsCalculator } from './EnemyBodyConfig';

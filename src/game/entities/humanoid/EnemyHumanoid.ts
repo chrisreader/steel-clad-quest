@@ -97,17 +97,14 @@ export interface HumanoidConfig {
   points: number;
   knockbackResistance: number;
   
-  // Body proportions
   bodyScale: BodyScale;
   
-  // Colors
   colors: {
     skin: number;
     muscle: number;
     accent: number;
   };
   
-  // Features
   features: {
     hasEyes: boolean;
     hasTusks: boolean;
@@ -145,7 +142,6 @@ export abstract class EnemyHumanoid {
   protected audioManager: AudioManager;
   protected config: HumanoidConfig;
   
-  // Core enemy data
   protected mesh: THREE.Group;
   protected health: number;
   protected isDead: boolean = false;
@@ -154,11 +150,9 @@ export abstract class EnemyHumanoid {
   protected isHit: boolean = false;
   protected hitTime: number = 0;
   
-  // Enhanced body and animation systems
   protected bodyParts: EnemyBodyParts;
   protected animationSystem: EnemyAnimationSystem;
   
-  // Movement state management
   protected movementState: EnemyMovementState = EnemyMovementState.IDLE;
   protected knockbackVelocity: THREE.Vector3 = new THREE.Vector3();
   protected knockbackDuration: number = 0;
@@ -167,11 +161,6 @@ export abstract class EnemyHumanoid {
   protected rotationSpeed: number = 3.0;
   protected hasInitialOrientation: boolean = false;
   
-  // Animation timers
-  protected walkTime: number = 0;
-  protected idleTime: number = 0;
-  
-  // Death animation
   protected deathAnimation = {
     falling: false,
     rotationSpeed: Math.random() * 0.1 + 0.05,
@@ -191,25 +180,20 @@ export abstract class EnemyHumanoid {
     this.audioManager = audioManager;
     this.health = config.health;
     
-    // Create the humanoid body and animation system
     const bodyResult = this.createHumanoidBody(position);
     this.mesh = bodyResult.group;
     this.bodyParts = bodyResult.bodyParts;
     
-    // Pass enemy type to animation system for realistic movement
     this.animationSystem = new EnemyAnimationSystem(bodyResult.bodyParts, bodyResult.metrics, config.type);
     
-    // Add to scene
     scene.add(this.mesh);
-    
-    console.log(`🗡️ [EnemyHumanoid] Created ${config.type} humanoid enemy with enhanced visuals`);
   }
 
   protected createHumanoidBody(position: THREE.Vector3): EnemyBodyResult {
     const humanoidGroup = new THREE.Group();
     const { bodyScale, colors, features } = this.config;
     
-    // Calculate positions based on body scale - MAINTAIN EXACT SAME VALUES
+    // Calculate positions
     const legTopY = 1.4;
     const thighCenterY = legTopY - bodyScale.leg.length / 2;
     const bodyY = legTopY + bodyScale.body.height / 2;
@@ -217,565 +201,63 @@ export abstract class EnemyHumanoid {
     const headY = bodyTopY + bodyScale.head.radius;
     const shoulderHeight = bodyTopY;
 
-    // Create enhanced materials with better definitions
-    const skinMaterial = new THREE.MeshPhongMaterial({
+    // Create base materials once
+    const baseSkinMaterial = new THREE.MeshPhongMaterial({
       color: colors.skin,
       shininess: 35,
       specular: 0x333333
     });
     
-    const muscleMaterial = new THREE.MeshPhongMaterial({
+    const baseMuscleMaterial = new THREE.MeshPhongMaterial({
       color: colors.muscle,
       shininess: 40,
       specular: 0x444444
     });
 
-    const accentMaterial = new THREE.MeshPhongMaterial({
+    const baseAccentMaterial = new THREE.MeshPhongMaterial({
       color: colors.accent,
       shininess: 45,
       specular: 0x555555
     });
 
-    // === ENHANCED MUSCULAR LEGS WITH SIMPLE TAPER ===
-    const leftLegGeometry = this.createTaperedLimbGeometry(
-      bodyScale.leg.radius[1], 
-      bodyScale.leg.radius[0], 
-      bodyScale.leg.length
-    );
-    const leftLeg = new THREE.Mesh(leftLegGeometry, muscleMaterial.clone());
-    leftLeg.position.set(-bodyScale.body.radius * 0.4, thighCenterY, 0);
-    leftLeg.castShadow = true;
-    leftLeg.receiveShadow = true;
-    humanoidGroup.add(leftLeg);
+    // Create legs
+    const { leftLeg, rightLeg } = this.createLegs(bodyScale, thighCenterY, baseMuscleMaterial);
+    humanoidGroup.add(leftLeg, rightLeg);
 
-    const rightLegGeometry = this.createTaperedLimbGeometry(
-      bodyScale.leg.radius[1],
-      bodyScale.leg.radius[0],
-      bodyScale.leg.length
-    );
-    const rightLeg = new THREE.Mesh(rightLegGeometry, muscleMaterial.clone());
-    rightLeg.position.set(bodyScale.body.radius * 0.4, thighCenterY, 0);
-    rightLeg.castShadow = true;
-    rightLeg.receiveShadow = true;
-    humanoidGroup.add(rightLeg);
-
-    // === ENHANCED HIP JOINTS - TAPERED FOR SMOOTH CONNECTION ===
+    // Create hip joints
     const hipJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
-    const leftHipJoint = new THREE.Mesh(hipJointGeometry, accentMaterial);
+    const leftHipJoint = new THREE.Mesh(hipJointGeometry, baseAccentMaterial.clone());
     leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
-    leftHipJoint.scale.set(1, 0.8, 1); // Slightly flattened for better connection
+    leftHipJoint.scale.set(1, 0.8, 1);
     leftHipJoint.castShadow = true;
-    leftHipJoint.receiveShadow = true;
     humanoidGroup.add(leftHipJoint);
 
-    const rightHipJoint = new THREE.Mesh(hipJointGeometry, accentMaterial.clone());
+    const rightHipJoint = new THREE.Mesh(hipJointGeometry, baseAccentMaterial.clone());
     rightHipJoint.position.set(bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
-    rightHipJoint.scale.set(1, 0.8, 1); // Slightly flattened for better connection
+    rightHipJoint.scale.set(1, 0.8, 1);
     rightHipJoint.castShadow = true;
-    rightHipJoint.receiveShadow = true;
     humanoidGroup.add(rightHipJoint);
 
-    // === ENHANCED COMPOSITE ANATOMICAL TORSO ===
-    const torsoGroup = new THREE.Group();
-    
-    // Main torso - truncated elliptical cone (widest at shoulders, narrows at waist) - made thicker
-    const mainTorsoGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 1.1,  // Top radius (increased from 1.0 to 1.1)
-      bodyScale.body.radius * 0.85, // Bottom radius (increased from 0.75 to 0.85)
-      bodyScale.body.height,
-      32, // More segments for smooth elliptical shape
-      8
+    // Create torso
+    const body = this.createTorso(bodyScale, bodyY, bodyTopY, legTopY, baseSkinMaterial, baseMuscleMaterial);
+    humanoidGroup.add(body.parent);
+
+    // Create head
+    const head = this.createHead(bodyScale, headY, colors, features, baseMuscleMaterial, baseAccentMaterial);
+    humanoidGroup.add(head.parent);
+
+    // Create arms
+    const { leftArm, rightArm, leftElbow, rightElbow, leftWrist, rightWrist } = this.createArms(
+      bodyScale, shoulderHeight, baseSkinMaterial, baseMuscleMaterial, baseAccentMaterial
     );
-    
-    // Make it elliptical (flatter front-to-back)
-    const positions = mainTorsoGeometry.attributes.position.array;
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const z = positions[i + 2];
-      
-      // Calculate angle and radius in the XZ plane
-      const angle = Math.atan2(z, x);
-      const radius = Math.sqrt(x * x + z * z);
-      
-      // Modify radius to create elliptical shape (0.8 depth ratio for flatter front-to-back)
-      const newRadius = radius * (Math.abs(Math.sin(angle)) * 0.2 + 0.8);
-      
-      // Apply new coordinates
-      positions[i] = Math.cos(angle) * newRadius;
-      positions[i + 2] = Math.sin(angle) * newRadius;
-    }
-    mainTorsoGeometry.attributes.position.needsUpdate = true;
-    
-    const mainTorso = new THREE.Mesh(mainTorsoGeometry, skinMaterial.clone());
-    mainTorso.position.y = bodyY;
-    mainTorso.castShadow = true;
-    mainTorso.receiveShadow = true;
-    torsoGroup.add(mainTorso);
+    humanoidGroup.add(leftArm, rightArm);
 
-    // Chest Area: Widened shape like inverted pelvis for shoulder connection
-    const chestGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 1.2,  // Top radius (wider for shoulders)
-      bodyScale.body.radius * 0.85, // Bottom radius (connects to main torso)
-      0.5, // Height
-      16, 4
+    // Create legs with knees and feet
+    const { leftKnee, rightKnee } = this.createShinsAndFeet(
+      leftLeg, rightLeg, bodyScale, baseSkinMaterial, baseMuscleMaterial, baseAccentMaterial
     );
-    const chest = new THREE.Mesh(chestGeometry, muscleMaterial.clone());
-    chest.position.y = bodyTopY - 0.25;
-    chest.castShadow = true;
-    chest.receiveShadow = true;
-    torsoGroup.add(chest);
 
-    // Hip/Pelvis Area: Widened base for connection to legs
-    const pelvisGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 0.75, // Top radius (connects to waist)
-      bodyScale.body.radius * 0.9,  // Bottom radius (wider hips)
-      0.4, // Height
-      16, 4
-    );
-    const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
-    pelvis.position.y = legTopY + 0.2;
-    pelvis.castShadow = true;
-    pelvis.receiveShadow = true;
-    torsoGroup.add(pelvis);
-
-    humanoidGroup.add(torsoGroup);
-    const body = mainTorso; // Keep reference for animation system
-
-    // === ENHANCED REALISTIC ORC HEAD ===
-    const headGroup = new THREE.Group();
-    
-    // Phase 1: Multi-Part Skull Structure
-    // Upper Cranium - elongated and more angular with integrated brow ridge
-    const upperSkullGeometry = new THREE.SphereGeometry(bodyScale.head.radius, 24, 20);
-    
-    // Modify skull geometry for realistic orc proportions
-    const skullPositions = upperSkullGeometry.attributes.position.array;
-    for (let i = 0; i < skullPositions.length; i += 3) {
-      const x = skullPositions[i];
-      const y = skullPositions[i + 1];
-      const z = skullPositions[i + 2];
-      
-      // Elongate skull front-to-back and create sloped forehead
-      skullPositions[i + 2] = z * 1.3; // Elongate depth
-      
-      // Create sloped forehead and wider temples
-      if (y > 0) {
-        // Upper skull modifications
-        skullPositions[i] = x * (1 + Math.abs(y) * 0.2); // Wider temples
-        skullPositions[i + 1] = y * 1.1; // Taller skull
-        
-        // Slope the forehead back
-        if (z > 0) {
-          skullPositions[i + 2] = z * (1.3 - y * 0.3);
-        }
-      }
-      
-      // Create integrated brow ridge
-      if (y > 0.2 && y < 0.4 && z > 0.3) {
-        skullPositions[i + 2] = z * 1.5; // Prominent brow
-      }
-    }
-    upperSkullGeometry.attributes.position.needsUpdate = true;
-    upperSkullGeometry.computeVertexNormals();
-    
-    const upperSkull = new THREE.Mesh(upperSkullGeometry, muscleMaterial.clone());
-    upperSkull.position.y = headY;
-    upperSkull.castShadow = true;
-    upperSkull.receiveShadow = true;
-    headGroup.add(upperSkull);
-
-    // === NECK CONNECTION ===
-    const neckGeometry = new THREE.CylinderGeometry(
-      bodyScale.head.radius * 0.5,  // Top radius (connects to head)
-      bodyScale.body.radius * 0.4,  // Bottom radius (connects to torso)
-      0.4, // Height
-      16, 4
-    );
-    const neck = new THREE.Mesh(neckGeometry, skinMaterial.clone());
-    neck.position.y = headY - bodyScale.head.radius - 0.2;
-    neck.castShadow = true;
-    neck.receiveShadow = true;
-    headGroup.add(neck);
-
-    // Phase 3: Integrated Facial Features
-    // Improved nose structure - smaller circular nose
-    const noseGeometry = new THREE.SphereGeometry(0.12, 16, 12);
-    const nose = new THREE.Mesh(noseGeometry, accentMaterial.clone());
-    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 1.2);
-    nose.scale.set(1, 0.8, 1.2); // Slightly flattened and extended forward
-    nose.castShadow = true;
-    headGroup.add(nose);
-
-    humanoidGroup.add(headGroup);
-    const head = upperSkull; // Keep reference for animation system
-
-    // === ENHANCED FACIAL FEATURES ===
-    if (features.hasEyes && features.eyeConfig) {
-      // Enhanced eye sockets integrated into brow ridge - PUSHED FORWARD
-      const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.2, 16, 12);
-      const eyeSocketMaterial = new THREE.MeshPhongMaterial({
-        color: colors.accent,
-        shininess: 20
-      });
-
-      const leftEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial);
-      leftEyeSocket.position.set(
-        -features.eyeConfig.offsetX,
-        headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
-      );
-      leftEyeSocket.scale.z = 0.5;
-      headGroup.add(leftEyeSocket);
-
-      const rightEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial.clone());
-      rightEyeSocket.position.set(
-        features.eyeConfig.offsetX,
-        headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
-      );
-      rightEyeSocket.scale.z = 0.5;
-      headGroup.add(rightEyeSocket);
-
-      // Enhanced realistic eyes with pupils
-      const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius, 16, 12);
-      const eyeMaterial = new THREE.MeshPhongMaterial({
-        color: 0x8B0000, // Darker, more realistic red
-        transparent: true,
-        opacity: 1,
-        emissive: 0x440000, // Subtle dark red glow
-        emissiveIntensity: 0.15, // Much less bright
-        shininess: 80
-      });
-
-      const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-      leftEye.position.set(
-        -features.eyeConfig.offsetX,
-        headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
-      );
-
-      const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
-      rightEye.position.set(
-        features.eyeConfig.offsetX,
-        headY + features.eyeConfig.offsetY,
-        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
-      );
-
-      // Add black pupils
-      const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.4, 12, 10);
-      const pupilMaterial = new THREE.MeshPhongMaterial({
-        color: 0x000000,
-        shininess: 100
-      });
-
-      const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
-      leftPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
-      leftEye.add(leftPupil);
-
-      const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial.clone());
-      rightPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
-      rightEye.add(rightPupil);
-
-      headGroup.add(leftEye);
-      headGroup.add(rightEye);
-    }
-
-    // Enhanced tusks attached to head - PUSHED FORWARD to be visible
-    if (features.hasTusks && features.tuskConfig) {
-      const tuskGeometry = new THREE.ConeGeometry(
-        features.tuskConfig.radius, features.tuskConfig.height, 12
-      );
-      const tuskMaterial = new THREE.MeshPhongMaterial({
-        color: features.tuskConfig.color,
-        shininess: 90,
-        specular: 0xFFFFFF
-      });
-
-      const leftTusk = new THREE.Mesh(tuskGeometry, tuskMaterial);
-      leftTusk.position.set(
-        -features.tuskConfig.offsetX,
-        headY - 0.3, // Attach to lower part of head
-        bodyScale.head.radius * 1.0 // Increased from 0.8 to 1.0
-      );
-      leftTusk.rotation.x = Math.PI;
-      leftTusk.rotation.z = -0.1;
-      leftTusk.castShadow = true;
-      headGroup.add(leftTusk); // Attach directly to head group
-
-      const rightTusk = new THREE.Mesh(tuskGeometry, tuskMaterial.clone());
-      rightTusk.position.set(
-        features.tuskConfig.offsetX,
-        headY - 0.3, // Attach to lower part of head
-        bodyScale.head.radius * 1.0 // Increased from 0.8 to 1.0
-      );
-      rightTusk.rotation.x = Math.PI;
-      rightTusk.rotation.z = 0.1;
-      rightTusk.castShadow = true;
-      headGroup.add(rightTusk); // Attach directly to head group
-    }
-
-    // === ENHANCED POINTED EARS ===
-    const earGeometry = new THREE.ConeGeometry(0.12, 0.4, 12);
-    const earMaterial = new THREE.MeshPhongMaterial({
-      color: colors.muscle,
-      shininess: 25
-    });
-
-    const leftEar = new THREE.Mesh(earGeometry, earMaterial.clone());
-    leftEar.position.set(-bodyScale.head.radius * 0.9, headY + 0.15, 0);
-    leftEar.rotation.z = -Math.PI / 6;
-    leftEar.scale.set(0.8, 1.2, 0.6);
-    leftEar.castShadow = true;
-
-    const rightEar = new THREE.Mesh(earGeometry, earMaterial.clone());
-    rightEar.position.set(bodyScale.head.radius * 0.9, headY + 0.15, 0);
-    rightEar.rotation.z = Math.PI / 6;
-    rightEar.scale.set(0.8, 1.2, 0.6);
-    rightEar.castShadow = true;
-
-    headGroup.add(leftEar);
-    headGroup.add(rightEar);
-
-    // === ENHANCED MUSCULAR ARMS ===
-    const leftArmGeometry = this.createTaperedLimbGeometry(
-      bodyScale.arm.radius[1], 
-      bodyScale.arm.radius[0], 
-      bodyScale.arm.length
-    );
-    leftArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
-    const leftArm = new THREE.Mesh(leftArmGeometry, muscleMaterial.clone());
-    leftArm.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
-    leftArm.rotation.set(-0.393, 0, -0.3);
-    leftArm.castShadow = true;
-    leftArm.receiveShadow = true;
-    humanoidGroup.add(leftArm);
-
-    const rightArmGeometry = this.createTaperedLimbGeometry(
-      bodyScale.arm.radius[1],
-      bodyScale.arm.radius[0],
-      bodyScale.arm.length
-    );
-    rightArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
-    const rightArm = new THREE.Mesh(rightArmGeometry, muscleMaterial.clone());
-    rightArm.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
-    rightArm.rotation.set(-0.393, 0, 0.3);
-    rightArm.castShadow = true;
-    rightArm.receiveShadow = true;
-    humanoidGroup.add(rightArm);
-
-    // === SHOULDER JOINTS - TAPERED FOR SMOOTH ARM CONNECTION ===
-    const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 24, 20);
-    const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial);
-    leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
-    leftShoulderJoint.scale.set(0.9, 1, 0.9); // Slightly compressed for smoother arm connection
-    leftShoulderJoint.castShadow = true;
-    leftShoulderJoint.receiveShadow = true;
-    humanoidGroup.add(leftShoulderJoint);
-
-    const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
-    rightShoulderJoint.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
-    rightShoulderJoint.scale.set(0.9, 1, 0.9); // Slightly compressed for smoother arm connection
-    rightShoulderJoint.castShadow = true;
-    rightShoulderJoint.receiveShadow = true;
-    humanoidGroup.add(rightShoulderJoint);
-
-    // === TRAPEZIUS MUSCLES ===
-    const trapGeometry = new THREE.ConeGeometry(
-      bodyScale.body.radius * 0.6,  // Base radius (smaller for better proportions)
-      0.5, // Height (reduced)
-      16, 4
-    );
-    
-    const leftTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
-    leftTrap.position.set(
-      -(bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight + 0.25, // Raised higher above shoulder joints
-      0
-    );
-    leftTrap.rotation.z = -0.4; // Angled towards shoulder
-    leftTrap.scale.set(0.7, 1, 0.5); // More compressed for natural muscle shape
-    leftTrap.castShadow = true;
-    leftTrap.receiveShadow = true;
-    humanoidGroup.add(leftTrap);
-
-    const rightTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
-    rightTrap.position.set(
-      (bodyScale.body.radius + 0.1) * 0.5, // Closer to center, aligned with shoulder
-      shoulderHeight + 0.25, // Raised higher above shoulder joints
-      0
-    );
-    rightTrap.rotation.z = 0.4; // Angled towards shoulder
-    rightTrap.scale.set(0.7, 1, 0.5); // More compressed for natural muscle shape
-    rightTrap.castShadow = true;
-    rightTrap.receiveShadow = true;
-    humanoidGroup.add(rightTrap);
-
-    // === ENHANCED ELBOW JOINTS - TAPERED FOR SMOOTH FOREARM CONNECTION ===
-    const elbowJointGeometry = new THREE.SphereGeometry(0.22, 24, 20);
-    const leftElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial);
-    leftElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
-    leftElbowJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother forearm connection
-    leftElbowJoint.castShadow = true;
-    leftElbowJoint.receiveShadow = true;
-    leftArm.add(leftElbowJoint);
-
-    const rightElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial.clone());
-    rightElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
-    rightElbowJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother forearm connection
-    rightElbowJoint.castShadow = true;
-    rightElbowJoint.receiveShadow = true;
-    rightArm.add(rightElbowJoint);
-
-    // === ENHANCED MUSCULAR FOREARMS ===
-    const leftElbowGeometry = this.createTaperedLimbGeometry(
-      bodyScale.forearm.radius[1], 
-      bodyScale.forearm.radius[0], 
-      bodyScale.forearm.length
-    );
-    leftElbowGeometry.translate(0, -bodyScale.forearm.length * 0.5, 0);
-    const leftElbow = new THREE.Mesh(leftElbowGeometry, skinMaterial.clone());
-    leftElbow.position.set(0, -bodyScale.arm.length, 0);
-    leftElbow.castShadow = true;
-    leftElbow.receiveShadow = true;
-    leftArm.add(leftElbow);
-
-    const rightElbowGeometry = this.createTaperedLimbGeometry(
-      bodyScale.forearm.radius[1],
-      bodyScale.forearm.radius[0],
-      bodyScale.forearm.length
-    );
-    rightElbowGeometry.translate(0, -bodyScale.forearm.length * 0.5, 0);
-    const rightElbow = new THREE.Mesh(rightElbowGeometry, skinMaterial.clone());
-    rightElbow.position.set(0, -bodyScale.arm.length, 0);
-    rightElbow.castShadow = true;
-    rightElbow.receiveShadow = true;
-    rightArm.add(rightElbow);
-
-    // === ENHANCED HANDS ===
-    const leftWristGeometry = new THREE.SphereGeometry(0.17, 20, 16);
-    const leftWrist = new THREE.Mesh(leftWristGeometry, muscleMaterial.clone());
-    leftWrist.position.set(0, -bodyScale.forearm.length, 0);
-    leftWrist.castShadow = true;
-    leftWrist.receiveShadow = true;
-    leftElbow.add(leftWrist);
-
-    const rightWristGeometry = new THREE.SphereGeometry(0.17, 20, 16);
-    const rightWrist = new THREE.Mesh(rightWristGeometry, muscleMaterial.clone());
-    rightWrist.position.set(0, -bodyScale.forearm.length, 0);
-    rightWrist.castShadow = true;
-    rightWrist.receiveShadow = true;
-    rightElbow.add(rightWrist);
-
-    // Enhanced claws
-    const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
-    const clawMaterial = new THREE.MeshPhongMaterial({
-      color: 0x2C1810,
-      shininess: 90,
-      specular: 0x888888
-    });
-
-    for (let i = 0; i < 5; i++) {
-      const angle = (i / 4) * Math.PI - Math.PI / 2;
-      
-      const leftClaw = new THREE.Mesh(clawGeometry, clawMaterial);
-      leftClaw.position.set(
-        Math.cos(angle) * 0.22,
-        -0.12,
-        Math.sin(angle) * 0.22
-      );
-      leftClaw.rotation.x = Math.PI + 0.3;
-      leftClaw.castShadow = true;
-      leftWrist.add(leftClaw);
-
-      const rightClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
-      rightClaw.position.set(
-        Math.cos(angle) * 0.22,
-        -0.12,
-        Math.sin(angle) * 0.22
-      );
-      rightClaw.rotation.x = Math.PI + 0.3;
-      rightClaw.castShadow = true;
-      rightWrist.add(rightClaw);
-    }
-
-    // === ENHANCED MUSCULAR SHINS ===
-    const shinRelativeY = -bodyScale.leg.length / 2;
-
-    const leftKneeGeometry = this.createTaperedLimbGeometry(
-      bodyScale.shin.radius[1], 
-      bodyScale.shin.radius[0], 
-      bodyScale.shin.length
-    );
-    leftKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
-    const leftKnee = new THREE.Mesh(leftKneeGeometry, skinMaterial.clone());
-    leftKnee.position.set(0, shinRelativeY, 0);
-    leftKnee.castShadow = true;
-    leftKnee.receiveShadow = true;
-    leftLeg.add(leftKnee);
-
-    const rightKneeGeometry = this.createTaperedLimbGeometry(
-      bodyScale.shin.radius[1],
-      bodyScale.shin.radius[0],
-      bodyScale.shin.length
-    );
-    rightKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
-    const rightKnee = new THREE.Mesh(rightKneeGeometry, skinMaterial.clone());
-    rightKnee.position.set(0, shinRelativeY, 0);
-    rightKnee.castShadow = true;
-    rightKnee.receiveShadow = true;
-    rightLeg.add(rightKnee);
-
-    // === ENHANCED KNEE JOINTS - TAPERED FOR SMOOTH SHIN CONNECTION ===
-    const kneeJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
-    const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial);
-    leftKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
-    leftKneeJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother shin connection
-    leftKneeJoint.castShadow = true;
-    leftKneeJoint.receiveShadow = true;
-    leftLeg.add(leftKneeJoint);
-
-    const rightKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial.clone());
-    rightKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
-    rightKneeJoint.scale.set(0.8, 1.2, 0.8); // Elongated vertically for smoother shin connection
-    rightKneeJoint.castShadow = true;
-    rightKneeJoint.receiveShadow = true;
-    rightLeg.add(rightKneeJoint);
-
-    // === ENHANCED FEET ===
-    const footGeometry = new THREE.BoxGeometry(0.4, 0.2, 0.7);
-    const footMaterial = new THREE.MeshPhongMaterial({
-      color: colors.muscle,
-      shininess: 30
-    });
-
-    const leftFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
-    leftFoot.position.set(0, -bodyScale.shin.length, 0.2);
-    leftFoot.castShadow = true;
-    leftFoot.receiveShadow = true;
-    leftKnee.add(leftFoot);
-
-    const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
-    rightFoot.position.set(0, -bodyScale.shin.length, 0.2);
-    rightFoot.castShadow = true;
-    rightFoot.receiveShadow = true;
-    rightKnee.add(rightFoot);
-
-    // Enhanced toe claws
-    for (let i = 0; i < 3; i++) {
-      const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
-      toeClaw.position.set((i - 1) * 0.12, -0.1, 0.35);
-      toeClaw.rotation.x = Math.PI / 2;
-      toeClaw.castShadow = true;
-      leftFoot.add(toeClaw);
-
-      const rightToeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
-      rightToeClaw.position.set((i - 1) * 0.12, -0.1, 0.35);
-      rightToeClaw.rotation.x = Math.PI / 2;
-      rightToeClaw.castShadow = true;
-      rightFoot.add(rightToeClaw);
-    }
-
-    // === ENHANCED WEAPON ===
+    // Create weapon
     let weapon: THREE.Group | undefined;
     if (features.hasWeapon) {
       const woodTexture = TextureGenerator.createWoodTexture(0x5D4037);
@@ -786,20 +268,19 @@ export abstract class EnemyHumanoid {
       leftWrist.add(weapon);
     }
 
-    // === ENHANCED HITBOX ===
+    // Create hitbox
     const hitBoxGeometry = new THREE.BoxGeometry(1.8, 2.2, 1.8);
     const hitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
     const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
     hitBox.position.y = bodyY;
     humanoidGroup.add(hitBox);
 
-    // === POSITIONING ===
     humanoidGroup.position.copy(position);
     humanoidGroup.castShadow = true;
 
     const bodyParts: EnemyBodyParts = {
-      body,
-      head,
+      body: body.mesh,
+      head: head.mesh,
       leftArm,
       rightArm,
       leftElbow,
@@ -814,17 +295,9 @@ export abstract class EnemyHumanoid {
       hitBox
     };
 
-    // Create metrics for animation system
     const metrics: EnemyBodyMetrics = {
       scale: bodyScale,
-      positions: {
-        legTopY,
-        thighCenterY,
-        bodyY,
-        bodyTopY,
-        headY,
-        shoulderHeight
-      },
+      positions: { legTopY, thighCenterY, bodyY, bodyTopY, headY, shoulderHeight },
       neutralPoses: {
         arms: {
           left: { x: -0.393, y: 0, z: -0.3 },
@@ -853,15 +326,545 @@ export abstract class EnemyHumanoid {
     return { group: humanoidGroup, bodyParts, metrics };
   }
 
-  /**
-   * Creates simple tapered limb geometry without spiral textures
-   */
+  private createLegs(bodyScale: BodyScale, thighCenterY: number, material: THREE.MeshPhongMaterial) {
+    const leftLegGeometry = this.createTaperedLimbGeometry(
+      bodyScale.leg.radius[1], 
+      bodyScale.leg.radius[0], 
+      bodyScale.leg.length
+    );
+    const leftLeg = new THREE.Mesh(leftLegGeometry, material.clone());
+    leftLeg.position.set(-bodyScale.body.radius * 0.4, thighCenterY, 0);
+    leftLeg.castShadow = true;
+
+    const rightLegGeometry = this.createTaperedLimbGeometry(
+      bodyScale.leg.radius[1],
+      bodyScale.leg.radius[0],
+      bodyScale.leg.length
+    );
+    const rightLeg = new THREE.Mesh(rightLegGeometry, material.clone());
+    rightLeg.position.set(bodyScale.body.radius * 0.4, thighCenterY, 0);
+    rightLeg.castShadow = true;
+
+    return { leftLeg, rightLeg };
+  }
+
+  private createTorso(
+    bodyScale: BodyScale, 
+    bodyY: number, 
+    bodyTopY: number, 
+    legTopY: number,
+    skinMaterial: THREE.MeshPhongMaterial,
+    muscleMaterial: THREE.MeshPhongMaterial
+  ) {
+    const torsoGroup = new THREE.Group();
+    
+    // Main torso
+    const mainTorsoGeometry = new THREE.CylinderGeometry(
+      bodyScale.body.radius * 1.1,
+      bodyScale.body.radius * 0.85,
+      bodyScale.body.height,
+      32, 8
+    );
+    
+    // Make elliptical
+    const positions = mainTorsoGeometry.attributes.position.array;
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const z = positions[i + 2];
+      const angle = Math.atan2(z, x);
+      const radius = Math.sqrt(x * x + z * z);
+      const newRadius = radius * (Math.abs(Math.sin(angle)) * 0.2 + 0.8);
+      positions[i] = Math.cos(angle) * newRadius;
+      positions[i + 2] = Math.sin(angle) * newRadius;
+    }
+    mainTorsoGeometry.attributes.position.needsUpdate = true;
+    
+    const mainTorso = new THREE.Mesh(mainTorsoGeometry, skinMaterial.clone());
+    mainTorso.position.y = bodyY;
+    mainTorso.castShadow = true;
+    torsoGroup.add(mainTorso);
+
+    // Chest
+    const chestGeometry = new THREE.CylinderGeometry(
+      bodyScale.body.radius * 1.2,
+      bodyScale.body.radius * 0.85,
+      0.5, 16, 4
+    );
+    const chest = new THREE.Mesh(chestGeometry, muscleMaterial.clone());
+    chest.position.y = bodyTopY - 0.25;
+    chest.castShadow = true;
+    torsoGroup.add(chest);
+
+    // Pelvis
+    const pelvisGeometry = new THREE.CylinderGeometry(
+      bodyScale.body.radius * 0.75,
+      bodyScale.body.radius * 0.9,
+      0.4, 16, 4
+    );
+    const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
+    pelvis.position.y = legTopY + 0.2;
+    pelvis.castShadow = true;
+    torsoGroup.add(pelvis);
+
+    return { parent: torsoGroup, mesh: mainTorso };
+  }
+
+  private createHead(
+    bodyScale: BodyScale,
+    headY: number,
+    colors: any,
+    features: any,
+    muscleMaterial: THREE.MeshPhongMaterial,
+    accentMaterial: THREE.MeshPhongMaterial
+  ) {
+    const headGroup = new THREE.Group();
+    
+    // Skull
+    const upperSkullGeometry = new THREE.SphereGeometry(bodyScale.head.radius, 24, 20);
+    const skullPositions = upperSkullGeometry.attributes.position.array;
+    for (let i = 0; i < skullPositions.length; i += 3) {
+      const x = skullPositions[i];
+      const y = skullPositions[i + 1];
+      const z = skullPositions[i + 2];
+      
+      skullPositions[i + 2] = z * 1.3;
+      
+      if (y > 0) {
+        skullPositions[i] = x * (1 + Math.abs(y) * 0.2);
+        skullPositions[i + 1] = y * 1.1;
+        
+        if (z > 0) {
+          skullPositions[i + 2] = z * (1.3 - y * 0.3);
+        }
+      }
+      
+      if (y > 0.2 && y < 0.4 && z > 0.3) {
+        skullPositions[i + 2] = z * 1.5;
+      }
+    }
+    upperSkullGeometry.attributes.position.needsUpdate = true;
+    upperSkullGeometry.computeVertexNormals();
+    
+    const upperSkull = new THREE.Mesh(upperSkullGeometry, muscleMaterial.clone());
+    upperSkull.position.y = headY;
+    upperSkull.castShadow = true;
+    headGroup.add(upperSkull);
+
+    // Neck
+    const neckGeometry = new THREE.CylinderGeometry(
+      bodyScale.head.radius * 0.5,
+      bodyScale.body.radius * 0.4,
+      0.4, 16, 4
+    );
+    const neck = new THREE.Mesh(neckGeometry, accentMaterial.clone());
+    neck.position.y = headY - bodyScale.head.radius - 0.2;
+    neck.castShadow = true;
+    headGroup.add(neck);
+
+    // Nose
+    const noseGeometry = new THREE.SphereGeometry(0.12, 16, 12);
+    const nose = new THREE.Mesh(noseGeometry, accentMaterial.clone());
+    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 1.2);
+    nose.scale.set(1, 0.8, 1.2);
+    nose.castShadow = true;
+    headGroup.add(nose);
+
+    // Eyes and other features
+    if (features.hasEyes && features.eyeConfig) {
+      this.addEyes(headGroup, headY, bodyScale, features, accentMaterial);
+    }
+
+    if (features.hasTusks && features.tuskConfig) {
+      this.addTusks(headGroup, headY, bodyScale, features);
+    }
+
+    // Ears
+    this.addEars(headGroup, headY, bodyScale, colors, muscleMaterial);
+
+    return { parent: headGroup, mesh: upperSkull };
+  }
+
+  private addEyes(
+    headGroup: THREE.Group,
+    headY: number,
+    bodyScale: BodyScale,
+    features: any,
+    accentMaterial: THREE.MeshPhongMaterial
+  ) {
+    // Eye sockets
+    const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.2, 16, 12);
+    const eyeSocketMaterial = accentMaterial.clone();
+
+    const leftEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial);
+    leftEyeSocket.position.set(
+      -features.eyeConfig.offsetX,
+      headY + features.eyeConfig.offsetY,
+      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
+    );
+    leftEyeSocket.scale.z = 0.5;
+    headGroup.add(leftEyeSocket);
+
+    const rightEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial.clone());
+    rightEyeSocket.position.set(
+      features.eyeConfig.offsetX,
+      headY + features.eyeConfig.offsetY,
+      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
+    );
+    rightEyeSocket.scale.z = 0.5;
+    headGroup.add(rightEyeSocket);
+
+    // Eyes
+    const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius, 16, 12);
+    const eyeMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8B0000,
+      transparent: true,
+      opacity: 1,
+      emissive: 0x440000,
+      emissiveIntensity: 0.15,
+      shininess: 80
+    });
+
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(
+      -features.eyeConfig.offsetX,
+      headY + features.eyeConfig.offsetY,
+      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
+    );
+
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
+    rightEye.position.set(
+      features.eyeConfig.offsetX,
+      headY + features.eyeConfig.offsetY,
+      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
+    );
+
+    // Pupils
+    const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.4, 12, 10);
+    const pupilMaterial = new THREE.MeshPhongMaterial({
+      color: 0x000000,
+      shininess: 100
+    });
+
+    const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    leftPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
+    leftEye.add(leftPupil);
+
+    const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial.clone());
+    rightPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
+    rightEye.add(rightPupil);
+
+    headGroup.add(leftEye);
+    headGroup.add(rightEye);
+  }
+
+  private addTusks(headGroup: THREE.Group, headY: number, bodyScale: BodyScale, features: any) {
+    const tuskGeometry = new THREE.ConeGeometry(
+      features.tuskConfig.radius, features.tuskConfig.height, 12
+    );
+    const tuskMaterial = new THREE.MeshPhongMaterial({
+      color: features.tuskConfig.color,
+      shininess: 90,
+      specular: 0xFFFFFF
+    });
+
+    const leftTusk = new THREE.Mesh(tuskGeometry, tuskMaterial);
+    leftTusk.position.set(
+      -features.tuskConfig.offsetX,
+      headY - 0.3,
+      bodyScale.head.radius * 1.0
+    );
+    leftTusk.rotation.x = Math.PI;
+    leftTusk.rotation.z = -0.1;
+    leftTusk.castShadow = true;
+    headGroup.add(leftTusk);
+
+    const rightTusk = new THREE.Mesh(tuskGeometry, tuskMaterial.clone());
+    rightTusk.position.set(
+      features.tuskConfig.offsetX,
+      headY - 0.3,
+      bodyScale.head.radius * 1.0
+    );
+    rightTusk.rotation.x = Math.PI;
+    rightTusk.rotation.z = 0.1;
+    rightTusk.castShadow = true;
+    headGroup.add(rightTusk);
+  }
+
+  private addEars(
+    headGroup: THREE.Group,
+    headY: number,
+    bodyScale: BodyScale,
+    colors: any,
+    muscleMaterial: THREE.MeshPhongMaterial
+  ) {
+    const earGeometry = new THREE.ConeGeometry(0.12, 0.4, 12);
+    const earMaterial = muscleMaterial.clone();
+
+    const leftEar = new THREE.Mesh(earGeometry, earMaterial);
+    leftEar.position.set(-bodyScale.head.radius * 0.9, headY + 0.15, 0);
+    leftEar.rotation.z = -Math.PI / 6;
+    leftEar.scale.set(0.8, 1.2, 0.6);
+    leftEar.castShadow = true;
+
+    const rightEar = new THREE.Mesh(earGeometry, earMaterial.clone());
+    rightEar.position.set(bodyScale.head.radius * 0.9, headY + 0.15, 0);
+    rightEar.rotation.z = Math.PI / 6;
+    rightEar.scale.set(0.8, 1.2, 0.6);
+    rightEar.castShadow = true;
+
+    headGroup.add(leftEar);
+    headGroup.add(rightEar);
+  }
+
+  private createArms(
+    bodyScale: BodyScale,
+    shoulderHeight: number,
+    skinMaterial: THREE.MeshPhongMaterial,
+    muscleMaterial: THREE.MeshPhongMaterial,
+    accentMaterial: THREE.MeshPhongMaterial
+  ) {
+    // Left arm
+    const leftArmGeometry = this.createTaperedLimbGeometry(
+      bodyScale.arm.radius[1], 
+      bodyScale.arm.radius[0], 
+      bodyScale.arm.length
+    );
+    leftArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
+    const leftArm = new THREE.Mesh(leftArmGeometry, muscleMaterial.clone());
+    leftArm.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
+    leftArm.rotation.set(-0.393, 0, -0.3);
+    leftArm.castShadow = true;
+
+    // Right arm
+    const rightArmGeometry = this.createTaperedLimbGeometry(
+      bodyScale.arm.radius[1],
+      bodyScale.arm.radius[0],
+      bodyScale.arm.length
+    );
+    rightArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
+    const rightArm = new THREE.Mesh(rightArmGeometry, muscleMaterial.clone());
+    rightArm.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
+    rightArm.rotation.set(-0.393, 0, 0.3);
+    rightArm.castShadow = true;
+
+    // Shoulder joints
+    const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 24, 20);
+    const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
+    leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
+    leftShoulderJoint.scale.set(0.9, 1, 0.9);
+    leftShoulderJoint.castShadow = true;
+
+    const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
+    rightShoulderJoint.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
+    rightShoulderJoint.scale.set(0.9, 1, 0.9);
+    rightShoulderJoint.castShadow = true;
+
+    // Elbows and forearms
+    const { leftElbow, rightElbow, leftWrist, rightWrist } = this.createForearms(
+      leftArm, rightArm, bodyScale, skinMaterial, muscleMaterial, accentMaterial
+    );
+
+    return { leftArm, rightArm, leftElbow, rightElbow, leftWrist, rightWrist };
+  }
+
+  private createForearms(
+    leftArm: THREE.Mesh,
+    rightArm: THREE.Mesh,
+    bodyScale: BodyScale,
+    skinMaterial: THREE.MeshPhongMaterial,
+    muscleMaterial: THREE.MeshPhongMaterial,
+    accentMaterial: THREE.MeshPhongMaterial
+  ) {
+    // Elbow joints
+    const elbowJointGeometry = new THREE.SphereGeometry(0.22, 24, 20);
+    const leftElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial.clone());
+    leftElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
+    leftElbowJoint.scale.set(0.8, 1.2, 0.8);
+    leftElbowJoint.castShadow = true;
+    leftArm.add(leftElbowJoint);
+
+    const rightElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial.clone());
+    rightElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
+    rightElbowJoint.scale.set(0.8, 1.2, 0.8);
+    rightElbowJoint.castShadow = true;
+    rightArm.add(rightElbowJoint);
+
+    // Forearms
+    const leftElbowGeometry = this.createTaperedLimbGeometry(
+      bodyScale.forearm.radius[1], 
+      bodyScale.forearm.radius[0], 
+      bodyScale.forearm.length
+    );
+    leftElbowGeometry.translate(0, -bodyScale.forearm.length * 0.5, 0);
+    const leftElbow = new THREE.Mesh(leftElbowGeometry, skinMaterial.clone());
+    leftElbow.position.set(0, -bodyScale.arm.length, 0);
+    leftElbow.castShadow = true;
+    leftArm.add(leftElbow);
+
+    const rightElbowGeometry = this.createTaperedLimbGeometry(
+      bodyScale.forearm.radius[1],
+      bodyScale.forearm.radius[0],
+      bodyScale.forearm.length
+    );
+    rightElbowGeometry.translate(0, -bodyScale.forearm.length * 0.5, 0);
+    const rightElbow = new THREE.Mesh(rightElbowGeometry, skinMaterial.clone());
+    rightElbow.position.set(0, -bodyScale.arm.length, 0);
+    rightElbow.castShadow = true;
+    rightArm.add(rightElbow);
+
+    // Hands/wrists
+    const { leftWrist, rightWrist } = this.createHands(leftElbow, rightElbow, bodyScale, muscleMaterial);
+
+    return { leftElbow, rightElbow, leftWrist, rightWrist };
+  }
+
+  private createHands(
+    leftElbow: THREE.Mesh,
+    rightElbow: THREE.Mesh,
+    bodyScale: BodyScale,
+    muscleMaterial: THREE.MeshPhongMaterial
+  ) {
+    const leftWristGeometry = new THREE.SphereGeometry(0.17, 20, 16);
+    const leftWrist = new THREE.Mesh(leftWristGeometry, muscleMaterial.clone());
+    leftWrist.position.set(0, -bodyScale.forearm.length, 0);
+    leftWrist.castShadow = true;
+    leftElbow.add(leftWrist);
+
+    const rightWristGeometry = new THREE.SphereGeometry(0.17, 20, 16);
+    const rightWrist = new THREE.Mesh(rightWristGeometry, muscleMaterial.clone());
+    rightWrist.position.set(0, -bodyScale.forearm.length, 0);
+    rightWrist.castShadow = true;
+    rightElbow.add(rightWrist);
+
+    // Add claws
+    this.addClaws(leftWrist);
+    this.addClaws(rightWrist);
+
+    return { leftWrist, rightWrist };
+  }
+
+  private addClaws(wrist: THREE.Mesh) {
+    const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
+    const clawMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2C1810,
+      shininess: 90,
+      specular: 0x888888
+    });
+
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 4) * Math.PI - Math.PI / 2;
+      const claw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+      claw.position.set(
+        Math.cos(angle) * 0.22,
+        -0.12,
+        Math.sin(angle) * 0.22
+      );
+      claw.rotation.x = Math.PI + 0.3;
+      claw.castShadow = true;
+      wrist.add(claw);
+    }
+  }
+
+  private createShinsAndFeet(
+    leftLeg: THREE.Mesh,
+    rightLeg: THREE.Mesh,
+    bodyScale: BodyScale,
+    skinMaterial: THREE.MeshPhongMaterial,
+    muscleMaterial: THREE.MeshPhongMaterial,
+    accentMaterial: THREE.MeshPhongMaterial
+  ) {
+    const shinRelativeY = -bodyScale.leg.length / 2;
+
+    // Shins
+    const leftKneeGeometry = this.createTaperedLimbGeometry(
+      bodyScale.shin.radius[1], 
+      bodyScale.shin.radius[0], 
+      bodyScale.shin.length
+    );
+    leftKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
+    const leftKnee = new THREE.Mesh(leftKneeGeometry, skinMaterial.clone());
+    leftKnee.position.set(0, shinRelativeY, 0);
+    leftKnee.castShadow = true;
+    leftLeg.add(leftKnee);
+
+    const rightKneeGeometry = this.createTaperedLimbGeometry(
+      bodyScale.shin.radius[1],
+      bodyScale.shin.radius[0],
+      bodyScale.shin.length
+    );
+    rightKneeGeometry.translate(0, -bodyScale.shin.length * 0.5, 0);
+    const rightKnee = new THREE.Mesh(rightKneeGeometry, skinMaterial.clone());
+    rightKnee.position.set(0, shinRelativeY, 0);
+    rightKnee.castShadow = true;
+    rightLeg.add(rightKnee);
+
+    // Knee joints
+    const kneeJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
+    const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial.clone());
+    leftKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
+    leftKneeJoint.scale.set(0.8, 1.2, 0.8);
+    leftKneeJoint.castShadow = true;
+    leftLeg.add(leftKneeJoint);
+
+    const rightKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial.clone());
+    rightKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
+    rightKneeJoint.scale.set(0.8, 1.2, 0.8);
+    rightKneeJoint.castShadow = true;
+    rightLeg.add(rightKneeJoint);
+
+    // Feet
+    this.addFeet(leftKnee, rightKnee, bodyScale, muscleMaterial);
+
+    return { leftKnee, rightKnee };
+  }
+
+  private addFeet(
+    leftKnee: THREE.Mesh,
+    rightKnee: THREE.Mesh,
+    bodyScale: BodyScale,
+    muscleMaterial: THREE.MeshPhongMaterial
+  ) {
+    const footGeometry = new THREE.BoxGeometry(0.4, 0.2, 0.7);
+    const footMaterial = muscleMaterial.clone();
+
+    const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+    leftFoot.position.set(0, -bodyScale.shin.length, 0.2);
+    leftFoot.castShadow = true;
+    leftKnee.add(leftFoot);
+
+    const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
+    rightFoot.position.set(0, -bodyScale.shin.length, 0.2);
+    rightFoot.castShadow = true;
+    rightKnee.add(rightFoot);
+
+    // Toe claws
+    const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
+    const clawMaterial = new THREE.MeshPhongMaterial({
+      color: 0x2C1810,
+      shininess: 90,
+      specular: 0x888888
+    });
+
+    for (let i = 0; i < 3; i++) {
+      const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+      toeClaw.position.set((i - 1) * 0.12, -0.1, 0.35);
+      toeClaw.rotation.x = Math.PI / 2;
+      toeClaw.castShadow = true;
+      leftFoot.add(toeClaw);
+
+      const rightToeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+      rightToeClaw.position.set((i - 1) * 0.12, -0.1, 0.35);
+      rightToeClaw.rotation.x = Math.PI / 2;
+      rightToeClaw.castShadow = true;
+      rightFoot.add(rightToeClaw);
+    }
+  }
+
   private createTaperedLimbGeometry(
     topRadius: number,
     bottomRadius: number, 
     height: number
   ): THREE.CylinderGeometry {
-    // Simple tapered cylinder - no complex muscle definition to avoid spiral texture
     return new THREE.CylinderGeometry(topRadius, bottomRadius, height, 24, 8);
   }
 
@@ -945,8 +948,6 @@ export abstract class EnemyHumanoid {
   }
 
   private handleNormalMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
-    this.idleTime += deltaTime;
-    
     if (distanceToPlayer <= this.config.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
@@ -1092,7 +1093,6 @@ export abstract class EnemyHumanoid {
     }
   }
 
-  // Public interface methods
   public isInRange(playerPosition: THREE.Vector3, range: number): boolean {
     return this.mesh.position.distanceTo(playerPosition) <= range;
   }

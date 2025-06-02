@@ -1,8 +1,9 @@
+
 import { EnemyType } from '../../types/GameTypes';
 
 export interface EnemyConfiguration {
   type: EnemyType;
-  metrics: any; // Will be properly typed later
+  metrics: any;
   features: {
     hasEyes: boolean;
     hasTusks: boolean;
@@ -26,51 +27,6 @@ export interface EnemyConfiguration {
   };
 }
 
-export class EnemyBodyMetricsCalculator {
-  public static calculateOrcMetrics(): any {
-    return {
-      bodyScale: {
-        body: { radius: 0.55, height: 1.4 },
-        head: { radius: 0.5 },
-        arm: { radius: [0.18, 0.22], length: 1.1 },
-        forearm: { radius: [0.16, 0.18], length: 0.9 },
-        leg: { radius: [0.22, 0.26], length: 0.7 },
-        shin: { radius: [0.18, 0.20], length: 0.65 }
-      },
-      colors: {
-        skin: 0x4A5D23,
-        muscle: 0x5D7A2A,
-        accent: 0x3A4D1A
-      }
-    };
-  }
-
-  public static calculateGoblinMetrics(): any {
-    return {
-      bodyScale: {
-        body: { radius: 0.35, height: 1.2 },
-        head: { radius: 0.35 },
-        arm: { radius: [0.1, 0.12], length: 0.8 },
-        forearm: { radius: [0.08, 0.1], length: 0.6 },
-        leg: { radius: [0.12, 0.15], length: 0.8 },
-        shin: { radius: [0.1, 0.12], length: 0.5 }
-      },
-      colors: {
-        skin: 0x4A7C4A,
-        muscle: 0x6B8E6B,
-        accent: 0x3A5A3A
-      }
-    };
-  }
-}
-
-export class EnemyBodyBuilder {
-  // Legacy builder class - keeping for backward compatibility
-  public static buildOrcBody(): any {
-    return EnemyBodyMetricsCalculator.calculateOrcMetrics();
-  }
-}
-
 export class EnemyBodyConfig {
   private static configs: Map<EnemyType, EnemyConfiguration> = new Map();
 
@@ -78,7 +34,21 @@ export class EnemyBodyConfig {
     // Initialize ORC configuration
     this.configs.set(EnemyType.ORC, {
       type: EnemyType.ORC,
-      metrics: EnemyBodyMetricsCalculator.calculateOrcMetrics(),
+      metrics: {
+        bodyScale: {
+          body: { radius: 0.55, height: 1.4 },
+          head: { radius: 0.5 },
+          arm: { radius: [0.18, 0.22], length: 1.1 },
+          forearm: { radius: [0.16, 0.18], length: 0.9 },
+          leg: { radius: [0.22, 0.26], length: 0.7 },
+          shin: { radius: [0.18, 0.20], length: 0.65 }
+        },
+        colors: {
+          skin: 0x4A5D23,
+          muscle: 0x5D7A2A,
+          accent: 0x3A4D1A
+        }
+      },
       features: {
         hasEyes: true,
         hasTusks: true,
@@ -105,7 +75,21 @@ export class EnemyBodyConfig {
     // Initialize GOBLIN configuration
     this.configs.set(EnemyType.GOBLIN, {
       type: EnemyType.GOBLIN,
-      metrics: EnemyBodyMetricsCalculator.calculateGoblinMetrics(),
+      metrics: {
+        bodyScale: {
+          body: { radius: 0.35, height: 1.2 },
+          head: { radius: 0.35 },
+          arm: { radius: [0.1, 0.12], length: 0.8 },
+          forearm: { radius: [0.08, 0.1], length: 0.6 },
+          leg: { radius: [0.12, 0.15], length: 0.8 },
+          shin: { radius: [0.1, 0.12], length: 0.5 }
+        },
+        colors: {
+          skin: 0x4A7C4A,
+          muscle: 0x6B8E6B,
+          accent: 0x3A5A3A
+        }
+      },
       features: {
         hasEyes: true,
         hasTusks: false,
