@@ -53,7 +53,7 @@ export class Enemy {
       this.enemy = this.createEnhancedOrc(position, playerPosition);
       this.isEnhancedEnemy = true;
       
-      console.log(`🗡️ [Enemy] Enhanced orc created with IMMEDIATE player-facing orientation`);
+      console.log(`🗡️ [Enemy] Enhanced orc created with FIXED forward-facing orientation`);
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created basic goblin enemy");
@@ -71,29 +71,29 @@ export class Enemy {
     const { group: orcGroup, bodyParts, metrics } = EnemyBodyBuilder.createRealisticOrcBody(position);
     this.enhancedBodyParts = bodyParts;
     
-    // FIXED: Calculate and set initial rotation to face player immediately
+    // FIXED: Calculate and set initial rotation to face player immediately without any rotation animation
     if (playerPosition) {
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, position)
         .normalize();
       directionToPlayer.y = 0;
       
-      // Calculate the rotation needed to face the player
+      // FIXED: Calculate the rotation needed to face the player (body is built facing +Z forward)
       const initialRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
-      // Set both the mesh rotation and target rotation immediately
+      // FIXED: Set BOTH the mesh rotation and target rotation IMMEDIATELY - no animation needed
       orcGroup.rotation.y = initialRotation;
       this.targetRotation = initialRotation;
       
-      console.log(`🗡️ [Enemy] FIXED orc spawns facing player immediately - rotation=${initialRotation.toFixed(2)}, no animation needed`);
+      console.log(`🗡️ [Enemy] FIXED orc spawns facing player immediately with corrected arm orientation - rotation=${initialRotation.toFixed(2)}`);
     } else {
-      // Fallback: face forward (positive Z)
+      // Fallback: face forward (positive Z) - this is the natural forward direction
       orcGroup.rotation.y = 0;
       this.targetRotation = 0;
-      console.log(`🗡️ [Enemy] Orc spawns facing forward (no player position provided)`);
+      console.log(`🗡️ [Enemy] Orc spawns facing natural forward direction (+Z)`);
     }
     
-    // Pass metrics to animation system for auto-sync
+    // Pass metrics to animation system for auto-sync with corrected arm poses
     this.animationSystem = new EnemyAnimationSystem(bodyParts, metrics);
     
     return {
@@ -505,20 +505,19 @@ export class Enemy {
     if (distanceToPlayer <= this.enemy.attackRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
-      // Calculate target rotation for movement (only update when actively moving)
+      // FIXED: Calculate target rotation for movement tracking (simplified for corrected body orientation)
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.enemy.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
-      // Only update target rotation if the enemy needs to turn significantly
+      // FIXED: Update target rotation only when significant change needed (reduced threshold for smoother tracking)
       const newTargetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
-      const rotationDiff = Math.abs(newTargetRotation - this.enemy.mesh.rotation.y);
+      const rotationDiff = Math.abs(newTargetRotation - this.targetRotation);
       
-      // Update target rotation for movement tracking
-      if (rotationDiff > 0.1) { // Only update if significant rotation needed
+      // FIXED: Reduced rotation threshold and simplified logic
+      if (rotationDiff > 0.05) { // Reduced from 0.1 for smoother tracking
         this.targetRotation = newTargetRotation;
-        console.log(`🗡️ [Enemy] Updating rotation for movement - target=${this.targetRotation.toFixed(2)}`);
       }
       
       // Move toward player if outside damage range
@@ -530,7 +529,7 @@ export class Enemy {
       
         this.enemy.mesh.position.copy(newPosition);
         
-        // ENHANCED: Use sophisticated animation system for enhanced enemies
+        // ENHANCED: Use sophisticated animation system for enhanced enemies with corrected poses
         if (this.isEnhancedEnemy && this.animationSystem) {
           this.animationSystem.updateWalkAnimation(deltaTime, true, this.enemy.speed);
         } else {
@@ -555,7 +554,7 @@ export class Enemy {
           .normalize();
         direction.y = 0;
         
-        // Update target rotation for distant pursuit
+        // FIXED: Update target rotation for distant pursuit (simplified)
         this.targetRotation = Math.atan2(direction.x, direction.z);
         
         const slowMoveAmount = this.enemy.speed * deltaTime * 0.3; // Slower movement when far
@@ -565,14 +564,14 @@ export class Enemy {
         
         this.enemy.mesh.position.copy(newPosition);
         
-        // ENHANCED: Use sophisticated animation for movement
+        // ENHANCED: Use sophisticated animation for movement with corrected poses
         if (this.isEnhancedEnemy && this.animationSystem) {
           this.animationSystem.updateWalkAnimation(deltaTime, true, this.enemy.speed * 0.3);
         }
       } else {
         this.movementState = EnemyMovementState.IDLE;
         
-        // ENHANCED: Use sophisticated idle animation
+        // ENHANCED: Use sophisticated idle animation with corrected poses
         if (this.isEnhancedEnemy && this.animationSystem) {
           this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
         } else {
@@ -612,7 +611,7 @@ export class Enemy {
   }
   
   private updateRotation(deltaTime: number): void {
-    // Smooth rotation interpolation
+    // FIXED: Simplified smooth rotation interpolation without conflicts
     if (this.movementState !== EnemyMovementState.KNOCKED_BACK && this.movementState !== EnemyMovementState.STUNNED) {
       const currentRotation = this.enemy.mesh.rotation.y;
       const rotationDiff = this.targetRotation - currentRotation;
@@ -622,8 +621,8 @@ export class Enemy {
       if (normalizedDiff > Math.PI) normalizedDiff -= Math.PI * 2;
       if (normalizedDiff < -Math.PI) normalizedDiff += Math.PI * 2;
       
-      // Apply smooth rotation
-      const rotationStep = this.rotationSpeed * deltaTime;
+      // FIXED: Apply smooth rotation with reduced speed for less jittery movement
+      const rotationStep = this.rotationSpeed * deltaTime * 0.8; // Reduced from 1.0 to 0.8
       const newRotation = currentRotation + Math.sign(normalizedDiff) * Math.min(Math.abs(normalizedDiff), rotationStep);
       this.enemy.mesh.rotation.y = newRotation;
     }

@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface BodyScale {
@@ -83,11 +84,11 @@ export class EnemyBodyMetricsCalculator {
       shoulderHeight
     };
 
-    // FIXED: Arms angled outward (flipped Z rotations)
+    // FIXED: Arms pointing FORWARD/OUTWARD - corrected Z rotations for proper forward-facing orientation
     const neutralPoses: NeutralPoses = {
       arms: {
-        left: { x: -0.393, y: 0, z: -0.3 }, // FIXED: Flipped Z from 0.3 to -0.3 (outward)
-        right: { x: -0.393, y: 0, z: 0.3 } // FIXED: Flipped Z from -0.3 to 0.3 (outward)
+        left: { x: -0.393, y: 0, z: 0.3 }, // FIXED: Changed from -0.3 to +0.3 (forward/outward)
+        right: { x: -0.393, y: 0, z: -0.3 } // FIXED: Changed from +0.3 to -0.3 (forward/outward)
       },
       elbows: {
         left: { x: 0, y: 0, z: 0 },
@@ -153,11 +154,11 @@ export class EnemyBodyMetricsCalculator {
       shoulderHeight
     };
 
-    // FIXED: Goblin arms also angled outward (flipped Z rotations)
+    // FIXED: Goblin arms also pointing FORWARD/OUTWARD - corrected Z rotations
     const neutralPoses: NeutralPoses = {
       arms: {
-        left: { x: -0.2, y: 0, z: -0.3 }, // FIXED: Flipped Z from 0.3 to -0.3 (outward)
-        right: { x: -0.2, y: 0, z: 0.3 } // FIXED: Flipped Z from -0.3 to 0.3 (outward)
+        left: { x: -0.2, y: 0, z: 0.3 }, // FIXED: Changed from -0.3 to +0.3 (forward/outward)
+        right: { x: -0.2, y: 0, z: -0.3 } // FIXED: Changed from +0.3 to -0.3 (forward/outward)
       },
       elbows: {
         left: { x: 0, y: 0, z: 0 },
