@@ -154,7 +154,7 @@ export class EnemyAnimationSystem {
     const elapsed = this.swingAnimation.clock.getElapsedTime() - this.swingAnimation.startTime;
     const { phases, duration } = STANDARD_SWORD_ANIMATION;
     
-    console.log(`🗡️ [EnemyAnimationSystem] FLIPPED attack animation - LEFT ARM weapon attack (left-to-right) - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
+    console.log(`🗡️ [EnemyAnimationSystem] MIRRORED attack animation - LEFT ARM weapon attack (mirrored swing) - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
     
     // CANONICALIZED: Start with LEFT arm pointing forward in neutral position
     let shoulderRotation = { 
@@ -169,73 +169,73 @@ export class EnemyAnimationSystem {
     let torsoRotation = 0;
     
     if (elapsed < phases.windup) {
-      // WINDUP PHASE: Raise LEFT arm back for forward swing
+      // WINDUP PHASE: Mirror the entire shoulder movement
       const t = elapsed / phases.windup;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // SHOULDER: Move from neutral forward position to raised back position
-      shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 6, -Math.PI / 3, easedT); // -30° to -60°
-      shoulderRotation.y = THREE.MathUtils.lerp(0, Math.PI / 18, easedT); // 0° to 10° (FLIPPED: was -10°)
-      shoulderRotation.z = THREE.MathUtils.lerp(0, -Math.PI / 9, easedT); // 0° to -20° (LEFT ARM)
+      // SHOULDER: Mirrored windup position (flip X, Y, and Z)
+      shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 3, easedT); // MIRRORED: was -Math.PI / 3, now Math.PI / 3
+      shoulderRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 18, easedT); // MIRRORED: was Math.PI / 18, now -Math.PI / 18
+      shoulderRotation.z = THREE.MathUtils.lerp(0, Math.PI / 9, easedT); // MIRRORED: was -Math.PI / 9, now Math.PI / 9
       
-      // ELBOW: Pull back to support raised position
+      // ELBOW: Mirrored elbow movement
       elbowRotation.x = THREE.MathUtils.lerp(0.05, -0.1, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(0, Math.PI / 6, easedT); // Flipped for LEFT ARM
+      elbowRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 6, easedT); // MIRRORED: was Math.PI / 6, now -Math.PI / 6
       
-      // WRIST: Position for forward strike
-      wristRotation.y = THREE.MathUtils.lerp(0, Math.PI / 8, easedT); // Flipped for LEFT ARM
-      wristRotation.z = THREE.MathUtils.lerp(0, -Math.PI / 9, easedT); // Flipped for LEFT ARM
+      // WRIST: Mirrored wrist positioning
+      wristRotation.y = THREE.MathUtils.lerp(0, -Math.PI / 8, easedT); // MIRRORED: was Math.PI / 8, now -Math.PI / 8
+      wristRotation.z = THREE.MathUtils.lerp(0, Math.PI / 9, easedT); // MIRRORED: was -Math.PI / 9, now Math.PI / 9
       
-      // TORSO: Coil to the RIGHT for power (FLIPPED: was 0.3, now -0.3)
-      torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
+      // TORSO: Mirrored coiling direction
+      torsoRotation = THREE.MathUtils.lerp(0, 0.3, easedT); // MIRRORED: was -0.3, now 0.3
       
-      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - LEFT ARM pulling back for FLIPPED left-to-right swing`);
+      console.log(`🗡️ [EnemyAnimationSystem] WINDUP PHASE t=${t.toFixed(2)} - LEFT ARM pulling back for MIRRORED swing`);
       
     } else if (elapsed < phases.windup + phases.slash) {
-      // SLASH PHASE: Forward diagonal strike with LEFT ARM
+      // SLASH PHASE: Mirrored forward diagonal strike
       const t = (elapsed - phases.windup) / phases.slash;
       const aggressiveT = t * t * (3 - 2 * t); // Smoothstep for aggressive acceleration
       
-      // SHOULDER: Strike forward and down with LEFT ARM
-      shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 3, Math.PI / 12, aggressiveT); // -60° to 15°
-      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 18, Math.PI / 9, aggressiveT); // 10° to 20° (FLIPPED: was -10° to -20°)
-      shoulderRotation.z = THREE.MathUtils.lerp(-Math.PI / 9, Math.PI / 9, aggressiveT); // -20° to 20° (LEFT ARM)
+      // SHOULDER: Mirrored strike movement (flip all axes)
+      shoulderRotation.x = THREE.MathUtils.lerp(Math.PI / 3, -Math.PI / 12, aggressiveT); // MIRRORED: was Math.PI / 12, now -Math.PI / 12
+      shoulderRotation.y = THREE.MathUtils.lerp(-Math.PI / 18, -Math.PI / 9, aggressiveT); // MIRRORED: was Math.PI / 9, now -Math.PI / 9
+      shoulderRotation.z = THREE.MathUtils.lerp(Math.PI / 9, -Math.PI / 9, aggressiveT); // MIRRORED: was Math.PI / 9, now -Math.PI / 9
       
-      // ELBOW: Aggressive forward movement
+      // ELBOW: Mirrored aggressive movement
       elbowRotation.x = THREE.MathUtils.lerp(-0.1, 0.15, aggressiveT);
-      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 6, -Math.PI / 6, aggressiveT); // Flipped for LEFT ARM
+      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, Math.PI / 6, aggressiveT); // MIRRORED: was Math.PI / 6 to -Math.PI / 6, now -Math.PI / 6 to Math.PI / 6
       
-      // WRIST: Forward strike with snap
-      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 8, -Math.PI / 10, aggressiveT); // Flipped for LEFT ARM
-      wristRotation.z = THREE.MathUtils.lerp(-Math.PI / 9, 0, aggressiveT);
+      // WRIST: Mirrored forward strike
+      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 8, Math.PI / 10, aggressiveT); // MIRRORED: was -Math.PI / 10, now Math.PI / 10
+      wristRotation.z = THREE.MathUtils.lerp(Math.PI / 9, 0, aggressiveT);
       
-      // TORSO: Aggressive rotation to support forward strike (FLIPPED: was -0.25, now 0.25)
-      torsoRotation = THREE.MathUtils.lerp(-0.3, 0.25, aggressiveT);
+      // TORSO: Mirrored aggressive rotation
+      torsoRotation = THREE.MathUtils.lerp(0.3, -0.25, aggressiveT); // MIRRORED: was 0.25, now -0.25
       
-      console.log(`🗡️ [EnemyAnimationSystem] SLASH PHASE t=${t.toFixed(2)} - LEFT ARM FLIPPED left-to-right diagonal strike`);
+      console.log(`🗡️ [EnemyAnimationSystem] SLASH PHASE t=${t.toFixed(2)} - LEFT ARM MIRRORED diagonal strike`);
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE: Return to neutral forward position
       const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
       const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
       
-      // Return from slash end position to neutral
-      shoulderRotation.x = THREE.MathUtils.lerp(Math.PI / 12, -Math.PI / 6, easedT); // 15° to -30°
-      shoulderRotation.y = THREE.MathUtils.lerp(Math.PI / 9, 0, easedT); // 20° to 0° (FLIPPED: was -20° to 0°)
-      shoulderRotation.z = THREE.MathUtils.lerp(Math.PI / 9, 0, easedT); // 20° to 0°
+      // Return from mirrored slash end position to neutral
+      shoulderRotation.x = THREE.MathUtils.lerp(-Math.PI / 12, -Math.PI / 6, easedT); // MIRRORED: was Math.PI / 12, now -Math.PI / 12
+      shoulderRotation.y = THREE.MathUtils.lerp(-Math.PI / 9, 0, easedT); // MIRRORED: was Math.PI / 9, now -Math.PI / 9
+      shoulderRotation.z = THREE.MathUtils.lerp(-Math.PI / 9, 0, easedT); // MIRRORED: was Math.PI / 9, now -Math.PI / 9
       
       // Return elbow to neutral
       elbowRotation.x = THREE.MathUtils.lerp(0.15, 0.05, easedT);
-      elbowRotation.y = THREE.MathUtils.lerp(-Math.PI / 6, 0, easedT);
+      elbowRotation.y = THREE.MathUtils.lerp(Math.PI / 6, 0, easedT); // MIRRORED: was -Math.PI / 6, now Math.PI / 6
       
       // Return wrist to neutral
-      wristRotation.y = THREE.MathUtils.lerp(-Math.PI / 10, 0, easedT);
+      wristRotation.y = THREE.MathUtils.lerp(Math.PI / 10, 0, easedT); // MIRRORED: was -Math.PI / 10, now Math.PI / 10
       wristRotation.z = THREE.MathUtils.lerp(0, 0, easedT);
       
-      // Torso returns to center (FLIPPED: was -0.25, now 0.25)
-      torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT);
+      // Torso returns to center
+      torsoRotation = THREE.MathUtils.lerp(-0.25, 0, easedT); // MIRRORED: was 0.25, now -0.25
       
-      console.log(`🗡️ [EnemyAnimationSystem] RECOVERY PHASE t=${t.toFixed(2)} - Returning to LEFT ARM forward neutral (FLIPPED)`);
+      console.log(`🗡️ [EnemyAnimationSystem] RECOVERY PHASE t=${t.toFixed(2)} - Returning to LEFT ARM forward neutral (MIRRORED)`);
       
     } else {
       // ANIMATION COMPLETE
@@ -246,7 +246,7 @@ export class EnemyAnimationSystem {
     // Apply the coordinated movement to LEFT ARM enemy body parts
     this.applyAttackMovement(shoulderRotation, elbowRotation, wristRotation, torsoRotation);
     
-    console.log(`🗡️ [EnemyAnimationSystem] FLIPPED LEFT ARM attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
+    console.log(`🗡️ [EnemyAnimationSystem] MIRRORED LEFT ARM attack animation progress: ${(elapsed / duration * 100).toFixed(1)}%`);
     return true;
   }
   
@@ -295,7 +295,7 @@ export class EnemyAnimationSystem {
     }
     
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] FLIPPED LEFT ARM attack animation completed, arm pointing forward");
+    console.log("🗡️ [EnemyAnimationSystem] MIRRORED LEFT ARM attack animation completed, arm pointing forward");
   }
   
   public isAttacking(): boolean {
