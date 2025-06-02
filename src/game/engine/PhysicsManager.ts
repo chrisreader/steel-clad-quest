@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface CollisionObject {
@@ -14,7 +15,7 @@ export class PhysicsManager {
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   
   constructor() {
-    console.log('Enhanced Physics Manager initialized with improved collision system and slope detection');
+    console.log('Enhanced Physics Manager initialized with improved collision system');
   }
 
   public addCollisionObject(object: THREE.Object3D, type: 'environment' | 'player' | 'projectile' | 'enemy', material: 'wood' | 'stone' | 'metal' | 'fabric' = 'stone', id?: string): string {
@@ -96,38 +97,6 @@ export class PhysicsManager {
     return null;
   }
 
-  public getGroundHeight(position: THREE.Vector3, maxRayDistance: number = 10): { height: number; normal: THREE.Vector3 } {
-    const rayOrigin = new THREE.Vector3(position.x, position.y + maxRayDistance, position.z);
-    const rayDirection = new THREE.Vector3(0, -1, 0); // Ray pointing down
-    
-    this.raycaster.set(rayOrigin, rayDirection);
-    
-    const meshes: THREE.Object3D[] = [];
-    for (const [id, collisionObject] of this.collisionObjects) {
-      if (collisionObject.type === 'environment') {
-        meshes.push(collisionObject.mesh);
-      }
-    }
-    
-    const intersections = this.raycaster.intersectObjects(meshes, true);
-    
-    if (intersections.length > 0) {
-      const intersection = intersections[0];
-      return {
-        height: intersection.point.y,
-        normal: intersection.face ? intersection.face.normal.clone() : new THREE.Vector3(0, 1, 0)
-      };
-    }
-    
-    return { height: 0, normal: new THREE.Vector3(0, 1, 0) }; // Default ground level
-  }
-
-  public isWalkableSlope(normal: THREE.Vector3, maxSlopeAngle: number = 45): boolean {
-    const upVector = new THREE.Vector3(0, 1, 0);
-    const angle = Math.acos(normal.dot(upVector)) * (180 / Math.PI);
-    return angle <= maxSlopeAngle;
-  }
-
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
     const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
     const distance = direction.length();
@@ -148,20 +117,11 @@ export class PhysicsManager {
       return this.handleWallSliding(currentPosition, targetPosition, collision, playerRadius);
     }
     
-    // NEW: Check ground height at target position for vertical movement
-    const groundInfo = this.getGroundHeight(targetPosition);
-    
-    // If slope is walkable, adjust Y position to follow the ground
-    if (this.isWalkableSlope(groundInfo.normal)) {
-      const adjustedTarget = targetPosition.clone();
-      adjustedTarget.y = groundInfo.height + playerRadius; // Keep player above ground
-      return adjustedTarget;
-    }
-    
     // No collision, movement is safe
     return targetPosition;
   }
 
+  // New method: Check enemy knockback movement with collision prevention
   public checkEnemyKnockback(currentPosition: THREE.Vector3, knockbackVelocity: THREE.Vector3, deltaTime: number, enemyRadius: number = 0.4): THREE.Vector3 {
     const targetPosition = currentPosition.clone().add(knockbackVelocity.clone().multiplyScalar(deltaTime));
     const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
