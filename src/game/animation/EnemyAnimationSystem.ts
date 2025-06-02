@@ -49,10 +49,10 @@ export class EnemyAnimationSystem {
       this.bodyParts.body.position.y = this.originalBodyY + walkingBob; // 2.1 + offset
     }
     
-    // ARM MOVEMENT - Coordinated shoulder, elbow, wrist
+    // ARM MOVEMENT - Coordinated shoulder, elbow, wrist (FIXED: FORWARD-FACING)
     if (this.bodyParts.leftArm && this.bodyParts.rightArm) {
-      // Left arm system
-      this.bodyParts.leftArm.rotation.x = armSwing + Math.PI / 8;
+      // Left arm system - FIXED: Use negative base rotation for forward-facing
+      this.bodyParts.leftArm.rotation.x = armSwing - Math.PI / 8; // FIXED: negative base for forward
       this.bodyParts.leftArm.rotation.z = 0.3 + shoulderSway;
       
       if (this.bodyParts.leftElbow) {
@@ -62,9 +62,9 @@ export class EnemyAnimationSystem {
         this.bodyParts.leftWrist.rotation.x = armSwing * 0.3;
       }
       
-      // Right arm system (weapon arm - less swing when holding weapon)
+      // Right arm system (weapon arm - less swing when holding weapon) - FIXED: FORWARD-FACING
       const weaponArmSwing = armSwing * 0.6; // Reduced swing for weapon control
-      this.bodyParts.rightArm.rotation.x = -weaponArmSwing + Math.PI / 6;
+      this.bodyParts.rightArm.rotation.x = -weaponArmSwing - Math.PI / 6; // FIXED: negative base for forward
       this.bodyParts.rightArm.rotation.z = -0.3 - shoulderSway;
       
       if (this.bodyParts.rightElbow) {
@@ -109,14 +109,14 @@ export class EnemyAnimationSystem {
       this.bodyParts.weapon.rotation.z = baseRotation + Math.sin(this.idleTime * 2) * 0.1;
     }
     
-    // Return arms to neutral position gradually
+    // Return arms to neutral position gradually (FIXED: FORWARD-FACING)
     const returnSpeed = deltaTime * 2;
     if (this.bodyParts.leftArm && this.bodyParts.rightArm) {
       this.bodyParts.leftArm.rotation.x = THREE.MathUtils.lerp(
-        this.bodyParts.leftArm.rotation.x, Math.PI / 8, returnSpeed
+        this.bodyParts.leftArm.rotation.x, -Math.PI / 8, returnSpeed // FIXED: negative for forward
       );
       this.bodyParts.rightArm.rotation.x = THREE.MathUtils.lerp(
-        this.bodyParts.rightArm.rotation.x, Math.PI / 6, returnSpeed
+        this.bodyParts.rightArm.rotation.x, -Math.PI / 6, returnSpeed // FIXED: negative for forward
       );
     }
   }
@@ -252,11 +252,12 @@ export class EnemyAnimationSystem {
   }
   
   private completeAttackAnimation(): void {
-    // Reset to neutral positions using standardized values
+    // Reset to neutral positions using standardized values (FIXED: FORWARD-FACING)
     const neutralRotation = STANDARD_SWORD_ANIMATION.rotations.neutral;
     
     if (this.bodyParts.rightArm) {
-      this.bodyParts.rightArm.rotation.set(neutralRotation.x, neutralRotation.y, neutralRotation.z - 0.3);
+      // FIXED: Use negative rotation for forward-facing neutral position
+      this.bodyParts.rightArm.rotation.set(-Math.PI / 6, neutralRotation.y, neutralRotation.z - 0.3);
     }
     
     if (this.bodyParts.rightElbow) {
@@ -270,7 +271,7 @@ export class EnemyAnimationSystem {
     }
     
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] Attack animation completed, returned to neutral stance");
+    console.log("🗡️ [EnemyAnimationSystem] Attack animation completed, returned to forward-facing neutral stance");
   }
   
   public isAttacking(): boolean {
