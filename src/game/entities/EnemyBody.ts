@@ -160,13 +160,20 @@ export class EnemyBodyBuilder {
       enemyGroup.add(rightTusk);
     }
 
-    // === ARMS ===
+    // === ARMS - FIXED PIVOT POINTS ===
     const leftArmGeometry = new THREE.CylinderGeometry(
       scale.arm.radius[0], scale.arm.radius[1], scale.arm.length, 16
     );
     const leftArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const leftArm = new THREE.Mesh(leftArmGeometry, leftArmMaterial);
-    leftArm.position.set(-(scale.body.radius + 0.1), positions.shoulderHeight, 0);
+    
+    // FIXED: Position the arm so its TOP is at shoulder height, not its center
+    // Move arm down by half its length so shoulder joint is at the actual top
+    leftArm.position.set(
+      -(scale.body.radius + 0.1), 
+      positions.shoulderHeight - scale.arm.length * 0.5, // FIXED: Moved down by half arm length
+      0
+    );
     leftArm.rotation.set(neutralPoses.arms.left.x, neutralPoses.arms.left.y, neutralPoses.arms.left.z);
     leftArm.castShadow = true;
     leftArm.receiveShadow = true;
@@ -177,19 +184,28 @@ export class EnemyBodyBuilder {
     );
     const rightArmMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 25 });
     const rightArm = new THREE.Mesh(rightArmGeometry, rightArmMaterial);
-    rightArm.position.set(scale.body.radius + 0.1, positions.shoulderHeight, 0);
+    
+    // FIXED: Position the arm so its TOP is at shoulder height, not its center
+    rightArm.position.set(
+      scale.body.radius + 0.1, 
+      positions.shoulderHeight - scale.arm.length * 0.5, // FIXED: Moved down by half arm length
+      0
+    );
     rightArm.rotation.set(neutralPoses.arms.right.x, neutralPoses.arms.right.y, neutralPoses.arms.right.z);
     rightArm.castShadow = true;
     rightArm.receiveShadow = true;
     enemyGroup.add(rightArm);
 
-    // === FOREARMS ===
+    // === FOREARMS - ADJUSTED FOR NEW ARM POSITIONING ===
     const leftElbowGeometry = new THREE.CylinderGeometry(
       scale.forearm.radius[0], scale.forearm.radius[1], scale.forearm.length, 16
     );
     const leftElbowMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const leftElbow = new THREE.Mesh(leftElbowGeometry, leftElbowMaterial);
-    leftElbow.position.set(0, -scale.arm.length * 0.6, 0);
+    
+    // ADJUSTED: Elbow position relative to the new arm positioning
+    // Position elbow at the bottom of the upper arm
+    leftElbow.position.set(0, -scale.arm.length * 0.5 - scale.forearm.length * 0.5, 0);
     leftElbow.castShadow = true;
     leftElbow.receiveShadow = true;
     leftArm.add(leftElbow);
@@ -199,7 +215,9 @@ export class EnemyBodyBuilder {
     );
     const rightElbowMaterial = new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 20 });
     const rightElbow = new THREE.Mesh(rightElbowGeometry, rightElbowMaterial);
-    rightElbow.position.set(0, -scale.arm.length * 0.6, 0);
+    
+    // ADJUSTED: Elbow position relative to the new arm positioning
+    rightElbow.position.set(0, -scale.arm.length * 0.5 - scale.forearm.length * 0.5, 0);
     rightElbow.castShadow = true;
     rightElbow.receiveShadow = true;
     rightArm.add(rightElbow);
@@ -208,7 +226,7 @@ export class EnemyBodyBuilder {
     const leftWristGeometry = new THREE.SphereGeometry(0.15, 12, 10);
     const leftWristMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 30 });
     const leftWrist = new THREE.Mesh(leftWristGeometry, leftWristMaterial);
-    leftWrist.position.set(0, -scale.forearm.length * 0.6, 0);
+    leftWrist.position.set(0, -scale.forearm.length * 0.5, 0);
     leftWrist.castShadow = true;
     leftWrist.receiveShadow = true;
     leftElbow.add(leftWrist);
@@ -216,7 +234,7 @@ export class EnemyBodyBuilder {
     const rightWristGeometry = new THREE.SphereGeometry(0.15, 12, 10);
     const rightWristMaterial = new THREE.MeshPhongMaterial({ color: colors.muscle, shininess: 30 });
     const rightWrist = new THREE.Mesh(rightWristGeometry, rightWristMaterial);
-    rightWrist.position.set(0, -scale.forearm.length * 0.6, 0);
+    rightWrist.position.set(0, -scale.forearm.length * 0.5, 0);
     rightWrist.castShadow = true;
     rightWrist.receiveShadow = true;
     rightElbow.add(rightWrist);
@@ -284,7 +302,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
 
-    console.log(`🗡️ [EnemyBodyBuilder] CANONICALIZED: ${type} weapon now properly attached to LEFT arm (weapon arm)`);
+    console.log(`🗡️ [EnemyBodyBuilder] FIXED: ${type} shoulder joint now at TOP of upper arm - proper pivot point for attacks`);
 
     return { group: enemyGroup, bodyParts, metrics };
   }
