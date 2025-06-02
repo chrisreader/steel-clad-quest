@@ -413,6 +413,7 @@ export abstract class EnemyHumanoid {
 
     // Trapezius muscle - positioned to taper into shoulder joints
     const shoulderJointX = bodyScale.body.radius + 0.1; // Match shoulder joint X position
+    const torsoTopRadius = bodyScale.body.radius * 1.1; // Define the torso top radius
     
     const trapGeometry = new THREE.CylinderGeometry(
       shoulderJointX * 0.6, // Top radius - taper into shoulder area
