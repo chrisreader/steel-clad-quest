@@ -250,7 +250,7 @@ export class EnemyBodyBuilder {
       weapon = this.createWeapon(type, woodTexture, metalTexture);
       weapon.position.set(0, 0.1, 0);
       weapon.rotation.x = Math.PI / 2 + 0.2;
-      rightWrist.add(weapon);
+      leftWrist.add(weapon); // FIXED: Changed from rightWrist to leftWrist - left arm is now weapon arm
     }
 
     // === HITBOX ===
@@ -284,7 +284,7 @@ export class EnemyBodyBuilder {
       hitBox
     };
 
-    console.log(`🗡️ [EnemyBodyBuilder] FLIPPED: ${type} body now faces opposite direction (removed 180° rotation)`);
+    console.log(`🗡️ [EnemyBodyBuilder] CANONICALIZED: ${type} weapon now properly attached to LEFT arm (weapon arm)`);
 
     return { group: enemyGroup, bodyParts, metrics };
   }
