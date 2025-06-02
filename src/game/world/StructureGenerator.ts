@@ -32,6 +32,19 @@ export class StructureGenerator {
     // Get region properties
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     
+    // NEW: For ring 0 (spawn area), add a test hill for debugging vertical movement
+    if (region.ringIndex === 0) {
+      const testHill = this.createTestHill();
+      structures.push({
+        type: 'test_hill',
+        position: new THREE.Vector3(10, 0, 10), // Position near spawn
+        rotation: 0,
+        model: testHill
+      });
+      
+      console.log("🏔️ Created test hill for vertical movement debugging at (10, 0, 10)");
+    }
+    
     // Check if this region should have structures
     const structureTypes = ringDef.structureTypes;
     if (!structureTypes || structureTypes.length === 0) return;
@@ -57,6 +70,59 @@ export class StructureGenerator {
     }
     
     // Add more structure placement logic for other rings/quadrants here
+  }
+  
+  // NEW: Create a test hill for debugging vertical movement
+  private createTestHill(): THREE.Object3D {
+    const hill = new THREE.Group();
+    
+    // Create a cone-shaped hill
+    const hillGeometry = new THREE.ConeGeometry(8, 6, 16);
+    const hillMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x4A7C59, // Green grass color
+      transparent: false
+    });
+    
+    const hillMesh = new THREE.Mesh(hillGeometry, hillMaterial);
+    hillMesh.position.set(10, 3, 10); // Position at (10, 3, 10) with base at Y=3
+    hillMesh.castShadow = true;
+    hillMesh.receiveShadow = true;
+    
+    // Add some texture variation
+    const grassTexture = this.createGrassTexture();
+    hillMaterial.map = grassTexture;
+    
+    hill.add(hillMesh);
+    
+    // Add to scene
+    this.scene.add(hill);
+    
+    console.log("🏔️ Created test hill with cone geometry for slope testing");
+    
+    return hill;
+  }
+  
+  // NEW: Create simple grass texture
+  private createGrassTexture(): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const context = canvas.getContext('2d')!;
+    
+    // Base grass color
+    context.fillStyle = '#4A7C59';
+    context.fillRect(0, 0, 64, 64);
+    
+    // Add some grass variation
+    for (let i = 0; i < 50; i++) {
+      context.fillStyle = `rgba(60, 100, 70, ${Math.random() * 0.5})`;
+      context.fillRect(Math.random() * 64, Math.random() * 64, 2, 2);
+    }
+    
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    return texture;
   }
   
   // Create a ruined castle

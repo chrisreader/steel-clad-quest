@@ -25,7 +25,7 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with collision detection");
+    console.log("🏃 [MovementSystem] Initialized with collision detection and vertical movement");
     
     // Set up sprint input handler
     this.setupSprintHandler();
@@ -139,18 +139,28 @@ export class MovementSystem {
       const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
       const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
-      // Check collision and get safe position
+      // NEW: Check collision and ground height for safe position with vertical movement
       const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4); // 0.4 is player radius
       
-      // Calculate actual movement vector
+      // Calculate actual movement vector (including vertical movement)
       const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
       
       if (actualMovement.length() > 0.001) {
+        // NEW: Log vertical movement information
+        if (Math.abs(actualMovement.y) > 0.01) {
+          console.log("🏔️ [MovementSystem] Vertical movement detected:", {
+            from: currentPosition,
+            to: safePosition,
+            verticalChange: actualMovement.y.toFixed(3),
+            horizontalDistance: Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z).toFixed(3)
+          });
+        }
+        
         // Convert back to normalized direction for player.move()
         const normalizedMovement = actualMovement.clone().normalize();
         const movementScale = actualMovement.length() / (5.0 * deltaTime);
         
-        console.log("🏃 [MovementSystem] Moving with collision detection:", {
+        console.log("🏃 [MovementSystem] Moving with collision and ground height detection:", {
           from: currentPosition,
           to: safePosition,
           movement: actualMovement,
@@ -159,7 +169,7 @@ export class MovementSystem {
         
         this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
       } else {
-        console.log("🏃 [MovementSystem] Movement blocked by collision");
+        console.log("🏃 [MovementSystem] Movement blocked by collision or steep slope");
       }
     }
   }
