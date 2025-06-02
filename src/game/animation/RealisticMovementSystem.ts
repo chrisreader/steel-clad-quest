@@ -1,6 +1,7 @@
+
 import * as THREE from 'three';
 import { JointAnimationHelpers } from './JointAnimationHelpers';
-import { EnemyBodyParts } from '../entities/humanoid/EnemyHumanoid';
+import { EnemyBodyParts } from '../entities/EnemyBody';
 import { BodyCohesionSystem, EnhancedNeutralPoses } from './BodyCohesionSystem';
 
 export interface RealisticMovementConfig {

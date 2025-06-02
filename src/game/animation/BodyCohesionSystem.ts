@@ -1,6 +1,5 @@
-
 import * as THREE from 'three';
-import { EnemyBodyParts } from '../entities/humanoid/EnemyHumanoid';
+import { EnemyBodyParts } from '../entities/EnemyBody';
 
 export interface BodyMovementState {
   hipSway: number;
