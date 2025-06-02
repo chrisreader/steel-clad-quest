@@ -6,6 +6,7 @@ import { PhysicsManager } from './PhysicsManager';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
 import { RingQuadrantSystem, RegionCoordinates, Region } from '../world/RingQuadrantSystem';
+import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
 import { EffectsManager } from './EffectsManager';
 import { AudioManager } from './AudioManager';
 import { Enemy } from '../entities/Enemy';
@@ -17,6 +18,7 @@ export class SceneManager {
   
   // Ring-quadrant world system
   private ringSystem: RingQuadrantSystem;
+  private terrainFeatureGenerator: TerrainFeatureGenerator;
   private loadedRegions: Map<string, Region> = new Map();
   private renderDistance: number = 800; // How far to load terrain
   private debugMode: boolean = true; // Set to false for production
@@ -56,6 +58,9 @@ export class SceneManager {
     
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
+    
+    // Initialize terrain feature generator
+    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
     // Setup distance-based fog
     this.setupDistanceFog();
@@ -260,16 +265,6 @@ export class SceneManager {
     this.createTavern();
     console.log('Tavern created at center');
     
-    // Create some basic decoration around starting area
-    this.createForestTrees(10);
-    console.log('Forest trees created');
-    
-    this.createRocks(5);
-    console.log('Rocks created');
-    
-    this.createBushes(15);
-    console.log('Bushes created');
-    
     // Create skybox
     this.createSkybox();
     console.log('Skybox created');
@@ -319,6 +314,9 @@ export class SceneManager {
     };
     
     this.loadedRegions.set(regionKey, newRegion);
+    
+    // Generate terrain features for this region
+    this.terrainFeatureGenerator.generateFeaturesForRegion(region);
   }
   
   private unloadRegion(region: RegionCoordinates): void {
@@ -328,6 +326,9 @@ export class SceneManager {
     if (!loadedRegion) return;
     
     console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    
+    // Clean up terrain features
+    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
     
     // Remove terrain
     if (loadedRegion.terrain) {
@@ -858,6 +859,11 @@ export class SceneManager {
     // Dispose collision manager
     if (this.environmentCollisionManager) {
       this.environmentCollisionManager.dispose();
+    }
+    
+    // Dispose terrain feature generator
+    if (this.terrainFeatureGenerator) {
+      this.terrainFeatureGenerator.dispose();
     }
     
     // Dispose cloud spawning system
