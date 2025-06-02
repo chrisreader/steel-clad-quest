@@ -25,29 +25,11 @@ export interface EnemyAnimationParams {
   weaponArmSwingReduction: number;
 }
 
-export interface EnemyFacialFeatures {
-  eyes: {
-    enabled: boolean;
-    radius: number;
-    color: number;
-    emissiveIntensity: number;
-    position: { x: number; y: number; z: number };
-  };
-  tusks: {
-    enabled: boolean;
-    radius: number;
-    height: number;
-    color: number;
-    position: { x: number; y: number; z: number };
-  };
-}
-
 export interface EnemyBodyConfiguration {
   type: EnemyType;
   scale: EnemyBodyScale;
   neutralPose: EnemyNeutralPose;
   animationParams: EnemyAnimationParams;
-  facialFeatures: EnemyFacialFeatures;
   colors: {
     skin: number;
     muscle: number;
@@ -76,7 +58,7 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       shin: { radius: [0.18, 0.20], length: 0.65 }
     },
     neutralPose: {
-      armRotation: { x: 0.393, z: 0.3 }, // Changed to 22.5° forward (0.393 radians)
+      armRotation: { x: -0.393, z: 0.3 },
       legPosition: { x: 0.4 },
       shoulderOffset: 0.25
     },
@@ -85,24 +67,8 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       armSwingIntensity: 0.25,
       legSwingIntensity: 0.2,
       shoulderMovement: 0.1,
-      breathingIntensity: 0.02, // Matches original breathing intensity
+      breathingIntensity: 0.02,
       weaponArmSwingReduction: 0.6
-    },
-    facialFeatures: {
-      eyes: {
-        enabled: true,
-        radius: 0.12, // Increased from 0.08 to match original larger eyes
-        color: 0xFF0000,
-        emissiveIntensity: 0.4, // Increased from 0.3 to match original intensity
-        position: { x: 0.2, y: 0.05, z: 0.425 } // Adjusted for larger eyes and corrected head position
-      },
-      tusks: {
-        enabled: true,
-        radius: 0.08, // Increased from 0.05 to match original
-        height: 0.35, // Increased from 0.25 to match original
-        color: 0xFFFACD, // Changed to match original color (0xfffacd -> 0xFFFACD)
-        position: { x: 0.2, y: -0.15, z: 0.425 } // Adjusted for corrected head position
-      }
     },
     colors: {
       skin: 0x4A5D23,
@@ -130,7 +96,7 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       shin: { radius: [0.10, 0.12], length: 0.6 }
     },
     neutralPose: {
-      armRotation: { x: -0.15, z: 0.3 }, // Adjusted to match original appearance
+      armRotation: { x: -0.2, z: 0.3 },
       legPosition: { x: 0.5 },
       shoulderOffset: 0.2
     },
@@ -141,22 +107,6 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       shoulderMovement: 0.15,
       breathingIntensity: 0.03,
       weaponArmSwingReduction: 0.7
-    },
-    facialFeatures: {
-      eyes: {
-        enabled: true,
-        radius: 0.06,
-        color: 0xFF0000,
-        emissiveIntensity: 0.3,
-        position: { x: 0.12, y: 0.04, z: 0.28 }
-      },
-      tusks: {
-        enabled: false,
-        radius: 0,
-        height: 0,
-        color: 0,
-        position: { x: 0, y: 0, z: 0 }
-      }
     },
     colors: {
       skin: 0x4A7C4A,
@@ -196,22 +146,6 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       breathingIntensity: 0.01,
       weaponArmSwingReduction: 0.65
     },
-    facialFeatures: {
-      eyes: {
-        enabled: true,
-        radius: 0.08,
-        color: 0x00FF00,
-        emissiveIntensity: 0.5,
-        position: { x: 0.15, y: 0.05, z: 0.32 }
-      },
-      tusks: {
-        enabled: false,
-        radius: 0,
-        height: 0,
-        color: 0,
-        position: { x: 0, y: 0, z: 0 }
-      }
-    },
     colors: {
       skin: 0xF5F5DC,
       muscle: 0xE6E6FA,
@@ -249,22 +183,6 @@ export const ENEMY_CONFIGURATIONS: Record<EnemyType, EnemyBodyConfiguration> = {
       shoulderMovement: 0.08,
       breathingIntensity: 0.025,
       weaponArmSwingReduction: 0.5
-    },
-    facialFeatures: {
-      eyes: {
-        enabled: true,
-        radius: 0.12,
-        color: 0xFF0000,
-        emissiveIntensity: 0.4,
-        position: { x: 0.25, y: 0.1, z: 0.56 }
-      },
-      tusks: {
-        enabled: true,
-        radius: 0.08,
-        height: 0.4,
-        color: 0xfffacd,
-        position: { x: 0.25, y: -0.2, z: 0.56 }
-      }
     },
     colors: {
       skin: 0x2F1B14,

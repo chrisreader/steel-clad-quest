@@ -19,10 +19,6 @@ export interface EnemyBodyParts {
   rightKnee: THREE.Mesh | null;
   weapon: THREE.Group | null;
   hitBox: THREE.Mesh;
-  leftEye: THREE.Mesh | null;
-  rightEye: THREE.Mesh | null;
-  leftTusk: THREE.Mesh | null;
-  rightTusk: THREE.Mesh | null;
 }
 
 export class EnemyBodyBuilder {
@@ -53,10 +49,6 @@ export class EnemyBodyBuilder {
       rightKnee: null,
       weapon: null,
       hitBox: this.createHitBox(config.scale.body.radius * 2, config.scale.body.height, config.scale.body.radius * 2),
-      leftEye: null,
-      rightEye: null,
-      leftTusk: null,
-      rightTusk: null,
     };
     
     // Add hitbox
@@ -71,30 +63,6 @@ export class EnemyBodyBuilder {
     bodyParts.head = this.createHead(scale.head.radius, colors.muscle);
     bodyParts.head.position.y = metrics.getHeadCenterY();
     group.add(bodyParts.head);
-    
-    // Eyes
-    if (config.facialFeatures.eyes.enabled) {
-      const eyeConfig = config.facialFeatures.eyes;
-      bodyParts.leftEye = this.createEye(eyeConfig.radius, eyeConfig.color, eyeConfig.emissiveIntensity);
-      bodyParts.leftEye.position.copy(metrics.getEyePosition(true));
-      group.add(bodyParts.leftEye);
-      
-      bodyParts.rightEye = this.createEye(eyeConfig.radius, eyeConfig.color, eyeConfig.emissiveIntensity);
-      bodyParts.rightEye.position.copy(metrics.getEyePosition(false));
-      group.add(bodyParts.rightEye);
-    }
-    
-    // Tusks
-    if (config.facialFeatures.tusks.enabled) {
-      const tuskConfig = config.facialFeatures.tusks;
-      bodyParts.leftTusk = this.createTusk(tuskConfig.radius, tuskConfig.height, tuskConfig.color);
-      bodyParts.leftTusk.position.copy(metrics.getTuskPosition(true));
-      group.add(bodyParts.leftTusk);
-      
-      bodyParts.rightTusk = this.createTusk(tuskConfig.radius, tuskConfig.height, tuskConfig.color);
-      bodyParts.rightTusk.position.copy(metrics.getTuskPosition(false));
-      group.add(bodyParts.rightTusk);
-    }
     
     // Arms
     const armPositionLeft = metrics.getArmPosition(true);
@@ -252,34 +220,6 @@ export class EnemyBodyBuilder {
     const hitBox = new THREE.Mesh(geometry, material);
     hitBox.position.y = height / 2;
     return hitBox;
-  }
-  
-  private static createEye(radius: number, color: number, emissiveIntensity: number): THREE.Mesh {
-    const geometry = new THREE.SphereGeometry(radius, 12, 8);
-    const material = new THREE.MeshPhongMaterial({ 
-      color: color,
-      transparent: true,
-      opacity: 1,
-      emissive: color,
-      emissiveIntensity: emissiveIntensity
-    });
-    const eye = new THREE.Mesh(geometry, material);
-    eye.castShadow = true;
-    eye.receiveShadow = true;
-    return eye;
-  }
-  
-  private static createTusk(radius: number, height: number, color: number): THREE.Mesh {
-    const geometry = new THREE.ConeGeometry(radius, height, 8);
-    const material = new THREE.MeshPhongMaterial({ 
-      color: color,
-      shininess: 60
-    });
-    const tusk = new THREE.Mesh(geometry, material);
-    tusk.rotation.x = Math.PI; // Point downward
-    tusk.castShadow = true;
-    tusk.receiveShadow = true;
-    return tusk;
   }
 }
 

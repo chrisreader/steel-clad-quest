@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { EnemyBodyConfiguration } from './EnemyBodyConfig';
 
@@ -26,11 +27,11 @@ export class EnemyBodyMetrics {
     // Body top
     this._bodyTopY = this._bodyCenterY + this.config.scale.body.height / 2;
     
-    // FIXED: Shoulder height positioned higher on torso for better proportions
-    this._shoulderHeight = this._bodyCenterY + this.config.scale.body.height * 0.25; // Matches original calculation
+    // Shoulder height (positioned on upper torso)
+    this._shoulderHeight = this._bodyCenterY + this.config.scale.body.height * 0.25;
     
-    // FIXED: Head center positioned so head bottom touches body top (no gap)
-    this._headCenterY = this._bodyTopY + this.config.scale.head.radius; // Removed the +0.1 gap
+    // Head center (touching body top)
+    this._headCenterY = this._bodyTopY + this.config.scale.head.radius;
   }
   
   // Position getters
@@ -52,27 +53,6 @@ export class EnemyBodyMetrics {
   
   public getShinRelativeY(): number {
     return this.getShinCenterY() - this.getThighCenterY();
-  }
-  
-  // Facial feature positions
-  public getEyePosition(isLeft: boolean): THREE.Vector3 {
-    const features = this.config.facialFeatures.eyes;
-    const x = isLeft ? -features.position.x : features.position.x;
-    return new THREE.Vector3(
-      x,
-      this.getHeadCenterY() + features.position.y,
-      features.position.z * this.config.scale.head.radius // Scale Z position relative to head radius
-    );
-  }
-  
-  public getTuskPosition(isLeft: boolean): THREE.Vector3 {
-    const features = this.config.facialFeatures.tusks;
-    const x = isLeft ? -features.position.x : features.position.x;
-    return new THREE.Vector3(
-      x,
-      this.getHeadCenterY() + features.position.y,
-      features.position.z * this.config.scale.head.radius // Scale Z position relative to head radius
-    );
   }
   
   // Neutral pose calculations
@@ -127,5 +107,4 @@ export class EnemyBodyMetrics {
   public getScale() { return this.config.scale; }
   public getColors() { return this.config.colors; }
   public getStats() { return this.config.stats; }
-  public getFacialFeatures() { return this.config.facialFeatures; }
 }
