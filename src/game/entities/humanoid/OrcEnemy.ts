@@ -137,7 +137,8 @@ export class OrcEnemy extends EnemyHumanoid {
         
         if (distanceToSafeZone > 16) { // Stay outside safe zone (15 + 1 buffer)
           this.mesh.position.copy(newPosition);
-          this.updateMovementAnimation(deltaTime);
+          // Use animation system for movement animation
+          this.animationSystem.updateWalkAnimation(deltaTime, true, wanderSpeed);
         } else {
           // Too close to safe zone, head away from it
           const directionAwayFromSafeZone = new THREE.Vector3()
@@ -156,12 +157,16 @@ export class OrcEnemy extends EnemyHumanoid {
         
         this.passiveWanderDirection.copy(directionToSpawn);
       }
+    } else {
+      // Idle animation when not moving
+      this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
     }
   }
 
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
     if (this.isDead) {
-      this.updateDeathAnimation(deltaTime);
+      // Call parent's update to handle death animation properly
+      super.update(deltaTime, playerPosition);
       return;
     }
 
@@ -187,7 +192,8 @@ export class OrcEnemy extends EnemyHumanoid {
       newPosition.y = 0;
       
       this.mesh.position.copy(newPosition);
-      this.updateMovementAnimation(deltaTime);
+      // Use animation system for movement animation
+      this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
       return;
     }
 
