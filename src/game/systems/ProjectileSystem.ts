@@ -158,6 +158,14 @@ export class ProjectileSystem {
     return this.gold;
   }
 
+  // NEW: Transfer gold without affecting arrows
+  public transferGold(): Gold[] {
+    const goldToTransfer = [...this.gold];
+    this.gold = []; // Clear only the gold array
+    console.log(`💰 [ProjectileSystem] Transferred ${goldToTransfer.length} gold drops to CombatSystem`);
+    return goldToTransfer;
+  }
+
   public clear(): void {
     this.arrows.forEach(arrow => arrow.dispose());
     this.arrows = [];

@@ -73,13 +73,10 @@ export class CombatSystem {
     this.projectileSystem.setEnemies(this.enemies);
     this.projectileSystem.update(deltaTime);
     
-    // FIXED: Merge gold from ProjectileSystem with CombatSystem gold
-    const projectileGold = this.projectileSystem.getGold();
+    // FIXED: Use transferGold to avoid destroying active arrows
+    const projectileGold = this.projectileSystem.transferGold();
     if (projectileGold.length > 0) {
       this.gold.push(...projectileGold);
-      // Clear the projectile system's gold array to avoid duplicates
-      this.projectileSystem.clear();
-      // Re-add arrows back (clear() removes everything, we only want to move gold)
       console.log(`💰 [CombatSystem] Merged ${projectileGold.length} gold drops from arrows`);
     }
     
