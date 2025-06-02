@@ -30,11 +30,10 @@ export class EnemyAnimationSystem {
     const movementConfig: RealisticMovementConfig = this.createMovementConfig(enemyType);
     this.realisticMovement = new RealisticMovementSystem(movementConfig);
     
-    console.log(`🎭 [EnemyAnimationSystem] Initialized with enhanced realistic movement for ${enemyType}`);
+    console.log(`🎭 [EnemyAnimationSystem] Initialized with enhanced shoulder movement for ${enemyType}`);
   }
 
   private createMovementConfig(enemyType: string): RealisticMovementConfig {
-    // Different enemy types have different movement characteristics
     const baseConfig = {
       stepLength: 1.0,
       walkCycleSpeed: this.metrics.animationMetrics.walkCycleSpeed,
@@ -43,33 +42,32 @@ export class EnemyAnimationSystem {
       weaponWeight: 0.7,
       combatStanceType: 'aggressive' as const,
       weaponType: 'axe' as const,
-      characterSeed: Math.random() * 1000, // Unique per enemy instance
+      characterSeed: Math.random() * 1000,
       asymmetryIntensity: 0.1,
       legLength: this.metrics.scale.leg.length,
       armLength: this.metrics.scale.arm.length
     };
 
-    // Customize based on enemy type
     switch (enemyType.toLowerCase()) {
       case 'orc':
         return {
           ...baseConfig,
-          kneeFlexionIntensity: 1.2, // Orcs have more pronounced knee movement
-          elbowSwingIntensity: 1.1, // Slightly more elbow swing due to bulk
-          weaponWeight: 0.8, // Heavy weapons
+          kneeFlexionIntensity: 1.2,
+          elbowSwingIntensity: 1.1,
+          weaponWeight: 0.8,
           combatStanceType: 'aggressive',
           weaponType: 'axe',
-          asymmetryIntensity: 0.15 // More irregular movement
+          asymmetryIntensity: 0.15
         };
       case 'goblin':
         return {
           ...baseConfig,
-          kneeFlexionIntensity: 1.4, // Goblins are more agile
-          elbowSwingIntensity: 1.3, // More animated movement
-          weaponWeight: 0.5, // Lighter weapons
+          kneeFlexionIntensity: 1.4,
+          elbowSwingIntensity: 1.3,
+          weaponWeight: 0.5,
           combatStanceType: 'aggressive',
           weaponType: 'sword',
-          asymmetryIntensity: 0.2 // More erratic movement
+          asymmetryIntensity: 0.2
         };
       default:
         return baseConfig;
@@ -97,12 +95,15 @@ export class EnemyAnimationSystem {
       enhancedNeutralPoses
     );
 
-    // Keep the old walkTime for backward compatibility
+    // Update walkTime for additional animations
     if (isMoving) {
       this.walkTime += deltaTime * movementSpeed * this.metrics.animationMetrics.walkCycleSpeed;
     }
 
-    // Update leg swing using enhanced system for legs
+    // ENHANCED: Update shoulder animations to move naturally with arms and torso
+    this.updateShoulderAnimations(deltaTime, isMoving, movementSpeed);
+
+    // Enhanced leg animation
     if (isMoving && this.bodyParts.leftLeg && this.bodyParts.rightLeg) {
       const legSwing = Math.sin(this.walkTime + Math.PI) * this.metrics.animationMetrics.legSwingIntensity;
       this.bodyParts.leftLeg.rotation.x = legSwing;
@@ -134,10 +135,142 @@ export class EnemyAnimationSystem {
     }
   }
   
-  private updateIdleAnimation(deltaTime: number): void {
+  /**
+   * NEW: Enhanced shoulder animation system that moves naturally with arms and torso
+   */
+  private updateShoulderAnimations(deltaTime: number, isMoving: boolean, movementSpeed: number): void {
+    if (!this.bodyParts.leftShoulder || !this.bodyParts.rightShoulder) return;
+
+    const isAttacking = this.swingAnimation?.isActive || false;
+
+    if (isMoving && !isAttacking) {
+      // Walking shoulder animation - shoulders move with arm swing
+      const armSwing = Math.sin(this.walkTime) * this.metrics.animationMetrics.armSwingIntensity;
+      const shoulderSway = Math.sin(this.walkTime * 0.5) * this.metrics.animationMetrics.shoulderMovement;
+      
+      // Left shoulder (weapon side) - follows weapon arm movement
+      const leftShoulderNeutral = this.metrics.neutralPoses.shoulders.left;
+      const weaponShoulderMovement = armSwing * 0.3; // Reduced movement for more natural look
+      
+      this.bodyParts.leftShoulder.rotation.x = leftShoulderNeutral.x + weaponShoulderMovement * 0.5;
+      this.bodyParts.leftShoulder.rotation.y = leftShoulderNeutral.y + shoulderSway * 0.2;
+      this.bodyParts.leftShoulder.rotation.z = leftShoulderNeutral.z + weaponShoulderMovement * 0.4;
+      
+      // Right shoulder - counter-movement to left shoulder
+      const rightShoulderNeutral = this.metrics.neutralPoses.shoulders.right;
+      
+      this.bodyParts.rightShoulder.rotation.x = rightShoulderNeutral.x - armSwing * 0.2;
+      this.bodyParts.rightShoulder.rotation.y = rightShoulderNeutral.y - shoulderSway * 0.2;
+      this.bodyParts.rightShoulder.rotation.z = rightShoulderNeutral.z - armSwing * 0.3;
+      
+    } else if (isAttacking) {
+      // Attack shoulder animation - shoulders follow through the strike
+      this.updateAttackShoulderMovement();
+      
+    } else {
+      // Idle shoulder animation - gentle breathing and subtle movement
+      this.updateIdleShoulderMovement(deltaTime);
+    }
+  }
+
+  /**
+   * NEW: Shoulder movement during attack animations
+   */
+  private updateAttackShoulderMovement(): void {
+    if (!this.swingAnimation || !this.bodyParts.leftShoulder || !this.bodyParts.rightShoulder) return;
+
+    const elapsed = this.swingAnimation.clock.getElapsedTime() - this.swingAnimation.startTime;
+    const { phases, duration } = STANDARD_SWORD_ANIMATION;
+    
+    let leftShoulderRotation = { x: 0, y: 0, z: 0 };
+    let rightShoulderRotation = { x: 0, y: 0, z: 0 };
+    
+    const leftNeutral = this.metrics.neutralPoses.shoulders.left;
+    const rightNeutral = this.metrics.neutralPoses.shoulders.right;
+    
+    if (elapsed < phases.windup) {
+      // Windup - shoulders prepare for strike
+      const t = elapsed / phases.windup;
+      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
+      
+      leftShoulderRotation.x = THREE.MathUtils.lerp(leftNeutral.x, leftNeutral.x - 0.2, easedT);
+      leftShoulderRotation.y = THREE.MathUtils.lerp(leftNeutral.y, leftNeutral.y + 0.1, easedT);
+      leftShoulderRotation.z = THREE.MathUtils.lerp(leftNeutral.z, leftNeutral.z - 0.3, easedT);
+      
+      rightShoulderRotation.x = THREE.MathUtils.lerp(rightNeutral.x, rightNeutral.x - 0.1, easedT);
+      rightShoulderRotation.y = THREE.MathUtils.lerp(rightNeutral.y, rightNeutral.y - 0.05, easedT);
+      rightShoulderRotation.z = THREE.MathUtils.lerp(rightNeutral.z, rightNeutral.z + 0.15, easedT);
+      
+    } else if (elapsed < phases.windup + phases.slash) {
+      // Slash - shoulders follow through the strike
+      const t = (elapsed - phases.windup) / phases.slash;
+      const aggressiveT = t * t * (3 - 2 * t);
+      
+      leftShoulderRotation.x = THREE.MathUtils.lerp(leftNeutral.x - 0.2, leftNeutral.x + 0.1, aggressiveT);
+      leftShoulderRotation.y = THREE.MathUtils.lerp(leftNeutral.y + 0.1, leftNeutral.y - 0.05, aggressiveT);
+      leftShoulderRotation.z = THREE.MathUtils.lerp(leftNeutral.z - 0.3, leftNeutral.z + 0.2, aggressiveT);
+      
+      rightShoulderRotation.x = THREE.MathUtils.lerp(rightNeutral.x - 0.1, rightNeutral.x + 0.05, aggressiveT);
+      rightShoulderRotation.y = THREE.MathUtils.lerp(rightNeutral.y - 0.05, rightNeutral.y + 0.1, aggressiveT);
+      rightShoulderRotation.z = THREE.MathUtils.lerp(rightNeutral.z + 0.15, rightNeutral.z - 0.1, aggressiveT);
+      
+    } else if (elapsed < duration) {
+      // Recovery - shoulders return to neutral
+      const t = (elapsed - phases.windup - phases.slash) / phases.recovery;
+      const easedT = THREE.MathUtils.smoothstep(t, 0, 1);
+      
+      leftShoulderRotation.x = THREE.MathUtils.lerp(leftNeutral.x + 0.1, leftNeutral.x, easedT);
+      leftShoulderRotation.y = THREE.MathUtils.lerp(leftNeutral.y - 0.05, leftNeutral.y, easedT);
+      leftShoulderRotation.z = THREE.MathUtils.lerp(leftNeutral.z + 0.2, leftNeutral.z, easedT);
+      
+      rightShoulderRotation.x = THREE.MathUtils.lerp(rightNeutral.x + 0.05, rightNeutral.x, easedT);
+      rightShoulderRotation.y = THREE.MathUtils.lerp(rightNeutral.y + 0.1, rightNeutral.y, easedT);
+      rightShoulderRotation.z = THREE.MathUtils.lerp(rightNeutral.z - 0.1, rightNeutral.z, easedT);
+    }
+    
+    // Apply shoulder rotations
+    this.bodyParts.leftShoulder.rotation.set(
+      leftShoulderRotation.x,
+      leftShoulderRotation.y,
+      leftShoulderRotation.z
+    );
+    
+    this.bodyParts.rightShoulder.rotation.set(
+      rightShoulderRotation.x,
+      rightShoulderRotation.y,
+      rightShoulderRotation.z
+    );
+  }
+
+  /**
+   * NEW: Subtle shoulder movement during idle state
+   */
+  private updateIdleShoulderMovement(deltaTime: number): void {
+    if (!this.bodyParts.leftShoulder || !this.bodyParts.rightShoulder) return;
+
     this.idleTime += deltaTime;
     
-    // Create enhanced neutral poses for idle animation
+    const leftNeutral = this.metrics.neutralPoses.shoulders.left;
+    const rightNeutral = this.metrics.neutralPoses.shoulders.right;
+    
+    // Gentle breathing motion
+    const breathingMotion = Math.sin(this.idleTime * 1.5) * 0.03;
+    const subtleSwaying = Math.sin(this.idleTime * 0.8) * 0.02;
+    
+    // Left shoulder idle movement
+    this.bodyParts.leftShoulder.rotation.x = leftNeutral.x + breathingMotion;
+    this.bodyParts.leftShoulder.rotation.y = leftNeutral.y + subtleSway * 0.5;
+    this.bodyParts.leftShoulder.rotation.z = leftNeutral.z + breathingMotion * 0.3;
+    
+    // Right shoulder idle movement (slightly different phase)
+    this.bodyParts.rightShoulder.rotation.x = rightNeutral.x + breathingMotion * 0.8;
+    this.bodyParts.rightShoulder.rotation.y = rightNeutral.y - subtleSwaying * 0.3;
+    this.bodyParts.rightShoulder.rotation.z = rightNeutral.z + breathingMotion * 0.4;
+  }
+  
+  public updateIdleAnimation(deltaTime: number): void {
+    this.idleTime += deltaTime;
+    
     const enhancedNeutralPoses = {
       bodyY: this.metrics.positions.bodyY,
       headY: this.metrics.positions.headY,
@@ -148,7 +281,6 @@ export class EnemyAnimationSystem {
       wrists: this.metrics.neutralPoses.wrists
     };
     
-    // Use realistic movement system for idle animations
     this.realisticMovement.updateRealisticWalk(
       this.bodyParts,
       deltaTime,
@@ -194,7 +326,7 @@ export class EnemyAnimationSystem {
     this.swingAnimation.clock.start();
     this.swingAnimation.startTime = this.swingAnimation.clock.getElapsedTime();
     
-    console.log("🗡️ [EnemyAnimationSystem] Started enhanced attack animation with realistic movement");
+    console.log("🗡️ [EnemyAnimationSystem] Started enhanced attack animation with shoulder movement");
   }
   
   public updateAttackAnimation(deltaTime: number): boolean {
@@ -207,7 +339,6 @@ export class EnemyAnimationSystem {
     
     const attackProgress = Math.min(elapsed / duration, 1);
     
-    // Create enhanced neutral poses for attack animation
     const enhancedNeutralPoses = {
       bodyY: this.metrics.positions.bodyY,
       headY: this.metrics.positions.headY,
@@ -218,14 +349,12 @@ export class EnemyAnimationSystem {
       wrists: this.metrics.neutralPoses.wrists
     };
     
-    // Use realistic movement system for attack animations
     this.realisticMovement.updateRealisticAttack(
       this.bodyParts,
       attackProgress,
       enhancedNeutralPoses
     );
     
-    // Keep existing arm animation logic for weapon swing
     this.applyWeaponSwingMovement(elapsed);
     
     if (elapsed >= duration) {
@@ -295,17 +424,14 @@ export class EnemyAnimationSystem {
       torsoRotation = THREE.MathUtils.lerp(0.15, 0, easedT);
     }
     
-    // Apply shoulder movements
     if (this.bodyParts.leftArm) {
       this.bodyParts.leftArm.rotation.set(shoulderRotation.x, shoulderRotation.y, shoulderRotation.z, 'XYZ');
     }
     
-    // Apply wrist movements
     if (this.bodyParts.leftWrist) {
       this.bodyParts.leftWrist.rotation.set(wristRotation.x, wristRotation.y, wristRotation.z);
     }
     
-    // Apply body rotation
     if (this.bodyParts.body) {
       this.bodyParts.body.rotation.y = torsoRotation;
     }
@@ -320,12 +446,11 @@ export class EnemyAnimationSystem {
       this.bodyParts.leftArm.rotation.set(walkingNeutralX, walkingNeutralY, walkingNeutralZ);
     }
     
-    // FIXED: Reset elbows to natural bent position (negative values)
     if (this.bodyParts.leftElbow) {
-      this.bodyParts.leftElbow.rotation.set(-0.05, 0, 0); // Natural slight bend
+      this.bodyParts.leftElbow.rotation.set(-0.05, 0, 0);
     }
     if (this.bodyParts.rightElbow) {
-      this.bodyParts.rightElbow.rotation.set(-0.03, 0, 0); // Natural slight bend
+      this.bodyParts.rightElbow.rotation.set(-0.03, 0, 0);
     }
     if (this.bodyParts.leftWrist) {
       this.bodyParts.leftWrist.rotation.set(walkingNeutralX, 0, 0);
@@ -334,8 +459,18 @@ export class EnemyAnimationSystem {
       this.bodyParts.body.rotation.y = 0;
     }
     
+    // Reset shoulders to neutral positions
+    if (this.bodyParts.leftShoulder) {
+      const leftNeutral = this.metrics.neutralPoses.shoulders.left;
+      this.bodyParts.leftShoulder.rotation.set(leftNeutral.x, leftNeutral.y, leftNeutral.z);
+    }
+    if (this.bodyParts.rightShoulder) {
+      const rightNeutral = this.metrics.neutralPoses.shoulders.right;
+      this.bodyParts.rightShoulder.rotation.set(rightNeutral.x, rightNeutral.y, rightNeutral.z);
+    }
+    
     this.swingAnimation = null;
-    console.log("🗡️ [EnemyAnimationSystem] Enhanced attack animation completed with fixed elbow positions");
+    console.log("🗡️ [EnemyAnimationSystem] Enhanced attack animation completed with shoulder reset");
   }
   
   public isAttacking(): boolean {
