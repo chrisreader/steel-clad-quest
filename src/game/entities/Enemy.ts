@@ -5,11 +5,29 @@ import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { MathUtils } from '../utils';
 
+// Enhanced enemy states for better movement control
+enum EnemyMovementState {
+  IDLE = 'idle',
+  PURSUING = 'pursuing',
+  ATTACKING = 'attacking',
+  KNOCKED_BACK = 'knocked_back',
+  STUNNED = 'stunned'
+}
+
 export class Enemy {
   private enemy: EnemyInterface;
   private scene: THREE.Scene;
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
+  
+  // Enhanced movement state management
+  private movementState: EnemyMovementState = EnemyMovementState.IDLE;
+  private knockbackVelocity: THREE.Vector3 = new THREE.Vector3();
+  private knockbackDuration: number = 0;
+  private knockbackResistance: number = 1.0; // 1.0 = normal, higher = more resistant
+  private stunDuration: number = 0;
+  private targetRotation: number = 0;
+  private rotationSpeed: number = 3.0; // Radians per second
   
   constructor(
     scene: THREE.Scene,
@@ -24,6 +42,9 @@ export class Enemy {
     
     // Create enemy based on type
     this.enemy = this.createEnemy(type, position);
+    
+    // Set knockback resistance based on enemy type
+    this.knockbackResistance = type === EnemyType.ORC ? 0.7 : 1.0; // Orcs are more resistant
     
     // Add to scene
     scene.add(this.enemy.mesh);
@@ -296,8 +317,8 @@ export class Enemy {
       return;
     }
     
-    // Update idle time
-    this.enemy.idleTime += deltaTime;
+    // Update movement state timers
+    this.updateMovementState(deltaTime);
     
     // Handle hit animation
     if (this.enemy.isHit && now - this.enemy.hitTime < 300) {
@@ -312,23 +333,75 @@ export class Enemy {
     
     const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
     
+    // Handle different movement states
+    switch (this.movementState) {
+      case EnemyMovementState.KNOCKED_BACK:
+        this.handleKnockbackMovement(deltaTime);
+        break;
+        
+      case EnemyMovementState.STUNNED:
+        // Just wait, don't move
+        break;
+        
+      default:
+        this.handleNormalMovement(deltaTime, playerPosition, distanceToPlayer, now);
+        break;
+    }
+    
+    // Update smooth rotation
+    this.updateRotation(deltaTime);
+  }
+  
+  private updateMovementState(deltaTime: number): void {
+    if (this.knockbackDuration > 0) {
+      this.knockbackDuration -= deltaTime * 1000;
+      if (this.knockbackDuration <= 0) {
+        this.knockbackVelocity.set(0, 0, 0);
+        this.movementState = this.stunDuration > 0 ? EnemyMovementState.STUNNED : EnemyMovementState.IDLE;
+      }
+    }
+    
+    if (this.stunDuration > 0) {
+      this.stunDuration -= deltaTime * 1000;
+      if (this.stunDuration <= 0) {
+        this.movementState = EnemyMovementState.IDLE;
+      }
+    }
+  }
+  
+  private handleKnockbackMovement(deltaTime: number): void {
+    // Apply knockback velocity with decay
+    const decayFactor = Math.pow(0.1, deltaTime); // Exponential decay
+    this.knockbackVelocity.multiplyScalar(decayFactor);
+    
+    // Apply movement
+    const movement = this.knockbackVelocity.clone().multiplyScalar(deltaTime);
+    this.enemy.mesh.position.add(movement);
+    this.enemy.mesh.position.y = 0; // Keep on ground
+    
+    console.log(`🎯 [Enemy] Knockback movement: velocity=${this.knockbackVelocity.length().toFixed(2)}, duration=${this.knockbackDuration.toFixed(0)}ms`);
+  }
+  
+  private handleNormalMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
+    // Update idle time
+    this.enemy.idleTime += deltaTime;
+    
     // Enhanced AI behavior with proper attack ranges and movement
     if (distanceToPlayer <= this.enemy.attackRange) {
-      // Face player using lookAt
-      const targetPosition = playerPosition.clone();
-      targetPosition.y = this.enemy.mesh.position.y; // Keep same Y level
-      this.enemy.mesh.lookAt(targetPosition);
+      this.movementState = EnemyMovementState.PURSUING;
+      
+      // Calculate target rotation to face player smoothly
+      const directionToPlayer = new THREE.Vector3()
+        .subVectors(playerPosition, this.enemy.mesh.position)
+        .normalize();
+      directionToPlayer.y = 0;
+      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
       // Move toward player if outside damage range
       if (distanceToPlayer > this.enemy.damageRange) {
-        const direction = new THREE.Vector3()
-          .subVectors(playerPosition, this.enemy.mesh.position)
-          .normalize();
-        direction.y = 0; // Keep movement on ground level
-        
         const moveAmount = this.enemy.speed * deltaTime;
         const newPosition = this.enemy.mesh.position.clone();
-        newPosition.add(direction.multiplyScalar(moveAmount));
+        newPosition.add(directionToPlayer.multiplyScalar(moveAmount));
         newPosition.y = 0; // Ensure enemies stay on ground
       
         this.enemy.mesh.position.copy(newPosition);
@@ -349,16 +422,22 @@ export class Enemy {
       
       // Attack if within damage range
       if (distanceToPlayer <= this.enemy.damageRange && now - this.enemy.lastAttackTime > this.enemy.attackCooldown) {
+        this.movementState = EnemyMovementState.ATTACKING;
         this.attack(playerPosition);
         this.enemy.lastAttackTime = now;
       }
     } else {
       // If enemy is far from player but not in attack range, still move toward player slowly
       if (distanceToPlayer > this.enemy.attackRange && distanceToPlayer < 50) {
+        this.movementState = EnemyMovementState.PURSUING;
+        
         const direction = new THREE.Vector3()
           .subVectors(playerPosition, this.enemy.mesh.position)
           .normalize();
         direction.y = 0;
+        
+        // Calculate target rotation
+        this.targetRotation = Math.atan2(direction.x, direction.z);
         
         const slowMoveAmount = this.enemy.speed * deltaTime * 0.3; // Slower movement when far
         const newPosition = this.enemy.mesh.position.clone();
@@ -366,11 +445,8 @@ export class Enemy {
         newPosition.y = 0;
         
         this.enemy.mesh.position.copy(newPosition);
-        
-        // Face player
-        const targetPosition = playerPosition.clone();
-        targetPosition.y = this.enemy.mesh.position.y;
-        this.enemy.mesh.lookAt(targetPosition);
+      } else {
+        this.movementState = EnemyMovementState.IDLE;
       }
       
       // Idle animations
@@ -378,18 +454,29 @@ export class Enemy {
         this.enemy.body.position.y = (this.enemy.type === EnemyType.GOBLIN ? 1.2 : 1.8) / 2 + Math.sin(this.enemy.idleTime * 4) * 0.05;
       }
       
-      // Body sway
-      if (this.enemy.head) {
-        const baseSway = Math.sin(this.enemy.idleTime * 2) * 0.015;
-        // Don't override lookAt rotation completely, just add subtle sway
-        this.enemy.mesh.rotation.y += baseSway;
-      }
-      
       // Weapon swing animation
       if (this.enemy.weapon) {
         const baseRotation = -0.5;
         this.enemy.weapon.rotation.z = baseRotation + Math.sin(this.enemy.idleTime * 3) * 0.2;
       }
+    }
+  }
+  
+  private updateRotation(deltaTime: number): void {
+    // Smooth rotation interpolation
+    if (this.movementState !== EnemyMovementState.KNOCKED_BACK && this.movementState !== EnemyMovementState.STUNNED) {
+      const currentRotation = this.enemy.mesh.rotation.y;
+      const rotationDiff = this.targetRotation - currentRotation;
+      
+      // Handle rotation wrapping around -π to π
+      let normalizedDiff = rotationDiff;
+      if (normalizedDiff > Math.PI) normalizedDiff -= Math.PI * 2;
+      if (normalizedDiff < -Math.PI) normalizedDiff += Math.PI * 2;
+      
+      // Apply smooth rotation
+      const rotationStep = this.rotationSpeed * deltaTime;
+      const newRotation = currentRotation + Math.sign(normalizedDiff) * Math.min(Math.abs(normalizedDiff), rotationStep);
+      this.enemy.mesh.rotation.y = newRotation;
     }
   }
   
@@ -454,21 +541,32 @@ export class Enemy {
     // Enhanced attack effect at enemy position
     this.effectsManager.createAttackEffect(this.enemy.mesh.position.clone(), 0xFFD700);
     
-    // Blood effect
-    const direction = new THREE.Vector3()
-      .subVectors(this.enemy.mesh.position, playerPosition)
-      .normalize();
-    direction.y = 0.5;
-    this.effectsManager.createBloodEffect(this.enemy.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), direction);
-    
-    // Play hit sound
-    this.audioManager.play('enemy_hurt');
-    
-    // Directional knockback effect
+    // FIXED: Proper knockback direction calculation
     const knockbackDirection = new THREE.Vector3()
       .subVectors(this.enemy.mesh.position, playerPosition)
       .normalize();
-    this.enemy.mesh.position.add(knockbackDirection.multiplyScalar(0.9));
+    knockbackDirection.y = 0; // Keep knockback horizontal
+    
+    // Calculate knockback intensity based on damage and resistance
+    const baseKnockback = 2.5;
+    const damageMultiplier = Math.min(damage / 20, 2.0); // Scale with damage, max 2x
+    const knockbackIntensity = (baseKnockback * damageMultiplier) / this.knockbackResistance;
+    
+    // Apply knockback velocity
+    this.knockbackVelocity = knockbackDirection.multiplyScalar(knockbackIntensity);
+    this.knockbackDuration = 400; // 400ms knockback
+    this.stunDuration = 200; // 200ms stun after knockback
+    this.movementState = EnemyMovementState.KNOCKED_BACK;
+    
+    console.log(`💥 [Enemy] Taking damage: ${damage}, knockback intensity: ${knockbackIntensity.toFixed(2)}, direction: (${knockbackDirection.x.toFixed(2)}, ${knockbackDirection.z.toFixed(2)})`);
+    
+    // Blood effect
+    const bloodDirection = knockbackDirection.clone();
+    bloodDirection.y = 0.5;
+    this.effectsManager.createBloodEffect(this.enemy.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), bloodDirection);
+    
+    // Play hit sound
+    this.audioManager.play('enemy_hurt');
     
     // Check if enemy is dead
     if (this.enemy.health <= 0) {
@@ -480,6 +578,7 @@ export class Enemy {
     this.enemy.isDead = true;
     this.enemy.deathTime = Date.now();
     this.enemy.deathAnimation.falling = true;
+    this.movementState = EnemyMovementState.STUNNED; // Stop all movement
     
     // Enhanced death explosion effect
     this.effectsManager.createHitEffect(this.enemy.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)));

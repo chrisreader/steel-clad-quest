@@ -4,7 +4,7 @@ import * as THREE from 'three';
 export interface CollisionObject {
   mesh: THREE.Object3D;
   box: THREE.Box3;
-  type: 'environment' | 'player' | 'projectile';
+  type: 'environment' | 'player' | 'projectile' | 'enemy';
   material: 'wood' | 'stone' | 'metal' | 'fabric';
   id: string;
 }
@@ -15,10 +15,10 @@ export class PhysicsManager {
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   
   constructor() {
-    console.log('Enhanced Physics Manager initialized with collision system');
+    console.log('Enhanced Physics Manager initialized with improved collision system');
   }
 
-  public addCollisionObject(object: THREE.Object3D, type: 'environment' | 'player' | 'projectile', material: 'wood' | 'stone' | 'metal' | 'fabric' = 'stone', id?: string): string {
+  public addCollisionObject(object: THREE.Object3D, type: 'environment' | 'player' | 'projectile' | 'enemy', material: 'wood' | 'stone' | 'metal' | 'fabric' = 'stone', id?: string): string {
     const objectId = id || `collision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const box = new THREE.Box3().setFromObject(object);
     
@@ -106,7 +106,7 @@ export class PhysicsManager {
     direction.normalize();
     
     // Check for collision along the movement path
-    const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile']);
+    const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile', 'enemy']);
     
     if (collision) {
       // Calculate safe position just before collision
@@ -118,6 +118,29 @@ export class PhysicsManager {
     }
     
     // No collision, movement is safe
+    return targetPosition;
+  }
+
+  // New method: Check enemy knockback movement with collision prevention
+  public checkEnemyKnockback(currentPosition: THREE.Vector3, knockbackVelocity: THREE.Vector3, deltaTime: number, enemyRadius: number = 0.4): THREE.Vector3 {
+    const targetPosition = currentPosition.clone().add(knockbackVelocity.clone().multiplyScalar(deltaTime));
+    const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
+    const distance = direction.length();
+    
+    if (distance === 0) return currentPosition;
+    
+    direction.normalize();
+    
+    // Check for collision along the knockback path
+    const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile', 'enemy']);
+    
+    if (collision) {
+      // Stop knockback at collision point
+      const safeDistance = Math.max(0, collision.distance - enemyRadius - 0.1);
+      return currentPosition.clone().add(direction.multiplyScalar(safeDistance));
+    }
+    
+    // No collision, knockback is safe
     return targetPosition;
   }
 
@@ -136,7 +159,7 @@ export class PhysicsManager {
     // Check if sliding movement is also blocked
     const slideDirection = projectedMovement.normalize();
     const slideDistance = projectedMovement.length();
-    const slideCollision = this.checkRayCollision(currentPos, slideDirection, slideDistance, ['projectile']);
+    const slideCollision = this.checkRayCollision(currentPos, slideDirection, slideDistance, ['projectile', 'enemy']);
     
     if (slideCollision) {
       // Can't slide, stay in current position
