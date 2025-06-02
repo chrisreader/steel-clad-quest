@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
@@ -42,6 +41,10 @@ export class Enemy {
   private targetRotation: number = 0;
   private rotationSpeed: number = 3.0;
   private hasInitialOrientation: boolean = false;
+  
+  // Safe zone passive behavior
+  private isPassive: boolean = false;
+  private lastPassiveStateChange: number = 0;
   
   constructor(
     scene: THREE.Scene,
@@ -371,10 +374,10 @@ export class Enemy {
     };
   }
   
-  public update(deltaTime: number, playerPosition: THREE.Vector3): void {
+  public update(deltaTime: number, playerPosition: THREE.Vector3, playerInSafeZone: boolean = false): void {
     if (this.isHumanoidEnemy && this.humanoidEnemy) {
-      // Delegate to humanoid enemy
-      this.humanoidEnemy.update(deltaTime, playerPosition);
+      // Delegate to humanoid enemy with safe zone info
+      this.humanoidEnemy.update(deltaTime, playerPosition, playerInSafeZone);
       
       // Update interface properties
       this.enemy.isDead = this.humanoidEnemy.getIsDead();
@@ -387,6 +390,13 @@ export class Enemy {
     if (this.enemy.isDead) {
       this.updateDeathAnimation(deltaTime);
       return;
+    }
+    
+    // Update passive state based on player safe zone status
+    if (playerInSafeZone !== this.isPassive && now - this.lastPassiveStateChange > 1000) {
+      this.isPassive = playerInSafeZone;
+      this.lastPassiveStateChange = now;
+      console.log(`🗡️ [Enemy] Switching to ${this.isPassive ? 'passive' : 'aggressive'} mode`);
     }
     
     if (!this.hasInitialOrientation) {
@@ -403,6 +413,12 @@ export class Enemy {
     }
     
     const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
+    
+    // Handle passive behavior when player is in safe zone
+    if (this.isPassive) {
+      this.handlePassiveBehavior(deltaTime, now);
+      return;
+    }
     
     switch (this.movementState) {
       case EnemyMovementState.KNOCKED_BACK:
@@ -451,6 +467,45 @@ export class Enemy {
     const movement = this.knockbackVelocity.clone().multiplyScalar(deltaTime);
     this.enemy.mesh.position.add(movement);
     this.enemy.mesh.position.y = 0;
+  }
+  
+  private handlePassiveBehavior(deltaTime: number, now: number): void {
+    // Stop any aggressive movement
+    this.movementState = EnemyMovementState.IDLE;
+    
+    // Slow random wandering behavior
+    this.enemy.idleTime += deltaTime;
+    
+    // Change direction every 3-5 seconds
+    if (this.enemy.idleTime > 3 + Math.random() * 2) {
+      this.enemy.idleTime = 0;
+      
+      // Pick a random direction for wandering
+      const wanderAngle = Math.random() * Math.PI * 2;
+      this.targetRotation = wanderAngle;
+      
+      // Move slowly in the random direction
+      const wanderDirection = new THREE.Vector3(
+        Math.cos(wanderAngle),
+        0,
+        Math.sin(wanderAngle)
+      );
+      
+      const slowMoveAmount = this.enemy.speed * deltaTime * 0.1; // Very slow movement
+      const newPosition = this.enemy.mesh.position.clone();
+      newPosition.add(wanderDirection.multiplyScalar(slowMoveAmount));
+      newPosition.y = 0;
+      
+      // Check if new position would take enemy too far from spawn area
+      const maxWanderDistance = 30;
+      if (newPosition.length() < maxWanderDistance) {
+        this.enemy.mesh.position.copy(newPosition);
+        this.updateLegacyWalkAnimation(deltaTime);
+      }
+    } else {
+      // Idle animation when not wandering
+      this.updateLegacyIdleAnimation();
+    }
   }
   
   private handleNormalMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
@@ -605,6 +660,8 @@ export class Enemy {
     }
     
     // Legacy damage handling for non-humanoid enemies
+    if (this.enemy.isDead || this.isPassive) return; // No damage in passive mode
+    
     if (this.enemy.isDead) return;
     
     this.enemy.health -= damage;
