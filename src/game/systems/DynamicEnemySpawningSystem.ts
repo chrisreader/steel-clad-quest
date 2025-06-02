@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Enemy } from '../entities/Enemy';
 import { DynamicSpawningSystem } from './DynamicSpawningSystem';
@@ -6,6 +5,7 @@ import { SpawnableEntity, EntityLifecycleState, SpawningConfig } from '../../typ
 import { EnemyType } from '../../types/GameTypes';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
+import { SafeZoneManager } from './SafeZoneManager';
 
 // Enemy wrapper to implement SpawnableEntity interface
 class SpawnableEnemyWrapper implements SpawnableEntity {
@@ -61,7 +61,9 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   private difficulty: number = 1;
-  
+  private safeZoneManager: SafeZoneManager;
+  private isPlayerInSafeZone: boolean = false;
+
   constructor(
     scene: THREE.Scene, 
     effectsManager: EffectsManager, 
@@ -72,13 +74,13 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       playerMovementThreshold: 5,
       fadeInDistance: 15,
       fadeOutDistance: 50,
-      maxEntityDistance: 60,
-      minSpawnDistance: 15,
+      maxEntityDistance: 80,
+      minSpawnDistance: 20,
       maxSpawnDistance: 40,
       maxEntities: 8,
       baseSpawnInterval: 5000,
       spawnCountPerTrigger: 2,
-      aggressiveCleanupDistance: 80,
+      aggressiveCleanupDistance: 100,
       fadedOutTimeout: 10000
     };
     
@@ -86,11 +88,68 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    console.log(`[DynamicEnemySpawningSystem] Initialized with max ${this.config.maxEntities} enemies`);
+    // Initialize safe zone manager (tavern area)
+    this.safeZoneManager = new SafeZoneManager({
+      center: new THREE.Vector3(0, 0, 0),
+      radius: 15
+    });
+
+    // Set up safe zone callbacks
+    this.safeZoneManager.setCallbacks(
+      () => this.onPlayerEnterSafeZone(),
+      () => this.onPlayerExitSafeZone()
+    );
+    
+    console.log(`[DynamicEnemySpawningSystem] Initialized with safe zone protection`);
   }
-  
+
+  private onPlayerEnterSafeZone(): void {
+    this.isPlayerInSafeZone = true;
+    console.log(`🛡️ [DynamicEnemySpawningSystem] Player entered safe zone - switching all enemies to passive mode`);
+    
+    // Switch all existing enemies to passive mode
+    this.entities.forEach(wrapper => {
+      const enemy = wrapper.getEnemy();
+      enemy.setPassiveMode(true);
+    });
+  }
+
+  private onPlayerExitSafeZone(): void {
+    this.isPlayerInSafeZone = false;
+    console.log(`⚔️ [DynamicEnemySpawningSystem] Player exited safe zone - switching all enemies to aggressive mode`);
+    
+    // Switch all existing enemies back to aggressive mode
+    this.entities.forEach(wrapper => {
+      const enemy = wrapper.getEnemy();
+      enemy.setPassiveMode(false);
+    });
+  }
+
+  public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
+    // Update safe zone status
+    if (playerPosition) {
+      this.safeZoneManager.updatePlayerPosition(playerPosition);
+    }
+
+    // Reduce spawn rate when player is in safe zone
+    if (this.isPlayerInSafeZone) {
+      // Much slower spawning in safe zone
+      this.spawnTimer += deltaTime * 1000 * 0.1; // 10x slower
+    } else {
+      this.spawnTimer += deltaTime * 1000;
+    }
+
+    // Call parent update method
+    super.update(deltaTime, playerPosition);
+  }
+
   protected createEntity(isInitial: boolean, playerPosition?: THREE.Vector3): SpawnableEnemyWrapper {
-    const spawnPosition = this.calculateSpawnPosition(playerPosition);
+    // Generate spawn position that avoids safe zone
+    const spawnPosition = this.safeZoneManager.generateSafeSpawnPosition(
+      this.config.minSpawnDistance,
+      this.config.maxSpawnDistance,
+      playerPosition
+    );
     
     // Create the actual enemy
     const enemy = Enemy.createRandomEnemy(
@@ -100,15 +159,49 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       this.audioManager,
       this.difficulty
     );
+
+    // Set initial passive state based on player location
+    enemy.setPassiveMode(this.isPlayerInSafeZone);
     
     // Wrap it in the spawnable interface
     const wrapper = new SpawnableEnemyWrapper(enemy);
     wrapper.initialize(spawnPosition);
     
-    console.log(`[DynamicEnemySpawningSystem] Created enemy at position:`, spawnPosition);
+    console.log(`[DynamicEnemySpawningSystem] Created enemy at safe position:`, spawnPosition);
     return wrapper;
   }
-  
+
+  protected updateEntities(deltaTime: number, playerPosition?: THREE.Vector3): void {
+    for (const entity of this.entities) {
+      // Update distance from player
+      if (playerPosition) {
+        entity.distanceFromPlayer = entity.mesh.position.distanceTo(playerPosition);
+      }
+      
+      // Prevent enemies from entering safe zone
+      const enemy = entity.getEnemy();
+      const enemyPosition = enemy.getPosition();
+      
+      if (this.safeZoneManager.isPositionInSafeZone(enemyPosition)) {
+        // Push enemy out of safe zone
+        const safeZoneCenter = this.safeZoneManager.getSafeZoneCenter();
+        const direction = new THREE.Vector3()
+          .subVectors(enemyPosition, safeZoneCenter)
+          .normalize();
+        
+        const safeDistance = this.safeZoneManager.getSafeZoneRadius() + 2;
+        const safePosition = safeZoneCenter.clone().add(direction.multiplyScalar(safeDistance));
+        safePosition.y = 0;
+        
+        enemy.getMesh().position.copy(safePosition);
+        console.log(`🛡️ [DynamicEnemySpawningSystem] Pushed enemy out of safe zone`);
+      }
+      
+      // Update entity
+      entity.update(deltaTime, playerPosition || new THREE.Vector3());
+    }
+  }
+
   protected getSystemName(): string {
     return 'DynamicEnemySpawningSystem';
   }
@@ -144,5 +237,9 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   public setDifficulty(difficulty: number): void {
     this.difficulty = Math.max(1, difficulty);
     console.log(`[DynamicEnemySpawningSystem] Difficulty set to ${this.difficulty}`);
+  }
+  
+  public getSafeZoneManager(): SafeZoneManager {
+    return this.safeZoneManager;
   }
 }

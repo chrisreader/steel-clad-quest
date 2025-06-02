@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
@@ -42,7 +41,15 @@ export class Enemy {
   private targetRotation: number = 0;
   private rotationSpeed: number = 3.0;
   private hasInitialOrientation: boolean = false;
-  
+
+  // Safe zone passive behavior
+  private isPassive: boolean = false;
+  private lastPassiveStateChange: number = 0;
+  private passiveWanderTimer: number = 0;
+  private passiveWanderDirection: THREE.Vector3 = new THREE.Vector3();
+  private spawnPosition: THREE.Vector3 = new THREE.Vector3();
+  private maxWanderDistance: number = 25;
+
   constructor(
     scene: THREE.Scene,
     type: EnemyType,
@@ -75,6 +82,9 @@ export class Enemy {
     if (!this.isHumanoidEnemy) {
       scene.add(this.enemy.mesh);
     }
+
+    // Store spawn position for wandering reference
+    this.spawnPosition.copy(position);
   }
   
   private createEnemyInterface(humanoidEnemy: OrcEnemy): EnemyInterface {
@@ -402,22 +412,93 @@ export class Enemy {
       this.enemy.isHit = false;
     }
     
-    const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
-    
-    switch (this.movementState) {
-      case EnemyMovementState.KNOCKED_BACK:
-        this.handleKnockbackMovement(deltaTime);
-        break;
-      case EnemyMovementState.STUNNED:
-        break;
-      default:
-        this.handleNormalMovement(deltaTime, playerPosition, distanceToPlayer, now);
-        break;
+    // Choose behavior based on passive state
+    if (this.isPassive) {
+      this.handlePassiveMovement(deltaTime);
+    } else {
+      const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
+      this.handleNormalMovement(deltaTime, playerPosition, distanceToPlayer, now);
     }
     
     this.updateRotation(deltaTime);
   }
-  
+
+  private handlePassiveMovement(deltaTime: number): void {
+    this.passiveWanderTimer += deltaTime * 1000;
+    
+    // Change direction every 3-5 seconds
+    if (this.passiveWanderTimer > 3000 + Math.random() * 2000) {
+      this.generateNewWanderDirection();
+      this.passiveWanderTimer = 0;
+    }
+    
+    // Move in wander direction
+    if (this.passiveWanderDirection.length() > 0) {
+      const wanderSpeed = this.enemy.speed * 0.3; // Much slower than normal movement
+      const movement = this.passiveWanderDirection.clone().multiplyScalar(wanderSpeed * deltaTime);
+      const newPosition = this.enemy.mesh.position.clone().add(movement);
+      newPosition.y = 0;
+      
+      // Check if we're getting too far from spawn point
+      const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
+      if (distanceFromSpawn < this.maxWanderDistance) {
+        this.enemy.mesh.position.copy(newPosition);
+        this.updateLegacyWalkAnimation(deltaTime);
+        
+        // Update target rotation for smooth turning
+        this.targetRotation = Math.atan2(this.passiveWanderDirection.x, this.passiveWanderDirection.z);
+      } else {
+        // Too far from spawn, head back
+        const directionToSpawn = new THREE.Vector3()
+          .subVectors(this.spawnPosition, this.enemy.mesh.position)
+          .normalize();
+        directionToSpawn.y = 0;
+        
+        this.passiveWanderDirection.copy(directionToSpawn);
+        this.targetRotation = Math.atan2(directionToSpawn.x, directionToSpawn.z);
+      }
+    } else {
+      this.updateLegacyIdleAnimation();
+    }
+  }
+
+  private generateNewWanderDirection(): void {
+    // Generate random direction
+    const angle = Math.random() * Math.PI * 2;
+    this.passiveWanderDirection.set(
+      Math.cos(angle),
+      0,
+      Math.sin(angle)
+    );
+    
+    // 30% chance to stop and idle
+    if (Math.random() < 0.3) {
+      this.passiveWanderDirection.set(0, 0, 0);
+    }
+    
+    console.log(`🚶 [Enemy] Generated new wander direction:`, this.passiveWanderDirection);
+  }
+
+  public setPassiveMode(passive: boolean): void {
+    if (this.isPassive !== passive) {
+      this.isPassive = passive;
+      this.lastPassiveStateChange = Date.now();
+      
+      if (passive) {
+        console.log(`🛡️ [Enemy] Switching to passive mode - will wander peacefully`);
+        this.generateNewWanderDirection();
+        this.passiveWanderTimer = 0;
+      } else {
+        console.log(`⚔️ [Enemy] Switching to aggressive mode - will pursue player`);
+        this.movementState = EnemyMovementState.IDLE;
+      }
+    }
+  }
+
+  public getPassiveMode(): boolean {
+    return this.isPassive;
+  }
+
   private setInitialOrientation(playerPosition: THREE.Vector3): void {
     const directionToPlayer = new THREE.Vector3()
       .subVectors(playerPosition, this.enemy.mesh.position)
