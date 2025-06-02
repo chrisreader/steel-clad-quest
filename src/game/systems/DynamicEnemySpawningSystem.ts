@@ -12,11 +12,13 @@ class SpawnableEnemyWrapper implements SpawnableEntity {
   mesh: THREE.Object3D;
   position: THREE.Vector3;
   age: number = 0;
-  maxAge: number = 120000; // 2 minutes max age
+  maxAge: number = 180000; // Increased to 3 minutes max age
   state: EntityLifecycleState = EntityLifecycleState.SPAWNING;
   distanceFromPlayer: number = 0;
   
   private enemy: Enemy;
+  private lastStateChange: number = 0;
+  private wasPlayerInSafeZone: boolean = false;
   
   constructor(enemy: Enemy) {
     this.enemy = enemy;
@@ -37,6 +39,16 @@ class SpawnableEnemyWrapper implements SpawnableEntity {
     
     // Check if player is in safe zone
     const playerInSafeZone = this.isPositionInSafeZone(playerPosition);
+    
+    // Log state changes for debugging
+    if (playerInSafeZone !== this.wasPlayerInSafeZone) {
+      const now = Date.now();
+      if (now - this.lastStateChange > 1000) { // Prevent spam
+        console.log(`🛡️ [SpawnableEnemyWrapper] Player safe zone status changed: ${playerInSafeZone ? 'entered' : 'left'} safe zone`);
+        this.lastStateChange = now;
+      }
+      this.wasPlayerInSafeZone = playerInSafeZone;
+    }
     
     // Update enemy with safe zone information
     this.enemy.update(deltaTime, playerPosition, playerInSafeZone);
@@ -73,6 +85,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   // Safe zone configuration
   private safeZoneCenter: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   private safeZoneRadius: number = 15;
+  private lastPlayerSafeZoneStatus: boolean = false;
   
   constructor(
     scene: THREE.Scene, 
@@ -84,14 +97,14 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       playerMovementThreshold: 5,
       fadeInDistance: 15,
       fadeOutDistance: 50,
-      maxEntityDistance: 60,
-      minSpawnDistance: 20, // Increased to ensure spawning outside safe zone
+      maxEntityDistance: 80, // Increased to reduce random despawning
+      minSpawnDistance: 20,
       maxSpawnDistance: 40,
       maxEntities: 8,
       baseSpawnInterval: 5000,
       spawnCountPerTrigger: 2,
-      aggressiveCleanupDistance: 80,
-      fadedOutTimeout: 10000
+      aggressiveCleanupDistance: 120, // Increased to be more lenient
+      fadedOutTimeout: 15000 // Increased timeout
     };
     
     super(scene, { ...defaultConfig, ...config });
@@ -173,6 +186,12 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     // Check if player is in safe zone
     const playerInSafeZone = playerPosition.distanceTo(this.safeZoneCenter) < this.safeZoneRadius;
     
+    // Log safe zone status changes
+    if (playerInSafeZone !== this.lastPlayerSafeZoneStatus) {
+      console.log(`🛡️ [DynamicEnemySpawningSystem] Player ${playerInSafeZone ? 'entered' : 'left'} safe zone`);
+      this.lastPlayerSafeZoneStatus = playerInSafeZone;
+    }
+    
     // If player is in safe zone, reduce spawn rate significantly
     if (playerInSafeZone) {
       // Temporarily increase spawn interval to reduce enemy spawning near safe zone
@@ -187,18 +206,30 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       super.update(deltaTime, playerPosition);
     }
     
-    // Remove enemies that enter the safe zone
+    // Don't remove enemies that enter the safe zone - let them wander passively instead
+    // Only remove enemies that are truly problematic
     this.entities = this.entities.filter(wrapper => {
-      const enemyPosition = wrapper.getEnemy().getPosition();
+      const enemy = wrapper.getEnemy();
+      const enemyPosition = enemy.getPosition();
       const enemyInSafeZone = enemyPosition.distanceTo(this.safeZoneCenter) < this.safeZoneRadius;
       
-      if (enemyInSafeZone && !wrapper.getEnemy().isDead()) {
-        console.log(`[DynamicEnemySpawningSystem] Removing enemy that entered safe zone`);
+      // Only remove if enemy is dead for a long time, or extremely far away
+      if (enemy.isDead() && enemy.isDeadFor(30000)) {
+        console.log(`[DynamicEnemySpawningSystem] Removing long-dead enemy`);
         wrapper.dispose();
         this.scene.remove(wrapper.mesh);
         return false;
       }
       
+      // Remove if enemy is extremely far from player (much more lenient)
+      if (wrapper.distanceFromPlayer > 150) {
+        console.log(`[DynamicEnemySpawningSystem] Removing extremely distant enemy (${wrapper.distanceFromPlayer.toFixed(1)} units away)`);
+        wrapper.dispose();
+        this.scene.remove(wrapper.mesh);
+        return false;
+      }
+      
+      // Keep all other enemies, even if they're in safe zone (they'll be passive)
       return true;
     });
   }
