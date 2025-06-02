@@ -353,6 +353,19 @@ export abstract class EnemyHumanoid {
     skull.receiveShadow = true;
     headGroup.add(skull);
 
+    // === NECK CONNECTION ===
+    const neckGeometry = new THREE.CylinderGeometry(
+      bodyScale.head.radius * 0.5,  // Top radius (connects to head)
+      bodyScale.body.radius * 0.4,  // Bottom radius (connects to torso)
+      0.4, // Height
+      16, 4
+    );
+    const neck = new THREE.Mesh(neckGeometry, skinMaterial.clone());
+    neck.position.y = headY - bodyScale.head.radius - 0.2;
+    neck.castShadow = true;
+    neck.receiveShadow = true;
+    headGroup.add(neck);
+
     // Prominent brow ridge
     const browRidgeGeometry = new THREE.BoxGeometry(0.8, 0.15, 0.4);
     const browRidge = new THREE.Mesh(browRidgeGeometry, accentMaterial.clone());
@@ -546,6 +559,37 @@ export abstract class EnemyHumanoid {
     rightShoulderJoint.castShadow = true;
     rightShoulderJoint.receiveShadow = true;
     humanoidGroup.add(rightShoulderJoint);
+
+    // === TRAPEZIUS MUSCLES ===
+    const trapGeometry = new THREE.ConeGeometry(
+      bodyScale.body.radius * 0.8,  // Base radius (connects to torso)
+      0.6, // Height
+      16, 4
+    );
+    
+    const leftTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
+    leftTrap.position.set(
+      -(bodyScale.body.radius + 0.1) * 0.7, // Positioned between shoulder and torso
+      shoulderHeight - 0.2,
+      0
+    );
+    leftTrap.rotation.z = -0.3; // Angled towards shoulder
+    leftTrap.scale.set(0.8, 1, 0.6); // Flattened for more natural muscle shape
+    leftTrap.castShadow = true;
+    leftTrap.receiveShadow = true;
+    humanoidGroup.add(leftTrap);
+
+    const rightTrap = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
+    rightTrap.position.set(
+      (bodyScale.body.radius + 0.1) * 0.7, // Positioned between shoulder and torso
+      shoulderHeight - 0.2,
+      0
+    );
+    rightTrap.rotation.z = 0.3; // Angled towards shoulder
+    rightTrap.scale.set(0.8, 1, 0.6); // Flattened for more natural muscle shape
+    rightTrap.castShadow = true;
+    rightTrap.receiveShadow = true;
+    humanoidGroup.add(rightTrap);
 
     // === ENHANCED ELBOW JOINTS - TAPERED FOR SMOOTH FOREARM CONNECTION ===
     const elbowJointGeometry = new THREE.SphereGeometry(0.22, 24, 20);
