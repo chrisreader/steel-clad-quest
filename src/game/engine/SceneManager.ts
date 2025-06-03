@@ -38,12 +38,14 @@ export class SceneManager {
   
   // Environment
   private currentLevel: Level | null = null;
+  private skybox: THREE.Mesh | null = null;
   private ground: THREE.Mesh | null = null;
   
-  // Cloud system
+  // New 3D sun and cloud system
+  private sun: THREE.Mesh | null = null;
   private cloudSpawningSystem: DynamicCloudSpawningSystem | null = null;
   
-  // Simple fog system
+  // Distance-based fog system
   private fog: THREE.Fog;
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   
@@ -52,7 +54,7 @@ export class SceneManager {
   private dayNightCycleEnabled: boolean = false;
   private dayNightCycleSpeed: number = 0.001; // How quickly time passes
   
-  // Enemy spawning system
+  // New enemy spawning system
   private enemySpawningSystem: DynamicEnemySpawningSystem | null = null;
   
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
@@ -76,8 +78,8 @@ export class SceneManager {
     // NEW: Connect StructureGenerator with BuildingManager
     this.structureGenerator.setBuildingManager(this.buildingManager);
     
-    // Setup simple fog
-    this.setupSimpleFog();
+    // Setup distance-based fog
+    this.setupDistanceFog();
     
     // Setup basic lighting
     this.setupLighting();
@@ -100,16 +102,16 @@ export class SceneManager {
     console.log('🔧 Collision registration callback established between TerrainFeatureGenerator and EnvironmentCollisionManager');
   }
 
-  private setupSimpleFog(): void {
-    // Create simple fog with original settings
-    const fogColor = 0xcccccc; // Light gray
-    const fogNear = 50; // Start fading objects at this distance
-    const fogFar = 200; // Objects completely faded at this distance
+  private setupDistanceFog(): void {
+    // Create THREE.js fog for distance-based object fading
+    const fogColor = 0xB0E0E6; // Atmospheric blue-white
+    const fogNear = 35; // Start fading objects at this distance
+    const fogFar = 120; // Objects completely faded at this distance
     
     this.fog = new THREE.Fog(fogColor, fogNear, fogFar);
     this.scene.fog = this.fog;
     
-    console.log("Simple fog system initialized:", {
+    console.log("Distance-based fog system initialized:", {
       color: fogColor.toString(16),
       near: fogNear,
       far: fogFar
@@ -346,6 +348,14 @@ export class SceneManager {
     // Create test hill
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created at (20, 0, 30) for slope walking testing');
+    
+    // Create skybox
+    this.createSkybox();
+    console.log('Skybox created');
+    
+    // Create 3D sun
+    this.create3DSun();
+    console.log('3D sun created');
     
     // Initialize cloud spawning system
     if (this.cloudSpawningSystem) {
