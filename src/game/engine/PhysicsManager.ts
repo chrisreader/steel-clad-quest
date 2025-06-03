@@ -364,19 +364,15 @@ export class PhysicsManager {
             point: terrainIntersection.point
           };
         }
-      } else if (collisionObject.type === 'environment') {
-        // Handle standard environment collision using arrow raycaster
-        const objectPosition = new THREE.Vector3();
-        collisionObject.box.getCenter(objectPosition);
-        const distanceToObject = origin.distanceTo(objectPosition);
-        
-        if (distanceToObject < distance && distanceToObject < minDistance) {
-          const collisionPoint = origin.clone().add(direction.clone().multiplyScalar(distanceToObject));
-          minDistance = distanceToObject;
+      } else if (collisionObject.type === 'environment' || collisionObject.type === 'staircase') {
+        // FIXED: Use proper ray-mesh intersection for environment objects instead of flawed distance checking
+        const environmentIntersection = this.checkEnvironmentRayIntersection(origin, direction, distance, collisionObject);
+        if (environmentIntersection && environmentIntersection.distance < minDistance) {
+          minDistance = environmentIntersection.distance;
           closestCollision = {
-            distance: distanceToObject,
+            distance: environmentIntersection.distance,
             object: collisionObject,
-            point: collisionPoint
+            point: environmentIntersection.point
           };
         }
       }
