@@ -26,7 +26,7 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with slope-aware collision detection");
+    console.log("🏃 [MovementSystem] Initialized with enhanced slope-aware collision detection");
     
     // Set up sprint input handler
     this.setupSprintHandler();
@@ -85,8 +85,8 @@ export class MovementSystem {
       hasMovementInput = true;
     }
     
-    // Log input state every 60 frames
-    if (this.frameCount % 60 === 0) {
+    // Log input state every 60 frames (about once per second)
+    if (this.frameCount % 60 === 0 && hasMovementInput) {
       console.log("🏃 [MovementSystem] Input state:", {
         forward: forwardPressed,
         backward: backwardPressed,
@@ -112,16 +112,15 @@ export class MovementSystem {
       }
     }
     
-    // Normalize movement
+    // Process movement if input detected
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
       // Apply sprint multiplier
-      let speed = 1.0;
+      let speed = 5.0; // Base movement speed
       if (this.player.getSprinting() && forwardPressed && !backwardPressed) {
-        speed = 1.5;
+        speed = 7.5; // Sprint speed
       }
-      moveDirection.multiplyScalar(speed);
       
       // Transform movement direction relative to camera rotation
       const cameraDirection = new THREE.Vector3();
@@ -134,25 +133,26 @@ export class MovementSystem {
       const worldMoveDirection = new THREE.Vector3();
       worldMoveDirection.addScaledVector(forwardVector, -moveDirection.z);
       worldMoveDirection.addScaledVector(rightVector, moveDirection.x);
+      worldMoveDirection.normalize();
       
-      // Get current and target positions
+      // Calculate movement distance and target position
       const currentPosition = this.player.getPosition();
-      const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
-      const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
+      const movementDistance = speed * deltaTime;
+      const targetPosition = currentPosition.clone().add(worldMoveDirection.multiplyScalar(movementDistance));
       
-      // Check collision and ground height for safe position with slope-aware movement
+      // ENHANCED: Use improved physics system for collision and terrain following
       const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4); // 0.4 is player radius
       
-      // Calculate actual movement vector (including vertical movement for slopes)
+      // Calculate actual movement that occurred
       const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
       
       if (actualMovement.length() > 0.001) {
-        // Log slope movement information
+        // Check if this is slope movement for debugging
         if (Math.abs(actualMovement.y) > 0.01) {
           const slopeInfo = this.physicsManager.checkSlopeAngle(safePosition);
-          console.log("🏔️ [MovementSystem] Slope movement detected:", {
-            from: currentPosition,
-            to: safePosition,
+          console.log("🏔️ [MovementSystem] SLOPE MOVEMENT DETECTED:", {
+            from: {x: currentPosition.x.toFixed(2), y: currentPosition.y.toFixed(2), z: currentPosition.z.toFixed(2)},
+            to: {x: safePosition.x.toFixed(2), y: safePosition.y.toFixed(2), z: safePosition.z.toFixed(2)},
             verticalChange: actualMovement.y.toFixed(3),
             horizontalDistance: Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z).toFixed(3),
             slopeAngle: slopeInfo.angle.toFixed(1) + '°',
@@ -160,20 +160,26 @@ export class MovementSystem {
           });
         }
         
-        // Convert back to normalized direction for player.move()
-        const normalizedMovement = actualMovement.clone().normalize();
-        const movementScale = actualMovement.length() / (5.0 * deltaTime);
+        // Convert movement back to direction and scale for player.move()
+        const movementDirection = actualMovement.clone().normalize();
+        const movementSpeed = actualMovement.length() / deltaTime;
         
-        console.log("🏃 [MovementSystem] Moving with slope-aware collision detection:", {
-          from: currentPosition,
-          to: safePosition,
-          movement: actualMovement,
-          distance: actualMovement.length()
-        });
+        // Apply the movement through the player system
+        this.player.move(movementDirection.multiplyScalar(movementSpeed / speed), deltaTime);
         
-        this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
+        // Debug log significant movements
+        if (actualMovement.length() > 0.1) {
+          console.log("🏃 [MovementSystem] Player moved:", {
+            distance: actualMovement.length().toFixed(3),
+            newPosition: safePosition,
+            wasSlope: Math.abs(actualMovement.y) > 0.01
+          });
+        }
       } else {
-        console.log("🏃 [MovementSystem] Movement blocked by collision or steep slope");
+        // Movement was completely blocked
+        if (this.frameCount % 30 === 0) { // Log every half second when blocked
+          console.log("🏃 [MovementSystem] Movement completely blocked by terrain/collision");
+        }
       }
     }
   }

@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PhysicsManager } from '../engine/PhysicsManager';
 
@@ -23,72 +24,12 @@ export class EnvironmentCollisionManager {
 
     // Register all environment objects for collision
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
+      if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
         this.registerObjectCollision(object);
-      } else if (object instanceof THREE.Group) {
-        this.registerGroupCollision(object);
       }
     });
 
     console.log(`Registered ${this.registeredObjects.size} collision objects`);
-  }
-
-  public registerIndividualObject(object: THREE.Object3D): void {
-    console.log('🌳 [EnvironmentCollisionManager] Registering individual object:', object.constructor.name);
-    
-    if (object instanceof THREE.Mesh) {
-      this.registerObjectCollision(object);
-    } else if (object instanceof THREE.Group) {
-      this.registerGroupCollision(object);
-    }
-  }
-
-  public unregisterObject(object: THREE.Object3D): void {
-    if (object instanceof THREE.Mesh) {
-      if (this.registeredObjects.has(object.uuid)) {
-        this.physicsManager.removeCollisionObject(object.uuid);
-        this.registeredObjects.delete(object.uuid);
-      }
-    } else if (object instanceof THREE.Group) {
-      // Traverse group and unregister all meshes
-      object.traverse((child) => {
-        if (child instanceof THREE.Mesh && this.registeredObjects.has(child.uuid)) {
-          this.physicsManager.removeCollisionObject(child.uuid);
-          this.registeredObjects.delete(child.uuid);
-        }
-      });
-    }
-  }
-
-  private registerGroupCollision(group: THREE.Group): void {
-    // Skip if already registered
-    if (this.registeredObjects.has(group.uuid)) return;
-
-    console.log('🌳 [EnvironmentCollisionManager] Processing group:', group.name || 'unnamed', 'with', group.children.length, 'children');
-
-    // Traverse group to find meshes (like tree trunks and leaves)
-    group.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        // Register each mesh within the group individually
-        this.registerMeshFromGroup(child, group);
-      }
-    });
-  }
-
-  private registerMeshFromGroup(mesh: THREE.Mesh, parentGroup: THREE.Group): void {
-    // Skip if already registered
-    if (this.registeredObjects.has(mesh.uuid)) return;
-
-    const material = this.determineMaterial(mesh);
-    const shouldRegister = this.shouldRegisterForCollision(mesh);
-
-    if (shouldRegister) {
-      // Use mesh.uuid for individual mesh registration
-      const id = this.physicsManager.addCollisionObject(mesh, 'environment', material, mesh.uuid);
-      this.registeredObjects.add(id);
-      
-      console.log(`🌳 [EnvironmentCollisionManager] Registered mesh collision from group "${parentGroup.name || 'unnamed'}" at position: ${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}, ${mesh.position.z.toFixed(2)} (${material})`);
-    }
   }
 
   private registerObjectCollision(object: THREE.Object3D): void {
