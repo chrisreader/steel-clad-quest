@@ -24,12 +24,45 @@ export class EnvironmentCollisionManager {
 
     // Register all environment objects for collision
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
+      if (object instanceof THREE.Mesh) {
         this.registerObjectCollision(object);
+      } else if (object instanceof THREE.Group) {
+        this.registerGroupCollision(object);
       }
     });
 
     console.log(`Registered ${this.registeredObjects.size} collision objects`);
+  }
+
+  private registerGroupCollision(group: THREE.Group): void {
+    // Skip if already registered
+    if (this.registeredObjects.has(group.uuid)) return;
+
+    console.log('🌳 [EnvironmentCollisionManager] Processing group:', group.name || 'unnamed', 'with', group.children.length, 'children');
+
+    // Traverse group to find meshes (like tree trunks and leaves)
+    group.traverse((child) => {
+      if (child instanceof THREE.Mesh && child !== group) {
+        // Register each mesh within the group individually
+        this.registerMeshFromGroup(child, group);
+      }
+    });
+  }
+
+  private registerMeshFromGroup(mesh: THREE.Mesh, parentGroup: THREE.Group): void {
+    // Skip if already registered
+    if (this.registeredObjects.has(mesh.uuid)) return;
+
+    const material = this.determineMaterial(mesh);
+    const shouldRegister = this.shouldRegisterForCollision(mesh);
+
+    if (shouldRegister) {
+      // Use mesh.uuid for individual mesh registration
+      const id = this.physicsManager.addCollisionObject(mesh, 'environment', material, mesh.uuid);
+      this.registeredObjects.add(id);
+      
+      console.log(`🌳 [EnvironmentCollisionManager] Registered mesh collision from group "${parentGroup.name || 'unnamed'}" at position: ${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}, ${mesh.position.z.toFixed(2)} (${material})`);
+    }
   }
 
   private registerObjectCollision(object: THREE.Object3D): void {

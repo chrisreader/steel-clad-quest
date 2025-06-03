@@ -151,6 +151,7 @@ export class PhysicsManager {
       meshToCollisionMap.set(collisionObject.mesh, collisionObject);
     }
     
+    // Use recursive traversal to catch meshes within groups
     const intersections = this.raycaster.intersectObjects(meshes, true);
     
     for (const intersection of intersections) {
@@ -159,10 +160,15 @@ export class PhysicsManager {
         let targetObject = intersection.object;
         let collisionObject = meshToCollisionMap.get(targetObject);
         
-        // Check parent objects if not found
-        while (!collisionObject && targetObject.parent) {
-          targetObject = targetObject.parent;
-          collisionObject = meshToCollisionMap.get(targetObject);
+        // If not found directly, it might be a mesh within a group
+        // Look through all collision objects to find one that contains this mesh
+        if (!collisionObject) {
+          for (const [id, obj] of this.collisionObjects) {
+            if (obj.mesh === targetObject || this.isChildOf(targetObject, obj.mesh)) {
+              collisionObject = obj;
+              break;
+            }
+          }
         }
         
         if (collisionObject) {
@@ -189,6 +195,8 @@ export class PhysicsManager {
             };
           }
           
+          console.log(`🌳 [PhysicsManager] Ray collision detected with ${collisionObject.material} object at distance ${intersection.distance.toFixed(2)}`);
+          
           return {
             object: collisionObject,
             distance: intersection.distance,
@@ -200,6 +208,15 @@ export class PhysicsManager {
     }
     
     return null;
+  }
+
+  private isChildOf(child: THREE.Object3D, parent: THREE.Object3D): boolean {
+    let current = child.parent;
+    while (current) {
+      if (current === parent) return true;
+      current = current.parent;
+    }
+    return false;
   }
 
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
