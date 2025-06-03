@@ -449,7 +449,29 @@ export class StructureGenerator {
     castle.add(door);
   }
   
-  // ... keep existing code (window creation method)
+  // FIXED: Add the missing createWindows method
+  private createWindows(castle: THREE.Group, keep: THREE.Mesh): void {
+    const windowMaterial = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    const windowWidth = 1.5;
+    const windowHeight = 2;
+    const windowDepth = 0.2;
+    
+    // Create a few windows on the keep
+    const windowPositions = [
+      { x: 6, y: 8, z: 0 }, // East side
+      { x: -2, y: 8, z: 0 }, // West side
+      { x: 2, y: 8, z: 8 }, // South side
+      { x: 2, y: 12, z: -8 } // North side, upper level
+    ];
+    
+    windowPositions.forEach((pos, index) => {
+      const windowGeometry = new THREE.BoxGeometry(windowWidth, windowHeight, windowDepth);
+      const window = new THREE.Mesh(windowGeometry, windowMaterial);
+      window.position.set(pos.x, pos.y, pos.z);
+      window.name = `castle_window_${index}`;
+      castle.add(window);
+    });
+  }
   
   // FIXED: Create rubble with proper collision naming
   private createRubble(castle: THREE.Group, x: number, y: number, z: number): void {
