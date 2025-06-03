@@ -271,10 +271,13 @@ export class StructureGenerator {
     // Add more structure placement logic for other rings/quadrants here
   }
   
-  // FIXED: Create a ruined castle with proper collision naming
+  // ENHANCED: Create a ruined castle with proper collision naming and structure
   private createRuinedCastle(position: THREE.Vector3): THREE.Object3D {
     const castle = new THREE.Group();
-    castle.name = 'castle'; // CRITICAL: Proper naming for collision detection
+    castle.name = 'castle'; // CRITICAL: Main castle group naming
+    
+    console.log(`🏰 === CREATING CASTLE STRUCTURE ===`);
+    console.log(`🏰 Main castle group name: ${castle.name}`);
     
     // Create base/foundation
     const baseGeometry = new THREE.BoxGeometry(40, 2, 40);
@@ -283,8 +286,9 @@ export class StructureGenerator {
     base.position.y = 1;
     base.castShadow = true;
     base.receiveShadow = true;
-    base.name = 'castle_base'; // CRITICAL: Name for collision detection
+    base.name = 'castle_base'; // CRITICAL: Castle component naming
     castle.add(base);
+    console.log(`🏰 Added castle_base to main castle group`);
     
     // Create outer walls (partially ruined)
     this.createOuterWalls(castle);
@@ -302,16 +306,30 @@ export class StructureGenerator {
     this.scene.add(castle);
     
     console.log(`🏰 Created castle with ${castle.children.length} collision components`);
+    console.log(`🏰 Castle structure hierarchy:`);
+    this.logCastleHierarchy(castle, 0);
+    console.log(`🏰 === CASTLE STRUCTURE CREATION COMPLETE ===`);
     
     return castle;
   }
   
-  // FIXED: Create walls with proper collision naming
+  // NEW: Debug method to log castle hierarchy
+  private logCastleHierarchy(object: THREE.Object3D, depth: number): void {
+    const indent = '  '.repeat(depth);
+    console.log(`🏰${indent}- ${object.name || 'unnamed'} (${object.type})`);
+    object.children.forEach(child => {
+      this.logCastleHierarchy(child, depth + 1);
+    });
+  }
+  
+  // ENHANCED: Create walls with proper collision naming
   private createOuterWalls(castle: THREE.Group): void {
     const wallHeight = 8;
     const wallThickness = 2;
     const wallLength = 36; // Slightly smaller than the base
     const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x999999 });
+    
+    console.log(`🏰 Creating outer walls...`);
     
     // North wall (partially broken)
     const northWallGeometry = new THREE.BoxGeometry(wallLength * 0.7, wallHeight, wallThickness);
@@ -319,8 +337,9 @@ export class StructureGenerator {
     northWall.position.set(0, wallHeight/2 + 1, -wallLength/2 + wallThickness/2);
     northWall.castShadow = true;
     northWall.receiveShadow = true;
-    northWall.name = 'castle_wall'; // CRITICAL: Name for collision detection
+    northWall.name = 'castle_wall_north'; // CRITICAL: Specific wall naming
     castle.add(northWall);
+    console.log(`🏰 Added ${northWall.name}`);
     
     // East wall (intact)
     const eastWallGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, wallLength);
@@ -328,8 +347,9 @@ export class StructureGenerator {
     eastWall.position.set(wallLength/2 - wallThickness/2, wallHeight/2 + 1, 0);
     eastWall.castShadow = true;
     eastWall.receiveShadow = true;
-    eastWall.name = 'castle_wall'; // CRITICAL: Name for collision detection
+    eastWall.name = 'castle_wall_east'; // CRITICAL: Specific wall naming
     castle.add(eastWall);
+    console.log(`🏰 Added ${eastWall.name}`);
     
     // South wall (intact)
     const southWallGeometry = new THREE.BoxGeometry(wallLength, wallHeight, wallThickness);
@@ -337,8 +357,9 @@ export class StructureGenerator {
     southWall.position.set(0, wallHeight/2 + 1, wallLength/2 - wallThickness/2);
     southWall.castShadow = true;
     southWall.receiveShadow = true;
-    southWall.name = 'castle_wall'; // CRITICAL: Name for collision detection
+    southWall.name = 'castle_wall_south'; // CRITICAL: Specific wall naming
     castle.add(southWall);
+    console.log(`🏰 Added ${southWall.name}`);
     
     // West wall (very broken - only partial)
     const westWallGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, wallLength * 0.3);
@@ -346,20 +367,23 @@ export class StructureGenerator {
     westWall.position.set(-wallLength/2 + wallThickness/2, wallHeight/2 + 1, wallLength/3);
     westWall.castShadow = true;
     westWall.receiveShadow = true;
-    westWall.name = 'castle_wall'; // CRITICAL: Name for collision detection
+    westWall.name = 'castle_wall_west'; // CRITICAL: Specific wall naming
     castle.add(westWall);
+    console.log(`🏰 Added ${westWall.name}`);
     
     // Add some rubble where walls are broken
     this.createRubble(castle, -wallLength/4, 0, -wallLength/2); // North wall rubble
     this.createRubble(castle, -wallLength/2, 0, 0); // West wall rubble
   }
   
-  // FIXED: Create towers with proper collision naming
+  // ENHANCED: Create towers with proper collision naming
   private createTowers(castle: THREE.Group): void {
     const towerRadius = 4;
     const towerHeight = 12;
     const towerMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
     const wallLength = 36;
+    
+    console.log(`🏰 Creating towers...`);
     
     // Northeast tower (intact)
     const neTower = new THREE.Mesh(
@@ -369,8 +393,9 @@ export class StructureGenerator {
     neTower.position.set(wallLength/2 - 2, towerHeight/2 + 1, -wallLength/2 + 2);
     neTower.castShadow = true;
     neTower.receiveShadow = true;
-    neTower.name = 'castle_tower'; // CRITICAL: Name for collision detection
+    neTower.name = 'castle_tower_northeast'; // CRITICAL: Specific tower naming
     castle.add(neTower);
+    console.log(`🏰 Added ${neTower.name}`);
     
     // Southeast tower (intact)
     const seTower = new THREE.Mesh(
@@ -380,8 +405,9 @@ export class StructureGenerator {
     seTower.position.set(wallLength/2 - 2, towerHeight/2 + 1, wallLength/2 - 2);
     seTower.castShadow = true;
     seTower.receiveShadow = true;
-    seTower.name = 'castle_tower'; // CRITICAL: Name for collision detection
+    seTower.name = 'castle_tower_southeast'; // CRITICAL: Specific tower naming
     castle.add(seTower);
+    console.log(`🏰 Added ${seTower.name}`);
     
     // Southwest tower (broken - half height)
     const swTower = new THREE.Mesh(
@@ -391,8 +417,9 @@ export class StructureGenerator {
     swTower.position.set(-wallLength/2 + 2, towerHeight/4 + 1, wallLength/2 - 2);
     swTower.castShadow = true;
     swTower.receiveShadow = true;
-    swTower.name = 'castle_tower'; // CRITICAL: Name for collision detection
+    swTower.name = 'castle_tower_southwest'; // CRITICAL: Specific tower naming
     castle.add(swTower);
+    console.log(`🏰 Added ${swTower.name}`);
     
     // Northwest tower (very broken - just base)
     const nwTower = new THREE.Mesh(
@@ -402,20 +429,23 @@ export class StructureGenerator {
     nwTower.position.set(-wallLength/2 + 2, 1.5, -wallLength/2 + 2);
     nwTower.castShadow = true;
     nwTower.receiveShadow = true;
-    nwTower.name = 'castle_tower'; // CRITICAL: Name for collision detection
+    nwTower.name = 'castle_tower_northwest'; // CRITICAL: Specific tower naming
     castle.add(nwTower);
+    console.log(`🏰 Added ${nwTower.name}`);
     
     // Add rubble around broken towers
     this.createRubble(castle, -wallLength/2 + 2, 0, -wallLength/2 + 2); // NW tower rubble
     this.createRubble(castle, -wallLength/2 + 2, 0, wallLength/2 - 2); // SW tower rubble
   }
   
-  // FIXED: Create keep with proper collision naming
+  // ENHANCED: Create keep with proper collision naming
   private createKeep(castle: THREE.Group): void {
     const keepWidth = 15;
     const keepDepth = 20;
     const keepHeight = 15;
     const keepMaterial = new THREE.MeshLambertMaterial({ color: 0x777777 });
+    
+    console.log(`🏰 Creating keep...`);
     
     // Main keep structure
     const keepGeometry = new THREE.BoxGeometry(keepWidth, keepHeight, keepDepth);
@@ -423,8 +453,9 @@ export class StructureGenerator {
     keep.position.set(2, keepHeight/2 + 1, 0);
     keep.castShadow = true;
     keep.receiveShadow = true;
-    keep.name = 'castle_keep'; // CRITICAL: Name for collision detection
+    keep.name = 'castle_keep_main'; // CRITICAL: Specific keep naming
     castle.add(keep);
+    console.log(`🏰 Added ${keep.name}`);
     
     // Keep roof (partially collapsed)
     const roofGeometry = new THREE.ConeGeometry(keepWidth/1.5, 8, 4);
@@ -433,10 +464,11 @@ export class StructureGenerator {
     roof.rotation.x = Math.PI * 0.1; // Tilted, as if collapsing
     roof.castShadow = true;
     roof.receiveShadow = true;
-    roof.name = 'castle_roof'; // CRITICAL: Name for collision detection
+    roof.name = 'castle_keep_roof'; // CRITICAL: Specific roof naming
     castle.add(roof);
+    console.log(`🏰 Added ${roof.name}`);
     
-    // Keep windows (small, don't need collision)
+    // Keep windows (small, don't need collision for gameplay but maintain naming)
     this.createWindows(castle, keep);
     
     // Keep entrance
@@ -445,16 +477,19 @@ export class StructureGenerator {
     door.position.set(2, 4, keepDepth/2 + 0.5);
     door.castShadow = true;
     door.receiveShadow = true;
-    door.name = 'castle_door'; // CRITICAL: Name for collision detection
+    door.name = 'castle_keep_door'; // CRITICAL: Specific door naming
     castle.add(door);
+    console.log(`🏰 Added ${door.name}`);
   }
   
-  // FIXED: Add the missing createWindows method
+  // ENHANCED: Create windows with proper naming
   private createWindows(castle: THREE.Group, keep: THREE.Mesh): void {
     const windowMaterial = new THREE.MeshLambertMaterial({ color: 0x111111 });
     const windowWidth = 1.5;
     const windowHeight = 2;
     const windowDepth = 0.2;
+    
+    console.log(`🏰 Creating keep windows...`);
     
     // Create a few windows on the keep
     const windowPositions = [
@@ -468,16 +503,19 @@ export class StructureGenerator {
       const windowGeometry = new THREE.BoxGeometry(windowWidth, windowHeight, windowDepth);
       const window = new THREE.Mesh(windowGeometry, windowMaterial);
       window.position.set(pos.x, pos.y, pos.z);
-      window.name = `castle_window_${index}`;
+      window.name = `castle_keep_window_${index}`; // CRITICAL: Specific window naming
       castle.add(window);
+      console.log(`🏰 Added ${window.name}`);
     });
   }
   
-  // FIXED: Create rubble with proper collision naming
+  // ENHANCED: Create rubble with proper collision naming
   private createRubble(castle: THREE.Group, x: number, y: number, z: number): void {
     const rubbleGroup = new THREE.Group();
-    rubbleGroup.name = 'castle_rubble'; // CRITICAL: Name for collision detection
+    rubbleGroup.name = 'castle_rubble_group'; // CRITICAL: Group naming
     const rubbleMaterial = new THREE.MeshLambertMaterial({ color: 0x999999 });
+    
+    console.log(`🏰 Creating rubble at (${x}, ${y}, ${z})...`);
     
     // Create 10-15 random stone pieces
     const stoneCount = 10 + Math.floor(Math.random() * 6);
@@ -516,11 +554,12 @@ export class StructureGenerator {
       
       stone.castShadow = true;
       stone.receiveShadow = true;
-      stone.name = 'castle_rubble_stone'; // CRITICAL: Name for collision detection
+      stone.name = `castle_rubble_stone_${i}`; // CRITICAL: Individual stone naming
       rubbleGroup.add(stone);
     }
     
     castle.add(rubbleGroup);
+    console.log(`🏰 Added rubble group with ${stoneCount} stones`);
   }
   
   // Cleanup structures for a region

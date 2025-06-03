@@ -66,12 +66,9 @@ export class EnvironmentCollisionManager {
     const afterClear = this.physicsManager.getCollisionObjects();
     console.log(`🔧 AFTER SELECTIVE CLEAR: ${afterClear.size} collision objects remain`);
 
-    // Register all environment objects for collision
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
-        this.registerObjectCollision(object);
-      }
-    });
+    // FIXED: Enhanced scene traversal to find all castle components
+    console.log('🔧 === STARTING ENHANCED SCENE TRAVERSAL ===');
+    this.traverseAndRegisterObjects(this.scene);
     
     const finalCount = this.physicsManager.getCollisionObjects();
     let finalTerrainCount = 0;
@@ -88,9 +85,35 @@ export class EnvironmentCollisionManager {
     console.log(`🔧 Total collision objects: ${finalCount.size}`);
   }
 
-  private registerObjectCollision(object: THREE.Object3D): void {
+  // NEW: Enhanced recursive traversal to find all collision objects
+  private traverseAndRegisterObjects(object: THREE.Object3D, depth: number = 0): void {
+    const indent = '  '.repeat(depth);
+    console.log(`🔧${indent}Traversing: ${object.name || 'unnamed'} (${object.type})`);
+
+    // Check if this object should be registered
+    if (object instanceof THREE.Mesh || (object instanceof THREE.Group && this.isCastleStructure(object))) {
+      this.registerObjectCollision(object, depth);
+    }
+
+    // Recursively traverse children
+    object.children.forEach(child => {
+      this.traverseAndRegisterObjects(child, depth + 1);
+    });
+  }
+
+  // NEW: Detect if this is a castle structure that should be registered as a whole
+  private isCastleStructure(object: THREE.Object3D): boolean {
+    return object.name === 'castle' || object.name.startsWith('castle_');
+  }
+
+  private registerObjectCollision(object: THREE.Object3D, depth: number = 0): void {
+    const indent = '  '.repeat(depth);
+    
     // Skip if already registered OR if it's a known terrain object
-    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid)) return;
+    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid)) {
+      console.log(`🔧${indent}SKIPPING ${object.name} - already registered`);
+      return;
+    }
 
     // ENHANCED: Enhanced handling for test hills with height data
     if (object instanceof THREE.Mesh && object.name === 'test_hill' && object.userData.heightData) {
@@ -131,20 +154,21 @@ export class EnvironmentCollisionManager {
       const id = this.physicsManager.addCollisionObject(object, 'staircase', 'stone', object.uuid);
       this.registeredObjects.add(id);
       
-      console.log(`🪜 Registered staircase collision (with ${object.children.length} steps) at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
+      console.log(`🪜${indent}Registered staircase collision (with ${object.children.length} steps) at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
       return;
     }
 
-    // NEW: Special handling for castle structures
+    // FIXED: Enhanced castle component detection and registration
     if (this.isCastleComponent(object)) {
-      const id = this.physicsManager.addCollisionObject(object, 'environment', 'stone', object.uuid);
+      const material = this.determineMaterial(object);
+      const id = this.physicsManager.addCollisionObject(object, 'environment', material, object.uuid);
       this.registeredObjects.add(id);
       
-      console.log(`🏰 Registered castle collision for ${object.name} at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (stone)`);
+      console.log(`🏰${indent}Registered CASTLE collision for ${object.name} at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
       return;
     }
 
-    // Determine object type and material based on geometry and position
+    // Standard environment object registration (tavern, etc.)
     const material = this.determineMaterial(object);
     const shouldRegister = this.shouldRegisterForCollision(object);
 
@@ -152,28 +176,44 @@ export class EnvironmentCollisionManager {
       const id = this.physicsManager.addCollisionObject(object, 'environment', material, object.uuid);
       this.registeredObjects.add(id);
       
-      console.log(`🔧 Registered collision for ${object instanceof THREE.Group ? 'GROUP' : 'MESH'} at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
+      console.log(`🔧${indent}Registered STANDARD collision for ${object instanceof THREE.Group ? 'GROUP' : 'MESH'} ${object.name || 'unnamed'} at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
+    } else {
+      console.log(`🔧${indent}SKIPPED ${object.name || 'unnamed'} - failed shouldRegister check`);
     }
   }
 
-  // NEW: Check if object is a castle component
+  // ENHANCED: Improved castle component detection
   private isCastleComponent(object: THREE.Object3D): boolean {
-    if (object.name === 'castle') return true;
-    if (object.name.startsWith('castle_')) return true;
+    // Direct castle names
+    if (object.name === 'castle') {
+      console.log(`🏰 DETECTED main castle group: ${object.name}`);
+      return true;
+    }
     
-    // Check if parent is a castle
+    if (object.name.startsWith('castle_')) {
+      console.log(`🏰 DETECTED castle component: ${object.name}`);
+      return true;
+    }
+    
+    // Check if parent is a castle (for nested components)
     let parent = object.parent;
-    while (parent) {
-      if (parent.name === 'castle') return true;
+    let level = 0;
+    while (parent && level < 5) { // Prevent infinite loops
+      if (parent.name === 'castle' || parent.name.startsWith('castle_')) {
+        console.log(`🏰 DETECTED castle child component: ${object.name} (parent: ${parent.name})`);
+        return true;
+      }
       parent = parent.parent;
+      level++;
     }
     
     return false;
   }
 
   private determineMaterial(object: THREE.Object3D): 'wood' | 'stone' | 'metal' | 'fabric' {
-    // NEW: Castle components are always stone
+    // ENHANCED: Castle components are always stone
     if (this.isCastleComponent(object)) {
+      console.log(`🏰 Castle component ${object.name} assigned STONE material`);
       return 'stone';
     }
 
@@ -252,10 +292,11 @@ export class EnvironmentCollisionManager {
     return 'stone';
   }
 
-  // FIXED: Updated to handle both THREE.Mesh AND THREE.Group objects
+  // ENHANCED: Improved collision detection for both meshes and groups
   private shouldRegisterForCollision(object: THREE.Object3D): boolean {
     // Always register castle components
     if (this.isCastleComponent(object)) {
+      console.log(`🏰 Castle component ${object.name} APPROVED for collision`);
       return true;
     }
 
@@ -264,21 +305,25 @@ export class EnvironmentCollisionManager {
     const size = boundingBox.getSize(new THREE.Vector3());
     
     if (size.x < 0.2 && size.y < 0.2 && size.z < 0.2) {
+      console.log(`🔧 SKIPPED ${object.name} - too small (${size.x.toFixed(2)}x${size.y.toFixed(2)}x${size.z.toFixed(2)})`);
       return false;
     }
 
     // Skip objects that are too high (likely clouds or sky elements)
     if (object.position.y > 50) {
+      console.log(`🔧 SKIPPED ${object.name} - too high (y=${object.position.y.toFixed(2)})`);
       return false;
     }
 
     // Skip ground plane
     if (size.x > 50 || size.z > 50) {
+      console.log(`🔧 SKIPPED ${object.name} - ground plane size (${size.x.toFixed(2)}x${size.z.toFixed(2)})`);
       return false;
     }
 
     // FIXED: Register both Mesh and Group objects (trees are Groups!)
     if (object instanceof THREE.Mesh && object.geometry && object.material) {
+      console.log(`🔧 APPROVED mesh ${object.name} for collision`);
       return true;
     }
     
@@ -287,10 +332,11 @@ export class EnvironmentCollisionManager {
       const hasSolidChildren = object.children.some(child => 
         child instanceof THREE.Mesh && child.geometry && child.material
       );
-      console.log(`🔧 Group collision check: ${object.children.length} children, hasSolidChildren: ${hasSolidChildren}`);
+      console.log(`🔧 Group collision check: ${object.name} - ${object.children.length} children, hasSolidChildren: ${hasSolidChildren}`);
       return hasSolidChildren;
     }
 
+    console.log(`🔧 REJECTED ${object.name} - not mesh or valid group`);
     return false;
   }
 
