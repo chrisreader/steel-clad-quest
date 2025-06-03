@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -147,16 +146,25 @@ export class MovementSystem {
       const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
       
       if (actualMovement.length() > 0.001) {
-        // Log slope interaction information
+        // Enhanced slope interaction logging
         if (Math.abs(actualMovement.y) > 0.01) {
           const slopeInfo = this.physicsManager.checkSlopeAngle(safePosition);
-          console.log("🏔️ [MovementSystem] Slope movement:", {
-            from: currentPosition,
-            to: safePosition,
+          console.log("🏔️ [MovementSystem] Slope movement detected:", {
+            from: {
+              x: currentPosition.x.toFixed(2),
+              y: currentPosition.y.toFixed(2),
+              z: currentPosition.z.toFixed(2)
+            },
+            to: {
+              x: safePosition.x.toFixed(2),
+              y: safePosition.y.toFixed(2),
+              z: safePosition.z.toFixed(2)
+            },
             verticalChange: actualMovement.y.toFixed(3),
             horizontalDistance: Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z).toFixed(3),
             slopeAngle: slopeInfo.angle.toFixed(1) + "°",
-            walkable: slopeInfo.walkable
+            walkable: slopeInfo.walkable,
+            movementType: actualMovement.y > 0.01 ? 'ASCENDING' : actualMovement.y < -0.01 ? 'DESCENDING' : 'FLAT'
           });
         }
         
@@ -166,14 +174,32 @@ export class MovementSystem {
         
         this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
       } else {
-        // Check why movement was blocked
+        // Enhanced collision blocking analysis
         const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition).normalize();
         const collision = this.physicsManager.checkRayCollisionWithSlope(currentPosition, direction, movementDistance, ['projectile', 'enemy']);
         
         if (collision && !collision.isWalkable) {
-          console.log(`🏔️ [MovementSystem] Movement blocked by steep slope: ${collision.slopeAngle.toFixed(1)}° (max: 45°)`);
+          console.log(`🏔️ [MovementSystem] Movement blocked - Reason: Steep slope`, {
+            slopeAngle: collision.slopeAngle.toFixed(1) + "°",
+            maxWalkable: "45.0°",
+            collisionPoint: {
+              x: collision.point.x.toFixed(2),
+              y: collision.point.y.toFixed(2),
+              z: collision.point.z.toFixed(2)
+            },
+            normal: {
+              x: collision.normal.x.toFixed(3),
+              y: collision.normal.y.toFixed(3),
+              z: collision.normal.z.toFixed(3)
+            }
+          });
+        } else if (collision) {
+          console.log(`🏔️ [MovementSystem] Movement blocked - Reason: Other collision`, {
+            distance: collision.distance.toFixed(3),
+            playerRadius: "0.4"
+          });
         } else {
-          console.log("🏃 [MovementSystem] Movement blocked by collision or terrain");
+          console.log("🏃 [MovementSystem] Movement blocked - Reason: Unknown");
         }
       }
     }
