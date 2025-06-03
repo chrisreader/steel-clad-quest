@@ -231,7 +231,8 @@ export class Arrow {
     const deltaPosition = this.velocity.clone().multiplyScalar(safeDeltatime);
     const nextPosition = this.position.clone().add(deltaPosition);
     
-    // ENHANCED: Check for both environment AND terrain collision
+    // CRITICAL FIX: Only READ collision data, never modify it
+    console.log('🏹 TERRAIN COLLISION CHECK: Reading collision data only, no modifications');
     const collision = this.physicsManager.checkRayCollision(
       this.position,
       this.velocity.clone().normalize(),
@@ -240,12 +241,29 @@ export class Arrow {
     );
     
     if (collision) {
+      // SAFETY LOG: Verify terrain collision integrity before arrow impact
+      const terrainCollisions = Array.from(this.physicsManager.getCollisionObjects().values())
+        .filter(obj => obj.type === 'terrain');
+      console.log(`🏹 BEFORE IMPACT: ${terrainCollisions.length} terrain collision objects exist`);
+      
       // Arrow hit an object (environment or terrain)
       if (collision.object.type === 'terrain') {
         this.hitTerrainObject(collision);
       } else {
         this.hitEnvironmentObject(collision);
       }
+      
+      // SAFETY LOG: Verify terrain collision integrity after arrow impact
+      const terrainCollisionsAfter = Array.from(this.physicsManager.getCollisionObjects().values())
+        .filter(obj => obj.type === 'terrain');
+      console.log(`🏹 AFTER IMPACT: ${terrainCollisionsAfter.length} terrain collision objects exist`);
+      
+      if (terrainCollisions.length !== terrainCollisionsAfter.length) {
+        console.error('🏹 ❌ TERRAIN COLLISION CORRUPTION DETECTED! Arrow impact modified terrain data!');
+      } else {
+        console.log('🏹 ✅ Terrain collision integrity maintained after arrow impact');
+      }
+      
       return true;
     }
     
@@ -290,6 +308,8 @@ export class Arrow {
 
   // NEW: Handle terrain-specific collision (hills, etc.)
   private hitTerrainObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
+    console.log('🏹 TERRAIN HIT: Processing visual effects only, no collision system modifications');
+    
     this.isStuck = true;
     this.stuckInObject = collision.object.id;
     this.velocity.set(0, 0, 0);
@@ -301,13 +321,12 @@ export class Arrow {
     // Remove trail when stuck
     this.removeTrail();
     
-    // Play terrain-specific impact sound
+    // VISUAL EFFECTS ONLY - no collision system modifications
     this.audioManager.play('arrow_impact');
-    
-    // Create terrain-specific impact effect
     this.createTerrainImpactEffect(collision.point);
     
     console.log(`🏹 Arrow stuck in terrain at:`, collision.point);
+    console.log('🏹 TERRAIN HIT COMPLETE: No collision system modifications performed');
   }
 
   private hitEnvironmentObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {

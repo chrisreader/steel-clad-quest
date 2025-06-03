@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Arrow } from '../entities/Arrow';
 import { Player } from '../entities/Player';
@@ -39,6 +40,11 @@ export class ProjectileSystem {
   ): void {
     const normalizedDirection = direction.clone().normalize();
     
+    // SAFETY LOG: Verify terrain collision integrity before arrow creation
+    const terrainCollisionsBefore = Array.from(this.physicsManager.getCollisionObjects().values())
+      .filter(obj => obj.type === 'terrain');
+    console.log(`🏹 BEFORE ARROW CREATION: ${terrainCollisionsBefore.length} terrain collision objects`);
+    
     try {
       const arrow = new Arrow(
         this.scene,
@@ -53,6 +59,16 @@ export class ProjectileSystem {
       
       this.arrows.push(arrow);
       console.log(`🏹 Arrow fired - Total arrows: ${this.arrows.length}`);
+      
+      // SAFETY LOG: Verify terrain collision integrity after arrow creation
+      const terrainCollisionsAfter = Array.from(this.physicsManager.getCollisionObjects().values())
+        .filter(obj => obj.type === 'terrain');
+      console.log(`🏹 AFTER ARROW CREATION: ${terrainCollisionsAfter.length} terrain collision objects`);
+      
+      if (terrainCollisionsBefore.length !== terrainCollisionsAfter.length) {
+        console.error('🏹 ❌ TERRAIN COLLISION CORRUPTION during arrow creation!');
+      }
+      
     } catch (error) {
       console.error("🏹 Error creating arrow:", error);
     }
@@ -64,6 +80,10 @@ export class ProjectileSystem {
     }
     
     const activeArrowsBefore = this.arrows.length;
+    
+    // SAFETY LOG: Verify terrain collision integrity before arrow updates
+    const terrainCollisionsBefore = Array.from(this.physicsManager.getCollisionObjects().values())
+      .filter(obj => obj.type === 'terrain');
     
     this.arrows = this.arrows.filter(arrow => {
       const isActive = arrow.update(deltaTime);
@@ -78,6 +98,15 @@ export class ProjectileSystem {
       
       return isActive;
     });
+    
+    // SAFETY LOG: Verify terrain collision integrity after arrow updates
+    const terrainCollisionsAfter = Array.from(this.physicsManager.getCollisionObjects().values())
+      .filter(obj => obj.type === 'terrain');
+    
+    if (terrainCollisionsBefore.length !== terrainCollisionsAfter.length) {
+      console.error('🏹 ❌ TERRAIN COLLISION CORRUPTION during arrow updates!');
+      console.error(`Before: ${terrainCollisionsBefore.length}, After: ${terrainCollisionsAfter.length}`);
+    }
     
     if (activeArrowsBefore !== this.arrows.length) {
       console.log(`🏹 Arrow count changed: ${activeArrowsBefore} -> ${this.arrows.length}`);

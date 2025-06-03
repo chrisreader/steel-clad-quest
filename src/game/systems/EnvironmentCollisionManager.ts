@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { PhysicsManager } from '../engine/PhysicsManager';
 
@@ -197,13 +198,13 @@ export class EnvironmentCollisionManager {
   }
 
   public updateCollisions(): void {
-    // REDUCED FREQUENCY: Only re-register if significant changes detected
-    const currentObjectCount = this.scene.children.length;
+    // CRITICAL FIX: Disable this method to prevent terrain collision corruption
+    // This method was causing the hill walking issue by randomly re-registering collisions
+    console.log('🔧 DISABLED: updateCollisions() method disabled to preserve terrain collision integrity');
     
-    // Only update every 60 frames or significant scene changes
-    if (Math.random() < 0.016) { // ~1/60 chance per frame
-      this.registerEnvironmentCollisions();
-    }
+    // The initial registration is sufficient - do not re-register collisions during gameplay
+    // This prevents arrow impacts from corrupting terrain collision data
+    return;
   }
 
   public dispose(): void {
