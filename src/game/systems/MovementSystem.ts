@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -25,7 +26,7 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with collision detection and vertical movement");
+    console.log("🏃 [MovementSystem] Initialized with slope-aware collision detection");
     
     // Set up sprint input handler
     this.setupSprintHandler();
@@ -139,20 +140,23 @@ export class MovementSystem {
       const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
       const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
-      // NEW: Check collision and ground height for safe position with vertical movement
+      // Check collision and ground height for safe position with slope-aware movement
       const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4); // 0.4 is player radius
       
-      // Calculate actual movement vector (including vertical movement)
+      // Calculate actual movement vector (including vertical movement for slopes)
       const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
       
       if (actualMovement.length() > 0.001) {
-        // NEW: Log vertical movement information
+        // Log slope movement information
         if (Math.abs(actualMovement.y) > 0.01) {
-          console.log("🏔️ [MovementSystem] Vertical movement detected:", {
+          const slopeInfo = this.physicsManager.checkSlopeAngle(safePosition);
+          console.log("🏔️ [MovementSystem] Slope movement detected:", {
             from: currentPosition,
             to: safePosition,
             verticalChange: actualMovement.y.toFixed(3),
-            horizontalDistance: Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z).toFixed(3)
+            horizontalDistance: Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z).toFixed(3),
+            slopeAngle: slopeInfo.angle.toFixed(1) + '°',
+            walkable: slopeInfo.walkable
           });
         }
         
@@ -160,7 +164,7 @@ export class MovementSystem {
         const normalizedMovement = actualMovement.clone().normalize();
         const movementScale = actualMovement.length() / (5.0 * deltaTime);
         
-        console.log("🏃 [MovementSystem] Moving with collision and ground height detection:", {
+        console.log("🏃 [MovementSystem] Moving with slope-aware collision detection:", {
           from: currentPosition,
           to: safePosition,
           movement: actualMovement,
