@@ -212,8 +212,8 @@ export class PhysicsManager {
     return adjustedTarget;
   }
 
-  // Add missing checkRayCollision method (simplified version)
-  public checkRayCollision(origin: THREE.Vector3, direction: THREE.Vector3, distance: number, excludeTypes: string[] = []): { distance: number; object: CollisionObject } | null {
+  // FIXED: Enhanced method with proper collision point calculation
+  public checkRayCollision(origin: THREE.Vector3, direction: THREE.Vector3, distance: number, excludeTypes: string[] = []): { distance: number; object: CollisionObject; point: THREE.Vector3 } | null {
     this.raycaster.set(origin, direction);
     this.raycaster.far = distance;
     
@@ -226,13 +226,23 @@ export class PhysicsManager {
       const distanceToObject = origin.distanceTo(objectPosition);
       
       if (distanceToObject < distance && collisionObject.type === 'environment') {
+        // Calculate collision point
+        const collisionPoint = origin.clone().add(direction.clone().multiplyScalar(distanceToObject));
+        
         return {
           distance: distanceToObject,
-          object: collisionObject
+          object: collisionObject,
+          point: collisionPoint
         };
       }
     }
     
     return null;
+  }
+
+  // NEW: Add missing getCollisionMaterial method
+  public getCollisionMaterial(objectId: string): 'wood' | 'stone' | 'metal' | 'fabric' | null {
+    const collisionObject = this.collisionObjects.get(objectId);
+    return collisionObject ? collisionObject.material : null;
   }
 }
