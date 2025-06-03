@@ -1,390 +1,220 @@
-import * as THREE from 'three';
-import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 
-export interface Structure {
-  type: string;
-  position: THREE.Vector3;
-  rotation: number;
-  model: THREE.Object3D;
+import * as THREE from 'three';
+
+interface StructureData {
+  meshes: THREE.Object3D[];
+  regionKey: string;
 }
 
 export class StructureGenerator {
-  private ringSystem: RingQuadrantSystem;
   private scene: THREE.Scene;
-  private structures: Map<string, Structure[]> = new Map();
-  
-  constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
-    this.ringSystem = ringSystem;
+  private generatedStructures: Map<string, StructureData> = new Map();
+
+  constructor(scene: THREE.Scene) {
     this.scene = scene;
+    console.log('🏰 [StructureGenerator] Initialized');
   }
-  
-  // Place structures in regions based on ring definitions
-  public generateStructuresForRegion(region: RegionCoordinates): void {
-    const regionKey = this.ringSystem.getRegionKey(region);
+
+  public generateStructuresForRegion(regionKey: string, centerX: number, centerZ: number): THREE.Object3D[] {
+    if (this.generatedStructures.has(regionKey)) {
+      console.log(`🏰 [StructureGenerator] Structures already exist for region ${regionKey}`);
+      return this.generatedStructures.get(regionKey)!.meshes;
+    }
+
+    console.log(`🏰 [StructureGenerator] Generating structures for region ${regionKey} at (${centerX}, ${centerZ})`);
     
-    // Skip if already generated
-    if (this.structures.has(regionKey)) return;
+    const structures: THREE.Object3D[] = [];
     
-    // Initialize structures array
-    const structures: Structure[] = [];
-    this.structures.set(regionKey, structures);
-    
-    // Get region properties
-    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
-    
-    // Check if this region should have structures
-    const structureTypes = ringDef.structureTypes;
-    if (!structureTypes || structureTypes.length === 0) return;
-    
-    // For ring 1, quadrant 2 (SW), place a ruined castle
-    if (region.ringIndex === 1 && region.quadrant === 2) {
-      // Place castle in the middle of the region
-      const position = this.ringSystem.getRegionCenter(region);
-      
-      // Adjust position to be somewhere in the quadrant, not exactly at center
-      position.x += (Math.random() * 30) - 15;
-      position.z += (Math.random() * 30) - 15;
-      
-      const castle = this.createRuinedCastle(position);
-      structures.push({
-        type: 'castle',
-        position: position,
-        rotation: Math.random() * Math.PI * 2,
-        model: castle
-      });
-      
-      console.log(`Placed ruined castle at ${position.x}, ${position.z} in Ring 1, Quadrant 2`);
+    // Skip structure generation near center (tavern area)
+    if (Math.abs(centerX) < 500 && Math.abs(centerZ) < 500) {
+      console.log(`🏰 [StructureGenerator] Skipping structure generation near center for region ${regionKey}`);
+      return structures;
     }
     
-    // Add more structure placement logic for other rings/quadrants here
+    // Chance to generate a ruined castle
+    if (Math.random() < 0.3) {
+      const castle = this.createRuinedCastle(centerX, centerZ);
+      if (castle) {
+        structures.push(castle);
+        this.scene.add(castle);
+      }
+    }
+    
+    // Generate some smaller structures
+    const hutCount = Math.floor(Math.random() * 3);
+    for (let i = 0; i < hutCount; i++) {
+      const hut = this.createHut(centerX, centerZ);
+      if (hut) {
+        structures.push(hut);
+        this.scene.add(hut);
+      }
+    }
+
+    const structureData: StructureData = {
+      meshes: structures,
+      regionKey
+    };
+    
+    this.generatedStructures.set(regionKey, structureData);
+    
+    console.log(`🏰 [StructureGenerator] Generated ${structures.length} structures for region ${regionKey}`);
+    return structures;
   }
-  
-  // Create a ruined castle
-  private createRuinedCastle(position: THREE.Vector3): THREE.Object3D {
+
+  private createRuinedCastle(centerX: number, centerZ: number): THREE.Group | null {
     const castle = new THREE.Group();
     
-    // Create base/foundation
-    const baseGeometry = new THREE.BoxGeometry(40, 2, 40);
-    const baseMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = 1;
-    base.castShadow = true;
-    base.receiveShadow = true;
-    castle.add(base);
+    // Random position within the region (away from edges)
+    const offsetX = (Math.random() - 0.5) * 600;
+    const offsetZ = (Math.random() - 0.5) * 600;
+    const x = centerX + offsetX;
+    const z = centerZ + offsetZ;
     
-    // Create outer walls (partially ruined)
-    this.createOuterWalls(castle);
+    const stoneMaterial = new THREE.MeshLambertMaterial({ color: 0x8B7355 });
     
-    // Create towers (some broken)
-    this.createTowers(castle);
+    // Main castle walls (partially destroyed)
+    const wallHeight = 8;
+    const wallThickness = 1;
     
-    // Create central keep
-    this.createKeep(castle);
+    // North wall (broken)
+    const northWall1 = this.createWallSegment(-15, 0, -15, wallHeight * 0.8, wallThickness, stoneMaterial);
+    const northWall2 = this.createWallSegment(5, 0, -15, wallHeight * 0.6, wallThickness, stoneMaterial);
+    castle.add(northWall1);
+    castle.add(northWall2);
     
-    // Position the castle
-    castle.position.copy(position);
+    // South wall (mostly intact)
+    const southWall = this.createWallSegment(0, 0, 15, wallHeight, wallThickness, stoneMaterial);
+    southWall.scale.x = 2.5;
+    castle.add(southWall);
     
-    // Add to scene
-    this.scene.add(castle);
+    // East wall (damaged)
+    const eastWall = this.createWallSegment(15, 0, 0, wallHeight * 0.7, wallThickness, stoneMaterial);
+    eastWall.scale.z = 2;
+    castle.add(eastWall);
+    
+    // West wall (partial)
+    const westWall1 = this.createWallSegment(-15, 0, -8, wallHeight * 0.5, wallThickness, stoneMaterial);
+    const westWall2 = this.createWallSegment(-15, 0, 8, wallHeight * 0.4, wallThickness, stoneMaterial);
+    castle.add(westWall1);
+    castle.add(westWall2);
+    
+    // Ruined tower
+    const towerGeometry = new THREE.CylinderGeometry(3, 3.5, wallHeight * 1.2, 8);
+    const tower = new THREE.Mesh(towerGeometry, stoneMaterial);
+    tower.position.set(-12, wallHeight * 0.6, -12);
+    castle.add(tower);
+    
+    // Debris and rubble
+    for (let i = 0; i < 8; i++) {
+      const rubble = this.createRubble(stoneMaterial);
+      rubble.position.set(
+        (Math.random() - 0.5) * 30,
+        0.5,
+        (Math.random() - 0.5) * 30
+      );
+      castle.add(rubble);
+    }
+    
+    castle.position.set(x, 0, z);
+    castle.rotation.y = Math.random() * Math.PI * 2;
     
     return castle;
   }
-  
-  private createOuterWalls(castle: THREE.Group): void {
-    const wallHeight = 8;
-    const wallThickness = 2;
-    const wallLength = 36; // Slightly smaller than the base
-    const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x999999 });
-    
-    // North wall (partially broken)
-    const northWallGeometry = new THREE.BoxGeometry(wallLength * 0.7, wallHeight, wallThickness);
-    const northWall = new THREE.Mesh(northWallGeometry, wallMaterial);
-    northWall.position.set(0, wallHeight/2 + 1, -wallLength/2 + wallThickness/2);
-    northWall.castShadow = true;
-    northWall.receiveShadow = true;
-    castle.add(northWall);
-    
-    // East wall (intact)
-    const eastWallGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, wallLength);
-    const eastWall = new THREE.Mesh(eastWallGeometry, wallMaterial);
-    eastWall.position.set(wallLength/2 - wallThickness/2, wallHeight/2 + 1, 0);
-    eastWall.castShadow = true;
-    eastWall.receiveShadow = true;
-    castle.add(eastWall);
-    
-    // South wall (intact)
-    const southWallGeometry = new THREE.BoxGeometry(wallLength, wallHeight, wallThickness);
-    const southWall = new THREE.Mesh(southWallGeometry, wallMaterial);
-    southWall.position.set(0, wallHeight/2 + 1, wallLength/2 - wallThickness/2);
-    southWall.castShadow = true;
-    southWall.receiveShadow = true;
-    castle.add(southWall);
-    
-    // West wall (very broken - only partial)
-    const westWallGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, wallLength * 0.3);
-    const westWall = new THREE.Mesh(westWallGeometry, wallMaterial);
-    westWall.position.set(-wallLength/2 + wallThickness/2, wallHeight/2 + 1, wallLength/3);
-    westWall.castShadow = true;
-    westWall.receiveShadow = true;
-    castle.add(westWall);
-    
-    // Add some rubble where walls are broken
-    this.createRubble(castle, -wallLength/4, 0, -wallLength/2); // North wall rubble
-    this.createRubble(castle, -wallLength/2, 0, 0); // West wall rubble
+
+  private createWallSegment(x: number, y: number, z: number, height: number, thickness: number, material: THREE.Material): THREE.Mesh {
+    const wallGeometry = new THREE.BoxGeometry(thickness, height, 10);
+    const wall = new THREE.Mesh(wallGeometry, material);
+    wall.position.set(x, y + height / 2, z);
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    return wall;
   }
-  
-  private createTowers(castle: THREE.Group): void {
-    const towerRadius = 4;
-    const towerHeight = 12;
-    const towerMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
-    const wallLength = 36;
-    
-    // Northeast tower (intact)
-    const neTower = new THREE.Mesh(
-      new THREE.CylinderGeometry(towerRadius, towerRadius+1, towerHeight, 8),
-      towerMaterial
-    );
-    neTower.position.set(wallLength/2 - 2, towerHeight/2 + 1, -wallLength/2 + 2);
-    neTower.castShadow = true;
-    neTower.receiveShadow = true;
-    castle.add(neTower);
-    
-    // Southeast tower (intact)
-    const seTower = new THREE.Mesh(
-      new THREE.CylinderGeometry(towerRadius, towerRadius+1, towerHeight, 8),
-      towerMaterial
-    );
-    seTower.position.set(wallLength/2 - 2, towerHeight/2 + 1, wallLength/2 - 2);
-    seTower.castShadow = true;
-    seTower.receiveShadow = true;
-    castle.add(seTower);
-    
-    // Southwest tower (broken - half height)
-    const swTower = new THREE.Mesh(
-      new THREE.CylinderGeometry(towerRadius, towerRadius+1, towerHeight/2, 8),
-      towerMaterial
-    );
-    swTower.position.set(-wallLength/2 + 2, towerHeight/4 + 1, wallLength/2 - 2);
-    swTower.castShadow = true;
-    swTower.receiveShadow = true;
-    castle.add(swTower);
-    
-    // Northwest tower (very broken - just base)
-    const nwTower = new THREE.Mesh(
-      new THREE.CylinderGeometry(towerRadius+1, towerRadius+2, 3, 8),
-      towerMaterial
-    );
-    nwTower.position.set(-wallLength/2 + 2, 1.5, -wallLength/2 + 2);
-    nwTower.castShadow = true;
-    nwTower.receiveShadow = true;
-    castle.add(nwTower);
-    
-    // Add rubble around broken towers
-    this.createRubble(castle, -wallLength/2 + 2, 0, -wallLength/2 + 2); // NW tower rubble
-    this.createRubble(castle, -wallLength/2 + 2, 0, wallLength/2 - 2); // SW tower rubble
+
+  private createRubble(material: THREE.Material): THREE.Mesh {
+    const size = 0.5 + Math.random() * 1.0;
+    const rubbleGeometry = new THREE.DodecahedronGeometry(size, 0);
+    const rubble = new THREE.Mesh(rubbleGeometry, material);
+    rubble.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    rubble.castShadow = true;
+    rubble.receiveShadow = true;
+    return rubble;
   }
-  
-  private createKeep(castle: THREE.Group): void {
-    const keepWidth = 15;
-    const keepDepth = 20;
-    const keepHeight = 15;
-    const keepMaterial = new THREE.MeshLambertMaterial({ color: 0x777777 });
+
+  private createHut(centerX: number, centerZ: number): THREE.Group | null {
+    const hut = new THREE.Group();
     
-    // Main keep structure
-    const keepGeometry = new THREE.BoxGeometry(keepWidth, keepHeight, keepDepth);
-    const keep = new THREE.Mesh(keepGeometry, keepMaterial);
-    keep.position.set(2, keepHeight/2 + 1, 0);
-    keep.castShadow = true;
-    keep.receiveShadow = true;
-    castle.add(keep);
+    // Random position within the region
+    const offsetX = (Math.random() - 0.5) * 700;
+    const offsetZ = (Math.random() - 0.5) * 700;
+    const x = centerX + offsetX;
+    const z = centerZ + offsetZ;
     
-    // Keep roof (partially collapsed)
-    const roofGeometry = new THREE.ConeGeometry(keepWidth/1.5, 8, 4);
-    const roof = new THREE.Mesh(roofGeometry, new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
-    roof.position.set(2, keepHeight + 5, -keepDepth/4);
-    roof.rotation.x = Math.PI * 0.1; // Tilted, as if collapsing
+    const woodMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+    
+    // Hut base
+    const baseGeometry = new THREE.BoxGeometry(4, 3, 4);
+    const base = new THREE.Mesh(baseGeometry, woodMaterial);
+    base.position.y = 1.5;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    hut.add(base);
+    
+    // Roof
+    const roofGeometry = new THREE.ConeGeometry(3, 2, 4);
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.y = 4;
+    roof.rotation.y = Math.PI / 4;
     roof.castShadow = true;
-    roof.receiveShadow = true;
-    castle.add(roof);
+    hut.add(roof);
     
-    // Keep windows
-    this.createWindows(castle, keep);
+    hut.position.set(x, 0, z);
+    hut.rotation.y = Math.random() * Math.PI * 2;
     
-    // Keep entrance
-    const doorGeometry = new THREE.BoxGeometry(4, 6, 1);
-    const door = new THREE.Mesh(doorGeometry, new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
-    door.position.set(2, 4, keepDepth/2 + 0.5);
-    door.castShadow = true;
-    door.receiveShadow = true;
-    castle.add(door);
+    return hut;
   }
-  
-  private createWindows(castle: THREE.Group, keep: THREE.Mesh): void {
-    const windowMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const keepWidth = 15;
-    const keepDepth = 20;
-    const keepHeight = 15;
-    
-    // Create windows on each side of the keep
-    for (let i = 0; i < 3; i++) {
-      for (let j = 0; j < 2; j++) {
-        // Front windows
-        const frontWindow = new THREE.Mesh(
-          new THREE.BoxGeometry(2, 3, 0.5),
-          windowMaterial
-        );
-        frontWindow.position.set(
-          keep.position.x - keepWidth/3 + i * keepWidth/3,
-          keep.position.y - keepHeight/6 + j * keepHeight/3,
-          keep.position.z + keepDepth/2 + 0.3
-        );
-        castle.add(frontWindow);
+
+  public removeStructuresForRegion(regionKey: string): void {
+    const structureData = this.generatedStructures.get(regionKey);
+    if (structureData) {
+      for (const mesh of structureData.meshes) {
+        this.scene.remove(mesh);
         
-        // Back windows
-        const backWindow = new THREE.Mesh(
-          new THREE.BoxGeometry(2, 3, 0.5),
-          windowMaterial
-        );
-        backWindow.position.set(
-          keep.position.x - keepWidth/3 + i * keepWidth/3,
-          keep.position.y - keepHeight/6 + j * keepHeight/3,
-          keep.position.z - keepDepth/2 - 0.3
-        );
-        castle.add(backWindow);
-      }
-    }
-    
-    // Side windows
-    for (let i = 0; i < 2; i++) {
-      for (let j = 0; j < 2; j++) {
-        // Left windows
-        const leftWindow = new THREE.Mesh(
-          new THREE.BoxGeometry(0.5, 3, 2),
-          windowMaterial
-        );
-        leftWindow.position.set(
-          keep.position.x - keepWidth/2 - 0.3,
-          keep.position.y - keepHeight/6 + j * keepHeight/3,
-          keep.position.z - keepDepth/4 + i * keepDepth/2
-        );
-        castle.add(leftWindow);
-        
-        // Right windows
-        const rightWindow = new THREE.Mesh(
-          new THREE.BoxGeometry(0.5, 3, 2),
-          windowMaterial
-        );
-        rightWindow.position.set(
-          keep.position.x + keepWidth/2 + 0.3,
-          keep.position.y - keepHeight/6 + j * keepHeight/3,
-          keep.position.z - keepDepth/4 + i * keepDepth/2
-        );
-        castle.add(rightWindow);
-      }
-    }
-  }
-  
-  private createRubble(castle: THREE.Group, x: number, y: number, z: number): void {
-    const rubbleGroup = new THREE.Group();
-    const rubbleMaterial = new THREE.MeshLambertMaterial({ color: 0x999999 });
-    
-    // Create 10-15 random stone pieces
-    const stoneCount = 10 + Math.floor(Math.random() * 6);
-    
-    for (let i = 0; i < stoneCount; i++) {
-      // Random stone size
-      const stoneSize = 0.5 + Math.random() * 1.5;
-      
-      // Random stone shape (box or icosahedron)
-      let stoneGeometry;
-      if (Math.random() > 0.5) {
-        stoneGeometry = new THREE.BoxGeometry(
-          stoneSize * (0.5 + Math.random() * 0.5),
-          stoneSize * (0.5 + Math.random() * 0.5),
-          stoneSize * (0.5 + Math.random() * 0.5)
-        );
-      } else {
-        stoneGeometry = new THREE.IcosahedronGeometry(stoneSize * 0.5, 0);
-      }
-      
-      const stone = new THREE.Mesh(stoneGeometry, rubbleMaterial);
-      
-      // Random position within rubble area
-      stone.position.set(
-        x + (Math.random() * 8) - 4,
-        y + (Math.random() * stoneSize),
-        z + (Math.random() * 8) - 4
-      );
-      
-      // Random rotation
-      stone.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-      );
-      
-      stone.castShadow = true;
-      stone.receiveShadow = true;
-      rubbleGroup.add(stone);
-    }
-    
-    castle.add(rubbleGroup);
-  }
-  
-  // Cleanup structures for a region
-  public cleanupStructuresForRegion(region: RegionCoordinates): void {
-    const regionKey = this.ringSystem.getRegionKey(region);
-    const structures = this.structures.get(regionKey);
-    
-    if (!structures) return;
-    
-    console.log(`Cleaning up structures for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-    
-    // Remove all structures from scene
-    structures.forEach(structure => {
-      this.scene.remove(structure.model);
-      
-      // Dispose geometries and materials
-      structure.model.traverse(child => {
-        if (child instanceof THREE.Mesh) {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach(m => m.dispose());
+        // Dispose geometry and materials
+        if (mesh instanceof THREE.Mesh) {
+          if (mesh.geometry) mesh.geometry.dispose();
+          if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+              mesh.material.forEach(m => m.dispose());
             } else {
-              child.material.dispose();
+              mesh.material.dispose();
             }
           }
-        }
-      });
-    });
-    
-    // Clear the array
-    this.structures.delete(regionKey);
-  }
-  
-  public dispose(): void {
-    // Clean up all structures
-    for (const [regionKey, structures] of this.structures.entries()) {
-      structures.forEach(structure => {
-        this.scene.remove(structure.model);
-        
-        // Dispose geometries and materials
-        structure.model.traverse(child => {
-          if (child instanceof THREE.Mesh) {
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(m => m.dispose());
-              } else {
-                child.material.dispose();
+        } else if (mesh instanceof THREE.Group) {
+          mesh.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              if (child.geometry) child.geometry.dispose();
+              if (child.material) {
+                if (Array.isArray(child.material)) {
+                  child.material.forEach(m => m.dispose());
+                } else {
+                  child.material.dispose();
+                }
               }
             }
-          }
-        });
-      });
+          });
+        }
+      }
+      
+      this.generatedStructures.delete(regionKey);
+      console.log(`🏰 [StructureGenerator] Removed structures for region ${regionKey}`);
     }
-    
-    this.structures.clear();
+  }
+
+  public dispose(): void {
+    for (const regionKey of this.generatedStructures.keys()) {
+      this.removeStructuresForRegion(regionKey);
+    }
+    console.log('🏰 [StructureGenerator] Disposed all structures');
   }
 }

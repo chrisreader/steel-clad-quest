@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
@@ -59,14 +58,14 @@ export class SceneManager {
     
     console.log("SceneManager initialized with collision system");
     
-    // Initialize ring-quadrant system
-    this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
+    // Initialize ring-quadrant system with the scene
+    this.ringSystem = new RingQuadrantSystem(this.scene);
     
     // Initialize terrain feature generator
-    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
+    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.scene);
     
     // Initialize structure generator
-    this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene);
+    this.structureGenerator = new StructureGenerator(this.scene);
     
     // Setup distance-based fog
     this.setupDistanceFog();
@@ -224,30 +223,9 @@ export class SceneManager {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
     }
     
-    // NEW: Manage region loading/unloading based on player position
+    // Update ring quadrant system
     if (playerPosition) {
-      // Get regions that should be active
-      const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
-      
-      // Track current region keys for comparison
-      const activeRegionKeys = new Set<string>();
-      
-      // Load new regions
-      for (const region of activeRegions) {
-        const regionKey = this.ringSystem.getRegionKey(region);
-        activeRegionKeys.add(regionKey);
-        
-        if (!this.loadedRegions.has(regionKey)) {
-          this.loadRegion(region);
-        }
-      }
-      
-      // Unload regions that are no longer active
-      for (const [regionKey, region] of this.loadedRegions.entries()) {
-        if (!activeRegionKeys.has(regionKey)) {
-          this.unloadRegion(region.coordinates);
-        }
-      }
+      this.ringSystem.updatePlayerPosition(playerPosition);
     }
     
     // Update stored player position if provided
@@ -262,10 +240,6 @@ export class SceneManager {
     // Create simple ground plane at origin as fallback
     this.createSimpleGround();
     console.log('Simple ground plane created at origin');
-    
-    // Create starting region (center ring, NE quadrant)
-    const startRegion = { ringIndex: 0, quadrant: 0 };
-    this.loadRegion(startRegion);
     
     // Place tavern at center
     this.createTavern();

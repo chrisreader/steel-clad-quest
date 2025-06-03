@@ -1,7 +1,21 @@
+
 import * as THREE from 'three';
 import { TerrainFeatureGenerator } from './TerrainFeatureGenerator';
 import { StructureGenerator } from './StructureGenerator';
 import { TerrainHeightGenerator } from './TerrainHeightGenerator';
+
+// Export the types that other files expect
+export interface RegionCoordinates {
+  ringIndex: number;
+  quadrant: number;
+}
+
+export interface Region {
+  coordinates: RegionCoordinates;
+  centerPosition: THREE.Vector3;
+  terrain?: THREE.Mesh;
+  isLoaded: boolean;
+}
 
 interface QuadrantData {
   key: string;
@@ -173,6 +187,59 @@ export class RingQuadrantSystem {
   // New method to get terrain height at position
   public getTerrainHeightAtPosition(x: number, z: number): number {
     return this.terrainHeightGenerator.getHeightAtPosition(x, z);
+  }
+
+  // Methods expected by SceneManager
+  public getActiveRegions(playerPosition: THREE.Vector3, renderDistance: number): Region[] {
+    const activeRegions: Region[] = [];
+    
+    for (const [quadrantKey, quadrantData] of this.ringQuadrants) {
+      if (quadrantData.isLoaded) {
+        const distance = Math.sqrt(
+          Math.pow(quadrantData.centerX - playerPosition.x, 2) +
+          Math.pow(quadrantData.centerZ - playerPosition.z, 2)
+        );
+        
+        if (distance <= renderDistance) {
+          const region: Region = {
+            coordinates: { ringIndex: 0, quadrant: 0 }, // Simplified for now
+            centerPosition: new THREE.Vector3(quadrantData.centerX, 0, quadrantData.centerZ),
+            isLoaded: true
+          };
+          activeRegions.push(region);
+        }
+      }
+    }
+    
+    return activeRegions;
+  }
+
+  public getRegionKey(region: RegionCoordinates): string {
+    return `${region.ringIndex},${region.quadrant}`;
+  }
+
+  public getRegionCenter(region: RegionCoordinates): THREE.Vector3 {
+    // Simplified implementation
+    return new THREE.Vector3(0, 0, 0);
+  }
+
+  public getRingDefinition(ringIndex: number) {
+    // Simplified ring definition
+    return {
+      innerRadius: ringIndex * 500,
+      outerRadius: (ringIndex + 1) * 500,
+      terrainColor: 0x4a7c59
+    };
+  }
+
+  public getRegionForPosition(position: THREE.Vector3): RegionCoordinates {
+    // Simplified implementation
+    return { ringIndex: 0, quadrant: 0 };
+  }
+
+  public createDebugRingMarkers(scene: THREE.Scene): void {
+    // Optional debug visualization - can be empty for now
+    console.log('Debug ring markers would be created here');
   }
   
   public dispose(): void {
