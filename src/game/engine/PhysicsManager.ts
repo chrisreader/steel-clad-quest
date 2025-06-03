@@ -243,78 +243,95 @@ export class PhysicsManager {
     
     console.log(`🏔️ SMOOTH movement: current=${currentTerrainHeight.toFixed(2)}, target=${targetTerrainHeight.toFixed(2)}, smooth=${smoothTerrainHeight.toFixed(2)}`);
     
-    // NEW: Check for environment object collisions (trees, walls, etc.)
+    // IMPROVED: Check for environment object collisions with better logic
     const movementDirection = new THREE.Vector3().subVectors(targetPosition, currentPosition);
     const movementDistance = movementDirection.length();
     
-    if (movementDistance > 0) {
+    if (movementDistance > 0.01) { // Only check collision if there's significant movement
       movementDirection.normalize();
       
-      // Check for collision with environment objects
-      const environmentCollision = this.checkEnvironmentCollision(currentPosition, targetPosition, playerRadius);
+      // Check for collision with environment objects using raycasting instead of sphere intersection
+      const environmentCollision = this.checkEnvironmentCollisionRaycast(currentPosition, targetPosition, playerRadius);
       
       if (environmentCollision) {
         console.log(`🚧 Environment collision detected with ${environmentCollision.object.type} object`);
         
-        // Calculate safe position before collision
-        const collisionDirection = new THREE.Vector3().subVectors(environmentCollision.point, currentPosition);
-        const safeDistance = Math.max(0, collisionDirection.length() - playerRadius - 0.2); // Extra buffer
-        
-        if (safeDistance > 0.1) {
-          // Move as far as possible before hitting the object
-          const safePosition = currentPosition.clone().add(movementDirection.multiplyScalar(safeDistance));
-          const safeTerrainData = this.getTerrainDataAtPosition(safePosition);
-          safePosition.y = safeTerrainData.height + playerRadius;
-          console.log(`🚧 Adjusted to safe position: (${safePosition.x.toFixed(2)}, ${safePosition.y.toFixed(2)}, ${safePosition.z.toFixed(2)})`);
-          return safePosition;
-        } else {
-          // Too close to object, don't move
-          console.log(`🚧 Too close to object, staying at current position`);
-          return currentPosition;
-        }
+        // Instead of completely blocking movement, try to slide along the collision surface
+        const slidePosition = this.calculateSlideMovement(currentPosition, targetPosition, environmentCollision, playerRadius);
+        const slideTerrainData = this.getTerrainDataAtPosition(slidePosition);
+        slidePosition.y = slideTerrainData.height + playerRadius;
+        console.log(`🚧 Sliding along collision surface to: (${slidePosition.x.toFixed(2)}, ${slidePosition.y.toFixed(2)}, ${slidePosition.z.toFixed(2)})`);
+        return slidePosition;
       }
     }
     
     return surfacePosition;
   }
 
-  // NEW: Check for collision with environment objects
-  private checkEnvironmentCollision(
+  // NEW: Improved collision detection using raycasting
+  private checkEnvironmentCollisionRaycast(
     currentPosition: THREE.Vector3, 
     targetPosition: THREE.Vector3, 
     playerRadius: number
-  ): { object: CollisionObject; point: THREE.Vector3 } | null {
+  ): { object: CollisionObject; point: THREE.Vector3; normal: THREE.Vector3 } | null {
     
-    // Create player bounding sphere at target position
-    const playerSphere = new THREE.Sphere(targetPosition, playerRadius);
+    const movementDirection = new THREE.Vector3().subVectors(targetPosition, currentPosition);
+    const movementDistance = movementDirection.length();
+    
+    if (movementDistance < 0.01) return null;
+    
+    movementDirection.normalize();
+    
+    // Use raycasting to detect collisions ahead of the player
+    this.raycaster.set(currentPosition, movementDirection);
+    this.raycaster.far = movementDistance + playerRadius;
     
     // Check collision with all environment objects
     for (const [id, collisionObject] of this.collisionObjects) {
       if (collisionObject.type === 'environment' || collisionObject.type === 'staircase') {
-        // Update the object's bounding box to current world position
-        collisionObject.box.setFromObject(collisionObject.mesh);
+        const intersections = this.raycaster.intersectObject(collisionObject.mesh, true);
         
-        // Expand the bounding box slightly to account for player radius
-        const expandedBox = collisionObject.box.clone();
-        expandedBox.expandByScalar(playerRadius * 0.8); // Slightly smaller to allow closer approach
-        
-        // Check if player sphere intersects with expanded object box
-        if (expandedBox.intersectsSphere(playerSphere)) {
-          // Calculate closest point on the box to the player
-          const closestPoint = new THREE.Vector3();
-          expandedBox.clampPoint(targetPosition, closestPoint);
+        if (intersections.length > 0) {
+          const intersection = intersections[0];
+          const distanceToCollision = intersection.distance;
           
-          console.log(`🚧 Player collision with ${collisionObject.type} object (${collisionObject.material}) at distance ${targetPosition.distanceTo(closestPoint).toFixed(2)}`);
-          
-          return {
-            object: collisionObject,
-            point: closestPoint
-          };
+          // Only consider it a collision if it's closer than the player radius
+          if (distanceToCollision <= playerRadius + 0.1) { // Small buffer
+            console.log(`🚧 Raycast collision with ${collisionObject.type} at distance ${distanceToCollision.toFixed(2)}`);
+            
+            return {
+              object: collisionObject,
+              point: intersection.point,
+              normal: intersection.face ? intersection.face.normal.clone().transformDirection(collisionObject.mesh.matrixWorld) : new THREE.Vector3(0, 1, 0)
+            };
+          }
         }
       }
     }
     
     return null;
+  }
+
+  // NEW: Calculate slide movement along collision surfaces
+  private calculateSlideMovement(
+    currentPosition: THREE.Vector3,
+    targetPosition: THREE.Vector3,
+    collision: { object: CollisionObject; point: THREE.Vector3; normal: THREE.Vector3 },
+    playerRadius: number
+  ): THREE.Vector3 {
+    const movementDirection = new THREE.Vector3().subVectors(targetPosition, currentPosition);
+    
+    // Project the movement direction onto the collision surface (slide along the wall)
+    const slideDirection = movementDirection.clone().projectOnPlane(collision.normal).normalize();
+    
+    // Calculate how much we can move along the slide direction
+    const originalDistance = movementDirection.length();
+    const slideDistance = originalDistance * 0.8; // Reduce movement slightly when sliding
+    
+    // Calculate the slide position
+    const slidePosition = currentPosition.clone().add(slideDirection.multiplyScalar(slideDistance));
+    
+    return slidePosition;
   }
 
   // CRITICAL FIX: Use dedicated arrow raycaster for ALL collision detection to prevent corruption
