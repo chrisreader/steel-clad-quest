@@ -28,7 +28,7 @@ export class PhysicsManager {
   private maxWalkableAngle = 45; // degrees
   private maxStepHeight = 0.8;
   private scene: THREE.Scene | null = null;
-  private terrainDetectionThreshold = 0.2; // Minimum height difference to trigger terrain following
+  private terrainDetectionThreshold = 0.5; // Increased threshold to be less sensitive
   
   constructor() {
     console.log('🏔️ Enhanced Physics Manager initialized with terrain following system');
@@ -64,7 +64,7 @@ export class PhysicsManager {
 
   public getGroundHeight(position: THREE.Vector3, debugContext: string = ''): { height: number; hasGround: boolean } {
     const rayHeights = [position.y + 20, position.y + 10, position.y + 5, position.y + 2];
-    let bestGroundHeight = position.y; // Default to current height instead of 0
+    let bestGroundHeight = position.y; // Default to current height
     let foundAnyGround = false;
     
     for (const rayHeight of rayHeights) {
@@ -103,11 +103,7 @@ export class PhysicsManager {
       }
     }
     
-    if (foundAnyGround) {
-      console.log(`🏔️ [PhysicsManager] Ground detected at height ${bestGroundHeight.toFixed(3)} for ${debugContext}`);
-    } else {
-      console.log(`🏔️ [PhysicsManager] No ground detected for ${debugContext}, maintaining current height ${position.y.toFixed(3)}`);
-    }
+    console.log(`🏔️ [PhysicsManager] Ground check for ${debugContext}: found=${foundAnyGround}, height=${bestGroundHeight.toFixed(3)}`);
     
     return { height: bestGroundHeight, hasGround: foundAnyGround };
   }
@@ -203,35 +199,29 @@ export class PhysicsManager {
     );
     
     if (wallCollision && !wallCollision.slopeInfo.walkable) {
-      console.log('🏔️ [PhysicsManager] Steep wall detected - handling wall sliding');
+      console.log('🏔️ [PhysicsManager] Wall collision detected - handling wall sliding');
       return this.handleWallSliding(currentPosition, targetPosition, wallCollision, playerRadius);
     }
     
-    // Step 3: Get ground height at target position
-    const targetGroundResult = this.getGroundHeight(targetPosition, 'target position');
-    const currentGroundResult = this.getGroundHeight(currentPosition, 'current position');
-    
-    console.log('🏔️ [PhysicsManager] Ground analysis:', {
-      currentY: currentPosition.y.toFixed(3),
-      currentGroundFound: currentGroundResult.hasGround,
-      currentGroundY: currentGroundResult.height.toFixed(3),
-      targetGroundFound: targetGroundResult.hasGround,
-      targetGroundY: targetGroundResult.height.toFixed(3)
-    });
-    
-    // Step 4: SMART TERRAIN FOLLOWING LOGIC
+    // Step 3: Start with target position, then adjust Y if needed
     let finalPosition = targetPosition.clone();
     
-    // If no ground detected at target, maintain current Y (flat ground movement)
-    if (!targetGroundResult.hasGround) {
-      console.log('🏔️ [PhysicsManager] No terrain detected - maintaining current height for flat ground movement');
-      finalPosition.y = currentPosition.y;
-    } else {
-      // Ground detected - check if significant height change
+    // Step 4: Check for environment collisions (walls, trees) at target position
+    const environmentCollision = this.checkSphereCollision(finalPosition, playerRadius, ['projectile', 'enemy']);
+    if (environmentCollision) {
+      console.log('🏔️ [PhysicsManager] Environment collision detected - blocking movement');
+      return currentPosition;
+    }
+    
+    // Step 5: Get ground height at target for terrain following
+    const targetGroundResult = this.getGroundHeight(targetPosition, 'target position');
+    
+    // Step 6: SIMPLIFIED TERRAIN FOLLOWING
+    if (targetGroundResult.hasGround) {
       const heightDifference = targetGroundResult.height - currentPosition.y;
       
+      // Only follow terrain if height difference is significant
       if (Math.abs(heightDifference) > this.terrainDetectionThreshold) {
-        // Significant terrain change detected
         if (heightDifference > this.maxStepHeight) {
           console.log('🏔️ [PhysicsManager] Step too high - blocking movement');
           return currentPosition;
@@ -244,17 +234,14 @@ export class PhysicsManager {
           console.log('🏔️ [PhysicsManager] Following terrain to Y:', finalPosition.y.toFixed(3));
         }
       } else {
-        // Small or no height change - treat as flat ground
-        console.log('🏔️ [PhysicsManager] Minimal terrain variation - maintaining current height');
+        // Small height change - maintain current height for smooth movement
         finalPosition.y = currentPosition.y;
+        console.log('🏔️ [PhysicsManager] Maintaining current height for smooth movement');
       }
-    }
-    
-    // Step 5: Final collision check for dynamic objects
-    const finalCollision = this.checkSphereCollision(finalPosition, playerRadius, ['environment']);
-    if (finalCollision) {
-      console.log('🏔️ [PhysicsManager] Dynamic object collision - staying at current position');
-      return currentPosition;
+    } else {
+      // No ground detected - maintain current height (flat ground assumption)
+      finalPosition.y = currentPosition.y;
+      console.log('🏔️ [PhysicsManager] No ground detected - maintaining current height');
     }
     
     console.log('🏔️ [PhysicsManager] Movement approved:', finalPosition.toArray().map(n => n.toFixed(3)));
