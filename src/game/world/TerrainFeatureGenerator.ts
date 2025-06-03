@@ -23,10 +23,19 @@ export class TerrainFeatureGenerator {
   private tavernPosition: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   private tavernExclusionRadius: number = 15; // Keep clear area around tavern
   
+  // NEW: Collision manager reference
+  private collisionManager: any = null; // We'll accept any collision manager that has registerIndividualObject method
+  
   constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
     this.loadModels();
+  }
+  
+  // NEW: Method to set collision manager
+  public setCollisionManager(collisionManager: any): void {
+    this.collisionManager = collisionManager;
+    console.log('🌳 [TerrainFeatureGenerator] Collision manager connected');
   }
   
   private loadModels(): void {
@@ -112,7 +121,7 @@ export class TerrainFeatureGenerator {
     // Skip if already generated
     if (this.spawnedFeatures.has(regionKey)) return;
     
-    console.log(`Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`🌳 [TerrainFeatureGenerator] Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
     // Initialize spawned features array
     const features: THREE.Object3D[] = [];
@@ -133,9 +142,16 @@ export class TerrainFeatureGenerator {
         this.generateWastelandFeatures(region, features);
         break;
     }
+    
+    // NEW: Register all spawned features for collision
+    if (this.collisionManager) {
+      console.log(`🌳 [TerrainFeatureGenerator] Registering ${features.length} features for collision`);
+      features.forEach(feature => {
+        this.collisionManager.registerIndividualObject(feature);
+      });
+    }
   }
   
-  // Generate evenly distributed features (for ring 0)
   private generateEvenlyDistributedFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
     // Generate trees (10-15)
     this.spawnRandomFeatures(region, 'forest', 12, features);
@@ -342,7 +358,6 @@ export class TerrainFeatureGenerator {
     return model;
   }
   
-  // Get a random position within a region
   private getRandomPositionInRegion(region: RegionCoordinates): THREE.Vector3 {
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     const worldCenter = new THREE.Vector3(0, 0, 0);
@@ -389,7 +404,14 @@ export class TerrainFeatureGenerator {
     
     if (!features) return;
     
-    console.log(`Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`🌳 [TerrainFeatureGenerator] Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    
+    // NEW: Unregister from collision manager first
+    if (this.collisionManager) {
+      features.forEach(feature => {
+        this.collisionManager.unregisterObject(feature);
+      });
+    }
     
     // Remove all features from scene
     features.forEach(feature => {
