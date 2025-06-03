@@ -45,7 +45,7 @@ export class PhysicsManager {
     };
     
     this.collisionObjects.set(objectId, collisionObject);
-    console.log(`Added collision object: ${objectId} (${type}, ${material})`);
+    console.log(`Added collision object: ${objectId} (${type}, ${material}) at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
     return objectId;
   }
 
@@ -131,7 +131,24 @@ export class PhysicsManager {
       // Update bounding box in case object moved
       collisionObject.box.setFromObject(collisionObject.mesh);
       
-      if (collisionObject.box.intersectsSphere(sphere)) {
+      // For tree groups, check collision more precisely
+      if (collisionObject.mesh instanceof THREE.Group) {
+        // Check collision with each mesh in the group
+        let hasCollision = false;
+        collisionObject.mesh.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.geometry) {
+            const childBox = new THREE.Box3().setFromObject(child);
+            if (childBox.intersectsSphere(sphere)) {
+              hasCollision = true;
+            }
+          }
+        });
+        if (hasCollision) {
+          console.log(`🌳 Tree collision detected with object: ${collisionObject.id}`);
+          return collisionObject;
+        }
+      } else if (collisionObject.box.intersectsSphere(sphere)) {
+        console.log(`🏗️ Environment collision detected with object: ${collisionObject.id}`);
         return collisionObject;
       }
     }
@@ -147,8 +164,19 @@ export class PhysicsManager {
     
     for (const [id, collisionObject] of this.collisionObjects) {
       if (excludeTypes.includes(collisionObject.type)) continue;
-      meshes.push(collisionObject.mesh);
-      meshToCollisionMap.set(collisionObject.mesh, collisionObject);
+      
+      // For groups (trees), add all mesh children
+      if (collisionObject.mesh instanceof THREE.Group) {
+        collisionObject.mesh.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.geometry) {
+            meshes.push(child);
+            meshToCollisionMap.set(child, collisionObject);
+          }
+        });
+      } else {
+        meshes.push(collisionObject.mesh);
+        meshToCollisionMap.set(collisionObject.mesh, collisionObject);
+      }
     }
     
     const intersections = this.raycaster.intersectObjects(meshes, true);
@@ -189,6 +217,7 @@ export class PhysicsManager {
             };
           }
           
+          console.log(`🎯 Ray collision with ${collisionObject.material} object at distance ${intersection.distance.toFixed(2)}`);
           return {
             object: collisionObject,
             distance: intersection.distance,
@@ -203,81 +232,58 @@ export class PhysicsManager {
   }
 
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
-    console.log('🏔️ [PhysicsManager] Checking player movement with slope awareness', {
+    console.log('🏔️ [PhysicsManager] Checking player movement with enhanced tree collision', {
       from: currentPosition,
       to: targetPosition
     });
     
-    // First check horizontal movement for collisions
+    // Check for sphere collision at target position (this catches trees and walls)
+    const collision = this.checkSphereCollision(targetPosition, playerRadius, ['projectile', 'enemy']);
+    
+    if (collision) {
+      console.log(`🚫 Movement blocked by ${collision.material} collision object: ${collision.id}`);
+      return currentPosition; // Block movement completely if there's a collision
+    }
+    
+    // Also check ray collision for additional safety
     const horizontalTarget = new THREE.Vector3(targetPosition.x, currentPosition.y, targetPosition.z);
     const direction = new THREE.Vector3().subVectors(horizontalTarget, currentPosition);
     const distance = direction.length();
     
-    if (distance === 0) return currentPosition;
-    
-    direction.normalize();
-    
-    // Check for collision along the horizontal movement path
-    const collision = this.checkRayCollision(currentPosition, direction, distance + playerRadius, ['projectile', 'enemy']);
-    
-    let safeHorizontalPosition: THREE.Vector3;
-    
-    if (collision) {
-      console.log('🏔️ [PhysicsManager] Collision detected:', {
-        distance: collision.distance,
-        slopeAngle: collision.slopeInfo.angle,
-        walkable: collision.slopeInfo.walkable
-      });
+    if (distance > 0) {
+      direction.normalize();
       
-      // Check if this is a walkable slope
-      if (collision.slopeInfo.walkable) {
-        // Allow movement on walkable slopes
-        safeHorizontalPosition = horizontalTarget;
-        console.log('🏔️ [PhysicsManager] Allowing movement on walkable slope (angle: ' + collision.slopeInfo.angle.toFixed(1) + '°)');
-      } else {
-        // Steep slope or wall - calculate safe horizontal position just before collision
-        const safeDistance = Math.max(0, collision.distance - playerRadius - 0.1);
-        safeHorizontalPosition = currentPosition.clone().add(direction.multiplyScalar(safeDistance));
-        
-        // Try sliding along the collision surface for walls
-        safeHorizontalPosition = this.handleWallSliding(currentPosition, horizontalTarget, collision, playerRadius);
-        console.log('🏔️ [PhysicsManager] Blocking movement on steep slope/wall (angle: ' + collision.slopeInfo.angle.toFixed(1) + '°)');
+      const rayCollision = this.checkRayCollision(currentPosition, direction, distance + playerRadius, ['projectile', 'enemy']);
+      
+      if (rayCollision && !rayCollision.slopeInfo.walkable) {
+        console.log(`🚫 Ray collision detected with ${rayCollision.object.material} - blocking movement`);
+        return currentPosition;
       }
-    } else {
-      safeHorizontalPosition = horizontalTarget;
     }
     
-    // Now adjust Y position based on ground height and step logic
-    const groundHeight = this.getGroundHeight(safeHorizontalPosition);
-    const slopeInfo = this.checkSlopeAngle(safeHorizontalPosition);
+    // No collision detected, allow movement with terrain following
+    const groundHeight = this.getGroundHeight(targetPosition);
+    const slopeInfo = this.checkSlopeAngle(targetPosition);
     
     if (slopeInfo.walkable) {
-      // Calculate height difference
       const heightDifference = groundHeight - currentPosition.y;
       
       if (Math.abs(heightDifference) <= this.maxStepHeight) {
-        // Small step or smooth slope - adjust height
-        safeHorizontalPosition.y = groundHeight + 0.1; // Small offset to prevent clipping
-        console.log('🏔️ [PhysicsManager] Height adjusted for step/slope:', {
-          heightChange: heightDifference.toFixed(3),
-          newY: safeHorizontalPosition.y.toFixed(3)
-        });
+        targetPosition.y = groundHeight + 0.1;
+        console.log('🏔️ [PhysicsManager] Height adjusted for step/slope');
       } else if (heightDifference > this.maxStepHeight) {
-        // Step too high - maintain current height
-        safeHorizontalPosition.y = currentPosition.y;
+        targetPosition.y = currentPosition.y;
         console.log('🏔️ [PhysicsManager] Step too high, maintaining current height');
       } else {
-        // Going downhill - follow the ground
-        safeHorizontalPosition.y = groundHeight + 0.1;
+        targetPosition.y = groundHeight + 0.1;
         console.log('🏔️ [PhysicsManager] Following ground downhill');
       }
     } else {
-      // Slope too steep for Y adjustment, maintain current height
-      safeHorizontalPosition.y = currentPosition.y;
+      targetPosition.y = currentPosition.y;
       console.log('🏔️ [PhysicsManager] Slope too steep for Y adjustment');
     }
     
-    return safeHorizontalPosition;
+    return targetPosition;
   }
 
   public checkEnemyKnockback(currentPosition: THREE.Vector3, knockbackVelocity: THREE.Vector3, deltaTime: number, enemyRadius: number = 0.4): THREE.Vector3 {
