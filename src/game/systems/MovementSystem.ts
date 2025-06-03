@@ -11,7 +11,7 @@ export class MovementSystem {
   private physicsManager: PhysicsManager;
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
-  private smoothingFactor: number = 0.05; // Reduced for faster height adjustments on stairs
+  private smoothingFactor: number = 0.05; // Reduced for faster height adjustments on stairs and slopes
   
   constructor(
     scene: THREE.Scene,
@@ -26,7 +26,7 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with enhanced terrain collision detection and staircase navigation");
+    console.log("🏃 [MovementSystem] Initialized with enhanced terrain collision detection, staircase navigation, and slope walking");
     
     // Set up sprint input handler
     this.setupSprintHandler();
@@ -140,31 +140,29 @@ export class MovementSystem {
       const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
       const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
-      // Enhanced collision checking with terrain height consideration
+      // ENHANCED COLLISION AND TERRAIN FOLLOWING
+      // Step 1: Check for collisions and get safe position (includes staircase climbing)
       let safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4);
       
-      // Check for staircase navigation BEFORE terrain height adjustment
-      safePosition = this.physicsManager.checkStaircaseNavigation(currentPosition, safePosition, 0.4);
-      
-      // Check slope angle at safe position
+      // Step 2: Get slope angle at safe position for additional validation
       const slopeAngle = this.physicsManager.getSlopeAngleAtPosition(safePosition);
       if (slopeAngle > 45) {
         console.log(`🏃 [MovementSystem] Movement blocked by steep slope: ${slopeAngle.toFixed(1)}°`);
         return; // Don't move if slope is too steep
       }
       
-      // Get terrain height at the safe position
+      // Step 3: Get terrain height at the safe position for smooth following
       const terrainHeight = this.physicsManager.getTerrainHeightAtPosition(safePosition);
       
-      // Smoothly adjust player height to follow terrain
+      // Step 4: Smoothly adjust player height to follow terrain/stairs
       const currentHeight = currentPosition.y;
-      const targetHeight = terrainHeight + 0.4; // Player radius above terrain
+      const targetHeight = Math.max(safePosition.y, terrainHeight + 0.4); // Use whichever is higher
       
-      // Use smooth interpolation for natural movement over hills
+      // Use smooth interpolation for natural movement over hills and stairs
       const heightDifference = targetHeight - currentHeight;
-      const maxHeightChange = 3.0 * deltaTime; // Maximum height change per frame
+      const maxHeightChange = 6.0 * deltaTime; // Increased for better stair climbing
       
-      if (Math.abs(heightDifference) > 0.1) {
+      if (Math.abs(heightDifference) > 0.05) { // Reduced threshold for more responsive movement
         const heightAdjustment = Math.sign(heightDifference) * Math.min(Math.abs(heightDifference), maxHeightChange);
         safePosition.y = currentHeight + heightAdjustment;
       } else {
@@ -179,7 +177,7 @@ export class MovementSystem {
         const normalizedMovement = actualMovement.clone().normalize();
         const movementScale = actualMovement.length() / (5.0 * deltaTime);
         
-        console.log("🏃 [MovementSystem] Moving with enhanced terrain collision and staircase navigation:", {
+        console.log("🏃 [MovementSystem] Enhanced movement with staircase climbing and slope navigation:", {
           from: currentPosition,
           to: safePosition,
           movement: actualMovement,

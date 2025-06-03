@@ -10,11 +10,11 @@ export class EnvironmentCollisionManager {
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
-    console.log('EnvironmentCollisionManager initialized');
+    console.log('🔧 EnvironmentCollisionManager initialized with enhanced terrain and staircase support');
   }
 
   public registerEnvironmentCollisions(): void {
-    console.log('Registering environment collisions...');
+    console.log('🔧 Registering environment collisions with enhanced terrain support...');
     
     // Clear existing registrations
     this.registeredObjects.forEach(id => {
@@ -29,12 +29,33 @@ export class EnvironmentCollisionManager {
       }
     });
 
-    console.log(`Registered ${this.registeredObjects.size} collision objects`);
+    console.log(`🔧 Registered ${this.registeredObjects.size} collision objects including terrain and staircases`);
   }
 
   private registerObjectCollision(object: THREE.Object3D): void {
     // Skip if already registered
     if (this.registeredObjects.has(object.uuid)) return;
+
+    // Special handling for test hills with height data
+    if (object instanceof THREE.Mesh && object.name === 'test_hill' && object.userData.heightData) {
+      const heightData = object.userData.heightData;
+      const terrainSize = object.userData.terrainSize || 30;
+      
+      const id = this.physicsManager.addTerrainCollision(object, heightData, terrainSize, object.uuid);
+      this.registeredObjects.add(id);
+      
+      console.log(`🏔️ Registered test hill as terrain collision with height data at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
+      return;
+    }
+
+    // Special handling for staircases
+    if (object instanceof THREE.Group && object.name === 'staircase') {
+      const id = this.physicsManager.addCollisionObject(object, 'staircase', 'stone', object.uuid);
+      this.registeredObjects.add(id);
+      
+      console.log(`🪜 Registered staircase collision at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
+      return;
+    }
 
     // Determine object type and material based on geometry and position
     const material = this.determineMaterial(object);
@@ -44,7 +65,7 @@ export class EnvironmentCollisionManager {
       const id = this.physicsManager.addCollisionObject(object, 'environment', material, object.uuid);
       this.registeredObjects.add(id);
       
-      console.log(`Registered collision for object at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
+      console.log(`🔧 Registered collision for object at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
     }
   }
 

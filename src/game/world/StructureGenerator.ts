@@ -56,6 +56,58 @@ export class StructureGenerator {
     return staircase;
   }
   
+  // NEW METHOD: Create a test hill for slope navigation testing
+  public createTestHill(x: number, y: number, z: number, radius: number = 15, maxHeight: number = 8): THREE.Mesh {
+    const segments = 32;
+    const geometry = new THREE.ConeGeometry(radius, maxHeight, segments);
+    const material = new THREE.MeshStandardMaterial({ 
+      color: 0x4a5d3a, // Dark green for hill
+      roughness: 0.9,
+      metalness: 0.0
+    });
+    
+    const hill = new THREE.Mesh(geometry, material);
+    hill.position.set(x, y + maxHeight / 2, z);
+    hill.castShadow = true;
+    hill.receiveShadow = true;
+    hill.name = 'test_hill';
+    
+    // Create height data for physics system
+    const heightData: number[][] = [];
+    const hillSize = radius * 2;
+    const heightMapSize = 32;
+    
+    for (let i = 0; i <= heightMapSize; i++) {
+      heightData[i] = [];
+      for (let j = 0; j <= heightMapSize; j++) {
+        // Calculate distance from center
+        const centerX = heightMapSize / 2;
+        const centerZ = heightMapSize / 2;
+        const distanceFromCenter = Math.sqrt((i - centerX) ** 2 + (j - centerZ) ** 2);
+        const normalizedDistance = distanceFromCenter / (heightMapSize / 2);
+        
+        // Create cone-like height profile with smooth falloff
+        let height = 0;
+        if (normalizedDistance < 1) {
+          height = maxHeight * (1 - normalizedDistance) * Math.cos(normalizedDistance * Math.PI / 2);
+        }
+        
+        heightData[i][j] = height;
+      }
+    }
+    
+    // Store height data for physics system access
+    hill.userData.heightData = heightData;
+    hill.userData.terrainSize = hillSize;
+    
+    this.scene.add(hill);
+    
+    console.log(`🏔️ Created test hill at position (${x}, ${y}, ${z}) with radius=${radius}, maxHeight=${maxHeight}`);
+    console.log(`🏔️ Hill has varying slopes including some > 45° near the peak for testing`);
+    
+    return hill;
+  }
+  
   // Place structures in regions based on ring definitions
   public generateStructuresForRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
@@ -74,8 +126,9 @@ export class StructureGenerator {
     const structureTypes = ringDef.structureTypes;
     if (!structureTypes || structureTypes.length === 0) return;
     
-    // For ring 0 (center), quadrant 0 (NE), place a staircase at (50, 0, 50)
+    // For ring 0 (center), quadrant 0 (NE), place enhanced staircase and test hill
     if (region.ringIndex === 0 && region.quadrant === 0) {
+      // Enhanced staircase at (50, 0, 50)
       const staircase = this.createStaircase(50, 0, 50, 8, 3, 0.6, 1.2);
       structures.push({
         type: 'staircase',
@@ -86,6 +139,17 @@ export class StructureGenerator {
       
       this.scene.add(staircase);
       console.log(`🪜 Placed enhanced staircase at (50, 0, 50) in Ring 0, Quadrant 0`);
+      
+      // Test hill at (20, 0, 30) for slope navigation testing
+      const testHill = this.createTestHill(20, 0, 30, 12, 6);
+      structures.push({
+        type: 'test_hill',
+        position: new THREE.Vector3(20, 0, 30),
+        rotation: 0,
+        model: testHill
+      });
+      
+      console.log(`🏔️ Placed test hill at (20, 0, 30) in Ring 0, Quadrant 0 for slope testing`);
     }
     
     // For ring 1, quadrant 2 (SW), place a ruined castle
