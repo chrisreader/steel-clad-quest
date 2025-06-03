@@ -11,7 +11,7 @@ export class EnvironmentCollisionManager {
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
-    console.log('🔧 EnvironmentCollisionManager initialized with enhanced terrain, staircase and castle support');
+    console.log('🔧 EnvironmentCollisionManager initialized with enhanced terrain and staircase support');
   }
 
   // FIXED: Method to register a single object for collision (handles Groups and Meshes)
@@ -32,7 +32,7 @@ export class EnvironmentCollisionManager {
 
   public registerEnvironmentCollisions(): void {
     console.log('🔧 === ENVIRONMENT COLLISION REGISTRATION START ===');
-    console.log('🔧 Registering environment collisions with enhanced terrain and castle support...');
+    console.log('🔧 Registering environment collisions with enhanced terrain support...');
     
     // DEBUG: Check existing registrations before clearing
     const existingCollisions = this.physicsManager.getCollisionObjects();
@@ -135,15 +135,6 @@ export class EnvironmentCollisionManager {
       return;
     }
 
-    // NEW: Special handling for castle structures
-    if (this.isCastleComponent(object)) {
-      const id = this.physicsManager.addCollisionObject(object, 'environment', 'stone', object.uuid);
-      this.registeredObjects.add(id);
-      
-      console.log(`🏰 Registered castle collision for ${object.name} at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (stone)`);
-      return;
-    }
-
     // Determine object type and material based on geometry and position
     const material = this.determineMaterial(object);
     const shouldRegister = this.shouldRegisterForCollision(object);
@@ -156,27 +147,7 @@ export class EnvironmentCollisionManager {
     }
   }
 
-  // NEW: Check if object is a castle component
-  private isCastleComponent(object: THREE.Object3D): boolean {
-    if (object.name === 'castle') return true;
-    if (object.name.startsWith('castle_')) return true;
-    
-    // Check if parent is a castle
-    let parent = object.parent;
-    while (parent) {
-      if (parent.name === 'castle') return true;
-      parent = parent.parent;
-    }
-    
-    return false;
-  }
-
   private determineMaterial(object: THREE.Object3D): 'wood' | 'stone' | 'metal' | 'fabric' {
-    // NEW: Castle components are always stone
-    if (this.isCastleComponent(object)) {
-      return 'stone';
-    }
-
     // FIXED: Special handling for tree groups
     if (object instanceof THREE.Group) {
       // Check if this is a tree (contains meshes that look like tree parts)
@@ -254,11 +225,6 @@ export class EnvironmentCollisionManager {
 
   // FIXED: Updated to handle both THREE.Mesh AND THREE.Group objects
   private shouldRegisterForCollision(object: THREE.Object3D): boolean {
-    // Always register castle components
-    if (this.isCastleComponent(object)) {
-      return true;
-    }
-
     // Skip very small objects (likely decorative)
     const boundingBox = new THREE.Box3().setFromObject(object);
     const size = boundingBox.getSize(new THREE.Vector3());
