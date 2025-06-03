@@ -188,6 +188,60 @@ export class SceneManager {
     console.log("3D sun created at position:", this.sun.position);
   }
   
+  private createSkybox(): void {
+    // Create a simple gradient skybox
+    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+    
+    // Create gradient material for realistic sky
+    const skyMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: new THREE.Color(0x0077ff) }, // Blue sky
+        bottomColor: { value: new THREE.Color(0xffffff) }, // White horizon
+        offset: { value: 400 },
+        exponent: { value: 0.6 }
+      },
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPosition;
+        void main() {
+          float h = normalize(vWorldPosition + offset).y;
+          gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+        }
+      `,
+      side: THREE.BackSide,
+      fog: false
+    });
+    
+    this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
+    this.scene.add(this.skybox);
+    console.log('Skybox created with gradient shader');
+  }
+  
+  private updateSkybox(): void {
+    if (!this.skybox || !this.skybox.material) return;
+    
+    // Update skybox colors based on time of day or other factors
+    const material = this.skybox.material as THREE.ShaderMaterial;
+    if (material.uniforms) {
+      // Update colors to be more realistic blue sky
+      material.uniforms.topColor.value.setHex(0x4A90E2); // Deeper blue
+      material.uniforms.bottomColor.value.setHex(0xE6F3FF); // Light blue-white
+      material.needsUpdate = true;
+    }
+    console.log('Skybox updated with realistic blue colors');
+  }
+  
   // NEW: Enemy spawning methods that GameEngine expects
   public initializeEnemySpawning(effectsManager: EffectsManager, audioManager: AudioManager): void {
     if (!this.enemySpawningSystem) {
