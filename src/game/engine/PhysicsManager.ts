@@ -16,6 +16,7 @@ export class PhysicsManager {
   private terrainHeightCache: Map<string, { height: number; normal: THREE.Vector3 }> = new Map();
   private terrainSize: number = 100; // Default terrain size
   private terrainProtectionLock: boolean = false; // NEW: Terrain protection lock
+  private terrainBackup: Map<string, CollisionObject> = new Map(); // NEW: Terrain backup
   
   constructor() {
     console.log('🏔️ Enhanced Physics Manager initialized with terrain protection');
@@ -69,22 +70,25 @@ export class PhysicsManager {
       heightData: heightData
     };
     
-    // PROTECTED: Store terrain with protection flag
+    // PROTECTED: Store terrain with protection flag and backup
     this.collisionObjects.set(objectId, collisionObject);
-    console.log(`🏔️ ✅ Terrain collision object registered with PROTECTION`);
+    this.terrainBackup.set(objectId, { ...collisionObject }); // Create backup
+    console.log(`🏔️ ✅ Terrain collision object registered with PROTECTION and BACKUP`);
     console.log(`🏔️ Total collision objects now: ${this.collisionObjects.size}`);
     console.log(`🏔️ === REGISTRATION COMPLETE ===\n`);
     
     return objectId;
   }
 
-  // ENHANCED: Terrain validation method
+  // ENHANCED: Terrain validation method with auto-restoration
   public validateTerrainCollisions(): boolean {
-    console.log('🏔️ 🔍 Physics Manager terrain validation...');
+    console.log('🏔️ 🔍 Physics Manager terrain validation with auto-restoration...');
     
     let terrainCount = 0;
     let validTerrain = 0;
+    let restoredTerrain = 0;
     
+    // First, check existing terrain
     for (const [id, collisionObject] of this.collisionObjects) {
       if (collisionObject.type === 'terrain') {
         terrainCount++;
@@ -98,7 +102,18 @@ export class PhysicsManager {
       }
     }
     
-    console.log(`🏔️ Terrain validation result: ${validTerrain}/${terrainCount} valid`);
+    // Restore missing terrain from backup
+    for (const [backupId, backupObject] of this.terrainBackup) {
+      if (!this.collisionObjects.has(backupId)) {
+        console.log(`🏔️ 🔄 RESTORING missing terrain from backup: ${backupId}`);
+        this.collisionObjects.set(backupId, { ...backupObject });
+        restoredTerrain++;
+        terrainCount++;
+        validTerrain++;
+      }
+    }
+    
+    console.log(`🏔️ Terrain validation result: ${validTerrain}/${terrainCount} valid, ${restoredTerrain} restored`);
     return validTerrain === terrainCount;
   }
 
@@ -112,6 +127,7 @@ export class PhysicsManager {
         return;
       } else {
         console.warn(`🏔️ ⚠️ WARNING: Removing terrain collision ${id}`);
+        // Don't remove from backup when removing from active collisions
       }
     }
     
