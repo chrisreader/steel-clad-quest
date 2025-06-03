@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface CollisionObject {
@@ -382,28 +383,29 @@ export class PhysicsManager {
     return closestCollision;
   }
 
-  // CRITICAL FIX: Use dedicated arrow raycaster to prevent corruption of main raycaster
-  private checkTerrainRayIntersection(
+  // NEW: Proper ray-mesh intersection for environment objects (trees, walls, etc.)
+  private checkEnvironmentRayIntersection(
     origin: THREE.Vector3, 
     direction: THREE.Vector3, 
     maxDistance: number, 
-    terrainObject: CollisionObject
+    environmentObject: CollisionObject
   ): { distance: number; point: THREE.Vector3 } | null {
-    const terrain = terrainObject.mesh;
+    const environmentMesh = environmentObject.mesh;
     
-    // CRITICAL FIX: Use dedicated arrow raycaster instead of shared raycaster
-    console.log(`🏹 Using dedicated arrow raycaster for terrain collision (preserving main raycaster)`);
+    // Use dedicated arrow raycaster for environment collision
+    console.log(`🏹 Using dedicated arrow raycaster for environment collision (preserving main raycaster)`);
     this.arrowRaycaster.set(origin, direction);
     this.arrowRaycaster.far = maxDistance;
     
-    const intersections = this.arrowRaycaster.intersectObject(terrain, true);
+    // Perform proper ray-mesh intersection (handles both Mesh and Group objects)
+    const intersections = this.arrowRaycaster.intersectObject(environmentMesh, true);
     
     if (intersections.length > 0) {
       const intersection = intersections[0];
       const distance = intersection.distance;
       
       if (distance <= maxDistance) {
-        console.log(`🏹 Arrow terrain collision detected at distance ${distance.toFixed(2)} (main raycaster preserved)`);
+        console.log(`🏹 Arrow environment collision detected with ${environmentObject.type} at distance ${distance.toFixed(2)} (main raycaster preserved)`);
         return {
           distance: distance,
           point: intersection.point
