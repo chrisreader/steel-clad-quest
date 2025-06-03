@@ -13,11 +13,12 @@ export class PhysicsManager {
   private gravity = -9.81;
   private collisionObjects: Map<string, CollisionObject> = new Map();
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
+  private arrowRaycaster: THREE.Raycaster = new THREE.Raycaster(); // NEW: Dedicated raycaster for arrow collisions
   private terrainHeightCache: Map<string, { height: number; normal: THREE.Vector3 }> = new Map();
   private terrainSize: number = 100; // Default terrain size
   
   constructor() {
-    console.log('🏔️ Enhanced Physics Manager initialized with smooth terrain following');
+    console.log('🏔️ Enhanced Physics Manager initialized with smooth terrain following and dedicated arrow raycaster');
   }
 
   // Enhanced method: Add terrain with height data for better collision with debugging
@@ -158,12 +159,13 @@ export class PhysicsManager {
     return samples;
   }
 
-  // NEW: Perform actual raycast at a specific position
+  // FIXED: Use the main raycaster (NOT the arrow raycaster) for player terrain detection
   private raycastTerrainAtPosition(rayOrigin: THREE.Vector3): { height: number; normal: THREE.Vector3 } | null {
     for (const [id, collisionObject] of this.collisionObjects) {
       if (collisionObject.type === 'terrain') {
         const terrain = collisionObject.mesh;
         
+        // CRITICAL FIX: Use the main raycaster for player terrain detection
         this.raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0));
         const intersections = this.raycaster.intersectObject(terrain, true);
         
@@ -305,7 +307,7 @@ export class PhysicsManager {
     return closestCollision;
   }
 
-  // NEW: Specialized terrain ray intersection for arrow collision
+  // CRITICAL FIX: Use dedicated arrow raycaster to prevent corruption of main raycaster
   private checkTerrainRayIntersection(
     origin: THREE.Vector3, 
     direction: THREE.Vector3, 
@@ -314,15 +316,19 @@ export class PhysicsManager {
   ): { distance: number; point: THREE.Vector3 } | null {
     const terrain = terrainObject.mesh;
     
-    // Use Three.js raycaster for precise terrain intersection
-    const intersections = this.raycaster.intersectObject(terrain, true);
+    // CRITICAL FIX: Use dedicated arrow raycaster instead of shared raycaster
+    console.log(`🏹 Using dedicated arrow raycaster for terrain collision (preserving main raycaster)`);
+    this.arrowRaycaster.set(origin, direction);
+    this.arrowRaycaster.far = maxDistance;
+    
+    const intersections = this.arrowRaycaster.intersectObject(terrain, true);
     
     if (intersections.length > 0) {
       const intersection = intersections[0];
       const distance = intersection.distance;
       
       if (distance <= maxDistance) {
-        console.log(`🏹 Arrow terrain collision detected at distance ${distance.toFixed(2)}`);
+        console.log(`🏹 Arrow terrain collision detected at distance ${distance.toFixed(2)} (main raycaster preserved)`);
         return {
           distance: distance,
           point: intersection.point
