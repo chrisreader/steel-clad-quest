@@ -246,14 +246,28 @@ export class PhysicsManager {
     console.log('🏔️ [PhysicsManager] === CHECKING PLAYER MOVEMENT ===');
     console.log('🏔️ [PhysicsManager] From:', currentPosition, 'To:', targetPosition);
     
-    // STEP 1: Check for 3D collision using sphere collision around target position
-    const sphereCollision = this.checkSphereCollision(targetPosition, playerRadius, ['projectile', 'enemy']);
-    if (sphereCollision) {
-      console.log('🏔️ [PhysicsManager] Sphere collision detected - movement blocked by:', sphereCollision.id);
-      return currentPosition; // Block movement if solid collision
-    }
+    // STEP 1: Get ground height at target position first
+    const targetGroundHeight = this.getGroundHeight(targetPosition);
+    const currentGroundHeight = this.getGroundHeight(currentPosition);
     
-    // STEP 2: Cast forward ray at player level to check for walls/obstacles
+    console.log('🏔️ [PhysicsManager] Ground analysis:', {
+      currentGround: currentGroundHeight.toFixed(3),
+      targetGround: targetGroundHeight.toFixed(3),
+      heightDiff: (targetGroundHeight - currentGroundHeight).toFixed(3)
+    });
+    
+    // STEP 2: Check slope at target position
+    const slopeInfo = this.checkSlopeAngle(targetPosition);
+    const heightDifference = targetGroundHeight - currentPosition.y;
+    
+    console.log('🏔️ [PhysicsManager] Slope analysis:', {
+      slopeAngle: slopeInfo.angle.toFixed(1) + '°',
+      walkable: slopeInfo.walkable,
+      heightDiff: heightDifference.toFixed(3),
+      maxStep: this.maxStepHeight
+    });
+    
+    // STEP 3: Check for blocking obstacles (only check for walls/steep slopes)
     const horizontalDirection = new THREE.Vector3().subVectors(targetPosition, currentPosition);
     horizontalDirection.y = 0; // Remove vertical component for horizontal check
     const horizontalDistance = horizontalDirection.length();
@@ -261,7 +275,7 @@ export class PhysicsManager {
     if (horizontalDistance > 0) {
       horizontalDirection.normalize();
       
-      // Cast ray from current position horizontally
+      // Cast ray from current position horizontally to check for walls
       const forwardCollision = this.checkRayCollision(
         new THREE.Vector3(currentPosition.x, currentPosition.y + 0.5, currentPosition.z), // Slightly above ground
         horizontalDirection, 
@@ -275,42 +289,24 @@ export class PhysicsManager {
       }
     }
     
-    // STEP 3: Get ground height at target position
-    const targetGroundHeight = this.getGroundHeight(targetPosition);
-    const currentGroundHeight = this.getGroundHeight(currentPosition);
-    
-    console.log('🏔️ [PhysicsManager] Ground analysis:', {
-      currentGround: currentGroundHeight.toFixed(3),
-      targetGround: targetGroundHeight.toFixed(3),
-      heightDiff: (targetGroundHeight - currentGroundHeight).toFixed(3)
-    });
-    
-    // STEP 4: Check slope at target position
-    const slopeInfo = this.checkSlopeAngle(targetPosition);
-    const heightDifference = targetGroundHeight - currentPosition.y;
-    
-    console.log('🏔️ [PhysicsManager] Slope analysis:', {
-      slopeAngle: slopeInfo.angle.toFixed(1) + '°',
-      walkable: slopeInfo.walkable,
-      heightDiff: heightDifference.toFixed(3),
-      maxStep: this.maxStepHeight
-    });
-    
-    // STEP 5: Determine final position based on terrain
+    // STEP 4: For walkable terrain, check if we can make the step/slope
     let finalPosition = targetPosition.clone();
     
     if (slopeInfo.walkable) {
-      // Walkable slope - follow the terrain
-      finalPosition.y = targetGroundHeight + 0.1; // Small offset to prevent clipping
-      console.log('🏔️ [PhysicsManager] Following walkable terrain to Y:', finalPosition.y.toFixed(3));
-    } else if (Math.abs(heightDifference) > this.maxStepHeight) {
-      // Too steep or too high step - maintain current height
-      finalPosition.y = currentPosition.y;
-      console.log('🏔️ [PhysicsManager] Step too high or slope too steep - maintaining current height');
+      // Check if step height is reasonable
+      if (Math.abs(heightDifference) <= this.maxStepHeight || heightDifference < 0) {
+        // Walkable slope or downward movement - follow the terrain
+        finalPosition.y = targetGroundHeight + 0.1; // Small offset to prevent clipping
+        console.log('🏔️ [PhysicsManager] Following walkable terrain to Y:', finalPosition.y.toFixed(3));
+      } else {
+        // Step too high - maintain current height
+        finalPosition.y = currentPosition.y;
+        console.log('🏔️ [PhysicsManager] Step too high - maintaining current height');
+      }
     } else {
-      // Small step - allow height change
-      finalPosition.y = targetGroundHeight + 0.1;
-      console.log('🏔️ [PhysicsManager] Small step allowed to Y:', finalPosition.y.toFixed(3));
+      // Not walkable - maintain current height
+      finalPosition.y = currentPosition.y;
+      console.log('🏔️ [PhysicsManager] Slope too steep - maintaining current height');
     }
     
     console.log('🏔️ [PhysicsManager] Final position:', finalPosition);
