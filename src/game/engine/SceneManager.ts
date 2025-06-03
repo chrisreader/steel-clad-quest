@@ -105,8 +105,8 @@ export class SceneManager {
   private setupEnhancedFog(): void {
     // Enhanced fog system with visible fog layer and atmospheric depth
     const fogColor = 0xB0E0E6; // Atmospheric blue-white
-    const fogNear = 30; // Start fading objects at this distance
-    const fogFar = 100; // Objects completely faded at this distance
+    const fogNear = 25; // Start fading objects closer for denser effect
+    const fogFar = 80; // Objects completely faded closer for wall effect
     
     // Create THREE.js fog for distance-based object fading
     this.fog = new THREE.Fog(fogColor, fogNear, fogFar);
@@ -115,11 +115,11 @@ export class SceneManager {
     // Set scene background to fog color to create visible fog layer
     this.scene.background = new THREE.Color(fogColor);
     
-    console.log("Enhanced fog system initialized:", {
+    console.log("Enhanced dense fog system initialized:", {
       color: fogColor.toString(16),
       near: fogNear,
       far: fogFar,
-      background: "fog color for visible layer"
+      background: "fog color for dense wall effect"
     });
   }
   
@@ -194,22 +194,27 @@ export class SceneManager {
   }
   
   private createSkybox(): void {
-    // Create a skybox with enhanced atmospheric horizon effect
+    // Create a skybox with enhanced dense fog wall at horizon
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
-    // Enhanced atmospheric scattering shader for realistic horizon effect
+    // Enhanced dense fog wall shader for complete horizon obscuration
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
         topColor: { value: new THREE.Color(0x4A90E2) }, // Clear sky blue
         horizonColor: { value: new THREE.Color(0xB0E0E6) }, // Atmospheric haze (matches fog)
-        groundColor: { value: new THREE.Color(0xE6F3FF) }, // Very light atmospheric color
-        exponent: { value: 0.4 }, // Even more gradual transition for higher fog extend
+        groundColor: { value: new THREE.Color(0xE8F4F8) }, // Very light fog color
+        fogWallColor: { value: new THREE.Color(0xD0E8E8) }, // Dense fog wall color
+        exponent: { value: 0.3 }, // Very gradual transition for higher fog extend
         horizonHeight: { value: 0.0 }, // Height of horizon line
-        atmosphericDensity: { value: 5.0 }, // Even stronger atmospheric scattering
-        fogDistance: { value: 100.0 }, // Should match fog far distance
-        fogIntensity: { value: 0.9 }, // Stronger fog intensity
-        horizonFogThickness: { value: 0.5 }, // Much thicker fog layer extending higher
-        atmosphericExtend: { value: 0.7 } // NEW: How high the atmospheric effect extends
+        atmosphericDensity: { value: 6.0 }, // Stronger atmospheric effect
+        fogDistance: { value: 80.0 }, // Match fog far distance
+        fogIntensity: { value: 0.98 }, // Near-complete opacity at horizon
+        fogWallDensity: { value: 0.95 }, // Dense fog wall opacity
+        horizonFogThickness: { value: 0.6 }, // Thicker fog layer
+        atmosphericExtend: { value: 0.8 }, // How high the atmospheric effect extends
+        fogWallHeight: { value: 0.4 }, // How high the dense fog wall extends
+        blurIntensity: { value: 0.9 }, // Strong blur effect
+        layeredFogStrength: { value: 0.8 } // Multiple fog layer strength
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -237,13 +242,18 @@ export class SceneManager {
         uniform vec3 topColor;
         uniform vec3 horizonColor;
         uniform vec3 groundColor;
+        uniform vec3 fogWallColor;
         uniform float exponent;
         uniform float horizonHeight;
         uniform float atmosphericDensity;
         uniform float fogDistance;
         uniform float fogIntensity;
+        uniform float fogWallDensity;
         uniform float horizonFogThickness;
         uniform float atmosphericExtend;
+        uniform float fogWallHeight;
+        uniform float blurIntensity;
+        uniform float layeredFogStrength;
         
         varying vec3 vWorldPosition;
         varying vec3 vNormal;
@@ -257,47 +267,61 @@ export class SceneManager {
           // Calculate height factor (y component of normalized direction)
           float height = direction.y;
           
-          // Create stronger fog effect near horizon that extends much higher
-          float horizonDistance = abs(height); // Distance from horizon (0 at horizon, 1 at zenith/nadir)
+          // Create DENSE fog wall at horizon - much more aggressive
+          float horizonDistance = abs(height); // Distance from horizon
           
-          // Create intense fog layer at horizon that extends higher into the sky
+          // Primary dense fog wall that completely obscures horizon
+          float fogWall = 1.0 - smoothstep(0.0, fogWallHeight, horizonDistance);
+          fogWall = pow(fogWall, 0.8); // Sharp but not too harsh falloff
+          
+          // Secondary fog layer for extended coverage
           float fogLayer = 1.0 - smoothstep(0.0, horizonFogThickness, horizonDistance);
-          fogLayer = pow(fogLayer, 1.5); // Less dramatic falloff so fog extends higher
+          fogLayer = pow(fogLayer, 1.2); // Slightly softer falloff for blending
           
-          // Enhanced atmospheric scattering based on viewing angle - extends higher
-          float atmosphericFactor = 1.0 - smoothstep(0.0, atmosphericExtend, abs(height));
-          atmosphericFactor = pow(atmosphericFactor, atmosphericDensity);
+          // Tertiary atmospheric layer for even higher extension
+          float atmosphericLayer = 1.0 - smoothstep(0.0, atmosphericExtend, horizonDistance);
+          atmosphericLayer = pow(atmosphericLayer, atmosphericDensity);
           
-          // Create main gradient from top to horizon with much more gradual transition
+          // Create main gradient from top to horizon
           float gradientFactor = (height + 1.0) * 0.5; // Normalize to 0-1
           gradientFactor = pow(gradientFactor, exponent);
           
           // Start with base sky color gradient
           vec3 skyColor = mix(horizonColor, topColor, gradientFactor);
           
-          // Add heavy atmospheric haze effect that extends much higher
-          vec3 atmosphericColor = mix(groundColor, horizonColor, gradientFactor * 0.3);
-          skyColor = mix(atmosphericColor, skyColor, 1.0 - atmosphericFactor * 0.95);
+          // Apply dense fog wall first (strongest effect)
+          vec3 denseWallColor = mix(fogWallColor, groundColor, gradientFactor * 0.1);
+          skyColor = mix(denseWallColor, skyColor, 1.0 - fogWall * fogWallDensity);
           
-          // Apply intense fog layer at horizon level extending higher
-          vec3 fogColor = mix(groundColor, horizonColor, 0.2); // Even hazier fog color
-          skyColor = mix(fogColor, skyColor, 1.0 - fogLayer * fogIntensity);
+          // Apply secondary fog layer
+          vec3 secondaryFogColor = mix(groundColor, horizonColor, gradientFactor * 0.2);
+          skyColor = mix(secondaryFogColor, skyColor, 1.0 - fogLayer * fogIntensity);
           
-          // Add distance-based atmospheric perspective for depth
+          // Apply atmospheric layer for height extension
+          vec3 atmosphericColor = mix(groundColor, horizonColor, gradientFactor * 0.4);
+          skyColor = mix(atmosphericColor, skyColor, 1.0 - atmosphericLayer * layeredFogStrength);
+          
+          // Enhanced horizon blur effect with much higher intensity
+          float horizonBlur = 1.0 - smoothstep(0.0, 0.5, abs(height));
+          horizonBlur = pow(horizonBlur, 1.5);
+          vec3 blurColor = mix(fogWallColor, groundColor, 0.3); // More opaque blur
+          skyColor = mix(skyColor, blurColor, horizonBlur * blurIntensity);
+          
+          // Distance-based atmospheric perspective for depth
           float distanceFactor = min(vDistance / fogDistance, 1.0);
-          skyColor = mix(skyColor, horizonColor, distanceFactor * 0.5);
+          skyColor = mix(skyColor, fogWallColor, distanceFactor * 0.6);
           
-          // Additional horizon blur effect that extends higher into sky
-          float horizonBlur = 1.0 - smoothstep(0.0, 0.4, abs(height)); // Much larger area affected
-          horizonBlur = pow(horizonBlur, 2.0); // Less dramatic falloff
-          vec3 blurColor = mix(horizonColor, groundColor, 0.5);
-          skyColor = mix(skyColor, blurColor, horizonBlur * 0.8);
+          // Additional dense base layer near horizon line
+          float baseLayer = 1.0 - smoothstep(0.0, 0.15, abs(height));
+          baseLayer = pow(baseLayer, 0.5);
+          vec3 baseLayerColor = mix(fogWallColor, groundColor, 0.1);
+          skyColor = mix(skyColor, baseLayerColor, baseLayer * 0.85);
           
-          // Additional high-altitude atmospheric effect
-          float highAtmosphere = 1.0 - smoothstep(0.0, 0.6, abs(height));
-          highAtmosphere = pow(highAtmosphere, 1.8);
-          vec3 highAtmosphereColor = mix(horizonColor, topColor, 0.7);
-          skyColor = mix(skyColor, highAtmosphereColor, highAtmosphere * 0.3);
+          // Final atmospheric haze overlay
+          float finalHaze = 1.0 - smoothstep(0.0, 0.7, abs(height));
+          finalHaze = pow(finalHaze, 2.5);
+          vec3 hazeColor = mix(fogWallColor, horizonColor, 0.6);
+          skyColor = mix(skyColor, hazeColor, finalHaze * 0.4);
           
           gl_FragColor = vec4(skyColor, 1.0);
         }
@@ -308,31 +332,36 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Enhanced atmospheric horizon skybox created with extended fog effects reaching higher into sky');
+    console.log('Enhanced dense fog wall skybox created with complete horizon obscuration');
   }
   
   private updateSkybox(): void {
     if (!this.skybox || !this.skybox.material) return;
     
-    // Update skybox with enhanced atmospheric horizon parameters
+    // Update skybox with enhanced dense fog wall parameters
     const material = this.skybox.material as THREE.ShaderMaterial;
     if (material.uniforms) {
-      // Ensure colors are coordinated with fog system
+      // Ensure colors create proper fog wall effect
       material.uniforms.topColor.value.setHex(0x4A90E2); // Clear sky blue
       material.uniforms.horizonColor.value.setHex(0xB0E0E6); // Match fog color exactly
-      material.uniforms.groundColor.value.setHex(0xE6F3FF); // Very light atmospheric
+      material.uniforms.groundColor.value.setHex(0xE8F4F8); // Very light fog
+      material.uniforms.fogWallColor.value.setHex(0xD0E8E8); // Dense fog wall
       
-      // Enhanced atmospheric parameters for stronger fog effect extending higher
-      material.uniforms.exponent.value = 0.4; // Even more gradual transition
-      material.uniforms.atmosphericDensity.value = 5.0; // Even stronger atmospheric effect
-      material.uniforms.fogDistance.value = this.fog ? this.fog.far : 100.0; // Match fog distance
-      material.uniforms.fogIntensity.value = 0.9; // Very strong fog at horizon
-      material.uniforms.horizonFogThickness.value = 0.5; // Much thicker fog layer
-      material.uniforms.atmosphericExtend.value = 0.7; // How high the atmospheric effect extends
+      // Enhanced parameters for dense fog wall
+      material.uniforms.exponent.value = 0.3; // Very gradual transition
+      material.uniforms.atmosphericDensity.value = 6.0; // Stronger effect
+      material.uniforms.fogDistance.value = this.fog ? this.fog.far : 80.0; // Match fog distance
+      material.uniforms.fogIntensity.value = 0.98; // Near-complete opacity
+      material.uniforms.fogWallDensity.value = 0.95; // Dense wall opacity
+      material.uniforms.horizonFogThickness.value = 0.6; // Thicker layer
+      material.uniforms.atmosphericExtend.value = 0.8; // High extension
+      material.uniforms.fogWallHeight.value = 0.4; // Dense wall height
+      material.uniforms.blurIntensity.value = 0.9; // Strong blur
+      material.uniforms.layeredFogStrength.value = 0.8; // Layered effect
       
       material.needsUpdate = true;
     }
-    console.log('Skybox updated with enhanced foggy horizon effect extending higher into sky');
+    console.log('Skybox updated with enhanced dense fog wall effect completely obscuring horizon');
   }
   
   // NEW: Enemy spawning methods that GameEngine expects
@@ -420,7 +449,7 @@ export class SceneManager {
   }
   
   public createDefaultWorld(): void {
-    console.log('Creating default world with enhanced atmospheric horizon effect...');
+    console.log('Creating default world with enhanced dense fog wall effect...');
     
     // Create simple ground plane at origin as fallback
     this.createSimpleGround();
@@ -442,9 +471,9 @@ export class SceneManager {
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created at (20, 0, 30) for slope walking testing');
     
-    // Create enhanced atmospheric skybox FIRST
+    // Create enhanced dense fog wall skybox FIRST
     this.createSkybox();
-    console.log('Enhanced atmospheric horizon skybox created');
+    console.log('Enhanced dense fog wall skybox created');
     
     // Create 3D sun
     this.create3DSun();
@@ -456,16 +485,16 @@ export class SceneManager {
       console.log('Dynamic cloud spawning system initialized');
     }
     
-    // Force update skybox to apply atmospheric horizon effects
+    // Force update skybox to apply enhanced foggy horizon effects
     this.updateSkybox();
-    console.log('Skybox updated with atmospheric horizon gradient');
+    console.log('Skybox updated with enhanced foggy horizon gradient');
     
     // Register environment collisions AFTER everything is created
     console.log('🔧 Registering environment collisions after all objects created...');
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized (after all objects created)');
     
-    console.log('Default world creation complete with atmospheric horizon effect. Total scene children:', this.scene.children.length);
+    console.log('Default world creation complete with enhanced dense fog wall effect. Total scene children:', this.scene.children.length);
   }
   
   // NEW: Region management methods
