@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -26,12 +25,9 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with enhanced slope-aware collision detection");
+    console.log("🏃 [MovementSystem] Initialized with enhanced terrain following system");
     
-    // Set up sprint input handler
     this.setupSprintHandler();
-    
-    // Test input manager immediately
     this.testInputManager();
   }
   
@@ -62,7 +58,6 @@ export class MovementSystem {
     const moveDirection = new THREE.Vector3();
     let hasMovementInput = false;
     
-    // Check each movement key individually with logging
     const forwardPressed = this.inputManager.isActionPressed('moveForward');
     const backwardPressed = this.inputManager.isActionPressed('moveBackward');
     const leftPressed = this.inputManager.isActionPressed('moveLeft');
@@ -85,7 +80,7 @@ export class MovementSystem {
       hasMovementInput = true;
     }
     
-    // Log input state every 60 frames (about once per second)
+    // Log input state periodically for debugging
     if (this.frameCount % 60 === 0 && hasMovementInput) {
       console.log("🏃 [MovementSystem] Input state:", {
         forward: forwardPressed,
@@ -140,25 +135,22 @@ export class MovementSystem {
       const movementDistance = speed * deltaTime;
       const targetPosition = currentPosition.clone().add(worldMoveDirection.multiplyScalar(movementDistance));
       
-      // ENHANCED: Use improved physics system for collision and terrain following
-      const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4); // 0.4 is player radius
+      console.log(`🏃 [MovementSystem] Movement attempt: from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
+      
+      // ENHANCED: Use improved physics system for terrain-following movement
+      const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4);
       
       // Calculate actual movement that occurred
       const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
       
       if (actualMovement.length() > 0.001) {
-        // Check if this is slope movement for debugging
-        if (Math.abs(actualMovement.y) > 0.01) {
-          const slopeInfo = this.physicsManager.checkSlopeAngle(safePosition);
-          console.log("🏔️ [MovementSystem] SLOPE MOVEMENT DETECTED:", {
-            from: {x: currentPosition.x.toFixed(2), y: currentPosition.y.toFixed(2), z: currentPosition.z.toFixed(2)},
-            to: {x: safePosition.x.toFixed(2), y: safePosition.y.toFixed(2), z: safePosition.z.toFixed(2)},
-            verticalChange: actualMovement.y.toFixed(3),
-            horizontalDistance: Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z).toFixed(3),
-            slopeAngle: slopeInfo.angle.toFixed(1) + '°',
-            walkable: slopeInfo.walkable
-          });
-        }
+        console.log("🏃 [MovementSystem] TERRAIN FOLLOWING MOVEMENT:", {
+          from: {x: currentPosition.x.toFixed(3), y: currentPosition.y.toFixed(3), z: currentPosition.z.toFixed(3)},
+          to: {x: safePosition.x.toFixed(3), y: safePosition.y.toFixed(3), z: safePosition.z.toFixed(3)},
+          verticalChange: actualMovement.y.toFixed(3),
+          horizontalDistance: Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z).toFixed(3),
+          totalDistance: actualMovement.length().toFixed(3)
+        });
         
         // Convert movement back to direction and scale for player.move()
         const movementDirection = actualMovement.clone().normalize();
@@ -167,18 +159,18 @@ export class MovementSystem {
         // Apply the movement through the player system
         this.player.move(movementDirection.multiplyScalar(movementSpeed / speed), deltaTime);
         
-        // Debug log significant movements
-        if (actualMovement.length() > 0.1) {
-          console.log("🏃 [MovementSystem] Player moved:", {
-            distance: actualMovement.length().toFixed(3),
-            newPosition: safePosition,
-            wasSlope: Math.abs(actualMovement.y) > 0.01
+        // Log terrain following specifically
+        if (Math.abs(actualMovement.y) > 0.01) {
+          console.log("🏔️ [MovementSystem] TERRAIN FOLLOWING CONFIRMED:", {
+            yChange: actualMovement.y.toFixed(3),
+            newHeight: safePosition.y.toFixed(3),
+            followingTerrain: true
           });
         }
       } else {
         // Movement was completely blocked
-        if (this.frameCount % 30 === 0) { // Log every half second when blocked
-          console.log("🏃 [MovementSystem] Movement completely blocked by terrain/collision");
+        if (this.frameCount % 30 === 0) {
+          console.log("🏃 [MovementSystem] Movement blocked by terrain/collision");
         }
       }
     }
@@ -195,7 +187,6 @@ export class MovementSystem {
   
   public checkInTavern(): boolean {
     const playerPosition = this.player.getPosition();
-    // Updated to match exact tavern bounds (-6 to +6 in both X and Z)
     return playerPosition.x >= -6 && playerPosition.x <= 6 && 
            playerPosition.z >= -6 && playerPosition.z <= 6;
   }
