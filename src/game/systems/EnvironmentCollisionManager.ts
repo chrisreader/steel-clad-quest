@@ -5,6 +5,7 @@ export class EnvironmentCollisionManager {
   private scene: THREE.Scene;
   private physicsManager: PhysicsManager;
   private registeredObjects: Set<string> = new Set();
+  private terrainObjects: Set<string> = new Set(); // NEW: Track terrain objects separately
 
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
@@ -24,17 +25,18 @@ export class EnvironmentCollisionManager {
     for (const [id, obj] of existingCollisions) {
       if (obj.type === 'terrain') {
         terrainCountBefore++;
+        this.terrainObjects.add(id); // Track existing terrain objects
         console.log(`🔧 FOUND EXISTING TERRAIN: ${id} (${obj.mesh.name})`);
       }
     }
     console.log(`🔧 TERRAIN COUNT BEFORE CLEAR: ${terrainCountBefore}`);
     
-    // STEP 4 FIX: Only clear environment objects, preserve terrain from StructureGenerator
+    // ENHANCED FIX: Only clear non-terrain environment objects
     console.log('🔧 ⚠️  CLEARING ENVIRONMENT REGISTRATIONS (preserving terrain)...');
     const objectsToRemove: string[] = [];
     this.registeredObjects.forEach(id => {
       const obj = this.physicsManager.getCollisionObjects().get(id);
-      if (obj && obj.type !== 'terrain') {
+      if (obj && obj.type !== 'terrain' && !this.terrainObjects.has(id)) {
         objectsToRemove.push(id);
       }
     });
@@ -70,10 +72,10 @@ export class EnvironmentCollisionManager {
   }
 
   private registerObjectCollision(object: THREE.Object3D): void {
-    // Skip if already registered
-    if (this.registeredObjects.has(object.uuid)) return;
+    // Skip if already registered OR if it's a known terrain object
+    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid)) return;
 
-    // STEP 2 FIX: Enhanced handling for test hills with height data
+    // ENHANCED: Enhanced handling for test hills with height data
     if (object instanceof THREE.Mesh && object.name === 'test_hill' && object.userData.heightData) {
       const heightData = object.userData.heightData;
       const terrainSize = object.userData.terrainSize || 30;
@@ -90,7 +92,8 @@ export class EnvironmentCollisionManager {
       for (const [id, collisionObject] of this.physicsManager.getCollisionObjects()) {
         if (collisionObject.mesh === object && collisionObject.type === 'terrain') {
           alreadyRegistered = true;
-          console.log(`🏔️ Hill already registered with ID: ${id} - SKIPPING`);
+          this.terrainObjects.add(id); // Track this terrain object
+          console.log(`🏔️ Hill already registered with ID: ${id} - TRACKING`);
           break;
         }
       }
@@ -98,6 +101,7 @@ export class EnvironmentCollisionManager {
       if (!alreadyRegistered) {
         const id = this.physicsManager.addTerrainCollision(object, heightData, terrainSize, object.uuid);
         this.registeredObjects.add(id);
+        this.terrainObjects.add(id); // Track new terrain object
         console.log(`🏔️ ✅ ENVIRONMENT MANAGER registered test hill as terrain collision with ID: ${id}`);
       } else {
         console.log(`🏔️ ✅ Test hill already registered by StructureGenerator - preserving existing registration`);
@@ -193,15 +197,24 @@ export class EnvironmentCollisionManager {
   }
 
   public updateCollisions(): void {
-    // Re-register collisions for any new objects
-    this.registerEnvironmentCollisions();
+    // REDUCED FREQUENCY: Only re-register if significant changes detected
+    const currentObjectCount = this.scene.children.length;
+    
+    // Only update every 60 frames or significant scene changes
+    if (Math.random() < 0.016) { // ~1/60 chance per frame
+      this.registerEnvironmentCollisions();
+    }
   }
 
   public dispose(): void {
+    // Clean up environment objects but preserve terrain
     this.registeredObjects.forEach(id => {
-      this.physicsManager.removeCollisionObject(id);
+      if (!this.terrainObjects.has(id)) {
+        this.physicsManager.removeCollisionObject(id);
+      }
     });
     this.registeredObjects.clear();
-    console.log('EnvironmentCollisionManager disposed');
+    this.terrainObjects.clear();
+    console.log('EnvironmentCollisionManager disposed with terrain preservation');
   }
 }

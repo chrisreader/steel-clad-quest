@@ -108,14 +108,14 @@ export class ProjectileSystem {
         
         this.audioManager.play('arrow_hit');
         
-        // FIXED: Handle gold and experience rewards when enemy dies from arrow
+        // Handle gold and experience rewards when enemy dies from arrow
         if (enemy.isDead()) {
           this.spawnGold(enemyPosition, enemy.getGoldReward());
           this.player.addExperience(enemy.getExperienceReward());
           console.log(`🏹 Enemy killed by arrow - spawned ${enemy.getGoldReward()} gold and ${enemy.getExperienceReward()} XP`);
         }
         
-        // Dispose of arrow
+        // Dispose of arrow properly without affecting terrain collision
         arrow.dispose();
         this.arrows = this.arrows.filter(a => a !== arrow);
         
@@ -157,7 +157,6 @@ export class ProjectileSystem {
     return this.gold;
   }
 
-  // NEW: Transfer gold without affecting arrows
   public transferGold(): Gold[] {
     const goldToTransfer = [...this.gold];
     this.gold = []; // Clear only the gold array
