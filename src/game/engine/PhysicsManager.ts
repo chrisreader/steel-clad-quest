@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface CollisionObject {
@@ -58,10 +57,15 @@ export class PhysicsManager {
 
   public getGroundHeight(position: THREE.Vector3, debugContext: string = ''): number {
     const rayHeights = [position.y + 20, position.y + 10, position.y + 5];
-    let groundHeight = 0;
+    let groundHeight = position.y; // DEFAULT: Use current Y instead of 0 for flat ground
     let foundGround = false;
     
     console.log(`🏔️ [PhysicsManager] Getting ground height at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}) - ${debugContext}`);
+    console.log(`🏔️ [PhysicsManager] Available collision objects: ${this.collisionObjects.size}`);
+    
+    // List all environment objects for debugging
+    const environmentObjects = Array.from(this.collisionObjects.values()).filter(obj => obj.type === 'environment');
+    console.log(`🏔️ [PhysicsManager] Environment objects: ${environmentObjects.length}`, environmentObjects.map(obj => obj.id));
     
     for (const rayHeight of rayHeights) {
       const rayOrigin = new THREE.Vector3(position.x, rayHeight, position.z);
@@ -76,6 +80,8 @@ export class PhysicsManager {
         }
       }
       
+      console.log(`🏔️ [PhysicsManager] Raycasting from Y=${rayHeight} with ${meshes.length} environment meshes`);
+      
       const intersections = this.raycaster.intersectObjects(meshes, true);
       
       if (intersections.length > 0) {
@@ -85,12 +91,13 @@ export class PhysicsManager {
           foundGround = true;
           console.log(`🏔️ [PhysicsManager] Ground detected at Y=${hitHeight.toFixed(3)} (ray from Y=${rayHeight})`);
         }
+      } else {
+        console.log(`🏔️ [PhysicsManager] No ground hit from Y=${rayHeight}`);
       }
     }
     
     if (!foundGround) {
-      console.log('🏔️ [PhysicsManager] No ground detected, using default height 0');
-      return 0;
+      console.log(`🏔️ [PhysicsManager] No ground detected, using current Y=${groundHeight.toFixed(3)} instead of 0`);
     }
     
     return groundHeight;
@@ -124,6 +131,8 @@ export class PhysicsManager {
         const angle = Math.acos(Math.abs(normal.dot(new THREE.Vector3(0, 1, 0))));
         const angleInDegrees = THREE.MathUtils.radToDeg(angle);
         
+        console.log(`🏔️ [PhysicsManager] Slope detected: ${angleInDegrees.toFixed(1)}° (walkable: ${angleInDegrees <= this.maxWalkableAngle})`);
+        
         return {
           walkable: angleInDegrees <= this.maxWalkableAngle,
           angle: angleInDegrees,
@@ -132,6 +141,8 @@ export class PhysicsManager {
       }
     }
     
+    // DEFAULT: Assume flat walkable ground if no surface detected
+    console.log('🏔️ [PhysicsManager] No slope detected - assuming flat walkable ground');
     return {
       walkable: true,
       angle: 0,
@@ -144,7 +155,7 @@ export class PhysicsManager {
     return slopeInfo.normal;
   }
 
-  // Enhanced terrain following movement check
+  // Enhanced terrain following movement check with comprehensive debugging
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
     console.log('🏔️ [PhysicsManager] === TERRAIN FOLLOWING MOVEMENT CHECK ===');
     console.log('🏔️ [PhysicsManager] Current pos:', currentPosition.toArray().map(n => n.toFixed(3)));
@@ -157,6 +168,8 @@ export class PhysicsManager {
       targetPosition.z - currentPosition.z
     );
     const horizontalDistance = horizontalMovement.length();
+    
+    console.log(`🏔️ [PhysicsManager] Horizontal movement distance: ${horizontalDistance.toFixed(6)}`);
     
     if (horizontalDistance < 0.001) {
       console.log('🏔️ [PhysicsManager] No horizontal movement, staying in place');
@@ -184,6 +197,8 @@ export class PhysicsManager {
         console.log('🏔️ [PhysicsManager] Steep wall detected - attempting slide');
         return this.handleWallSliding(currentPosition, targetPosition, wallCollision, playerRadius);
       }
+    } else {
+      console.log('🏔️ [PhysicsManager] No wall collision detected - path is clear');
     }
     
     // Step 3: Implement terrain following - get ground height at target position
@@ -193,7 +208,8 @@ export class PhysicsManager {
     console.log('🏔️ [PhysicsManager] Ground heights:', {
       current: currentGroundHeight.toFixed(3),
       target: targetGroundHeight.toFixed(3),
-      heightDiff: (targetGroundHeight - currentGroundHeight).toFixed(3)
+      heightDiff: (targetGroundHeight - currentGroundHeight).toFixed(3),
+      currentPlayerY: currentPosition.y.toFixed(3)
     });
     
     // Step 4: Check slope walkability at target
@@ -228,10 +244,14 @@ export class PhysicsManager {
     }
     
     // Step 6: Final collision check - FIXED: Exclude environment objects, only check dynamic objects
+    console.log('🏔️ [PhysicsManager] Performing final collision check for dynamic objects...');
     const finalCollision = this.checkSphereCollision(finalPosition, playerRadius, ['environment']);
     if (finalCollision) {
-      console.log('🏔️ [PhysicsManager] Final position has collision with dynamic object - staying at current position');
+      console.log('🏔️ [PhysicsManager] Final position has collision with dynamic object:', finalCollision.id);
+      console.log('🏔️ [PhysicsManager] Staying at current position');
       return currentPosition;
+    } else {
+      console.log('🏔️ [PhysicsManager] No dynamic object collision - movement approved');
     }
     
     console.log('🏔️ [PhysicsManager] Final position confirmed:', finalPosition.toArray().map(n => n.toFixed(3)));
@@ -243,18 +263,30 @@ export class PhysicsManager {
   public checkSphereCollision(position: THREE.Vector3, radius: number, excludeTypes: string[] = []): CollisionObject | null {
     const sphere = new THREE.Sphere(position, radius);
     
+    console.log(`🏔️ [PhysicsManager] Sphere collision check at (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)}) radius=${radius}`);
+    console.log(`🏔️ [PhysicsManager] Excluding types: [${excludeTypes.join(', ')}]`);
+    
+    let checkedObjects = 0;
+    let excludedObjects = 0;
+    
     for (const [id, collisionObject] of this.collisionObjects) {
-      if (excludeTypes.includes(collisionObject.type)) continue;
+      if (excludeTypes.includes(collisionObject.type)) {
+        excludedObjects++;
+        continue;
+      }
+      
+      checkedObjects++;
       
       // Update bounding box in case object moved
       collisionObject.box.setFromObject(collisionObject.mesh);
       
       if (collisionObject.box.intersectsSphere(sphere)) {
-        console.log('🏔️ [PhysicsManager] Sphere collision detected with:', collisionObject.id);
+        console.log('🏔️ [PhysicsManager] Sphere collision detected with:', collisionObject.id, `(${collisionObject.type})`);
         return collisionObject;
       }
     }
     
+    console.log(`🏔️ [PhysicsManager] Sphere collision check complete: checked ${checkedObjects}, excluded ${excludedObjects}, no collisions`);
     return null;
   }
 
