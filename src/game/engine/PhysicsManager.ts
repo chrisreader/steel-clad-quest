@@ -221,7 +221,7 @@ export class PhysicsManager {
     return slopeAngle;
   }
 
-  // ENHANCED: Smooth surface-aware player movement with height smoothing
+  // ENHANCED: Player movement with environment collision detection
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
     // Get smooth terrain data at target position
     const terrainData = this.getTerrainDataAtPosition(targetPosition);
@@ -237,31 +237,84 @@ export class PhysicsManager {
     const clampedHeightDifference = THREE.MathUtils.clamp(heightDifference, -maxVerticalChange, maxVerticalChange);
     
     // Apply smooth height following
-    const smoothTerrainHeight = currentTerrainHeight + clampedHeightDifference;
-    const surfacePosition = targetPosition.clone();
+    let smoothTerrainHeight = currentTerrainHeight + clampedHeightDifference;
+    let surfacePosition = targetPosition.clone();
     surfacePosition.y = smoothTerrainHeight + playerRadius;
     
     console.log(`🏔️ SMOOTH movement: current=${currentTerrainHeight.toFixed(2)}, target=${targetTerrainHeight.toFixed(2)}, smooth=${smoothTerrainHeight.toFixed(2)}`);
     
-    // Check for standard environment collisions
-    const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
-    const distance = direction.length();
+    // NEW: Check for environment object collisions (trees, walls, etc.)
+    const movementDirection = new THREE.Vector3().subVectors(targetPosition, currentPosition);
+    const movementDistance = movementDirection.length();
     
-    if (distance === 0) return surfacePosition;
-    
-    direction.normalize();
-    
-    const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile', 'enemy']);
-    
-    if (collision && collision.object.type === 'environment') {
-      const safeDistance = Math.max(0, collision.distance - playerRadius - 0.1);
-      const safePosition = currentPosition.clone().add(direction.multiplyScalar(safeDistance));
-      safePosition.y = smoothTerrainHeight + playerRadius;
+    if (movementDistance > 0) {
+      movementDirection.normalize();
       
-      return safePosition;
+      // Check for collision with environment objects
+      const environmentCollision = this.checkEnvironmentCollision(currentPosition, targetPosition, playerRadius);
+      
+      if (environmentCollision) {
+        console.log(`🚧 Environment collision detected with ${environmentCollision.object.type} object`);
+        
+        // Calculate safe position before collision
+        const collisionDirection = new THREE.Vector3().subVectors(environmentCollision.point, currentPosition);
+        const safeDistance = Math.max(0, collisionDirection.length() - playerRadius - 0.2); // Extra buffer
+        
+        if (safeDistance > 0.1) {
+          // Move as far as possible before hitting the object
+          const safePosition = currentPosition.clone().add(movementDirection.multiplyScalar(safeDistance));
+          const safeTerrainData = this.getTerrainDataAtPosition(safePosition);
+          safePosition.y = safeTerrainData.height + playerRadius;
+          console.log(`🚧 Adjusted to safe position: (${safePosition.x.toFixed(2)}, ${safePosition.y.toFixed(2)}, ${safePosition.z.toFixed(2)})`);
+          return safePosition;
+        } else {
+          // Too close to object, don't move
+          console.log(`🚧 Too close to object, staying at current position`);
+          return currentPosition;
+        }
+      }
     }
     
     return surfacePosition;
+  }
+
+  // NEW: Check for collision with environment objects
+  private checkEnvironmentCollision(
+    currentPosition: THREE.Vector3, 
+    targetPosition: THREE.Vector3, 
+    playerRadius: number
+  ): { object: CollisionObject; point: THREE.Vector3 } | null {
+    
+    // Create player bounding sphere at target position
+    const playerSphere = new THREE.Sphere(targetPosition, playerRadius);
+    
+    // Check collision with all environment objects
+    for (const [id, collisionObject] of this.collisionObjects) {
+      if (collisionObject.type === 'environment' || collisionObject.type === 'staircase') {
+        // Update the object's bounding box to current world position
+        collisionObject.box.setFromObject(collisionObject.mesh);
+        
+        // Expand the bounding box slightly to account for player radius
+        const expandedBox = collisionObject.box.clone();
+        expandedBox.expandByScalar(playerRadius * 0.8); // Slightly smaller to allow closer approach
+        
+        // Check if player sphere intersects with expanded object box
+        if (expandedBox.intersectsSphere(playerSphere)) {
+          // Calculate closest point on the box to the player
+          const closestPoint = new THREE.Vector3();
+          expandedBox.clampPoint(targetPosition, closestPoint);
+          
+          console.log(`🚧 Player collision with ${collisionObject.type} object (${collisionObject.material}) at distance ${targetPosition.distanceTo(closestPoint).toFixed(2)}`);
+          
+          return {
+            object: collisionObject,
+            point: closestPoint
+          };
+        }
+      }
+    }
+    
+    return null;
   }
 
   // CRITICAL FIX: Use dedicated arrow raycaster for ALL collision detection to prevent corruption
