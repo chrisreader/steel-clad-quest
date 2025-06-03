@@ -21,6 +21,135 @@ export class StructureGenerator {
     this.physicsManager = physicsManager;
   }
   
+  // NEW: Generate a tavern at the specified coordinates
+  public generateTavern(x: number, z: number): void {
+    console.log(`🏚️ [StructureGenerator] Generating tavern at (${x}, ${z})`);
+    
+    const tavern = this.createTavern(new THREE.Vector3(x, 0, z));
+    
+    // Add to structures tracking
+    const structures: Structure[] = [];
+    structures.push({
+      type: 'tavern',
+      position: new THREE.Vector3(x, 0, z),
+      rotation: 0,
+      model: tavern
+    });
+    
+    // Store in structures map
+    this.structures.set(`tavern_${x}_${z}`, structures);
+    
+    console.log(`🏚️ [StructureGenerator] Tavern created at (${x}, ${z})`);
+  }
+  
+  // Create a tavern building
+  private createTavern(position: THREE.Vector3): THREE.Object3D {
+    const tavern = new THREE.Group();
+    
+    // Create base/foundation
+    const baseGeometry = new THREE.BoxGeometry(20, 1, 15);
+    const baseMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    base.position.y = 0.5;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    tavern.add(base);
+    this.physicsManager.addCollisionObject(base, 'environment', 'wood', `tavern_base_${Date.now()}`);
+    
+    // Create walls
+    const wallHeight = 6;
+    const wallThickness = 0.5;
+    const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x8B7355 });
+    
+    // Front wall (with door opening)
+    const frontWallLeft = new THREE.Mesh(
+      new THREE.BoxGeometry(6, wallHeight, wallThickness),
+      wallMaterial
+    );
+    frontWallLeft.position.set(-7, wallHeight/2 + 1, 7.25);
+    frontWallLeft.castShadow = true;
+    tavern.add(frontWallLeft);
+    this.physicsManager.addCollisionObject(frontWallLeft, 'environment', 'wood', `tavern_wall_front_left_${Date.now()}`);
+    
+    const frontWallRight = new THREE.Mesh(
+      new THREE.BoxGeometry(6, wallHeight, wallThickness),
+      wallMaterial
+    );
+    frontWallRight.position.set(7, wallHeight/2 + 1, 7.25);
+    frontWallRight.castShadow = true;
+    tavern.add(frontWallRight);
+    this.physicsManager.addCollisionObject(frontWallRight, 'environment', 'wood', `tavern_wall_front_right_${Date.now()}`);
+    
+    // Back wall
+    const backWall = new THREE.Mesh(
+      new THREE.BoxGeometry(20, wallHeight, wallThickness),
+      wallMaterial
+    );
+    backWall.position.set(0, wallHeight/2 + 1, -7.25);
+    backWall.castShadow = true;
+    tavern.add(backWall);
+    this.physicsManager.addCollisionObject(backWall, 'environment', 'wood', `tavern_wall_back_${Date.now()}`);
+    
+    // Side walls
+    const leftWall = new THREE.Mesh(
+      new THREE.BoxGeometry(wallThickness, wallHeight, 15),
+      wallMaterial
+    );
+    leftWall.position.set(-9.75, wallHeight/2 + 1, 0);
+    leftWall.castShadow = true;
+    tavern.add(leftWall);
+    this.physicsManager.addCollisionObject(leftWall, 'environment', 'wood', `tavern_wall_left_${Date.now()}`);
+    
+    const rightWall = new THREE.Mesh(
+      new THREE.BoxGeometry(wallThickness, wallHeight, 15),
+      wallMaterial
+    );
+    rightWall.position.set(9.75, wallHeight/2 + 1, 0);
+    rightWall.castShadow = true;
+    tavern.add(rightWall);
+    this.physicsManager.addCollisionObject(rightWall, 'environment', 'wood', `tavern_wall_right_${Date.now()}`);
+    
+    // Create roof
+    const roofGeometry = new THREE.ConeGeometry(15, 4, 4);
+    const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.set(0, wallHeight + 3, 0);
+    roof.rotation.y = Math.PI / 4; // Rotate to make it diamond-shaped
+    roof.castShadow = true;
+    tavern.add(roof);
+    
+    // Add some windows
+    this.createTavernWindows(tavern);
+    
+    // Position the tavern
+    tavern.position.copy(position);
+    
+    // Add to scene
+    this.scene.add(tavern);
+    
+    return tavern;
+  }
+  
+  private createTavernWindows(tavern: THREE.Group): void {
+    const windowMaterial = new THREE.MeshBasicMaterial({ color: 0x87CEEB });
+    
+    // Left side windows
+    const leftWindow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 2, 3),
+      windowMaterial
+    );
+    leftWindow.position.set(-9.8, 3, 2);
+    tavern.add(leftWindow);
+    
+    // Right side windows
+    const rightWindow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 2, 3),
+      windowMaterial
+    );
+    rightWindow.position.set(9.8, 3, 2);
+    tavern.add(rightWindow);
+  }
+  
   // Place structures in regions based on ring definitions
   public generateStructuresForRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);

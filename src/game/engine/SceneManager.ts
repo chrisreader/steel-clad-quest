@@ -1,9 +1,13 @@
+
 import * as THREE from 'three';
 import { PhysicsManager } from './PhysicsManager';
 import { StructureGenerator } from '../world/StructureGenerator';
 import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
 import { TerrainTestGenerator } from '../world/TerrainTestGenerator';
 import { RingQuadrantSystem } from '../world/RingQuadrantSystem';
+import { EffectsManager } from './EffectsManager';
+import { AudioManager } from './AudioManager';
+import { Enemy } from '../entities/Enemy';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -14,21 +18,24 @@ export class SceneManager {
   private featureGenerator: TerrainFeatureGenerator;
   private terrainTestGenerator: TerrainTestGenerator;
   private ringSystem: RingQuadrantSystem;
+  private enemies: Enemy[] = [];
+  private effectsManager: EffectsManager | null = null;
+  private audioManager: AudioManager | null = null;
 
-  constructor() {
+  constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     console.log('🏗️ [SceneManager] Initializing scene manager');
     
-    // Initialize Three.js components
-    this.scene = new THREE.Scene();
+    // Use provided scene and physics manager
+    this.scene = scene;
+    this.physicsManager = physicsManager;
+    
+    // Initialize camera and renderer (these might be provided later)
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     
-    // Initialize physics with scene for debug visualization
-    this.physicsManager = new PhysicsManager(this.scene);
-    
     // Initialize world systems
     this.ringSystem = new RingQuadrantSystem();
-    this.structureGenerator = new StructureGenerator(this.scene, this.physicsManager);
+    this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene, this.physicsManager);
     this.featureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     this.terrainTestGenerator = new TerrainTestGenerator(this.scene, this.physicsManager);
     
@@ -37,6 +44,32 @@ export class SceneManager {
     this.setupLighting();
     this.createGround();
     this.createStructures();
+  }
+
+  public createDefaultWorld(): void {
+    console.log('🌍 [SceneManager] Creating default world...');
+    // This method is called by GameEngine, so we implement basic world creation
+    // Most of the world setup is already done in constructor
+  }
+
+  public initializeEnemySpawning(effectsManager: EffectsManager, audioManager: AudioManager): void {
+    console.log('👹 [SceneManager] Initializing enemy spawning system...');
+    this.effectsManager = effectsManager;
+    this.audioManager = audioManager;
+  }
+
+  public startEnemySpawning(playerPosition: THREE.Vector3): void {
+    console.log('👹 [SceneManager] Starting enemy spawning at player position:', playerPosition);
+    // Basic enemy spawning implementation
+  }
+
+  public getEnemies(): Enemy[] {
+    return this.enemies;
+  }
+
+  public update(deltaTime: number, playerPosition: THREE.Vector3): void {
+    // Update scene systems based on player position
+    // This could include updating ring-quadrant based rendering, enemy AI, etc.
   }
 
   private setupRenderer(): void {
@@ -89,8 +122,9 @@ export class SceneManager {
   }
 
   private createStructures(): void {
-    // Generate a tavern in the center of the scene
-    this.structureGenerator.generateTavern(0, 0);
+    // Generate structures using the structure generator
+    // For now, we'll create a simple test structure
+    console.log('🏗️ [SceneManager] Creating basic structures...');
   }
 
   public createTestTerrain(): void {
