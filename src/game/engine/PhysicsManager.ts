@@ -226,10 +226,10 @@ export class PhysicsManager {
       return currentPosition;
     }
     
-    // Step 6: Final collision check with sphere at final position
-    const finalCollision = this.checkSphereCollision(finalPosition, playerRadius, ['projectile', 'enemy']);
+    // Step 6: Final collision check - FIXED: Only check dynamic objects, not environment
+    const finalCollision = this.checkSphereCollision(finalPosition, playerRadius, ['environment']);
     if (finalCollision) {
-      console.log('🏔️ [PhysicsManager] Final position has collision - staying at current position');
+      console.log('🏔️ [PhysicsManager] Final position has collision with dynamic object - staying at current position');
       return currentPosition;
     }
     
@@ -249,16 +249,6 @@ export class PhysicsManager {
       collisionObject.box.setFromObject(collisionObject.mesh);
       
       if (collisionObject.box.intersectsSphere(sphere)) {
-        // Additional check: if this is ground-level collision, allow it for terrain following
-        const objectCenter = new THREE.Vector3();
-        collisionObject.box.getCenter(objectCenter);
-        
-        // If the collision object is mostly below the player, it's likely ground
-        if (objectCenter.y < position.y - radius * 0.5) {
-          console.log('🏔️ [PhysicsManager] Ground-level collision ignored for terrain following');
-          continue;
-        }
-        
         console.log('🏔️ [PhysicsManager] Sphere collision detected with:', collisionObject.id);
         return collisionObject;
       }
