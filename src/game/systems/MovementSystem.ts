@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -12,7 +11,7 @@ export class MovementSystem {
   private physicsManager: PhysicsManager;
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
-  private smoothingFactor: number = 0.1; // For smooth terrain following
+  private smoothingFactor: number = 0.05; // Reduced for faster height adjustments on stairs
   
   constructor(
     scene: THREE.Scene,
@@ -27,7 +26,7 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with enhanced terrain collision detection");
+    console.log("🏃 [MovementSystem] Initialized with enhanced terrain collision detection and staircase navigation");
     
     // Set up sprint input handler
     this.setupSprintHandler();
@@ -144,8 +143,15 @@ export class MovementSystem {
       // Enhanced collision checking with terrain height consideration
       let safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4);
       
-      // Check for staircase navigation
+      // Check for staircase navigation BEFORE terrain height adjustment
       safePosition = this.physicsManager.checkStaircaseNavigation(currentPosition, safePosition, 0.4);
+      
+      // Check slope angle at safe position
+      const slopeAngle = this.physicsManager.getSlopeAngleAtPosition(safePosition);
+      if (slopeAngle > 45) {
+        console.log(`🏃 [MovementSystem] Movement blocked by steep slope: ${slopeAngle.toFixed(1)}°`);
+        return; // Don't move if slope is too steep
+      }
       
       // Get terrain height at the safe position
       const terrainHeight = this.physicsManager.getTerrainHeightAtPosition(safePosition);
@@ -173,17 +179,18 @@ export class MovementSystem {
         const normalizedMovement = actualMovement.clone().normalize();
         const movementScale = actualMovement.length() / (5.0 * deltaTime);
         
-        console.log("🏃 [MovementSystem] Moving with enhanced terrain collision:", {
+        console.log("🏃 [MovementSystem] Moving with enhanced terrain collision and staircase navigation:", {
           from: currentPosition,
           to: safePosition,
           movement: actualMovement,
           terrainHeight: terrainHeight,
+          slopeAngle: slopeAngle.toFixed(1) + '°',
           distance: actualMovement.length()
         });
         
         this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
       } else {
-        console.log("🏃 [MovementSystem] Movement blocked by collision or terrain");
+        console.log("🏃 [MovementSystem] Movement blocked by collision, terrain, or steep slope");
       }
     }
   }

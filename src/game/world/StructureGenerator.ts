@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 
@@ -19,7 +18,7 @@ export class StructureGenerator {
     this.scene = scene;
   }
   
-  // New method: Create staircase structure
+  // Enhanced staircase creation with proper step naming and metadata
   public createStaircase(x: number, y: number, z: number, steps: number = 5, stepWidth: number = 2, stepHeight: number = 0.5, stepDepth: number = 1): THREE.Group {
     const staircase = new THREE.Group();
     
@@ -37,13 +36,23 @@ export class StructureGenerator {
       step.castShadow = true;
       step.receiveShadow = true;
       
+      // Enhanced step naming and metadata for collision detection
+      step.name = 'staircase_step';
+      step.userData = { 
+        stepIndex: i,
+        stepHeight: stepHeight,
+        stepDepth: stepDepth,
+        stepWidth: stepWidth
+      };
+      
       staircase.add(step);
     }
     
     staircase.position.set(x, y, z);
     staircase.name = 'staircase';
     
-    console.log(`Created staircase with ${steps} steps at position (${x}, ${y}, ${z})`);
+    console.log(`🪜 Created staircase with ${steps} steps at position (${x}, ${y}, ${z})`);
+    console.log(`🪜 Each step: width=${stepWidth}, height=${stepHeight}, depth=${stepDepth}`);
     return staircase;
   }
   
@@ -76,7 +85,7 @@ export class StructureGenerator {
       });
       
       this.scene.add(staircase);
-      console.log(`Placed staircase at (50, 0, 50) in Ring 0, Quadrant 0`);
+      console.log(`🪜 Placed enhanced staircase at (50, 0, 50) in Ring 0, Quadrant 0`);
     }
     
     // For ring 1, quadrant 2 (SW), place a ruined castle
