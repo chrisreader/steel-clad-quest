@@ -26,10 +26,16 @@ export class PhysicsManager {
   private collisionObjects: Map<string, CollisionObject> = new Map();
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private maxWalkableAngle = 45; // degrees
-  private maxStepHeight = 0.5; // Increased from 0.3 for more lenient movement
+  private maxStepHeight = 0.8; // Increased for better movement
+  private scene: THREE.Scene | null = null;
   
   constructor() {
     console.log('🏔️ Enhanced Physics Manager initialized with terrain following system');
+  }
+
+  public setScene(scene: THREE.Scene): void {
+    this.scene = scene;
+    console.log('🏔️ [PhysicsManager] Scene reference set for direct terrain detection');
   }
 
   public addCollisionObject(object: THREE.Object3D, type: 'environment' | 'player' | 'projectile' | 'enemy', material: 'wood' | 'stone' | 'metal' | 'fabric' = 'stone', id?: string): string {
@@ -56,8 +62,9 @@ export class PhysicsManager {
   }
 
   public getGroundHeight(position: THREE.Vector3, debugContext: string = ''): number {
+    // Enhanced ground height detection that includes both collision objects AND direct scene geometry
     const rayHeights = [position.y + 20, position.y + 10, position.y + 5];
-    let groundHeight = position.y; // DEFAULT: Use current Y instead of 0 for flat ground
+    let groundHeight = 0; // Default to world ground level
     let foundGround = false;
     
     for (const rayHeight of rayHeights) {
@@ -66,6 +73,7 @@ export class PhysicsManager {
       
       this.raycaster.set(rayOrigin, rayDirection);
       
+      // First check collision objects (registered environment objects)
       const meshes: THREE.Object3D[] = [];
       for (const [id, collisionObject] of this.collisionObjects) {
         if (collisionObject.type === 'environment') {
@@ -73,15 +81,32 @@ export class PhysicsManager {
         }
       }
       
-      const intersections = this.raycaster.intersectObjects(meshes, true);
+      let intersections = this.raycaster.intersectObjects(meshes, true);
+      
+      // If no collision object hit, check direct scene geometry for terrain
+      if (intersections.length === 0 && this.scene) {
+        const allMeshes: THREE.Mesh[] = [];
+        this.scene.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.geometry && child.material) {
+            // Include terrain meshes, ground planes, and other solid geometry
+            allMeshes.push(child);
+          }
+        });
+        intersections = this.raycaster.intersectObjects(allMeshes, false);
+      }
       
       if (intersections.length > 0) {
         const hitHeight = intersections[0].point.y;
         if (!foundGround || hitHeight > groundHeight) {
           groundHeight = hitHeight;
           foundGround = true;
+          console.log(`🏔️ [PhysicsManager] Ground detected at height ${hitHeight.toFixed(3)} for ${debugContext}`);
         }
       }
+    }
+    
+    if (!foundGround) {
+      console.log(`🏔️ [PhysicsManager] No ground detected for ${debugContext}, using default height 0`);
     }
     
     return groundHeight;
@@ -96,6 +121,7 @@ export class PhysicsManager {
       
       this.raycaster.set(rayOrigin, rayDirection);
       
+      // Check both collision objects and direct scene geometry
       const meshes: THREE.Object3D[] = [];
       for (const [id, collisionObject] of this.collisionObjects) {
         if (collisionObject.type === 'environment') {
@@ -103,7 +129,18 @@ export class PhysicsManager {
         }
       }
       
-      const intersections = this.raycaster.intersectObjects(meshes, true);
+      let intersections = this.raycaster.intersectObjects(meshes, true);
+      
+      // If no collision object hit, check direct scene geometry
+      if (intersections.length === 0 && this.scene) {
+        const allMeshes: THREE.Mesh[] = [];
+        this.scene.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.geometry && child.material) {
+            allMeshes.push(child);
+          }
+        });
+        intersections = this.raycaster.intersectObjects(allMeshes, false);
+      }
       
       if (intersections.length > 0 && intersections[0].face) {
         const intersection = intersections[0];
@@ -136,9 +173,8 @@ export class PhysicsManager {
     return slopeInfo.normal;
   }
 
-  // Simplified terrain following movement check that allows free movement
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
-    console.log('🏔️ [PhysicsManager] === SIMPLIFIED MOVEMENT CHECK ===');
+    console.log('🏔️ [PhysicsManager] === TERRAIN FOLLOWING MOVEMENT CHECK ===');
     console.log('🏔️ [PhysicsManager] Current pos:', currentPosition.toArray().map(n => n.toFixed(3)));
     console.log('🏔️ [PhysicsManager] Target pos:', targetPosition.toArray().map(n => n.toFixed(3)));
     
@@ -167,44 +203,39 @@ export class PhysicsManager {
     );
     
     if (wallCollision && !wallCollision.slopeInfo.walkable) {
-      console.log('🏔️ [PhysicsManager] Steep wall detected - blocking movement');
+      console.log('🏔️ [PhysicsManager] Steep wall detected - handling wall sliding');
       return this.handleWallSliding(currentPosition, targetPosition, wallCollision, playerRadius);
     }
     
-    // Step 3: Try to get ground height at target position
+    // Step 3: Get ground height at target position with proper terrain detection
     const targetGroundHeight = this.getGroundHeight(targetPosition, 'target position');
+    const currentGroundHeight = this.getGroundHeight(currentPosition, 'current position');
     const heightDifference = targetGroundHeight - currentPosition.y;
     
     console.log('🏔️ [PhysicsManager] Ground analysis:', {
       currentY: currentPosition.y.toFixed(3),
+      currentGroundY: currentGroundHeight.toFixed(3),
       targetGroundY: targetGroundHeight.toFixed(3),
       heightDiff: heightDifference.toFixed(3)
     });
     
-    // Step 4: SIMPLIFIED LOGIC - Allow movement with minimal terrain following
+    // Step 4: PROPER TERRAIN FOLLOWING LOGIC
     let finalPosition = targetPosition.clone();
     
-    // Only apply terrain following if we detect significant height differences
-    if (Math.abs(heightDifference) > 0.1) {
-      // Check if the step is too high
-      if (heightDifference > this.maxStepHeight) {
-        console.log('🏔️ [PhysicsManager] Step too high - maintaining current height');
-        finalPosition.y = currentPosition.y; // Keep current height, allow horizontal movement
-      } else if (heightDifference < -2.0) {
-        console.log('🏔️ [PhysicsManager] Drop too steep - blocking movement');
-        return currentPosition;
-      } else {
-        // Normal terrain following
-        finalPosition.y = targetGroundHeight + 0.05;
-        console.log('🏔️ [PhysicsManager] Following terrain to Y:', finalPosition.y.toFixed(3));
-      }
+    // Check if the step is too high (real terrain blocking)
+    if (heightDifference > this.maxStepHeight) {
+      console.log('🏔️ [PhysicsManager] Step too high - blocking movement');
+      return currentPosition;
+    } else if (heightDifference < -3.0) {
+      console.log('🏔️ [PhysicsManager] Drop too steep - blocking movement');
+      return currentPosition;
     } else {
-      // Small height difference or flat ground - maintain current height
-      finalPosition.y = currentPosition.y;
-      console.log('🏔️ [PhysicsManager] Flat ground movement - maintaining Y:', finalPosition.y.toFixed(3));
+      // Follow terrain height with small offset to avoid ground clipping
+      finalPosition.y = targetGroundHeight + 0.1;
+      console.log('🏔️ [PhysicsManager] Following terrain to Y:', finalPosition.y.toFixed(3));
     }
     
-    // Step 5: Final collision check for dynamic objects only
+    // Step 5: Final collision check for dynamic objects
     const finalCollision = this.checkSphereCollision(finalPosition, playerRadius, ['environment']);
     if (finalCollision) {
       console.log('🏔️ [PhysicsManager] Dynamic object collision - staying at current position');
@@ -385,6 +416,7 @@ export class PhysicsManager {
 
   public dispose(): void {
     this.collisionObjects.clear();
+    this.scene = null;
     console.log('PhysicsManager disposed');
   }
 }
