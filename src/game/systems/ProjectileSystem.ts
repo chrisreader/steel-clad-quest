@@ -16,6 +16,7 @@ export class ProjectileSystem {
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   private physicsManager: PhysicsManager;
+  private environmentCollisionManager: any = null; // Reference to environment collision manager
 
   constructor(
     scene: THREE.Scene,
@@ -29,6 +30,12 @@ export class ProjectileSystem {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     this.physicsManager = physicsManager;
+  }
+
+  // NEW: Set reference to environment collision manager
+  public setEnvironmentCollisionManager(manager: any): void {
+    this.environmentCollisionManager = manager;
+    console.log('🏹 ProjectileSystem connected to EnvironmentCollisionManager');
   }
 
   public shootArrow(
@@ -50,6 +57,11 @@ export class ProjectileSystem {
         this.audioManager,
         this.physicsManager
       );
+      
+      // NEW: Set environment collision manager reference for arrow
+      if (this.environmentCollisionManager) {
+        arrow.setEnvironmentCollisionManager(this.environmentCollisionManager);
+      }
       
       this.arrows.push(arrow);
       console.log(`🏹 Arrow fired - Total arrows: ${this.arrows.length}`);
@@ -159,7 +171,7 @@ export class ProjectileSystem {
 
   public transferGold(): Gold[] {
     const goldToTransfer = [...this.gold];
-    this.gold = []; // Clear only the gold array
+    this.gold = [];
     console.log(`💰 [ProjectileSystem] Transferred ${goldToTransfer.length} gold drops to CombatSystem`);
     return goldToTransfer;
   }

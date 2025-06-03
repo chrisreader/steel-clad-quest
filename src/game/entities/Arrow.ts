@@ -30,10 +30,11 @@ export class Arrow {
   private hasMovedSignificantly: boolean = false;
   private initialPosition: THREE.Vector3;
 
-  // Wind effect properties
   private windOffset: number = 0;
   private windSpeed: number = 2.0;
   private windStrength: number = 0.5;
+
+  private environmentCollisionManager: any = null;
 
   constructor(
     scene: THREE.Scene,
@@ -73,12 +74,16 @@ export class Arrow {
     this.audioManager.play('arrow_shoot');
   }
 
+  public setEnvironmentCollisionManager(manager: any): void {
+    this.environmentCollisionManager = manager;
+    console.log('🏹 Arrow connected to EnvironmentCollisionManager');
+  }
+
   private createArrowMesh(): THREE.Group {
     const arrowGroup = new THREE.Group();
     
     const scale = 0.8;
     
-    // Arrow shaft - aligned along Z-axis
     const shaftGeometry = new THREE.CylinderGeometry(0.02 * scale, 0.02 * scale, 1.0 * scale);
     const shaftMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x8B4513,
@@ -89,7 +94,6 @@ export class Arrow {
     shaft.rotation.x = Math.PI / 2;
     arrowGroup.add(shaft);
     
-    // Arrow head - positioned along Z-axis and flipped to point forward
     const headGeometry = new THREE.ConeGeometry(0.08 * scale, 0.2 * scale);
     const headMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xC0C0C0,
@@ -98,10 +102,9 @@ export class Arrow {
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.z = 0.5 * scale;
-    head.rotation.x = Math.PI / 2; // Flipped to point forward
+    head.rotation.x = Math.PI / 2;
     arrowGroup.add(head);
     
-    // Fletching
     const fletchingGeometry = new THREE.PlaneGeometry(0.15 * scale, 0.2 * scale);
     const fletchingMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x654321,
@@ -117,7 +120,6 @@ export class Arrow {
       arrowGroup.add(fletching);
     }
     
-    // Nock
     const nockGeometry = new THREE.SphereGeometry(0.03 * scale, 6, 6);
     const nockMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x8B4513,
@@ -132,7 +134,6 @@ export class Arrow {
   }
 
   private createWindTrailEffect(): void {
-    // Initialize trail positions and opacities arrays
     this.trailPositions = [];
     this.trailOpacities = [];
     
@@ -141,14 +142,11 @@ export class Arrow {
       this.trailOpacities.push(0);
     }
     
-    // Create line geometry for wind trail
     const geometry = new THREE.BufferGeometry().setFromPoints(this.trailPositions);
     
-    // Add opacity attribute for varying transparency
     const opacities = new Float32Array(this.maxTrailLength);
     geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
     
-    // Use shader material for wind-like effect
     const material = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 }
@@ -163,7 +161,6 @@ export class Arrow {
           vOpacity = opacity;
           vPosition = position;
           
-          // Add subtle wind displacement
           vec3 pos = position;
           pos.x += sin(time * 2.0 + position.z * 0.5) * 0.15;
           pos.y += cos(time * 1.5 + position.x * 0.3) * 0.08;
@@ -178,11 +175,9 @@ export class Arrow {
         uniform float time;
         
         void main() {
-          // Create flowing wind-like pattern
           float windPattern = sin(time * 3.0 + vPosition.z * 2.0) * 0.5 + 0.5;
           float finalOpacity = vOpacity * windPattern * 1.0;
           
-          // Brighter blue-white color for better visibility
           vec3 windColor = mix(vec3(0.8, 0.95, 1.0), vec3(1.0, 1.0, 1.0), windPattern);
           
           gl_FragColor = vec4(windColor, finalOpacity);
@@ -224,14 +219,12 @@ export class Arrow {
     this.flightTime += safeDeltatime;
     this.windOffset += this.windSpeed * safeDeltatime;
     
-    // Apply physics
     this.velocity.y += this.gravity * safeDeltatime;
     
-    // Calculate next position
     const deltaPosition = this.velocity.clone().multiplyScalar(safeDeltatime);
     const nextPosition = this.position.clone().add(deltaPosition);
     
-    // ENHANCED: Check for both environment AND terrain collision
+    // ENHANCED: Check for both environment AND terrain collision with protection
     const collision = this.physicsManager.checkRayCollision(
       this.position,
       this.velocity.clone().normalize(),
@@ -240,16 +233,32 @@ export class Arrow {
     );
     
     if (collision) {
+      // NEW: Lock terrain collisions during arrow impact
+      if (this.environmentCollisionManager && collision.object.type === 'terrain') {
+        console.log('🏹 🔒 Locking terrain collisions during arrow terrain impact');
+        this.environmentCollisionManager.lockTerrainCollisions();
+        this.environmentCollisionManager.setArrowImpactActive(true);
+      }
+      
       // Arrow hit an object (environment or terrain)
       if (collision.object.type === 'terrain') {
         this.hitTerrainObject(collision);
       } else {
         this.hitEnvironmentObject(collision);
       }
+      
+      // NEW: Unlock terrain collisions after a delay
+      if (this.environmentCollisionManager && collision.object.type === 'terrain') {
+        setTimeout(() => {
+          console.log('🏹 🔓 Unlocking terrain collisions after arrow impact delay');
+          this.environmentCollisionManager.setArrowImpactActive(false);
+          this.environmentCollisionManager.unlockTerrainCollisions();
+        }, 1000); // 1 second delay to ensure arrow is properly stuck
+      }
+      
       return true;
     }
     
-    // Update position
     this.position.copy(nextPosition);
     
     const distanceFromStart = this.position.distanceTo(this.initialPosition);
@@ -257,20 +266,16 @@ export class Arrow {
       this.hasMovedSignificantly = true;
     }
     
-    // Update mesh position
     this.mesh.position.copy(this.position);
     
-    // Update rotation
     this.updateRotationWithQuaternion();
     
-    // Update wind trail with bounds checking
     if (this.trail && distanceFromStart < 100) {
       this.updateWindTrail();
     } else if (this.trail && distanceFromStart >= 100) {
       this.removeTrail();
     }
     
-    // Ground collision
     const groundPlaneY = 0.0;
     const canHitGround = this.flightTime >= this.minFlightTime && this.hasMovedSignificantly;
     
@@ -279,7 +284,6 @@ export class Arrow {
       return true;
     }
     
-    // Max flight time
     if (this.flightTime > this.maxFlightTime) {
       this.dispose();
       return false;
@@ -288,23 +292,20 @@ export class Arrow {
     return true;
   }
 
-  // NEW: Handle terrain-specific collision (hills, etc.)
   private hitTerrainObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
+    console.log('🏹 ⛰️ Arrow hit terrain - applying terrain protection');
+    
     this.isStuck = true;
     this.stuckInObject = collision.object.id;
     this.velocity.set(0, 0, 0);
     
-    // Position arrow at terrain collision point
     this.position.copy(collision.point);
     this.mesh.position.copy(this.position);
     
-    // Remove trail when stuck
     this.removeTrail();
     
-    // Play terrain-specific impact sound
     this.audioManager.play('arrow_impact');
     
-    // Create terrain-specific impact effect
     this.createTerrainImpactEffect(collision.point);
     
     console.log(`🏹 Arrow stuck in terrain at:`, collision.point);
@@ -315,31 +316,25 @@ export class Arrow {
     this.stuckInObject = collision.object.id;
     this.velocity.set(0, 0, 0);
     
-    // Position arrow at collision point
     this.position.copy(collision.point);
     this.mesh.position.copy(this.position);
     
-    // Remove trail when stuck
     this.removeTrail();
     
-    // Play appropriate impact sound based on material
     const material = this.physicsManager.getCollisionMaterial(collision.object.id);
     this.playMaterialImpactSound(material);
     
-    // Create material-specific impact effect
     this.createMaterialImpactEffect(collision.point, material);
     
     console.log(`🏹 Arrow stuck in ${material} object at:`, collision.point);
   }
 
-  // NEW: Create terrain-specific impact effects
   private createTerrainImpactEffect(position: THREE.Vector3): void {
     const distanceFromOrigin = position.distanceTo(this.initialPosition);
     if (distanceFromOrigin > 50) return;
 
-    // Create dirt/terrain particles for hill impacts
     const particleCount = 10;
-    const terrainColor = 0x8B7355; // Earthy brown
+    const terrainColor = 0x8B7355;
     
     for (let i = 0; i < particleCount; i++) {
       const particleGeometry = new THREE.SphereGeometry(0.04, 6, 6);
@@ -357,11 +352,10 @@ export class Arrow {
       
       this.scene.add(particle);
       
-      // Animate terrain particle
       const startTime = Date.now();
       const animate = () => {
         const elapsed = Date.now() - startTime;
-        const progress = elapsed / 1000; // 1000ms duration
+        const progress = elapsed / 1000;
         
         if (progress >= 1) {
           this.scene.remove(particle);
@@ -383,13 +377,13 @@ export class Arrow {
   private playMaterialImpactSound(material: 'wood' | 'stone' | 'metal' | 'fabric' | null): void {
     switch (material) {
       case 'wood':
-        this.audioManager.play('arrow_impact'); // Could be 'arrow_wood_impact' if you have specific sounds
+        this.audioManager.play('arrow_impact');
         break;
       case 'stone':
-        this.audioManager.play('arrow_impact'); // Could be 'arrow_stone_impact'
+        this.audioManager.play('arrow_impact');
         break;
       case 'metal':
-        this.audioManager.play('arrow_impact'); // Could be 'arrow_metal_impact'  
+        this.audioManager.play('arrow_impact');
         break;
       default:
         this.audioManager.play('arrow_impact');
@@ -400,7 +394,6 @@ export class Arrow {
     const distanceFromOrigin = position.distanceTo(this.initialPosition);
     if (distanceFromOrigin > 50) return;
 
-    // Create material-specific particles
     const particleCount = 8;
     const particleColor = this.getMaterialParticleColor(material);
     
@@ -420,11 +413,10 @@ export class Arrow {
       
       this.scene.add(particle);
       
-      // Animate particle
       const startTime = Date.now();
       const animate = () => {
         const elapsed = Date.now() - startTime;
-        const progress = elapsed / 800; // 800ms duration
+        const progress = elapsed / 800;
         
         if (progress >= 1) {
           this.scene.remove(particle);
@@ -446,28 +438,26 @@ export class Arrow {
   private getMaterialParticleColor(material: 'wood' | 'stone' | 'metal' | 'fabric' | null): number {
     switch (material) {
       case 'wood':
-        return 0x8B4513; // Brown wood chips
+        return 0x8B4513;
       case 'stone':
-        return 0x808080; // Gray stone dust
+        return 0x808080;
       case 'metal':
-        return 0xC0C0C0; // Silver sparks
+        return 0xC0C0C0;
       case 'fabric':
-        return 0xF5F5DC; // Beige fabric fibers
+        return 0xF5F5DC;
       default:
-        return 0x8B7355; // Default brownish
+        return 0x8B7355;
     }
   }
 
   private updateWindTrail(): void {
     if (!this.trail) return;
     
-    // Shift trail positions and opacities
     for (let i = this.trailPositions.length - 1; i > 0; i--) {
       this.trailPositions[i].copy(this.trailPositions[i - 1]);
-      this.trailOpacities[i] = this.trailOpacities[i - 1] * 0.98; // Slower fade for longer trail
+      this.trailOpacities[i] = this.trailOpacities[i - 1] * 0.98;
     }
     
-    // Add current position with wind displacement to front
     const windDisplacement = new THREE.Vector3(
       Math.sin(this.windOffset * 2 + this.position.z * 0.1) * this.windStrength,
       Math.cos(this.windOffset * 1.5 + this.position.x * 0.05) * this.windStrength * 0.5,
@@ -477,20 +467,16 @@ export class Arrow {
     this.trailPositions[0].copy(this.position).add(windDisplacement);
     this.trailOpacities[0] = 1.0;
     
-    // Update geometry
     const geometry = new THREE.BufferGeometry().setFromPoints(this.trailPositions);
     
-    // Update opacity attribute with enhanced visibility
     const opacities = new Float32Array(this.maxTrailLength);
     for (let i = 0; i < this.maxTrailLength; i++) {
-      // Create smooth fade from front to back with wind variation
       const fadeRatio = 1 - (i / this.maxTrailLength);
-      const windVariation = Math.sin(this.windOffset + i * 0.3) * 0.3 + 0.9; // Increased base opacity
-      opacities[i] = this.trailOpacities[i] * fadeRatio * windVariation * 1.2; // Increased overall opacity
+      const windVariation = Math.sin(this.windOffset + i * 0.3) * 0.3 + 0.9;
+      opacities[i] = this.trailOpacities[i] * fadeRatio * windVariation * 1.2;
     }
     geometry.setAttribute('opacity', new THREE.BufferAttribute(opacities, 1));
     
-    // Update shader time uniform
     if (this.trail.material instanceof THREE.ShaderMaterial) {
       this.trail.material.uniforms.time.value = this.windOffset;
     }
@@ -516,16 +502,13 @@ export class Arrow {
     this.isGrounded = true;
     this.velocity.set(0, 0, 0);
     
-    // Ensure arrow lands exactly at ground level
     this.position.y = 0.0;
     this.mesh.position.copy(this.position);
     
-    // Remove trail when hitting ground
     this.removeTrail();
     
     this.audioManager.play('arrow_impact');
     
-    // Create simple ground impact effect
     this.createSimpleImpactEffect();
   }
 
@@ -596,7 +579,6 @@ export class Arrow {
   public dispose(): void {
     this.isActive = false;
     
-    // Remove trail first
     this.removeTrail();
     
     if (this.mesh) {

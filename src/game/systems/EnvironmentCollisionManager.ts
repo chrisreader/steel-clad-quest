@@ -5,39 +5,52 @@ export class EnvironmentCollisionManager {
   private scene: THREE.Scene;
   private physicsManager: PhysicsManager;
   private registeredObjects: Set<string> = new Set();
-  private terrainObjects: Set<string> = new Set(); // NEW: Track terrain objects separately
+  private terrainObjects: Map<string, { meshUUID: string; collisionId: string }> = new Map(); // Enhanced terrain tracking
+  private isArrowImpactActive: boolean = false; // Prevent updates during arrow impacts
+  private terrainCollisionLock: boolean = false; // Lock terrain collisions from being modified
 
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
-    console.log('🔧 EnvironmentCollisionManager initialized with enhanced terrain and staircase support');
+    console.log('🔧 EnvironmentCollisionManager initialized with enhanced terrain protection');
   }
 
   public registerEnvironmentCollisions(): void {
+    // Skip registration if terrain is locked or arrow impact is active
+    if (this.terrainCollisionLock || this.isArrowImpactActive) {
+      console.log('🔧 ⚠️ Skipping collision registration - terrain locked or arrow impact active');
+      return;
+    }
+
     console.log('🔧 === ENVIRONMENT COLLISION REGISTRATION START ===');
-    console.log('🔧 Registering environment collisions with enhanced terrain support...');
+    console.log('🔧 Registering environment collisions with enhanced terrain protection...');
+    
+    // Validate terrain collisions before proceeding
+    this.validateTerrainCollisions();
     
     // DEBUG: Check existing registrations before clearing
     const existingCollisions = this.physicsManager.getCollisionObjects();
-    console.log(`🔧 BEFORE CLEAR: ${existingCollisions.size} collision objects exist`);
+    console.log(`🔧 BEFORE PROCESSING: ${existingCollisions.size} collision objects exist`);
     
-    let terrainCountBefore = 0;
+    // Enhanced terrain preservation - never remove terrain objects
+    const preservedTerrainIds = new Set<string>();
     for (const [id, obj] of existingCollisions) {
       if (obj.type === 'terrain') {
-        terrainCountBefore++;
-        this.terrainObjects.add(id); // Track existing terrain objects
-        console.log(`🔧 FOUND EXISTING TERRAIN: ${id} (${obj.mesh.name})`);
+        preservedTerrainIds.add(id);
+        this.terrainObjects.set(obj.mesh.uuid, { meshUUID: obj.mesh.uuid, collisionId: id });
+        console.log(`🔧 PRESERVING TERRAIN: ${id} (${obj.mesh.name}) - UUID: ${obj.mesh.uuid}`);
       }
     }
-    console.log(`🔧 TERRAIN COUNT BEFORE CLEAR: ${terrainCountBefore}`);
     
-    // ENHANCED FIX: Only clear non-terrain environment objects
-    console.log('🔧 ⚠️  CLEARING ENVIRONMENT REGISTRATIONS (preserving terrain)...');
+    // Only clear non-terrain environment objects
+    console.log('🔧 ⚠️  CLEARING ENVIRONMENT REGISTRATIONS (preserving all terrain)...');
     const objectsToRemove: string[] = [];
     this.registeredObjects.forEach(id => {
-      const obj = this.physicsManager.getCollisionObjects().get(id);
-      if (obj && obj.type !== 'terrain' && !this.terrainObjects.has(id)) {
-        objectsToRemove.push(id);
+      if (!preservedTerrainIds.has(id)) {
+        const obj = this.physicsManager.getCollisionObjects().get(id);
+        if (obj && obj.type !== 'terrain') {
+          objectsToRemove.push(id);
+        }
       }
     });
     
@@ -49,67 +62,70 @@ export class EnvironmentCollisionManager {
     const afterClear = this.physicsManager.getCollisionObjects();
     console.log(`🔧 AFTER SELECTIVE CLEAR: ${afterClear.size} collision objects remain`);
 
-    // Register all environment objects for collision
+    // Register new environment objects (skip terrain objects)
     this.scene.traverse((object) => {
       if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
         this.registerObjectCollision(object);
       }
     });
     
+    // Final validation
+    this.validateTerrainCollisions();
+    
     const finalCount = this.physicsManager.getCollisionObjects();
     let finalTerrainCount = 0;
     for (const [id, obj] of finalCount) {
       if (obj.type === 'terrain') {
         finalTerrainCount++;
-        console.log(`🔧 FINAL TERRAIN REGISTRATION: ${id} (${obj.mesh.name})`);
       }
     }
 
     console.log(`🔧 === REGISTRATION COMPLETE ===`);
     console.log(`🔧 Registered ${this.registeredObjects.size} collision objects`);
-    console.log(`🔧 Final terrain count: ${finalTerrainCount}`);
+    console.log(`🔧 Protected terrain count: ${finalTerrainCount}`);
     console.log(`🔧 Total collision objects: ${finalCount.size}`);
   }
 
   private registerObjectCollision(object: THREE.Object3D): void {
-    // Skip if already registered OR if it's a known terrain object
-    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid)) return;
+    // Skip if already registered
+    if (this.registeredObjects.has(object.uuid)) return;
 
-    // ENHANCED: Enhanced handling for test hills with height data
+    // CRITICAL: Skip terrain objects that are already tracked
+    if (this.terrainObjects.has(object.uuid)) {
+      console.log(`🔧 ⚠️ Skipping terrain object ${object.name} - already tracked and protected`);
+      return;
+    }
+
+    // Enhanced handling for test hills with height data
     if (object instanceof THREE.Mesh && object.name === 'test_hill' && object.userData.heightData) {
-      const heightData = object.userData.heightData;
-      const terrainSize = object.userData.terrainSize || 30;
-      
-      console.log(`🏔️ === ENVIRONMENT MANAGER PROCESSING TEST HILL ===`);
-      console.log(`🏔️ Hill name: ${object.name}`);
-      console.log(`🏔️ Hill position: (${object.position.x}, ${object.position.y}, ${object.position.z})`);
-      console.log(`🏔️ Has heightData: ${!!heightData}`);
-      console.log(`🏔️ HeightData size: ${heightData?.length}x${heightData?.[0]?.length}`);
-      console.log(`🏔️ Terrain size: ${terrainSize}`);
-      
-      // Check if already registered by StructureGenerator
+      // Check if this terrain is already registered
       let alreadyRegistered = false;
       for (const [id, collisionObject] of this.physicsManager.getCollisionObjects()) {
         if (collisionObject.mesh === object && collisionObject.type === 'terrain') {
           alreadyRegistered = true;
-          this.terrainObjects.add(id); // Track this terrain object
-          console.log(`🏔️ Hill already registered with ID: ${id} - TRACKING`);
+          this.terrainObjects.set(object.uuid, { meshUUID: object.uuid, collisionId: id });
+          console.log(`🏔️ Hill already registered with ID: ${id} - PROTECTED`);
           break;
         }
       }
       
       if (!alreadyRegistered) {
+        const heightData = object.userData.heightData;
+        const terrainSize = object.userData.terrainSize || 30;
+        
+        console.log(`🏔️ === ENVIRONMENT MANAGER PROCESSING NEW TEST HILL ===`);
+        console.log(`🏔️ Hill name: ${object.name}`);
+        console.log(`🏔️ Hill position: (${object.position.x}, ${object.position.y}, ${object.position.z})`);
+        
         const id = this.physicsManager.addTerrainCollision(object, heightData, terrainSize, object.uuid);
         this.registeredObjects.add(id);
-        this.terrainObjects.add(id); // Track new terrain object
-        console.log(`🏔️ ✅ ENVIRONMENT MANAGER registered test hill as terrain collision with ID: ${id}`);
-      } else {
-        console.log(`🏔️ ✅ Test hill already registered by StructureGenerator - preserving existing registration`);
+        this.terrainObjects.set(object.uuid, { meshUUID: object.uuid, collisionId: id });
+        console.log(`🏔️ ✅ NEW terrain registered and protected with ID: ${id}`);
       }
       return;
     }
 
-    // ENHANCED: Special handling for staircases (register steps individually)
+    // Handle other environment objects normally
     if (object instanceof THREE.Group && object.name === 'staircase') {
       const id = this.physicsManager.addCollisionObject(object, 'staircase', 'stone', object.uuid);
       this.registeredObjects.add(id);
@@ -118,7 +134,7 @@ export class EnvironmentCollisionManager {
       return;
     }
 
-    // Determine object type and material based on geometry and position
+    // Standard environment object registration
     const material = this.determineMaterial(object);
     const shouldRegister = this.shouldRegisterForCollision(object);
 
@@ -130,51 +146,118 @@ export class EnvironmentCollisionManager {
     }
   }
 
+  // NEW: Validate terrain collisions are intact
+  private validateTerrainCollisions(): void {
+    console.log('🔧 🔍 Validating terrain collisions...');
+    
+    let terrainCount = 0;
+    let corruptedTerrain: string[] = [];
+    
+    for (const [meshUUID, terrainInfo] of this.terrainObjects) {
+      const collisionObject = this.physicsManager.getCollisionObjects().get(terrainInfo.collisionId);
+      
+      if (!collisionObject) {
+        console.error(`🔧 ❌ CORRUPTED: Terrain collision missing for mesh ${meshUUID}`);
+        corruptedTerrain.push(meshUUID);
+      } else if (collisionObject.type !== 'terrain') {
+        console.error(`🔧 ❌ CORRUPTED: Terrain object has wrong type: ${collisionObject.type}`);
+        corruptedTerrain.push(meshUUID);
+      } else {
+        terrainCount++;
+        console.log(`🔧 ✅ VALID: Terrain ${terrainInfo.collisionId} (${collisionObject.mesh.name})`);
+      }
+    }
+    
+    console.log(`🔧 Terrain validation: ${terrainCount} valid, ${corruptedTerrain.length} corrupted`);
+    
+    // Attempt to restore corrupted terrain
+    if (corruptedTerrain.length > 0) {
+      console.warn(`🔧 ⚠️ Attempting to restore ${corruptedTerrain.length} corrupted terrain objects...`);
+      this.restoreCorruptedTerrain(corruptedTerrain);
+    }
+  }
+
+  // NEW: Restore corrupted terrain collisions
+  private restoreCorruptedTerrain(corruptedUUIDs: string[]): void {
+    for (const meshUUID of corruptedUUIDs) {
+      // Find the mesh in the scene
+      let foundMesh: THREE.Mesh | null = null;
+      this.scene.traverse((object) => {
+        if (object.uuid === meshUUID && object instanceof THREE.Mesh) {
+          foundMesh = object;
+        }
+      });
+      
+      if (foundMesh && foundMesh.name === 'test_hill' && foundMesh.userData.heightData) {
+        console.log(`🔧 🔄 Restoring terrain collision for hill: ${foundMesh.name}`);
+        
+        const heightData = foundMesh.userData.heightData;
+        const terrainSize = foundMesh.userData.terrainSize || 30;
+        
+        const id = this.physicsManager.addTerrainCollision(foundMesh, heightData, terrainSize, foundMesh.uuid);
+        this.terrainObjects.set(meshUUID, { meshUUID: meshUUID, collisionId: id });
+        this.registeredObjects.add(id);
+        
+        console.log(`🔧 ✅ Restored terrain collision with ID: ${id}`);
+      }
+    }
+  }
+
+  // NEW: Lock terrain collisions during arrow impacts
+  public lockTerrainCollisions(): void {
+    this.terrainCollisionLock = true;
+    console.log('🔧 🔒 Terrain collisions LOCKED');
+  }
+
+  // NEW: Unlock terrain collisions after arrow impacts
+  public unlockTerrainCollisions(): void {
+    this.terrainCollisionLock = false;
+    console.log('🔧 🔓 Terrain collisions UNLOCKED');
+  }
+
+  // NEW: Set arrow impact state
+  public setArrowImpactActive(active: boolean): void {
+    this.isArrowImpactActive = active;
+    console.log(`🔧 🏹 Arrow impact state: ${active ? 'ACTIVE' : 'INACTIVE'}`);
+  }
+
+  // ... keep existing code (determineMaterial, shouldRegisterForCollision methods)
   private determineMaterial(object: THREE.Object3D): 'wood' | 'stone' | 'metal' | 'fabric' {
-    // Analyze object properties to determine material
     if (object instanceof THREE.Mesh && object.material) {
       const material = Array.isArray(object.material) ? object.material[0] : object.material;
       
       if (material instanceof THREE.MeshLambertMaterial) {
         const color = material.color;
         
-        // Brown/tan colors suggest wood
         if (color.r > 0.4 && color.g > 0.3 && color.b < 0.4) {
           return 'wood';
         }
         
-        // Gray colors suggest stone
         if (Math.abs(color.r - color.g) < 0.1 && Math.abs(color.g - color.b) < 0.1) {
           return 'stone';
         }
         
-        // Metallic colors
         if (color.r > 0.7 && color.g > 0.7 && color.b > 0.7) {
           return 'metal';
         }
       }
     }
 
-    // Default based on object characteristics
     const boundingBox = new THREE.Box3().setFromObject(object);
     const size = boundingBox.getSize(new THREE.Vector3());
     
-    // Tall, thin objects are likely trees (wood)
     if (size.y > 3 && (size.x < 2 && size.z < 2)) {
       return 'wood';
     }
     
-    // Large, angular objects are likely stone/walls
     if (size.y > 2 || size.x > 3 || size.z > 3) {
       return 'stone';
     }
     
-    // Small objects default to stone
     return 'stone';
   }
 
   private shouldRegisterForCollision(object: THREE.Object3D): boolean {
-    // Skip very small objects (likely decorative)
     const boundingBox = new THREE.Box3().setFromObject(object);
     const size = boundingBox.getSize(new THREE.Vector3());
     
@@ -182,39 +265,39 @@ export class EnvironmentCollisionManager {
       return false;
     }
 
-    // Skip objects that are too high (likely clouds or sky elements)
     if (object.position.y > 50) {
       return false;
     }
 
-    // Skip ground plane
     if (size.x > 50 || size.z > 50) {
       return false;
     }
 
-    // Register solid objects
     return object instanceof THREE.Mesh && object.geometry && object.material;
   }
 
   public updateCollisions(): void {
-    // REDUCED FREQUENCY: Only re-register if significant changes detected
-    const currentObjectCount = this.scene.children.length;
-    
-    // Only update every 60 frames or significant scene changes
-    if (Math.random() < 0.016) { // ~1/60 chance per frame
+    // Skip updates if terrain is locked or arrow impact is active
+    if (this.terrainCollisionLock || this.isArrowImpactActive) {
+      return;
+    }
+
+    // Drastically reduced frequency to prevent interference
+    if (Math.random() < 0.005) { // ~1/200 chance per frame
       this.registerEnvironmentCollisions();
     }
   }
 
   public dispose(): void {
-    // Clean up environment objects but preserve terrain
+    // Clean up environment objects but preserve all terrain
     this.registeredObjects.forEach(id => {
-      if (!this.terrainObjects.has(id)) {
+      const isTerrainObject = Array.from(this.terrainObjects.values()).some(terrain => terrain.collisionId === id);
+      if (!isTerrainObject) {
         this.physicsManager.removeCollisionObject(id);
       }
     });
     this.registeredObjects.clear();
-    this.terrainObjects.clear();
-    console.log('EnvironmentCollisionManager disposed with terrain preservation');
+    // Keep terrain objects tracked but don't clear them
+    console.log('EnvironmentCollisionManager disposed with complete terrain preservation');
   }
 }
