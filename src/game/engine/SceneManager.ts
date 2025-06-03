@@ -11,6 +11,8 @@ import { StructureGenerator } from '../world/StructureGenerator';
 import { EffectsManager } from './EffectsManager';
 import { AudioManager } from './AudioManager';
 import { Enemy } from '../entities/Enemy';
+import { BuildingManager } from '../buildings/BuildingManager';
+import { SafeZoneManager } from '../systems/SafeZoneManager';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -24,6 +26,9 @@ export class SceneManager {
   private loadedRegions: Map<string, Region> = new Map();
   private renderDistance: number = 800; // How far to load terrain
   private debugMode: boolean = true; // Set to false for production
+  
+  // NEW: Building management system
+  private buildingManager: BuildingManager;
   
   // Lighting
   private ambientLight: THREE.AmbientLight;
@@ -64,8 +69,14 @@ export class SceneManager {
     // Initialize terrain feature generator
     this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
-    // FIXED: Initialize structure generator with PhysicsManager
+    // Initialize structure generator with PhysicsManager
     this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene, this.physicsManager);
+    
+    // NEW: Initialize building manager
+    this.buildingManager = new BuildingManager(this.scene, this.physicsManager);
+    
+    // NEW: Connect StructureGenerator with BuildingManager
+    this.structureGenerator.setBuildingManager(this.buildingManager);
     
     // Setup distance-based fog
     this.setupDistanceFog();
@@ -84,13 +95,13 @@ export class SceneManager {
     // Initialize environment collision manager
     this.environmentCollisionManager = new EnvironmentCollisionManager(this.scene, this.physicsManager);
     
-    // FIXED: Set up collision registration callback BEFORE any regions are loaded
+    // Set up collision registration callback BEFORE any regions are loaded
     this.terrainFeatureGenerator.setCollisionRegistrationCallback((object: THREE.Object3D) => {
       this.environmentCollisionManager.registerSingleObject(object);
     });
     console.log('🔧 Collision registration callback established between TerrainFeatureGenerator and EnvironmentCollisionManager');
   }
-  
+
   private setupDistanceFog(): void {
     // Create THREE.js fog for distance-based object fading
     const fogColor = 0xB0E0E6; // Atmospheric blue-white
@@ -273,9 +284,12 @@ export class SceneManager {
     this.loadRegion(startRegion);
     console.log('🔧 Starting region loaded');
     
-    // Place tavern at center
-    this.createTavern();
-    console.log('Tavern created at center');
+    // NEW: Create tavern using BuildingManager
+    this.buildingManager.createBuilding({
+      type: 'tavern',
+      position: new THREE.Vector3(0, 0, 0)
+    });
+    console.log('🏗️ Tavern created using BuildingManager');
     
     // Create test hill
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
@@ -299,7 +313,7 @@ export class SceneManager {
     this.updateSkybox();
     console.log('Skybox updated with realistic blue colors');
     
-    // FIXED: Register environment collisions AFTER everything is created
+    // Register environment collisions AFTER everything is created
     console.log('🔧 Registering environment collisions after all objects created...');
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized (after all objects created)');
@@ -535,231 +549,6 @@ export class SceneManager {
     geometry.computeVertexNormals();
   }
   
-  public createTavern(): void {
-    const tavernGroup = new THREE.Group();
-    
-    // Tavern floor
-    const tavernFloorGeometry = new THREE.PlaneGeometry(12, 12);
-    const tavernFloorMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xDEB887,
-      map: TextureGenerator.createWoodTexture()
-    });
-    const tavernFloor = new THREE.Mesh(tavernFloorGeometry, tavernFloorMaterial);
-    tavernFloor.rotation.x = -Math.PI / 2;
-    tavernFloor.position.y = 0.01;
-    tavernFloor.receiveShadow = true;
-    tavernGroup.add(tavernFloor);
-    
-    // Tavern walls
-    const wallMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x8B7355,
-      map: TextureGenerator.createStoneTexture()
-    });
-    const wallHeight = 6;
-    
-    // Back wall
-    const backWallGeometry = new THREE.BoxGeometry(12, wallHeight, 0.3);
-    const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
-    backWall.position.set(0, wallHeight/2, -6);
-    backWall.castShadow = true;
-    backWall.receiveShadow = true;
-    tavernGroup.add(backWall);
-    
-    // Left wall
-    const leftWallGeometry = new THREE.BoxGeometry(0.3, wallHeight, 12);
-    const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial.clone());
-    leftWall.position.set(-6, wallHeight/2, 0);
-    leftWall.castShadow = true;
-    leftWall.receiveShadow = true;
-    tavernGroup.add(leftWall);
-    
-    // Right wall
-    const rightWall = new THREE.Mesh(leftWallGeometry, wallMaterial.clone());
-    rightWall.position.set(6, wallHeight/2, 0);
-    rightWall.castShadow = true;
-    rightWall.receiveShadow = true;
-    tavernGroup.add(rightWall);
-    
-    // Front walls with door
-    const frontWallLeft = new THREE.Mesh(new THREE.BoxGeometry(3, wallHeight, 0.3), wallMaterial.clone());
-    frontWallLeft.position.set(-3, wallHeight/2, 6);
-    frontWallLeft.castShadow = true;
-    frontWallLeft.receiveShadow = true;
-    tavernGroup.add(frontWallLeft);
-    
-    const frontWallRight = new THREE.Mesh(new THREE.BoxGeometry(3, wallHeight, 0.3), wallMaterial.clone());
-    frontWallRight.position.set(3, wallHeight/2, 6);
-    frontWallRight.castShadow = true;
-    frontWallRight.receiveShadow = true;
-    tavernGroup.add(frontWallRight);
-    
-    // Roof
-    const roofGeometry = new THREE.ConeGeometry(9, 3, 8);
-    const roofMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xCD5C5C,
-      map: TextureGenerator.createStoneTexture()
-    });
-    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.set(0, wallHeight + 1.5, 0);
-    roof.rotation.y = Math.PI / 8;
-    roof.castShadow = true;
-    tavernGroup.add(roof);
-    
-    // Furniture
-    const tableMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xDEB887,
-      map: TextureGenerator.createWoodTexture()
-    });
-    const table = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 1.5), tableMaterial);
-    table.position.set(-2, 1, -2);
-    table.castShadow = true;
-    table.receiveShadow = true;
-    tavernGroup.add(table);
-    
-    // Table legs
-    const legMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0xCD853F,
-      map: TextureGenerator.createWoodTexture()
-    });
-    
-    const legGeometry = new THREE.CylinderGeometry(0.05, 0.08, 0.8, 8);
-    
-    for (let x = -1; x <= 1; x += 2) {
-      for (let z = -0.5; z <= 0.5; z += 1) {
-        const leg = new THREE.Mesh(legGeometry, legMaterial.clone());
-        leg.position.set(-2 + x, 0.5, -2 + z);
-        leg.castShadow = true;
-        tavernGroup.add(leg);
-      }
-    }
-    
-    this.scene.add(tavernGroup);
-  }
-  
-  private createForestTrees(count: number): void {
-    for (let i = 0; i < count; i++) {
-      // Tree trunk
-      const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.6, 8, 12);
-      const trunkMaterial = new THREE.MeshLambertMaterial({ 
-        color: 0x8B7355,
-        map: TextureGenerator.createWoodTexture()
-      });
-      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-      
-      let x, z;
-      do {
-        x = (Math.random() - 0.5) * 80;
-        z = (Math.random() - 0.5) * 80;
-      } while (Math.sqrt(x * x + z * z) < 20 || (Math.abs(x) < 15 && Math.abs(z) < 15));
-      
-      trunk.position.set(x, 4, z);
-      trunk.castShadow = true;
-      trunk.receiveShadow = true;
-      this.scene.add(trunk);
-      
-      // Tree leaves
-      for (let layer = 0; layer < 3; layer++) {
-        const leavesGeometry = new THREE.ConeGeometry(2.5 - layer * 0.3, 4, 8);
-        const leavesColor = new THREE.Color().setHSL(0.3, 0.7, 0.5 + Math.random() * 0.3);
-        const leavesMaterial = new THREE.MeshLambertMaterial({ 
-          color: leavesColor,
-          transparent: true,
-          opacity: 0.9
-        });
-        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-        leaves.position.set(x, 7 + layer * 1.5, z);
-        leaves.castShadow = true;
-        leaves.receiveShadow = true;
-        this.scene.add(leaves);
-      }
-    }
-  }
-  
-  private createRocks(count: number): void {
-    for (let i = 0; i < count; i++) {
-      const rockGeometry = new THREE.DodecahedronGeometry(Math.random() * 0.6 + 0.3, 1);
-      const rockMaterial = new THREE.MeshLambertMaterial({ 
-        color: new THREE.Color().setHSL(0, 0, 0.5 + Math.random() * 0.4),
-        map: TextureGenerator.createStoneTexture()
-      });
-      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-      
-      let x, z;
-      do {
-        x = (Math.random() - 0.5) * 60;
-        z = (Math.random() - 0.5) * 60;
-      } while (Math.abs(x) < 10 && Math.abs(z) < 10);
-      
-      rock.position.set(x, Math.random() * 0.3 + 0.2, z);
-      rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-      rock.castShadow = true;
-      rock.receiveShadow = true;
-      this.scene.add(rock);
-    }
-  }
-  
-  private createBushes(count: number): void {
-    for (let i = 0; i < count; i++) {
-      const bushGeometry = new THREE.SphereGeometry(0.5 + Math.random() * 0.3, 8, 6);
-      const bushMaterial = new THREE.MeshLambertMaterial({ 
-        color: new THREE.Color().setHSL(0.25, 0.6, 0.45 + Math.random() * 0.3)
-      });
-      const bush = new THREE.Mesh(bushGeometry, bushMaterial);
-      
-      let x, z;
-      do {
-        x = (Math.random() - 0.5) * 50;
-        z = (Math.random() - 0.5) * 50;
-      } while (Math.abs(x) < 12 && Math.abs(z) < 12);
-      
-      bush.position.set(x, 0.4, z);
-      bush.scale.y = 0.6;
-      bush.castShadow = true;
-      bush.receiveShadow = true;
-      this.scene.add(bush);
-    }
-  }
-  
-  private createSkybox(): void {
-    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
-    const skyMaterial = new THREE.MeshBasicMaterial({
-      map: TextureGenerator.createSkyTexture(this.timeOfDay),
-      side: THREE.BackSide,
-      fog: false
-    });
-    this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
-    this.scene.add(this.skybox);
-  }
-  
-  /**
-   * Updates the skybox texture with current time of day
-   */
-  public updateSkybox(): void {
-    if (this.skybox) {
-      const newSkyTexture = TextureGenerator.createSkyTexture(this.timeOfDay);
-      
-      if (this.skybox.material instanceof THREE.MeshBasicMaterial && this.skybox.material.map) {
-        this.skybox.material.map.dispose();
-      }
-      
-      if (this.skybox.material instanceof THREE.MeshBasicMaterial) {
-        this.skybox.material.map = newSkyTexture;
-        this.skybox.material.fog = false;
-        this.skybox.material.needsUpdate = true;
-      }
-      
-      console.log('Skybox texture updated with timeOfDay:', this.timeOfDay);
-    }
-  }
-  
-  /**
-   * Sets the time of day and updates the skybox
-   */
-  public setTimeOfDay(time: number): void {
-    this.timeOfDay = Math.max(0, Math.min(1, time)); // Clamp between 0 and 1
-    this.updateSkybox();
-  }
-  
   // Legacy compatibility methods
   public loadLevel(levelName: string): void {
     console.log(`Loading level: ${levelName}`);
@@ -885,9 +674,9 @@ export class SceneManager {
     return this.currentLevel?.name || 'default';
   }
   
-  // Utility methods
-  public getScene(): THREE.Scene {
-    return this.scene;
+  // NEW: Safe zone management
+  public getSafeZoneManager(): SafeZoneManager | null {
+    return this.buildingManager.getSafeZoneManager();
   }
   
   public dispose(): void {
@@ -897,6 +686,11 @@ export class SceneManager {
     // Dispose collision manager
     if (this.environmentCollisionManager) {
       this.environmentCollisionManager.dispose();
+    }
+    
+    // NEW: Dispose building manager
+    if (this.buildingManager) {
+      this.buildingManager.dispose();
     }
     
     // Dispose structure generator
@@ -942,5 +736,14 @@ export class SceneManager {
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
     return this.environmentCollisionManager;
+  }
+
+  // NEW: Get building manager
+  public getBuildingManager(): BuildingManager {
+    return this.buildingManager;
+  }
+  
+  public getScene(): THREE.Scene {
+    return this.scene;
   }
 }

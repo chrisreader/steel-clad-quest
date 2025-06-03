@@ -6,15 +6,15 @@ export class EnvironmentCollisionManager {
   private scene: THREE.Scene;
   private physicsManager: PhysicsManager;
   private registeredObjects: Set<string> = new Set();
-  private terrainObjects: Set<string> = new Set(); // NEW: Track terrain objects separately
+  private terrainObjects: Set<string> = new Set(); // Track terrain objects separately
 
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
-    console.log('🔧 EnvironmentCollisionManager initialized with enhanced terrain and staircase support');
+    console.log('🔧 EnvironmentCollisionManager initialized - buildings now handled by BuildingManager');
   }
 
-  // FIXED: Method to register a single object for collision (handles Groups and Meshes)
+  // Method to register a single object for collision (handles Groups and Meshes)
   public registerSingleObject(object: THREE.Object3D): void {
     // Skip if already registered OR if it's a known terrain object
     if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid)) return;
@@ -32,7 +32,7 @@ export class EnvironmentCollisionManager {
 
   public registerEnvironmentCollisions(): void {
     console.log('🔧 === ENVIRONMENT COLLISION REGISTRATION START ===');
-    console.log('🔧 Registering environment collisions with enhanced terrain support...');
+    console.log('🔧 Registering environment collisions (excluding buildings managed by BuildingManager)...');
     
     // DEBUG: Check existing registrations before clearing
     const existingCollisions = this.physicsManager.getCollisionObjects();
@@ -48,12 +48,12 @@ export class EnvironmentCollisionManager {
     }
     console.log(`🔧 TERRAIN COUNT BEFORE CLEAR: ${terrainCountBefore}`);
     
-    // ENHANCED FIX: Only clear non-terrain environment objects
-    console.log('🔧 ⚠️  CLEARING ENVIRONMENT REGISTRATIONS (preserving terrain)...');
+    // Only clear non-terrain and non-building environment objects
+    console.log('🔧 ⚠️  CLEARING ENVIRONMENT REGISTRATIONS (preserving terrain and buildings)...');
     const objectsToRemove: string[] = [];
     this.registeredObjects.forEach(id => {
       const obj = this.physicsManager.getCollisionObjects().get(id);
-      if (obj && obj.type !== 'terrain' && !this.terrainObjects.has(id)) {
+      if (obj && obj.type !== 'terrain' && !this.terrainObjects.has(id) && !this.isBuildingObject(obj)) {
         objectsToRemove.push(id);
       }
     });
@@ -66,9 +66,9 @@ export class EnvironmentCollisionManager {
     const afterClear = this.physicsManager.getCollisionObjects();
     console.log(`🔧 AFTER SELECTIVE CLEAR: ${afterClear.size} collision objects remain`);
 
-    // Register all environment objects for collision
+    // Register all non-building environment objects for collision
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
+      if ((object instanceof THREE.Mesh || object instanceof THREE.Group) && !this.isBuildingComponent(object)) {
         this.registerObjectCollision(object);
       }
     });
@@ -88,11 +88,36 @@ export class EnvironmentCollisionManager {
     console.log(`🔧 Total collision objects: ${finalCount.size}`);
   }
 
-  private registerObjectCollision(object: THREE.Object3D): void {
-    // Skip if already registered OR if it's a known terrain object
-    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid)) return;
+  // NEW: Check if an object is a building component (managed by BuildingManager)
+  private isBuildingComponent(object: THREE.Object3D): boolean {
+    // Check if the object is part of a building group
+    let current = object.parent;
+    while (current) {
+      if (current.userData && (current.userData.buildingType === 'tavern' || current.userData.buildingType === 'castle')) {
+        return true;
+      }
+      current = current.parent;
+    }
+    
+    // Check if the object itself has building metadata
+    return !!(object.userData && (object.userData.buildingType || object.userData.isBuildingComponent));
+  }
 
-    // ENHANCED: Enhanced handling for test hills with height data
+  // NEW: Check if a collision object is from a building
+  private isBuildingObject(collisionObj: any): boolean {
+    const mesh = collisionObj.mesh;
+    if (!mesh) return false;
+    
+    return this.isBuildingComponent(mesh);
+  }
+
+  private registerObjectCollision(object: THREE.Object3D): void {
+    // Skip if already registered OR if it's a known terrain object OR if it's a building component
+    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid) || this.isBuildingComponent(object)) {
+      return;
+    }
+
+    // Enhanced handling for test hills with height data
     if (object instanceof THREE.Mesh && object.name === 'test_hill' && object.userData.heightData) {
       const heightData = object.userData.heightData;
       const terrainSize = object.userData.terrainSize || 30;
@@ -126,7 +151,7 @@ export class EnvironmentCollisionManager {
       return;
     }
 
-    // ENHANCED: Special handling for staircases (register steps individually)
+    // Enhanced handling for staircases
     if (object instanceof THREE.Group && object.name === 'staircase') {
       const id = this.physicsManager.addCollisionObject(object, 'staircase', 'stone', object.uuid);
       this.registeredObjects.add(id);
@@ -262,23 +287,22 @@ export class EnvironmentCollisionManager {
 
   public updateCollisions(): void {
     // CRITICAL FIX: Disable this method to prevent terrain collision corruption
-    // This method was causing the hill walking issue by randomly re-registering collisions
     console.log('🔧 DISABLED: updateCollisions() method disabled to preserve terrain collision integrity');
-    
-    // The initial registration is sufficient - do not re-register collisions during gameplay
-    // This prevents arrow impacts from corrupting terrain collision data
     return;
   }
 
   public dispose(): void {
-    // Clean up environment objects but preserve terrain
+    // Clean up environment objects but preserve terrain and buildings
     this.registeredObjects.forEach(id => {
       if (!this.terrainObjects.has(id)) {
-        this.physicsManager.removeCollisionObject(id);
+        const collisionObj = this.physicsManager.getCollisionObjects().get(id);
+        if (collisionObj && !this.isBuildingObject(collisionObj)) {
+          this.physicsManager.removeCollisionObject(id);
+        }
       }
     });
     this.registeredObjects.clear();
     this.terrainObjects.clear();
-    console.log('EnvironmentCollisionManager disposed with terrain preservation');
+    console.log('EnvironmentCollisionManager disposed with terrain and building preservation');
   }
 }
