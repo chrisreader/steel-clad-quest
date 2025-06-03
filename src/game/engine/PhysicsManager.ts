@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface CollisionObject {
@@ -21,10 +20,37 @@ export class PhysicsManager {
     console.log('🏔️ Enhanced Physics Manager initialized with terrain height support and staircase navigation');
   }
 
-  // Enhanced method: Add terrain with height data for better collision
+  // Enhanced method: Add terrain with height data for better collision with debugging
   public addTerrainCollision(terrain: THREE.Mesh, heightData: number[][], terrainSize: number = 100, id?: string): string {
+    console.log(`\n🏔️ === PHYSICS TERRAIN REGISTRATION ===`);
+    
     const objectId = id || `terrain_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`🏔️ Registering terrain with ID: ${objectId}`);
+    console.log(`🏔️ Terrain mesh: ${!!terrain}, HeightData: ${!!heightData}, Size: ${terrainSize}`);
+    
+    if (!terrain) {
+      console.error(`🏔️ ❌ ERROR: No terrain mesh provided`);
+      return objectId;
+    }
+    
+    if (!heightData || !Array.isArray(heightData)) {
+      console.error(`🏔️ ❌ ERROR: Invalid height data provided`);
+      return objectId;
+    }
+    
+    console.log(`🏔️ Height data validation:`);
+    console.log(`  - Is array: ${Array.isArray(heightData)}`);
+    console.log(`  - Length: ${heightData.length}`);
+    console.log(`  - First row length: ${heightData[0]?.length}`);
+    console.log(`  - Sample height [0][0]: ${heightData[0]?.[0]}`);
+    
     const box = new THREE.Box3().setFromObject(terrain);
+    console.log(`🏔️ Terrain bounding box:`, box);
+    console.log(`🏔️ Terrain position: (${terrain.position.x}, ${terrain.position.y}, ${terrain.position.z})`);
+    
+    // Store terrain size for proper coordinate mapping
+    this.terrainSize = terrainSize;
+    console.log(`🏔️ Terrain size set to: ${this.terrainSize}`);
     
     const collisionObject: CollisionObject = {
       mesh: terrain,
@@ -36,9 +62,10 @@ export class PhysicsManager {
     };
     
     this.collisionObjects.set(objectId, collisionObject);
-    console.log(`🏔️ Added terrain collision object: ${objectId} with height data (size: ${terrainSize})`);
-    console.log(`🏔️ Terrain position: (${terrain.position.x}, ${terrain.position.y}, ${terrain.position.z})`);
-    console.log(`🏔️ HeightData dimensions: ${heightData.length}x${heightData[0]?.length || 0}`);
+    console.log(`🏔️ ✅ Terrain collision object registered successfully`);
+    console.log(`🏔️ Total collision objects now: ${this.collisionObjects.size}`);
+    console.log(`🏔️ === REGISTRATION COMPLETE ===\n`);
+    
     return objectId;
   }
 

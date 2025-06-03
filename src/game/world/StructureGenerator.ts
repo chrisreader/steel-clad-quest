@@ -19,6 +19,12 @@ export class StructureGenerator {
     this.ringSystem = ringSystem;
     this.scene = scene;
     this.physicsManager = physicsManager;
+    
+    // CRITICAL DEBUG: Verify PhysicsManager
+    console.log(`🏗️ StructureGenerator constructor:`);
+    console.log(`  - PhysicsManager provided: ${!!physicsManager}`);
+    console.log(`  - PhysicsManager type: ${typeof physicsManager}`);
+    console.log(`  - Has addTerrainCollision method: ${!!(physicsManager?.addTerrainCollision)}`);
   }
   
   // Enhanced staircase creation with proper step naming and metadata
@@ -59,71 +65,92 @@ export class StructureGenerator {
     return staircase;
   }
   
-  // FIXED: Create test hill with automatic PhysicsManager registration
+  // Enhanced createTestHill with Step-by-Step Debugging
   public createTestHill(x: number, y: number, z: number, radius: number = 15, maxHeight: number = 8): THREE.Mesh {
+    console.log(`\n🏔️ === CREATING TEST HILL ===`);
+    console.log(`🏔️ Position: (${x}, ${y}, ${z}), Radius: ${radius}, MaxHeight: ${maxHeight}`);
+    
+    // Create geometry
     const segments = 32;
-    const geometry = new THREE.PlaneGeometry(radius * 2, radius * 2, segments, segments);
-    
-    // Create height data and modify geometry vertices
-    const heightData: number[][] = [];
-    const vertices = geometry.attributes.position.array as Float32Array;
-    
-    for (let i = 0; i <= segments; i++) {
-      heightData[i] = [];
-      for (let j = 0; j <= segments; j++) {
-        // Calculate position from center
-        const vx = (i / segments - 0.5) * radius * 2;
-        const vz = (j / segments - 0.5) * radius * 2;
-        const distanceFromCenter = Math.sqrt(vx * vx + vz * vz);
-        
-        // Create hill-like height profile with smooth falloff
-        let height = 0;
-        if (distanceFromCenter < radius) {
-          // Create slopes with varying steepness for testing
-          const normalizedDistance = distanceFromCenter / radius;
-          height = maxHeight * (1 - normalizedDistance * normalizedDistance); // Squared for steeper edges
-        }
-        
-        heightData[i][j] = height;
-        
-        // Apply height to geometry vertex
-        const vertexIndex = (i * (segments + 1) + j) * 3;
-        vertices[vertexIndex + 2] = height; // Z component in plane geometry becomes height
-      }
-    }
-    
-    // Update geometry
-    geometry.attributes.position.needsUpdate = true;
-    geometry.computeVertexNormals();
-    
+    const geometry = new THREE.ConeGeometry(radius, maxHeight, segments);
     const material = new THREE.MeshStandardMaterial({ 
-      color: 0x4a5d3a, // Dark green for hill
+      color: 0x4a5d3a,
       roughness: 0.9,
       metalness: 0.0
     });
     
     const hill = new THREE.Mesh(geometry, material);
-    
-    // Rotate to be horizontal (PlaneGeometry starts vertical)
-    hill.rotation.x = -Math.PI / 2;
-    hill.position.set(x, y, z);
+    hill.position.set(x, y + maxHeight / 2, z);
     hill.castShadow = true;
     hill.receiveShadow = true;
     hill.name = 'test_hill';
     
-    // Store height data for physics system access
-    hill.userData.heightData = heightData;
-    hill.userData.terrainSize = radius * 2;
+    console.log(`🏔️ Hill mesh created at position: (${hill.position.x}, ${hill.position.y}, ${hill.position.z})`);
     
-    // CRITICAL FIX: Automatically register with PhysicsManager
-    console.log(`🏔️ Auto-registering test hill with PhysicsManager...`);
-    this.physicsManager.addTerrainCollision(hill, heightData, radius * 2, `test_hill_${x}_${z}`);
+    // Create height data
+    const heightMapSize = 64;
+    const heightData: number[][] = [];
     
+    console.log(`🏔️ Generating height data (${heightMapSize}x${heightMapSize})...`);
+    
+    for (let i = 0; i <= heightMapSize; i++) {
+      heightData[i] = [];
+      for (let j = 0; j <= heightMapSize; j++) {
+        const worldX = x + (i / heightMapSize - 0.5) * radius * 2;
+        const worldZ = z + (j / heightMapSize - 0.5) * radius * 2;
+        const distanceFromCenter = Math.sqrt((worldX - x) ** 2 + (worldZ - z) ** 2);
+        const normalizedDistance = distanceFromCenter / radius;
+        
+        let height = 0;
+        if (normalizedDistance <= 1.0) {
+          height = maxHeight * (1 - normalizedDistance);
+        }
+        
+        heightData[i][j] = height + y;
+      }
+    }
+    
+    console.log(`🏔️ Height data generated. Sample heights:`);
+    console.log(`  - Center [${heightMapSize/2}][${heightMapSize/2}]: ${heightData[heightMapSize/2][heightMapSize/2]}`);
+    console.log(`  - Edge [0][0]: ${heightData[0][0]}`);
+    console.log(`  - Edge [${heightMapSize}][${heightMapSize}]: ${heightData[heightMapSize][heightMapSize]}`);
+    
+    // Add to visual scene
     this.scene.add(hill);
+    console.log(`🏔️ Hill added to visual scene`);
     
-    console.log(`🏔️ Created test hill at position (${x}, ${y}, ${z}) with radius=${radius}, maxHeight=${maxHeight}`);
-    console.log(`🏔️ Hill registered with PhysicsManager for collision detection`);
+    // CRITICAL: Check PhysicsManager before registration
+    console.log(`🏔️ PhysicsManager check before registration:`);
+    console.log(`  - Exists: ${!!this.physicsManager}`);
+    console.log(`  - Type: ${typeof this.physicsManager}`);
+    console.log(`  - Has addTerrainCollision: ${!!(this.physicsManager?.addTerrainCollision)}`);
     
+    if (this.physicsManager && this.physicsManager.addTerrainCollision) {
+      try {
+        console.log(`🏔️ Attempting terrain registration...`);
+        const terrainId = this.physicsManager.addTerrainCollision(hill, heightData, radius * 2, `test_hill_${x}_${z}`);
+        console.log(`🏔️ ✅ Terrain registration SUCCESS: ${terrainId}`);
+        
+        // Verify registration immediately
+        const collisionObjects = this.physicsManager.getCollisionObjects();
+        const registeredTerrain = collisionObjects.get(terrainId);
+        console.log(`🏔️ Verification - Terrain found in registry: ${!!registeredTerrain}`);
+        if (registeredTerrain) {
+          console.log(`  - Type: ${registeredTerrain.type}`);
+          console.log(`  - Has heightData: ${!!registeredTerrain.heightData}`);
+          console.log(`  - HeightData size: ${registeredTerrain.heightData?.length}x${registeredTerrain.heightData?.[0]?.length}`);
+        }
+        
+      } catch (error) {
+        console.error(`🏔️ ❌ Terrain registration FAILED:`, error);
+      }
+    } else {
+      console.error(`🏔️ ❌ CRITICAL ERROR: PhysicsManager or addTerrainCollision method missing!`);
+      console.log(`  - this.physicsManager: ${this.physicsManager}`);
+      console.log(`  - addTerrainCollision method: ${this.physicsManager?.addTerrainCollision}`);
+    }
+    
+    console.log(`🏔️ === HILL CREATION COMPLETE ===\n`);
     return hill;
   }
   

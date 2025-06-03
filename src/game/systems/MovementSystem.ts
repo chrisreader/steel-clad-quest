@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -58,6 +59,49 @@ export class MovementSystem {
   public update(deltaTime: number): void {
     this.frameCount++;
     
+    // Enhanced debugging - add this in your update method
+    if (this.frameCount % 60 === 0) {
+      const pos = this.player.getPosition();
+      
+      console.log(`\n🏔️ === HILL PHYSICS DEBUG REPORT ===`);
+      console.log(`🏔️ Player Position: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`);
+      
+      // Check if PhysicsManager exists
+      console.log(`🏔️ PhysicsManager exists: ${!!this.physicsManager}`);
+      
+      if (this.physicsManager) {
+        // Get terrain height
+        const height = this.physicsManager.getTerrainHeightAtPosition(pos);
+        console.log(`🏔️ Calculated terrain height: ${height.toFixed(2)}`);
+        
+        // Check collision objects
+        const collisionObjects = this.physicsManager.getCollisionObjects();
+        console.log(`🏔️ Total collision objects: ${collisionObjects.size}`);
+        
+        // Detailed terrain analysis
+        let terrainCount = 0;
+        for (const [id, obj] of collisionObjects) {
+          if (obj.type === 'terrain') {
+            terrainCount++;
+            console.log(`🏔️ TERRAIN FOUND: ${id}`);
+            console.log(`  - Type: ${obj.type}`);
+            console.log(`  - Has heightData: ${!!obj.heightData}`);
+            console.log(`  - HeightData size: ${obj.heightData ? obj.heightData.length + 'x' + obj.heightData[0]?.length : 'N/A'}`);
+            console.log(`  - Mesh position: (${obj.mesh.position.x}, ${obj.mesh.position.y}, ${obj.mesh.position.z})`);
+            console.log(`  - Mesh name: ${obj.mesh.name}`);
+          }
+        }
+        console.log(`🏔️ Total terrain objects: ${terrainCount}`);
+        
+        // Test specific hill location
+        const hillPos = new THREE.Vector3(20, 0, 30); // Your hill position
+        const hillHeight = this.physicsManager.getTerrainHeightAtPosition(hillPos);
+        console.log(`🏔️ Height at hill center (20, 30): ${hillHeight.toFixed(2)}`);
+      }
+      
+      console.log(`🏔️ === END DEBUG REPORT ===\n`);
+    }
+    
     // Handle movement input using the InputManager API
     const moveDirection = new THREE.Vector3();
     let hasMovementInput = false;
@@ -83,19 +127,6 @@ export class MovementSystem {
     if (rightPressed) {
       moveDirection.x += 1;
       hasMovementInput = true;
-    }
-    
-    // Log input state every 60 frames
-    if (this.frameCount % 60 === 0) {
-      console.log("🏃 [MovementSystem] Input state:", {
-        forward: forwardPressed,
-        backward: backwardPressed,
-        left: leftPressed,
-        right: rightPressed,
-        hasInput: hasMovementInput,
-        moveDirection: moveDirection,
-        playerPos: this.player.getPosition()
-      });
     }
     
     // Handle sprint logic
