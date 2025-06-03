@@ -1,8 +1,9 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
 import { PhysicsManager } from '../engine/PhysicsManager';
+import { TerrainSurfaceDetector } from '../utils/terrain/TerrainSurfaceDetector';
+import { SurfaceMovementCalculator } from '../utils/movement/SurfaceMovementCalculator';
 
 export class MovementSystem {
   private scene: THREE.Scene;
@@ -10,9 +11,10 @@ export class MovementSystem {
   private player: Player;
   private inputManager: InputManager;
   private physicsManager: PhysicsManager;
+  private surfaceDetector: TerrainSurfaceDetector;
+  private surfaceMovementCalculator: SurfaceMovementCalculator;
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
-  private smoothingFactor: number = 0.03; // Smoother transitions for better stair/slope movement
   
   constructor(
     scene: THREE.Scene,
@@ -27,12 +29,13 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with enhanced terrain collision detection, staircase navigation, and slope walking");
+    // Initialize new surface-following systems
+    this.surfaceDetector = new TerrainSurfaceDetector(physicsManager);
+    this.surfaceMovementCalculator = new SurfaceMovementCalculator();
     
-    // Set up sprint input handler
+    console.log("🏃 [MovementSystem] Initialized with TRUE SURFACE-FOLLOWING movement for hill walking");
+    
     this.setupSprintHandler();
-    
-    // Test input manager immediately
     this.testInputManager();
   }
   
@@ -59,54 +62,23 @@ export class MovementSystem {
   public update(deltaTime: number): void {
     this.frameCount++;
     
-    // Enhanced debugging - add this in your update method
+    // Enhanced debugging every 60 frames
     if (this.frameCount % 60 === 0) {
       const pos = this.player.getPosition();
-      
-      console.log(`\n🏔️ === HILL PHYSICS DEBUG REPORT ===`);
+      console.log(`\n🏔️ === SURFACE-FOLLOWING DEBUG REPORT ===`);
       console.log(`🏔️ Player Position: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`);
       
-      // Check if PhysicsManager exists
-      console.log(`🏔️ PhysicsManager exists: ${!!this.physicsManager}`);
-      
-      if (this.physicsManager) {
-        // Get terrain height
-        const height = this.physicsManager.getTerrainHeightAtPosition(pos);
-        console.log(`🏔️ Calculated terrain height: ${height.toFixed(2)}`);
-        
-        // Check collision objects
-        const collisionObjects = this.physicsManager.getCollisionObjects();
-        console.log(`🏔️ Total collision objects: ${collisionObjects.size}`);
-        
-        // Detailed terrain analysis
-        let terrainCount = 0;
-        for (const [id, obj] of collisionObjects) {
-          if (obj.type === 'terrain') {
-            terrainCount++;
-            console.log(`🏔️ TERRAIN FOUND: ${id}`);
-            console.log(`  - Type: ${obj.type}`);
-            console.log(`  - Has heightData: ${!!obj.heightData}`);
-            console.log(`  - HeightData size: ${obj.heightData ? obj.heightData.length + 'x' + obj.heightData[0]?.length : 'N/A'}`);
-            console.log(`  - Mesh position: (${obj.mesh.position.x}, ${obj.mesh.position.y}, ${obj.mesh.position.z})`);
-            console.log(`  - Mesh name: ${obj.mesh.name}`);
-          }
-        }
-        console.log(`🏔️ Total terrain objects: ${terrainCount}`);
-        
-        // Test specific hill location
-        const hillPos = new THREE.Vector3(20, 0, 30); // Your hill position
-        const hillHeight = this.physicsManager.getTerrainHeightAtPosition(hillPos);
-        console.log(`🏔️ Height at hill center (20, 30): ${hillHeight.toFixed(2)}`);
-      }
-      
-      console.log(`🏔️ === END DEBUG REPORT ===\n`);
+      // Test surface data at player position
+      const surfaceData = this.surfaceDetector.getSurfaceDataAtPosition(pos);
+      console.log(`🏔️ Surface Data: height=${surfaceData.height.toFixed(2)}, slope=${surfaceData.slopeAngle.toFixed(1)}°, walkable=${surfaceData.isWalkable}`);
+      console.log(`🏔️ === END SURFACE DEBUG ===\n`);
     }
     
-    // Handle movement input using the InputManager API
+    // Handle movement input
     const moveDirection = new THREE.Vector3();
     let hasMovementInput = false;
     
-    // Check each movement key individually with logging
+    // Check movement keys
     const forwardPressed = this.inputManager.isActionPressed('moveForward');
     const backwardPressed = this.inputManager.isActionPressed('moveBackward');
     const leftPressed = this.inputManager.isActionPressed('moveLeft');
@@ -133,26 +105,23 @@ export class MovementSystem {
     if (this.isSprintActivatedByDoubleTap) {
       if (forwardPressed && !backwardPressed) {
         if (!this.player.getSprinting()) {
-          console.log("🏃 [MovementSystem] Continuing sprint - W still held after double-tap");
           this.player.startSprint();
         }
       } else {
-        console.log("🏃 [MovementSystem] Sprint stopped - W released or moving backward");
         this.isSprintActivatedByDoubleTap = false;
         this.player.stopSprint();
       }
     }
     
-    // Normalize movement
+    // Apply TRUE SURFACE-FOLLOWING movement
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
       // Apply sprint multiplier
-      let speed = 1.0;
+      let speed = 5.0; // Base movement speed
       if (this.player.getSprinting() && forwardPressed && !backwardPressed) {
-        speed = 1.5;
+        speed = 7.5;
       }
-      moveDirection.multiplyScalar(speed);
       
       // Transform movement direction relative to camera rotation
       const cameraDirection = new THREE.Vector3();
@@ -165,41 +134,29 @@ export class MovementSystem {
       const worldMoveDirection = new THREE.Vector3();
       worldMoveDirection.addScaledVector(forwardVector, -moveDirection.z);
       worldMoveDirection.addScaledVector(rightVector, moveDirection.x);
+      worldMoveDirection.normalize();
       
-      // Get current and target positions
+      // Get current position and surface data
       const currentPosition = this.player.getPosition();
-      const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
-      const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
+      const surfaceData = this.surfaceDetector.getSurfaceDataAtPosition(currentPosition);
       
-      // ENHANCED: Get safe position with terrain following
-      let safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4);
+      // Calculate surface-following movement
+      const movementResult = this.surfaceMovementCalculator.calculateSurfaceMovement(
+        currentPosition,
+        worldMoveDirection,
+        speed,
+        surfaceData,
+        deltaTime
+      );
       
-      // CRITICAL: Ensure terrain height is always applied for hill walking
-      const terrainHeight = this.physicsManager.getTerrainHeightAtPosition(safePosition);
-      if (terrainHeight > 0) {
-        safePosition.y = Math.max(safePosition.y, terrainHeight + 0.4);
-        console.log(`🏔️ Terrain following: height=${terrainHeight.toFixed(2)}, player y=${safePosition.y.toFixed(2)}`);
-      }
-      
-      // Calculate actual movement vector
-      const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
-      
-      if (actualMovement.length() > 0.001) {
-        // Convert back to normalized direction for player.move()
-        const normalizedMovement = actualMovement.clone().normalize();
-        const movementScale = actualMovement.length() / (5.0 * deltaTime);
+      if (!movementResult.isBlocked) {
+        // Apply the new position directly
+        this.player.setPosition(movementResult.newPosition);
         
-        console.log("🏃 [MovementSystem] Enhanced movement with terrain following:", {
-          from: currentPosition,
-          to: safePosition,
-          movement: actualMovement,
-          terrainHeight: terrainHeight,
-          distance: actualMovement.length()
-        });
-        
-        this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
+        console.log(`🏃 SURFACE MOVEMENT: from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${movementResult.newPosition.x.toFixed(2)}, ${movementResult.newPosition.y.toFixed(2)}, ${movementResult.newPosition.z.toFixed(2)})`);
+        console.log(`🏃 Surface slope: ${surfaceData.slopeAngle.toFixed(1)}°, terrain height: ${surfaceData.height.toFixed(2)}`);
       } else {
-        console.log("🏃 [MovementSystem] Movement blocked by collision or steep slope");
+        console.log("🏃 Movement blocked by steep slope or obstacle");
       }
     }
   }

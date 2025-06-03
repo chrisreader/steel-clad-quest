@@ -17,7 +17,7 @@ export class PhysicsManager {
   private terrainSize: number = 100; // Default terrain size
   
   constructor() {
-    console.log('🏔️ Enhanced Physics Manager initialized with terrain height support and staircase navigation');
+    console.log('🏔️ Enhanced Physics Manager initialized with true surface following support');
   }
 
   // Enhanced method: Add terrain with height data for better collision with debugging
@@ -69,7 +69,37 @@ export class PhysicsManager {
     return objectId;
   }
 
-  // STEP 3 FIX: Enhanced method with proper coordinate mapping for rotated terrain
+  // Add the missing getCollisionObjects method
+  public getCollisionObjects(): Map<string, CollisionObject> {
+    return this.collisionObjects;
+  }
+
+  // Add standard collision object method
+  public addCollisionObject(mesh: THREE.Object3D, type: 'environment' | 'staircase', material: 'wood' | 'stone' | 'metal' | 'fabric', id?: string): string {
+    const objectId = id || `collision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const box = new THREE.Box3().setFromObject(mesh);
+    
+    const collisionObject: CollisionObject = {
+      mesh: mesh,
+      box: box,
+      type: type,
+      material: material,
+      id: objectId
+    };
+    
+    this.collisionObjects.set(objectId, collisionObject);
+    console.log(`🔧 Added collision object: ${objectId} (${type})`);
+    return objectId;
+  }
+
+  // Add remove collision object method
+  public removeCollisionObject(id: string): void {
+    if (this.collisionObjects.delete(id)) {
+      console.log(`🔧 Removed collision object: ${id}`);
+    }
+  }
+
+  // ENHANCED: Better terrain height calculation for surface following
   public getTerrainHeightAtPosition(position: THREE.Vector3): number {
     const cacheKey = `${Math.floor(position.x * 10)},${Math.floor(position.z * 10)}`;
     
@@ -83,46 +113,36 @@ export class PhysicsManager {
         const terrain = collisionObject.mesh;
         const heightData = collisionObject.heightData;
         
-        // STEP 3 FIX: Proper coordinate transformation for cone-shaped hill
+        // FIXED: Proper coordinate transformation for cone-shaped hill
         const terrainPos = terrain.position;
-        const terrainSize = terrain.userData.terrainSize || 30; // Get size from userData or default
+        const terrainSize = terrain.userData.terrainSize || 30;
         
         // Convert world position to terrain local coordinates
         const localX = position.x - terrainPos.x;
         const localZ = position.z - terrainPos.z;
         
-        // STEP 3 FIX: For cone geometry, calculate distance from center
+        // For cone geometry, calculate distance from center
         const distanceFromCenter = Math.sqrt(localX * localX + localZ * localZ);
         const radius = terrainSize / 2;
         
-        // STEP 3 FIX: Check if position is within terrain bounds
+        // Check if position is within terrain bounds
         if (distanceFromCenter <= radius) {
-          // Map to heightmap indices based on distance and angle
-          const segments = heightData.length - 1;
-          const normalizedDistance = distanceFromCenter / radius;
+          // FIXED: Direct cone height calculation
+          const normalizedDistance = Math.min(1, distanceFromCenter / radius);
           
-          // Use distance to find height directly from cone shape
-          const angle = Math.atan2(localZ, localX);
-          const normalizedAngle = (angle + Math.PI) / (2 * Math.PI); // 0 to 1
+          // For a cone, height decreases linearly from center to edge
+          const maxHeight = Math.max(...heightData.flat());
+          const height = maxHeight * (1 - normalizedDistance);
           
-          const mapX = Math.floor(normalizedDistance * segments);
-          const mapZ = Math.floor(normalizedAngle * segments);
+          // Add terrain base position
+          const finalHeight = terrainPos.y + height;
           
-          // Bounds check with clamping
-          const clampedX = Math.max(0, Math.min(segments, mapX));
-          const clampedZ = Math.max(0, Math.min(segments, mapZ));
+          this.terrainHeightCache.set(cacheKey, finalHeight);
           
-          if (clampedX >= 0 && clampedX < heightData.length && 
-              clampedZ >= 0 && clampedZ < heightData[0].length) {
-            const height = heightData[clampedX][clampedZ];
-            this.terrainHeightCache.set(cacheKey, height);
-            
-            console.log(`🏔️ Terrain height at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${height.toFixed(2)}`);
-            console.log(`🏔️ Distance from center: ${distanceFromCenter.toFixed(2)}, radius: ${radius}`);
-            console.log(`🏔️ Map indices: (${clampedX}, ${clampedZ}) from heightData[${heightData.length}][${heightData[0].length}]`);
-            
-            return height;
-          }
+          console.log(`🏔️ FIXED terrain height at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${finalHeight.toFixed(2)}`);
+          console.log(`🏔️ Distance from center: ${distanceFromCenter.toFixed(2)}, radius: ${radius}, height: ${height.toFixed(2)}`);
+          
+          return finalHeight;
         }
       }
     }
@@ -179,38 +199,24 @@ export class PhysicsManager {
     return 0; // Flat terrain if no heightmap found
   }
 
-  // Add the missing getCollisionObjects method
-  public getCollisionObjects(): Map<string, CollisionObject> {
-    return this.collisionObjects;
-  }
-
-  // Add standard collision object method
-  public addCollisionObject(mesh: THREE.Object3D, type: 'environment' | 'staircase', material: 'wood' | 'stone' | 'metal' | 'fabric', id?: string): string {
-    const objectId = id || `collision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const box = new THREE.Box3().setFromObject(mesh);
-    
-    const collisionObject: CollisionObject = {
-      mesh: mesh,
-      box: box,
-      type: type,
-      material: material,
-      id: objectId
-    };
-    
-    this.collisionObjects.set(objectId, collisionObject);
-    console.log(`🔧 Added collision object: ${objectId} (${type})`);
-    return objectId;
-  }
-
-  // Add remove collision object method
-  public removeCollisionObject(id: string): void {
-    if (this.collisionObjects.delete(id)) {
-      console.log(`🔧 Removed collision object: ${id}`);
-    }
-  }
-
-  // ENHANCED: Better player movement with continuous terrain following
+  // ENHANCED: Surface-aware player movement
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
+    console.log(`🏔️ SURFACE-AWARE movement check from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
+    
+    // Get terrain height at target position
+    const terrainHeight = this.getTerrainHeightAtPosition(targetPosition);
+    
+    // Check if target position is on terrain
+    if (terrainHeight > 0) {
+      // Force player to follow terrain surface
+      const surfacePosition = targetPosition.clone();
+      surfacePosition.y = terrainHeight + playerRadius;
+      
+      console.log(`🏔️ FORCING player to terrain surface: y=${surfacePosition.y.toFixed(2)} (terrain=${terrainHeight.toFixed(2)} + radius=${playerRadius})`);
+      return surfacePosition;
+    }
+    
+    // Check for standard environment collisions
     const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
     const distance = direction.length();
     
@@ -218,17 +224,6 @@ export class PhysicsManager {
     
     direction.normalize();
     
-    // STEP 1: Get terrain height FIRST (most important for hill walking)
-    const terrainHeight = this.getTerrainHeightAtPosition(targetPosition);
-    
-    // STEP 2: Check slope angle at target position
-    const slopeAngle = this.getSlopeAngleAtPosition(targetPosition);
-    if (slopeAngle > 45) {
-      console.log(`🏔️ Movement blocked by steep slope: ${slopeAngle.toFixed(1)}° (max 45°)`);
-      return currentPosition;
-    }
-    
-    // STEP 3: Check for standard environment collisions (trees, walls, etc.)
     const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile', 'enemy']);
     
     if (collision && collision.object.type === 'environment') {
@@ -236,24 +231,12 @@ export class PhysicsManager {
       const safeDistance = Math.max(0, collision.distance - playerRadius - 0.1);
       const safePosition = currentPosition.clone().add(direction.multiplyScalar(safeDistance));
       
-      // Apply terrain height to safe position
-      safePosition.y = Math.max(safePosition.y, terrainHeight + playerRadius);
+      console.log(`🏔️ Environment collision detected, safe position: (${safePosition.x.toFixed(2)}, ${safePosition.y.toFixed(2)}, ${safePosition.z.toFixed(2)})`);
       return safePosition;
     }
     
-    // STEP 4: Apply terrain following
-    const adjustedTarget = targetPosition.clone();
-    
-    // ENHANCED: Always ensure player follows terrain height
-    adjustedTarget.y = Math.max(adjustedTarget.y, terrainHeight + playerRadius);
-    
-    // ENHANCED: Slope projection for natural movement on slopes ≤ 45°
-    if (slopeAngle <= 45 && slopeAngle > 0) {
-      console.log(`🏔️ Following slope: angle=${slopeAngle.toFixed(1)}°, terrain height=${terrainHeight.toFixed(2)}`);
-    }
-    
-    console.log(`🏔️ Final position: (${adjustedTarget.x.toFixed(2)}, ${adjustedTarget.y.toFixed(2)}, ${adjustedTarget.z.toFixed(2)})`);
-    return adjustedTarget;
+    console.log(`🏔️ Standard movement to: (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
+    return targetPosition;
   }
 
   // FIXED: Enhanced method with proper collision point calculation
