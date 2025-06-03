@@ -13,11 +13,11 @@ export class PhysicsManager {
   private gravity = -9.81;
   private collisionObjects: Map<string, CollisionObject> = new Map();
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
-  private terrainHeightCache: Map<string, number> = new Map();
+  private terrainHeightCache: Map<string, { height: number; normal: THREE.Vector3 }> = new Map();
   private terrainSize: number = 100; // Default terrain size
   
   constructor() {
-    console.log('🏔️ Enhanced Physics Manager initialized with true surface following support');
+    console.log('🏔️ Enhanced Physics Manager initialized with true terrain raycasting');
   }
 
   // Enhanced method: Add terrain with height data for better collision with debugging
@@ -99,137 +99,89 @@ export class PhysicsManager {
     }
   }
 
-  // ENHANCED: Better terrain height calculation with boundary handling
+  // ENHANCED: True terrain raycasting for accurate height detection
   public getTerrainHeightAtPosition(position: THREE.Vector3): number {
-    const cacheKey = `${Math.floor(position.x * 10)},${Math.floor(position.z * 10)}`;
+    const result = this.getTerrainDataAtPosition(position);
+    return result.height;
+  }
+
+  // NEW: Get both height and normal using true raycasting
+  public getTerrainDataAtPosition(position: THREE.Vector3): { height: number; normal: THREE.Vector3 } {
+    const cacheKey = `${Math.floor(position.x * 4)},${Math.floor(position.z * 4)}`;
     
     if (this.terrainHeightCache.has(cacheKey)) {
       return this.terrainHeightCache.get(cacheKey)!;
     }
     
-    // Find terrain collision objects
+    // Find terrain collision objects and use raycasting
     for (const [id, collisionObject] of this.collisionObjects) {
-      if (collisionObject.type === 'terrain' && collisionObject.heightData) {
+      if (collisionObject.type === 'terrain') {
         const terrain = collisionObject.mesh;
-        const heightData = collisionObject.heightData;
         
-        // Enhanced coordinate transformation with boundary handling
-        const terrainPos = terrain.position;
-        const terrainSize = terrain.userData.terrainSize || 30;
+        // Cast ray downward from above the position
+        const rayOrigin = new THREE.Vector3(position.x, position.y + 50, position.z);
+        const rayDirection = new THREE.Vector3(0, -1, 0);
         
-        // Convert world position to terrain local coordinates
-        const localX = position.x - terrainPos.x;
-        const localZ = position.z - terrainPos.z;
+        this.raycaster.set(rayOrigin, rayDirection);
         
-        // For cone geometry, calculate distance from center
-        const distanceFromCenter = Math.sqrt(localX * localX + localZ * localZ);
-        const radius = terrainSize / 2;
+        // Get intersections with terrain mesh
+        const intersections = this.raycaster.intersectObject(terrain, true);
         
-        // Enhanced boundary handling - gradual transition instead of hard cutoff
-        if (distanceFromCenter <= radius) {
-          // Calculate cone height with smoother transitions
-          const normalizedDistance = Math.min(1, distanceFromCenter / radius);
+        if (intersections.length > 0) {
+          const intersection = intersections[0];
+          const height = intersection.point.y;
+          const normal = intersection.face ? intersection.face.normal.clone() : new THREE.Vector3(0, 1, 0);
           
-          // Smoother falloff using cosine interpolation
-          const smoothFactor = 0.5 * (1 + Math.cos(normalizedDistance * Math.PI));
+          // Transform normal to world space
+          const worldNormal = normal.transformDirection(terrain.matrixWorld).normalize();
           
-          const maxHeight = Math.max(...heightData.flat());
-          const height = maxHeight * smoothFactor;
+          const result = { height, normal: worldNormal };
+          this.terrainHeightCache.set(cacheKey, result);
           
-          // Add terrain base position
-          const finalHeight = terrainPos.y + height;
+          console.log(`🏔️ RAYCAST HIT: position=(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), height=${height.toFixed(2)}, normal=(${worldNormal.x.toFixed(2)}, ${worldNormal.y.toFixed(2)}, ${worldNormal.z.toFixed(2)})`);
           
-          this.terrainHeightCache.set(cacheKey, finalHeight);
-          
-          return finalHeight;
-        } else if (distanceFromCenter <= radius * 1.2) {
-          // Transition zone - gradual descent to ground level
-          const transitionFactor = (distanceFromCenter - radius) / (radius * 0.2);
-          const maxHeight = Math.max(...heightData.flat());
-          const transitionHeight = maxHeight * (1 - transitionFactor);
-          
-          const finalHeight = terrainPos.y + Math.max(0, transitionHeight);
-          this.terrainHeightCache.set(cacheKey, finalHeight);
-          
-          return finalHeight;
+          return result;
+        } else {
+          console.log(`🏔️ RAYCAST MISS: position=(${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
         }
       }
     }
     
-    return 0; // Default ground level
+    // Fallback to ground level
+    const fallback = { height: 0, normal: new THREE.Vector3(0, 1, 0) };
+    this.terrainHeightCache.set(cacheKey, fallback);
+    return fallback;
   }
 
-  // STEP 3 FIX: Enhanced method with proper coordinate mapping for slope calculation
+  // SIMPLIFIED: Use raycasting result for slope calculation
   public getSlopeAngleAtPosition(position: THREE.Vector3): number {
-    for (const [id, collisionObject] of this.collisionObjects) {
-      if (collisionObject.type === 'terrain' && collisionObject.heightData) {
-        const terrain = collisionObject.mesh;
-        const heightData = collisionObject.heightData;
-        
-        // Use same coordinate transformation as getTerrainHeightAtPosition
-        const terrainPos = terrain.position;
-        const terrainSize = terrain.userData.terrainSize || 30;
-        
-        const localX = position.x - terrainPos.x;
-        const localZ = position.z - terrainPos.z;
-        
-        const distanceFromCenter = Math.sqrt(localX * localX + localZ * localZ);
-        const radius = terrainSize / 2;
-        
-        if (distanceFromCenter <= radius) {
-          const segments = heightData.length - 1;
-          const normalizedDistance = distanceFromCenter / radius;
-          const angle = Math.atan2(localZ, localX);
-          const normalizedAngle = (angle + Math.PI) / (2 * Math.PI);
-          
-          const mapX = Math.floor(normalizedDistance * segments);
-          const mapZ = Math.floor(normalizedAngle * segments);
-          
-          // Bounds check with margin for gradient calculation
-          if (mapX > 0 && mapX < segments && mapZ > 0 && mapZ < segments) {
-            // Calculate gradients using finite differences
-            const dx = heightData[mapX + 1][mapZ] - heightData[mapX - 1][mapZ];
-            const dz = heightData[mapX][mapZ + 1] - heightData[mapX][mapZ - 1];
-            
-            // Create surface normal vector
-            const normal = new THREE.Vector3(-dx / 2, 1, -dz / 2).normalize();
-            const up = new THREE.Vector3(0, 1, 0);
-            
-            // Calculate angle between surface normal and up vector
-            const slopeAngle = Math.acos(Math.max(-1, Math.min(1, normal.dot(up)))) * (180 / Math.PI);
-            
-            console.log(`🏔️ Slope angle at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${slopeAngle.toFixed(1)}°`);
-            return slopeAngle;
-          }
-        }
-      }
-    }
+    const terrainData = this.getTerrainDataAtPosition(position);
+    const up = new THREE.Vector3(0, 1, 0);
+    const slopeAngle = Math.acos(Math.max(-1, Math.min(1, terrainData.normal.dot(up)))) * (180 / Math.PI);
     
-    return 0; // Flat terrain if no heightmap found
+    console.log(`🏔️ Slope angle at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${slopeAngle.toFixed(1)}°`);
+    return slopeAngle;
   }
 
-  // ENHANCED: Surface-aware player movement
+  // ENHANCED: Surface-aware player movement with proper height following
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
     console.log(`🏔️ SURFACE-AWARE movement check from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
     
-    // Get terrain height at target position
-    const terrainHeight = this.getTerrainHeightAtPosition(targetPosition);
+    // Get terrain height at target position using raycasting
+    const terrainData = this.getTerrainDataAtPosition(targetPosition);
+    const terrainHeight = terrainData.height;
     
-    // Check if target position is on terrain
-    if (terrainHeight > 0) {
-      // Force player to follow terrain surface
-      const surfacePosition = targetPosition.clone();
-      surfacePosition.y = terrainHeight + playerRadius;
-      
-      console.log(`🏔️ FORCING player to terrain surface: y=${surfacePosition.y.toFixed(2)} (terrain=${terrainHeight.toFixed(2)} + radius=${playerRadius})`);
-      return surfacePosition;
-    }
+    // Force player to follow terrain surface with consistent offset
+    const surfacePosition = targetPosition.clone();
+    surfacePosition.y = terrainHeight + playerRadius; // Maintain consistent height above terrain
+    
+    console.log(`🏔️ RAYCAST-BASED position: y=${surfacePosition.y.toFixed(2)} (terrain=${terrainHeight.toFixed(2)} + radius=${playerRadius})`);
     
     // Check for standard environment collisions
     const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
     const distance = direction.length();
     
-    if (distance === 0) return currentPosition;
+    if (distance === 0) return surfacePosition;
     
     direction.normalize();
     
@@ -239,13 +191,13 @@ export class PhysicsManager {
       // Calculate safe position just before collision
       const safeDistance = Math.max(0, collision.distance - playerRadius - 0.1);
       const safePosition = currentPosition.clone().add(direction.multiplyScalar(safeDistance));
+      safePosition.y = terrainHeight + playerRadius; // Still follow terrain
       
       console.log(`🏔️ Environment collision detected, safe position: (${safePosition.x.toFixed(2)}, ${safePosition.y.toFixed(2)}, ${safePosition.z.toFixed(2)})`);
       return safePosition;
     }
     
-    console.log(`🏔️ Standard movement to: (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
-    return targetPosition;
+    return surfacePosition;
   }
 
   // FIXED: Enhanced method with proper collision point calculation
@@ -280,5 +232,11 @@ export class PhysicsManager {
   public getCollisionMaterial(objectId: string): 'wood' | 'stone' | 'metal' | 'fabric' | null {
     const collisionObject = this.collisionObjects.get(objectId);
     return collisionObject ? collisionObject.material : null;
+  }
+
+  // NEW: Clear cache periodically to prevent memory issues
+  public clearTerrainCache(): void {
+    this.terrainHeightCache.clear();
+    console.log('🏔️ Terrain height cache cleared');
   }
 }

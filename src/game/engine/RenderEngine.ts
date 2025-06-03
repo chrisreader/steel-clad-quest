@@ -10,13 +10,16 @@ export class RenderEngine {
   // Camera controls with smoothing
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private targetRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
-  private mouseSensitivity: number = 0.003; // Increased from 0.002 for better responsiveness
+  private mouseSensitivity: number = 0.003;
   private maxPitch: number = Math.PI / 2 - 0.1;
-  private smoothingFactor: number = 0.15; // For exponential smoothing
+  private smoothingFactor: number = 0.15;
   
   // Mouse smoothing
   private mouseVelocity: { x: number; y: number } = { x: 0, y: 0 };
   private smoothedMouseDelta: { x: number; y: number } = { x: 0, y: 0 };
+  
+  // FIXED: Consistent camera height
+  private readonly CAMERA_HEIGHT_OFFSET: number = 1.6; // Standard eye height
   
   // Debug state
   private renderCount: number = 0;
@@ -67,11 +70,11 @@ export class RenderEngine {
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
-    // Position camera at head level to avoid torso clipping
+    // Position camera at consistent eye level
     this.camera.position.set(
       playerPosition.x, 
-      playerPosition.y + 1.2,
-      playerPosition.z - 0.05
+      playerPosition.y + this.CAMERA_HEIGHT_OFFSET,
+      playerPosition.z
     );
     this.cameraRotation.pitch = 0;
     this.cameraRotation.yaw = 0;
@@ -79,7 +82,7 @@ export class RenderEngine {
     this.targetRotation.yaw = 0;
     this.updateCameraRotation();
     
-    console.log("📹 [RenderEngine] First-person camera positioned with smooth controls:", this.camera.position);
+    console.log("📹 [RenderEngine] First-person camera positioned with consistent height offset:", this.camera.position);
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
@@ -109,11 +112,11 @@ export class RenderEngine {
   }
   
   public updateFirstPersonCamera(playerPosition: THREE.Vector3): void {
-    // Keep camera positioned at head level to avoid torso clipping
+    // Keep camera positioned at consistent eye level relative to player
     this.camera.position.set(
       playerPosition.x, 
-      playerPosition.y + 1.2,
-      playerPosition.z - 0.05
+      playerPosition.y + this.CAMERA_HEIGHT_OFFSET,
+      playerPosition.z
     );
   }
   
