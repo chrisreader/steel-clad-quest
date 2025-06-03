@@ -17,7 +17,7 @@ export class PhysicsManager {
   private terrainSize: number = 100; // Default terrain size
   
   constructor() {
-    console.log('🏔️ Enhanced Physics Manager initialized with true terrain raycasting');
+    console.log('🏔️ Enhanced Physics Manager initialized with smooth terrain following');
   }
 
   // Enhanced method: Add terrain with height data for better collision with debugging
@@ -99,58 +99,114 @@ export class PhysicsManager {
     }
   }
 
-  // ENHANCED: True terrain raycasting for accurate height detection
+  // ENHANCED: Smooth terrain raycasting with bilinear interpolation
   public getTerrainHeightAtPosition(position: THREE.Vector3): number {
     const result = this.getTerrainDataAtPosition(position);
     return result.height;
   }
 
-  // NEW: Get both height and normal using true raycasting
+  // ENHANCED: Get terrain data with smooth interpolation and improved caching
   public getTerrainDataAtPosition(position: THREE.Vector3): { height: number; normal: THREE.Vector3 } {
-    const cacheKey = `${Math.floor(position.x * 4)},${Math.floor(position.z * 4)}`;
+    // Use finer cache granularity for smoother movement
+    const cacheKey = `${Math.floor(position.x * 8)},${Math.floor(position.z * 8)}`;
     
     if (this.terrainHeightCache.has(cacheKey)) {
       return this.terrainHeightCache.get(cacheKey)!;
     }
     
-    // Find terrain collision objects and use raycasting
-    for (const [id, collisionObject] of this.collisionObjects) {
-      if (collisionObject.type === 'terrain') {
-        const terrain = collisionObject.mesh;
-        
-        // Cast ray downward from above the position
-        const rayOrigin = new THREE.Vector3(position.x, position.y + 50, position.z);
-        const rayDirection = new THREE.Vector3(0, -1, 0);
-        
-        this.raycaster.set(rayOrigin, rayDirection);
-        
-        // Get intersections with terrain mesh
-        const intersections = this.raycaster.intersectObject(terrain, true);
-        
-        if (intersections.length > 0) {
-          const intersection = intersections[0];
-          const height = intersection.point.y;
-          const normal = intersection.face ? intersection.face.normal.clone() : new THREE.Vector3(0, 1, 0);
-          
-          // Transform normal to world space
-          const worldNormal = normal.transformDirection(terrain.matrixWorld).normalize();
-          
-          const result = { height, normal: worldNormal };
-          this.terrainHeightCache.set(cacheKey, result);
-          
-          console.log(`🏔️ RAYCAST HIT: position=(${position.x.toFixed(1)}, ${position.z.toFixed(1)}), height=${height.toFixed(2)}, normal=(${worldNormal.x.toFixed(2)}, ${worldNormal.y.toFixed(2)}, ${worldNormal.z.toFixed(2)})`);
-          
-          return result;
-        } else {
-          console.log(`🏔️ RAYCAST MISS: position=(${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
-        }
-      }
+    // Sample multiple points for smoother interpolation
+    const samples = this.getSmoothTerrainSamples(position);
+    
+    if (samples.length > 0) {
+      // Use bilinear interpolation for smooth height transitions
+      const interpolatedResult = this.interpolateTerrainSamples(position, samples);
+      this.terrainHeightCache.set(cacheKey, interpolatedResult);
+      return interpolatedResult;
     }
     
     // Fallback to ground level
     const fallback = { height: 0, normal: new THREE.Vector3(0, 1, 0) };
     this.terrainHeightCache.set(cacheKey, fallback);
     return fallback;
+  }
+
+  // NEW: Sample terrain at multiple nearby points for smooth interpolation
+  private getSmoothTerrainSamples(position: THREE.Vector3): Array<{ point: THREE.Vector3; height: number; normal: THREE.Vector3 }> {
+    const samples: Array<{ point: THREE.Vector3; height: number; normal: THREE.Vector3 }> = [];
+    const sampleRadius = 0.5; // Sample points within 0.5 units
+    
+    // Sample in a 3x3 grid around the position
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        const samplePos = new THREE.Vector3(
+          position.x + dx * sampleRadius,
+          position.y + 50,
+          position.z + dz * sampleRadius
+        );
+        
+        const terrainSample = this.raycastTerrainAtPosition(samplePos);
+        if (terrainSample) {
+          samples.push({
+            point: new THREE.Vector3(samplePos.x, 0, samplePos.z),
+            height: terrainSample.height,
+            normal: terrainSample.normal
+          });
+        }
+      }
+    }
+    
+    return samples;
+  }
+
+  // NEW: Perform actual raycast at a specific position
+  private raycastTerrainAtPosition(rayOrigin: THREE.Vector3): { height: number; normal: THREE.Vector3 } | null {
+    for (const [id, collisionObject] of this.collisionObjects) {
+      if (collisionObject.type === 'terrain') {
+        const terrain = collisionObject.mesh;
+        
+        this.raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0));
+        const intersections = this.raycaster.intersectObject(terrain, true);
+        
+        if (intersections.length > 0) {
+          const intersection = intersections[0];
+          const height = intersection.point.y;
+          const normal = intersection.face ? intersection.face.normal.clone() : new THREE.Vector3(0, 1, 0);
+          const worldNormal = normal.transformDirection(terrain.matrixWorld).normalize();
+          
+          return { height, normal: worldNormal };
+        }
+      }
+    }
+    return null;
+  }
+
+  // NEW: Interpolate between terrain samples for smooth transitions
+  private interpolateTerrainSamples(
+    position: THREE.Vector3, 
+    samples: Array<{ point: THREE.Vector3; height: number; normal: THREE.Vector3 }>
+  ): { height: number; normal: THREE.Vector3 } {
+    if (samples.length === 1) {
+      return { height: samples[0].height, normal: samples[0].normal };
+    }
+    
+    // Weight samples by distance (inverse distance weighting)
+    let totalWeight = 0;
+    let weightedHeight = 0;
+    const weightedNormal = new THREE.Vector3(0, 0, 0);
+    
+    samples.forEach(sample => {
+      const distance = Math.max(0.1, position.distanceTo(sample.point)); // Avoid division by zero
+      const weight = 1 / distance;
+      
+      totalWeight += weight;
+      weightedHeight += sample.height * weight;
+      weightedNormal.add(sample.normal.clone().multiplyScalar(weight));
+    });
+    
+    const finalHeight = weightedHeight / totalWeight;
+    const finalNormal = weightedNormal.divideScalar(totalWeight).normalize();
+    
+    return { height: finalHeight, normal: finalNormal };
   }
 
   // SIMPLIFIED: Use raycasting result for slope calculation
@@ -163,19 +219,27 @@ export class PhysicsManager {
     return slopeAngle;
   }
 
-  // ENHANCED: Surface-aware player movement with proper height following
+  // ENHANCED: Smooth surface-aware player movement with height smoothing
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
-    console.log(`🏔️ SURFACE-AWARE movement check from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
-    
-    // Get terrain height at target position using raycasting
+    // Get smooth terrain data at target position
     const terrainData = this.getTerrainDataAtPosition(targetPosition);
-    const terrainHeight = terrainData.height;
+    const targetTerrainHeight = terrainData.height;
     
-    // Force player to follow terrain surface with consistent offset
+    // Get current terrain height for smooth interpolation
+    const currentTerrainData = this.getTerrainDataAtPosition(currentPosition);
+    const currentTerrainHeight = currentTerrainData.height;
+    
+    // Calculate smooth height transition (limit vertical change per frame)
+    const maxVerticalChange = 0.15; // Maximum height change per frame
+    const heightDifference = targetTerrainHeight - currentTerrainHeight;
+    const clampedHeightDifference = THREE.MathUtils.clamp(heightDifference, -maxVerticalChange, maxVerticalChange);
+    
+    // Apply smooth height following
+    const smoothTerrainHeight = currentTerrainHeight + clampedHeightDifference;
     const surfacePosition = targetPosition.clone();
-    surfacePosition.y = terrainHeight + playerRadius; // Maintain consistent height above terrain
+    surfacePosition.y = smoothTerrainHeight + playerRadius;
     
-    console.log(`🏔️ RAYCAST-BASED position: y=${surfacePosition.y.toFixed(2)} (terrain=${terrainHeight.toFixed(2)} + radius=${playerRadius})`);
+    console.log(`🏔️ SMOOTH movement: current=${currentTerrainHeight.toFixed(2)}, target=${targetTerrainHeight.toFixed(2)}, smooth=${smoothTerrainHeight.toFixed(2)}`);
     
     // Check for standard environment collisions
     const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
@@ -188,12 +252,10 @@ export class PhysicsManager {
     const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile', 'enemy']);
     
     if (collision && collision.object.type === 'environment') {
-      // Calculate safe position just before collision
       const safeDistance = Math.max(0, collision.distance - playerRadius - 0.1);
       const safePosition = currentPosition.clone().add(direction.multiplyScalar(safeDistance));
-      safePosition.y = terrainHeight + playerRadius; // Still follow terrain
+      safePosition.y = smoothTerrainHeight + playerRadius;
       
-      console.log(`🏔️ Environment collision detected, safe position: (${safePosition.x.toFixed(2)}, ${safePosition.y.toFixed(2)}, ${safePosition.z.toFixed(2)})`);
       return safePosition;
     }
     
