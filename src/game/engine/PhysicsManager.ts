@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface CollisionObject {
@@ -24,9 +25,6 @@ export class PhysicsManager {
   public addTerrainCollision(terrain: THREE.Mesh, heightData: number[][], terrainSize: number = 100, id?: string): string {
     const objectId = id || `terrain_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const box = new THREE.Box3().setFromObject(terrain);
-    
-    // Store terrain size for proper coordinate mapping
-    this.terrainSize = terrainSize;
     
     const collisionObject: CollisionObject = {
       mesh: terrain,
@@ -61,8 +59,8 @@ export class PhysicsManager {
         // FIXED: Proper coordinate transformation for rotated terrain
         // Since terrain is rotated -90° around X axis, we need to transform coordinates
         const terrainPos = terrain.position;
-        const terrainSize = collisionObject.heightData.length > 0 ? 
-          Math.sqrt(collisionObject.heightData.length) : 30; // Calculate from heightData or default
+        const terrainSize = heightData.length > 0 ? 
+          (terrain.userData.terrainSize || 30) : 30; // Get size from userData or default
         
         // Convert world position to terrain local coordinates
         const localX = position.x - terrainPos.x;
@@ -104,8 +102,7 @@ export class PhysicsManager {
         
         // Use same coordinate transformation as getTerrainHeightAtPosition
         const terrainPos = terrain.position;
-        const terrainSize = collisionObject.heightData.length > 0 ? 
-          Math.sqrt(collisionObject.heightData.length) : 30;
+        const terrainSize = terrain.userData.terrainSize || 30;
         
         const localX = position.x - terrainPos.x;
         const localZ = position.z - terrainPos.z;
@@ -138,116 +135,37 @@ export class PhysicsManager {
     return 0; // Flat terrain if no heightmap found
   }
 
-  // FIXED: Only register staircase steps, not parent staircase group
-  public addCollisionObject(object: THREE.Object3D, type: 'environment' | 'player' | 'projectile' | 'enemy' | 'terrain' | 'staircase' | 'staircase_step', material: 'wood' | 'stone' | 'metal' | 'fabric' = 'stone', id?: string): string {
-    const objectId = id || `collision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // FIXED: Only register individual steps for staircases
-    if (object instanceof THREE.Group && object.name === 'staircase') {
-      console.log(`🪜 Adding staircase with ${object.children.length} steps`);
-      
-      // Register only individual steps, skip parent group
-      object.children.forEach((child, index) => {
-        if (child instanceof THREE.Mesh && child.name === 'staircase_step') {
-          const childId = `${objectId}_step_${index}`;
-          const box = new THREE.Box3().setFromObject(child);
-          
-          const stepCollisionObject: CollisionObject = {
-            mesh: child,
-            box: box,
-            type: 'staircase_step',
-            material: material,
-            id: childId
-          };
-          
-          this.collisionObjects.set(childId, stepCollisionObject);
-          console.log(`🪜 Added staircase step ${index}: ${childId}`);
-        }
-      });
-      
-      // Return without registering parent group
-      return objectId;
-    } else {
-      // Existing logic for other objects
-      const box = new THREE.Box3().setFromObject(object);
-      
-      const collisionObject: CollisionObject = {
-        mesh: object,
-        box: box,
-        type: type,
-        material: material,
-        id: objectId
-      };
-      
-      this.collisionObjects.set(objectId, collisionObject);
-      console.log(`🔧 Added collision object: ${objectId} (${type}, ${material})`);
-      return objectId;
-    }
+  // Add the missing getCollisionObjects method
+  public getCollisionObjects(): Map<string, CollisionObject> {
+    return this.collisionObjects;
   }
 
+  // Add standard collision object method
+  public addCollisionObject(mesh: THREE.Object3D, type: 'environment' | 'staircase', material: 'wood' | 'stone' | 'metal' | 'fabric', id?: string): string {
+    const objectId = id || `collision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const box = new THREE.Box3().setFromObject(mesh);
+    
+    const collisionObject: CollisionObject = {
+      mesh: mesh,
+      box: box,
+      type: type,
+      material: material,
+      id: objectId
+    };
+    
+    this.collisionObjects.set(objectId, collisionObject);
+    console.log(`🔧 Added collision object: ${objectId} (${type})`);
+    return objectId;
+  }
+
+  // Add remove collision object method
   public removeCollisionObject(id: string): void {
     if (this.collisionObjects.delete(id)) {
-      console.log(`Removed collision object: ${id}`);
+      console.log(`🔧 Removed collision object: ${id}`);
     }
   }
 
-  public checkSphereCollision(position: THREE.Vector3, radius: number, excludeTypes: string[] = []): CollisionObject | null {
-    const sphere = new THREE.Sphere(position, radius);
-    
-    for (const [id, collisionObject] of this.collisionObjects) {
-      if (excludeTypes.includes(collisionObject.type)) continue;
-      
-      // Update bounding box in case object moved
-      collisionObject.box.setFromObject(collisionObject.mesh);
-      
-      if (collisionObject.box.intersectsSphere(sphere)) {
-        return collisionObject;
-      }
-    }
-    
-    return null;
-  }
-
-  public checkRayCollision(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number = 100, excludeTypes: string[] = []): { object: CollisionObject; distance: number; point: THREE.Vector3 } | null {
-    this.raycaster.set(origin, direction.normalize());
-    
-    const meshes: THREE.Object3D[] = [];
-    const meshToCollisionMap = new Map<THREE.Object3D, CollisionObject>();
-    
-    for (const [id, collisionObject] of this.collisionObjects) {
-      if (excludeTypes.includes(collisionObject.type)) continue;
-      meshes.push(collisionObject.mesh);
-      meshToCollisionMap.set(collisionObject.mesh, collisionObject);
-    }
-    
-    const intersections = this.raycaster.intersectObjects(meshes, true);
-    
-    for (const intersection of intersections) {
-      if (intersection.distance <= maxDistance) {
-        // Find the collision object that contains this mesh
-        let targetObject = intersection.object;
-        let collisionObject = meshToCollisionMap.get(targetObject);
-        
-        // Check parent objects if not found
-        while (!collisionObject && targetObject.parent) {
-          targetObject = targetObject.parent;
-          collisionObject = meshToCollisionMap.get(targetObject);
-        }
-        
-        if (collisionObject) {
-          return {
-            object: collisionObject,
-            distance: intersection.distance,
-            point: intersection.point
-          };
-        }
-      }
-    }
-    
-    return null;
-  }
-
-  // ENHANCED: Better staircase step climbing with downward raycasting and wider detection
+  // ENHANCED: Better player movement with continuous terrain following
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
     const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
     const distance = direction.length();
@@ -256,24 +174,17 @@ export class PhysicsManager {
     
     direction.normalize();
     
-    // STEP 1: Enhanced staircase step climbing
-    const stepPosition = this.checkStaircaseStepClimbing(currentPosition, targetPosition, playerRadius);
-    if (stepPosition && !stepPosition.equals(targetPosition)) {
-      console.log(`🪜 STAIR CLIMBING: Adjusted position from y=${targetPosition.y.toFixed(2)} to y=${stepPosition.y.toFixed(2)}`);
-      return stepPosition;
-    }
-    
-    // STEP 2: Get terrain height FIRST (most important for hill walking)
+    // STEP 1: Get terrain height FIRST (most important for hill walking)
     const terrainHeight = this.getTerrainHeightAtPosition(targetPosition);
     
-    // STEP 3: Check slope angle at target position
+    // STEP 2: Check slope angle at target position
     const slopeAngle = this.getSlopeAngleAtPosition(targetPosition);
     if (slopeAngle > 45) {
       console.log(`🏔️ Movement blocked by steep slope: ${slopeAngle.toFixed(1)}° (max 45°)`);
       return currentPosition;
     }
     
-    // STEP 4: Check for standard environment collisions (trees, walls, etc.)
+    // STEP 3: Check for standard environment collisions (trees, walls, etc.)
     const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile', 'enemy']);
     
     if (collision && collision.object.type === 'environment') {
@@ -281,11 +192,12 @@ export class PhysicsManager {
       const safeDistance = Math.max(0, collision.distance - playerRadius - 0.1);
       const safePosition = currentPosition.clone().add(direction.multiplyScalar(safeDistance));
       
-      // Try sliding along the collision surface
-      return this.handleWallSliding(currentPosition, targetPosition, collision, playerRadius);
+      // Apply terrain height to safe position
+      safePosition.y = Math.max(safePosition.y, terrainHeight + playerRadius);
+      return safePosition;
     }
     
-    // STEP 5: Apply terrain following with slope projection
+    // STEP 4: Apply terrain following
     const adjustedTarget = targetPosition.clone();
     
     // ENHANCED: Always ensure player follows terrain height
@@ -300,146 +212,27 @@ export class PhysicsManager {
     return adjustedTarget;
   }
 
-  // ENHANCED: Staircase step climbing with downward raycasting and wider distance
-  private checkStaircaseStepClimbing(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number): THREE.Vector3 | null {
-    // Downward raycast to detect steps under player
-    const downRay = this.checkRayCollision(currentPosition, new THREE.Vector3(0, -1, 0), 1.0, ['projectile', 'enemy']);
-    if (downRay && downRay.object.type === 'staircase_step') {
-      const stepCenter = new THREE.Vector3();
-      downRay.object.box.getCenter(stepCenter);
-      const adjustedTarget = targetPosition.clone();
-      adjustedTarget.y = stepCenter.y + playerRadius;
-      console.log(`🪜 DOWN RAY STEP: y=${adjustedTarget.y.toFixed(2)}`);
-      return adjustedTarget;
-    }
-    
-    // Forward check for next step
-    let closestStep: CollisionObject | null = null;
-    let minDistance = Infinity;
-    const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition).normalize();
+  // Add missing checkRayCollision method (simplified version)
+  public checkRayCollision(origin: THREE.Vector3, direction: THREE.Vector3, distance: number, excludeTypes: string[] = []): { distance: number; object: CollisionObject } | null {
+    this.raycaster.set(origin, direction);
+    this.raycaster.far = distance;
     
     for (const [id, collisionObject] of this.collisionObjects) {
-      if (collisionObject.type === 'staircase_step') {
-        const stepCenter = new THREE.Vector3();
-        collisionObject.box.getCenter(stepCenter);
-        
-        // Calculate distance to step in movement direction
-        const toStep = new THREE.Vector3().subVectors(stepCenter, currentPosition);
-        const distance = toStep.dot(direction);
-        
-        // FIXED: Increased distance from 1.2 to 1.5 for better detection
-        if (distance > 0 && distance < 1.5 && distance < minDistance) {
-          const heightDiff = stepCenter.y - currentPosition.y;
-          
-          // Check if step height is climbable (within step height limit)
-          if (heightDiff <= 0.6 + playerRadius && heightDiff >= -0.1) {
-            closestStep = collisionObject;
-            minDistance = distance;
-          }
-        }
+      if (excludeTypes.includes(collisionObject.type)) continue;
+      
+      // Simple distance check for basic collision
+      const objectPosition = new THREE.Vector3();
+      collisionObject.box.getCenter(objectPosition);
+      const distanceToObject = origin.distanceTo(objectPosition);
+      
+      if (distanceToObject < distance && collisionObject.type === 'environment') {
+        return {
+          distance: distanceToObject,
+          object: collisionObject
+        };
       }
-    }
-    
-    if (closestStep) {
-      const stepCenter = new THREE.Vector3();
-      closestStep.box.getCenter(stepCenter);
-      
-      const adjustedTarget = targetPosition.clone();
-      // Set player height to step height plus radius
-      adjustedTarget.y = stepCenter.y + playerRadius;
-      
-      console.log(`🪜 FORWARD STEP: y=${adjustedTarget.y.toFixed(2)}`);
-      return adjustedTarget;
     }
     
     return null;
-  }
-
-  // Enhanced staircase navigation method (kept for compatibility)
-  public checkStaircaseNavigation(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
-    const stepPosition = this.checkStaircaseStepClimbing(currentPosition, targetPosition, playerRadius);
-    return stepPosition || targetPosition;
-  }
-
-  public checkEnemyKnockback(currentPosition: THREE.Vector3, knockbackVelocity: THREE.Vector3, deltaTime: number, enemyRadius: number = 0.4): THREE.Vector3 {
-    const targetPosition = currentPosition.clone().add(knockbackVelocity.clone().multiplyScalar(deltaTime));
-    const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
-    const distance = direction.length();
-    
-    if (distance === 0) return currentPosition;
-    
-    direction.normalize();
-    
-    // Check for collision along the knockback path
-    const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile', 'enemy']);
-    
-    if (collision) {
-      // Stop knockback at collision point
-      const safeDistance = Math.max(0, collision.distance - enemyRadius - 0.1);
-      return currentPosition.clone().add(direction.multiplyScalar(safeDistance));
-    }
-    
-    // No collision, knockback is safe
-    return targetPosition;
-  }
-
-  private handleWallSliding(currentPos: THREE.Vector3, targetPos: THREE.Vector3, collision: { object: CollisionObject; distance: number; point: THREE.Vector3 }, playerRadius: number): THREE.Vector3 {
-    // Calculate collision normal (simplified - assumes axis-aligned boxes)
-    const collisionBox = collision.object.box;
-    const collisionCenter = collisionBox.getCenter(new THREE.Vector3());
-    const normal = new THREE.Vector3().subVectors(collision.point, collisionCenter).normalize();
-    
-    // Project movement vector onto plane perpendicular to collision normal
-    const movement = new THREE.Vector3().subVectors(targetPos, currentPos);
-    const projectedMovement = movement.clone().sub(normal.clone().multiplyScalar(movement.dot(normal)));
-    
-    const slideTarget = currentPos.clone().add(projectedMovement);
-    
-    // Check if sliding movement is also blocked
-    const slideDirection = projectedMovement.normalize();
-    const slideDistance = projectedMovement.length();
-    const slideCollision = this.checkRayCollision(currentPos, slideDirection, slideDistance, ['projectile', 'enemy']);
-    
-    if (slideCollision) {
-      // Can't slide, stay in current position
-      return currentPos;
-    }
-    
-    return slideTarget;
-  }
-
-  public getCollisionMaterial(objectId: string): 'wood' | 'stone' | 'metal' | 'fabric' | null {
-    const collisionObject = this.collisionObjects.get(objectId);
-    return collisionObject ? collisionObject.material : null;
-  }
-
-  public applyGravity(object: any, deltaTime: number): void {
-    if (object.position.y > 0) {
-      object.velocity.y += this.gravity * deltaTime;
-      object.position.y += object.velocity.y * deltaTime;
-      
-      if (object.position.y <= 0) {
-        object.position.y = 0;
-        object.velocity.y = 0;
-      }
-    }
-  }
-
-  public update(deltaTime: number): void {
-    // Update collision system - refresh bounding boxes for dynamic objects
-    for (const [id, collisionObject] of this.collisionObjects) {
-      if (collisionObject.type !== 'environment') {
-        collisionObject.box.setFromObject(collisionObject.mesh);
-      }
-    }
-  }
-
-  public getCollisionObjects(): Map<string, CollisionObject> {
-    return this.collisionObjects;
-  }
-
-  public dispose(): void {
-    this.collisionObjects.clear();
-    console.log('PhysicsManager disposed');
   }
 }

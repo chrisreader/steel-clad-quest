@@ -65,8 +65,8 @@ export class SceneManager {
     // Initialize terrain feature generator
     this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
-    // Initialize structure generator
-    this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene);
+    // FIXED: Initialize structure generator with PhysicsManager
+    this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene, this.physicsManager);
     
     // Setup distance-based fog
     this.setupDistanceFog();
@@ -270,6 +270,10 @@ export class SceneManager {
     // Place tavern at center
     this.createTavern();
     console.log('Tavern created at center');
+    
+    // CRITICAL: Create test hill for testing slope walking
+    this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
+    console.log('Test hill created at (20, 0, 30) for slope walking testing');
     
     // Create skybox
     this.createSkybox();
