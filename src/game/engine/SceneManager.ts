@@ -30,11 +30,17 @@ export class SceneManager {
   // NEW: Building management system
   private buildingManager: BuildingManager;
   
-  // Lighting
+  // Enhanced lighting system for realistic shadows
   private ambientLight: THREE.AmbientLight;
   private directionalLight: THREE.DirectionalLight;
   private tavernLight: THREE.PointLight;
   private rimLight: THREE.DirectionalLight;
+  private fillLight: THREE.DirectionalLight; // NEW: Fill light for softer shadows
+  
+  // NEW: Dynamic shadow system
+  private shadowCameraSize: number = 200; // Large shadow camera bounds
+  private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
+  private shadowUpdateThreshold: number = 20; // Update shadows when player moves this distance
   
   // Environment
   private currentLevel: Level | null = null;
@@ -47,7 +53,6 @@ export class SceneManager {
   
   // Distance-based fog system
   private fog: THREE.Fog;
-  private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   
   // Time of day
   private timeOfDay: number = 0.5; // 0-1, 0 = midnight, 0.5 = noon
@@ -61,7 +66,7 @@ export class SceneManager {
     this.scene = scene;
     this.physicsManager = physicsManager;
     
-    console.log("SceneManager initialized with collision system");
+    console.log("SceneManager initialized with enhanced shadow system");
     
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
@@ -81,8 +86,8 @@ export class SceneManager {
     // Setup distance-based fog with visible fog layer
     this.setupEnhancedFog();
     
-    // Setup basic lighting
-    this.setupLighting();
+    // Setup enhanced lighting with realistic shadows
+    this.setupEnhancedLighting();
     
     // Add debug ring markers
     if (this.debugMode) {
@@ -123,42 +128,57 @@ export class SceneManager {
     });
   }
   
-  private setupLighting(): void {
-    // Ambient light - increased intensity for better visibility
-    this.ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+  private setupEnhancedLighting(): void {
+    // Enhanced ambient light for softer shadows - increased from 1.5 to 2.2
+    this.ambientLight = new THREE.AmbientLight(0x404040, 2.2);
     this.scene.add(this.ambientLight);
-    console.log("Ambient light added with intensity 1.5");
+    console.log("Enhanced ambient light added with intensity 2.2 for realistic shadows");
     
-    // Directional light (sun) - increased intensity
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    // Main directional light (sun) with enhanced shadow settings
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Reduced intensity for softer shadows
     this.directionalLight.position.set(15, 20, 10);
     this.directionalLight.castShadow = true;
-    this.directionalLight.shadow.mapSize.width = 2048;
-    this.directionalLight.shadow.mapSize.height = 2048;
-    this.directionalLight.shadow.camera.left = -50;
-    this.directionalLight.shadow.camera.right = 50;
-    this.directionalLight.shadow.camera.top = 50;
-    this.directionalLight.shadow.camera.bottom = -50;
-    this.directionalLight.shadow.camera.far = 100;
-    this.directionalLight.shadow.bias = -0.0005;
-    this.directionalLight.shadow.normalBias = 0.02;
-    this.scene.add(this.directionalLight);
-    console.log("Directional light added at position:", this.directionalLight.position);
     
-    // Tavern light (warm)
-    this.tavernLight = new THREE.PointLight(0xffa500, 1.0, 25);
+    // Enhanced shadow settings for better quality and coverage
+    this.directionalLight.shadow.mapSize.width = 4096; // Increased resolution
+    this.directionalLight.shadow.mapSize.height = 4096;
+    this.directionalLight.shadow.camera.left = -this.shadowCameraSize;
+    this.directionalLight.shadow.camera.right = this.shadowCameraSize;
+    this.directionalLight.shadow.camera.top = this.shadowCameraSize;
+    this.directionalLight.shadow.camera.bottom = -this.shadowCameraSize;
+    this.directionalLight.shadow.camera.far = 400; // Increased for better coverage
+    this.directionalLight.shadow.bias = -0.0001; // Improved bias for better quality
+    this.directionalLight.shadow.normalBias = 0.005; // Reduced for softer shadows
+    
+    // Set shadow camera to use orthographic projection for consistent shadows
+    this.directionalLight.shadow.camera.near = 0.1;
+    
+    this.scene.add(this.directionalLight);
+    console.log("Enhanced directional light added with dynamic shadow camera system");
+    
+    // NEW: Fill light for softer shadows (opposite direction, lower intensity)
+    this.fillLight = new THREE.DirectionalLight(0xB0E0E6, 0.3); // Soft blue fill light
+    this.fillLight.position.set(-10, 15, -8);
+    this.fillLight.castShadow = false; // No shadows from fill light
+    this.scene.add(this.fillLight);
+    console.log("Fill light added for realistic shadow softening");
+    
+    // Tavern light (warm) - slightly reduced intensity
+    this.tavernLight = new THREE.PointLight(0xffa500, 0.8, 25);
     this.tavernLight.position.set(0, 6, 0);
     this.tavernLight.castShadow = true;
-    this.tavernLight.shadow.mapSize.width = 512;
-    this.tavernLight.shadow.mapSize.height = 512;
+    this.tavernLight.shadow.mapSize.width = 1024;
+    this.tavernLight.shadow.mapSize.height = 1024;
+    this.tavernLight.shadow.bias = -0.0001;
     this.scene.add(this.tavernLight);
-    console.log("Tavern light added");
+    console.log("Tavern light added with improved shadow settings");
     
-    // Rim light for atmosphere
-    this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.6);
+    // Rim light for atmosphere - reduced intensity
+    this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.4);
     this.rimLight.position.set(-10, 5, -10);
+    this.rimLight.castShadow = false; // No shadows from rim light
     this.scene.add(this.rimLight);
-    console.log("Rim light added");
+    console.log("Rim light added for atmospheric lighting");
   }
   
   private create3DSun(): void {
@@ -397,6 +417,9 @@ export class SceneManager {
     // Store player position for potential future fog adjustments
     this.lastPlayerPosition.copy(playerPosition);
     
+    // NEW: Update shadow camera when fog updates
+    this.updateShadowCamera(playerPosition);
+    
     // The fog automatically works with THREE.js rendering pipeline
     // No manual updates needed as it's built into the renderer
   }
@@ -414,6 +437,11 @@ export class SceneManager {
     // Update enemy spawning system
     if (this.enemySpawningSystem && playerPosition) {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
+    }
+    
+    // NEW: Update shadow camera based on player position
+    if (playerPosition) {
+      this.updateShadowCamera(playerPosition);
     }
     
     // NEW: Manage region loading/unloading based on player position
@@ -907,7 +935,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    console.log("SceneManager disposed with collision system cleanup");
+    console.log("SceneManager disposed with enhanced shadow system cleanup");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
@@ -921,5 +949,37 @@ export class SceneManager {
   
   public getScene(): THREE.Scene {
     return this.scene;
+  }
+  
+  // NEW: Dynamic shadow camera positioning system
+  public updateShadowCamera(playerPosition: THREE.Vector3): void {
+    // Check if player has moved enough to warrant shadow camera update
+    const distanceMoved = this.lastPlayerPosition.distanceTo(playerPosition);
+    
+    if (distanceMoved > this.shadowUpdateThreshold || this.lastPlayerPosition.length() === 0) {
+      // Update shadow camera to follow player
+      const shadowCamera = this.directionalLight.shadow.camera;
+      
+      // Position shadow camera center on player position
+      shadowCamera.left = playerPosition.x - this.shadowCameraSize;
+      shadowCamera.right = playerPosition.x + this.shadowCameraSize;
+      shadowCamera.top = playerPosition.z + this.shadowCameraSize;
+      shadowCamera.bottom = playerPosition.z - this.shadowCameraSize;
+      
+      // Update shadow camera projection matrix
+      shadowCamera.updateProjectionMatrix();
+      
+      // Update light target to point towards player area
+      if (!this.directionalLight.target) {
+        this.directionalLight.target = new THREE.Object3D();
+        this.scene.add(this.directionalLight.target);
+      }
+      this.directionalLight.target.position.copy(playerPosition);
+      
+      // Store last player position
+      this.lastPlayerPosition.copy(playerPosition);
+      
+      console.log(`Shadow camera updated for player position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)}`);
+    }
   }
 }

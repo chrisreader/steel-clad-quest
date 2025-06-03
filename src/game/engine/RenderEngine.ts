@@ -31,7 +31,7 @@ export class RenderEngine {
   }
   
   public initialize(): void {
-    console.log("🎨 [RenderEngine] Initializing...");
+    console.log("🎨 [RenderEngine] Initializing with enhanced shadow support...");
     
     // Create scene
     this.scene = new THREE.Scene();
@@ -50,15 +50,16 @@ export class RenderEngine {
     this.camera.layers.enable(0); // Default layer - visible
     this.camera.layers.disable(1); // Layer 1 - invisible to player (torso)
     
-    // Create renderer with enhanced settings for fog rendering
+    // Create renderer with enhanced settings for shadows and fog rendering
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Enhanced soft shadows
     
-    // Enhanced renderer settings for better fog rendering
+    // Enhanced renderer settings for better shadow quality
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace; // Better color accuracy
     
     // Attach to DOM
     this.mountElement.appendChild(this.renderer.domElement);
@@ -70,7 +71,7 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    console.log("🎨 [RenderEngine] Initialized with enhanced fog rendering support");
+    console.log("🎨 [RenderEngine] Initialized with enhanced shadow and fog rendering support");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
@@ -131,12 +132,14 @@ export class RenderEngine {
     // Log every 60 frames (roughly 1 second)
     if (this.renderCount % 60 === 0) {
       const fps = this.renderCount / ((now - this.lastRenderTime) / 1000) * 60;
-      console.log("🎨 [RenderEngine] Rendering with smooth camera controls:", {
+      console.log("🎨 [RenderEngine] Rendering with enhanced shadows and smooth camera controls:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
         cameraPos: this.camera.position,
         sceneChildren: this.scene.children.length,
-        cameraLayers: this.camera.layers.mask
+        cameraLayers: this.camera.layers.mask,
+        shadowMapEnabled: this.renderer.shadowMap.enabled,
+        shadowMapType: this.renderer.shadowMap.type
       });
       this.lastRenderTime = now;
     }
