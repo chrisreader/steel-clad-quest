@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
@@ -64,8 +65,8 @@ export class SceneManager {
     // Initialize terrain feature generator
     this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
-    // FIXED: Initialize structure generator with PhysicsManager reference
-    this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene, this.physicsManager);
+    // Initialize structure generator
+    this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene);
     
     // Setup distance-based fog
     this.setupDistanceFog();

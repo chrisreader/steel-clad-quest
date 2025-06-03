@@ -12,6 +12,11 @@ export class MovementSystem {
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
   
+  // NEW: Vertical movement properties
+  private maxSlopeAngle: number = 45; // Maximum walkable slope in degrees
+  private stepHeight: number = 0.3; // Maximum step height player can walk up
+  private smoothVerticalMovement: boolean = true; // Smooth Y transitions
+  
   constructor(
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
@@ -139,32 +144,23 @@ export class MovementSystem {
       const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
       const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
-      // NEW: Check collision and ground height for safe position with vertical movement
-      const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4); // 0.4 is player radius
+      // NEW: Enhanced movement with vertical positioning
+      const safePosition = this.calculateVerticalMovement(currentPosition, targetPosition);
       
-      // Calculate actual movement vector (including vertical movement)
+      // Calculate actual movement vector
       const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
       
       if (actualMovement.length() > 0.001) {
-        // NEW: Log vertical movement information
-        if (Math.abs(actualMovement.y) > 0.01) {
-          console.log("🏔️ [MovementSystem] Vertical movement detected:", {
-            from: currentPosition,
-            to: safePosition,
-            verticalChange: actualMovement.y.toFixed(3),
-            horizontalDistance: Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z).toFixed(3)
-          });
-        }
-        
         // Convert back to normalized direction for player.move()
         const normalizedMovement = actualMovement.clone().normalize();
         const movementScale = actualMovement.length() / (5.0 * deltaTime);
         
-        console.log("🏃 [MovementSystem] Moving with collision and ground height detection:", {
+        console.log("🏃 [MovementSystem] Moving with vertical adjustment:", {
           from: currentPosition,
           to: safePosition,
           movement: actualMovement,
-          distance: actualMovement.length()
+          distance: actualMovement.length(),
+          verticalChange: safePosition.y - currentPosition.y
         });
         
         this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
@@ -172,6 +168,118 @@ export class MovementSystem {
         console.log("🏃 [MovementSystem] Movement blocked by collision or steep slope");
       }
     }
+  }
+  
+  // NEW: Calculate movement with vertical positioning on slopes
+  private calculateVerticalMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3): THREE.Vector3 {
+    const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
+    const horizontalDistance = direction.length();
+    
+    if (horizontalDistance === 0) return currentPosition;
+    
+    direction.normalize();
+    
+    // Check for horizontal collision first
+    const collision = this.physicsManager.checkRayCollision(currentPosition, direction, horizontalDistance, ['projectile', 'enemy']);
+    
+    if (collision) {
+      // Calculate safe position just before collision
+      const safeDistance = Math.max(0, collision.distance - 0.4 - 0.1); // player radius + buffer
+      const safeHorizontalPosition = currentPosition.clone().add(direction.multiplyScalar(safeDistance));
+      
+      // Check ground height at safe position
+      const groundInfo = this.physicsManager.getGroundHeight(safeHorizontalPosition);
+      
+      if (this.physicsManager.isWalkableSlope(groundInfo.normal, this.maxSlopeAngle)) {
+        const verticalDifference = groundInfo.height - currentPosition.y;
+        
+        // Allow stepping up small obstacles
+        if (verticalDifference <= this.stepHeight || verticalDifference < 0) {
+          safeHorizontalPosition.y = groundInfo.height + 0.5; // Keep player above ground
+          return safeHorizontalPosition;
+        }
+      }
+      
+      // Try wall sliding if vertical movement isn't possible
+      return this.handleWallSliding(currentPosition, targetPosition, collision);
+    }
+    
+    // No horizontal collision, check ground height at target
+    const groundInfo = this.physicsManager.getGroundHeight(targetPosition);
+    
+    // Check if slope is walkable
+    if (this.physicsManager.isWalkableSlope(groundInfo.normal, this.maxSlopeAngle)) {
+      const verticalDifference = groundInfo.height - currentPosition.y;
+      
+      // Allow movement if it's a gentle slope or step
+      if (Math.abs(verticalDifference) <= this.stepHeight || verticalDifference < 0) {
+        const adjustedTarget = targetPosition.clone();
+        adjustedTarget.y = groundInfo.height + 0.5; // Keep player above ground
+        return adjustedTarget;
+      } else {
+        // Slope too steep, try to find intermediate position
+        return this.findWalkablePath(currentPosition, targetPosition);
+      }
+    }
+    
+    // Default: maintain current height if no ground found
+    return targetPosition;
+  }
+  
+  // NEW: Find a walkable path when direct path is too steep
+  private findWalkablePath(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3): THREE.Vector3 {
+    const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
+    const steps = 5; // Number of intermediate points to check
+    
+    for (let i = 1; i <= steps; i++) {
+      const progress = i / steps;
+      const intermediatePos = currentPosition.clone().lerp(targetPosition, progress);
+      
+      const groundInfo = this.physicsManager.getGroundHeight(intermediatePos);
+      const verticalDiff = groundInfo.height - currentPosition.y;
+      
+      if (this.physicsManager.isWalkableSlope(groundInfo.normal, this.maxSlopeAngle) && 
+          Math.abs(verticalDiff) <= this.stepHeight) {
+        intermediatePos.y = groundInfo.height + 0.5;
+        return intermediatePos;
+      }
+    }
+    
+    // No walkable path found, stay in current position
+    return currentPosition;
+  }
+  
+  // NEW: Enhanced wall sliding that considers vertical movement
+  private handleWallSliding(currentPos: THREE.Vector3, targetPos: THREE.Vector3, collision: { object: any; distance: number; point: THREE.Vector3 }): THREE.Vector3 {
+    // Get collision normal
+    const collisionBox = collision.object.box;
+    const collisionCenter = collisionBox.getCenter(new THREE.Vector3());
+    const normal = new THREE.Vector3().subVectors(collision.point, collisionCenter).normalize();
+    
+    // Project movement vector onto plane perpendicular to collision normal
+    const movement = new THREE.Vector3().subVectors(targetPos, currentPos);
+    const projectedMovement = movement.clone().sub(normal.clone().multiplyScalar(movement.dot(normal)));
+    
+    const slideTarget = currentPos.clone().add(projectedMovement);
+    
+    // Check ground height at slide target
+    const groundInfo = this.physicsManager.getGroundHeight(slideTarget);
+    
+    if (this.physicsManager.isWalkableSlope(groundInfo.normal, this.maxSlopeAngle)) {
+      slideTarget.y = groundInfo.height + 0.5;
+      
+      // Verify sliding movement isn't blocked
+      const slideDirection = projectedMovement.normalize();
+      const slideDistance = projectedMovement.length();
+      const slideCollision = this.physicsManager.checkRayCollision(currentPos, slideDirection, slideDistance, ['projectile', 'enemy']);
+      
+      if (!slideCollision) {
+        return slideTarget;
+      }
+    }
+    
+    // Can't slide, stay in current position
+    return currentPos;
   }
   
   public setSprintEnabled(enabled: boolean): void {

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
-import { PhysicsManager } from '../engine/PhysicsManager';
 
 export interface Structure {
   type: string;
@@ -12,13 +11,11 @@ export interface Structure {
 export class StructureGenerator {
   private ringSystem: RingQuadrantSystem;
   private scene: THREE.Scene;
-  private physicsManager: PhysicsManager;
   private structures: Map<string, Structure[]> = new Map();
   
-  constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene, physicsManager: PhysicsManager) {
+  constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
-    this.physicsManager = physicsManager;
   }
   
   // Place structures in regions based on ring definitions
@@ -34,19 +31,6 @@ export class StructureGenerator {
     
     // Get region properties
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
-    
-    // NEW: For ring 0 (spawn area), add a test hill for debugging vertical movement
-    if (region.ringIndex === 0) {
-      const testHill = this.createTestHill();
-      structures.push({
-        type: 'test_hill',
-        position: new THREE.Vector3(10, 0, 10), // Position near spawn
-        rotation: 0,
-        model: testHill
-      });
-      
-      console.log("🏔️ Created test hill for vertical movement debugging at (10, 0, 10)");
-    }
     
     // Check if this region should have structures
     const structureTypes = ringDef.structureTypes;
@@ -75,63 +59,6 @@ export class StructureGenerator {
     // Add more structure placement logic for other rings/quadrants here
   }
   
-  // NEW: Create a test hill for debugging vertical movement
-  private createTestHill(): THREE.Object3D {
-    const hill = new THREE.Group();
-    
-    // Create a cone-shaped hill
-    const hillGeometry = new THREE.ConeGeometry(8, 6, 16);
-    const hillMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x4A7C59, // Green grass color
-      transparent: false
-    });
-    
-    const hillMesh = new THREE.Mesh(hillGeometry, hillMaterial);
-    hillMesh.position.set(10, 3, 10); // Position at (10, 3, 10) with base at Y=3
-    hillMesh.castShadow = true;
-    hillMesh.receiveShadow = true;
-    
-    // Add some texture variation
-    const grassTexture = this.createGrassTexture();
-    hillMaterial.map = grassTexture;
-    
-    hill.add(hillMesh);
-    
-    // Add to scene
-    this.scene.add(hill);
-    
-    // FIXED: Register the hill mesh with PhysicsManager for collision detection
-    this.physicsManager.addCollisionObject(hillMesh, 'environment', 'stone', `test_hill_${Date.now()}`);
-    console.log("🏔️ Registered test hill for collision detection");
-    
-    console.log("🏔️ Created test hill with cone geometry for slope testing");
-    
-    return hill;
-  }
-  
-  // NEW: Create simple grass texture
-  private createGrassTexture(): THREE.Texture {
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const context = canvas.getContext('2d')!;
-    
-    // Base grass color
-    context.fillStyle = '#4A7C59';
-    context.fillRect(0, 0, 64, 64);
-    
-    // Add some grass variation
-    for (let i = 0; i < 50; i++) {
-      context.fillStyle = `rgba(60, 100, 70, ${Math.random() * 0.5})`;
-      context.fillRect(Math.random() * 64, Math.random() * 64, 2, 2);
-    }
-    
-    const texture = new THREE.Texture(canvas);
-    texture.needsUpdate = true;
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    return texture;
-  }
-  
   // Create a ruined castle
   private createRuinedCastle(position: THREE.Vector3): THREE.Object3D {
     const castle = new THREE.Group();
@@ -144,8 +71,6 @@ export class StructureGenerator {
     base.castShadow = true;
     base.receiveShadow = true;
     castle.add(base);
-    // FIXED: Register castle base for collision
-    this.physicsManager.addCollisionObject(base, 'environment', 'stone', `castle_base_${Date.now()}`);
     
     // Create outer walls (partially ruined)
     this.createOuterWalls(castle);
@@ -178,8 +103,6 @@ export class StructureGenerator {
     northWall.castShadow = true;
     northWall.receiveShadow = true;
     castle.add(northWall);
-    // FIXED: Register wall for collision
-    this.physicsManager.addCollisionObject(northWall, 'environment', 'stone', `castle_north_wall_${Date.now()}`);
     
     // East wall (intact)
     const eastWallGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, wallLength);
@@ -188,8 +111,6 @@ export class StructureGenerator {
     eastWall.castShadow = true;
     eastWall.receiveShadow = true;
     castle.add(eastWall);
-    // FIXED: Register wall for collision
-    this.physicsManager.addCollisionObject(eastWall, 'environment', 'stone', `castle_east_wall_${Date.now()}`);
     
     // South wall (intact)
     const southWallGeometry = new THREE.BoxGeometry(wallLength, wallHeight, wallThickness);
@@ -198,8 +119,6 @@ export class StructureGenerator {
     southWall.castShadow = true;
     southWall.receiveShadow = true;
     castle.add(southWall);
-    // FIXED: Register wall for collision
-    this.physicsManager.addCollisionObject(southWall, 'environment', 'stone', `castle_south_wall_${Date.now()}`);
     
     // West wall (very broken - only partial)
     const westWallGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, wallLength * 0.3);
@@ -208,8 +127,6 @@ export class StructureGenerator {
     westWall.castShadow = true;
     westWall.receiveShadow = true;
     castle.add(westWall);
-    // FIXED: Register wall for collision
-    this.physicsManager.addCollisionObject(westWall, 'environment', 'stone', `castle_west_wall_${Date.now()}`);
     
     // Add some rubble where walls are broken
     this.createRubble(castle, -wallLength/4, 0, -wallLength/2); // North wall rubble
@@ -231,8 +148,6 @@ export class StructureGenerator {
     neTower.castShadow = true;
     neTower.receiveShadow = true;
     castle.add(neTower);
-    // FIXED: Register tower for collision
-    this.physicsManager.addCollisionObject(neTower, 'environment', 'stone', `castle_ne_tower_${Date.now()}`);
     
     // Southeast tower (intact)
     const seTower = new THREE.Mesh(
@@ -243,8 +158,6 @@ export class StructureGenerator {
     seTower.castShadow = true;
     seTower.receiveShadow = true;
     castle.add(seTower);
-    // FIXED: Register tower for collision
-    this.physicsManager.addCollisionObject(seTower, 'environment', 'stone', `castle_se_tower_${Date.now()}`);
     
     // Southwest tower (broken - half height)
     const swTower = new THREE.Mesh(
@@ -255,8 +168,6 @@ export class StructureGenerator {
     swTower.castShadow = true;
     swTower.receiveShadow = true;
     castle.add(swTower);
-    // FIXED: Register tower for collision
-    this.physicsManager.addCollisionObject(swTower, 'environment', 'stone', `castle_sw_tower_${Date.now()}`);
     
     // Northwest tower (very broken - just base)
     const nwTower = new THREE.Mesh(
@@ -267,8 +178,6 @@ export class StructureGenerator {
     nwTower.castShadow = true;
     nwTower.receiveShadow = true;
     castle.add(nwTower);
-    // FIXED: Register tower for collision
-    this.physicsManager.addCollisionObject(nwTower, 'environment', 'stone', `castle_nw_tower_${Date.now()}`);
     
     // Add rubble around broken towers
     this.createRubble(castle, -wallLength/2 + 2, 0, -wallLength/2 + 2); // NW tower rubble
@@ -288,8 +197,6 @@ export class StructureGenerator {
     keep.castShadow = true;
     keep.receiveShadow = true;
     castle.add(keep);
-    // FIXED: Register keep for collision
-    this.physicsManager.addCollisionObject(keep, 'environment', 'stone', `castle_keep_${Date.now()}`);
     
     // Keep roof (partially collapsed)
     const roofGeometry = new THREE.ConeGeometry(keepWidth/1.5, 8, 4);
