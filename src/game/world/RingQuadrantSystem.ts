@@ -207,11 +207,26 @@ export class RingQuadrantSystem {
     
     // Use ring-appropriate material
     const ring = this.rings[region.ringIndex];
+    
+    // Create material with proper texture loading
+    const textureLoader = new THREE.TextureLoader();
     const material = new THREE.MeshStandardMaterial({ 
-      color: ring.terrainColor,
-      // Add grass texture if available
-      map: new THREE.TextureLoader().load('/assets/grass.jpg').catch(() => null)
+      color: ring.terrainColor
     });
+    
+    // Load grass texture with proper error handling
+    textureLoader.load(
+      '/assets/grass.jpg',
+      (texture) => {
+        material.map = texture;
+        material.needsUpdate = true;
+      },
+      undefined,
+      (error) => {
+        console.warn('Could not load grass texture:', error);
+        // Material will use the color fallback
+      }
+    );
     
     const terrain = new THREE.Mesh(geometry, material);
     terrain.rotation.x = -Math.PI / 2;
