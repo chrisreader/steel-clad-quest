@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { SlopeDebugVisualizer, SlopeDebugInfo } from '../utils/SlopeDebugVisualizer';
 
 export interface CollisionObject {
   mesh: THREE.Object3D;
@@ -9,28 +8,13 @@ export interface CollisionObject {
   id: string;
 }
 
-export interface CollisionResult {
-  object: CollisionObject;
-  distance: number;
-  point: THREE.Vector3;
-  normal: THREE.Vector3;
-  slopeAngle: number;
-  isWalkable: boolean;
-}
-
 export class PhysicsManager {
   private gravity = -9.81;
   private collisionObjects: Map<string, CollisionObject> = new Map();
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
-  private readonly MAX_WALKABLE_ANGLE = 45; // degrees
-  private debugVisualizer?: SlopeDebugVisualizer;
   
-  constructor(scene?: THREE.Scene) {
-    console.log('Enhanced Physics Manager initialized with slope-aware collision detection');
-    
-    if (scene) {
-      this.debugVisualizer = new SlopeDebugVisualizer(scene);
-    }
+  constructor() {
+    console.log('Enhanced Physics Manager initialized with ground height detection');
   }
 
   public addCollisionObject(object: THREE.Object3D, type: 'environment' | 'player' | 'projectile' | 'enemy', material: 'wood' | 'stone' | 'metal' | 'fabric' = 'stone', id?: string): string {
@@ -101,7 +85,7 @@ export class PhysicsManager {
       const angleInDegrees = THREE.MathUtils.radToDeg(angle);
       
       return {
-        walkable: angleInDegrees <= this.MAX_WALKABLE_ANGLE,
+        walkable: angleInDegrees <= 45, // Walkable if slope is 45 degrees or less
         angle: angleInDegrees,
         normal: normal
       };
@@ -136,8 +120,7 @@ export class PhysicsManager {
     return null;
   }
 
-  // Enhanced ray collision with slope information and debug visualization
-  public checkRayCollisionWithSlope(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number = 100, excludeTypes: string[] = []): CollisionResult | null {
+  public checkRayCollision(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number = 100, excludeTypes: string[] = []): { object: CollisionObject; distance: number; point: THREE.Vector3 } | null {
     this.raycaster.set(origin, direction.normalize());
     
     const meshes: THREE.Object3D[] = [];
@@ -152,7 +135,7 @@ export class PhysicsManager {
     const intersections = this.raycaster.intersectObjects(meshes, true);
     
     for (const intersection of intersections) {
-      if (intersection.distance <= maxDistance && intersection.face) {
+      if (intersection.distance <= maxDistance) {
         // Find the collision object that contains this mesh
         let targetObject = intersection.object;
         let collisionObject = meshToCollisionMap.get(targetObject);
@@ -164,35 +147,11 @@ export class PhysicsManager {
         }
         
         if (collisionObject) {
-          // Calculate slope angle from face normal
-          const normal = intersection.face.normal.clone();
-          const angle = Math.acos(normal.dot(new THREE.Vector3(0, 1, 0)));
-          const angleInDegrees = THREE.MathUtils.radToDeg(angle);
-          
-          const result: CollisionResult = {
+          return {
             object: collisionObject,
             distance: intersection.distance,
-            point: intersection.point,
-            normal: normal,
-            slopeAngle: angleInDegrees,
-            isWalkable: angleInDegrees <= this.MAX_WALKABLE_ANGLE
+            point: intersection.point
           };
-          
-          // Debug visualization
-          if (this.debugVisualizer && this.debugVisualizer.isEnabled()) {
-            const debugInfo: SlopeDebugInfo = {
-              position: origin.clone(),
-              normal: normal.clone(),
-              angle: angleInDegrees,
-              isWalkable: result.isWalkable,
-              rayDirection: direction.clone(),
-              hitPoint: intersection.point.clone()
-            };
-            
-            this.debugVisualizer.visualizeSlope(debugInfo);
-          }
-          
-          return result;
         }
       }
     }
@@ -200,21 +159,8 @@ export class PhysicsManager {
     return null;
   }
 
-  public checkRayCollision(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number = 100, excludeTypes: string[] = []): { object: CollisionObject; distance: number; point: THREE.Vector3 } | null {
-    // Legacy method - use the new one and extract basic info
-    const result = this.checkRayCollisionWithSlope(origin, direction, maxDistance, excludeTypes);
-    if (result) {
-      return {
-        object: result.object,
-        distance: result.distance,
-        point: result.point
-      };
-    }
-    return null;
-  }
-
-  // Enhanced player movement check with debug visualization
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
+    // First check horizontal movement for collisions
     const horizontalTarget = new THREE.Vector3(targetPosition.x, currentPosition.y, targetPosition.z);
     const direction = new THREE.Vector3().subVectors(horizontalTarget, currentPosition);
     const distance = direction.length();
@@ -223,32 +169,22 @@ export class PhysicsManager {
     
     direction.normalize();
     
-    // Check for collision with slope information
-    const collision = this.checkRayCollisionWithSlope(currentPosition, direction, distance, ['projectile', 'enemy']);
+    // Check for collision along the horizontal movement path
+    const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile', 'enemy']);
     
     let safeHorizontalPosition: THREE.Vector3;
-    
     if (collision) {
-      console.log(`🏔️ [PhysicsManager] Collision detected - Angle: ${collision.slopeAngle.toFixed(1)}°, Walkable: ${collision.isWalkable}`);
+      // Calculate safe horizontal position just before collision
+      const safeDistance = Math.max(0, collision.distance - playerRadius - 0.1);
+      safeHorizontalPosition = currentPosition.clone().add(direction.multiplyScalar(safeDistance));
       
-      if (collision.isWalkable) {
-        // Slope is walkable - allow movement to target position
-        safeHorizontalPosition = horizontalTarget;
-        console.log(`🏔️ [PhysicsManager] Allowing movement on walkable slope (${collision.slopeAngle.toFixed(1)}°)`);
-      } else {
-        // Slope too steep - calculate safe position before collision
-        const safeDistance = Math.max(0, collision.distance - playerRadius - 0.1);
-        safeHorizontalPosition = currentPosition.clone().add(direction.multiplyScalar(safeDistance));
-        
-        // Try sliding along the collision surface for steep slopes
-        safeHorizontalPosition = this.handleWallSliding(currentPosition, horizontalTarget, collision, playerRadius);
-        console.log(`🏔️ [PhysicsManager] Blocking movement on steep slope (${collision.slopeAngle.toFixed(1)}°)`);
-      }
+      // Try sliding along the collision surface
+      safeHorizontalPosition = this.handleWallSliding(currentPosition, horizontalTarget, collision, playerRadius);
     } else {
       safeHorizontalPosition = horizontalTarget;
     }
     
-    // Adjust Y position based on ground height
+    // NEW: Now adjust Y position based on ground height
     const groundHeight = this.getGroundHeight(safeHorizontalPosition);
     const slopeInfo = this.checkSlopeAngle(safeHorizontalPosition);
     
@@ -257,21 +193,11 @@ export class PhysicsManager {
       const heightDifference = groundHeight - currentPosition.y;
       const maxStepHeight = 0.3; // Allow stepping up to 0.3 units
       
-      if (heightDifference <= maxStepHeight || heightDifference < 0) {
-        // Allow stepping up small amounts or going downhill
-        const newPosition = new THREE.Vector3(safeHorizontalPosition.x, groundHeight + 0.1, safeHorizontalPosition.z);
-        
-        // Debug visualization for height adjustment
-        if (this.debugVisualizer && this.debugVisualizer.isEnabled() && Math.abs(heightDifference) > 0.01) {
-          this.debugVisualizer.visualizeHeightAdjustment(currentPosition, newPosition);
-          console.log(`🏔️ [PhysicsManager] Height adjustment: ${heightDifference.toFixed(3)} units`);
-        }
-        
+      if (heightDifference <= maxStepHeight) {
         safeHorizontalPosition.y = groundHeight + 0.1; // Small offset to prevent clipping
       } else {
         // Too steep to step up, stay at current height
         safeHorizontalPosition.y = currentPosition.y;
-        console.log(`🏔️ [PhysicsManager] Step too high: ${heightDifference.toFixed(3)} units`);
       }
     } else {
       // Slope too steep, don't allow movement
@@ -303,9 +229,11 @@ export class PhysicsManager {
     return targetPosition;
   }
 
-  private handleWallSliding(currentPos: THREE.Vector3, targetPos: THREE.Vector3, collision: CollisionResult, playerRadius: number): THREE.Vector3 {
-    // Calculate collision normal
-    const normal = collision.normal;
+  private handleWallSliding(currentPos: THREE.Vector3, targetPos: THREE.Vector3, collision: { object: CollisionObject; distance: number; point: THREE.Vector3 }, playerRadius: number): THREE.Vector3 {
+    // Calculate collision normal (simplified - assumes axis-aligned boxes)
+    const collisionBox = collision.object.box;
+    const collisionCenter = collisionBox.getCenter(new THREE.Vector3());
+    const normal = new THREE.Vector3().subVectors(collision.point, collisionCenter).normalize();
     
     // Project movement vector onto plane perpendicular to collision normal
     const movement = new THREE.Vector3().subVectors(targetPos, currentPos);
@@ -356,18 +284,8 @@ export class PhysicsManager {
     return this.collisionObjects;
   }
 
-  public setDebugVisualization(enabled: boolean): void {
-    if (this.debugVisualizer) {
-      this.debugVisualizer.setEnabled(enabled);
-      console.log(`🏔️ [PhysicsManager] Debug visualization ${enabled ? 'enabled' : 'disabled'}`);
-    }
-  }
-
   public dispose(): void {
     this.collisionObjects.clear();
-    if (this.debugVisualizer) {
-      this.debugVisualizer.dispose();
-    }
     console.log('PhysicsManager disposed');
   }
 }
