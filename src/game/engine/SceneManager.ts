@@ -268,21 +268,16 @@ export class SceneManager {
     this.createSimpleGround();
     console.log('Simple ground plane created at origin');
     
-    // STEP 1 FIX: Register environment collisions BEFORE creating anything
-    console.log('🔧 Pre-registering environment collisions...');
-    this.environmentCollisionManager.registerEnvironmentCollisions();
-    console.log('🔧 Environment collision system initialized (before region/hill creation)');
-    
-    // Create starting region (center ring, NE quadrant) AFTER collision system setup
+    // Create starting region (center ring, NE quadrant)
     const startRegion = { ringIndex: 0, quadrant: 0 };
     this.loadRegion(startRegion);
-    console.log('🔧 Starting region loaded with collision registration');
+    console.log('🔧 Starting region loaded');
     
     // Place tavern at center
     this.createTavern();
     console.log('Tavern created at center');
     
-    // CRITICAL: Create test hill AFTER collision registration to prevent clearing
+    // Create test hill
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created at (20, 0, 30) for slope walking testing');
     
@@ -303,6 +298,11 @@ export class SceneManager {
     // Force update skybox to apply new realistic blue colors
     this.updateSkybox();
     console.log('Skybox updated with realistic blue colors');
+    
+    // FIXED: Register environment collisions AFTER everything is created
+    console.log('🔧 Registering environment collisions after all objects created...');
+    this.environmentCollisionManager.registerEnvironmentCollisions();
+    console.log('🔧 Environment collision system initialized (after all objects created)');
     
     console.log('Default world creation complete with ring-quadrant system. Total scene children:', this.scene.children.length);
   }
@@ -334,10 +334,6 @@ export class SceneManager {
     
     // Generate terrain features for this region
     this.terrainFeatureGenerator.generateFeaturesForRegion(region);
-    
-    // FIXED: Add manual collision registration pass for this region
-    console.log(`🔧 Manual collision registration pass for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-    this.registerCollisionForRegionFeatures(region);
     
     // Generate structures for this region
     this.structureGenerator.generateStructuresForRegion(region);
