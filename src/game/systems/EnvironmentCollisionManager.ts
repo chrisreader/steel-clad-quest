@@ -14,7 +14,7 @@ export class EnvironmentCollisionManager {
     console.log('🔧 EnvironmentCollisionManager initialized with enhanced terrain and staircase support');
   }
 
-  // NEW: Method to register a single object for collision
+  // FIXED: Method to register a single object for collision (handles Groups and Meshes)
   public registerSingleObject(object: THREE.Object3D): void {
     // Skip if already registered OR if it's a known terrain object
     if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid)) return;
@@ -26,7 +26,7 @@ export class EnvironmentCollisionManager {
       const id = this.physicsManager.addCollisionObject(object, 'environment', material, object.uuid);
       this.registeredObjects.add(id);
       
-      console.log(`🔧 Dynamically registered collision for object at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
+      console.log(`🔧 Dynamically registered collision for ${object instanceof THREE.Group ? 'GROUP' : 'MESH'} at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
     }
   }
 
@@ -143,14 +143,47 @@ export class EnvironmentCollisionManager {
       const id = this.physicsManager.addCollisionObject(object, 'environment', material, object.uuid);
       this.registeredObjects.add(id);
       
-      console.log(`🔧 Registered collision for object at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
+      console.log(`🔧 Registered collision for ${object instanceof THREE.Group ? 'GROUP' : 'MESH'} at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
     }
   }
 
   private determineMaterial(object: THREE.Object3D): 'wood' | 'stone' | 'metal' | 'fabric' {
-    // Analyze object properties to determine material
-    if (object instanceof THREE.Mesh && object.material) {
-      const material = Array.isArray(object.material) ? object.material[0] : object.material;
+    // FIXED: Special handling for tree groups
+    if (object instanceof THREE.Group) {
+      // Check if this is a tree (contains meshes that look like tree parts)
+      const hasTrunk = object.children.some(child => 
+        child instanceof THREE.Mesh && 
+        child.geometry instanceof THREE.CylinderGeometry
+      );
+      const hasLeaves = object.children.some(child =>
+        child instanceof THREE.Mesh &&
+        (child.geometry instanceof THREE.ConeGeometry || child.geometry instanceof THREE.SphereGeometry)
+      );
+      
+      if (hasTrunk && hasLeaves) {
+        console.log(`🌳 Detected tree group - assigning wood material`);
+        return 'wood';
+      }
+      
+      // For other groups, check the first child's material
+      const firstMesh = object.children.find(child => child instanceof THREE.Mesh) as THREE.Mesh;
+      if (firstMesh) {
+        return this.determineMaterialFromMesh(firstMesh);
+      }
+    }
+    
+    // Handle individual meshes
+    if (object instanceof THREE.Mesh) {
+      return this.determineMaterialFromMesh(object);
+    }
+    
+    // Default fallback
+    return 'stone';
+  }
+  
+  private determineMaterialFromMesh(mesh: THREE.Mesh): 'wood' | 'stone' | 'metal' | 'fabric' {
+    if (mesh.material) {
+      const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
       
       if (material instanceof THREE.MeshLambertMaterial) {
         const color = material.color;
@@ -173,7 +206,7 @@ export class EnvironmentCollisionManager {
     }
 
     // Default based on object characteristics
-    const boundingBox = new THREE.Box3().setFromObject(object);
+    const boundingBox = new THREE.Box3().setFromObject(mesh);
     const size = boundingBox.getSize(new THREE.Vector3());
     
     // Tall, thin objects are likely trees (wood)
@@ -190,6 +223,7 @@ export class EnvironmentCollisionManager {
     return 'stone';
   }
 
+  // FIXED: Updated to handle both THREE.Mesh AND THREE.Group objects
   private shouldRegisterForCollision(object: THREE.Object3D): boolean {
     // Skip very small objects (likely decorative)
     const boundingBox = new THREE.Box3().setFromObject(object);
@@ -209,8 +243,21 @@ export class EnvironmentCollisionManager {
       return false;
     }
 
-    // Register solid objects
-    return object instanceof THREE.Mesh && object.geometry && object.material;
+    // FIXED: Register both Mesh and Group objects (trees are Groups!)
+    if (object instanceof THREE.Mesh && object.geometry && object.material) {
+      return true;
+    }
+    
+    if (object instanceof THREE.Group && object.children.length > 0) {
+      // Check if the group contains meshes with geometry and materials
+      const hasSolidChildren = object.children.some(child => 
+        child instanceof THREE.Mesh && child.geometry && child.material
+      );
+      console.log(`🔧 Group collision check: ${object.children.length} children, hasSolidChildren: ${hasSolidChildren}`);
+      return hasSolidChildren;
+    }
+
+    return false;
   }
 
   public updateCollisions(): void {
