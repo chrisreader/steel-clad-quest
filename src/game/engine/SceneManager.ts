@@ -194,58 +194,107 @@ export class SceneManager {
   }
   
   private createSkybox(): void {
-    // Create a skybox with colors coordinated to fog for smooth gradient
+    // Create a skybox with enhanced atmospheric horizon effect
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
-    // Enhanced gradient material coordinated with fog color
+    // Enhanced atmospheric scattering shader for realistic horizon effect
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        topColor: { value: new THREE.Color(0x4A90E2) }, // Sky blue
-        bottomColor: { value: new THREE.Color(0xB0E0E6) }, // Match fog color for smooth transition
-        offset: { value: 400 },
-        exponent: { value: 0.8 } // Adjusted for better gradient
+        topColor: { value: new THREE.Color(0x4A90E2) }, // Clear sky blue
+        horizonColor: { value: new THREE.Color(0xB0E0E6) }, // Atmospheric haze (matches fog)
+        groundColor: { value: new THREE.Color(0xE6F3FF) }, // Very light atmospheric color
+        exponent: { value: 0.4 }, // Controls how sharp the transition is
+        horizonHeight: { value: 0.0 }, // Height of horizon line
+        atmosphericDensity: { value: 2.5 }, // Controls atmospheric scattering intensity
+        fogDistance: { value: 100.0 } // Should match fog far distance
       },
       vertexShader: `
         varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+        varying float vDistance;
+        
         void main() {
           vec4 worldPosition = modelMatrix * vec4(position, 1.0);
           vWorldPosition = worldPosition.xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          vNormal = normalize(normalMatrix * normal);
+          
+          // Calculate distance from camera for atmospheric effect
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          vDistance = length(mvPosition.xyz);
+          
+          gl_Position = projectionMatrix * mvPosition;
         }
       `,
       fragmentShader: `
         uniform vec3 topColor;
-        uniform vec3 bottomColor;
-        uniform float offset;
+        uniform vec3 horizonColor;
+        uniform vec3 groundColor;
         uniform float exponent;
+        uniform float horizonHeight;
+        uniform float atmosphericDensity;
+        uniform float fogDistance;
+        
         varying vec3 vWorldPosition;
+        varying vec3 vNormal;
+        varying float vDistance;
+        
         void main() {
-          float h = normalize(vWorldPosition + offset).y;
-          gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+          // Normalize the world position to get direction
+          vec3 direction = normalize(vWorldPosition);
+          
+          // Calculate height factor (y component of normalized direction)
+          float height = direction.y;
+          
+          // Create atmospheric scattering based on viewing angle
+          float atmosphericFactor = 1.0 - abs(height);
+          atmosphericFactor = pow(atmosphericFactor, atmosphericDensity);
+          
+          // Create main gradient from top to horizon
+          float gradientFactor = (height + 1.0) * 0.5; // Normalize to 0-1
+          gradientFactor = pow(gradientFactor, exponent);
+          
+          // Mix colors based on height and atmospheric scattering
+          vec3 skyColor = mix(horizonColor, topColor, gradientFactor);
+          
+          // Add atmospheric haze effect near horizon
+          vec3 atmosphericColor = mix(groundColor, horizonColor, gradientFactor);
+          skyColor = mix(atmosphericColor, skyColor, 1.0 - atmosphericFactor * 0.8);
+          
+          // Add distance-based atmospheric perspective
+          float distanceFactor = min(vDistance / fogDistance, 1.0);
+          skyColor = mix(skyColor, horizonColor, distanceFactor * 0.3);
+          
+          gl_FragColor = vec4(skyColor, 1.0);
         }
       `,
       side: THREE.BackSide,
-      fog: false
+      fog: false // Don't let THREE.js fog affect the skybox
     });
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Enhanced skybox created with fog-coordinated gradient');
+    console.log('Enhanced atmospheric horizon skybox created with scattering effects');
   }
   
   private updateSkybox(): void {
     if (!this.skybox || !this.skybox.material) return;
     
-    // Update skybox colors to coordinate with fog system
+    // Update skybox with atmospheric horizon parameters
     const material = this.skybox.material as THREE.ShaderMaterial;
     if (material.uniforms) {
-      // Top color: realistic sky blue
-      material.uniforms.topColor.value.setHex(0x4A90E2);
-      // Bottom color: match fog color for seamless transition
-      material.uniforms.bottomColor.value.setHex(0xB0E0E6);
+      // Ensure colors are coordinated with fog system
+      material.uniforms.topColor.value.setHex(0x4A90E2); // Clear sky blue
+      material.uniforms.horizonColor.value.setHex(0xB0E0E6); // Match fog color exactly
+      material.uniforms.groundColor.value.setHex(0xE6F3FF); // Very light atmospheric
+      
+      // Update atmospheric parameters for realistic horizon effect
+      material.uniforms.exponent.value = 0.4; // Sharp transition
+      material.uniforms.atmosphericDensity.value = 2.5; // Strong atmospheric effect
+      material.uniforms.fogDistance.value = this.fog ? this.fog.far : 100.0; // Match fog distance
+      
       material.needsUpdate = true;
     }
-    console.log('Skybox updated with fog-coordinated colors for smooth gradient');
+    console.log('Skybox updated with enhanced atmospheric horizon effect');
   }
   
   // NEW: Enemy spawning methods that GameEngine expects
@@ -333,7 +382,7 @@ export class SceneManager {
   }
   
   public createDefaultWorld(): void {
-    console.log('Creating default world with enhanced fog system...');
+    console.log('Creating default world with enhanced atmospheric horizon effect...');
     
     // Create simple ground plane at origin as fallback
     this.createSimpleGround();
@@ -355,9 +404,9 @@ export class SceneManager {
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created at (20, 0, 30) for slope walking testing');
     
-    // Create skybox with fog coordination
+    // Create enhanced atmospheric skybox FIRST
     this.createSkybox();
-    console.log('Enhanced skybox created');
+    console.log('Enhanced atmospheric horizon skybox created');
     
     // Create 3D sun
     this.create3DSun();
@@ -369,16 +418,16 @@ export class SceneManager {
       console.log('Dynamic cloud spawning system initialized');
     }
     
-    // Force update skybox to apply fog-coordinated colors
+    // Force update skybox to apply atmospheric horizon effects
     this.updateSkybox();
-    console.log('Skybox updated with fog-coordinated gradient');
+    console.log('Skybox updated with atmospheric horizon gradient');
     
     // Register environment collisions AFTER everything is created
     console.log('🔧 Registering environment collisions after all objects created...');
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized (after all objects created)');
     
-    console.log('Default world creation complete with enhanced fog system. Total scene children:', this.scene.children.length);
+    console.log('Default world creation complete with atmospheric horizon effect. Total scene children:', this.scene.children.length);
   }
   
   // NEW: Region management methods
