@@ -295,11 +295,11 @@ export class SceneManager {
     
     this.loadedRegions.set(regionKey, newRegion);
     
-    // Generate terrain features for this region
-    this.terrainFeatureGenerator.generateFeaturesForRegion(region);
+    // Generate terrain features for this region - FIXED: provide all required arguments
+    this.terrainFeatureGenerator.generateFeaturesForRegion(regionKey, centerPosition.x, centerPosition.z);
     
-    // Generate structures for this region
-    this.structureGenerator.generateStructuresForRegion(region);
+    // Generate structures for this region - FIXED: provide all required arguments
+    this.structureGenerator.generateStructuresForRegion(regionKey, centerPosition.x, centerPosition.z);
   }
   
   private unloadRegion(region: RegionCoordinates): void {
@@ -310,11 +310,11 @@ export class SceneManager {
     
     console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
-    // Clean up structures first
-    this.structureGenerator.cleanupStructuresForRegion(region);
+    // Clean up structures first - FIXED: use correct method name
+    this.structureGenerator.removeStructuresForRegion(regionKey);
     
-    // Clean up terrain features
-    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
+    // Clean up terrain features - FIXED: use correct method name
+    this.terrainFeatureGenerator.removeFeaturesForRegion(regionKey);
     
     // Remove terrain
     if (loadedRegion.terrain) {
