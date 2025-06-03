@@ -306,26 +306,26 @@ export class Arrow {
     return true;
   }
 
-  // ENHANCED: Handle terrain-specific collision with proper sticking orientation
+  // FIXED: Handle terrain-specific collision while maintaining flight angle
   private hitTerrainObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
-    console.log('🏹 TERRAIN HIT: Processing visual effects and proper sticking orientation');
+    console.log('🏹 TERRAIN HIT: Processing visual effects while maintaining flight angle');
     
     this.isStuck = true;
     this.stuckInObject = collision.object.id;
     this.velocity.set(0, 0, 0);
     
-    // Get surface normal for proper arrow orientation
-    const surfaceNormal = this.calculateSurfaceNormal(collision.object.mesh, collision.point);
+    // Position arrow at collision point with slight embedding along flight direction
+    const embeddingDepth = 0.3;
+    const flightDirection = this.velocity.lengthSq() > 0 ? 
+      this.velocity.clone().normalize() : 
+      this.mesh.getWorldDirection(new THREE.Vector3());
     
-    // Position arrow at collision point and embed it slightly
-    const embeddingDepth = 0.3; // How far the arrow penetrates the surface
-    const embeddedPosition = collision.point.clone().add(surfaceNormal.clone().multiplyScalar(-embeddingDepth));
+    const embeddedPosition = collision.point.clone().add(flightDirection.multiplyScalar(embeddingDepth));
     
     this.position.copy(embeddedPosition);
     this.mesh.position.copy(this.position);
     
-    // Orient arrow to surface normal for realistic sticking
-    this.orientArrowToSurfaceNormal(surfaceNormal);
+    // Keep the arrow's current flight orientation - DO NOT change rotation
     
     // Remove trail when stuck
     this.removeTrail();
@@ -334,30 +334,30 @@ export class Arrow {
     this.audioManager.play('arrow_impact');
     this.createTerrainImpactEffect(collision.point);
     
-    console.log(`🏹 Arrow stuck in terrain with proper orientation at:`, this.position);
+    console.log(`🏹 Arrow stuck in terrain maintaining flight angle at:`, this.position);
     console.log('🏹 TERRAIN HIT COMPLETE: No collision system modifications performed');
   }
 
-  // ENHANCED: Handle environment collision with proper sticking orientation
+  // FIXED: Handle environment collision while maintaining flight angle
   private hitEnvironmentObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
-    console.log('🏹 ENVIRONMENT HIT: Processing with proper sticking orientation');
+    console.log('🏹 ENVIRONMENT HIT: Processing while maintaining flight angle');
     
     this.isStuck = true;
     this.stuckInObject = collision.object.id;
     this.velocity.set(0, 0, 0);
     
-    // Get surface normal for proper arrow orientation
-    const surfaceNormal = this.calculateSurfaceNormal(collision.object.mesh, collision.point);
+    // Position arrow at collision point with slight embedding along flight direction
+    const embeddingDepth = 0.25;
+    const flightDirection = this.velocity.lengthSq() > 0 ? 
+      this.velocity.clone().normalize() : 
+      this.mesh.getWorldDirection(new THREE.Vector3());
     
-    // Position arrow at collision point and embed it slightly
-    const embeddingDepth = 0.25; // Slightly less embedding for trees/walls
-    const embeddedPosition = collision.point.clone().add(surfaceNormal.clone().multiplyScalar(-embeddingDepth));
+    const embeddedPosition = collision.point.clone().add(flightDirection.multiplyScalar(embeddingDepth));
     
     this.position.copy(embeddedPosition);
     this.mesh.position.copy(this.position);
     
-    // Orient arrow to surface normal for realistic sticking
-    this.orientArrowToSurfaceNormal(surfaceNormal);
+    // Keep the arrow's current flight orientation - DO NOT change rotation
     
     // Remove trail when stuck
     this.removeTrail();
@@ -369,54 +369,7 @@ export class Arrow {
     // Create material-specific impact effect
     this.createMaterialImpactEffect(collision.point, material);
     
-    console.log(`🏹 Arrow stuck in ${material} object with proper orientation at:`, this.position);
-  }
-
-  // NEW: Calculate surface normal at collision point
-  private calculateSurfaceNormal(mesh: THREE.Object3D, collisionPoint: THREE.Vector3): THREE.Vector3 {
-    // Use raycasting to get the surface normal at the collision point
-    const raycaster = new THREE.Raycaster();
-    const direction = this.velocity.clone().normalize();
-    
-    raycaster.set(collisionPoint.clone().add(direction.clone().multiplyScalar(-0.1)), direction);
-    const intersections = raycaster.intersectObject(mesh, true);
-    
-    if (intersections.length > 0 && intersections[0].face) {
-      // Get the world-space normal
-      const normal = intersections[0].face.normal.clone();
-      normal.transformDirection(intersections[0].object.matrixWorld);
-      return normal.normalize();
-    }
-    
-    // Fallback: calculate normal based on collision geometry
-    if (mesh instanceof THREE.Group) {
-      // For tree groups, assume vertical surface (trunk)
-      const meshCenter = new THREE.Vector3();
-      new THREE.Box3().setFromObject(mesh).getCenter(meshCenter);
-      
-      const toCollision = collisionPoint.clone().sub(meshCenter);
-      toCollision.y = 0; // Project to horizontal plane for trunk surface
-      return toCollision.normalize();
-    }
-    
-    // Default fallback normal
-    return new THREE.Vector3(0, 1, 0);
-  }
-
-  // NEW: Orient arrow based on surface normal for realistic sticking
-  private orientArrowToSurfaceNormal(surfaceNormal: THREE.Vector3): void {
-    // Calculate the direction the arrow should point (into the surface)
-    const arrowDirection = surfaceNormal.clone().negate(); // Point into the surface
-    
-    // Create quaternion to align arrow with surface normal
-    const defaultForward = new THREE.Vector3(0, 0, 1); // Arrow's default forward direction
-    const quaternion = new THREE.Quaternion();
-    quaternion.setFromUnitVectors(defaultForward, arrowDirection);
-    
-    // Apply the rotation to make arrow look stuck in surface
-    this.mesh.quaternion.copy(quaternion);
-    
-    console.log(`🏹 Arrow oriented to surface normal:`, arrowDirection);
+    console.log(`🏹 Arrow stuck in ${material} object maintaining flight angle at:`, this.position);
   }
 
   // NEW: Create terrain-specific impact effects
@@ -599,7 +552,7 @@ export class Arrow {
     }
   }
 
-  // ENHANCED: Handle ground collision with proper sticking orientation
+  // FIXED: Handle ground collision while maintaining flight angle
   private hitGround(): void {
     this.isGrounded = true;
     this.velocity.set(0, 0, 0);
@@ -608,12 +561,12 @@ export class Arrow {
     this.position.y = 0.0;
     this.mesh.position.copy(this.position);
     
-    // Orient arrow for ground sticking (pointing down into ground)
-    const groundNormal = new THREE.Vector3(0, 1, 0); // Ground surface normal
-    this.orientArrowToSurfaceNormal(groundNormal);
+    // Keep the arrow's current flight orientation - DO NOT change rotation
     
-    // Embed arrow slightly into ground
-    this.position.y = -0.2; // Partially embed in ground
+    // Embed arrow slightly into ground along its current trajectory
+    const embeddingDepth = 0.2;
+    const flightDirection = this.mesh.getWorldDirection(new THREE.Vector3());
+    this.position.add(flightDirection.multiplyScalar(embeddingDepth));
     this.mesh.position.copy(this.position);
     
     // Remove trail when hitting ground
@@ -624,7 +577,7 @@ export class Arrow {
     // Create simple ground impact effect
     this.createSimpleImpactEffect();
     
-    console.log(`🏹 Arrow stuck in ground with proper orientation`);
+    console.log(`🏹 Arrow stuck in ground maintaining flight angle`);
   }
 
   private createSimpleImpactEffect(): void {
