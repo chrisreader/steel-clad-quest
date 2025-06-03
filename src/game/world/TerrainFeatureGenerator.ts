@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { TextureGenerator } from '../utils';
@@ -23,10 +24,19 @@ export class TerrainFeatureGenerator {
   private tavernPosition: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   private tavernExclusionRadius: number = 15; // Keep clear area around tavern
   
+  // NEW: Collision registration callback
+  private collisionRegistrationCallback?: (object: THREE.Object3D) => void;
+  
   constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
     this.loadModels();
+  }
+  
+  // NEW: Set collision registration callback
+  public setCollisionRegistrationCallback(callback: (object: THREE.Object3D) => void): void {
+    this.collisionRegistrationCallback = callback;
+    console.log('🔧 TerrainFeatureGenerator collision registration callback set');
   }
   
   private loadModels(): void {
@@ -278,6 +288,12 @@ export class TerrainFeatureGenerator {
         if (feature) {
           features.push(feature);
           this.scene.add(feature);
+          
+          // NEW: Register for collision immediately after spawning
+          if (this.collisionRegistrationCallback) {
+            this.collisionRegistrationCallback(feature);
+            console.log(`🔧 Registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
+          }
         }
       }
     }
@@ -300,6 +316,12 @@ export class TerrainFeatureGenerator {
         if (feature) {
           features.push(feature);
           this.scene.add(feature);
+          
+          // NEW: Register for collision immediately after spawning
+          if (this.collisionRegistrationCallback) {
+            this.collisionRegistrationCallback(feature);
+            console.log(`🔧 Registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
+          }
         }
       }
     }

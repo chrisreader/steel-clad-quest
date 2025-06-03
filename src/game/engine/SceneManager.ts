@@ -83,6 +83,12 @@ export class SceneManager {
     
     // Initialize environment collision manager
     this.environmentCollisionManager = new EnvironmentCollisionManager(this.scene, this.physicsManager);
+    
+    // NEW: Set up collision registration callback for terrain features
+    this.terrainFeatureGenerator.setCollisionRegistrationCallback((object: THREE.Object3D) => {
+      this.environmentCollisionManager.registerSingleObject(object);
+    });
+    console.log('🔧 Collision registration callback established between TerrainFeatureGenerator and EnvironmentCollisionManager');
   }
   
   private setupDistanceFog(): void {

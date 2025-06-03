@@ -14,6 +14,22 @@ export class EnvironmentCollisionManager {
     console.log('🔧 EnvironmentCollisionManager initialized with enhanced terrain and staircase support');
   }
 
+  // NEW: Method to register a single object for collision
+  public registerSingleObject(object: THREE.Object3D): void {
+    // Skip if already registered OR if it's a known terrain object
+    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid)) return;
+
+    const material = this.determineMaterial(object);
+    const shouldRegister = this.shouldRegisterForCollision(object);
+
+    if (shouldRegister) {
+      const id = this.physicsManager.addCollisionObject(object, 'environment', material, object.uuid);
+      this.registeredObjects.add(id);
+      
+      console.log(`🔧 Dynamically registered collision for object at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
+    }
+  }
+
   public registerEnvironmentCollisions(): void {
     console.log('🔧 === ENVIRONMENT COLLISION REGISTRATION START ===');
     console.log('🔧 Registering environment collisions with enhanced terrain support...');
