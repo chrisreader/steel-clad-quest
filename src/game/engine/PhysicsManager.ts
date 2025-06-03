@@ -26,17 +26,16 @@ export class PhysicsManager {
   private collisionObjects: Map<string, CollisionObject> = new Map();
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private maxWalkableAngle = 45; // degrees
-  private maxStepHeight = 1.5; // Increased for more permissive movement
+  private maxStepHeight = 2.0; // More permissive step height
   private scene: THREE.Scene | null = null;
-  private terrainDetectionThreshold = 2.0; // Much higher threshold - less sensitive
   
   constructor() {
-    console.log('🏔️ Enhanced Physics Manager initialized with free walking system');
+    console.log('🏔️ Physics Manager initialized with FREE MOVEMENT system');
   }
 
   public setScene(scene: THREE.Scene): void {
     this.scene = scene;
-    console.log('🏔️ [PhysicsManager] Scene reference set for terrain detection');
+    console.log('🏔️ [PhysicsManager] Scene reference set');
   }
 
   public addCollisionObject(object: THREE.Object3D, type: 'environment' | 'player' | 'projectile' | 'enemy', material: 'wood' | 'stone' | 'metal' | 'fabric' = 'stone', id?: string): string {
@@ -52,7 +51,7 @@ export class PhysicsManager {
     };
     
     this.collisionObjects.set(objectId, collisionObject);
-    console.log(`🏔️ [PhysicsManager] Added collision object: ${objectId} (${type}, ${material}) at position:`, object.position);
+    console.log(`🏔️ [PhysicsManager] Added collision object: ${objectId} (${type}, ${material})`);
     return objectId;
   }
 
@@ -102,51 +101,47 @@ export class PhysicsManager {
   }
 
   public checkSlopeAngle(position: THREE.Vector3): SlopeInfo {
-    const rayHeights = [position.y + 10, position.y + 5, position.y + 2];
+    const rayOrigin = new THREE.Vector3(position.x, position.y + 2, position.z);
+    const rayDirection = new THREE.Vector3(0, -1, 0);
     
-    for (const rayHeight of rayHeights) {
-      const rayOrigin = new THREE.Vector3(position.x, rayHeight, position.z);
-      const rayDirection = new THREE.Vector3(0, -1, 0);
-      
-      this.raycaster.set(rayOrigin, rayDirection);
-      
-      // Check both collision objects and direct scene geometry
-      const meshes: THREE.Object3D[] = [];
-      for (const [id, collisionObject] of this.collisionObjects) {
-        if (collisionObject.type === 'environment') {
-          meshes.push(collisionObject.mesh);
+    this.raycaster.set(rayOrigin, rayDirection);
+    
+    // Check both collision objects and direct scene geometry
+    const meshes: THREE.Object3D[] = [];
+    for (const [id, collisionObject] of this.collisionObjects) {
+      if (collisionObject.type === 'environment') {
+        meshes.push(collisionObject.mesh);
+      }
+    }
+    
+    let intersections = this.raycaster.intersectObjects(meshes, true);
+    
+    // If no collision object hit, check direct scene geometry
+    if (intersections.length === 0 && this.scene) {
+      const allMeshes: THREE.Mesh[] = [];
+      this.scene.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.geometry && child.material) {
+          allMeshes.push(child);
         }
-      }
+      });
+      intersections = this.raycaster.intersectObjects(allMeshes, false);
+    }
+    
+    if (intersections.length > 0 && intersections[0].face) {
+      const intersection = intersections[0];
+      const normal = intersection.face.normal.clone();
       
-      let intersections = this.raycaster.intersectObjects(meshes, true);
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(intersection.object.matrixWorld);
+      normal.applyMatrix3(normalMatrix).normalize();
       
-      // If no collision object hit, check direct scene geometry
-      if (intersections.length === 0 && this.scene) {
-        const allMeshes: THREE.Mesh[] = [];
-        this.scene.traverse((child) => {
-          if (child instanceof THREE.Mesh && child.geometry && child.material) {
-            allMeshes.push(child);
-          }
-        });
-        intersections = this.raycaster.intersectObjects(allMeshes, false);
-      }
+      const angle = Math.acos(Math.abs(normal.dot(new THREE.Vector3(0, 1, 0))));
+      const angleInDegrees = THREE.MathUtils.radToDeg(angle);
       
-      if (intersections.length > 0 && intersections[0].face) {
-        const intersection = intersections[0];
-        const normal = intersection.face.normal.clone();
-        
-        const normalMatrix = new THREE.Matrix3().getNormalMatrix(intersection.object.matrixWorld);
-        normal.applyMatrix3(normalMatrix).normalize();
-        
-        const angle = Math.acos(Math.abs(normal.dot(new THREE.Vector3(0, 1, 0))));
-        const angleInDegrees = THREE.MathUtils.radToDeg(angle);
-        
-        return {
-          walkable: angleInDegrees <= this.maxWalkableAngle,
-          angle: angleInDegrees,
-          normal: normal
-        };
-      }
+      return {
+        walkable: angleInDegrees <= this.maxWalkableAngle,
+        angle: angleInDegrees,
+        normal: normal
+      };
     }
     
     // DEFAULT: Assume flat walkable ground if no surface detected
@@ -163,11 +158,11 @@ export class PhysicsManager {
   }
 
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
-    console.log('🏔️ [PhysicsManager] === FREE WALKING MOVEMENT CHECK ===');
+    console.log('🏔️ [PhysicsManager] === FREE MOVEMENT CHECK ===');
     console.log('🏔️ [PhysicsManager] Current:', currentPosition.toArray().map(n => n.toFixed(3)));
     console.log('🏔️ [PhysicsManager] Target:', targetPosition.toArray().map(n => n.toFixed(3)));
     
-    // Step 1: Calculate horizontal movement
+    // Step 1: Calculate horizontal movement vector
     const horizontalMovement = new THREE.Vector3(
       targetPosition.x - currentPosition.x,
       0,
@@ -180,7 +175,14 @@ export class PhysicsManager {
       return currentPosition;
     }
     
-    // Step 2: Check for wall collisions (actual blocking objects)
+    // Step 2: Start with FREE MOVEMENT - maintain current height for flat ground
+    let finalPosition = new THREE.Vector3(
+      targetPosition.x,
+      currentPosition.y, // Keep current Y by default for FREE MOVEMENT
+      targetPosition.z
+    );
+    
+    // Step 3: Check for wall collisions ONLY (actual blocking objects)
     const moveDirection = horizontalMovement.clone().normalize();
     const wallCheckHeight = currentPosition.y + 0.5;
     
@@ -188,38 +190,35 @@ export class PhysicsManager {
       new THREE.Vector3(currentPosition.x, wallCheckHeight, currentPosition.z),
       moveDirection,
       horizontalDistance + playerRadius,
-      ['projectile', 'enemy', 'player']
+      ['projectile', 'enemy', 'player'] // Only exclude these types
     );
     
-    // Only block movement if hitting a steep wall (not walkable)
-    if (wallCollision && !wallCollision.slopeInfo.walkable) {
-      console.log('🏔️ [PhysicsManager] Wall blocking movement - angle:', wallCollision.slopeInfo.angle.toFixed(1));
-      return this.handleWallSliding(currentPosition, targetPosition, wallCollision, playerRadius);
+    // Only block movement if hitting a STEEP wall (not walkable terrain)
+    if (wallCollision && wallCollision.slopeInfo.angle > 60) {
+      console.log('🏔️ [PhysicsManager] STEEP WALL blocking movement - angle:', wallCollision.slopeInfo.angle.toFixed(1));
+      return this.handleWallSliding(currentPosition, finalPosition, wallCollision, playerRadius);
     }
     
-    // Step 3: Start with target position
-    let finalPosition = targetPosition.clone();
-    
-    // Step 4: Simple environment collision check (for trees, objects)
-    const environmentCollision = this.checkSphereCollision(finalPosition, playerRadius * 0.8, ['projectile', 'enemy', 'player']);
+    // Step 4: Check for environment object collisions (trees, etc.)
+    const environmentCollision = this.checkSphereCollision(finalPosition, playerRadius * 0.7, ['projectile', 'enemy', 'player']);
     if (environmentCollision) {
       console.log('🏔️ [PhysicsManager] Environment object collision - blocking');
       return currentPosition;
     }
     
-    // Step 5: SIMPLIFIED TERRAIN FOLLOWING - only for significant height changes
-    const targetGroundResult = this.getGroundHeight(targetPosition, 'target');
+    // Step 5: OPTIONAL terrain following - only for significant height changes
+    const targetGroundResult = this.getGroundHeight(finalPosition, 'target');
     
     if (targetGroundResult.hasGround) {
       const heightDifference = targetGroundResult.height - currentPosition.y;
       
-      // Only follow terrain if height difference is SIGNIFICANT
-      if (Math.abs(heightDifference) > this.terrainDetectionThreshold) {
+      // Only follow terrain if height difference is SIGNIFICANT (more than 1.5 units)
+      if (Math.abs(heightDifference) > 1.5) {
         if (heightDifference > this.maxStepHeight) {
-          console.log('🏔️ [PhysicsManager] Step too high - blocking');
+          console.log('🏔️ [PhysicsManager] Step too high - blocking movement');
           return currentPosition;
-        } else if (heightDifference < -5.0) {
-          console.log('🏔️ [PhysicsManager] Drop too steep - blocking');
+        } else if (heightDifference < -3.0) {
+          console.log('🏔️ [PhysicsManager] Drop too steep - blocking movement');
           return currentPosition;
         } else {
           // Follow significant terrain change
@@ -227,17 +226,15 @@ export class PhysicsManager {
           console.log('🏔️ [PhysicsManager] Following significant terrain to Y:', finalPosition.y.toFixed(3));
         }
       } else {
-        // Small height change - FREE WALKING on flat ground
-        finalPosition.y = currentPosition.y;
-        console.log('🏔️ [PhysicsManager] FREE WALKING - maintaining current height');
+        // Small height change - FREE WALKING maintains current height
+        console.log('🏔️ [PhysicsManager] FREE WALKING - maintaining current height for flat ground');
       }
     } else {
-      // No ground detected - maintain current height for FREE WALKING
-      finalPosition.y = currentPosition.y;
-      console.log('🏔️ [PhysicsManager] FREE WALKING - no ground, maintaining height');
+      // No ground detected - FREE WALKING continues at current height
+      console.log('🏔️ [PhysicsManager] FREE WALKING - no ground detected, maintaining height');
     }
     
-    console.log('🏔️ [PhysicsManager] FREE MOVEMENT APPROVED:', finalPosition.toArray().map(n => n.toFixed(3)));
+    console.log('🏔️ [PhysicsManager] ✅ FREE MOVEMENT APPROVED:', finalPosition.toArray().map(n => n.toFixed(3)));
     console.log('🏔️ [PhysicsManager] === MOVEMENT CHECK COMPLETE ===');
     
     return finalPosition;
