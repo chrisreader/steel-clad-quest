@@ -69,7 +69,7 @@ export class PhysicsManager {
     return objectId;
   }
 
-  // FIXED: Enhanced method with proper coordinate mapping for rotated terrain
+  // STEP 3 FIX: Enhanced method with proper coordinate mapping for rotated terrain
   public getTerrainHeightAtPosition(position: THREE.Vector3): number {
     const cacheKey = `${Math.floor(position.x * 10)},${Math.floor(position.z * 10)}`;
     
@@ -83,36 +83,46 @@ export class PhysicsManager {
         const terrain = collisionObject.mesh;
         const heightData = collisionObject.heightData;
         
-        // FIXED: Proper coordinate transformation for rotated terrain
-        // Since terrain is rotated -90° around X axis, we need to transform coordinates
+        // STEP 3 FIX: Proper coordinate transformation for cone-shaped hill
         const terrainPos = terrain.position;
-        const terrainSize = heightData.length > 0 ? 
-          (terrain.userData.terrainSize || 30) : 30; // Get size from userData or default
+        const terrainSize = terrain.userData.terrainSize || 30; // Get size from userData or default
         
         // Convert world position to terrain local coordinates
         const localX = position.x - terrainPos.x;
         const localZ = position.z - terrainPos.z;
         
-        // Map to heightmap indices (terrain is centered, so adjust by half size)
-        const segments = heightData.length - 1;
-        const halfSize = terrainSize / 2;
+        // STEP 3 FIX: For cone geometry, calculate distance from center
+        const distanceFromCenter = Math.sqrt(localX * localX + localZ * localZ);
+        const radius = terrainSize / 2;
         
-        const mapX = Math.floor(((localX + halfSize) / terrainSize) * segments);
-        const mapZ = Math.floor(((localZ + halfSize) / terrainSize) * segments);
-        
-        // Bounds check with clamping
-        const clampedX = Math.max(0, Math.min(segments, mapX));
-        const clampedZ = Math.max(0, Math.min(segments, mapZ));
-        
-        if (clampedX >= 0 && clampedX < heightData.length && 
-            clampedZ >= 0 && clampedZ < heightData[0].length) {
-          const height = heightData[clampedX][clampedZ] + terrain.position.y;
-          this.terrainHeightCache.set(cacheKey, height);
+        // STEP 3 FIX: Check if position is within terrain bounds
+        if (distanceFromCenter <= radius) {
+          // Map to heightmap indices based on distance and angle
+          const segments = heightData.length - 1;
+          const normalizedDistance = distanceFromCenter / radius;
           
-          console.log(`🏔️ Terrain height at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${height.toFixed(2)}`);
-          console.log(`🏔️ Map indices: (${clampedX}, ${clampedZ}) from heightData[${heightData.length}][${heightData[0].length}]`);
+          // Use distance to find height directly from cone shape
+          const angle = Math.atan2(localZ, localX);
+          const normalizedAngle = (angle + Math.PI) / (2 * Math.PI); // 0 to 1
           
-          return height;
+          const mapX = Math.floor(normalizedDistance * segments);
+          const mapZ = Math.floor(normalizedAngle * segments);
+          
+          // Bounds check with clamping
+          const clampedX = Math.max(0, Math.min(segments, mapX));
+          const clampedZ = Math.max(0, Math.min(segments, mapZ));
+          
+          if (clampedX >= 0 && clampedX < heightData.length && 
+              clampedZ >= 0 && clampedZ < heightData[0].length) {
+            const height = heightData[clampedX][clampedZ];
+            this.terrainHeightCache.set(cacheKey, height);
+            
+            console.log(`🏔️ Terrain height at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${height.toFixed(2)}`);
+            console.log(`🏔️ Distance from center: ${distanceFromCenter.toFixed(2)}, radius: ${radius}`);
+            console.log(`🏔️ Map indices: (${clampedX}, ${clampedZ}) from heightData[${heightData.length}][${heightData[0].length}]`);
+            
+            return height;
+          }
         }
       }
     }
@@ -120,7 +130,7 @@ export class PhysicsManager {
     return 0; // Default ground level
   }
 
-  // FIXED: Enhanced method with proper coordinate mapping
+  // STEP 3 FIX: Enhanced method with proper coordinate mapping for slope calculation
   public getSlopeAngleAtPosition(position: THREE.Vector3): number {
     for (const [id, collisionObject] of this.collisionObjects) {
       if (collisionObject.type === 'terrain' && collisionObject.heightData) {
@@ -134,27 +144,34 @@ export class PhysicsManager {
         const localX = position.x - terrainPos.x;
         const localZ = position.z - terrainPos.z;
         
-        const segments = heightData.length - 1;
-        const halfSize = terrainSize / 2;
+        const distanceFromCenter = Math.sqrt(localX * localX + localZ * localZ);
+        const radius = terrainSize / 2;
         
-        const mapX = Math.floor(((localX + halfSize) / terrainSize) * segments);
-        const mapZ = Math.floor(((localZ + halfSize) / terrainSize) * segments);
-        
-        // Bounds check with margin for gradient calculation
-        if (mapX > 0 && mapX < segments && mapZ > 0 && mapZ < segments) {
-          // Calculate gradients using finite differences
-          const dx = heightData[mapX + 1][mapZ] - heightData[mapX - 1][mapZ];
-          const dz = heightData[mapX][mapZ + 1] - heightData[mapX][mapZ - 1];
+        if (distanceFromCenter <= radius) {
+          const segments = heightData.length - 1;
+          const normalizedDistance = distanceFromCenter / radius;
+          const angle = Math.atan2(localZ, localX);
+          const normalizedAngle = (angle + Math.PI) / (2 * Math.PI);
           
-          // Create surface normal vector
-          const normal = new THREE.Vector3(-dx / 2, 1, -dz / 2).normalize();
-          const up = new THREE.Vector3(0, 1, 0);
+          const mapX = Math.floor(normalizedDistance * segments);
+          const mapZ = Math.floor(normalizedAngle * segments);
           
-          // Calculate angle between surface normal and up vector
-          const angle = Math.acos(Math.max(-1, Math.min(1, normal.dot(up)))) * (180 / Math.PI);
-          
-          console.log(`🏔️ Slope angle at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${angle.toFixed(1)}°`);
-          return angle;
+          // Bounds check with margin for gradient calculation
+          if (mapX > 0 && mapX < segments && mapZ > 0 && mapZ < segments) {
+            // Calculate gradients using finite differences
+            const dx = heightData[mapX + 1][mapZ] - heightData[mapX - 1][mapZ];
+            const dz = heightData[mapX][mapZ + 1] - heightData[mapX][mapZ - 1];
+            
+            // Create surface normal vector
+            const normal = new THREE.Vector3(-dx / 2, 1, -dz / 2).normalize();
+            const up = new THREE.Vector3(0, 1, 0);
+            
+            // Calculate angle between surface normal and up vector
+            const slopeAngle = Math.acos(Math.max(-1, Math.min(1, normal.dot(up)))) * (180 / Math.PI);
+            
+            console.log(`🏔️ Slope angle at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${slopeAngle.toFixed(1)}°`);
+            return slopeAngle;
+          }
         }
       }
     }

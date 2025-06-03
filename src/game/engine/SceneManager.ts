@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
@@ -271,7 +270,12 @@ export class SceneManager {
     this.createTavern();
     console.log('Tavern created at center');
     
-    // CRITICAL: Create test hill for testing slope walking
+    // STEP 1 FIX: Register environment collisions BEFORE creating test hill
+    console.log('🔧 Pre-registering environment collisions...');
+    this.environmentCollisionManager.registerEnvironmentCollisions();
+    console.log('🔧 Environment collision system initialized (before hill creation)');
+    
+    // CRITICAL: Create test hill AFTER collision registration to prevent clearing
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created at (20, 0, 30) for slope walking testing');
     
@@ -288,10 +292,6 @@ export class SceneManager {
       this.cloudSpawningSystem.initialize();
       console.log('Dynamic cloud spawning system initialized');
     }
-    
-    // IMPORTANT: Register all environment objects for collision after creating the world
-    this.environmentCollisionManager.registerEnvironmentCollisions();
-    console.log('Environment collision system initialized');
     
     // Force update skybox to apply new realistic blue colors
     this.updateSkybox();

@@ -29,15 +29,23 @@ export class EnvironmentCollisionManager {
     }
     console.log(`🔧 TERRAIN COUNT BEFORE CLEAR: ${terrainCountBefore}`);
     
-    // Clear existing registrations
-    console.log('🔧 ⚠️  CLEARING ALL EXISTING REGISTRATIONS...');
+    // STEP 4 FIX: Only clear environment objects, preserve terrain from StructureGenerator
+    console.log('🔧 ⚠️  CLEARING ENVIRONMENT REGISTRATIONS (preserving terrain)...');
+    const objectsToRemove: string[] = [];
     this.registeredObjects.forEach(id => {
-      this.physicsManager.removeCollisionObject(id);
+      const obj = this.physicsManager.getCollisionObjects().get(id);
+      if (obj && obj.type !== 'terrain') {
+        objectsToRemove.push(id);
+      }
     });
-    this.registeredObjects.clear();
+    
+    objectsToRemove.forEach(id => {
+      this.physicsManager.removeCollisionObject(id);
+      this.registeredObjects.delete(id);
+    });
     
     const afterClear = this.physicsManager.getCollisionObjects();
-    console.log(`🔧 AFTER CLEAR: ${afterClear.size} collision objects remain`);
+    console.log(`🔧 AFTER SELECTIVE CLEAR: ${afterClear.size} collision objects remain`);
 
     // Register all environment objects for collision
     this.scene.traverse((object) => {
@@ -65,12 +73,12 @@ export class EnvironmentCollisionManager {
     // Skip if already registered
     if (this.registeredObjects.has(object.uuid)) return;
 
-    // ENHANCED: Special handling for test hills with height data - AUTO REGISTER
+    // STEP 2 FIX: Enhanced handling for test hills with height data
     if (object instanceof THREE.Mesh && object.name === 'test_hill' && object.userData.heightData) {
       const heightData = object.userData.heightData;
       const terrainSize = object.userData.terrainSize || 30;
       
-      console.log(`🏔️ === AUTO-REGISTERING TEST HILL ===`);
+      console.log(`🏔️ === ENVIRONMENT MANAGER PROCESSING TEST HILL ===`);
       console.log(`🏔️ Hill name: ${object.name}`);
       console.log(`🏔️ Hill position: (${object.position.x}, ${object.position.y}, ${object.position.z})`);
       console.log(`🏔️ Has heightData: ${!!heightData}`);
@@ -80,9 +88,9 @@ export class EnvironmentCollisionManager {
       // Check if already registered by StructureGenerator
       let alreadyRegistered = false;
       for (const [id, collisionObject] of this.physicsManager.getCollisionObjects()) {
-        if (collisionObject.mesh === object) {
+        if (collisionObject.mesh === object && collisionObject.type === 'terrain') {
           alreadyRegistered = true;
-          console.log(`🏔️ Hill already registered with ID: ${id}`);
+          console.log(`🏔️ Hill already registered with ID: ${id} - SKIPPING`);
           break;
         }
       }
@@ -90,9 +98,9 @@ export class EnvironmentCollisionManager {
       if (!alreadyRegistered) {
         const id = this.physicsManager.addTerrainCollision(object, heightData, terrainSize, object.uuid);
         this.registeredObjects.add(id);
-        console.log(`🏔️ ✅ AUTO-REGISTERED test hill as terrain collision with ID: ${id}`);
+        console.log(`🏔️ ✅ ENVIRONMENT MANAGER registered test hill as terrain collision with ID: ${id}`);
       } else {
-        console.log(`🏔️ ✅ Test hill already registered by StructureGenerator`);
+        console.log(`🏔️ ✅ Test hill already registered by StructureGenerator - preserving existing registration`);
       }
       return;
     }
