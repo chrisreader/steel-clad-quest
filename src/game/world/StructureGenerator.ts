@@ -65,34 +65,22 @@ export class StructureGenerator {
     return staircase;
   }
   
-  // Enhanced createTestHill with Step-by-Step Debugging
+  // ENHANCED: Create realistic hill with smooth curved edges
   public createTestHill(x: number, y: number, z: number, radius: number = 15, maxHeight: number = 8): THREE.Mesh {
-    console.log(`\n🏔️ === CREATING TEST HILL ===`);
+    console.log(`\n🏔️ === CREATING REALISTIC CURVED HILL ===`);
     console.log(`🏔️ Position: (${x}, ${y}, ${z}), Radius: ${radius}, MaxHeight: ${maxHeight}`);
     
-    // Create geometry
-    const segments = 32;
-    const geometry = new THREE.ConeGeometry(radius, maxHeight, segments);
-    const material = new THREE.MeshStandardMaterial({ 
-      color: 0x4a5d3a,
-      roughness: 0.9,
-      metalness: 0.0
-    });
+    // Create high-resolution plane geometry for smooth curves
+    const segments = 64;
+    const geometry = new THREE.PlaneGeometry(radius * 2, radius * 2, segments, segments);
     
-    const hill = new THREE.Mesh(geometry, material);
-    hill.position.set(x, y + maxHeight / 2, z);
-    hill.castShadow = true;
-    hill.receiveShadow = true;
-    hill.name = 'test_hill';
-    
-    console.log(`🏔️ Hill mesh created at position: (${hill.position.x}, ${hill.position.y}, ${hill.position.z})`);
-    
-    // Create height data
+    // Create height data for physics
     const heightMapSize = 64;
     const heightData: number[][] = [];
     
-    console.log(`🏔️ Generating height data (${heightMapSize}x${heightMapSize})...`);
+    console.log(`🏔️ Generating smooth curved height data (${heightMapSize}x${heightMapSize})...`);
     
+    // Generate height data with smooth curves
     for (let i = 0; i <= heightMapSize; i++) {
       heightData[i] = [];
       for (let j = 0; j <= heightMapSize; j++) {
@@ -103,13 +91,69 @@ export class StructureGenerator {
         
         let height = 0;
         if (normalizedDistance <= 1.0) {
-          height = maxHeight * (1 - normalizedDistance);
+          // Apply smooth curve using smoothstep for natural falloff
+          const smoothFactor = this.smoothstep(0, 1, 1 - normalizedDistance);
+          // Add additional curvature with a power function for more realistic shape
+          const curveFactor = Math.pow(smoothFactor, 1.5);
+          height = maxHeight * curveFactor;
         }
         
         heightData[i][j] = height + y;
       }
     }
     
+    // Apply height data to geometry vertices
+    const positions = geometry.attributes.position.array as Float32Array;
+    const vertexCount = (segments + 1) * (segments + 1);
+    
+    console.log(`🏔️ Applying curved heights to ${vertexCount} vertices...`);
+    
+    for (let i = 0; i <= segments; i++) {
+      for (let j = 0; j <= segments; j++) {
+        const vertexIndex = i * (segments + 1) + j;
+        const arrayIndex = vertexIndex * 3;
+        
+        // Get world position of this vertex
+        const vertexX = positions[arrayIndex] + x;
+        const vertexZ = positions[arrayIndex + 1] + z;
+        
+        // Calculate distance and apply smooth curve
+        const distanceFromCenter = Math.sqrt((vertexX - x) ** 2 + (vertexZ - z) ** 2);
+        const normalizedDistance = distanceFromCenter / radius;
+        
+        let height = 0;
+        if (normalizedDistance <= 1.0) {
+          // Apply smooth curve using smoothstep for natural falloff
+          const smoothFactor = this.smoothstep(0, 1, 1 - normalizedDistance);
+          // Add additional curvature with a power function for more realistic shape
+          const curveFactor = Math.pow(smoothFactor, 1.5);
+          height = maxHeight * curveFactor;
+        }
+        
+        // Set the Y coordinate (height) of the vertex
+        positions[arrayIndex + 2] = height;
+      }
+    }
+    
+    // Update geometry with new positions
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals(); // Compute smooth normals for natural lighting
+    
+    // Create material
+    const material = new THREE.MeshStandardMaterial({ 
+      color: 0x4a5d3a,
+      roughness: 0.9,
+      metalness: 0.0
+    });
+    
+    const hill = new THREE.Mesh(geometry, material);
+    hill.position.set(x, y, z);
+    hill.rotation.x = -Math.PI / 2; // Rotate to horizontal
+    hill.castShadow = true;
+    hill.receiveShadow = true;
+    hill.name = 'test_hill';
+    
+    console.log(`🏔️ Curved hill mesh created at position: (${hill.position.x}, ${hill.position.y}, ${hill.position.z})`);
     console.log(`🏔️ Height data generated. Sample heights:`);
     console.log(`  - Center [${heightMapSize/2}][${heightMapSize/2}]: ${heightData[heightMapSize/2][heightMapSize/2]}`);
     console.log(`  - Edge [0][0]: ${heightData[0][0]}`);
@@ -117,7 +161,7 @@ export class StructureGenerator {
     
     // Add to visual scene
     this.scene.add(hill);
-    console.log(`🏔️ Hill added to visual scene`);
+    console.log(`🏔️ Curved hill added to visual scene`);
     
     // CRITICAL: Check PhysicsManager before registration
     console.log(`🏔️ PhysicsManager check before registration:`);
@@ -150,8 +194,14 @@ export class StructureGenerator {
       console.log(`  - addTerrainCollision method: ${this.physicsManager?.addTerrainCollision}`);
     }
     
-    console.log(`🏔️ === HILL CREATION COMPLETE ===\n`);
+    console.log(`🏔️ === CURVED HILL CREATION COMPLETE ===\n`);
     return hill;
+  }
+  
+  // Helper function for smooth interpolation
+  private smoothstep(edge0: number, edge1: number, x: number): number {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
   }
   
   // Place structures in regions based on ring definitions
@@ -186,7 +236,7 @@ export class StructureGenerator {
       this.scene.add(staircase);
       console.log(`🪜 Placed enhanced staircase at (50, 0, 50) in Ring 0, Quadrant 0`);
       
-      // ENHANCED: Test hill with proper terrain generation at (20, 0, 30)
+      // ENHANCED: Test hill with realistic curved shape at (20, 0, 30)
       const testHill = this.createTestHill(20, 0, 30, 12, 6);
       structures.push({
         type: 'test_hill',
@@ -195,7 +245,7 @@ export class StructureGenerator {
         model: testHill
       });
       
-      console.log(`🏔️ Placed test hill at (20, 0, 30) in Ring 0, Quadrant 0 for slope testing`);
+      console.log(`🏔️ Placed realistic curved hill at (20, 0, 30) in Ring 0, Quadrant 0 for slope testing`);
     }
     
     // For ring 1, quadrant 2 (SW), place a ruined castle
