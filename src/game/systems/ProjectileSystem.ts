@@ -16,7 +16,6 @@ export class ProjectileSystem {
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   private physicsManager: PhysicsManager;
-  private environmentCollisionManager: any = null;
 
   constructor(
     scene: THREE.Scene,
@@ -32,11 +31,6 @@ export class ProjectileSystem {
     this.physicsManager = physicsManager;
   }
 
-  public setEnvironmentCollisionManager(manager: any): void {
-    this.environmentCollisionManager = manager;
-    console.log('🏹 ProjectileSystem connected to EnvironmentCollisionManager with COMPLETE terrain protection');
-  }
-
   public shootArrow(
     startPosition: THREE.Vector3,
     direction: THREE.Vector3,
@@ -46,15 +40,6 @@ export class ProjectileSystem {
     const normalizedDirection = direction.clone().normalize();
     
     try {
-      // CRITICAL: Validate terrain integrity before arrow creation
-      if (this.physicsManager.validateTerrainCollisions()) {
-        console.log('🏹 ✅ Terrain VALIDATED before arrow creation - hill walking preserved');
-      } else {
-        console.warn('🏹 ⚠️ Terrain validation FAILED before arrow creation - attempting restoration');
-        // Force validation again
-        this.physicsManager.validateTerrainCollisions();
-      }
-      
       const arrow = new Arrow(
         this.scene,
         startPosition,
@@ -66,18 +51,10 @@ export class ProjectileSystem {
         this.physicsManager
       );
       
-      if (this.environmentCollisionManager) {
-        arrow.setEnvironmentCollisionManager(this.environmentCollisionManager);
-        console.log('🏹 Arrow connected to COMPLETELY PROTECTED EnvironmentCollisionManager');
-      }
-      
       this.arrows.push(arrow);
-      console.log(`🏹 Arrow fired with COMPLETE terrain protection - Total arrows: ${this.arrows.length}`);
-      console.log(`🏹 Hill walking collision system COMPLETELY ISOLATED from arrow impact`);
+      console.log(`🏹 Arrow fired - Total arrows: ${this.arrows.length}`);
     } catch (error) {
       console.error("🏹 Error creating arrow:", error);
-      // Restore terrain if arrow creation fails
-      this.physicsManager.validateTerrainCollisions();
     }
   }
 
@@ -131,14 +108,14 @@ export class ProjectileSystem {
         
         this.audioManager.play('arrow_hit');
         
-        // Handle gold and experience rewards when enemy dies from arrow
+        // FIXED: Handle gold and experience rewards when enemy dies from arrow
         if (enemy.isDead()) {
           this.spawnGold(enemyPosition, enemy.getGoldReward());
           this.player.addExperience(enemy.getExperienceReward());
           console.log(`🏹 Enemy killed by arrow - spawned ${enemy.getGoldReward()} gold and ${enemy.getExperienceReward()} XP`);
         }
         
-        // Dispose of arrow properly
+        // Dispose of arrow
         arrow.dispose();
         this.arrows = this.arrows.filter(a => a !== arrow);
         
@@ -180,9 +157,10 @@ export class ProjectileSystem {
     return this.gold;
   }
 
+  // NEW: Transfer gold without affecting arrows
   public transferGold(): Gold[] {
     const goldToTransfer = [...this.gold];
-    this.gold = [];
+    this.gold = []; // Clear only the gold array
     console.log(`💰 [ProjectileSystem] Transferred ${goldToTransfer.length} gold drops to CombatSystem`);
     return goldToTransfer;
   }
