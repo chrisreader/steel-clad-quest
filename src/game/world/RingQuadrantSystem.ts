@@ -1,260 +1,222 @@
 
 import * as THREE from 'three';
-import { TerrainFeatureGenerator } from './TerrainFeatureGenerator';
-import { StructureGenerator } from './StructureGenerator';
-import { TerrainHeightGenerator } from './TerrainHeightGenerator';
+import { TextureGenerator } from '../utils/graphics/TextureGenerator';
 
-// Export the types that other files expect
+// Define interfaces for our ring-quadrant system
+export interface RingDefinition {
+  innerRadius: number;
+  outerRadius: number;
+  difficulty: number;
+  terrainColor: number;
+  enemyTypes: string[];
+  structureTypes: string[];
+  eventChance: number;
+}
+
 export interface RegionCoordinates {
   ringIndex: number;
-  quadrant: number;
+  quadrant: number; // 0=NE, 1=SE, 2=SW, 3=NW
 }
 
 export interface Region {
   coordinates: RegionCoordinates;
   centerPosition: THREE.Vector3;
-  terrain?: THREE.Mesh;
-  isLoaded: boolean;
-}
-
-interface QuadrantData {
-  key: string;
-  centerX: number;
-  centerZ: number;
-  features: THREE.Object3D[];
-  structures: THREE.Object3D[];
+  terrain: THREE.Mesh | null;
   isLoaded: boolean;
 }
 
 export class RingQuadrantSystem {
-  private scene: THREE.Scene;
-  private currentRing: number = 0;
-  private ringQuadrants: Map<string, QuadrantData> = new Map();
-  private loadedQuadrants: Set<string> = new Set();
-  private terrainFeatureGenerator: TerrainFeatureGenerator;
-  private structureGenerator: StructureGenerator;
-  private terrainHeightGenerator: TerrainHeightGenerator;
-  private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
+  // Define 4 rings with increasing radius and difficulty
+  private rings: RingDefinition[] = [
+    {
+      innerRadius: 0,
+      outerRadius: 50, // Reduced from 200 to 50
+      difficulty: 1,
+      terrainColor: 0x5FAD5F, // Match existing green terrain
+      enemyTypes: ['goblin', 'wolf'],
+      structureTypes: ['tavern'],
+      eventChance: 0.1
+    },
+    {
+      innerRadius: 50, // Updated to match new center ring size
+      outerRadius: 150, // Reduced proportionally
+      difficulty: 2,
+      terrainColor: 0x4A9A4A, // Slightly darker green
+      enemyTypes: ['goblin', 'wolf', 'orc'],
+      structureTypes: ['ruins', 'cabin'],
+      eventChance: 0.2
+    },
+    {
+      innerRadius: 150, // Updated to match previous ring
+      outerRadius: 300, // Reduced proportionally
+      difficulty: 3,
+      terrainColor: 0x3A8A3A, // Even darker green
+      enemyTypes: ['orc', 'bandit', 'troll'],
+      structureTypes: ['castle', 'tower'],
+      eventChance: 0.3
+    },
+    {
+      innerRadius: 300, // Updated to match previous ring
+      outerRadius: 600, // Reduced proportionally
+      difficulty: 4,
+      terrainColor: 0x2A7A2A, // Darkest green
+      enemyTypes: ['troll', 'warlord', 'witch'],
+      structureTypes: ['temple', 'fortress'],
+      eventChance: 0.4
+    }
+  ];
   
-  private readonly QUADRANT_SIZE: number = 1000;
-  private readonly RING_THRESHOLD: number = 1000;
-  private readonly INITIAL_QUADRANTS_RADIUS: number = 2;
-
-  constructor(scene: THREE.Scene) {
-    this.scene = scene;
-    this.terrainFeatureGenerator = new TerrainFeatureGenerator(scene);
-    this.structureGenerator = new StructureGenerator(scene);
-    this.terrainHeightGenerator = new TerrainHeightGenerator(scene);
-    
-    console.log('🗺️ [RingQuadrantSystem] Initialized with terrain height generation');
-    
-    // Generate initial terrain around spawn
-    this.generateInitialTerrain();
+  private worldCenter: THREE.Vector3;
+  private activeRegions: Map<string, Region> = new Map();
+  
+  constructor(worldCenter: THREE.Vector3 = new THREE.Vector3(0, 0, 0)) {
+    this.worldCenter = worldCenter;
   }
   
-  private generateInitialTerrain(): void {
-    const initialRadius = this.INITIAL_QUADRANTS_RADIUS;
+  // Get which ring and quadrant a position belongs to
+  public getRegionForPosition(position: THREE.Vector3): RegionCoordinates | null {
+    const dx = position.x - this.worldCenter.x;
+    const dz = position.z - this.worldCenter.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
     
-    for (let x = -initialRadius; x <= initialRadius; x++) {
-      for (let z = -initialRadius; z <= initialRadius; z++) {
-        const quadrantKey = `${x},${z}`;
-        this.loadQuadrant(quadrantKey);
+    // Find which ring contains this distance
+    let ringIndex = -1;
+    for (let i = 0; i < this.rings.length; i++) {
+      if (distance >= this.rings[i].innerRadius && distance < this.rings[i].outerRadius) {
+        ringIndex = i;
+        break;
       }
     }
+    
+    // If no ring contains this position
+    if (ringIndex === -1) return null;
+    
+    // Determine quadrant (0=NE, 1=SE, 2=SW, 3=NW)
+    let quadrant = 0;
+    if (dx >= 0 && dz >= 0) quadrant = 0;      // North-East
+    else if (dx >= 0 && dz < 0) quadrant = 1;  // South-East
+    else if (dx < 0 && dz < 0) quadrant = 2;   // South-West
+    else if (dx < 0 && dz >= 0) quadrant = 3;  // North-West
+    
+    return { ringIndex, quadrant };
   }
-
-  public updatePlayerPosition(playerPosition: THREE.Vector3): void {
-    const distance = Math.sqrt(Math.pow(playerPosition.x - this.lastPlayerPosition.x, 2) + Math.pow(playerPosition.z - this.lastPlayerPosition.z, 2));
+  
+  // Get the center position of a region
+  public getRegionCenter(region: RegionCoordinates): THREE.Vector3 {
+    const ring = this.rings[region.ringIndex];
+    const midRadius = (ring.innerRadius + ring.outerRadius) / 2;
     
-    if (distance < 50) {
-      return;
-    }
+    // Calculate angle based on quadrant (center of quadrant)
+    const quadrantAngle = Math.PI / 2; // 90 degrees per quadrant
+    const angle = region.quadrant * quadrantAngle + (quadrantAngle / 2);
     
-    const ring = Math.max(0, Math.ceil(Math.sqrt(Math.pow(playerPosition.x, 2) + Math.pow(playerPosition.z, 2)) / this.RING_THRESHOLD));
+    return new THREE.Vector3(
+      this.worldCenter.x + midRadius * Math.cos(angle),
+      this.worldCenter.y,
+      this.worldCenter.z + midRadius * Math.sin(angle)
+    );
+  }
+  
+  // Get a unique string key for a region
+  public getRegionKey(region: RegionCoordinates): string {
+    return `r${region.ringIndex}_q${region.quadrant}`;
+  }
+  
+  // Get regions that should be active based on player position
+  public getActiveRegions(playerPosition: THREE.Vector3, renderDistance: number): RegionCoordinates[] {
+    const playerRegion = this.getRegionForPosition(playerPosition);
+    if (!playerRegion) return [];
     
-    if (ring !== this.currentRing) {
-      this.currentRing = ring;
-      console.log(`🗺️ [RingQuadrantSystem] Player entered ring ${ring}`);
-    }
+    const activeRegions: RegionCoordinates[] = [];
     
-    const currentQuadrant = this.getQuadrantKey(playerPosition.x, playerPosition.z);
+    // Always include player's current region
+    activeRegions.push(playerRegion);
     
-    // Load new quadrants if needed
-    const requiredQuadrants = this.getRequiredQuadrants(playerPosition);
-    
-    for (const quadrantKey of requiredQuadrants) {
-      if (!this.loadedQuadrants.has(quadrantKey)) {
-        this.loadQuadrant(quadrantKey);
-      }
-    }
-    
-    // Unload distant quadrants
-    const maxDistance = this.QUADRANT_SIZE * 3; // Increased slightly for terrain
-    for (const quadrantKey of this.loadedQuadrants) {
-      const quadrantData = this.ringQuadrants.get(quadrantKey);
-      if (quadrantData) {
-        const distance = Math.sqrt(
-          Math.pow(quadrantData.centerX - playerPosition.x, 2) +
-          Math.pow(quadrantData.centerZ - playerPosition.z, 2)
-        );
+    // Check adjacent regions
+    for (let r = Math.max(0, playerRegion.ringIndex - 1); 
+         r <= Math.min(this.rings.length - 1, playerRegion.ringIndex + 1); 
+         r++) {
+      for (let q = 0; q < 4; q++) {
+        // Skip current region (already added)
+        if (r === playerRegion.ringIndex && q === playerRegion.quadrant) continue;
         
-        if (distance > maxDistance) {
-          this.unloadQuadrant(quadrantKey);
-        }
-      }
-    }
-    
-    this.lastPlayerPosition.copy(playerPosition);
-  }
-  
-  private loadQuadrant(quadrantKey: string): void {
-    if (this.loadedQuadrants.has(quadrantKey)) return;
-    
-    const [qx, qz] = quadrantKey.split(',').map(Number);
-    const centerX = qx * this.QUADRANT_SIZE;
-    const centerZ = qz * this.QUADRANT_SIZE;
-    
-    console.log(`🗺️ [RingQuadrantSystem] Loading quadrant ${quadrantKey} at (${centerX}, ${centerZ})`);
-    
-    // Generate hilly terrain first
-    const terrainData = this.terrainHeightGenerator.generateTerrainForRegion(quadrantKey, centerX, centerZ);
-    
-    // Then generate features on top of the terrain
-    const features = this.terrainFeatureGenerator.generateFeaturesForRegion(quadrantKey, centerX, centerZ);
-    
-    // Generate structures
-    const structures = this.structureGenerator.generateStructuresForRegion(quadrantKey, centerX, centerZ);
-    
-    const quadrantData: QuadrantData = {
-      key: quadrantKey,
-      centerX,
-      centerZ,
-      features,
-      structures,
-      isLoaded: true
-    };
-    
-    this.ringQuadrants.set(quadrantKey, quadrantData);
-    this.loadedQuadrants.add(quadrantKey);
-    
-    console.log(`🗺️ [RingQuadrantSystem] Loaded quadrant ${quadrantKey} with ${features.length} features and ${structures.length} structures`);
-  }
-  
-  private unloadQuadrant(quadrantKey: string): void {
-    const quadrantData = this.ringQuadrants.get(quadrantKey);
-    if (!quadrantData) return;
-    
-    console.log(`🗺️ [RingQuadrantSystem] Unloading quadrant ${quadrantKey}`);
-    
-    // Remove terrain
-    this.terrainHeightGenerator.removeTerrainForRegion(quadrantKey);
-    
-    // Remove features
-    this.terrainFeatureGenerator.removeFeaturesForRegion(quadrantKey);
-    
-    // Remove structures
-    this.structureGenerator.removeStructuresForRegion(quadrantKey);
-    
-    this.ringQuadrants.delete(quadrantKey);
-    this.loadedQuadrants.delete(quadrantKey);
-  }
-  
-  private getQuadrantKey(x: number, z: number): string {
-    const qx = Math.floor(x / this.QUADRANT_SIZE);
-    const qz = Math.floor(z / this.QUADRANT_SIZE);
-    return `${qx},${qz}`;
-  }
-  
-  private getRequiredQuadrants(playerPosition: THREE.Vector3): string[] {
-    const requiredQuadrants: string[] = [];
-    const radius = 2; // Load quadrants within a 5x5 grid
-    
-    const currentQx = Math.floor(playerPosition.x / this.QUADRANT_SIZE);
-    const currentQz = Math.floor(playerPosition.z / this.QUADRANT_SIZE);
-    
-    for (let x = -radius; x <= radius; x++) {
-      for (let z = -radius; z <= radius; z++) {
-        const qx = currentQx + x;
-        const qz = currentQz + z;
-        const quadrantKey = `${qx},${qz}`;
-        requiredQuadrants.push(quadrantKey);
-      }
-    }
-    
-    return requiredQuadrants;
-  }
-
-  // New method to get terrain height at position
-  public getTerrainHeightAtPosition(x: number, z: number): number {
-    return this.terrainHeightGenerator.getHeightAtPosition(x, z);
-  }
-
-  // Methods expected by SceneManager
-  public getActiveRegions(playerPosition: THREE.Vector3, renderDistance: number): Region[] {
-    const activeRegions: Region[] = [];
-    
-    for (const [quadrantKey, quadrantData] of this.ringQuadrants) {
-      if (quadrantData.isLoaded) {
-        const distance = Math.sqrt(
-          Math.pow(quadrantData.centerX - playerPosition.x, 2) +
-          Math.pow(quadrantData.centerZ - playerPosition.z, 2)
-        );
-        
-        if (distance <= renderDistance) {
-          const region: Region = {
-            coordinates: { ringIndex: 0, quadrant: 0 }, // Simplified for now
-            centerPosition: new THREE.Vector3(quadrantData.centerX, 0, quadrantData.centerZ),
-            isLoaded: true
-          };
-          activeRegions.push(region);
+        // Check if region center is within render distance
+        const regionCenter = this.getRegionCenter({ ringIndex: r, quadrant: q });
+        if (regionCenter.distanceTo(playerPosition) <= renderDistance) {
+          activeRegions.push({ ringIndex: r, quadrant: q });
         }
       }
     }
     
     return activeRegions;
   }
-
-  public getRegionKey(region: RegionCoordinates): string {
-    return `${region.ringIndex},${region.quadrant}`;
-  }
-
-  public getRegionCenter(region: RegionCoordinates): THREE.Vector3 {
-    // Simplified implementation
-    return new THREE.Vector3(0, 0, 0);
-  }
-
-  public getRingDefinition(ringIndex: number) {
-    // Simplified ring definition
-    return {
-      innerRadius: ringIndex * 500,
-      outerRadius: (ringIndex + 1) * 500,
-      terrainColor: 0x4a7c59
-    };
-  }
-
-  public getRegionForPosition(position: THREE.Vector3): RegionCoordinates {
-    // Simplified implementation
-    return { ringIndex: 0, quadrant: 0 };
-  }
-
-  public createDebugRingMarkers(scene: THREE.Scene): void {
-    // Optional debug visualization - can be empty for now
-    console.log('Debug ring markers would be created here');
+  
+  // Get ring definition for a region
+  public getRingDefinition(ringIndex: number): RingDefinition {
+    return this.rings[ringIndex];
   }
   
-  public dispose(): void {
-    console.log('🗺️ [RingQuadrantSystem] Disposing all quadrants');
+  // Helper to get difficulty for a region
+  public getDifficultyForRegion(region: RegionCoordinates): number {
+    return this.rings[region.ringIndex].difficulty;
+  }
+  
+  // DEBUG: Create visual markers for ring boundaries
+  public createDebugRingMarkers(scene: THREE.Scene): void {
+    const segments = 64;
     
-    // Dispose terrain
-    this.terrainHeightGenerator.dispose();
-    
-    // Dispose features
-    this.terrainFeatureGenerator.dispose();
-    
-    // Dispose structures
-    this.structureGenerator.dispose();
-    
-    this.ringQuadrants.clear();
-    this.loadedQuadrants.clear();
+    // Create a ring for each boundary
+    this.rings.forEach((ring) => {
+      [ring.innerRadius, ring.outerRadius].forEach((radius) => {
+        if (radius === 0) return; // Skip center point
+        
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        
+        for (let i = 0; i <= segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          vertices.push(
+            Math.cos(angle) * radius, 
+            0.1, // Slightly above ground
+            Math.sin(angle) * radius
+          );
+        }
+        
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        
+        const material = new THREE.LineBasicMaterial({ 
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.5
+        });
+        
+        const ring = new THREE.LineLoop(geometry, material);
+        ring.position.copy(this.worldCenter);
+        scene.add(ring);
+      });
+      
+      // Add quadrant dividers
+      for (let q = 0; q < 4; q++) {
+        const geometry = new THREE.BufferGeometry();
+        const angle = q * Math.PI / 2;
+        const vertices = [
+          this.worldCenter.x, 0.1, this.worldCenter.z,
+          this.worldCenter.x + Math.cos(angle) * ring.outerRadius,
+          0.1,
+          this.worldCenter.z + Math.sin(angle) * ring.outerRadius
+        ];
+        
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        
+        const material = new THREE.LineBasicMaterial({ 
+          color: 0xffffff, 
+          transparent: true,
+          opacity: 0.3
+        });
+        
+        const line = new THREE.Line(geometry, material);
+        scene.add(line);
+      }
+    });
   }
 }

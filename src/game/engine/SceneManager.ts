@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
@@ -58,14 +59,14 @@ export class SceneManager {
     
     console.log("SceneManager initialized with collision system");
     
-    // Initialize ring-quadrant system with the scene
-    this.ringSystem = new RingQuadrantSystem(this.scene);
+    // Initialize ring-quadrant system
+    this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
     
     // Initialize terrain feature generator
-    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.scene);
+    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
     // Initialize structure generator
-    this.structureGenerator = new StructureGenerator(this.scene);
+    this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene);
     
     // Setup distance-based fog
     this.setupDistanceFog();
@@ -223,9 +224,30 @@ export class SceneManager {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
     }
     
-    // Update ring quadrant system
+    // NEW: Manage region loading/unloading based on player position
     if (playerPosition) {
-      this.ringSystem.updatePlayerPosition(playerPosition);
+      // Get regions that should be active
+      const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
+      
+      // Track current region keys for comparison
+      const activeRegionKeys = new Set<string>();
+      
+      // Load new regions
+      for (const region of activeRegions) {
+        const regionKey = this.ringSystem.getRegionKey(region);
+        activeRegionKeys.add(regionKey);
+        
+        if (!this.loadedRegions.has(regionKey)) {
+          this.loadRegion(region);
+        }
+      }
+      
+      // Unload regions that are no longer active
+      for (const [regionKey, region] of this.loadedRegions.entries()) {
+        if (!activeRegionKeys.has(regionKey)) {
+          this.unloadRegion(region.coordinates);
+        }
+      }
     }
     
     // Update stored player position if provided
@@ -240,6 +262,10 @@ export class SceneManager {
     // Create simple ground plane at origin as fallback
     this.createSimpleGround();
     console.log('Simple ground plane created at origin');
+    
+    // Create starting region (center ring, NE quadrant)
+    const startRegion = { ringIndex: 0, quadrant: 0 };
+    this.loadRegion(startRegion);
     
     // Place tavern at center
     this.createTavern();
@@ -295,11 +321,11 @@ export class SceneManager {
     
     this.loadedRegions.set(regionKey, newRegion);
     
-    // Generate terrain features for this region - FIXED: provide all required arguments
-    this.terrainFeatureGenerator.generateFeaturesForRegion(regionKey, centerPosition.x, centerPosition.z);
+    // Generate terrain features for this region
+    this.terrainFeatureGenerator.generateFeaturesForRegion(region);
     
-    // Generate structures for this region - FIXED: provide all required arguments
-    this.structureGenerator.generateStructuresForRegion(regionKey, centerPosition.x, centerPosition.z);
+    // Generate structures for this region
+    this.structureGenerator.generateStructuresForRegion(region);
   }
   
   private unloadRegion(region: RegionCoordinates): void {
@@ -310,11 +336,11 @@ export class SceneManager {
     
     console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
-    // Clean up structures first - FIXED: use correct method name
-    this.structureGenerator.removeStructuresForRegion(regionKey);
+    // Clean up structures first
+    this.structureGenerator.cleanupStructuresForRegion(region);
     
-    // Clean up terrain features - FIXED: use correct method name
-    this.terrainFeatureGenerator.removeFeaturesForRegion(regionKey);
+    // Clean up terrain features
+    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
     
     // Remove terrain
     if (loadedRegion.terrain) {

@@ -9,7 +9,6 @@ export class MovementSystem {
   private player: Player;
   private inputManager: InputManager;
   private physicsManager: PhysicsManager;
-  private ringQuadrantSystem: any; // Will be injected to access terrain heights
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
   
@@ -26,7 +25,7 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with terrain height compatibility");
+    console.log("🏃 [MovementSystem] Initialized with collision detection");
     
     // Set up sprint input handler
     this.setupSprintHandler();
@@ -53,11 +52,6 @@ export class MovementSystem {
         this.player.startSprint();
       }
     });
-  }
-  
-  public setTerrainSystem(ringQuadrantSystem: any): void {
-    this.ringQuadrantSystem = ringQuadrantSystem;
-    console.log("🏃 [MovementSystem] Connected to terrain height system");
   }
   
   public update(deltaTime: number): void {
@@ -142,17 +136,11 @@ export class MovementSystem {
       
       // Get current and target positions
       const currentPosition = this.player.getPosition();
-      const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime;
+      const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
       const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
       // Check collision and get safe position
-      const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4);
-      
-      // Adjust Y position based on terrain height if terrain system is available
-      if (this.ringQuadrantSystem && this.ringQuadrantSystem.getTerrainHeightAtPosition) {
-        const terrainHeight = this.ringQuadrantSystem.getTerrainHeightAtPosition(safePosition.x, safePosition.z);
-        safePosition.y = Math.max(safePosition.y, terrainHeight + 1.0);
-      }
+      const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4); // 0.4 is player radius
       
       // Calculate actual movement vector
       const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
@@ -162,10 +150,11 @@ export class MovementSystem {
         const normalizedMovement = actualMovement.clone().normalize();
         const movementScale = actualMovement.length() / (5.0 * deltaTime);
         
-        console.log("🏃 [MovementSystem] Moving with terrain height adjustment:", {
+        console.log("🏃 [MovementSystem] Moving with collision detection:", {
           from: currentPosition,
           to: safePosition,
-          terrainHeight: this.ringQuadrantSystem ? this.ringQuadrantSystem.getTerrainHeightAtPosition(safePosition.x, safePosition.z) : 'N/A'
+          movement: actualMovement,
+          distance: actualMovement.length()
         });
         
         this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
