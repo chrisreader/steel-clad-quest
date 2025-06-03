@@ -35,16 +35,27 @@ export class EnvironmentCollisionManager {
     // Skip if already registered
     if (this.registeredObjects.has(object.uuid)) return;
 
-    // ENHANCED: Special handling for test hills with height data
+    // ENHANCED: Special handling for test hills with height data - AUTO REGISTER
     if (object instanceof THREE.Mesh && object.name === 'test_hill' && object.userData.heightData) {
       const heightData = object.userData.heightData;
       const terrainSize = object.userData.terrainSize || 30;
       
-      const id = this.physicsManager.addTerrainCollision(object, heightData, terrainSize, object.uuid);
-      this.registeredObjects.add(id);
+      // Check if already registered by StructureGenerator
+      let alreadyRegistered = false;
+      for (const [id, collisionObject] of this.physicsManager.getCollisionObjects()) {
+        if (collisionObject.mesh === object) {
+          alreadyRegistered = true;
+          break;
+        }
+      }
       
-      console.log(`🏔️ Registered test hill as terrain collision with height data at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
-      console.log(`🏔️ Test hill terrain size: ${terrainSize}, heightData dimensions: ${heightData.length}x${heightData[0]?.length || 0}`);
+      if (!alreadyRegistered) {
+        const id = this.physicsManager.addTerrainCollision(object, heightData, terrainSize, object.uuid);
+        this.registeredObjects.add(id);
+        console.log(`🏔️ AUTO-REGISTERED test hill as terrain collision with height data at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
+      } else {
+        console.log(`🏔️ Test hill already registered by StructureGenerator`);
+      }
       return;
     }
 

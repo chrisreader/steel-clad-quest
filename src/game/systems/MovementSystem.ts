@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -141,33 +140,14 @@ export class MovementSystem {
       const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
       const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
-      // ENHANCED COLLISION AND TERRAIN FOLLOWING WITH IMPROVED STAIRCASE/SLOPE HANDLING
-      // Step 1: Check for collisions and get safe position (includes enhanced staircase climbing)
+      // ENHANCED: Get safe position with terrain following
       let safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4);
       
-      // Step 2: Get slope angle at safe position for additional validation
-      const slopeAngle = this.physicsManager.getSlopeAngleAtPosition(safePosition);
-      if (slopeAngle > 45) {
-        console.log(`🏃 [MovementSystem] Movement blocked by steep slope: ${slopeAngle.toFixed(1)}°`);
-        return; // Don't move if slope is too steep
-      }
-      
-      // Step 3: Get terrain height at the safe position for smooth following
+      // CRITICAL: Ensure terrain height is always applied for hill walking
       const terrainHeight = this.physicsManager.getTerrainHeightAtPosition(safePosition);
-      
-      // Step 4: Smoothly adjust player height to follow terrain/stairs
-      const currentHeight = currentPosition.y;
-      const targetHeight = Math.max(safePosition.y, terrainHeight + 0.4); // Use whichever is higher
-      
-      // Use smooth interpolation for natural movement over hills and stairs
-      const heightDifference = targetHeight - currentHeight;
-      const maxHeightChange = 8.0 * deltaTime; // Increased for better stair climbing
-      
-      if (Math.abs(heightDifference) > 0.02) { // Very responsive for stairs
-        const heightAdjustment = Math.sign(heightDifference) * Math.min(Math.abs(heightDifference), maxHeightChange);
-        safePosition.y = currentHeight + heightAdjustment;
-      } else {
-        safePosition.y = targetHeight;
+      if (terrainHeight > 0) {
+        safePosition.y = Math.max(safePosition.y, terrainHeight + 0.4);
+        console.log(`🏔️ Terrain following: height=${terrainHeight.toFixed(2)}, player y=${safePosition.y.toFixed(2)}`);
       }
       
       // Calculate actual movement vector
@@ -178,18 +158,17 @@ export class MovementSystem {
         const normalizedMovement = actualMovement.clone().normalize();
         const movementScale = actualMovement.length() / (5.0 * deltaTime);
         
-        console.log("🏃 [MovementSystem] Enhanced movement with staircase climbing and slope navigation:", {
+        console.log("🏃 [MovementSystem] Enhanced movement with terrain following:", {
           from: currentPosition,
           to: safePosition,
           movement: actualMovement,
           terrainHeight: terrainHeight,
-          slopeAngle: slopeAngle.toFixed(1) + '°',
           distance: actualMovement.length()
         });
         
         this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
       } else {
-        console.log("🏃 [MovementSystem] Movement blocked by collision, terrain, or steep slope");
+        console.log("🏃 [MovementSystem] Movement blocked by collision or steep slope");
       }
     }
   }

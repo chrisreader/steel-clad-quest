@@ -39,12 +39,14 @@ export class PhysicsManager {
     
     this.collisionObjects.set(objectId, collisionObject);
     console.log(`🏔️ Added terrain collision object: ${objectId} with height data (size: ${terrainSize})`);
+    console.log(`🏔️ Terrain position: (${terrain.position.x}, ${terrain.position.y}, ${terrain.position.z})`);
+    console.log(`🏔️ HeightData dimensions: ${heightData.length}x${heightData[0]?.length || 0}`);
     return objectId;
   }
 
-  // Enhanced method: Get terrain height at world position with proper coordinate mapping
+  // FIXED: Enhanced method with proper coordinate mapping for rotated terrain
   public getTerrainHeightAtPosition(position: THREE.Vector3): number {
-    const cacheKey = `${Math.floor(position.x)},${Math.floor(position.z)}`;
+    const cacheKey = `${Math.floor(position.x * 10)},${Math.floor(position.z * 10)}`;
     
     if (this.terrainHeightCache.has(cacheKey)) {
       return this.terrainHeightCache.get(cacheKey)!;
@@ -56,24 +58,35 @@ export class PhysicsManager {
         const terrain = collisionObject.mesh;
         const heightData = collisionObject.heightData;
         
+        // FIXED: Proper coordinate transformation for rotated terrain
+        // Since terrain is rotated -90° around X axis, we need to transform coordinates
+        const terrainPos = terrain.position;
+        const terrainSize = collisionObject.heightData.length > 0 ? 
+          Math.sqrt(collisionObject.heightData.length) : 30; // Calculate from heightData or default
+        
         // Convert world position to terrain local coordinates
-        const localPos = position.clone();
-        terrain.worldToLocal(localPos);
+        const localX = position.x - terrainPos.x;
+        const localZ = position.z - terrainPos.z;
         
-        // Convert to heightmap indices with proper bounds
+        // Map to heightmap indices (terrain is centered, so adjust by half size)
         const segments = heightData.length - 1;
+        const halfSize = terrainSize / 2;
         
-        // Map from local coordinates to heightmap indices
-        const x = Math.floor(((localPos.x + this.terrainSize / 2) / this.terrainSize) * segments);
-        const z = Math.floor(((localPos.z + this.terrainSize / 2) / this.terrainSize) * segments);
+        const mapX = Math.floor(((localX + halfSize) / terrainSize) * segments);
+        const mapZ = Math.floor(((localZ + halfSize) / terrainSize) * segments);
         
         // Bounds check with clamping
-        const clampedX = Math.max(0, Math.min(segments, x));
-        const clampedZ = Math.max(0, Math.min(segments, z));
+        const clampedX = Math.max(0, Math.min(segments, mapX));
+        const clampedZ = Math.max(0, Math.min(segments, mapZ));
         
-        if (clampedX >= 0 && clampedX < heightData.length && clampedZ >= 0 && clampedZ < heightData[0].length) {
+        if (clampedX >= 0 && clampedX < heightData.length && 
+            clampedZ >= 0 && clampedZ < heightData[0].length) {
           const height = heightData[clampedX][clampedZ] + terrain.position.y;
           this.terrainHeightCache.set(cacheKey, height);
+          
+          console.log(`🏔️ Terrain height at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${height.toFixed(2)}`);
+          console.log(`🏔️ Map indices: (${clampedX}, ${clampedZ}) from heightData[${heightData.length}][${heightData[0].length}]`);
+          
           return height;
         }
       }
@@ -82,24 +95,32 @@ export class PhysicsManager {
     return 0; // Default ground level
   }
 
-  // Enhanced method: Calculate slope angle at position using heightmap
+  // FIXED: Enhanced method with proper coordinate mapping
   public getSlopeAngleAtPosition(position: THREE.Vector3): number {
     for (const [id, collisionObject] of this.collisionObjects) {
       if (collisionObject.type === 'terrain' && collisionObject.heightData) {
         const terrain = collisionObject.mesh;
         const heightData = collisionObject.heightData;
-        const localPos = position.clone();
-        terrain.worldToLocal(localPos);
+        
+        // Use same coordinate transformation as getTerrainHeightAtPosition
+        const terrainPos = terrain.position;
+        const terrainSize = collisionObject.heightData.length > 0 ? 
+          Math.sqrt(collisionObject.heightData.length) : 30;
+        
+        const localX = position.x - terrainPos.x;
+        const localZ = position.z - terrainPos.z;
         
         const segments = heightData.length - 1;
-        const x = Math.floor(((localPos.x + this.terrainSize / 2) / this.terrainSize) * segments);
-        const z = Math.floor(((localPos.z + this.terrainSize / 2) / this.terrainSize) * segments);
+        const halfSize = terrainSize / 2;
+        
+        const mapX = Math.floor(((localX + halfSize) / terrainSize) * segments);
+        const mapZ = Math.floor(((localZ + halfSize) / terrainSize) * segments);
         
         // Bounds check with margin for gradient calculation
-        if (x > 0 && x < segments && z > 0 && z < segments) {
+        if (mapX > 0 && mapX < segments && mapZ > 0 && mapZ < segments) {
           // Calculate gradients using finite differences
-          const dx = heightData[x + 1][z] - heightData[x - 1][z];
-          const dz = heightData[x][z + 1] - heightData[x][z - 1];
+          const dx = heightData[mapX + 1][mapZ] - heightData[mapX - 1][mapZ];
+          const dz = heightData[mapX][mapZ + 1] - heightData[mapX][mapZ - 1];
           
           // Create surface normal vector
           const normal = new THREE.Vector3(-dx / 2, 1, -dz / 2).normalize();
@@ -107,6 +128,8 @@ export class PhysicsManager {
           
           // Calculate angle between surface normal and up vector
           const angle = Math.acos(Math.max(-1, Math.min(1, normal.dot(up)))) * (180 / Math.PI);
+          
+          console.log(`🏔️ Slope angle at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${angle.toFixed(1)}°`);
           return angle;
         }
       }
@@ -240,14 +263,17 @@ export class PhysicsManager {
       return stepPosition;
     }
     
-    // STEP 2: Check slope angle at target position
+    // STEP 2: Get terrain height FIRST (most important for hill walking)
+    const terrainHeight = this.getTerrainHeightAtPosition(targetPosition);
+    
+    // STEP 3: Check slope angle at target position
     const slopeAngle = this.getSlopeAngleAtPosition(targetPosition);
     if (slopeAngle > 45) {
       console.log(`🏔️ Movement blocked by steep slope: ${slopeAngle.toFixed(1)}° (max 45°)`);
       return currentPosition;
     }
     
-    // STEP 3: Check for standard environment collisions (trees, walls, etc.)
+    // STEP 4: Check for standard environment collisions (trees, walls, etc.)
     const collision = this.checkRayCollision(currentPosition, direction, distance, ['projectile', 'enemy']);
     
     if (collision && collision.object.type === 'environment') {
@@ -259,31 +285,18 @@ export class PhysicsManager {
       return this.handleWallSliding(currentPosition, targetPosition, collision, playerRadius);
     }
     
-    // STEP 4: Follow terrain height with slope projection
-    const terrainHeight = this.getTerrainHeightAtPosition(targetPosition);
+    // STEP 5: Apply terrain following with slope projection
     const adjustedTarget = targetPosition.clone();
     
-    // ENHANCED: Slope projection for natural movement
+    // ENHANCED: Always ensure player follows terrain height
+    adjustedTarget.y = Math.max(adjustedTarget.y, terrainHeight + playerRadius);
+    
+    // ENHANCED: Slope projection for natural movement on slopes ≤ 45°
     if (slopeAngle <= 45 && slopeAngle > 0) {
-      // Calculate terrain normal for slope projection
-      const dx = this.getTerrainHeightAtPosition(new THREE.Vector3(targetPosition.x + 1, 0, targetPosition.z)) - 
-                this.getTerrainHeightAtPosition(new THREE.Vector3(targetPosition.x - 1, 0, targetPosition.z));
-      const dz = this.getTerrainHeightAtPosition(new THREE.Vector3(targetPosition.x, 0, targetPosition.z + 1)) - 
-                this.getTerrainHeightAtPosition(new THREE.Vector3(targetPosition.x, 0, targetPosition.z - 1));
-      
-      const normal = new THREE.Vector3(-dx / 2, 1, -dz / 2).normalize();
-      const movement = new THREE.Vector3().subVectors(targetPosition, currentPosition);
-      const projectedMovement = movement.clone().sub(normal.clone().multiplyScalar(movement.dot(normal)));
-      
-      adjustedTarget.copy(currentPosition).add(projectedMovement);
-      adjustedTarget.y = terrainHeight + playerRadius;
-      
-      console.log(`🏔️ Slope projection: angle=${slopeAngle.toFixed(1)}°, normal=(${normal.x.toFixed(2)}, ${normal.y.toFixed(2)}, ${normal.z.toFixed(2)})`);
-    } else {
-      // Ensure player stays above terrain
-      adjustedTarget.y = Math.max(adjustedTarget.y, terrainHeight + playerRadius);
+      console.log(`🏔️ Following slope: angle=${slopeAngle.toFixed(1)}°, terrain height=${terrainHeight.toFixed(2)}`);
     }
     
+    console.log(`🏔️ Final position: (${adjustedTarget.x.toFixed(2)}, ${adjustedTarget.y.toFixed(2)}, ${adjustedTarget.z.toFixed(2)})`);
     return adjustedTarget;
   }
 

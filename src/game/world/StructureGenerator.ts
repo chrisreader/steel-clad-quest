@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
+import { PhysicsManager } from '../engine/PhysicsManager';
 
 export interface Structure {
   type: string;
@@ -11,11 +12,13 @@ export interface Structure {
 export class StructureGenerator {
   private ringSystem: RingQuadrantSystem;
   private scene: THREE.Scene;
+  private physicsManager: PhysicsManager;
   private structures: Map<string, Structure[]> = new Map();
   
-  constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
+  constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.ringSystem = ringSystem;
     this.scene = scene;
+    this.physicsManager = physicsManager;
   }
   
   // Enhanced staircase creation with proper step naming and metadata
@@ -56,7 +59,7 @@ export class StructureGenerator {
     return staircase;
   }
   
-  // ENHANCED: Create test hill using PlaneGeometry for proper terrain consistency
+  // FIXED: Create test hill with automatic PhysicsManager registration
   public createTestHill(x: number, y: number, z: number, radius: number = 15, maxHeight: number = 8): THREE.Mesh {
     const segments = 32;
     const geometry = new THREE.PlaneGeometry(radius * 2, radius * 2, segments, segments);
@@ -112,10 +115,14 @@ export class StructureGenerator {
     hill.userData.heightData = heightData;
     hill.userData.terrainSize = radius * 2;
     
+    // CRITICAL FIX: Automatically register with PhysicsManager
+    console.log(`🏔️ Auto-registering test hill with PhysicsManager...`);
+    this.physicsManager.addTerrainCollision(hill, heightData, radius * 2, `test_hill_${x}_${z}`);
+    
     this.scene.add(hill);
     
     console.log(`🏔️ Created test hill at position (${x}, ${y}, ${z}) with radius=${radius}, maxHeight=${maxHeight}`);
-    console.log(`🏔️ Hill has varying slopes including some > 45° near the edges for testing`);
+    console.log(`🏔️ Hill registered with PhysicsManager for collision detection`);
     
     return hill;
   }
