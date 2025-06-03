@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 
@@ -18,6 +19,34 @@ export class StructureGenerator {
     this.scene = scene;
   }
   
+  // New method: Create staircase structure
+  public createStaircase(x: number, y: number, z: number, steps: number = 5, stepWidth: number = 2, stepHeight: number = 0.5, stepDepth: number = 1): THREE.Group {
+    const staircase = new THREE.Group();
+    
+    for (let i = 0; i < steps; i++) {
+      const geometry = new THREE.BoxGeometry(stepWidth, stepHeight, stepDepth);
+      const material = new THREE.MeshStandardMaterial({ 
+        color: 0x808080,
+        roughness: 0.8,
+        metalness: 0.1
+      });
+      const step = new THREE.Mesh(geometry, material);
+      
+      // Position each step higher and forward
+      step.position.set(0, i * stepHeight + stepHeight / 2, i * stepDepth);
+      step.castShadow = true;
+      step.receiveShadow = true;
+      
+      staircase.add(step);
+    }
+    
+    staircase.position.set(x, y, z);
+    staircase.name = 'staircase';
+    
+    console.log(`Created staircase with ${steps} steps at position (${x}, ${y}, ${z})`);
+    return staircase;
+  }
+  
   // Place structures in regions based on ring definitions
   public generateStructuresForRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
@@ -35,6 +64,20 @@ export class StructureGenerator {
     // Check if this region should have structures
     const structureTypes = ringDef.structureTypes;
     if (!structureTypes || structureTypes.length === 0) return;
+    
+    // For ring 0 (center), quadrant 0 (NE), place a staircase at (50, 0, 50)
+    if (region.ringIndex === 0 && region.quadrant === 0) {
+      const staircase = this.createStaircase(50, 0, 50, 8, 3, 0.6, 1.2);
+      structures.push({
+        type: 'staircase',
+        position: new THREE.Vector3(50, 0, 50),
+        rotation: 0,
+        model: staircase
+      });
+      
+      this.scene.add(staircase);
+      console.log(`Placed staircase at (50, 0, 50) in Ring 0, Quadrant 0`);
+    }
     
     // For ring 1, quadrant 2 (SW), place a ruined castle
     if (region.ringIndex === 1 && region.quadrant === 2) {

@@ -1,5 +1,5 @@
-
 import * as THREE from 'three';
+import { Noise } from 'noisejs';
 import { TextureGenerator } from '../utils/graphics/TextureGenerator';
 
 // Define interfaces for our ring-quadrant system
@@ -26,6 +26,8 @@ export interface Region {
 }
 
 export class RingQuadrantSystem {
+  private noise: any;
+  
   // Define 4 rings with increasing radius and difficulty
   private rings: RingDefinition[] = [
     {
@@ -71,6 +73,8 @@ export class RingQuadrantSystem {
   
   constructor(worldCenter: THREE.Vector3 = new THREE.Vector3(0, 0, 0)) {
     this.worldCenter = worldCenter;
+    // Initialize noise for terrain generation
+    this.noise = new Noise(Math.random());
   }
   
   // Get which ring and quadrant a position belongs to
@@ -159,6 +163,64 @@ export class RingQuadrantSystem {
   // Helper to get difficulty for a region
   public getDifficultyForRegion(region: RegionCoordinates): number {
     return this.rings[region.ringIndex].difficulty;
+  }
+  
+  // New method: Generate heightmap for terrain with hills
+  public generateHeightmap(width: number, height: number, scale: number = 50): number[][] {
+    const data: number[][] = [];
+    const frequency = 0.02; // Controls hill frequency
+    
+    for (let x = 0; x < width; x++) {
+      data[x] = [];
+      for (let z = 0; z < height; z++) {
+        // Use multiple octaves for more natural terrain
+        let height = 0;
+        height += this.noise.perlin2(x * frequency, z * frequency) * scale;
+        height += this.noise.perlin2(x * frequency * 2, z * frequency * 2) * (scale * 0.5);
+        height += this.noise.perlin2(x * frequency * 4, z * frequency * 4) * (scale * 0.25);
+        
+        data[x][z] = Math.max(0, height); // Ensure non-negative heights
+      }
+    }
+    return data;
+  }
+  
+  // New method: Create terrain with hills for a region
+  public createTerrainWithHills(region: RegionCoordinates, size: number = 100): THREE.Mesh {
+    const segments = 63;
+    const heightmap = this.generateHeightmap(segments + 1, segments + 1, 25);
+    
+    const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+    const vertices = geometry.attributes.position.array as Float32Array;
+    
+    // Apply heightmap to geometry
+    for (let i = 0; i < vertices.length; i += 3) {
+      const x = Math.floor((i / 3) / (segments + 1));
+      const z = (i / 3) % (segments + 1);
+      if (heightmap[x] && heightmap[x][z] !== undefined) {
+        vertices[i + 2] = heightmap[x][z];
+      }
+    }
+    
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    
+    // Use ring-appropriate material
+    const ring = this.rings[region.ringIndex];
+    const material = new THREE.MeshStandardMaterial({ 
+      color: ring.terrainColor,
+      // Add grass texture if available
+      map: new THREE.TextureLoader().load('/assets/grass.jpg').catch(() => null)
+    });
+    
+    const terrain = new THREE.Mesh(geometry, material);
+    terrain.rotation.x = -Math.PI / 2;
+    
+    // Position terrain at region center
+    const center = this.getRegionCenter(region);
+    terrain.position.copy(center);
+    
+    return terrain;
   }
   
   // DEBUG: Create visual markers for ring boundaries

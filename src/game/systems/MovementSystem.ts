@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -11,6 +12,7 @@ export class MovementSystem {
   private physicsManager: PhysicsManager;
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
+  private smoothingFactor: number = 0.1; // For smooth terrain following
   
   constructor(
     scene: THREE.Scene,
@@ -25,7 +27,7 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    console.log("🏃 [MovementSystem] Initialized with collision detection");
+    console.log("🏃 [MovementSystem] Initialized with enhanced terrain collision detection");
     
     // Set up sprint input handler
     this.setupSprintHandler();
@@ -139,8 +141,29 @@ export class MovementSystem {
       const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
       const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
-      // Check collision and get safe position
-      const safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4); // 0.4 is player radius
+      // Enhanced collision checking with terrain height consideration
+      let safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4);
+      
+      // Check for staircase navigation
+      safePosition = this.physicsManager.checkStaircaseNavigation(currentPosition, safePosition, 0.4);
+      
+      // Get terrain height at the safe position
+      const terrainHeight = this.physicsManager.getTerrainHeightAtPosition(safePosition);
+      
+      // Smoothly adjust player height to follow terrain
+      const currentHeight = currentPosition.y;
+      const targetHeight = terrainHeight + 0.4; // Player radius above terrain
+      
+      // Use smooth interpolation for natural movement over hills
+      const heightDifference = targetHeight - currentHeight;
+      const maxHeightChange = 3.0 * deltaTime; // Maximum height change per frame
+      
+      if (Math.abs(heightDifference) > 0.1) {
+        const heightAdjustment = Math.sign(heightDifference) * Math.min(Math.abs(heightDifference), maxHeightChange);
+        safePosition.y = currentHeight + heightAdjustment;
+      } else {
+        safePosition.y = targetHeight;
+      }
       
       // Calculate actual movement vector
       const actualMovement = new THREE.Vector3().subVectors(safePosition, currentPosition);
@@ -150,16 +173,17 @@ export class MovementSystem {
         const normalizedMovement = actualMovement.clone().normalize();
         const movementScale = actualMovement.length() / (5.0 * deltaTime);
         
-        console.log("🏃 [MovementSystem] Moving with collision detection:", {
+        console.log("🏃 [MovementSystem] Moving with enhanced terrain collision:", {
           from: currentPosition,
           to: safePosition,
           movement: actualMovement,
+          terrainHeight: terrainHeight,
           distance: actualMovement.length()
         });
         
         this.player.move(normalizedMovement.multiplyScalar(movementScale), deltaTime);
       } else {
-        console.log("🏃 [MovementSystem] Movement blocked by collision");
+        console.log("🏃 [MovementSystem] Movement blocked by collision or terrain");
       }
     }
   }
