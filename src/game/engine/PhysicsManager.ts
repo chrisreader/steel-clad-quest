@@ -264,10 +264,12 @@ export class PhysicsManager {
     return surfacePosition;
   }
 
-  // FIXED: Enhanced method with proper collision point calculation
+  // CRITICAL FIX: Use dedicated arrow raycaster for ALL collision detection to prevent corruption
   public checkRayCollision(origin: THREE.Vector3, direction: THREE.Vector3, distance: number, excludeTypes: string[] = []): { distance: number; object: CollisionObject; point: THREE.Vector3 } | null {
-    this.raycaster.set(origin, direction);
-    this.raycaster.far = distance;
+    // CRITICAL FIX: Use the dedicated arrow raycaster instead of the shared raycaster
+    console.log(`🏹 CRITICAL FIX: Using dedicated arrow raycaster for collision detection (preserving main raycaster)`);
+    this.arrowRaycaster.set(origin, direction);
+    this.arrowRaycaster.far = distance;
     
     let closestCollision: { distance: number; object: CollisionObject; point: THREE.Vector3 } | null = null;
     let minDistance = Infinity;
@@ -287,7 +289,7 @@ export class PhysicsManager {
           };
         }
       } else if (collisionObject.type === 'environment') {
-        // Handle standard environment collision
+        // Handle standard environment collision using arrow raycaster
         const objectPosition = new THREE.Vector3();
         collisionObject.box.getCenter(objectPosition);
         const distanceToObject = origin.distanceTo(objectPosition);
@@ -304,6 +306,7 @@ export class PhysicsManager {
       }
     }
     
+    console.log(`🏹 Arrow collision check complete - main raycaster preserved for player terrain detection`);
     return closestCollision;
   }
 
