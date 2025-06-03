@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager } from '../engine/AudioManager';
@@ -232,17 +231,21 @@ export class Arrow {
     const deltaPosition = this.velocity.clone().multiplyScalar(safeDeltatime);
     const nextPosition = this.position.clone().add(deltaPosition);
     
-    // Check for environment collision
+    // ENHANCED: Check for both environment AND terrain collision
     const collision = this.physicsManager.checkRayCollision(
       this.position,
       this.velocity.clone().normalize(),
       deltaPosition.length(),
-      ['player'] // Exclude player collisions for arrows
+      ['player'] // Only exclude player collisions for arrows
     );
     
     if (collision) {
-      // Arrow hit an environment object
-      this.hitEnvironmentObject(collision);
+      // Arrow hit an object (environment or terrain)
+      if (collision.object.type === 'terrain') {
+        this.hitTerrainObject(collision);
+      } else {
+        this.hitEnvironmentObject(collision);
+      }
       return true;
     }
     
@@ -285,6 +288,28 @@ export class Arrow {
     return true;
   }
 
+  // NEW: Handle terrain-specific collision (hills, etc.)
+  private hitTerrainObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
+    this.isStuck = true;
+    this.stuckInObject = collision.object.id;
+    this.velocity.set(0, 0, 0);
+    
+    // Position arrow at terrain collision point
+    this.position.copy(collision.point);
+    this.mesh.position.copy(this.position);
+    
+    // Remove trail when stuck
+    this.removeTrail();
+    
+    // Play terrain-specific impact sound
+    this.audioManager.play('arrow_impact');
+    
+    // Create terrain-specific impact effect
+    this.createTerrainImpactEffect(collision.point);
+    
+    console.log(`🏹 Arrow stuck in terrain at:`, collision.point);
+  }
+
   private hitEnvironmentObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
     this.isStuck = true;
     this.stuckInObject = collision.object.id;
@@ -305,6 +330,54 @@ export class Arrow {
     this.createMaterialImpactEffect(collision.point, material);
     
     console.log(`🏹 Arrow stuck in ${material} object at:`, collision.point);
+  }
+
+  // NEW: Create terrain-specific impact effects
+  private createTerrainImpactEffect(position: THREE.Vector3): void {
+    const distanceFromOrigin = position.distanceTo(this.initialPosition);
+    if (distanceFromOrigin > 50) return;
+
+    // Create dirt/terrain particles for hill impacts
+    const particleCount = 10;
+    const terrainColor = 0x8B7355; // Earthy brown
+    
+    for (let i = 0; i < particleCount; i++) {
+      const particleGeometry = new THREE.SphereGeometry(0.04, 6, 6);
+      const particleMaterial = new THREE.MeshBasicMaterial({
+        color: terrainColor,
+        transparent: true,
+        opacity: 0.9
+      });
+      
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+      particle.position.copy(position);
+      particle.position.x += (Math.random() - 0.5) * 0.4;
+      particle.position.y += (Math.random() - 0.5) * 0.4;
+      particle.position.z += (Math.random() - 0.5) * 0.4;
+      
+      this.scene.add(particle);
+      
+      // Animate terrain particle
+      const startTime = Date.now();
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = elapsed / 1000; // 1000ms duration
+        
+        if (progress >= 1) {
+          this.scene.remove(particle);
+          particle.geometry.dispose();
+          particle.material.dispose();
+          return;
+        }
+        
+        particle.position.y -= 0.01;
+        particle.material.opacity = 0.9 * (1 - progress);
+        
+        requestAnimationFrame(animate);
+      };
+      
+      setTimeout(animate, i * 40);
+    }
   }
 
   private playMaterialImpactSound(material: 'wood' | 'stone' | 'metal' | 'fabric' | null): void {

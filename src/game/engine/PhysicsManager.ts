@@ -267,22 +267,65 @@ export class PhysicsManager {
     this.raycaster.set(origin, direction);
     this.raycaster.far = distance;
     
+    let closestCollision: { distance: number; object: CollisionObject; point: THREE.Vector3 } | null = null;
+    let minDistance = Infinity;
+    
     for (const [id, collisionObject] of this.collisionObjects) {
       if (excludeTypes.includes(collisionObject.type)) continue;
       
-      // Simple distance check for basic collision
-      const objectPosition = new THREE.Vector3();
-      collisionObject.box.getCenter(objectPosition);
-      const distanceToObject = origin.distanceTo(objectPosition);
-      
-      if (distanceToObject < distance && collisionObject.type === 'environment') {
-        // Calculate collision point
-        const collisionPoint = origin.clone().add(direction.clone().multiplyScalar(distanceToObject));
+      // Handle terrain objects specially for arrow collision
+      if (collisionObject.type === 'terrain') {
+        const terrainIntersection = this.checkTerrainRayIntersection(origin, direction, distance, collisionObject);
+        if (terrainIntersection && terrainIntersection.distance < minDistance) {
+          minDistance = terrainIntersection.distance;
+          closestCollision = {
+            distance: terrainIntersection.distance,
+            object: collisionObject,
+            point: terrainIntersection.point
+          };
+        }
+      } else if (collisionObject.type === 'environment') {
+        // Handle standard environment collision
+        const objectPosition = new THREE.Vector3();
+        collisionObject.box.getCenter(objectPosition);
+        const distanceToObject = origin.distanceTo(objectPosition);
         
+        if (distanceToObject < distance && distanceToObject < minDistance) {
+          const collisionPoint = origin.clone().add(direction.clone().multiplyScalar(distanceToObject));
+          minDistance = distanceToObject;
+          closestCollision = {
+            distance: distanceToObject,
+            object: collisionObject,
+            point: collisionPoint
+          };
+        }
+      }
+    }
+    
+    return closestCollision;
+  }
+
+  // NEW: Specialized terrain ray intersection for arrow collision
+  private checkTerrainRayIntersection(
+    origin: THREE.Vector3, 
+    direction: THREE.Vector3, 
+    maxDistance: number, 
+    terrainObject: CollisionObject
+  ): { distance: number; point: THREE.Vector3 } | null {
+    const terrain = terrainObject.mesh;
+    
+    // Use Three.js raycaster for precise terrain intersection
+    const intersections = this.raycaster.intersectObject(terrain, true);
+    
+    if (intersections.length > 0) {
+      const intersection = intersections[0];
+      const distance = intersection.distance;
+      
+      if (distance <= maxDistance) {
+        console.log(`🏹 Arrow terrain collision detected at distance ${distance.toFixed(2)}`);
         return {
-          distance: distanceToObject,
-          object: collisionObject,
-          point: collisionPoint
+          distance: distance,
+          point: intersection.point
         };
       }
     }
