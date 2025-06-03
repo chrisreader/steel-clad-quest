@@ -65,111 +65,59 @@ export class StructureGenerator {
     return staircase;
   }
   
-  // FIXED: Create smooth heightfield geometry with proper vertex generation
-  private createSmoothHillGeometry(radius: number, maxHeight: number, segments: number = 32): THREE.PlaneGeometry {
-    console.log(`🏔️ Creating smooth hill geometry: radius=${radius}, maxHeight=${maxHeight}, segments=${segments}`);
-    
-    const geometry = new THREE.PlaneGeometry(radius * 2, radius * 2, segments, segments);
-    const position = geometry.attributes.position;
-    
-    console.log(`🏔️ PlaneGeometry created with ${position.count} vertices`);
-    
-    // Apply smooth height calculation to each vertex
-    for (let i = 0; i < position.count; i++) {
-      const x = position.getX(i);
-      const z = position.getZ(i);
-      
-      // Calculate distance from center
-      const distanceFromCenter = Math.sqrt(x * x + z * z);
-      const normalizedDistance = distanceFromCenter / radius;
-      
-      let height = 0;
-      if (normalizedDistance <= 1.0) {
-        // Use smooth cosine falloff for natural hill shape
-        const heightFactor = Math.cos(normalizedDistance * Math.PI * 0.5);
-        height = maxHeight * heightFactor * heightFactor; // Square for steeper falloff
-        
-        // Add subtle noise for organic feel
-        const noise = (Math.sin(x * 0.5) + Math.cos(z * 0.3)) * 0.1;
-        height += noise * maxHeight * 0.1;
-      }
-      
-      position.setY(i, height);
-    }
-    
-    // Ensure geometry updates and compute smooth normals
-    position.needsUpdate = true;
-    geometry.computeVertexNormals();
-    
-    console.log(`🏔️ Smooth hill geometry created successfully`);
-    return geometry;
-  }
-  
-  // FIXED: Enhanced createTestHill with proper geometry and registration
+  // Enhanced createTestHill with Step-by-Step Debugging
   public createTestHill(x: number, y: number, z: number, radius: number = 15, maxHeight: number = 8): THREE.Mesh {
-    console.log(`\n🏔️ === CREATING SMOOTH TEST HILL ===`);
+    console.log(`\n🏔️ === CREATING TEST HILL ===`);
     console.log(`🏔️ Position: (${x}, ${y}, ${z}), Radius: ${radius}, MaxHeight: ${maxHeight}`);
     
-    // Create smooth heightfield geometry
-    const geometry = this.createSmoothHillGeometry(radius, maxHeight, 64);
-    
+    // Create geometry
+    const segments = 32;
+    const geometry = new THREE.ConeGeometry(radius, maxHeight, segments);
     const material = new THREE.MeshStandardMaterial({ 
-      color: 0x4a7c59,
-      roughness: 0.8,
-      metalness: 0.0,
-      wireframe: false
+      color: 0x4a5d3a,
+      roughness: 0.9,
+      metalness: 0.0
     });
     
     const hill = new THREE.Mesh(geometry, material);
-    
-    // Rotate to make it horizontal (PlaneGeometry is vertical by default)
-    hill.rotation.x = -Math.PI / 2;
-    hill.position.set(x, y, z);
+    hill.position.set(x, y + maxHeight / 2, z);
     hill.castShadow = true;
     hill.receiveShadow = true;
-    hill.name = 'smooth_test_hill';
+    hill.name = 'test_hill';
     
-    console.log(`🏔️ Smooth hill mesh created at position: (${hill.position.x}, ${hill.position.y}, ${hill.position.z})`);
-    console.log(`🏔️ Hill rotation: (${hill.rotation.x}, ${hill.rotation.y}, ${hill.rotation.z})`);
+    console.log(`🏔️ Hill mesh created at position: (${hill.position.x}, ${hill.position.y}, ${hill.position.z})`);
     
-    // FIXED: Create enhanced height data directly from geometry
-    const heightMapSize = 64; // Match geometry segments
+    // Create height data
+    const heightMapSize = 64;
     const heightData: number[][] = [];
     
-    console.log(`🏔️ Generating height data (${heightMapSize + 1}x${heightMapSize + 1})...`);
+    console.log(`🏔️ Generating height data (${heightMapSize}x${heightMapSize})...`);
     
     for (let i = 0; i <= heightMapSize; i++) {
       heightData[i] = [];
       for (let j = 0; j <= heightMapSize; j++) {
-        // Convert grid coordinates to world space
-        const worldX = (i / heightMapSize - 0.5) * radius * 2;
-        const worldZ = (j / heightMapSize - 0.5) * radius * 2;
-        const distanceFromCenter = Math.sqrt(worldX * worldX + worldZ * worldZ);
+        const worldX = x + (i / heightMapSize - 0.5) * radius * 2;
+        const worldZ = z + (j / heightMapSize - 0.5) * radius * 2;
+        const distanceFromCenter = Math.sqrt((worldX - x) ** 2 + (worldZ - z) ** 2);
         const normalizedDistance = distanceFromCenter / radius;
         
         let height = 0;
         if (normalizedDistance <= 1.0) {
-          // Use same height calculation as geometry
-          const heightFactor = Math.cos(normalizedDistance * Math.PI * 0.5);
-          height = maxHeight * heightFactor * heightFactor;
-          
-          // Add same noise as geometry
-          const noise = (Math.sin(worldX * 0.5) + Math.cos(worldZ * 0.3)) * 0.1;
-          height += noise * maxHeight * 0.1;
+          height = maxHeight * (1 - normalizedDistance);
         }
         
-        heightData[i][j] = Math.max(0, height + y); // Add base Y position and ensure non-negative
+        heightData[i][j] = height + y;
       }
     }
     
     console.log(`🏔️ Height data generated. Sample heights:`);
-    console.log(`  - Center [${heightMapSize/2}][${heightMapSize/2}]: ${heightData[Math.floor(heightMapSize/2)][Math.floor(heightMapSize/2)].toFixed(2)}`);
-    console.log(`  - Edge [0][0]: ${heightData[0][0].toFixed(2)}`);
-    console.log(`  - Edge [${heightMapSize}][${heightMapSize}]: ${heightData[heightMapSize][heightMapSize].toFixed(2)}`);
+    console.log(`  - Center [${heightMapSize/2}][${heightMapSize/2}]: ${heightData[heightMapSize/2][heightMapSize/2]}`);
+    console.log(`  - Edge [0][0]: ${heightData[0][0]}`);
+    console.log(`  - Edge [${heightMapSize}][${heightMapSize}]: ${heightData[heightMapSize][heightMapSize]}`);
     
-    // Add to visual scene FIRST
+    // Add to visual scene
     this.scene.add(hill);
-    console.log(`🏔️ Smooth hill added to visual scene`);
+    console.log(`🏔️ Hill added to visual scene`);
     
     // CRITICAL: Check PhysicsManager before registration
     console.log(`🏔️ PhysicsManager check before registration:`);
@@ -179,9 +127,9 @@ export class StructureGenerator {
     
     if (this.physicsManager && this.physicsManager.addTerrainCollision) {
       try {
-        console.log(`🏔️ Attempting smooth terrain registration...`);
-        const terrainId = this.physicsManager.addTerrainCollision(hill, heightData, radius * 2, `smooth_test_hill_${x}_${z}`);
-        console.log(`🏔️ ✅ Smooth terrain registration SUCCESS: ${terrainId}`);
+        console.log(`🏔️ Attempting terrain registration...`);
+        const terrainId = this.physicsManager.addTerrainCollision(hill, heightData, radius * 2, `test_hill_${x}_${z}`);
+        console.log(`🏔️ ✅ Terrain registration SUCCESS: ${terrainId}`);
         
         // Verify registration immediately
         const collisionObjects = this.physicsManager.getCollisionObjects();
@@ -194,7 +142,7 @@ export class StructureGenerator {
         }
         
       } catch (error) {
-        console.error(`🏔️ ❌ Smooth terrain registration FAILED:`, error);
+        console.error(`🏔️ ❌ Terrain registration FAILED:`, error);
       }
     } else {
       console.error(`🏔️ ❌ CRITICAL ERROR: PhysicsManager or addTerrainCollision method missing!`);
@@ -202,19 +150,9 @@ export class StructureGenerator {
       console.log(`  - addTerrainCollision method: ${this.physicsManager?.addTerrainCollision}`);
     }
     
-    console.log(`🏔️ === SMOOTH HILL CREATION COMPLETE ===\n`);
+    console.log(`🏔️ === HILL CREATION COMPLETE ===\n`);
     return hill;
   }
-  
-  // NEW: Smooth height interpolation function
-  private smoothstep(edge0: number, edge1: number, x: number): number {
-    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
-    return t * t * (3 - 2 * t);
-  }
-  
-  // NEW: Create smooth heightfield geometry
-  
-
   
   // Place structures in regions based on ring definitions
   public generateStructuresForRegion(region: RegionCoordinates): void {
@@ -234,7 +172,7 @@ export class StructureGenerator {
     const structureTypes = ringDef.structureTypes;
     if (!structureTypes || structureTypes.length === 0) return;
     
-    // For ring 0 (center), quadrant 0 (NE), place enhanced staircase and smooth test hill
+    // For ring 0 (center), quadrant 0 (NE), place enhanced staircase and test hill
     if (region.ringIndex === 0 && region.quadrant === 0) {
       // Enhanced staircase at (50, 0, 50)
       const staircase = this.createStaircase(50, 0, 50, 8, 3, 0.6, 1.2);
@@ -248,16 +186,16 @@ export class StructureGenerator {
       this.scene.add(staircase);
       console.log(`🪜 Placed enhanced staircase at (50, 0, 50) in Ring 0, Quadrant 0`);
       
-      // ENHANCED: Smooth test hill with proper terrain generation at (20, 0, 30)
+      // ENHANCED: Test hill with proper terrain generation at (20, 0, 30)
       const testHill = this.createTestHill(20, 0, 30, 12, 6);
       structures.push({
-        type: 'smooth_test_hill',
+        type: 'test_hill',
         position: new THREE.Vector3(20, 0, 30),
         rotation: 0,
         model: testHill
       });
       
-      console.log(`🏔️ Placed smooth test hill at (20, 0, 30) in Ring 0, Quadrant 0 for slope testing`);
+      console.log(`🏔️ Placed test hill at (20, 0, 30) in Ring 0, Quadrant 0 for slope testing`);
     }
     
     // For ring 1, quadrant 2 (SW), place a ruined castle
