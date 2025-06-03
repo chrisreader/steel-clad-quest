@@ -35,7 +35,7 @@ export class StructureGenerator {
     // Get region properties
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     
-    // NEW: For ring 0 (spawn area), add a test hill positioned correctly at ground level
+    // NEW: For ring 0 (spawn area), add a test hill for debugging vertical movement
     if (region.ringIndex === 0) {
       const testHill = this.createTestHill();
       structures.push({
@@ -75,32 +75,21 @@ export class StructureGenerator {
     // Add more structure placement logic for other rings/quadrants here
   }
   
-  // NEW: Create a properly positioned test hill for debugging vertical movement
+  // NEW: Create a test hill for debugging vertical movement
   private createTestHill(): THREE.Object3D {
     const hill = new THREE.Group();
     
-    // Create a cone-shaped hill with base at Y=0 (ground level)
-    const hillRadius = 6;  // Base radius
-    const hillHeight = 4;  // Height above ground
-    const hillGeometry = new THREE.ConeGeometry(hillRadius, hillHeight, 16);
+    // Create a cone-shaped hill
+    const hillGeometry = new THREE.ConeGeometry(8, 6, 16);
     const hillMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x4A7C59, // Green grass color
       transparent: false
     });
     
-    // CRITICAL FIX: Position cone so base is exactly at Y=0
     const hillMesh = new THREE.Mesh(hillGeometry, hillMaterial);
-    hillMesh.position.set(10, hillHeight / 2, 10); // Y = hillHeight/2 means base at Y=0, peak at Y=hillHeight
+    hillMesh.position.set(10, 3, 10); // Position at (10, 3, 10) with base at Y=3
     hillMesh.castShadow = true;
     hillMesh.receiveShadow = true;
-    
-    console.log("🏔️ [StructureGenerator] Creating hill with geometry:", {
-      radius: hillRadius,
-      height: hillHeight,
-      position: hillMesh.position,
-      baseY: hillMesh.position.y - hillHeight/2,
-      peakY: hillMesh.position.y + hillHeight/2
-    });
     
     // Add some texture variation
     const grassTexture = this.createGrassTexture();
@@ -111,35 +100,11 @@ export class StructureGenerator {
     // Add to scene
     this.scene.add(hill);
     
-    // Register the hill mesh with PhysicsManager for collision detection
-    const collisionId = this.physicsManager.addCollisionObject(hillMesh, 'environment', 'stone', `test_hill_${Date.now()}`);
-    console.log("🏔️ [StructureGenerator] Registered test hill for collision detection with ID:", collisionId);
+    // FIXED: Register the hill mesh with PhysicsManager for collision detection
+    this.physicsManager.addCollisionObject(hillMesh, 'environment', 'stone', `test_hill_${Date.now()}`);
+    console.log("🏔️ Registered test hill for collision detection");
     
-    // DEBUG: Add visual markers to show hill collision bounds
-    const debugMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xff0000, 
-      wireframe: true,
-      transparent: true,
-      opacity: 0.5
-    });
-    const debugGeometry = new THREE.ConeGeometry(hillRadius, hillHeight, 16);
-    const debugMesh = new THREE.Mesh(debugGeometry, debugMaterial);
-    debugMesh.position.copy(hillMesh.position);
-    hill.add(debugMesh);
-    
-    // DEBUG: Add ground-level markers to show where collision should occur
-    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
-      const markerGeometry = new THREE.SphereGeometry(0.2);
-      const markerMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-      const x = 10 + Math.cos(angle) * hillRadius;
-      const z = 10 + Math.sin(angle) * hillRadius;
-      marker.position.set(x, 0.2, z); // Slightly above ground
-      hill.add(marker);
-      console.log(`🏔️ [StructureGenerator] Added ground marker at (${x.toFixed(1)}, 0.2, ${z.toFixed(1)})`);
-    }
-    
-    console.log("🏔️ [StructureGenerator] Test hill created with proper ground-level positioning");
+    console.log("🏔️ Created test hill with cone geometry for slope testing");
     
     return hill;
   }

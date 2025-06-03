@@ -56,7 +56,7 @@ export class SceneManager {
     this.scene = scene;
     this.physicsManager = physicsManager;
     
-    console.log("🏔️ [SceneManager] Initialized with collision system");
+    console.log("SceneManager initialized with collision system");
     
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
@@ -64,7 +64,7 @@ export class SceneManager {
     // Initialize terrain feature generator
     this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
-    // Initialize structure generator with PhysicsManager reference
+    // FIXED: Initialize structure generator with PhysicsManager reference
     this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene, this.physicsManager);
     
     // Setup distance-based fog
@@ -83,19 +83,6 @@ export class SceneManager {
     
     // Initialize environment collision manager
     this.environmentCollisionManager = new EnvironmentCollisionManager(this.scene, this.physicsManager);
-    
-    // NEW: Set up collision integration with terrain feature generator
-    this.setupCollisionIntegration();
-  }
-  
-  // NEW: Setup collision integration with feature generators
-  private setupCollisionIntegration(): void {
-    // Set callback for terrain feature generator to register new objects
-    this.terrainFeatureGenerator.setObjectCreatedCallback((object: THREE.Object3D) => {
-      this.environmentCollisionManager.registerNewObject(object);
-    });
-    
-    console.log('🏔️ [SceneManager] Collision integration setup complete');
   }
   
   private setupDistanceFog(): void {
@@ -236,7 +223,7 @@ export class SceneManager {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
     }
     
-    // Manage region loading/unloading based on player position
+    // NEW: Manage region loading/unloading based on player position
     if (playerPosition) {
       // Get regions that should be active
       const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
@@ -269,7 +256,7 @@ export class SceneManager {
   }
   
   public createDefaultWorld(): void {
-    console.log('🏔️ [SceneManager] Creating default world with ring-quadrant system...');
+    console.log('Creating default world with ring-quadrant system...');
     
     // Create simple ground plane at origin as fallback
     this.createSimpleGround();
@@ -299,23 +286,23 @@ export class SceneManager {
     
     // IMPORTANT: Register all environment objects for collision after creating the world
     this.environmentCollisionManager.registerEnvironmentCollisions();
-    console.log('🏔️ [SceneManager] Environment collision system initialized');
+    console.log('Environment collision system initialized');
     
     // Force update skybox to apply new realistic blue colors
     this.updateSkybox();
     console.log('Skybox updated with realistic blue colors');
     
-    console.log('🏔️ [SceneManager] Default world creation complete with ring-quadrant system. Total scene children:', this.scene.children.length);
+    console.log('Default world creation complete with ring-quadrant system. Total scene children:', this.scene.children.length);
   }
   
-  // ENHANCED: Region management methods with collision integration
+  // NEW: Region management methods
   private loadRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
     
     // Skip if already loaded
     if (this.loadedRegions.has(regionKey)) return;
     
-    console.log(`🏔️ [SceneManager] Loading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`Loading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
     // Get region center
     const centerPosition = this.ringSystem.getRegionCenter(region);
@@ -338,11 +325,6 @@ export class SceneManager {
     
     // Generate structures for this region
     this.structureGenerator.generateStructuresForRegion(region);
-    
-    // NEW: Update collision registration after loading region
-    this.environmentCollisionManager.updateCollisions();
-    
-    console.log(`🏔️ [SceneManager] Region loaded and collision system updated: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
   }
   
   private unloadRegion(region: RegionCoordinates): void {
@@ -928,7 +910,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    console.log("🏔️ [SceneManager] Disposed with collision system cleanup");
+    console.log("SceneManager disposed with collision system cleanup");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {

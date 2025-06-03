@@ -10,14 +10,11 @@ export class EnvironmentCollisionManager {
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
-    console.log('🏔️ [EnvironmentCollisionManager] Initialized');
-    
-    // Set scene reference in physics manager for direct terrain detection
-    this.physicsManager.setScene(scene);
+    console.log('EnvironmentCollisionManager initialized');
   }
 
   public registerEnvironmentCollisions(): void {
-    console.log('🏔️ [EnvironmentCollisionManager] Registering environment collisions...');
+    console.log('Registering environment collisions...');
     
     // Clear existing registrations
     this.registeredObjects.forEach(id => {
@@ -32,34 +29,7 @@ export class EnvironmentCollisionManager {
       }
     });
 
-    console.log(`🏔️ [EnvironmentCollisionManager] Registered ${this.registeredObjects.size} collision objects`);
-  }
-
-  // NEW: Method to register collisions for newly created objects
-  public registerNewObject(object: THREE.Object3D): string | null {
-    if (this.registeredObjects.has(object.uuid)) return null;
-
-    const material = this.determineMaterial(object);
-    const shouldRegister = this.shouldRegisterForCollision(object);
-
-    if (shouldRegister) {
-      const id = this.physicsManager.addCollisionObject(object, 'environment', material, object.uuid);
-      this.registeredObjects.add(id);
-      
-      console.log(`🏔️ [EnvironmentCollisionManager] Registered new object at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
-      return id;
-    }
-    
-    return null;
-  }
-
-  // NEW: Method to register multiple objects (for region loading)
-  public registerObjects(objects: THREE.Object3D[]): void {
-    console.log(`🏔️ [EnvironmentCollisionManager] Registering ${objects.length} new objects for collision`);
-    
-    objects.forEach(object => {
-      this.registerNewObject(object);
-    });
+    console.log(`Registered ${this.registeredObjects.size} collision objects`);
   }
 
   private registerObjectCollision(object: THREE.Object3D): void {
@@ -74,7 +44,7 @@ export class EnvironmentCollisionManager {
       const id = this.physicsManager.addCollisionObject(object, 'environment', material, object.uuid);
       this.registeredObjects.add(id);
       
-      console.log(`🏔️ [EnvironmentCollisionManager] Registered collision for object at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
+      console.log(`Registered collision for object at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)} (${material})`);
     }
   }
 
@@ -135,8 +105,7 @@ export class EnvironmentCollisionManager {
       return false;
     }
 
-    // Don't skip ground plane - terrain should be handled by direct scene raycast
-    // But still register smaller terrain features
+    // Skip ground plane
     if (size.x > 50 || size.z > 50) {
       return false;
     }
@@ -155,6 +124,6 @@ export class EnvironmentCollisionManager {
       this.physicsManager.removeCollisionObject(id);
     });
     this.registeredObjects.clear();
-    console.log('🏔️ [EnvironmentCollisionManager] Disposed');
+    console.log('EnvironmentCollisionManager disposed');
   }
 }

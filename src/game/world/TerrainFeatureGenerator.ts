@@ -23,19 +23,10 @@ export class TerrainFeatureGenerator {
   private tavernPosition: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   private tavernExclusionRadius: number = 15; // Keep clear area around tavern
   
-  // NEW: Collision registration callback
-  private onObjectCreated: ((object: THREE.Object3D) => void) | null = null;
-  
   constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
     this.loadModels();
-  }
-  
-  // NEW: Set callback for when objects are created (for collision registration)
-  public setObjectCreatedCallback(callback: (object: THREE.Object3D) => void): void {
-    this.onObjectCreated = callback;
-    console.log('🏔️ [TerrainFeatureGenerator] Object creation callback set');
   }
   
   private loadModels(): void {
@@ -121,7 +112,7 @@ export class TerrainFeatureGenerator {
     // Skip if already generated
     if (this.spawnedFeatures.has(regionKey)) return;
     
-    console.log(`🏔️ [TerrainFeatureGenerator] Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
     // Initialize spawned features array
     const features: THREE.Object3D[] = [];
@@ -142,8 +133,6 @@ export class TerrainFeatureGenerator {
         this.generateWastelandFeatures(region, features);
         break;
     }
-    
-    console.log(`🏔️ [TerrainFeatureGenerator] Generated ${features.length} features for region Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
   }
   
   // Generate evenly distributed features (for ring 0)
@@ -289,11 +278,6 @@ export class TerrainFeatureGenerator {
         if (feature) {
           features.push(feature);
           this.scene.add(feature);
-          
-          // NEW: Register with collision system
-          if (this.onObjectCreated) {
-            this.onObjectCreated(feature);
-          }
         }
       }
     }
@@ -316,11 +300,6 @@ export class TerrainFeatureGenerator {
         if (feature) {
           features.push(feature);
           this.scene.add(feature);
-          
-          // NEW: Register with collision system
-          if (this.onObjectCreated) {
-            this.onObjectCreated(feature);
-          }
         }
       }
     }
@@ -410,7 +389,7 @@ export class TerrainFeatureGenerator {
     
     if (!features) return;
     
-    console.log(`🏔️ [TerrainFeatureGenerator] Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
     // Remove all features from scene
     features.forEach(feature => {
