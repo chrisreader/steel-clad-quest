@@ -12,13 +12,15 @@ export interface CollisionObject {
 export class PhysicsManager {
   private gravity = -9.81;
   private collisionObjects: Map<string, CollisionObject> = new Map();
-  private raycaster: THREE.Raycaster = new THREE.Raycaster();
-  private arrowRaycaster: THREE.Raycaster = new THREE.Raycaster(); // NEW: Dedicated raycaster for arrow collisions
+  private raycaster: THREE.Raycaster = new THREE.Raycaster(); // For terrain height detection ONLY
+  private arrowRaycaster: THREE.Raycaster = new THREE.Raycaster(); // For arrow collisions ONLY
+  private environmentRaycaster: THREE.Raycaster = new THREE.Raycaster(); // CRITICAL FIX: For environment collisions ONLY
   private terrainHeightCache: Map<string, { height: number; normal: THREE.Vector3 }> = new Map();
   private terrainSize: number = 100; // Default terrain size
   
   constructor() {
-    console.log('🏔️ Enhanced Physics Manager initialized with smooth terrain following and dedicated arrow raycaster');
+    console.log('🏔️ Enhanced Physics Manager initialized with smooth terrain following and THREE dedicated raycasters');
+    console.log('🏔️ Raycaster separation: main(terrain), arrow(projectiles), environment(walls/trees)');
   }
 
   // Enhanced method: Add terrain with height data for better collision with debugging
@@ -159,13 +161,14 @@ export class PhysicsManager {
     return samples;
   }
 
-  // FIXED: Use the main raycaster (NOT the arrow raycaster) for player terrain detection
+  // PRESERVED: Use the main raycaster ONLY for terrain detection (no corruption from environment checks)
   private raycastTerrainAtPosition(rayOrigin: THREE.Vector3): { height: number; normal: THREE.Vector3 } | null {
     for (const [id, collisionObject] of this.collisionObjects) {
       if (collisionObject.type === 'terrain') {
         const terrain = collisionObject.mesh;
         
-        // CRITICAL FIX: Use the main raycaster for player terrain detection
+        // PRESERVED: Main raycaster remains dedicated to terrain detection
+        console.log(`🏔️ Using MAIN raycaster for terrain height detection (preserved from environment corruption)`);
         this.raycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0));
         const intersections = this.raycaster.intersectObject(terrain, true);
         
@@ -250,7 +253,7 @@ export class PhysicsManager {
     if (movementDistance > 0.01) { // Only check collision if there's significant movement
       movementDirection.normalize();
       
-      // Check for collision with environment objects using raycasting instead of sphere intersection
+      // CRITICAL FIX: Use dedicated environment raycaster to prevent terrain raycaster corruption
       const environmentCollision = this.checkEnvironmentCollisionRaycast(currentPosition, targetPosition, playerRadius);
       
       if (environmentCollision) {
@@ -268,7 +271,7 @@ export class PhysicsManager {
     return surfacePosition;
   }
 
-  // NEW: Improved collision detection using raycasting
+  // CRITICAL FIX: Use dedicated environment raycaster to prevent terrain raycaster corruption
   private checkEnvironmentCollisionRaycast(
     currentPosition: THREE.Vector3, 
     targetPosition: THREE.Vector3, 
@@ -282,14 +285,15 @@ export class PhysicsManager {
     
     movementDirection.normalize();
     
-    // Use raycasting to detect collisions ahead of the player
-    this.raycaster.set(currentPosition, movementDirection);
-    this.raycaster.far = movementDistance + playerRadius;
+    // CRITICAL FIX: Use dedicated environment raycaster instead of main raycaster
+    console.log(`🚧 CRITICAL FIX: Using dedicated ENVIRONMENT raycaster (preserving main raycaster for terrain)`);
+    this.environmentRaycaster.set(currentPosition, movementDirection);
+    this.environmentRaycaster.far = movementDistance + playerRadius;
     
     // Check collision with all environment objects
     for (const [id, collisionObject] of this.collisionObjects) {
       if (collisionObject.type === 'environment' || collisionObject.type === 'staircase') {
-        const intersections = this.raycaster.intersectObject(collisionObject.mesh, true);
+        const intersections = this.environmentRaycaster.intersectObject(collisionObject.mesh, true);
         
         if (intersections.length > 0) {
           const intersection = intersections[0];
@@ -297,7 +301,8 @@ export class PhysicsManager {
           
           // Only consider it a collision if it's closer than the player radius
           if (distanceToCollision <= playerRadius + 0.1) { // Small buffer
-            console.log(`🚧 Raycast collision with ${collisionObject.type} at distance ${distanceToCollision.toFixed(2)}`);
+            console.log(`🚧 Environment raycast collision with ${collisionObject.type} at distance ${distanceToCollision.toFixed(2)}`);
+            console.log(`🚧 Main raycaster preserved for terrain detection - no corruption!`);
             
             return {
               object: collisionObject,
@@ -309,6 +314,7 @@ export class PhysicsManager {
       }
     }
     
+    console.log(`🚧 Environment collision check complete - terrain raycaster remains uncorrupted`);
     return null;
   }
 
