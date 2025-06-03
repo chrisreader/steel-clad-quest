@@ -306,26 +306,17 @@ export class Arrow {
     return true;
   }
 
-  // FIXED: Handle terrain-specific collision while maintaining flight angle
+  // NEW: Handle terrain-specific collision (hills, etc.)
   private hitTerrainObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
-    console.log('🏹 TERRAIN HIT: Processing visual effects while maintaining flight angle');
+    console.log('🏹 TERRAIN HIT: Processing visual effects only, no collision system modifications');
     
     this.isStuck = true;
     this.stuckInObject = collision.object.id;
     this.velocity.set(0, 0, 0);
     
-    // Position arrow at collision point with slight embedding along flight direction
-    const embeddingDepth = 0.3;
-    const flightDirection = this.velocity.lengthSq() > 0 ? 
-      this.velocity.clone().normalize() : 
-      this.mesh.getWorldDirection(new THREE.Vector3());
-    
-    const embeddedPosition = collision.point.clone().add(flightDirection.multiplyScalar(embeddingDepth));
-    
-    this.position.copy(embeddedPosition);
+    // Position arrow at terrain collision point
+    this.position.copy(collision.point);
     this.mesh.position.copy(this.position);
-    
-    // Keep the arrow's current flight orientation - DO NOT change rotation
     
     // Remove trail when stuck
     this.removeTrail();
@@ -334,30 +325,18 @@ export class Arrow {
     this.audioManager.play('arrow_impact');
     this.createTerrainImpactEffect(collision.point);
     
-    console.log(`🏹 Arrow stuck in terrain maintaining flight angle at:`, this.position);
+    console.log(`🏹 Arrow stuck in terrain at:`, collision.point);
     console.log('🏹 TERRAIN HIT COMPLETE: No collision system modifications performed');
   }
 
-  // FIXED: Handle environment collision while maintaining flight angle
   private hitEnvironmentObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
-    console.log('🏹 ENVIRONMENT HIT: Processing while maintaining flight angle');
-    
     this.isStuck = true;
     this.stuckInObject = collision.object.id;
     this.velocity.set(0, 0, 0);
     
-    // Position arrow at collision point with slight embedding along flight direction
-    const embeddingDepth = 0.25;
-    const flightDirection = this.velocity.lengthSq() > 0 ? 
-      this.velocity.clone().normalize() : 
-      this.mesh.getWorldDirection(new THREE.Vector3());
-    
-    const embeddedPosition = collision.point.clone().add(flightDirection.multiplyScalar(embeddingDepth));
-    
-    this.position.copy(embeddedPosition);
+    // Position arrow at collision point
+    this.position.copy(collision.point);
     this.mesh.position.copy(this.position);
-    
-    // Keep the arrow's current flight orientation - DO NOT change rotation
     
     // Remove trail when stuck
     this.removeTrail();
@@ -369,7 +348,7 @@ export class Arrow {
     // Create material-specific impact effect
     this.createMaterialImpactEffect(collision.point, material);
     
-    console.log(`🏹 Arrow stuck in ${material} object maintaining flight angle at:`, this.position);
+    console.log(`🏹 Arrow stuck in ${material} object at:`, collision.point);
   }
 
   // NEW: Create terrain-specific impact effects
@@ -552,21 +531,12 @@ export class Arrow {
     }
   }
 
-  // FIXED: Handle ground collision while maintaining flight angle
   private hitGround(): void {
     this.isGrounded = true;
     this.velocity.set(0, 0, 0);
     
     // Ensure arrow lands exactly at ground level
     this.position.y = 0.0;
-    this.mesh.position.copy(this.position);
-    
-    // Keep the arrow's current flight orientation - DO NOT change rotation
-    
-    // Embed arrow slightly into ground along its current trajectory
-    const embeddingDepth = 0.2;
-    const flightDirection = this.mesh.getWorldDirection(new THREE.Vector3());
-    this.position.add(flightDirection.multiplyScalar(embeddingDepth));
     this.mesh.position.copy(this.position);
     
     // Remove trail when hitting ground
@@ -576,8 +546,6 @@ export class Arrow {
     
     // Create simple ground impact effect
     this.createSimpleImpactEffect();
-    
-    console.log(`🏹 Arrow stuck in ground maintaining flight angle`);
   }
 
   private createSimpleImpactEffect(): void {
