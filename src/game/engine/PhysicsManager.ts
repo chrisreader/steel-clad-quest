@@ -99,7 +99,7 @@ export class PhysicsManager {
     }
   }
 
-  // ENHANCED: Better terrain height calculation for surface following
+  // ENHANCED: Better terrain height calculation with boundary handling
   public getTerrainHeightAtPosition(position: THREE.Vector3): number {
     const cacheKey = `${Math.floor(position.x * 10)},${Math.floor(position.z * 10)}`;
     
@@ -113,7 +113,7 @@ export class PhysicsManager {
         const terrain = collisionObject.mesh;
         const heightData = collisionObject.heightData;
         
-        // FIXED: Proper coordinate transformation for cone-shaped hill
+        // Enhanced coordinate transformation with boundary handling
         const terrainPos = terrain.position;
         const terrainSize = terrain.userData.terrainSize || 30;
         
@@ -125,22 +125,31 @@ export class PhysicsManager {
         const distanceFromCenter = Math.sqrt(localX * localX + localZ * localZ);
         const radius = terrainSize / 2;
         
-        // Check if position is within terrain bounds
+        // Enhanced boundary handling - gradual transition instead of hard cutoff
         if (distanceFromCenter <= radius) {
-          // FIXED: Direct cone height calculation
+          // Calculate cone height with smoother transitions
           const normalizedDistance = Math.min(1, distanceFromCenter / radius);
           
-          // For a cone, height decreases linearly from center to edge
+          // Smoother falloff using cosine interpolation
+          const smoothFactor = 0.5 * (1 + Math.cos(normalizedDistance * Math.PI));
+          
           const maxHeight = Math.max(...heightData.flat());
-          const height = maxHeight * (1 - normalizedDistance);
+          const height = maxHeight * smoothFactor;
           
           // Add terrain base position
           const finalHeight = terrainPos.y + height;
           
           this.terrainHeightCache.set(cacheKey, finalHeight);
           
-          console.log(`🏔️ FIXED terrain height at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${finalHeight.toFixed(2)}`);
-          console.log(`🏔️ Distance from center: ${distanceFromCenter.toFixed(2)}, radius: ${radius}, height: ${height.toFixed(2)}`);
+          return finalHeight;
+        } else if (distanceFromCenter <= radius * 1.2) {
+          // Transition zone - gradual descent to ground level
+          const transitionFactor = (distanceFromCenter - radius) / (radius * 0.2);
+          const maxHeight = Math.max(...heightData.flat());
+          const transitionHeight = maxHeight * (1 - transitionFactor);
+          
+          const finalHeight = terrainPos.y + Math.max(0, transitionHeight);
+          this.terrainHeightCache.set(cacheKey, finalHeight);
           
           return finalHeight;
         }

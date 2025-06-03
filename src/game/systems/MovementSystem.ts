@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -15,6 +16,8 @@ export class MovementSystem {
   private surfaceMovementCalculator: SurfaceMovementCalculator;
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
+  private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
+  private movementStuckCounter: number = 0;
   
   constructor(
     scene: THREE.Scene,
@@ -29,11 +32,11 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    // Initialize new surface-following systems
+    // Initialize enhanced surface-following systems
     this.surfaceDetector = new TerrainSurfaceDetector(physicsManager);
     this.surfaceMovementCalculator = new SurfaceMovementCalculator();
     
-    console.log("🏃 [MovementSystem] Initialized with TRUE SURFACE-FOLLOWING movement for hill walking");
+    console.log("🏃 [MovementSystem] Enhanced with improved surface-following and stuck prevention");
     
     this.setupSprintHandler();
     this.testInputManager();
@@ -62,17 +65,35 @@ export class MovementSystem {
   public update(deltaTime: number): void {
     this.frameCount++;
     
-    // Enhanced debugging every 60 frames
-    if (this.frameCount % 60 === 0) {
-      const pos = this.player.getPosition();
-      console.log(`\n🏔️ === SURFACE-FOLLOWING DEBUG REPORT ===`);
-      console.log(`🏔️ Player Position: (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)})`);
-      
-      // Test surface data at player position
-      const surfaceData = this.surfaceDetector.getSurfaceDataAtPosition(pos);
-      console.log(`🏔️ Surface Data: height=${surfaceData.height.toFixed(2)}, slope=${surfaceData.slopeAngle.toFixed(1)}°, walkable=${surfaceData.isWalkable}`);
-      console.log(`🏔️ === END SURFACE DEBUG ===\n`);
+    // Check if player is stuck
+    const currentPos = this.player.getPosition();
+    const movementDistance = currentPos.distanceTo(this.lastPlayerPosition);
+    
+    if (movementDistance < 0.01) {
+      this.movementStuckCounter++;
+    } else {
+      this.movementStuckCounter = 0;
     }
+    
+    // Enhanced debugging every 60 frames or when stuck
+    if (this.frameCount % 60 === 0 || this.movementStuckCounter > 30) {
+      console.log(`\n🏔️ === ENHANCED SURFACE-FOLLOWING DEBUG ===`);
+      console.log(`🏔️ Player Position: (${currentPos.x.toFixed(1)}, ${currentPos.y.toFixed(1)}, ${currentPos.z.toFixed(1)})`);
+      console.log(`🏔️ Movement Distance: ${movementDistance.toFixed(4)}, Stuck Counter: ${this.movementStuckCounter}`);
+      
+      const surfaceData = this.surfaceDetector.getSurfaceDataAtPosition(currentPos);
+      console.log(`🏔️ Surface: height=${surfaceData.height.toFixed(2)}, slope=${surfaceData.slopeAngle.toFixed(1)}°, walkable=${surfaceData.isWalkable}, boundary=${surfaceData.isTerrainBoundary}`);
+      
+      if (this.movementStuckCounter > 30) {
+        console.log(`🏔️ 🚨 PLAYER STUCK DETECTED - Resetting movement calculator`);
+        this.surfaceMovementCalculator.resetStuckCounter();
+        this.movementStuckCounter = 0;
+      }
+      
+      console.log(`🏔️ === END DEBUG ===\n`);
+    }
+    
+    this.lastPlayerPosition.copy(currentPos);
     
     // Handle movement input
     const moveDirection = new THREE.Vector3();
@@ -113,7 +134,7 @@ export class MovementSystem {
       }
     }
     
-    // Apply TRUE SURFACE-FOLLOWING movement
+    // Apply enhanced surface-following movement
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
@@ -140,7 +161,7 @@ export class MovementSystem {
       const currentPosition = this.player.getPosition();
       const surfaceData = this.surfaceDetector.getSurfaceDataAtPosition(currentPosition);
       
-      // Calculate surface-following movement
+      // Calculate enhanced surface-following movement
       const movementResult = this.surfaceMovementCalculator.calculateSurfaceMovement(
         currentPosition,
         worldMoveDirection,
@@ -150,13 +171,22 @@ export class MovementSystem {
       );
       
       if (!movementResult.isBlocked) {
-        // Apply the new position directly
+        // Apply the new position
         this.player.setPosition(movementResult.newPosition);
         
-        console.log(`🏃 SURFACE MOVEMENT: from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${movementResult.newPosition.x.toFixed(2)}, ${movementResult.newPosition.y.toFixed(2)}, ${movementResult.newPosition.z.toFixed(2)})`);
-        console.log(`🏃 Surface slope: ${surfaceData.slopeAngle.toFixed(1)}°, terrain height: ${surfaceData.height.toFixed(2)}`);
+        if (this.frameCount % 30 === 0) { // Less frequent logging
+          console.log(`🏃 ENHANCED MOVEMENT: ${movementResult.debugInfo || 'NORMAL'}`);
+          console.log(`🏃 From: (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)})`);
+          console.log(`🏃 To: (${movementResult.newPosition.x.toFixed(2)}, ${movementResult.newPosition.y.toFixed(2)}, ${movementResult.newPosition.z.toFixed(2)})`);
+          console.log(`🏃 Surface: slope=${surfaceData.slopeAngle.toFixed(1)}°, boundary=${surfaceData.isTerrainBoundary}`);
+        }
       } else {
-        console.log("🏃 Movement blocked by steep slope or obstacle");
+        console.log("🏃 Movement blocked - applying fallback");
+        // Simple fallback movement
+        const fallbackMovement = worldMoveDirection.clone().multiplyScalar(speed * deltaTime * 0.3);
+        const fallbackPosition = currentPosition.clone().add(fallbackMovement);
+        fallbackPosition.y = Math.max(surfaceData.height + 0.4, currentPosition.y);
+        this.player.setPosition(fallbackPosition);
       }
     }
   }
