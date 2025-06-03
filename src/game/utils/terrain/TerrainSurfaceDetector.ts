@@ -17,39 +17,39 @@ export class TerrainSurfaceDetector {
 
   constructor(physicsManager: PhysicsManager) {
     this.physicsManager = physicsManager;
-    console.log('🏔️ TerrainSurfaceDetector initialized with smooth raycast-based detection');
+    console.log('🏔️ TerrainSurfaceDetector initialized with raycast-based detection');
   }
 
   public getSurfaceDataAtPosition(position: THREE.Vector3): SurfaceData {
-    // Get terrain data using smooth raycasting
+    // Get terrain data using raycasting
     const terrainData = this.physicsManager.getTerrainDataAtPosition(position);
     const height = terrainData.height;
     const normal = terrainData.normal;
     
-    // Calculate slope angle from normal with smoothing
+    // Calculate slope angle from normal
     const up = new THREE.Vector3(0, 1, 0);
     const slopeAngle = Math.acos(Math.max(-1, Math.min(1, normal.dot(up)))) * (180 / Math.PI);
     
-    // Check if we're at terrain boundary with tolerance
-    const isTerrainBoundary = height <= 0.2; // Slightly higher tolerance for smooth transitions
+    // Check if we're at terrain boundary (raycast miss indicates boundary)
+    const isTerrainBoundary = height <= 0.1;
     
-    // Determine walkability with gradual falloff
+    // Determine walkability
     let isWalkable = slopeAngle <= this.maxSlopeAngle;
     if (isTerrainBoundary) {
       isWalkable = true; // Always walkable on flat ground
     }
     
-    // Determine material based on slope with smooth transitions
+    // Determine material based on slope
     let material: 'grass' | 'stone' | 'dirt' = 'grass';
     if (isTerrainBoundary) {
       material = 'dirt';
-    } else if (slopeAngle > 25) { // Adjusted for smoother transitions
+    } else if (slopeAngle > 30) {
       material = 'stone';
-    } else if (slopeAngle > 10) { // Lowered threshold for more natural feel
+    } else if (slopeAngle > 15) {
       material = 'dirt';
     }
 
-    console.log(`🏔️ SMOOTH Surface at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}): height=${height.toFixed(2)}, slope=${slopeAngle.toFixed(1)}°, walkable=${isWalkable}, boundary=${isTerrainBoundary}`);
+    console.log(`🏔️ Surface at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}): height=${height.toFixed(2)}, slope=${slopeAngle.toFixed(1)}°, walkable=${isWalkable}, boundary=${isTerrainBoundary}`);
 
     return {
       height,
