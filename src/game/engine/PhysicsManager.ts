@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface CollisionObject {
@@ -226,7 +227,7 @@ export class PhysicsManager {
       return currentPosition;
     }
     
-    // Step 6: Final collision check - FIXED: Only check dynamic objects, not environment
+    // Step 6: Final collision check - FIXED: Exclude environment objects, only check dynamic objects
     const finalCollision = this.checkSphereCollision(finalPosition, playerRadius, ['environment']);
     if (finalCollision) {
       console.log('🏔️ [PhysicsManager] Final position has collision with dynamic object - staying at current position');
