@@ -12,7 +12,7 @@ export class MovementSystem {
   private physicsManager: PhysicsManager;
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
-  private smoothingFactor: number = 0.03; // FIXED: Smoother transitions for better stair/slope movement
+  private smoothingFactor: number = 0.03; // Smoother transitions for better stair/slope movement
   
   constructor(
     scene: THREE.Scene,
@@ -192,26 +192,6 @@ export class MovementSystem {
         console.log("🏃 [MovementSystem] Movement blocked by collision, terrain, or steep slope");
       }
     }
-  }
-  
-  private testInputManager(): void {
-    console.log("🏃 [MovementSystem] Testing input manager:");
-    console.log("🏃 [MovementSystem] - isActionPressed method:", typeof this.inputManager.isActionPressed);
-    console.log("🏃 [MovementSystem] - moveForward test:", this.inputManager.isActionPressed('moveForward'));
-    console.log("🏃 [MovementSystem] - Available key bindings:", this.inputManager.getKeyBindings());
-  }
-  
-  private setupSprintHandler(): void {
-    document.addEventListener('gameInput', (event: Event) => {
-      const customEvent = event as CustomEvent;
-      const { type } = customEvent.detail;
-      
-      if (type === 'doubleTapForward') {
-        console.log("🏃 [MovementSystem] Double tap forward detected - starting sprint");
-        this.isSprintActivatedByDoubleTap = true;
-        this.player.startSprint();
-      }
-    });
   }
   
   public setSprintEnabled(enabled: boolean): void {
