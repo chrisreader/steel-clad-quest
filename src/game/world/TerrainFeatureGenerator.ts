@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { TextureGenerator } from '../utils';
@@ -37,6 +36,11 @@ export class TerrainFeatureGenerator {
   public setCollisionRegistrationCallback(callback: (object: THREE.Object3D) => void): void {
     this.collisionRegistrationCallback = callback;
     console.log('🔧 TerrainFeatureGenerator collision registration callback set');
+  }
+  
+  // NEW: Get spawned features for a region (for manual collision registration)
+  public getSpawnedFeaturesForRegion(regionKey: string): THREE.Object3D[] | undefined {
+    return this.spawnedFeatures.get(regionKey);
   }
   
   private loadModels(): void {
@@ -292,7 +296,7 @@ export class TerrainFeatureGenerator {
           // NEW: Register for collision immediately after spawning
           if (this.collisionRegistrationCallback) {
             this.collisionRegistrationCallback(feature);
-            console.log(`🔧 Registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
+            console.log(`🔧 Callback registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
           }
         }
       }
@@ -320,7 +324,7 @@ export class TerrainFeatureGenerator {
           // NEW: Register for collision immediately after spawning
           if (this.collisionRegistrationCallback) {
             this.collisionRegistrationCallback(feature);
-            console.log(`🔧 Registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
+            console.log(`🔧 Callback registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
           }
         }
       }
