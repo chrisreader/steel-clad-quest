@@ -19,10 +19,9 @@ export class StructureGenerator {
     this.scene = scene;
   }
   
-  // Enhanced staircase creation with proper step tagging
-  public createStaircase(x: number, y: number, z: number, steps: number = 8, stepWidth: number = 3, stepHeight: number = 0.6, stepDepth: number = 1.2): THREE.Group {
+  // New method: Create staircase structure
+  public createStaircase(x: number, y: number, z: number, steps: number = 5, stepWidth: number = 2, stepHeight: number = 0.5, stepDepth: number = 1): THREE.Group {
     const staircase = new THREE.Group();
-    staircase.name = 'staircase'; // Important for collision detection
     
     for (let i = 0; i < steps; i++) {
       const geometry = new THREE.BoxGeometry(stepWidth, stepHeight, stepDepth);
@@ -38,14 +37,11 @@ export class StructureGenerator {
       step.castShadow = true;
       step.receiveShadow = true;
       
-      // Tag steps for collision detection
-      step.name = 'staircase_step';
-      step.userData = { stepIndex: i, stepHeight: i * stepHeight + stepHeight / 2 };
-      
       staircase.add(step);
     }
     
     staircase.position.set(x, y, z);
+    staircase.name = 'staircase';
     
     console.log(`Created staircase with ${steps} steps at position (${x}, ${y}, ${z})`);
     return staircase;
