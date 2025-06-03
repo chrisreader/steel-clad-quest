@@ -56,10 +56,43 @@ export class StructureGenerator {
     return staircase;
   }
   
-  // NEW METHOD: Create a test hill for slope navigation testing
+  // ENHANCED: Create test hill using PlaneGeometry for proper terrain consistency
   public createTestHill(x: number, y: number, z: number, radius: number = 15, maxHeight: number = 8): THREE.Mesh {
     const segments = 32;
-    const geometry = new THREE.ConeGeometry(radius, maxHeight, segments);
+    const geometry = new THREE.PlaneGeometry(radius * 2, radius * 2, segments, segments);
+    
+    // Create height data and modify geometry vertices
+    const heightData: number[][] = [];
+    const vertices = geometry.attributes.position.array as Float32Array;
+    
+    for (let i = 0; i <= segments; i++) {
+      heightData[i] = [];
+      for (let j = 0; j <= segments; j++) {
+        // Calculate position from center
+        const vx = (i / segments - 0.5) * radius * 2;
+        const vz = (j / segments - 0.5) * radius * 2;
+        const distanceFromCenter = Math.sqrt(vx * vx + vz * vz);
+        
+        // Create hill-like height profile with smooth falloff
+        let height = 0;
+        if (distanceFromCenter < radius) {
+          // Create slopes with varying steepness for testing
+          const normalizedDistance = distanceFromCenter / radius;
+          height = maxHeight * (1 - normalizedDistance * normalizedDistance); // Squared for steeper edges
+        }
+        
+        heightData[i][j] = height;
+        
+        // Apply height to geometry vertex
+        const vertexIndex = (i * (segments + 1) + j) * 3;
+        vertices[vertexIndex + 2] = height; // Z component in plane geometry becomes height
+      }
+    }
+    
+    // Update geometry
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    
     const material = new THREE.MeshStandardMaterial({ 
       color: 0x4a5d3a, // Dark green for hill
       roughness: 0.9,
@@ -67,43 +100,22 @@ export class StructureGenerator {
     });
     
     const hill = new THREE.Mesh(geometry, material);
-    hill.position.set(x, y + maxHeight / 2, z);
+    
+    // Rotate to be horizontal (PlaneGeometry starts vertical)
+    hill.rotation.x = -Math.PI / 2;
+    hill.position.set(x, y, z);
     hill.castShadow = true;
     hill.receiveShadow = true;
     hill.name = 'test_hill';
     
-    // Create height data for physics system
-    const heightData: number[][] = [];
-    const hillSize = radius * 2;
-    const heightMapSize = 32;
-    
-    for (let i = 0; i <= heightMapSize; i++) {
-      heightData[i] = [];
-      for (let j = 0; j <= heightMapSize; j++) {
-        // Calculate distance from center
-        const centerX = heightMapSize / 2;
-        const centerZ = heightMapSize / 2;
-        const distanceFromCenter = Math.sqrt((i - centerX) ** 2 + (j - centerZ) ** 2);
-        const normalizedDistance = distanceFromCenter / (heightMapSize / 2);
-        
-        // Create cone-like height profile with smooth falloff
-        let height = 0;
-        if (normalizedDistance < 1) {
-          height = maxHeight * (1 - normalizedDistance) * Math.cos(normalizedDistance * Math.PI / 2);
-        }
-        
-        heightData[i][j] = height;
-      }
-    }
-    
     // Store height data for physics system access
     hill.userData.heightData = heightData;
-    hill.userData.terrainSize = hillSize;
+    hill.userData.terrainSize = radius * 2;
     
     this.scene.add(hill);
     
     console.log(`🏔️ Created test hill at position (${x}, ${y}, ${z}) with radius=${radius}, maxHeight=${maxHeight}`);
-    console.log(`🏔️ Hill has varying slopes including some > 45° near the peak for testing`);
+    console.log(`🏔️ Hill has varying slopes including some > 45° near the edges for testing`);
     
     return hill;
   }
@@ -140,7 +152,7 @@ export class StructureGenerator {
       this.scene.add(staircase);
       console.log(`🪜 Placed enhanced staircase at (50, 0, 50) in Ring 0, Quadrant 0`);
       
-      // Test hill at (20, 0, 30) for slope navigation testing
+      // ENHANCED: Test hill with proper terrain generation at (20, 0, 30)
       const testHill = this.createTestHill(20, 0, 30, 12, 6);
       structures.push({
         type: 'test_hill',

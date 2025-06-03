@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
@@ -11,7 +12,7 @@ export class MovementSystem {
   private physicsManager: PhysicsManager;
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
-  private smoothingFactor: number = 0.05; // Reduced for faster height adjustments on stairs and slopes
+  private smoothingFactor: number = 0.03; // FIXED: Smoother transitions for better stair/slope movement
   
   constructor(
     scene: THREE.Scene,
@@ -140,8 +141,8 @@ export class MovementSystem {
       const movementDistance = worldMoveDirection.length() * 5.0 * deltaTime; // 5.0 is movement speed
       const targetPosition = currentPosition.clone().add(worldMoveDirection.normalize().multiplyScalar(movementDistance));
       
-      // ENHANCED COLLISION AND TERRAIN FOLLOWING
-      // Step 1: Check for collisions and get safe position (includes staircase climbing)
+      // ENHANCED COLLISION AND TERRAIN FOLLOWING WITH IMPROVED STAIRCASE/SLOPE HANDLING
+      // Step 1: Check for collisions and get safe position (includes enhanced staircase climbing)
       let safePosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.4);
       
       // Step 2: Get slope angle at safe position for additional validation
@@ -160,9 +161,9 @@ export class MovementSystem {
       
       // Use smooth interpolation for natural movement over hills and stairs
       const heightDifference = targetHeight - currentHeight;
-      const maxHeightChange = 6.0 * deltaTime; // Increased for better stair climbing
+      const maxHeightChange = 8.0 * deltaTime; // Increased for better stair climbing
       
-      if (Math.abs(heightDifference) > 0.05) { // Reduced threshold for more responsive movement
+      if (Math.abs(heightDifference) > 0.02) { // Very responsive for stairs
         const heightAdjustment = Math.sign(heightDifference) * Math.min(Math.abs(heightDifference), maxHeightChange);
         safePosition.y = currentHeight + heightAdjustment;
       } else {
@@ -191,6 +192,26 @@ export class MovementSystem {
         console.log("🏃 [MovementSystem] Movement blocked by collision, terrain, or steep slope");
       }
     }
+  }
+  
+  private testInputManager(): void {
+    console.log("🏃 [MovementSystem] Testing input manager:");
+    console.log("🏃 [MovementSystem] - isActionPressed method:", typeof this.inputManager.isActionPressed);
+    console.log("🏃 [MovementSystem] - moveForward test:", this.inputManager.isActionPressed('moveForward'));
+    console.log("🏃 [MovementSystem] - Available key bindings:", this.inputManager.getKeyBindings());
+  }
+  
+  private setupSprintHandler(): void {
+    document.addEventListener('gameInput', (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { type } = customEvent.detail;
+      
+      if (type === 'doubleTapForward') {
+        console.log("🏃 [MovementSystem] Double tap forward detected - starting sprint");
+        this.isSprintActivatedByDoubleTap = true;
+        this.player.startSprint();
+      }
+    });
   }
   
   public setSprintEnabled(enabled: boolean): void {

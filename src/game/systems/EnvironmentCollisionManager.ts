@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PhysicsManager } from '../engine/PhysicsManager';
 
@@ -36,7 +35,7 @@ export class EnvironmentCollisionManager {
     // Skip if already registered
     if (this.registeredObjects.has(object.uuid)) return;
 
-    // Special handling for test hills with height data
+    // ENHANCED: Special handling for test hills with height data
     if (object instanceof THREE.Mesh && object.name === 'test_hill' && object.userData.heightData) {
       const heightData = object.userData.heightData;
       const terrainSize = object.userData.terrainSize || 30;
@@ -45,15 +44,16 @@ export class EnvironmentCollisionManager {
       this.registeredObjects.add(id);
       
       console.log(`🏔️ Registered test hill as terrain collision with height data at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
+      console.log(`🏔️ Test hill terrain size: ${terrainSize}, heightData dimensions: ${heightData.length}x${heightData[0]?.length || 0}`);
       return;
     }
 
-    // Special handling for staircases
+    // ENHANCED: Special handling for staircases (register steps individually)
     if (object instanceof THREE.Group && object.name === 'staircase') {
       const id = this.physicsManager.addCollisionObject(object, 'staircase', 'stone', object.uuid);
       this.registeredObjects.add(id);
       
-      console.log(`🪜 Registered staircase collision at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
+      console.log(`🪜 Registered staircase collision (with ${object.children.length} steps) at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
       return;
     }
 

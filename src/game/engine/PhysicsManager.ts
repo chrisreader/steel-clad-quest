@@ -74,7 +74,6 @@ export class PhysicsManager {
         if (clampedX >= 0 && clampedX < heightData.length && clampedZ >= 0 && clampedZ < heightData[0].length) {
           const height = heightData[clampedX][clampedZ] + terrain.position.y;
           this.terrainHeightCache.set(cacheKey, height);
-          console.log(`🏔️ Terrain height at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}): ${height.toFixed(2)}`);
           return height;
         }
       }
@@ -108,8 +107,6 @@ export class PhysicsManager {
           
           // Calculate angle between surface normal and up vector
           const angle = Math.acos(Math.max(-1, Math.min(1, normal.dot(up)))) * (180 / Math.PI);
-          
-          console.log(`🏔️ Slope angle at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}): ${angle.toFixed(1)}°`);
           return angle;
         }
       }
@@ -118,15 +115,15 @@ export class PhysicsManager {
     return 0; // Flat terrain if no heightmap found
   }
 
-  // Enhanced collision object registration with better staircase handling
+  // FIXED: Only register staircase steps, not parent staircase group
   public addCollisionObject(object: THREE.Object3D, type: 'environment' | 'player' | 'projectile' | 'enemy' | 'terrain' | 'staircase' | 'staircase_step', material: 'wood' | 'stone' | 'metal' | 'fabric' = 'stone', id?: string): string {
     const objectId = id || `collision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Enhanced handling for staircase groups
+    // FIXED: Only register individual steps for staircases
     if (object instanceof THREE.Group && object.name === 'staircase') {
       console.log(`🪜 Adding staircase with ${object.children.length} steps`);
       
-      // Register each step as a separate collision object
+      // Register only individual steps, skip parent group
       object.children.forEach((child, index) => {
         if (child instanceof THREE.Mesh && child.name === 'staircase_step') {
           const childId = `${objectId}_step_${index}`;
@@ -145,18 +142,7 @@ export class PhysicsManager {
         }
       });
       
-      // Also register the whole staircase group
-      const box = new THREE.Box3().setFromObject(object);
-      const collisionObject: CollisionObject = {
-        mesh: object,
-        box: box,
-        type: type,
-        material: material,
-        id: objectId
-      };
-      
-      this.collisionObjects.set(objectId, collisionObject);
-      console.log(`🪜 Added staircase group: ${objectId}`);
+      // Return without registering parent group
       return objectId;
     } else {
       // Existing logic for other objects
@@ -238,7 +224,7 @@ export class PhysicsManager {
     return null;
   }
 
-  // Enhanced player movement with proper staircase climbing
+  // ENHANCED: Better staircase step climbing with downward raycasting and wider detection
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
     const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
     const distance = direction.length();
@@ -247,7 +233,7 @@ export class PhysicsManager {
     
     direction.normalize();
     
-    // STEP 1: Check if we're trying to climb a staircase step
+    // STEP 1: Enhanced staircase step climbing
     const stepPosition = this.checkStaircaseStepClimbing(currentPosition, targetPosition, playerRadius);
     if (stepPosition && !stepPosition.equals(targetPosition)) {
       console.log(`🪜 STAIR CLIMBING: Adjusted position from y=${targetPosition.y.toFixed(2)} to y=${stepPosition.y.toFixed(2)}`);
@@ -273,24 +259,52 @@ export class PhysicsManager {
       return this.handleWallSliding(currentPosition, targetPosition, collision, playerRadius);
     }
     
-    // STEP 4: Follow terrain height at target position
+    // STEP 4: Follow terrain height with slope projection
     const terrainHeight = this.getTerrainHeightAtPosition(targetPosition);
     const adjustedTarget = targetPosition.clone();
     
-    // Ensure player stays above terrain
-    adjustedTarget.y = Math.max(adjustedTarget.y, terrainHeight + playerRadius);
+    // ENHANCED: Slope projection for natural movement
+    if (slopeAngle <= 45 && slopeAngle > 0) {
+      // Calculate terrain normal for slope projection
+      const dx = this.getTerrainHeightAtPosition(new THREE.Vector3(targetPosition.x + 1, 0, targetPosition.z)) - 
+                this.getTerrainHeightAtPosition(new THREE.Vector3(targetPosition.x - 1, 0, targetPosition.z));
+      const dz = this.getTerrainHeightAtPosition(new THREE.Vector3(targetPosition.x, 0, targetPosition.z + 1)) - 
+                this.getTerrainHeightAtPosition(new THREE.Vector3(targetPosition.x, 0, targetPosition.z - 1));
+      
+      const normal = new THREE.Vector3(-dx / 2, 1, -dz / 2).normalize();
+      const movement = new THREE.Vector3().subVectors(targetPosition, currentPosition);
+      const projectedMovement = movement.clone().sub(normal.clone().multiplyScalar(movement.dot(normal)));
+      
+      adjustedTarget.copy(currentPosition).add(projectedMovement);
+      adjustedTarget.y = terrainHeight + playerRadius;
+      
+      console.log(`🏔️ Slope projection: angle=${slopeAngle.toFixed(1)}°, normal=(${normal.x.toFixed(2)}, ${normal.y.toFixed(2)}, ${normal.z.toFixed(2)})`);
+    } else {
+      // Ensure player stays above terrain
+      adjustedTarget.y = Math.max(adjustedTarget.y, terrainHeight + playerRadius);
+    }
     
-    console.log(`🏔️ Movement: terrain height=${terrainHeight.toFixed(2)}, adjusted y=${adjustedTarget.y.toFixed(2)}`);
     return adjustedTarget;
   }
 
-  // NEW METHOD: Enhanced staircase step climbing detection
+  // ENHANCED: Staircase step climbing with downward raycasting and wider distance
   private checkStaircaseStepClimbing(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number): THREE.Vector3 | null {
+    // Downward raycast to detect steps under player
+    const downRay = this.checkRayCollision(currentPosition, new THREE.Vector3(0, -1, 0), 1.0, ['projectile', 'enemy']);
+    if (downRay && downRay.object.type === 'staircase_step') {
+      const stepCenter = new THREE.Vector3();
+      downRay.object.box.getCenter(stepCenter);
+      const adjustedTarget = targetPosition.clone();
+      adjustedTarget.y = stepCenter.y + playerRadius;
+      console.log(`🪜 DOWN RAY STEP: y=${adjustedTarget.y.toFixed(2)}`);
+      return adjustedTarget;
+    }
+    
+    // Forward check for next step
     let closestStep: CollisionObject | null = null;
     let minDistance = Infinity;
     const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition).normalize();
     
-    // Look for staircase steps in movement direction
     for (const [id, collisionObject] of this.collisionObjects) {
       if (collisionObject.type === 'staircase_step') {
         const stepCenter = new THREE.Vector3();
@@ -300,8 +314,8 @@ export class PhysicsManager {
         const toStep = new THREE.Vector3().subVectors(stepCenter, currentPosition);
         const distance = toStep.dot(direction);
         
-        // Check if step is ahead of player and within step depth range
-        if (distance > 0 && distance < 1.2 && distance < minDistance) {
+        // FIXED: Increased distance from 1.2 to 1.5 for better detection
+        if (distance > 0 && distance < 1.5 && distance < minDistance) {
           const heightDiff = stepCenter.y - currentPosition.y;
           
           // Check if step height is climbable (within step height limit)
@@ -321,7 +335,7 @@ export class PhysicsManager {
       // Set player height to step height plus radius
       adjustedTarget.y = stepCenter.y + playerRadius;
       
-      console.log(`🪜 CLIMBING STEP: Step center y=${stepCenter.y.toFixed(2)}, player y=${adjustedTarget.y.toFixed(2)}`);
+      console.log(`🪜 FORWARD STEP: y=${adjustedTarget.y.toFixed(2)}`);
       return adjustedTarget;
     }
     
