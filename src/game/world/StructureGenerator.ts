@@ -65,16 +65,14 @@ export class StructureGenerator {
     return staircase;
   }
   
-  // NEW: Smooth height interpolation function
-  private smoothstep(edge0: number, edge1: number, x: number): number {
-    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
-    return t * t * (3 - 2 * t);
-  }
-  
-  // NEW: Create smooth heightfield geometry
-  private createSmoothHillGeometry(radius: number, maxHeight: number, segments: number = 64): THREE.PlaneGeometry {
+  // FIXED: Create smooth heightfield geometry with proper vertex generation
+  private createSmoothHillGeometry(radius: number, maxHeight: number, segments: number = 32): THREE.PlaneGeometry {
+    console.log(`🏔️ Creating smooth hill geometry: radius=${radius}, maxHeight=${maxHeight}, segments=${segments}`);
+    
     const geometry = new THREE.PlaneGeometry(radius * 2, radius * 2, segments, segments);
     const position = geometry.attributes.position;
+    
+    console.log(`🏔️ PlaneGeometry created with ${position.count} vertices`);
     
     // Apply smooth height calculation to each vertex
     for (let i = 0; i < position.count; i++) {
@@ -87,25 +85,27 @@ export class StructureGenerator {
       
       let height = 0;
       if (normalizedDistance <= 1.0) {
-        // Use smoothstep for smooth falloff at edges
-        const falloff = this.smoothstep(0.8, 1.0, normalizedDistance);
-        const heightFactor = 1 - falloff;
+        // Use smooth cosine falloff for natural hill shape
+        const heightFactor = Math.cos(normalizedDistance * Math.PI * 0.5);
+        height = maxHeight * heightFactor * heightFactor; // Square for steeper falloff
         
-        // Apply additional smoothing using cosine interpolation
-        const cosineSmooth = (1 + Math.cos(normalizedDistance * Math.PI)) / 2;
-        height = maxHeight * heightFactor * cosineSmooth;
+        // Add subtle noise for organic feel
+        const noise = (Math.sin(x * 0.5) + Math.cos(z * 0.3)) * 0.1;
+        height += noise * maxHeight * 0.1;
       }
       
       position.setY(i, height);
     }
     
-    // Compute smooth normals
+    // Ensure geometry updates and compute smooth normals
+    position.needsUpdate = true;
     geometry.computeVertexNormals();
     
+    console.log(`🏔️ Smooth hill geometry created successfully`);
     return geometry;
   }
   
-  // Enhanced createTestHill with Smooth Geometry and Edge Smoothing
+  // FIXED: Enhanced createTestHill with proper geometry and registration
   public createTestHill(x: number, y: number, z: number, radius: number = 15, maxHeight: number = 8): THREE.Mesh {
     console.log(`\n🏔️ === CREATING SMOOTH TEST HILL ===`);
     console.log(`🏔️ Position: (${x}, ${y}, ${z}), Radius: ${radius}, MaxHeight: ${maxHeight}`);
@@ -114,8 +114,8 @@ export class StructureGenerator {
     const geometry = this.createSmoothHillGeometry(radius, maxHeight, 64);
     
     const material = new THREE.MeshStandardMaterial({ 
-      color: 0x4a5d3a,
-      roughness: 0.9,
+      color: 0x4a7c59,
+      roughness: 0.8,
       metalness: 0.0,
       wireframe: false
     });
@@ -130,16 +130,18 @@ export class StructureGenerator {
     hill.name = 'smooth_test_hill';
     
     console.log(`🏔️ Smooth hill mesh created at position: (${hill.position.x}, ${hill.position.y}, ${hill.position.z})`);
+    console.log(`🏔️ Hill rotation: (${hill.rotation.x}, ${hill.rotation.y}, ${hill.rotation.z})`);
     
-    // Create enhanced height data with smooth interpolation
-    const heightMapSize = 128; // Higher resolution for smoother data
+    // FIXED: Create enhanced height data directly from geometry
+    const heightMapSize = 64; // Match geometry segments
     const heightData: number[][] = [];
     
-    console.log(`🏔️ Generating smooth height data (${heightMapSize}x${heightMapSize})...`);
+    console.log(`🏔️ Generating height data (${heightMapSize + 1}x${heightMapSize + 1})...`);
     
     for (let i = 0; i <= heightMapSize; i++) {
       heightData[i] = [];
       for (let j = 0; j <= heightMapSize; j++) {
+        // Convert grid coordinates to world space
         const worldX = (i / heightMapSize - 0.5) * radius * 2;
         const worldZ = (j / heightMapSize - 0.5) * radius * 2;
         const distanceFromCenter = Math.sqrt(worldX * worldX + worldZ * worldZ);
@@ -147,25 +149,25 @@ export class StructureGenerator {
         
         let height = 0;
         if (normalizedDistance <= 1.0) {
-          // Use smoothstep for smooth falloff at edges
-          const falloff = this.smoothstep(0.8, 1.0, normalizedDistance);
-          const heightFactor = 1 - falloff;
+          // Use same height calculation as geometry
+          const heightFactor = Math.cos(normalizedDistance * Math.PI * 0.5);
+          height = maxHeight * heightFactor * heightFactor;
           
-          // Apply additional smoothing using cosine interpolation
-          const cosineSmooth = (1 + Math.cos(normalizedDistance * Math.PI)) / 2;
-          height = maxHeight * heightFactor * cosineSmooth;
+          // Add same noise as geometry
+          const noise = (Math.sin(worldX * 0.5) + Math.cos(worldZ * 0.3)) * 0.1;
+          height += noise * maxHeight * 0.1;
         }
         
-        heightData[i][j] = height + y;
+        heightData[i][j] = Math.max(0, height + y); // Add base Y position and ensure non-negative
       }
     }
     
-    console.log(`🏔️ Smooth height data generated. Sample heights:`);
-    console.log(`  - Center [${heightMapSize/2}][${heightMapSize/2}]: ${heightData[heightMapSize/2][heightMapSize/2]}`);
-    console.log(`  - Edge [0][0]: ${heightData[0][0]}`);
-    console.log(`  - Edge [${heightMapSize}][${heightMapSize}]: ${heightData[heightMapSize][heightMapSize]}`);
+    console.log(`🏔️ Height data generated. Sample heights:`);
+    console.log(`  - Center [${heightMapSize/2}][${heightMapSize/2}]: ${heightData[Math.floor(heightMapSize/2)][Math.floor(heightMapSize/2)].toFixed(2)}`);
+    console.log(`  - Edge [0][0]: ${heightData[0][0].toFixed(2)}`);
+    console.log(`  - Edge [${heightMapSize}][${heightMapSize}]: ${heightData[heightMapSize][heightMapSize].toFixed(2)}`);
     
-    // Add to visual scene
+    // Add to visual scene FIRST
     this.scene.add(hill);
     console.log(`🏔️ Smooth hill added to visual scene`);
     
@@ -203,6 +205,16 @@ export class StructureGenerator {
     console.log(`🏔️ === SMOOTH HILL CREATION COMPLETE ===\n`);
     return hill;
   }
+  
+  // NEW: Smooth height interpolation function
+  private smoothstep(edge0: number, edge1: number, x: number): number {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
+  }
+  
+  // NEW: Create smooth heightfield geometry
+  
+
   
   // Place structures in regions based on ring definitions
   public generateStructuresForRegion(region: RegionCoordinates): void {
