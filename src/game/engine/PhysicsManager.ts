@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface CollisionObject {
@@ -426,5 +425,37 @@ export class PhysicsManager {
   public clearTerrainCache(): void {
     this.terrainHeightCache.clear();
     console.log('🏔️ Terrain height cache cleared');
+  }
+
+  // CRITICAL FIX: Use dedicated arrow raycaster to prevent corruption of main raycaster
+  private checkTerrainRayIntersection(
+    origin: THREE.Vector3, 
+    direction: THREE.Vector3, 
+    maxDistance: number, 
+    terrainObject: CollisionObject
+  ): { distance: number; point: THREE.Vector3 } | null {
+    const terrain = terrainObject.mesh;
+    
+    // CRITICAL FIX: Use dedicated arrow raycaster instead of shared raycaster
+    console.log(`🏹 Using dedicated arrow raycaster for terrain collision (preserving main raycaster)`);
+    this.arrowRaycaster.set(origin, direction);
+    this.arrowRaycaster.far = maxDistance;
+    
+    const intersections = this.arrowRaycaster.intersectObject(terrain, true);
+    
+    if (intersections.length > 0) {
+      const intersection = intersections[0];
+      const distance = intersection.distance;
+      
+      if (distance <= maxDistance) {
+        console.log(`🏹 Arrow terrain collision detected at distance ${distance.toFixed(2)} (main raycaster preserved)`);
+        return {
+          distance: distance,
+          point: intersection.point
+        };
+      }
+    }
+    
+    return null;
   }
 }
