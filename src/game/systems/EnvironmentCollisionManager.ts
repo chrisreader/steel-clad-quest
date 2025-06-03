@@ -9,31 +9,30 @@ export class EnvironmentCollisionManager {
   private isArrowImpactActive: boolean = false;
   private terrainCollisionLock: boolean = false;
   private terrainValidationTimer: NodeJS.Timeout | null = null;
+  private collisionUpdateDisabled: boolean = false; // COMPLETE shutdown flag
 
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
-    console.log('🔧 EnvironmentCollisionManager initialized with complete terrain protection');
+    console.log('🔧 EnvironmentCollisionManager initialized with COMPLETE terrain isolation');
   }
 
   public registerEnvironmentCollisions(): void {
-    // COMPLETE SHUTDOWN: Never update collisions if arrow impact is active or terrain is locked
-    if (this.terrainCollisionLock || this.isArrowImpactActive) {
-      console.log('🔧 ⚠️ COMPLETE SHUTDOWN: Collision registration blocked - terrain protected');
+    // COMPLETE SHUTDOWN: Never run if collision updates are disabled
+    if (this.collisionUpdateDisabled || this.terrainCollisionLock || this.isArrowImpactActive) {
+      console.log('🔧 ⚠️ COMPLETE SHUTDOWN: All collision registration DISABLED - terrain completely isolated');
       return;
     }
 
-    console.log('🔧 === ENVIRONMENT COLLISION REGISTRATION START ===');
-    console.log('🔧 Registering environment collisions with complete terrain protection...');
+    console.log('🔧 === ENVIRONMENT COLLISION REGISTRATION START (terrain isolation active) ===');
     
     // Validate terrain collisions before any operations
     this.validateAndRestoreTerrainCollisions();
     
-    // DEBUG: Check existing registrations before clearing
     const existingCollisions = this.physicsManager.getCollisionObjects();
     console.log(`🔧 BEFORE PROCESSING: ${existingCollisions.size} collision objects exist`);
     
-    // ENHANCED: Never touch terrain objects - complete preservation
+    // COMPLETE TERRAIN PRESERVATION: Never touch terrain objects
     const preservedTerrainIds = new Set<string>();
     const preservedTerrainMeshes = new Set<string>();
     
@@ -42,12 +41,12 @@ export class EnvironmentCollisionManager {
         preservedTerrainIds.add(id);
         preservedTerrainMeshes.add(obj.mesh.uuid);
         this.terrainObjects.set(obj.mesh.uuid, { meshUUID: obj.mesh.uuid, collisionId: id });
-        console.log(`🔧 PRESERVING TERRAIN: ${id} (${obj.mesh.name}) - UUID: ${obj.mesh.uuid}`);
+        console.log(`🔧 PRESERVING TERRAIN: ${id} (${obj.mesh.name || 'unnamed'}) - UUID: ${obj.mesh.uuid}`);
       }
     }
     
     // Only clear non-terrain environment objects
-    console.log('🔧 ⚠️ CLEARING ENVIRONMENT REGISTRATIONS (complete terrain preservation)...');
+    console.log('🔧 ⚠️ CLEARING NON-TERRAIN REGISTRATIONS (complete terrain preservation)...');
     const objectsToRemove: string[] = [];
     this.registeredObjects.forEach(id => {
       if (!preservedTerrainIds.has(id)) {
@@ -111,7 +110,7 @@ export class EnvironmentCollisionManager {
         if (collisionObject.mesh === object && collisionObject.type === 'terrain') {
           alreadyRegistered = true;
           this.terrainObjects.set(object.uuid, { meshUUID: object.uuid, collisionId: id });
-          console.log(`🏔️ Hill already registered with ID: ${id} - PROTECTED`);
+          console.log(`🏔️ Hill already registered with ID: ${id} - COMPLETELY PROTECTED`);
           break;
         }
       }
@@ -127,7 +126,7 @@ export class EnvironmentCollisionManager {
         const id = this.physicsManager.addTerrainCollision(object, heightData, terrainSize, object.uuid);
         this.registeredObjects.add(id);
         this.terrainObjects.set(object.uuid, { meshUUID: object.uuid, collisionId: id });
-        console.log(`🏔️ ✅ NEW terrain registered and protected with ID: ${id}`);
+        console.log(`🏔️ ✅ NEW terrain registered and COMPLETELY protected with ID: ${id}`);
       }
       return;
     }
@@ -155,7 +154,7 @@ export class EnvironmentCollisionManager {
 
   // ENHANCED: Comprehensive terrain validation and restoration
   private validateAndRestoreTerrainCollisions(): void {
-    console.log('🔧 🔍 Comprehensive terrain validation...');
+    console.log('🔧 🔍 COMPREHENSIVE terrain validation with complete restoration...');
     
     let terrainCount = 0;
     let corruptedTerrain: string[] = [];
@@ -169,9 +168,12 @@ export class EnvironmentCollisionManager {
       } else if (collisionObject.type !== 'terrain') {
         console.error(`🔧 ❌ CORRUPTED: Terrain object has wrong type: ${collisionObject.type}`);
         corruptedTerrain.push(meshUUID);
+      } else if (!collisionObject.heightData || collisionObject.heightData.length === 0) {
+        console.error(`🔧 ❌ CORRUPTED: Terrain object missing height data: ${terrainInfo.collisionId}`);
+        corruptedTerrain.push(meshUUID);
       } else {
         terrainCount++;
-        console.log(`🔧 ✅ VALID: Terrain ${terrainInfo.collisionId} (${collisionObject.mesh.name})`);
+        console.log(`🔧 ✅ VALID: Terrain ${terrainInfo.collisionId} (${collisionObject.mesh.name || 'unnamed'})`);
       }
     }
     
@@ -210,52 +212,58 @@ export class EnvironmentCollisionManager {
     }
   }
 
-  // ENHANCED: Complete terrain protection during arrow impacts
+  // ENHANCED: Complete terrain collision lockdown during arrow impacts
   public lockTerrainCollisions(): void {
     this.terrainCollisionLock = true;
-    console.log('🔧 🔒 Terrain collisions COMPLETELY LOCKED');
+    this.collisionUpdateDisabled = true; // COMPLETE shutdown
+    console.log('🔧 ❄️ TERRAIN COLLISIONS COMPLETELY LOCKED - all updates disabled');
     
     // Clear any existing validation timer
     if (this.terrainValidationTimer) {
       clearTimeout(this.terrainValidationTimer);
     }
+    
+    // Immediate validation and backup
+    this.validateAndRestoreTerrainCollisions();
   }
 
-  // ENHANCED: Delayed unlock with validation
+  // ENHANCED: Delayed unlock with comprehensive validation
   public unlockTerrainCollisions(): void {
-    console.log('🔧 🔓 Unlocking terrain collisions with validation...');
+    console.log('🔧 🔥 Unlocking terrain collisions with comprehensive validation...');
     
     // Validate terrain state before unlocking
     this.validateAndRestoreTerrainCollisions();
     
     // Set a validation timer to check again after unlock
     this.terrainValidationTimer = setTimeout(() => {
-      console.log('🔧 🔍 Post-unlock terrain validation...');
+      console.log('🔧 🔍 Post-unlock comprehensive terrain validation...');
       this.validateAndRestoreTerrainCollisions();
       this.terrainValidationTimer = null;
-    }, 2000);
+    }, 3000); // Extended validation delay
     
     this.terrainCollisionLock = false;
-    console.log('🔧 🔓 Terrain collisions UNLOCKED');
+    this.collisionUpdateDisabled = false; // Re-enable updates
+    console.log('🔧 ✅ TERRAIN COLLISIONS UNLOCKED with comprehensive validation');
   }
 
-  // ENHANCED: Arrow impact state management
+  // ENHANCED: Arrow impact state management with complete isolation
   public setArrowImpactActive(active: boolean): void {
     this.isArrowImpactActive = active;
-    console.log(`🔧 🏹 Arrow impact state: ${active ? 'ACTIVE - FULL PROTECTION' : 'INACTIVE'}`);
+    this.collisionUpdateDisabled = active; // Complete update shutdown during arrow impact
+    console.log(`🔧 🏹 Arrow impact state: ${active ? 'ACTIVE - COMPLETE ISOLATION' : 'INACTIVE - SYSTEMS RESTORED'}`);
     
     if (active) {
       // Immediately validate terrain when arrow impact starts
       this.validateAndRestoreTerrainCollisions();
     } else {
-      // Validate terrain when arrow impact ends
+      // Extended validation when arrow impact ends
       setTimeout(() => {
         this.validateAndRestoreTerrainCollisions();
-      }, 500);
+      }, 1000);
     }
   }
 
-  // ... keep existing code (determineMaterial, shouldRegisterForCollision methods)
+  // ... keep existing code (determineMaterial, shouldRegisterForCollision methods remain the same)
   private determineMaterial(object: THREE.Object3D): 'wood' | 'stone' | 'metal' | 'fabric' {
     if (object instanceof THREE.Mesh && object.material) {
       const material = Array.isArray(object.material) ? object.material[0] : object.material;
@@ -311,13 +319,13 @@ export class EnvironmentCollisionManager {
   }
 
   public updateCollisions(): void {
-    // COMPLETE SHUTDOWN: Never update if terrain is locked or arrow impact is active
-    if (this.terrainCollisionLock || this.isArrowImpactActive) {
+    // COMPLETE SHUTDOWN: Never update if any protection is active
+    if (this.collisionUpdateDisabled || this.terrainCollisionLock || this.isArrowImpactActive) {
       return;
     }
 
-    // Dramatically reduced frequency and only when safe
-    if (Math.random() < 0.001) { // ~1/1000 chance per frame
+    // Extremely reduced frequency when safe
+    if (Math.random() < 0.0001) { // ~1/10000 chance per frame
       this.registerEnvironmentCollisions();
     }
   }
@@ -329,7 +337,7 @@ export class EnvironmentCollisionManager {
       this.terrainValidationTimer = null;
     }
     
-    // Clean up environment objects but preserve all terrain
+    // Clean up environment objects but preserve ALL terrain
     this.registeredObjects.forEach(id => {
       const isTerrainObject = Array.from(this.terrainObjects.values()).some(terrain => terrain.collisionId === id);
       if (!isTerrainObject) {
@@ -338,6 +346,6 @@ export class EnvironmentCollisionManager {
     });
     this.registeredObjects.clear();
     // Keep terrain objects tracked but don't clear them
-    console.log('EnvironmentCollisionManager disposed with complete terrain preservation');
+    console.log('EnvironmentCollisionManager disposed with COMPLETE terrain preservation');
   }
 }

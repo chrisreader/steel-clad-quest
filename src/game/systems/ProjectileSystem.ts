@@ -34,7 +34,7 @@ export class ProjectileSystem {
 
   public setEnvironmentCollisionManager(manager: any): void {
     this.environmentCollisionManager = manager;
-    console.log('🏹 ProjectileSystem connected to EnvironmentCollisionManager');
+    console.log('🏹 ProjectileSystem connected to EnvironmentCollisionManager with COMPLETE terrain protection');
   }
 
   public shootArrow(
@@ -46,10 +46,13 @@ export class ProjectileSystem {
     const normalizedDirection = direction.clone().normalize();
     
     try {
+      // CRITICAL: Validate terrain integrity before arrow creation
       if (this.physicsManager.validateTerrainCollisions()) {
-        console.log('🏹 ✅ Terrain validated before arrow creation');
+        console.log('🏹 ✅ Terrain VALIDATED before arrow creation - hill walking preserved');
       } else {
-        console.warn('🏹 ⚠️ Terrain validation failed before arrow creation');
+        console.warn('🏹 ⚠️ Terrain validation FAILED before arrow creation - attempting restoration');
+        // Force validation again
+        this.physicsManager.validateTerrainCollisions();
       }
       
       const arrow = new Arrow(
@@ -65,13 +68,16 @@ export class ProjectileSystem {
       
       if (this.environmentCollisionManager) {
         arrow.setEnvironmentCollisionManager(this.environmentCollisionManager);
-        console.log('🏹 Arrow connected to protected EnvironmentCollisionManager');
+        console.log('🏹 Arrow connected to COMPLETELY PROTECTED EnvironmentCollisionManager');
       }
       
       this.arrows.push(arrow);
-      console.log(`🏹 Arrow fired with terrain protection - Total arrows: ${this.arrows.length}`);
+      console.log(`🏹 Arrow fired with COMPLETE terrain protection - Total arrows: ${this.arrows.length}`);
+      console.log(`🏹 Hill walking collision system COMPLETELY ISOLATED from arrow impact`);
     } catch (error) {
       console.error("🏹 Error creating arrow:", error);
+      // Restore terrain if arrow creation fails
+      this.physicsManager.validateTerrainCollisions();
     }
   }
 

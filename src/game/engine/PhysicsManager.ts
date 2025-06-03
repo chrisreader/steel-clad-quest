@@ -15,16 +15,17 @@ export class PhysicsManager {
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private terrainHeightCache: Map<string, { height: number; normal: THREE.Vector3 }> = new Map();
   private terrainSize: number = 100; // Default terrain size
-  private terrainProtectionLock: boolean = false; // NEW: Terrain protection lock
-  private terrainBackup: Map<string, CollisionObject> = new Map(); // NEW: Terrain backup
+  private terrainProtectionLock: boolean = false; // Terrain protection lock
+  private terrainBackup: Map<string, CollisionObject> = new Map(); // Terrain backup
+  private terrainFrozen: boolean = false; // Complete terrain freeze during arrow impacts
   
   constructor() {
-    console.log('🏔️ Enhanced Physics Manager initialized with terrain protection');
+    console.log('🏔️ Enhanced Physics Manager initialized with complete terrain protection');
   }
 
-  // ENHANCED: Terrain protection during addition
+  // ENHANCED: Terrain protection during addition with backup
   public addTerrainCollision(terrain: THREE.Mesh, heightData: number[][], terrainSize: number = 100, id?: string): string {
-    console.log(`\n🏔️ === PHYSICS TERRAIN REGISTRATION WITH PROTECTION ===`);
+    console.log(`\n🏔️ === PHYSICS TERRAIN REGISTRATION WITH COMPLETE PROTECTION ===`);
     
     const objectId = id || `terrain_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log(`🏔️ Registering terrain with ID: ${objectId}`);
@@ -47,19 +48,8 @@ export class PhysicsManager {
       return objectId;
     }
     
-    console.log(`🏔️ Height data validation:`);
-    console.log(`  - Is array: ${Array.isArray(heightData)}`);
-    console.log(`  - Length: ${heightData.length}`);
-    console.log(`  - First row length: ${heightData[0]?.length}`);
-    console.log(`  - Sample height [0][0]: ${heightData[0]?.[0]}`);
-    
     const box = new THREE.Box3().setFromObject(terrain);
-    console.log(`🏔️ Terrain bounding box:`, box);
-    console.log(`🏔️ Terrain position: (${terrain.position.x}, ${terrain.position.y}, ${terrain.position.z})`);
-    
-    // Store terrain size for proper coordinate mapping
     this.terrainSize = terrainSize;
-    console.log(`🏔️ Terrain size set to: ${this.terrainSize}`);
     
     const collisionObject: CollisionObject = {
       mesh: terrain,
@@ -72,32 +62,66 @@ export class PhysicsManager {
     
     // PROTECTED: Store terrain with protection flag and backup
     this.collisionObjects.set(objectId, collisionObject);
-    this.terrainBackup.set(objectId, { ...collisionObject }); // Create backup
-    console.log(`🏔️ ✅ Terrain collision object registered with PROTECTION and BACKUP`);
+    this.terrainBackup.set(objectId, { ...collisionObject }); // Create immutable backup
+    console.log(`🏔️ ✅ Terrain collision object registered with COMPLETE PROTECTION and BACKUP`);
     console.log(`🏔️ Total collision objects now: ${this.collisionObjects.size}`);
     console.log(`🏔️ === REGISTRATION COMPLETE ===\n`);
     
     return objectId;
   }
 
-  // ENHANCED: Terrain validation method with auto-restoration
+  // NEW: Freeze terrain completely during arrow impacts
+  public freezeTerrainCollisions(): void {
+    this.terrainFrozen = true;
+    this.terrainProtectionLock = true;
+    console.log('🏔️ ❄️ TERRAIN COMPLETELY FROZEN - no modifications allowed');
+    
+    // Immediately validate and backup current state
+    this.validateAndRestoreTerrainCollisions();
+  }
+
+  // NEW: Unfreeze terrain with validation
+  public unfreezeTerrainCollisions(): void {
+    console.log('🏔️ 🔥 Unfreezing terrain with complete validation...');
+    
+    // Validate before unfreezing
+    this.validateAndRestoreTerrainCollisions();
+    
+    this.terrainFrozen = false;
+    this.terrainProtectionLock = false;
+    
+    // Double-check after unfreezing
+    setTimeout(() => {
+      this.validateAndRestoreTerrainCollisions();
+    }, 1000);
+    
+    console.log('🏔️ ✅ Terrain unfrozen with validation complete');
+  }
+
+  // ENHANCED: Comprehensive terrain validation with auto-restoration
   public validateTerrainCollisions(): boolean {
-    console.log('🏔️ 🔍 Physics Manager terrain validation with auto-restoration...');
+    return this.validateAndRestoreTerrainCollisions();
+  }
+
+  private validateAndRestoreTerrainCollisions(): boolean {
+    console.log('🏔️ 🔍 COMPREHENSIVE terrain validation with auto-restoration...');
     
     let terrainCount = 0;
     let validTerrain = 0;
     let restoredTerrain = 0;
+    let corruptedTerrain: string[] = [];
     
-    // First, check existing terrain
+    // Check existing terrain for corruption
     for (const [id, collisionObject] of this.collisionObjects) {
       if (collisionObject.type === 'terrain') {
         terrainCount++;
         
-        if (collisionObject.heightData && collisionObject.mesh) {
+        if (collisionObject.heightData && collisionObject.mesh && collisionObject.heightData.length > 0) {
           validTerrain++;
-          console.log(`🏔️ ✅ Valid terrain: ${id} (${collisionObject.mesh.name || 'unnamed'})`);
+          console.log(`🏔️ ✅ VALID terrain: ${id} (${collisionObject.mesh.name || 'unnamed'})`);
         } else {
-          console.error(`🏔️ ❌ Invalid terrain: ${id} - missing data`);
+          console.error(`🏔️ ❌ CORRUPTED terrain detected: ${id} - missing critical data`);
+          corruptedTerrain.push(id);
         }
       }
     }
@@ -113,47 +137,60 @@ export class PhysicsManager {
       }
     }
     
+    // Restore corrupted terrain from backup
+    for (const corruptedId of corruptedTerrain) {
+      if (this.terrainBackup.has(corruptedId)) {
+        console.log(`🏔️ 🔄 RESTORING corrupted terrain from backup: ${corruptedId}`);
+        this.collisionObjects.set(corruptedId, { ...this.terrainBackup.get(corruptedId)! });
+        validTerrain++;
+        restoredTerrain++;
+      }
+    }
+    
     console.log(`🏔️ Terrain validation result: ${validTerrain}/${terrainCount} valid, ${restoredTerrain} restored`);
-    return validTerrain === terrainCount;
+    return validTerrain === terrainCount && corruptedTerrain.length === 0;
   }
 
-  // PROTECTED: Never remove terrain objects during protection lock
+  // PROTECTED: Complete terrain protection - no removal during freeze or protection
   public removeCollisionObject(id: string): void {
     const collisionObject = this.collisionObjects.get(id);
     
     if (collisionObject && collisionObject.type === 'terrain') {
-      if (this.terrainProtectionLock) {
-        console.warn(`🏔️ ⚠️ BLOCKED: Cannot remove terrain ${id} - protection active`);
+      if (this.terrainFrozen || this.terrainProtectionLock) {
+        console.warn(`🏔️ ⚠️ COMPLETELY BLOCKED: Cannot remove terrain ${id} - terrain frozen/protected`);
         return;
       } else {
-        console.warn(`🏔️ ⚠️ WARNING: Removing terrain collision ${id}`);
-        // Don't remove from backup when removing from active collisions
+        console.warn(`🏔️ ⚠️ WARNING: Removing terrain collision ${id} - this should not happen during arrow impacts`);
+        // Keep backup intact even when removing from active collisions
       }
     }
     
+    // Only remove non-terrain objects or unprotected terrain
     if (this.collisionObjects.delete(id)) {
       console.log(`🔧 Removed collision object: ${id}`);
     }
   }
 
-  // NEW: Enable terrain protection
+  // Enable terrain protection
   public enableTerrainProtection(): void {
     this.terrainProtectionLock = true;
-    console.log('🏔️ 🔒 Terrain protection ENABLED - terrain objects cannot be removed');
+    console.log('🏔️ 🔒 Terrain protection ENABLED');
   }
 
-  // NEW: Disable terrain protection
+  // Disable terrain protection
   public disableTerrainProtection(): void {
+    // Always validate before disabling
+    this.validateAndRestoreTerrainCollisions();
     this.terrainProtectionLock = false;
-    console.log('🏔️ 🔓 Terrain protection DISABLED');
+    console.log('🏔️ 🔓 Terrain protection DISABLED with validation');
   }
 
-  // Add the missing getCollisionObjects method
+  // Get collision objects
   public getCollisionObjects(): Map<string, CollisionObject> {
     return this.collisionObjects;
   }
 
-  // Add standard collision object method
+  // Add standard collision object
   public addCollisionObject(mesh: THREE.Object3D, type: 'environment' | 'staircase', material: 'wood' | 'stone' | 'metal' | 'fabric', id?: string): string {
     const objectId = id || `collision_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const box = new THREE.Box3().setFromObject(mesh);
@@ -212,9 +249,8 @@ export class PhysicsManager {
   // NEW: Sample terrain at multiple nearby points for smooth interpolation
   private getSmoothTerrainSamples(position: THREE.Vector3): Array<{ point: THREE.Vector3; height: number; normal: THREE.Vector3 }> {
     const samples: Array<{ point: THREE.Vector3; height: number; normal: THREE.Vector3 }> = [];
-    const sampleRadius = 0.5; // Sample points within 0.5 units
+    const sampleRadius = 0.5;
     
-    // Sample in a 3x3 grid around the position
     for (let dx = -1; dx <= 1; dx++) {
       for (let dz = -1; dz <= 1; dz++) {
         const samplePos = new THREE.Vector3(
@@ -268,13 +304,12 @@ export class PhysicsManager {
       return { height: samples[0].height, normal: samples[0].normal };
     }
     
-    // Weight samples by distance (inverse distance weighting)
     let totalWeight = 0;
     let weightedHeight = 0;
     const weightedNormal = new THREE.Vector3(0, 0, 0);
     
     samples.forEach(sample => {
-      const distance = Math.max(0.1, position.distanceTo(sample.point)); // Avoid division by zero
+      const distance = Math.max(0.1, position.distanceTo(sample.point));
       const weight = 1 / distance;
       
       totalWeight += weight;
@@ -288,7 +323,6 @@ export class PhysicsManager {
     return { height: finalHeight, normal: finalNormal };
   }
 
-  // SIMPLIFIED: Use raycasting result for slope calculation
   public getSlopeAngleAtPosition(position: THREE.Vector3): number {
     const terrainData = this.getTerrainDataAtPosition(position);
     const up = new THREE.Vector3(0, 1, 0);
@@ -298,29 +332,21 @@ export class PhysicsManager {
     return slopeAngle;
   }
 
-  // ENHANCED: Smooth surface-aware player movement with height smoothing
   public checkPlayerMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, playerRadius: number = 0.5): THREE.Vector3 {
-    // Get smooth terrain data at target position
     const terrainData = this.getTerrainDataAtPosition(targetPosition);
     const targetTerrainHeight = terrainData.height;
     
-    // Get current terrain height for smooth interpolation
     const currentTerrainData = this.getTerrainDataAtPosition(currentPosition);
     const currentTerrainHeight = currentTerrainData.height;
     
-    // Calculate smooth height transition (limit vertical change per frame)
-    const maxVerticalChange = 0.15; // Maximum height change per frame
+    const maxVerticalChange = 0.15;
     const heightDifference = targetTerrainHeight - currentTerrainHeight;
     const clampedHeightDifference = THREE.MathUtils.clamp(heightDifference, -maxVerticalChange, maxVerticalChange);
     
-    // Apply smooth height following
     const smoothTerrainHeight = currentTerrainHeight + clampedHeightDifference;
     const surfacePosition = targetPosition.clone();
     surfacePosition.y = smoothTerrainHeight + playerRadius;
     
-    console.log(`🏔️ SMOOTH movement: current=${currentTerrainHeight.toFixed(2)}, target=${targetTerrainHeight.toFixed(2)}, smooth=${smoothTerrainHeight.toFixed(2)}`);
-    
-    // Check for standard environment collisions
     const direction = new THREE.Vector3().subVectors(targetPosition, currentPosition);
     const distance = direction.length();
     
@@ -341,7 +367,6 @@ export class PhysicsManager {
     return surfacePosition;
   }
 
-  // FIXED: Enhanced method with proper collision point calculation
   public checkRayCollision(origin: THREE.Vector3, direction: THREE.Vector3, distance: number, excludeTypes: string[] = []): { distance: number; object: CollisionObject; point: THREE.Vector3 } | null {
     this.raycaster.set(origin, direction);
     this.raycaster.far = distance;
@@ -352,7 +377,6 @@ export class PhysicsManager {
     for (const [id, collisionObject] of this.collisionObjects) {
       if (excludeTypes.includes(collisionObject.type)) continue;
       
-      // Handle terrain objects specially for arrow collision
       if (collisionObject.type === 'terrain') {
         const terrainIntersection = this.checkTerrainRayIntersection(origin, direction, distance, collisionObject);
         if (terrainIntersection && terrainIntersection.distance < minDistance) {
@@ -364,7 +388,6 @@ export class PhysicsManager {
           };
         }
       } else if (collisionObject.type === 'environment') {
-        // Handle standard environment collision
         const objectPosition = new THREE.Vector3();
         collisionObject.box.getCenter(objectPosition);
         const distanceToObject = origin.distanceTo(objectPosition);
@@ -384,7 +407,6 @@ export class PhysicsManager {
     return closestCollision;
   }
 
-  // NEW: Specialized terrain ray intersection for arrow collision
   private checkTerrainRayIntersection(
     origin: THREE.Vector3, 
     direction: THREE.Vector3, 
@@ -393,7 +415,6 @@ export class PhysicsManager {
   ): { distance: number; point: THREE.Vector3 } | null {
     const terrain = terrainObject.mesh;
     
-    // Use Three.js raycaster for precise terrain intersection
     const intersections = this.raycaster.intersectObject(terrain, true);
     
     if (intersections.length > 0) {
@@ -412,13 +433,11 @@ export class PhysicsManager {
     return null;
   }
 
-  // NEW: Add missing getCollisionMaterial method
   public getCollisionMaterial(objectId: string): 'wood' | 'stone' | 'metal' | 'fabric' | null {
     const collisionObject = this.collisionObjects.get(objectId);
     return collisionObject ? collisionObject.material : null;
   }
 
-  // NEW: Clear cache periodically to prevent memory issues
   public clearTerrainCache(): void {
     this.terrainHeightCache.clear();
     console.log('🏔️ Terrain height cache cleared');
