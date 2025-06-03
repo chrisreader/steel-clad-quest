@@ -35,7 +35,7 @@ export class RenderEngine {
     
     // Create scene
     this.scene = new THREE.Scene();
-    // Remove hardcoded background to allow skybox to be visible
+    // Background will be set by SceneManager's fog system for proper atmospheric effect
     this.scene.background = null;
     
     // Create camera
@@ -50,11 +50,15 @@ export class RenderEngine {
     this.camera.layers.enable(0); // Default layer - visible
     this.camera.layers.disable(1); // Layer 1 - invisible to player (torso)
     
-    // Create renderer
+    // Create renderer with enhanced settings for fog rendering
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+    // Enhanced renderer settings for better fog rendering
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.0;
     
     // Attach to DOM
     this.mountElement.appendChild(this.renderer.domElement);
@@ -66,7 +70,7 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    console.log("🎨 [RenderEngine] Initialized with skybox background support");
+    console.log("🎨 [RenderEngine] Initialized with enhanced fog rendering support");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {

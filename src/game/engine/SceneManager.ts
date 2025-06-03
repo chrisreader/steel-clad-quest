@@ -78,8 +78,8 @@ export class SceneManager {
     // NEW: Connect StructureGenerator with BuildingManager
     this.structureGenerator.setBuildingManager(this.buildingManager);
     
-    // Setup distance-based fog
-    this.setupDistanceFog();
+    // Setup distance-based fog with visible fog layer
+    this.setupEnhancedFog();
     
     // Setup basic lighting
     this.setupLighting();
@@ -102,19 +102,24 @@ export class SceneManager {
     console.log('🔧 Collision registration callback established between TerrainFeatureGenerator and EnvironmentCollisionManager');
   }
 
-  private setupDistanceFog(): void {
-    // Create THREE.js fog for distance-based object fading
+  private setupEnhancedFog(): void {
+    // Enhanced fog system with visible fog layer and atmospheric depth
     const fogColor = 0xB0E0E6; // Atmospheric blue-white
-    const fogNear = 35; // Start fading objects at this distance
-    const fogFar = 120; // Objects completely faded at this distance
+    const fogNear = 30; // Start fading objects at this distance
+    const fogFar = 100; // Objects completely faded at this distance
     
+    // Create THREE.js fog for distance-based object fading
     this.fog = new THREE.Fog(fogColor, fogNear, fogFar);
     this.scene.fog = this.fog;
     
-    console.log("Distance-based fog system initialized:", {
+    // Set scene background to fog color to create visible fog layer
+    this.scene.background = new THREE.Color(fogColor);
+    
+    console.log("Enhanced fog system initialized:", {
       color: fogColor.toString(16),
       near: fogNear,
-      far: fogFar
+      far: fogFar,
+      background: "fog color for visible layer"
     });
   }
   
@@ -189,16 +194,16 @@ export class SceneManager {
   }
   
   private createSkybox(): void {
-    // Create a simple gradient skybox
+    // Create a skybox with colors coordinated to fog for smooth gradient
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
-    // Create gradient material for realistic sky
+    // Enhanced gradient material coordinated with fog color
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        topColor: { value: new THREE.Color(0x0077ff) }, // Blue sky
-        bottomColor: { value: new THREE.Color(0xffffff) }, // White horizon
+        topColor: { value: new THREE.Color(0x4A90E2) }, // Sky blue
+        bottomColor: { value: new THREE.Color(0xB0E0E6) }, // Match fog color for smooth transition
         offset: { value: 400 },
-        exponent: { value: 0.6 }
+        exponent: { value: 0.8 } // Adjusted for better gradient
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -225,21 +230,22 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Skybox created with gradient shader');
+    console.log('Enhanced skybox created with fog-coordinated gradient');
   }
   
   private updateSkybox(): void {
     if (!this.skybox || !this.skybox.material) return;
     
-    // Update skybox colors based on time of day or other factors
+    // Update skybox colors to coordinate with fog system
     const material = this.skybox.material as THREE.ShaderMaterial;
     if (material.uniforms) {
-      // Update colors to be more realistic blue sky
-      material.uniforms.topColor.value.setHex(0x4A90E2); // Deeper blue
-      material.uniforms.bottomColor.value.setHex(0xE6F3FF); // Light blue-white
+      // Top color: realistic sky blue
+      material.uniforms.topColor.value.setHex(0x4A90E2);
+      // Bottom color: match fog color for seamless transition
+      material.uniforms.bottomColor.value.setHex(0xB0E0E6);
       material.needsUpdate = true;
     }
-    console.log('Skybox updated with realistic blue colors');
+    console.log('Skybox updated with fog-coordinated colors for smooth gradient');
   }
   
   // NEW: Enemy spawning methods that GameEngine expects
@@ -327,7 +333,7 @@ export class SceneManager {
   }
   
   public createDefaultWorld(): void {
-    console.log('Creating default world with ring-quadrant system...');
+    console.log('Creating default world with enhanced fog system...');
     
     // Create simple ground plane at origin as fallback
     this.createSimpleGround();
@@ -349,9 +355,9 @@ export class SceneManager {
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created at (20, 0, 30) for slope walking testing');
     
-    // Create skybox
+    // Create skybox with fog coordination
     this.createSkybox();
-    console.log('Skybox created');
+    console.log('Enhanced skybox created');
     
     // Create 3D sun
     this.create3DSun();
@@ -363,16 +369,16 @@ export class SceneManager {
       console.log('Dynamic cloud spawning system initialized');
     }
     
-    // Force update skybox to apply new realistic blue colors
+    // Force update skybox to apply fog-coordinated colors
     this.updateSkybox();
-    console.log('Skybox updated with realistic blue colors');
+    console.log('Skybox updated with fog-coordinated gradient');
     
     // Register environment collisions AFTER everything is created
     console.log('🔧 Registering environment collisions after all objects created...');
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized (after all objects created)');
     
-    console.log('Default world creation complete with ring-quadrant system. Total scene children:', this.scene.children.length);
+    console.log('Default world creation complete with enhanced fog system. Total scene children:', this.scene.children.length);
   }
   
   // NEW: Region management methods
