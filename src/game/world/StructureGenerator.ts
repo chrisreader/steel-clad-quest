@@ -65,14 +65,88 @@ export class StructureGenerator {
     return staircase;
   }
   
-  // Enhanced createTestHill with Step-by-Step Debugging
+  // Enhanced createTestHill with realistic curved shape using smooth heightfield
   public createTestHill(x: number, y: number, z: number, radius: number = 15, maxHeight: number = 8): THREE.Mesh {
-    console.log(`\n🏔️ === CREATING TEST HILL ===`);
+    console.log(`\n🏔️ === CREATING REALISTIC CURVED HILL ===`);
     console.log(`🏔️ Position: (${x}, ${y}, ${z}), Radius: ${radius}, MaxHeight: ${maxHeight}`);
     
-    // Create geometry
-    const segments = 32;
-    const geometry = new THREE.ConeGeometry(radius, maxHeight, segments);
+    // Create smooth heightfield geometry instead of cone
+    const segments = 64; // Higher resolution for smoother curves
+    const geometry = new THREE.PlaneGeometry(radius * 2, radius * 2, segments, segments);
+    
+    // Get position attribute to modify vertices
+    const positionAttribute = geometry.getAttribute('position');
+    const positions = positionAttribute.array as Float32Array;
+    
+    // Create height data for physics
+    const heightMapSize = segments + 1;
+    const heightData: number[][] = [];
+    
+    console.log(`🏔️ Generating smooth curved heightfield (${heightMapSize}x${heightMapSize})...`);
+    
+    // Initialize height data array
+    for (let i = 0; i <= heightMapSize; i++) {
+      heightData[i] = [];
+    }
+    
+    // Apply realistic hill curve to each vertex
+    for (let i = 0; i < positions.length; i += 3) {
+      const localX = positions[i];
+      const localZ = positions[i + 1];
+      
+      // Calculate distance from center
+      const distanceFromCenter = Math.sqrt(localX * localX + localZ * localZ);
+      const normalizedDistance = distanceFromCenter / radius;
+      
+      let height = 0;
+      if (normalizedDistance <= 1.0) {
+        // Use smooth falloff function for realistic hill shape
+        // Combination of cosine and exponential for natural curve
+        const cosineComponent = Math.cos(normalizedDistance * Math.PI * 0.5);
+        const exponentialComponent = Math.exp(-normalizedDistance * 2);
+        height = maxHeight * cosineComponent * exponentialComponent;
+      }
+      
+      // Apply height to vertex
+      positions[i + 2] = height;
+      
+      // Store in height data for physics (map from local coordinates to grid)
+      const gridX = Math.round((localX / radius + 1) * heightMapSize * 0.5);
+      const gridZ = Math.round((localZ / radius + 1) * heightMapSize * 0.5);
+      
+      if (gridX >= 0 && gridX <= heightMapSize && gridZ >= 0 && gridZ <= heightMapSize) {
+        heightData[gridX][gridZ] = height + y;
+      }
+    }
+    
+    // Fill any missing height data points
+    for (let i = 0; i <= heightMapSize; i++) {
+      for (let j = 0; j <= heightMapSize; j++) {
+        if (heightData[i][j] === undefined) {
+          const worldX = (i / heightMapSize - 0.5) * radius * 2;
+          const worldZ = (j / heightMapSize - 0.5) * radius * 2;
+          const distanceFromCenter = Math.sqrt(worldX * worldX + worldZ * worldZ);
+          const normalizedDistance = distanceFromCenter / radius;
+          
+          let height = 0;
+          if (normalizedDistance <= 1.0) {
+            const cosineComponent = Math.cos(normalizedDistance * Math.PI * 0.5);
+            const exponentialComponent = Math.exp(-normalizedDistance * 2);
+            height = maxHeight * cosineComponent * exponentialComponent;
+          }
+          
+          heightData[i][j] = height + y;
+        }
+      }
+    }
+    
+    // Update geometry
+    positionAttribute.needsUpdate = true;
+    geometry.computeVertexNormals(); // Smooth normals for realistic lighting
+    
+    // Rotate to be horizontal and create material
+    geometry.rotateX(-Math.PI / 2);
+    
     const material = new THREE.MeshStandardMaterial({ 
       color: 0x4a5d3a,
       roughness: 0.9,
@@ -80,58 +154,26 @@ export class StructureGenerator {
     });
     
     const hill = new THREE.Mesh(geometry, material);
-    hill.position.set(x, y + maxHeight / 2, z);
+    hill.position.set(x, y, z);
     hill.castShadow = true;
     hill.receiveShadow = true;
     hill.name = 'test_hill';
     
-    console.log(`🏔️ Hill mesh created at position: (${hill.position.x}, ${hill.position.y}, ${hill.position.z})`);
-    
-    // Create height data
-    const heightMapSize = 64;
-    const heightData: number[][] = [];
-    
-    console.log(`🏔️ Generating height data (${heightMapSize}x${heightMapSize})...`);
-    
-    for (let i = 0; i <= heightMapSize; i++) {
-      heightData[i] = [];
-      for (let j = 0; j <= heightMapSize; j++) {
-        const worldX = x + (i / heightMapSize - 0.5) * radius * 2;
-        const worldZ = z + (j / heightMapSize - 0.5) * radius * 2;
-        const distanceFromCenter = Math.sqrt((worldX - x) ** 2 + (worldZ - z) ** 2);
-        const normalizedDistance = distanceFromCenter / radius;
-        
-        let height = 0;
-        if (normalizedDistance <= 1.0) {
-          height = maxHeight * (1 - normalizedDistance);
-        }
-        
-        heightData[i][j] = height + y;
-      }
-    }
-    
-    console.log(`🏔️ Height data generated. Sample heights:`);
-    console.log(`  - Center [${heightMapSize/2}][${heightMapSize/2}]: ${heightData[heightMapSize/2][heightMapSize/2]}`);
-    console.log(`  - Edge [0][0]: ${heightData[0][0]}`);
-    console.log(`  - Edge [${heightMapSize}][${heightMapSize}]: ${heightData[heightMapSize][heightMapSize]}`);
+    console.log(`🏔️ Realistic curved hill created at position: (${hill.position.x}, ${hill.position.y}, ${hill.position.z})`);
+    console.log(`🏔️ Height data sample - Center: ${heightData[heightMapSize/2][heightMapSize/2]}, Edge: ${heightData[0][0]}`);
     
     // Add to visual scene
     this.scene.add(hill);
     console.log(`🏔️ Hill added to visual scene`);
     
-    // CRITICAL: Check PhysicsManager before registration
-    console.log(`🏔️ PhysicsManager check before registration:`);
-    console.log(`  - Exists: ${!!this.physicsManager}`);
-    console.log(`  - Type: ${typeof this.physicsManager}`);
-    console.log(`  - Has addTerrainCollision: ${!!(this.physicsManager?.addTerrainCollision)}`);
-    
+    // Register with physics manager
     if (this.physicsManager && this.physicsManager.addTerrainCollision) {
       try {
         console.log(`🏔️ Attempting terrain registration...`);
         const terrainId = this.physicsManager.addTerrainCollision(hill, heightData, radius * 2, `test_hill_${x}_${z}`);
         console.log(`🏔️ ✅ Terrain registration SUCCESS: ${terrainId}`);
         
-        // Verify registration immediately
+        // Verify registration
         const collisionObjects = this.physicsManager.getCollisionObjects();
         const registeredTerrain = collisionObjects.get(terrainId);
         console.log(`🏔️ Verification - Terrain found in registry: ${!!registeredTerrain}`);
@@ -146,11 +188,9 @@ export class StructureGenerator {
       }
     } else {
       console.error(`🏔️ ❌ CRITICAL ERROR: PhysicsManager or addTerrainCollision method missing!`);
-      console.log(`  - this.physicsManager: ${this.physicsManager}`);
-      console.log(`  - addTerrainCollision method: ${this.physicsManager?.addTerrainCollision}`);
     }
     
-    console.log(`🏔️ === HILL CREATION COMPLETE ===\n`);
+    console.log(`🏔️ === REALISTIC HILL CREATION COMPLETE ===\n`);
     return hill;
   }
   
