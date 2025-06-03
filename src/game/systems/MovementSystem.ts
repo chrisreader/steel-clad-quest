@@ -1,9 +1,9 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { InputManager } from '../engine/InputManager';
 import { PhysicsManager } from '../engine/PhysicsManager';
 import { TerrainSurfaceDetector } from '../utils/terrain/TerrainSurfaceDetector';
-import { SurfaceMovementCalculator } from '../utils/movement/SurfaceMovementCalculator';
 
 export class MovementSystem {
   private scene: THREE.Scene;
@@ -12,7 +12,6 @@ export class MovementSystem {
   private inputManager: InputManager;
   private physicsManager: PhysicsManager;
   private surfaceDetector: TerrainSurfaceDetector;
-  private surfaceMovementCalculator: SurfaceMovementCalculator;
   private isSprintActivatedByDoubleTap: boolean = false;
   private frameCount: number = 0;
   
@@ -31,9 +30,8 @@ export class MovementSystem {
     
     // Initialize raycast-based surface-following systems
     this.surfaceDetector = new TerrainSurfaceDetector(physicsManager);
-    this.surfaceMovementCalculator = new SurfaceMovementCalculator();
     
-    console.log("🏃 [MovementSystem] Enhanced with raycast-based terrain following");
+    console.log("🏃 [MovementSystem] Enhanced with collision detection for trees and walls");
     
     this.setupSprintHandler();
   }
@@ -69,7 +67,7 @@ export class MovementSystem {
     // Enhanced debugging every 60 frames
     if (this.frameCount % 60 === 0) {
       const currentPos = this.player.getPosition();
-      console.log(`\n🏔️ === RAYCAST-BASED TERRAIN FOLLOWING DEBUG ===`);
+      console.log(`\n🏔️ === COLLISION-AWARE MOVEMENT DEBUG ===`);
       console.log(`🏔️ Player Position: (${currentPos.x.toFixed(1)}, ${currentPos.y.toFixed(1)}, ${currentPos.z.toFixed(1)})`);
       
       const terrainData = this.physicsManager.getTerrainDataAtPosition(currentPos);
@@ -116,7 +114,7 @@ export class MovementSystem {
       }
     }
     
-    // Apply raycast-based movement
+    // Apply collision-aware movement using PhysicsManager
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
@@ -139,25 +137,34 @@ export class MovementSystem {
       worldMoveDirection.addScaledVector(rightVector, moveDirection.x);
       worldMoveDirection.normalize();
       
-      // Get current position and surface data
+      // Get current position and calculate target position
       const currentPosition = this.player.getPosition();
       const surfaceData = this.surfaceDetector.getSurfaceDataAtPosition(currentPosition);
       
-      // Calculate raycast-based movement
-      const movementResult = this.surfaceMovementCalculator.calculateSurfaceMovement(
-        currentPosition,
-        worldMoveDirection,
-        speed,
-        surfaceData,
-        deltaTime
-      );
+      // Calculate movement with slope adjustment
+      let adjustedSpeed = speed;
+      if (surfaceData.slopeAngle > 15) {
+        // Reduce speed on steep slopes
+        const slopeSpeedMultiplier = Math.max(0.3, 1.0 - (surfaceData.slopeAngle - 15) / 45);
+        adjustedSpeed = speed * slopeSpeedMultiplier;
+      }
       
-      // Apply the new position
-      this.player.setPosition(movementResult.newPosition);
+      // Calculate target position
+      const movementVector = worldMoveDirection.clone().multiplyScalar(adjustedSpeed * deltaTime);
+      const targetPosition = currentPosition.clone().add(movementVector);
+      
+      // CRITICAL: Use PhysicsManager's collision-aware movement instead of just surface calculation
+      const finalPosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.5);
+      
+      // Apply the collision-checked position
+      this.player.setPosition(finalPosition);
       
       if (this.frameCount % 30 === 0) { // Less frequent logging
-        console.log(`🏃 RAYCAST MOVEMENT: ${movementResult.debugInfo || 'NORMAL'}`);
-        console.log(`🏃 To: (${movementResult.newPosition.x.toFixed(2)}, ${movementResult.newPosition.y.toFixed(2)}, ${movementResult.newPosition.z.toFixed(2)})`);
+        const moved = !finalPosition.equals(targetPosition);
+        const debugInfo = moved ? 'COLLISION_BLOCKED' : 'NORMAL_MOVEMENT';
+        console.log(`🏃 COLLISION-AWARE MOVEMENT: ${debugInfo}`);
+        console.log(`🏃 Target: (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
+        console.log(`🏃 Final: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
       }
     }
   }
