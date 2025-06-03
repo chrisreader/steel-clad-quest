@@ -79,15 +79,16 @@ export class StructureGenerator {
   private createTestHill(): THREE.Object3D {
     const hill = new THREE.Group();
     
-    // Create a cone-shaped hill
+    // Create a cone-shaped hill positioned at ground level
     const hillGeometry = new THREE.ConeGeometry(8, 6, 16);
     const hillMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x4A7C59, // Green grass color
       transparent: false
     });
     
+    // FIXED: Position cone with base at ground level (Y=0)
     const hillMesh = new THREE.Mesh(hillGeometry, hillMaterial);
-    hillMesh.position.set(10, 3, 10); // Position at (10, 3, 10) with base at Y=3
+    hillMesh.position.set(10, 3, 10); // Y=3 means the base is at Y=0, peak at Y=6
     hillMesh.castShadow = true;
     hillMesh.receiveShadow = true;
     
@@ -100,11 +101,23 @@ export class StructureGenerator {
     // Add to scene
     this.scene.add(hill);
     
-    // FIXED: Register the hill mesh with PhysicsManager for collision detection
+    // Register the hill mesh with PhysicsManager for collision detection
     this.physicsManager.addCollisionObject(hillMesh, 'environment', 'stone', `test_hill_${Date.now()}`);
-    console.log("🏔️ Registered test hill for collision detection");
+    console.log("🏔️ Registered test hill for collision detection at ground level");
     
-    console.log("🏔️ Created test hill with cone geometry for slope testing");
+    // DEBUG: Add visual markers to show hill bounds
+    const debugMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xff0000, 
+      wireframe: true,
+      transparent: true,
+      opacity: 0.3
+    });
+    const debugGeometry = new THREE.ConeGeometry(8, 6, 16);
+    const debugMesh = new THREE.Mesh(debugGeometry, debugMaterial);
+    debugMesh.position.copy(hillMesh.position);
+    hill.add(debugMesh);
+    
+    console.log("🏔️ Created test hill with cone geometry for slope testing at position:", hillMesh.position);
     
     return hill;
   }

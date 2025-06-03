@@ -56,8 +56,8 @@ export class PhysicsManager {
   }
 
   public getGroundHeight(position: THREE.Vector3): number {
-    // Cast ray downward from above the position
-    const rayOrigin = new THREE.Vector3(position.x, position.y + 10, position.z);
+    // Cast ray downward from well above the position to catch elevated terrain
+    const rayOrigin = new THREE.Vector3(position.x, position.y + 20, position.z);
     const rayDirection = new THREE.Vector3(0, -1, 0);
     
     this.raycaster.set(rayOrigin, rayDirection);
@@ -72,6 +72,7 @@ export class PhysicsManager {
     const intersections = this.raycaster.intersectObjects(meshes, true);
     
     if (intersections.length > 0) {
+      console.log('🏔️ [PhysicsManager] Ground height detected:', intersections[0].point.y, 'at position:', position.x, position.z);
       return intersections[0].point.y;
     }
     
@@ -208,7 +209,13 @@ export class PhysicsManager {
       to: targetPosition
     });
     
-    // First check horizontal movement for collisions
+    // First check for elevated terrain at target position
+    const targetGroundHeight = this.getGroundHeight(targetPosition);
+    const currentGroundHeight = this.getGroundHeight(currentPosition);
+    
+    console.log('🏔️ [PhysicsManager] Ground heights - current:', currentGroundHeight, 'target:', targetGroundHeight);
+    
+    // Check horizontal movement for collisions at current height level
     const horizontalTarget = new THREE.Vector3(targetPosition.x, currentPosition.y, targetPosition.z);
     const direction = new THREE.Vector3().subVectors(horizontalTarget, currentPosition);
     const distance = direction.length();
@@ -251,30 +258,40 @@ export class PhysicsManager {
     const groundHeight = this.getGroundHeight(safeHorizontalPosition);
     const slopeInfo = this.checkSlopeAngle(safeHorizontalPosition);
     
-    if (slopeInfo.walkable) {
-      // Calculate height difference
-      const heightDifference = groundHeight - currentPosition.y;
-      
-      if (Math.abs(heightDifference) <= this.maxStepHeight) {
-        // Small step or smooth slope - adjust height
-        safeHorizontalPosition.y = groundHeight + 0.1; // Small offset to prevent clipping
-        console.log('🏔️ [PhysicsManager] Height adjusted for step/slope:', {
-          heightChange: heightDifference.toFixed(3),
-          newY: safeHorizontalPosition.y.toFixed(3)
-        });
-      } else if (heightDifference > this.maxStepHeight) {
-        // Step too high - maintain current height
-        safeHorizontalPosition.y = currentPosition.y;
-        console.log('🏔️ [PhysicsManager] Step too high, maintaining current height');
-      } else {
-        // Going downhill - follow the ground
-        safeHorizontalPosition.y = groundHeight + 0.1;
-        console.log('🏔️ [PhysicsManager] Following ground downhill');
-      }
-    } else {
+    // Calculate height difference
+    const heightDifference = groundHeight - currentPosition.y;
+    
+    console.log('🏔️ [PhysicsManager] Height analysis:', {
+      currentY: currentPosition.y,
+      groundHeight: groundHeight,
+      heightDiff: heightDifference,
+      slopeAngle: slopeInfo.angle,
+      walkable: slopeInfo.walkable
+    });
+    
+    if (slopeInfo.walkable && Math.abs(heightDifference) <= this.maxStepHeight) {
+      // Small step or gentle slope - adjust height
+      safeHorizontalPosition.y = groundHeight + 0.1; // Small offset to prevent clipping
+      console.log('🏔️ [PhysicsManager] Height adjusted for step/slope:', {
+        heightChange: heightDifference.toFixed(3),
+        newY: safeHorizontalPosition.y.toFixed(3)
+      });
+    } else if (heightDifference > this.maxStepHeight && slopeInfo.walkable) {
+      // Walkable slope but height change is significant - follow the ground
+      safeHorizontalPosition.y = groundHeight + 0.1;
+      console.log('🏔️ [PhysicsManager] Following walkable slope uphill');
+    } else if (heightDifference < -this.maxStepHeight) {
+      // Going downhill - follow the ground
+      safeHorizontalPosition.y = groundHeight + 0.1;
+      console.log('🏔️ [PhysicsManager] Following ground downhill');
+    } else if (!slopeInfo.walkable) {
       // Slope too steep for Y adjustment, maintain current height
       safeHorizontalPosition.y = currentPosition.y;
       console.log('🏔️ [PhysicsManager] Slope too steep for Y adjustment');
+    } else {
+      // Maintain current height for other cases
+      safeHorizontalPosition.y = currentPosition.y;
+      console.log('🏔️ [PhysicsManager] Maintaining current height');
     }
     
     return safeHorizontalPosition;
