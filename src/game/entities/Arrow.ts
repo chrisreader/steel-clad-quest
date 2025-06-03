@@ -224,7 +224,7 @@ export class Arrow {
     const deltaPosition = this.velocity.clone().multiplyScalar(safeDeltatime);
     const nextPosition = this.position.clone().add(deltaPosition);
     
-    // ENHANCED: Check for both environment AND terrain collision with protection
+    // ENHANCED: Check for collision with complete terrain protection
     const collision = this.physicsManager.checkRayCollision(
       this.position,
       this.velocity.clone().normalize(),
@@ -233,27 +233,51 @@ export class Arrow {
     );
     
     if (collision) {
-      // NEW: Lock terrain collisions during arrow impact
-      if (this.environmentCollisionManager && collision.object.type === 'terrain') {
-        console.log('🏹 🔒 Locking terrain collisions during arrow terrain impact');
-        this.environmentCollisionManager.lockTerrainCollisions();
-        this.environmentCollisionManager.setArrowImpactActive(true);
+      // CRITICAL: Enable complete terrain protection before any terrain impact
+      if (collision.object.type === 'terrain') {
+        console.log('🏹 🔒 CRITICAL: Enabling complete terrain protection for arrow impact');
+        
+        // Enable protection in both systems
+        this.physicsManager.enableTerrainProtection();
+        
+        if (this.environmentCollisionManager) {
+          this.environmentCollisionManager.lockTerrainCollisions();
+          this.environmentCollisionManager.setArrowImpactActive(true);
+        }
+        
+        // Validate terrain before impact
+        this.physicsManager.validateTerrainCollisions();
       }
       
-      // Arrow hit an object (environment or terrain)
+      // Handle the collision
       if (collision.object.type === 'terrain') {
         this.hitTerrainObject(collision);
       } else {
         this.hitEnvironmentObject(collision);
       }
       
-      // NEW: Unlock terrain collisions after a delay
-      if (this.environmentCollisionManager && collision.object.type === 'terrain') {
+      // CRITICAL: Extended protection period after terrain impact
+      if (collision.object.type === 'terrain') {
         setTimeout(() => {
-          console.log('🏹 🔓 Unlocking terrain collisions after arrow impact delay');
-          this.environmentCollisionManager.setArrowImpactActive(false);
-          this.environmentCollisionManager.unlockTerrainCollisions();
-        }, 1000); // 1 second delay to ensure arrow is properly stuck
+          console.log('🏹 🔓 CRITICAL: Disabling terrain protection after extended delay');
+          
+          // Validate terrain before disabling protection
+          this.physicsManager.validateTerrainCollisions();
+          
+          // Disable protection in both systems
+          this.physicsManager.disableTerrainProtection();
+          
+          if (this.environmentCollisionManager) {
+            this.environmentCollisionManager.setArrowImpactActive(false);
+            this.environmentCollisionManager.unlockTerrainCollisions();
+          }
+          
+          // Final validation after disabling protection
+          setTimeout(() => {
+            this.physicsManager.validateTerrainCollisions();
+          }, 1000);
+          
+        }, 3000); // Extended 3-second protection period
       }
       
       return true;
@@ -293,7 +317,7 @@ export class Arrow {
   }
 
   private hitTerrainObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {
-    console.log('🏹 ⛰️ Arrow hit terrain - applying terrain protection');
+    console.log('🏹 ⛰️ Arrow hit terrain - PROTECTED terrain collision handling');
     
     this.isStuck = true;
     this.stuckInObject = collision.object.id;
@@ -308,7 +332,7 @@ export class Arrow {
     
     this.createTerrainImpactEffect(collision.point);
     
-    console.log(`🏹 Arrow stuck in terrain at:`, collision.point);
+    console.log(`🏹 Arrow stuck in PROTECTED terrain at:`, collision.point);
   }
 
   private hitEnvironmentObject(collision: { object: any; distance: number; point: THREE.Vector3 }): void {

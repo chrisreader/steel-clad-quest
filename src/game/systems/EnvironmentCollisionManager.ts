@@ -5,45 +5,49 @@ export class EnvironmentCollisionManager {
   private scene: THREE.Scene;
   private physicsManager: PhysicsManager;
   private registeredObjects: Set<string> = new Set();
-  private terrainObjects: Map<string, { meshUUID: string; collisionId: string }> = new Map(); // Enhanced terrain tracking
-  private isArrowImpactActive: boolean = false; // Prevent updates during arrow impacts
-  private terrainCollisionLock: boolean = false; // Lock terrain collisions from being modified
+  private terrainObjects: Map<string, { meshUUID: string; collisionId: string }> = new Map();
+  private isArrowImpactActive: boolean = false;
+  private terrainCollisionLock: boolean = false;
+  private terrainValidationTimer: NodeJS.Timeout | null = null;
 
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
-    console.log('🔧 EnvironmentCollisionManager initialized with enhanced terrain protection');
+    console.log('🔧 EnvironmentCollisionManager initialized with complete terrain protection');
   }
 
   public registerEnvironmentCollisions(): void {
-    // Skip registration if terrain is locked or arrow impact is active
+    // COMPLETE SHUTDOWN: Never update collisions if arrow impact is active or terrain is locked
     if (this.terrainCollisionLock || this.isArrowImpactActive) {
-      console.log('🔧 ⚠️ Skipping collision registration - terrain locked or arrow impact active');
+      console.log('🔧 ⚠️ COMPLETE SHUTDOWN: Collision registration blocked - terrain protected');
       return;
     }
 
     console.log('🔧 === ENVIRONMENT COLLISION REGISTRATION START ===');
-    console.log('🔧 Registering environment collisions with enhanced terrain protection...');
+    console.log('🔧 Registering environment collisions with complete terrain protection...');
     
-    // Validate terrain collisions before proceeding
-    this.validateTerrainCollisions();
+    // Validate terrain collisions before any operations
+    this.validateAndRestoreTerrainCollisions();
     
     // DEBUG: Check existing registrations before clearing
     const existingCollisions = this.physicsManager.getCollisionObjects();
     console.log(`🔧 BEFORE PROCESSING: ${existingCollisions.size} collision objects exist`);
     
-    // Enhanced terrain preservation - never remove terrain objects
+    // ENHANCED: Never touch terrain objects - complete preservation
     const preservedTerrainIds = new Set<string>();
+    const preservedTerrainMeshes = new Set<string>();
+    
     for (const [id, obj] of existingCollisions) {
       if (obj.type === 'terrain') {
         preservedTerrainIds.add(id);
+        preservedTerrainMeshes.add(obj.mesh.uuid);
         this.terrainObjects.set(obj.mesh.uuid, { meshUUID: obj.mesh.uuid, collisionId: id });
         console.log(`🔧 PRESERVING TERRAIN: ${id} (${obj.mesh.name}) - UUID: ${obj.mesh.uuid}`);
       }
     }
     
     // Only clear non-terrain environment objects
-    console.log('🔧 ⚠️  CLEARING ENVIRONMENT REGISTRATIONS (preserving all terrain)...');
+    console.log('🔧 ⚠️ CLEARING ENVIRONMENT REGISTRATIONS (complete terrain preservation)...');
     const objectsToRemove: string[] = [];
     this.registeredObjects.forEach(id => {
       if (!preservedTerrainIds.has(id)) {
@@ -62,15 +66,18 @@ export class EnvironmentCollisionManager {
     const afterClear = this.physicsManager.getCollisionObjects();
     console.log(`🔧 AFTER SELECTIVE CLEAR: ${afterClear.size} collision objects remain`);
 
-    // Register new environment objects (skip terrain objects)
+    // Register new environment objects (completely skip terrain objects)
     this.scene.traverse((object) => {
       if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
-        this.registerObjectCollision(object);
+        // CRITICAL: Skip any mesh that's already tracked as terrain
+        if (!preservedTerrainMeshes.has(object.uuid)) {
+          this.registerObjectCollision(object);
+        }
       }
     });
     
-    // Final validation
-    this.validateTerrainCollisions();
+    // Final validation after registration
+    this.validateAndRestoreTerrainCollisions();
     
     const finalCount = this.physicsManager.getCollisionObjects();
     let finalTerrainCount = 0;
@@ -90,7 +97,7 @@ export class EnvironmentCollisionManager {
     // Skip if already registered
     if (this.registeredObjects.has(object.uuid)) return;
 
-    // CRITICAL: Skip terrain objects that are already tracked
+    // CRITICAL: Never register terrain objects that are already tracked
     if (this.terrainObjects.has(object.uuid)) {
       console.log(`🔧 ⚠️ Skipping terrain object ${object.name} - already tracked and protected`);
       return;
@@ -146,9 +153,9 @@ export class EnvironmentCollisionManager {
     }
   }
 
-  // NEW: Validate terrain collisions are intact
-  private validateTerrainCollisions(): void {
-    console.log('🔧 🔍 Validating terrain collisions...');
+  // ENHANCED: Comprehensive terrain validation and restoration
+  private validateAndRestoreTerrainCollisions(): void {
+    console.log('🔧 🔍 Comprehensive terrain validation...');
     
     let terrainCount = 0;
     let corruptedTerrain: string[] = [];
@@ -170,14 +177,14 @@ export class EnvironmentCollisionManager {
     
     console.log(`🔧 Terrain validation: ${terrainCount} valid, ${corruptedTerrain.length} corrupted`);
     
-    // Attempt to restore corrupted terrain
+    // Immediately restore corrupted terrain
     if (corruptedTerrain.length > 0) {
-      console.warn(`🔧 ⚠️ Attempting to restore ${corruptedTerrain.length} corrupted terrain objects...`);
+      console.error(`🔧 ⚠️ CRITICAL: Restoring ${corruptedTerrain.length} corrupted terrain objects...`);
       this.restoreCorruptedTerrain(corruptedTerrain);
     }
   }
 
-  // NEW: Restore corrupted terrain collisions
+  // ENHANCED: Improved terrain restoration
   private restoreCorruptedTerrain(corruptedUUIDs: string[]): void {
     for (const meshUUID of corruptedUUIDs) {
       // Find the mesh in the scene
@@ -189,7 +196,7 @@ export class EnvironmentCollisionManager {
       });
       
       if (foundMesh && foundMesh.name === 'test_hill' && foundMesh.userData.heightData) {
-        console.log(`🔧 🔄 Restoring terrain collision for hill: ${foundMesh.name}`);
+        console.log(`🔧 🔄 RESTORING terrain collision for hill: ${foundMesh.name}`);
         
         const heightData = foundMesh.userData.heightData;
         const terrainSize = foundMesh.userData.terrainSize || 30;
@@ -198,27 +205,54 @@ export class EnvironmentCollisionManager {
         this.terrainObjects.set(meshUUID, { meshUUID: meshUUID, collisionId: id });
         this.registeredObjects.add(id);
         
-        console.log(`🔧 ✅ Restored terrain collision with ID: ${id}`);
+        console.log(`🔧 ✅ RESTORED terrain collision with ID: ${id}`);
       }
     }
   }
 
-  // NEW: Lock terrain collisions during arrow impacts
+  // ENHANCED: Complete terrain protection during arrow impacts
   public lockTerrainCollisions(): void {
     this.terrainCollisionLock = true;
-    console.log('🔧 🔒 Terrain collisions LOCKED');
+    console.log('🔧 🔒 Terrain collisions COMPLETELY LOCKED');
+    
+    // Clear any existing validation timer
+    if (this.terrainValidationTimer) {
+      clearTimeout(this.terrainValidationTimer);
+    }
   }
 
-  // NEW: Unlock terrain collisions after arrow impacts
+  // ENHANCED: Delayed unlock with validation
   public unlockTerrainCollisions(): void {
+    console.log('🔧 🔓 Unlocking terrain collisions with validation...');
+    
+    // Validate terrain state before unlocking
+    this.validateAndRestoreTerrainCollisions();
+    
+    // Set a validation timer to check again after unlock
+    this.terrainValidationTimer = setTimeout(() => {
+      console.log('🔧 🔍 Post-unlock terrain validation...');
+      this.validateAndRestoreTerrainCollisions();
+      this.terrainValidationTimer = null;
+    }, 2000);
+    
     this.terrainCollisionLock = false;
     console.log('🔧 🔓 Terrain collisions UNLOCKED');
   }
 
-  // NEW: Set arrow impact state
+  // ENHANCED: Arrow impact state management
   public setArrowImpactActive(active: boolean): void {
     this.isArrowImpactActive = active;
-    console.log(`🔧 🏹 Arrow impact state: ${active ? 'ACTIVE' : 'INACTIVE'}`);
+    console.log(`🔧 🏹 Arrow impact state: ${active ? 'ACTIVE - FULL PROTECTION' : 'INACTIVE'}`);
+    
+    if (active) {
+      // Immediately validate terrain when arrow impact starts
+      this.validateAndRestoreTerrainCollisions();
+    } else {
+      // Validate terrain when arrow impact ends
+      setTimeout(() => {
+        this.validateAndRestoreTerrainCollisions();
+      }, 500);
+    }
   }
 
   // ... keep existing code (determineMaterial, shouldRegisterForCollision methods)
@@ -277,18 +311,24 @@ export class EnvironmentCollisionManager {
   }
 
   public updateCollisions(): void {
-    // Skip updates if terrain is locked or arrow impact is active
+    // COMPLETE SHUTDOWN: Never update if terrain is locked or arrow impact is active
     if (this.terrainCollisionLock || this.isArrowImpactActive) {
       return;
     }
 
-    // Drastically reduced frequency to prevent interference
-    if (Math.random() < 0.005) { // ~1/200 chance per frame
+    // Dramatically reduced frequency and only when safe
+    if (Math.random() < 0.001) { // ~1/1000 chance per frame
       this.registerEnvironmentCollisions();
     }
   }
 
   public dispose(): void {
+    // Clear validation timer
+    if (this.terrainValidationTimer) {
+      clearTimeout(this.terrainValidationTimer);
+      this.terrainValidationTimer = null;
+    }
+    
     // Clean up environment objects but preserve all terrain
     this.registeredObjects.forEach(id => {
       const isTerrainObject = Array.from(this.terrainObjects.values()).some(terrain => terrain.collisionId === id);

@@ -16,7 +16,7 @@ export class ProjectileSystem {
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   private physicsManager: PhysicsManager;
-  private environmentCollisionManager: any = null; // Reference to environment collision manager
+  private environmentCollisionManager: any = null;
 
   constructor(
     scene: THREE.Scene,
@@ -32,7 +32,6 @@ export class ProjectileSystem {
     this.physicsManager = physicsManager;
   }
 
-  // NEW: Set reference to environment collision manager
   public setEnvironmentCollisionManager(manager: any): void {
     this.environmentCollisionManager = manager;
     console.log('🏹 ProjectileSystem connected to EnvironmentCollisionManager');
@@ -47,6 +46,12 @@ export class ProjectileSystem {
     const normalizedDirection = direction.clone().normalize();
     
     try {
+      if (this.physicsManager.validateTerrainCollisions()) {
+        console.log('🏹 ✅ Terrain validated before arrow creation');
+      } else {
+        console.warn('🏹 ⚠️ Terrain validation failed before arrow creation');
+      }
+      
       const arrow = new Arrow(
         this.scene,
         startPosition,
@@ -58,13 +63,13 @@ export class ProjectileSystem {
         this.physicsManager
       );
       
-      // NEW: Set environment collision manager reference for arrow
       if (this.environmentCollisionManager) {
         arrow.setEnvironmentCollisionManager(this.environmentCollisionManager);
+        console.log('🏹 Arrow connected to protected EnvironmentCollisionManager');
       }
       
       this.arrows.push(arrow);
-      console.log(`🏹 Arrow fired - Total arrows: ${this.arrows.length}`);
+      console.log(`🏹 Arrow fired with terrain protection - Total arrows: ${this.arrows.length}`);
     } catch (error) {
       console.error("🏹 Error creating arrow:", error);
     }
@@ -127,7 +132,7 @@ export class ProjectileSystem {
           console.log(`🏹 Enemy killed by arrow - spawned ${enemy.getGoldReward()} gold and ${enemy.getExperienceReward()} XP`);
         }
         
-        // Dispose of arrow properly without affecting terrain collision
+        // Dispose of arrow properly
         arrow.dispose();
         this.arrows = this.arrows.filter(a => a !== arrow);
         

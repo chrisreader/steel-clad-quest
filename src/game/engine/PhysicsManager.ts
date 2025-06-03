@@ -15,18 +15,26 @@ export class PhysicsManager {
   private raycaster: THREE.Raycaster = new THREE.Raycaster();
   private terrainHeightCache: Map<string, { height: number; normal: THREE.Vector3 }> = new Map();
   private terrainSize: number = 100; // Default terrain size
+  private terrainProtectionLock: boolean = false; // NEW: Terrain protection lock
   
   constructor() {
-    console.log('🏔️ Enhanced Physics Manager initialized with smooth terrain following');
+    console.log('🏔️ Enhanced Physics Manager initialized with terrain protection');
   }
 
-  // Enhanced method: Add terrain with height data for better collision with debugging
+  // ENHANCED: Terrain protection during addition
   public addTerrainCollision(terrain: THREE.Mesh, heightData: number[][], terrainSize: number = 100, id?: string): string {
-    console.log(`\n🏔️ === PHYSICS TERRAIN REGISTRATION ===`);
+    console.log(`\n🏔️ === PHYSICS TERRAIN REGISTRATION WITH PROTECTION ===`);
     
     const objectId = id || `terrain_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log(`🏔️ Registering terrain with ID: ${objectId}`);
-    console.log(`🏔️ Terrain mesh: ${!!terrain}, HeightData: ${!!heightData}, Size: ${terrainSize}`);
+    
+    // Check if terrain is already registered
+    for (const [existingId, existingObject] of this.collisionObjects) {
+      if (existingObject.mesh === terrain && existingObject.type === 'terrain') {
+        console.log(`🏔️ ⚠️ Terrain already registered with ID: ${existingId} - returning existing`);
+        return existingId;
+      }
+    }
     
     if (!terrain) {
       console.error(`🏔️ ❌ ERROR: No terrain mesh provided`);
@@ -61,12 +69,67 @@ export class PhysicsManager {
       heightData: heightData
     };
     
+    // PROTECTED: Store terrain with protection flag
     this.collisionObjects.set(objectId, collisionObject);
-    console.log(`🏔️ ✅ Terrain collision object registered successfully`);
+    console.log(`🏔️ ✅ Terrain collision object registered with PROTECTION`);
     console.log(`🏔️ Total collision objects now: ${this.collisionObjects.size}`);
     console.log(`🏔️ === REGISTRATION COMPLETE ===\n`);
     
     return objectId;
+  }
+
+  // ENHANCED: Terrain validation method
+  public validateTerrainCollisions(): boolean {
+    console.log('🏔️ 🔍 Physics Manager terrain validation...');
+    
+    let terrainCount = 0;
+    let validTerrain = 0;
+    
+    for (const [id, collisionObject] of this.collisionObjects) {
+      if (collisionObject.type === 'terrain') {
+        terrainCount++;
+        
+        if (collisionObject.heightData && collisionObject.mesh) {
+          validTerrain++;
+          console.log(`🏔️ ✅ Valid terrain: ${id} (${collisionObject.mesh.name || 'unnamed'})`);
+        } else {
+          console.error(`🏔️ ❌ Invalid terrain: ${id} - missing data`);
+        }
+      }
+    }
+    
+    console.log(`🏔️ Terrain validation result: ${validTerrain}/${terrainCount} valid`);
+    return validTerrain === terrainCount;
+  }
+
+  // PROTECTED: Never remove terrain objects during protection lock
+  public removeCollisionObject(id: string): void {
+    const collisionObject = this.collisionObjects.get(id);
+    
+    if (collisionObject && collisionObject.type === 'terrain') {
+      if (this.terrainProtectionLock) {
+        console.warn(`🏔️ ⚠️ BLOCKED: Cannot remove terrain ${id} - protection active`);
+        return;
+      } else {
+        console.warn(`🏔️ ⚠️ WARNING: Removing terrain collision ${id}`);
+      }
+    }
+    
+    if (this.collisionObjects.delete(id)) {
+      console.log(`🔧 Removed collision object: ${id}`);
+    }
+  }
+
+  // NEW: Enable terrain protection
+  public enableTerrainProtection(): void {
+    this.terrainProtectionLock = true;
+    console.log('🏔️ 🔒 Terrain protection ENABLED - terrain objects cannot be removed');
+  }
+
+  // NEW: Disable terrain protection
+  public disableTerrainProtection(): void {
+    this.terrainProtectionLock = false;
+    console.log('🏔️ 🔓 Terrain protection DISABLED');
   }
 
   // Add the missing getCollisionObjects method
