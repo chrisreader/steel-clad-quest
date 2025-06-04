@@ -9,6 +9,7 @@ import {
 } from './FogShaders';
 
 export interface FogMaterialUniforms {
+  [uniform: string]: THREE.IUniform<any>;
   time: { value: number };
   timeOfDay: { value: number };
   dayFogColor: { value: THREE.Color };
@@ -33,6 +34,7 @@ export interface WallFogMaterialUniforms extends FogMaterialUniforms {
 }
 
 export interface AtmosphericMaterialUniforms {
+  [uniform: string]: THREE.IUniform<any>;
   time: { value: number };
   timeOfDay: { value: number };
   dayFogColor: { value: THREE.Color };
@@ -86,8 +88,9 @@ export class FogMaterialFactory {
   }
 
   public static createFogWallMaterial(): THREE.ShaderMaterial {
+    const baseUniforms = this.createUnifiedFogMaterial(1).uniforms;
     const uniforms: WallFogMaterialUniforms = {
-      ...this.createUnifiedFogMaterial(1).uniforms as FogMaterialUniforms,
+      ...baseUniforms,
       fogWallHeight: { value: 25.0 },
       layerDepth: { value: 0.0 }
     };
