@@ -25,7 +25,7 @@ export class EnemyMovementHelper {
     targetPosition: THREE.Vector3,
     config: EnemyMovementConfig
   ): THREE.Vector3 {
-    console.log(`🚶 [EnemyMovementHelper] Starting terrain-aware movement calculation from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
+    console.log(`🚶 [EnemyMovementHelper] TERRAIN-AWARE movement calculation from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
     
     // Get terrain data at target position
     const terrainData = this.terrainDetector.getSurfaceDataAtPosition(targetPosition);
@@ -36,6 +36,8 @@ export class EnemyMovementHelper {
       console.log(`⚠️ [EnemyMovementHelper] Invalid terrain height detected, using physics manager fallback`);
       terrainHeight = this.physicsManager.getTerrainHeightAtPosition(targetPosition);
     }
+    
+    console.log(`🚶 [EnemyMovementHelper] Terrain height at target: ${terrainHeight.toFixed(2)}, slope: ${terrainData.slopeAngle.toFixed(1)}°`);
     
     // Calculate base movement with terrain height
     let finalPosition = targetPosition.clone();
@@ -49,6 +51,7 @@ export class EnemyMovementHelper {
       
       finalPosition = currentPosition.clone().add(adjustedMovement);
       finalPosition.y = terrainHeight + config.radius; // ALWAYS apply terrain height
+      console.log(`🚶 [EnemyMovementHelper] Slope speed adjustment applied: ${slopeMultiplier.toFixed(2)}`);
     }
 
     // Check if slope is too steep for movement
@@ -61,22 +64,31 @@ export class EnemyMovementHelper {
       return blockedPosition;
     }
 
-    // CRITICAL FIX: Use dedicated enemy terrain movement for smooth terrain following
-    console.log(`🚶 [EnemyMovementHelper] Using dedicated enemy terrain movement (no environment collision)`);
+    // CRITICAL: Use dedicated enemy terrain movement for smooth terrain following
+    console.log(`🚶 [EnemyMovementHelper] Using dedicated enemy terrain movement (smooth terrain following)`);
     const checkedPosition = this.physicsManager.checkEnemyTerrainMovement(
       currentPosition,
       finalPosition,
       config.radius
     );
 
-    // VALIDATION: Ensure the final position has proper terrain height
+    // PHASE 3: Enhanced position validation
     if (checkedPosition.y <= config.radius) {
-      console.log(`⚠️ [EnemyMovementHelper] Position Y too low (${checkedPosition.y.toFixed(2)}), applying terrain height correction`);
+      console.warn(`⚠️ [EnemyMovementHelper] Position Y too low (${checkedPosition.y.toFixed(2)}), applying terrain height correction`);
       const correctedHeight = this.physicsManager.getTerrainHeightAtPosition(checkedPosition);
       checkedPosition.y = correctedHeight + config.radius;
     }
 
-    console.log(`🚶 [EnemyMovementHelper] Final movement result: terrain_height=${terrainHeight.toFixed(2)}, slope=${terrainData.slopeAngle.toFixed(1)}°, final_pos=(${checkedPosition.x.toFixed(2)}, ${checkedPosition.y.toFixed(2)}, ${checkedPosition.z.toFixed(2)})`);
+    // PHASE 3: Additional validation to ensure enemy follows terrain exactly like player
+    const finalTerrainHeight = this.physicsManager.getTerrainHeightAtPosition(checkedPosition);
+    const expectedY = finalTerrainHeight + config.radius;
+    
+    if (Math.abs(checkedPosition.y - expectedY) > 0.1) {
+      console.warn(`⚠️ [EnemyMovementHelper] Y position mismatch detected - correcting from ${checkedPosition.y.toFixed(2)} to ${expectedY.toFixed(2)}`);
+      checkedPosition.y = expectedY;
+    }
+
+    console.log(`✅ [EnemyMovementHelper] Final movement result: terrain_height=${finalTerrainHeight.toFixed(2)}, slope=${terrainData.slopeAngle.toFixed(1)}°, final_pos=(${checkedPosition.x.toFixed(2)}, ${checkedPosition.y.toFixed(2)}, ${checkedPosition.z.toFixed(2)})`);
     
     return checkedPosition;
   }

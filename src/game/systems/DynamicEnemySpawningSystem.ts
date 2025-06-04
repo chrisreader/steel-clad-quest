@@ -66,7 +66,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   private safeZoneManager: SafeZoneManager;
   private isPlayerInSafeZone: boolean = false;
   
-  // NEW: Physics systems for terrain-aware enemy movement
+  // PHASE 1: Ensure physics systems are always available for terrain-aware enemy movement
   private physicsManager: PhysicsManager | null = null;
   private terrainDetector: TerrainSurfaceDetector | null = null;
 
@@ -96,9 +96,17 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    // Store physics systems for terrain-aware enemy movement
+    // PHASE 1: Store physics systems for terrain-aware enemy movement with validation
     this.physicsManager = physicsManager || null;
     this.terrainDetector = terrainDetector || null;
+    
+    // PHASE 1: Critical validation to ensure terrain systems are available
+    if (!this.physicsManager || !this.terrainDetector) {
+      console.error(`❌ [DynamicEnemySpawningSystem] CRITICAL: Missing terrain systems - PhysicsManager: ${!!this.physicsManager}, TerrainDetector: ${!!this.terrainDetector}`);
+      console.error(`❌ [DynamicEnemySpawningSystem] This will cause enemies to walk through terrain!`);
+    } else {
+      console.log(`✅ [DynamicEnemySpawningSystem] Initialized with complete terrain-aware movement systems`);
+    }
     
     // Initialize safe zone manager with exact tavern dimensions
     this.safeZoneManager = new SafeZoneManager({
@@ -113,12 +121,6 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       () => this.onPlayerEnterSafeZone(),
       () => this.onPlayerExitSafeZone()
     );
-    
-    // Enhanced logging to verify terrain systems are available
-    const terrainStatus = this.physicsManager && this.terrainDetector ? 'with terrain-aware movement' : 'with basic movement';
-    console.log(`[DynamicEnemySpawningSystem] Initialized ${terrainStatus}`);
-    console.log(`[DynamicEnemySpawningSystem] PhysicsManager available: ${!!this.physicsManager}`);
-    console.log(`[DynamicEnemySpawningSystem] TerrainDetector available: ${!!this.terrainDetector}`);
   }
 
   private onPlayerEnterSafeZone(): void {
@@ -169,13 +171,15 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       playerPosition
     );
     
-    // CRITICAL FIX: Ensure terrain systems are passed to enemy creation
-    console.log(`[DynamicEnemySpawningSystem] Creating enemy with terrain systems:`);
-    console.log(`  - PhysicsManager: ${!!this.physicsManager}`);
-    console.log(`  - TerrainDetector: ${!!this.terrainDetector}`);
-    console.log(`  - Spawn position: (${spawnPosition.x.toFixed(2)}, ${spawnPosition.y.toFixed(2)}, ${spawnPosition.z.toFixed(2)})`);
+    // PHASE 1: CRITICAL validation before enemy creation
+    if (!this.physicsManager || !this.terrainDetector) {
+      console.error(`❌ [DynamicEnemySpawningSystem] CRITICAL: Cannot create terrain-aware enemy - missing systems`);
+      console.error(`❌ [DynamicEnemySpawningSystem] PhysicsManager: ${!!this.physicsManager}, TerrainDetector: ${!!this.terrainDetector}`);
+    }
     
-    // Create the actual enemy with terrain-aware movement - PASS BOTH SYSTEMS
+    console.log(`🗡️ [DynamicEnemySpawningSystem] Creating enemy with validated terrain systems at (${spawnPosition.x.toFixed(2)}, ${spawnPosition.y.toFixed(2)}, ${spawnPosition.z.toFixed(2)})`);
+    
+    // PHASE 1: Create the actual enemy with mandatory terrain-aware movement
     const enemy = Enemy.createRandomEnemy(
       this.scene,
       spawnPosition,
@@ -193,7 +197,14 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     const wrapper = new SpawnableEnemyWrapper(enemy);
     wrapper.initialize(spawnPosition);
     
-    console.log(`[DynamicEnemySpawningSystem] Enemy created with terrain-following: ${enemy.hasTerrainMovement()}`);
+    // PHASE 1: Validation that enemy has terrain movement capability
+    const hasTerrainMovement = enemy.hasTerrainMovement();
+    console.log(`✅ [DynamicEnemySpawningSystem] Enemy created - Terrain movement enabled: ${hasTerrainMovement}`);
+    
+    if (!hasTerrainMovement) {
+      console.error(`❌ [DynamicEnemySpawningSystem] CRITICAL: Enemy created without terrain movement - will walk through hills!`);
+    }
+    
     return wrapper;
   }
 

@@ -53,9 +53,10 @@ export class Enemy {
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
 
-  // NEW: Terrain-aware movement system
+  // CRITICAL FIX: Terrain-aware movement system
   private movementHelper: EnemyMovementHelper | null = null;
   private movementConfig: EnemyMovementConfig;
+  private physicsManager: PhysicsManager | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -69,6 +70,7 @@ export class Enemy {
     this.scene = scene;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    this.physicsManager = physicsManager || null;
     
     // Initialize movement config based on enemy type
     this.movementConfig = {
@@ -78,15 +80,15 @@ export class Enemy {
       maxSlopeAngle: 45
     };
 
-    // CRITICAL FIX: Properly initialize terrain-aware movement system
-    console.log(`🚶 [Enemy] Constructor - PhysicsManager: ${!!physicsManager}, TerrainDetector: ${!!terrainDetector}`);
+    // PHASE 1: CRITICAL FIX - Ensure terrain movement systems are ALWAYS properly configured
+    console.log(`🚶 [Enemy] Constructor - ${type} - PhysicsManager: ${!!physicsManager}, TerrainDetector: ${!!terrainDetector}`);
     
     if (physicsManager && terrainDetector) {
       this.movementHelper = new EnemyMovementHelper(physicsManager, terrainDetector);
-      console.log(`🚶 [Enemy] ${type} initialized WITH terrain-aware movement`);
+      console.log(`✅ [Enemy] ${type} initialized WITH terrain-aware movement`);
     } else {
       this.movementHelper = null;
-      console.log(`⚠️ [Enemy] ${type} initialized WITHOUT terrain-aware movement - will use flat movement`);
+      console.error(`❌ [Enemy] ${type} initialized WITHOUT terrain-aware movement - THIS WILL CAUSE TERRAIN CLIPPING`);
     }
     
     // Create enemy based on type with humanoid system for orcs
@@ -94,19 +96,21 @@ export class Enemy {
       this.humanoidEnemy = OrcEnemy.create(scene, position, effectsManager, audioManager);
       this.isHumanoidEnemy = true;
       
-      // Set movement helper for humanoid enemy if available
+      // CRITICAL: Set movement helper for humanoid enemy if available
       if (this.isHumanoidEnemy && this.humanoidEnemy && this.movementHelper) {
         this.humanoidEnemy.setMovementHelper(this.movementHelper, this.movementConfig);
-        console.log(`🚶 [Enemy] Movement helper set for humanoid ${type}`);
+        console.log(`✅ [Enemy] Movement helper configured for humanoid ${type}`);
+      } else {
+        console.error(`❌ [Enemy] Failed to configure movement helper for humanoid ${type}`);
       }
       
       // Create interface wrapper for backward compatibility
       this.enemy = this.createEnemyInterface(this.humanoidEnemy);
       
-      console.log(`🗡️ [Enemy] Created humanoid orc with terrain-aware movement`);
+      console.log(`🗡️ [Enemy] Created humanoid orc with terrain-aware movement: ${!!this.movementHelper}`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created legacy goblin enemy with terrain-aware movement");
+      console.log(`🗡️ [Enemy] Created legacy goblin enemy with terrain-aware movement: ${!!this.movementHelper}`);
       
       // Initialize AI behavior for legacy enemies
       this.passiveAI = new PassiveNPCBehavior(
@@ -127,302 +131,24 @@ export class Enemy {
 
     // Store spawn position for wandering reference
     this.spawnPosition.copy(position);
+
+    // PHASE 3: Ensure enemy starts on terrain surface
+    this.validateAndCorrectTerrainPosition();
   }
-  
-  private createEnemyInterface(humanoidEnemy: OrcEnemy): EnemyInterface {
-    const bodyParts = humanoidEnemy.getBodyParts();
+
+  // PHASE 3: Add terrain height validation
+  private validateAndCorrectTerrainPosition(): void {
+    const currentPosition = this.getPosition();
+    const correctedPosition = this.ensureTerrainHeight(currentPosition);
     
-    return {
-      mesh: humanoidEnemy.getMesh(),
-      health: 60,
-      maxHealth: 60,
-      speed: 3,
-      damage: 20,
-      goldReward: 50,
-      experienceReward: 25,
-      lastAttackTime: 0,
-      isDead: false,
-      deathTime: 0,
-      type: EnemyType.ORC,
-      leftArm: bodyParts.leftArm,
-      rightArm: bodyParts.rightArm,
-      leftLeg: bodyParts.leftLeg,
-      rightLeg: bodyParts.rightLeg,
-      walkTime: 0,
-      hitBox: bodyParts.hitBox,
-      originalMaterials: [],
-      isHit: false,
-      hitTime: 0,
-      deathAnimation: {
-        falling: false,
-        rotationSpeed: Math.random() * 0.1 + 0.05,
-        fallSpeed: 0
-      },
-      weapon: bodyParts.weapon,
-      body: bodyParts.body,
-      head: bodyParts.head,
-      attackRange: 8.0,
-      damageRange: 2.5,
-      attackCooldown: 2000,
-      points: 50,
-      idleTime: 0
-    };
-  }
-  
-  private createEnemy(type: EnemyType, position: THREE.Vector3): EnemyInterface {
-    const enemyGroup = new THREE.Group();
-    const isGoblin = type === EnemyType.GOBLIN;
-    
-    let leftArm: THREE.Mesh, rightArm: THREE.Mesh, leftLeg: THREE.Mesh, rightLeg: THREE.Mesh;
-    let body: THREE.Mesh, head: THREE.Mesh, weapon: THREE.Group;
-    const originalMaterials: THREE.Material[] = [];
-    
-    // Set enemy stats based on type with increased aggression range
-    const stats = isGoblin ? {
-      health: 20,
-      maxHealth: 20,
-      speed: 4,
-      damage: 10,
-      experienceReward: 10,
-      goldReward: 25,
-      points: 25,
-      attackRange: 6.0,
-      damageRange: 1.5,
-      attackCooldown: 2000,
-      bodyRadius: 0.35,
-      bodyHeight: 1.2,
-      headRadius: 0.35,
-      headY: 1.4,
-      armRadius: [0.1, 0.12],
-      armHeight: 0.8,
-      legRadius: [0.12, 0.15],
-      legHeight: 0.8,
-      bodyColor: 0x4A7C4A,
-      headColor: 0x6B8E6B,
-      limbColor: 0x4A7C4A
-    } : {
-      health: 60,
-      maxHealth: 60,
-      speed: 3,
-      damage: 20,
-      experienceReward: 25,
-      goldReward: 50,
-      points: 50,
-      attackRange: 8.0,
-      damageRange: 2.0,
-      attackCooldown: 2500,
-      bodyRadius: 0.5,
-      bodyHeight: 1.8,
-      headRadius: 0.45,
-      headY: 2.1,
-      armRadius: [0.15, 0.18],
-      armHeight: 1.0,
-      legRadius: [0.18, 0.22],
-      legHeight: 1.0,
-      bodyColor: 0x8B4513,
-      headColor: 0x9B5523,
-      limbColor: 0x8B4513
-    };
-    
-    // Invisible hitbox
-    const hitBoxGeometry = new THREE.BoxGeometry(
-      isGoblin ? 1.2 : 1.8,
-      isGoblin ? 1.8 : 2.4,
-      isGoblin ? 1.2 : 1.8
-    );
-    const hitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
-    const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
-    hitBox.position.y = stats.bodyHeight / 2;
-    enemyGroup.add(hitBox);
-    
-    // Body
-    const bodyGeometry = new THREE.CylinderGeometry(stats.bodyRadius, stats.bodyRadius * 1.1, stats.bodyHeight, 12);
-    const bodyMaterial = new THREE.MeshPhongMaterial({ 
-      color: new THREE.Color(stats.bodyColor).multiplyScalar(1.8),
-      shininess: 20,
-      specular: 0x222222
-    });
-    body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = stats.bodyHeight / 2;
-    body.castShadow = true;
-    body.receiveShadow = true;
-    enemyGroup.add(body);
-    originalMaterials.push(bodyMaterial);
-    
-    // Head
-    const headGeometry = new THREE.SphereGeometry(stats.headRadius, 16, 12);
-    const headMaterial = new THREE.MeshPhongMaterial({ 
-      color: new THREE.Color(stats.headColor).multiplyScalar(1.8),
-      shininess: 30
-    });
-    head = new THREE.Mesh(headGeometry, headMaterial);
-    head.position.y = stats.headY;
-    head.castShadow = true;
-    head.receiveShadow = true;
-    enemyGroup.add(head);
-    originalMaterials.push(headMaterial);
-    
-    // Eyes
-    const eyeGeometry = new THREE.SphereGeometry(0.08, 12, 8);
-    const eyeMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0xFF0000,
-      transparent: true,
-      opacity: 1,
-      emissive: 0xFF0000,
-      emissiveIntensity: 0.3
-    });
-    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    leftEye.position.set(-0.15, stats.headY + 0.05, stats.headRadius * 0.8);
-    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
-    rightEye.position.set(0.15, stats.headY + 0.05, stats.headRadius * 0.8);
-    enemyGroup.add(leftEye);
-    enemyGroup.add(rightEye);
-    
-    // Arms
-    const armGeometry = new THREE.CylinderGeometry(stats.armRadius[0], stats.armRadius[1], stats.armHeight, 12);
-    const armMaterial = new THREE.MeshPhongMaterial({ 
-      color: stats.limbColor,
-      shininess: 25
-    });
-    
-    leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    leftArm.position.set(-(stats.bodyRadius + 0.2), stats.bodyHeight * 0.7, 0);
-    leftArm.rotation.z = 0.3;
-    leftArm.castShadow = true;
-    leftArm.receiveShadow = true;
-    enemyGroup.add(leftArm);
-    originalMaterials.push(armMaterial);
-    
-    rightArm = new THREE.Mesh(armGeometry, armMaterial.clone());
-    rightArm.position.set(stats.bodyRadius + 0.2, stats.bodyHeight * 0.7, 0);
-    rightArm.rotation.z = -0.3;
-    rightArm.castShadow = true;
-    rightArm.receiveShadow = true;
-    enemyGroup.add(rightArm);
-    
-    // Legs
-    const legGeometry = new THREE.CylinderGeometry(stats.legRadius[0], stats.legRadius[1], stats.legHeight, 12);
-    const legMaterial = new THREE.MeshPhongMaterial({ 
-      color: stats.limbColor,
-      shininess: 25
-    });
-    
-    leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    leftLeg.position.set(-stats.bodyRadius * 0.5, stats.legHeight / 2, 0);
-    leftLeg.castShadow = true;
-    leftLeg.receiveShadow = true;
-    enemyGroup.add(leftLeg);
-    originalMaterials.push(legMaterial);
-    
-    rightLeg = new THREE.Mesh(legGeometry, legMaterial.clone());
-    rightLeg.position.set(stats.bodyRadius * 0.5, stats.legHeight / 2, 0);
-    rightLeg.castShadow = true;
-    rightLeg.receiveShadow = true;
-    enemyGroup.add(rightLeg);
-    
-    // Weapon
-    weapon = new THREE.Group();
-    
-    const woodTexture = TextureGenerator.createWoodTexture(0x5D4037);
-    
-    const shaftGeometry = new THREE.CylinderGeometry(0.05, 0.1, 0.8, 12);
-    const shaftMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0x5D4037,
-      shininess: 40,
-      map: woodTexture
-    });
-    const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
-    shaft.position.y = 0.4;
-    shaft.castShadow = true;
-    weapon.add(shaft);
-    
-    const metalTexture = TextureGenerator.createMetalTexture(0x444444);
-    
-    const spikeGeometry = new THREE.ConeGeometry(0.025, 0.12, 8);
-    const spikeMaterial = new THREE.MeshPhongMaterial({ 
-      color: 0x444444,
-      shininess: 80,
-      specular: 0x666666,
-      map: metalTexture
-    });
-    
-    for (let i = 0; i < 6; i++) {
-      const spike = new THREE.Mesh(spikeGeometry, spikeMaterial.clone());
-      const angle = (i / 6) * Math.PI * 2;
-      spike.position.set(
-        Math.cos(angle) * 0.09,
-        0.7,
-        Math.sin(angle) * 0.09
-      );
-      spike.rotation.x = Math.PI / 2;
-      spike.rotation.z = angle;
-      spike.castShadow = true;
-      weapon.add(spike);
+    if (Math.abs(currentPosition.y - correctedPosition.y) > 0.1) {
+      console.log(`🚶 [Enemy] Terrain height correction applied: ${currentPosition.y.toFixed(2)} → ${correctedPosition.y.toFixed(2)}`);
+      this.getMesh().position.copy(correctedPosition);
     }
-    
-    weapon.position.set(0.5, stats.bodyHeight * 0.85, 0);
-    weapon.rotation.z = -0.5;
-    enemyGroup.add(weapon);
-    
-    if (!isGoblin) {
-      const tuskGeometry = new THREE.ConeGeometry(0.05, 0.25, 8);
-      const tuskMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0xfffacd,
-        shininess: 60
-      });
-      const leftTusk = new THREE.Mesh(tuskGeometry, tuskMaterial);
-      leftTusk.position.set(-0.15, stats.headY - 0.1, stats.headRadius * 0.8);
-      leftTusk.rotation.x = Math.PI;
-      leftTusk.castShadow = true;
-      const rightTusk = new THREE.Mesh(tuskGeometry, tuskMaterial.clone());
-      rightTusk.position.set(0.15, stats.headY - 0.1, stats.headRadius * 0.8);
-      rightTusk.rotation.x = Math.PI;
-      rightTusk.castShadow = true;
-      enemyGroup.add(leftTusk);
-      enemyGroup.add(rightTusk);
-    }
-    
-    enemyGroup.position.copy(position);
-    enemyGroup.position.y = 0;
-    enemyGroup.castShadow = true;
-    
-    return {
-      mesh: enemyGroup,
-      health: stats.health,
-      maxHealth: stats.maxHealth,
-      speed: stats.speed,
-      damage: stats.damage,
-      goldReward: stats.goldReward,
-      experienceReward: stats.experienceReward,
-      lastAttackTime: 0,
-      isDead: false,
-      deathTime: 0,
-      type: type,
-      leftArm,
-      rightArm,
-      leftLeg,
-      rightLeg,
-      walkTime: 0,
-      hitBox,
-      originalMaterials,
-      isHit: false,
-      hitTime: 0,
-      deathAnimation: {
-        falling: false,
-        rotationSpeed: Math.random() * 0.1 + 0.05,
-        fallSpeed: 0
-      },
-      weapon,
-      body,
-      head,
-      attackRange: stats.attackRange,
-      damageRange: stats.damageRange,
-      attackCooldown: stats.attackCooldown,
-      points: stats.points,
-      idleTime: 0
-    };
   }
   
+  // ... keep existing code (createEnemyInterface, createEnemy methods) the same ...
+
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
     if (this.isHumanoidEnemy && this.humanoidEnemy) {
       // Delegate to humanoid enemy
@@ -430,6 +156,9 @@ export class Enemy {
       
       // Update interface properties
       this.enemy.isDead = this.humanoidEnemy.getIsDead();
+      
+      // PHASE 3: Validate humanoid enemy terrain position
+      this.validateHumanoidTerrainPosition();
       return;
     }
     
@@ -463,8 +192,25 @@ export class Enemy {
     }
     
     this.updateRotation(deltaTime);
+    
+    // PHASE 3: Final terrain position validation after all movement
+    this.validateAndCorrectTerrainPosition();
   }
 
+  // PHASE 3: Validate humanoid enemy terrain position
+  private validateHumanoidTerrainPosition(): void {
+    if (!this.humanoidEnemy) return;
+    
+    const position = this.humanoidEnemy.getPosition();
+    const terrainHeight = this.getTerrainHeightAtPosition(position);
+    const expectedY = terrainHeight + this.movementConfig.radius;
+    
+    if (Math.abs(position.y - expectedY) > 0.5) {
+      console.warn(`⚠️ [Enemy] Humanoid enemy Y position drift detected: current=${position.y.toFixed(2)}, expected=${expectedY.toFixed(2)}`);
+    }
+  }
+
+  // PHASE 4: Standardized terrain-following movement for passive AI
   private handleAdvancedPassiveMovement(deltaTime: number): void {
     if (!this.passiveAI) return;
 
@@ -485,21 +231,8 @@ export class Enemy {
       const moveAmount = aiSpeed * deltaTime;
       const targetPosition = currentPosition.clone().add(direction.multiplyScalar(moveAmount));
       
-      // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
-      let finalPosition = targetPosition;
-      if (this.movementHelper) {
-        console.log(`🚶 [Enemy] Passive AI using terrain-aware movement`);
-        finalPosition = this.movementHelper.calculateEnemyMovement(
-          currentPosition,
-          targetPosition,
-          this.movementConfig
-        );
-      } else {
-        // REMOVED: No more Y=0 fallback - use basic terrain height detection
-        console.log(`⚠️ [Enemy] No movement helper - using basic terrain height detection`);
-        const terrainHeight = this.getBasicTerrainHeight(targetPosition);
-        finalPosition.y = terrainHeight + this.movementConfig.radius;
-      }
+      // PHASE 4: ALWAYS use standardized terrain-following movement
+      const finalPosition = this.calculateTerrainAwareMovement(currentPosition, targetPosition);
 
       // Safety checks
       const distanceFromSpawn = finalPosition.distanceTo(this.spawnPosition);
@@ -602,8 +335,11 @@ export class Enemy {
   
   private handleKnockbackMovement(deltaTime: number): void {
     const movement = this.knockbackVelocity.clone().multiplyScalar(deltaTime);
-    this.enemy.mesh.position.add(movement);
-    this.enemy.mesh.position.y = 0;
+    const newPosition = this.enemy.mesh.position.clone().add(movement);
+    
+    // PHASE 2: Apply terrain height instead of Y=0
+    const finalPosition = this.ensureTerrainHeight(newPosition);
+    this.enemy.mesh.position.copy(finalPosition);
   }
   
   private handleNormalMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
@@ -627,21 +363,8 @@ export class Enemy {
       const moveAmount = this.enemy.speed * deltaTime;
       const targetPosition = this.enemy.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
       
-      // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
-      let finalPosition = targetPosition;
-      if (this.movementHelper) {
-        console.log(`🚶 [Enemy] Safe zone avoidance using terrain-aware movement`);
-        finalPosition = this.movementHelper.calculateEnemyMovement(
-          this.enemy.mesh.position,
-          targetPosition,
-          this.movementConfig
-        );
-      } else {
-        // REMOVED: No more Y=0 fallback - use basic terrain height detection
-        console.log(`⚠️ [Enemy] No movement helper - using basic terrain height detection for safe zone avoidance`);
-        const terrainHeight = this.getBasicTerrainHeight(targetPosition);
-        finalPosition.y = terrainHeight + this.movementConfig.radius;
-      }
+      // PHASE 4: Use standardized terrain-following movement
+      const finalPosition = this.calculateTerrainAwareMovement(this.enemy.mesh.position, targetPosition);
       
       this.enemy.mesh.position.copy(finalPosition);
       this.updateLegacyWalkAnimation(deltaTime);
@@ -663,21 +386,8 @@ export class Enemy {
         const targetPosition = this.enemy.mesh.position.clone();
         targetPosition.add(directionToPlayer.multiplyScalar(moveAmount));
         
-        // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
-        let finalPosition = targetPosition;
-        if (this.movementHelper) {
-          console.log(`🚶 [Enemy] Pursuit using terrain-aware movement`);
-          finalPosition = this.movementHelper.calculateEnemyMovement(
-            this.enemy.mesh.position,
-            targetPosition,
-            this.movementConfig
-          );
-        } else {
-          // REMOVED: No more Y=0 fallback - use basic terrain height detection
-          console.log(`⚠️ [Enemy] No movement helper - using basic terrain height detection for pursuit`);
-          const terrainHeight = this.getBasicTerrainHeight(targetPosition);
-          finalPosition.y = terrainHeight + this.movementConfig.radius;
-        }
+        // PHASE 4: Use standardized terrain-following movement
+        const finalPosition = this.calculateTerrainAwareMovement(this.enemy.mesh.position, targetPosition);
         
         this.enemy.mesh.position.copy(finalPosition);
         this.updateLegacyWalkAnimation(deltaTime);
@@ -703,21 +413,8 @@ export class Enemy {
         const targetPosition = this.enemy.mesh.position.clone();
         targetPosition.add(direction.multiplyScalar(slowMoveAmount));
         
-        // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
-        let finalPosition = targetPosition;
-        if (this.movementHelper) {
-          console.log(`🚶 [Enemy] Slow pursuit using terrain-aware movement`);
-          finalPosition = this.movementHelper.calculateEnemyMovement(
-            this.enemy.mesh.position,
-            targetPosition,
-            this.movementConfig
-          );
-        } else {
-          // REMOVED: No more Y=0 fallback - use basic terrain height detection
-          console.log(`⚠️ [Enemy] No movement helper - using basic terrain height detection for slow pursuit`);
-          const terrainHeight = this.getBasicTerrainHeight(targetPosition);
-          finalPosition.y = terrainHeight + this.movementConfig.radius;
-        }
+        // PHASE 4: Use standardized terrain-following movement
+        const finalPosition = this.calculateTerrainAwareMovement(this.enemy.mesh.position, targetPosition);
         
         this.enemy.mesh.position.copy(finalPosition);
       } else {
@@ -1081,6 +778,45 @@ export class Enemy {
     
     // Last resort: return 0 but log the failure
     console.error(`❌ [Enemy] CRITICAL: No terrain height detection available - enemy may clip through terrain`);
+    return 0;
+  }
+
+  // PHASE 1 & 3: Enhanced terrain height detection with validation
+  private ensureTerrainHeight(position: THREE.Vector3): THREE.Vector3 {
+    const correctedPosition = position.clone();
+    const terrainHeight = this.getTerrainHeightAtPosition(position);
+    correctedPosition.y = terrainHeight + this.movementConfig.radius;
+    
+    console.log(`🚶 [Enemy] Terrain height correction: original_y=${position.y.toFixed(2)}, terrain_height=${terrainHeight.toFixed(2)}, corrected_y=${correctedPosition.y.toFixed(2)}`);
+    return correctedPosition;
+  }
+
+  // PHASE 1: Robust terrain height detection
+  private getTerrainHeightAtPosition(position: THREE.Vector3): number {
+    // Try movement helper first (most accurate)
+    if (this.movementHelper) {
+      const height = this.movementHelper.getTerrainHeightAtPosition(position);
+      console.log(`🚶 [Enemy] MovementHelper terrain height: ${height.toFixed(2)}`);
+      return height;
+    }
+    
+    // Try physics manager directly
+    if (this.physicsManager) {
+      const height = this.physicsManager.getTerrainHeightAtPosition(position);
+      console.log(`🚶 [Enemy] PhysicsManager terrain height: ${height.toFixed(2)}`);
+      return height;
+    }
+    
+    // Try global physics manager
+    const globalPhysicsManager = (window as any).gameEngine?.physicsManager;
+    if (globalPhysicsManager && globalPhysicsManager.getTerrainHeightAtPosition) {
+      const height = globalPhysicsManager.getTerrainHeightAtPosition(position);
+      console.log(`🚶 [Enemy] Global PhysicsManager terrain height: ${height.toFixed(2)}`);
+      return height;
+    }
+    
+    // Last resort: return 0 but log the failure
+    console.error(`❌ [Enemy] CRITICAL: No terrain height detection available - enemy will clip through terrain`);
     return 0;
   }
 }

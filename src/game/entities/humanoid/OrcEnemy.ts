@@ -66,7 +66,7 @@ export class OrcEnemy extends EnemyHumanoid {
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
 
-  // NEW: Terrain-aware movement system
+  // CRITICAL FIX: Terrain-aware movement system
   private movementHelper: EnemyMovementHelper | null = null;
   private movementConfig: EnemyMovementConfig = {
     speed: 3,
@@ -93,38 +93,41 @@ export class OrcEnemy extends EnemyHumanoid {
     );
     
     console.log("🗡️ [OrcEnemy] Created enhanced orc - terrain movement will be set via setMovementHelper()");
+    
+    // PHASE 3: Ensure orc starts on terrain surface
+    this.validateAndCorrectTerrainPosition();
   }
 
-  // ENHANCED: Set movement helper with proper validation and logging
+  // PHASE 1: Enhanced movement helper configuration with validation
   public setMovementHelper(helper: EnemyMovementHelper, config: EnemyMovementConfig): void {
     this.movementHelper = helper;
     this.movementConfig = config;
-    console.log("🚶 [OrcEnemy] Terrain-aware movement system enabled and configured");
+    console.log("✅ [OrcEnemy] Terrain-aware movement system enabled and configured");
+    
+    // Validate configuration immediately
+    if (!helper) {
+      console.error("❌ [OrcEnemy] Invalid movement helper provided");
+      return;
+    }
+    
+    // Test terrain height detection
+    const currentPos = this.mesh.position.clone();
+    const testHeight = helper.getTerrainHeightAtPosition(currentPos);
+    console.log(`🚶 [OrcEnemy] Movement helper test - position: (${currentPos.x.toFixed(2)}, ${currentPos.z.toFixed(2)}), terrain height: ${testHeight.toFixed(2)}`);
   }
 
-  // NEW: Check if terrain movement is available
-  public hasTerrainMovement(): boolean {
-    return this.movementHelper !== null;
-  }
-
-  public setPassiveMode(passive: boolean): void {
-    if (this.isPassive !== passive) {
-      this.isPassive = passive;
-      
-      if (passive) {
-        console.log(`🛡️ [OrcEnemy] Switching to passive mode - starting advanced AI behavior`);
-        // Regenerate waypoints when entering passive mode
-        this.passiveAI.regenerateWaypoints();
-      } else {
-        console.log(`⚔️ [OrcEnemy] Switching to aggressive mode - will pursue player`);
-      }
+  // PHASE 3: Add terrain position validation
+  private validateAndCorrectTerrainPosition(): void {
+    const currentPosition = this.mesh.position.clone();
+    const correctedPosition = this.ensureTerrainHeight(currentPosition);
+    
+    if (Math.abs(currentPosition.y - correctedPosition.y) > 0.1) {
+      console.log(`🚶 [OrcEnemy] Terrain height correction applied: ${currentPosition.y.toFixed(2)} → ${correctedPosition.y.toFixed(2)}`);
+      this.mesh.position.copy(correctedPosition);
     }
   }
 
-  public getPassiveMode(): boolean {
-    return this.isPassive;
-  }
-
+  // PHASE 4: Standardized terrain-following movement for passive AI
   private handleAdvancedPassiveMovement(deltaTime: number): void {
     const currentPosition = this.mesh.position.clone();
     const aiDecision = this.passiveAI.update(deltaTime, currentPosition);
@@ -143,20 +146,8 @@ export class OrcEnemy extends EnemyHumanoid {
       const moveAmount = aiSpeed * deltaTime;
       const targetPosition = currentPosition.clone().add(direction.multiplyScalar(moveAmount));
 
-      // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
-      let finalPosition = targetPosition;
-      if (this.movementHelper) {
-        console.log(`🚶 [OrcEnemy] Passive AI using terrain-aware movement`);
-        finalPosition = this.movementHelper.calculateEnemyMovement(
-          currentPosition,
-          targetPosition,
-          this.movementConfig
-        );
-      } else {
-        // REMOVED: No more Y=0 fallback - use basic terrain height detection
-        console.log(`⚠️ [OrcEnemy] No movement helper - using basic terrain height detection`);
-        finalPosition = this.ensureTerrainHeight(targetPosition);
-      }
+      // PHASE 4: ALWAYS use standardized terrain-following movement
+      const finalPosition = this.calculateTerrainAwareMovement(currentPosition, targetPosition);
 
       // Safety checks
       const distanceFromSpawn = finalPosition.distanceTo(this.spawnPosition);
@@ -227,20 +218,8 @@ export class OrcEnemy extends EnemyHumanoid {
       const moveAmount = this.config.speed * deltaTime;
       const targetPosition = this.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
       
-      // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
-      let finalPosition = targetPosition;
-      if (this.movementHelper) {
-        console.log(`🚶 [OrcEnemy] Safe zone avoidance using terrain-aware movement`);
-        finalPosition = this.movementHelper.calculateEnemyMovement(
-          this.mesh.position,
-          targetPosition,
-          this.movementConfig
-        );
-      } else {
-        // REMOVED: No more Y=0 fallback - use basic terrain height detection
-        console.log(`⚠️ [OrcEnemy] No movement helper - using basic terrain height detection for safe zone avoidance`);
-        finalPosition = this.ensureTerrainHeight(targetPosition);
-      }
+      // PHASE 4: Use standardized terrain-following movement
+      const finalPosition = this.calculateTerrainAwareMovement(this.mesh.position, targetPosition);
       
       this.mesh.position.copy(finalPosition);
       this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
@@ -260,20 +239,8 @@ export class OrcEnemy extends EnemyHumanoid {
         const moveAmount = this.config.speed * deltaTime;
         const targetPosition = this.mesh.position.clone().add(directionToPlayer.multiplyScalar(moveAmount));
         
-        // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
-        let finalPosition = targetPosition;
-        if (this.movementHelper) {
-          console.log(`🚶 [OrcEnemy] Aggressive pursuit using terrain-aware movement`);
-          finalPosition = this.movementHelper.calculateEnemyMovement(
-            this.mesh.position,
-            targetPosition,
-            this.movementConfig
-          );
-        } else {
-          // REMOVED: No more Y=0 fallback - use basic terrain height detection
-          console.log(`⚠️ [OrcEnemy] No movement helper - using basic terrain height detection for pursuit`);
-          finalPosition = this.ensureTerrainHeight(targetPosition);
-        }
+        // PHASE 4: Use standardized terrain-following movement
+        const finalPosition = this.calculateTerrainAwareMovement(this.mesh.position, targetPosition);
         
         this.mesh.position.copy(finalPosition);
         this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
@@ -282,24 +249,103 @@ export class OrcEnemy extends EnemyHumanoid {
 
     // Call parent update for other behaviors (attacking, etc.)
     super.update(deltaTime, playerPosition);
+    
+    // PHASE 3: Final terrain position validation after all movement
+    this.validateAndCorrectTerrainPosition();
   }
 
-  // NEW: Basic terrain height detection fallback for OrcEnemy
+  // PHASE 4: Standardized terrain-aware movement calculation
+  private calculateTerrainAwareMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3): THREE.Vector3 {
+    console.log(`🚶 [OrcEnemy] Calculating terrain-aware movement from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
+    
+    if (this.movementHelper) {
+      console.log(`✅ [OrcEnemy] Using EnemyMovementHelper for terrain-following`);
+      const finalPosition = this.movementHelper.calculateEnemyMovement(
+        currentPosition,
+        targetPosition,
+        this.movementConfig
+      );
+      console.log(`🚶 [OrcEnemy] Movement helper result: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
+      return finalPosition;
+    } else {
+      console.warn(`⚠️ [OrcEnemy] No movement helper - using enhanced terrain height detection`);
+      const finalPosition = this.ensureTerrainHeight(targetPosition);
+      console.log(`🚶 [OrcEnemy] Enhanced terrain result: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
+      return finalPosition;
+    }
+  }
+
+  // PHASE 1 & 3: Enhanced terrain height detection with validation
   private ensureTerrainHeight(position: THREE.Vector3): THREE.Vector3 {
     const correctedPosition = position.clone();
+    const terrainHeight = this.getTerrainHeightAtPosition(position);
+    correctedPosition.y = terrainHeight + this.movementConfig.radius;
     
-    // Try to get terrain height from global physics manager
-    const physicsManager = (window as any).gameEngine?.physicsManager;
-    if (physicsManager && physicsManager.getTerrainHeightAtPosition) {
-      const terrainHeight = physicsManager.getTerrainHeightAtPosition(position);
-      correctedPosition.y = terrainHeight + this.movementConfig.radius;
-      console.log(`🚶 [OrcEnemy] Basic terrain height correction: terrain=${terrainHeight.toFixed(2)}, final_y=${correctedPosition.y.toFixed(2)}`);
-    } else {
-      // Last resort: keep original Y but log the issue
-      console.error(`❌ [OrcEnemy] CRITICAL: No terrain height detection available - orc may clip through terrain`);
+    console.log(`🚶 [OrcEnemy] Terrain height correction: original_y=${position.y.toFixed(2)}, terrain_height=${terrainHeight.toFixed(2)}, corrected_y=${correctedPosition.y.toFixed(2)}`);
+    return correctedPosition;
+  }
+
+  // PHASE 1: Robust terrain height detection
+  private getTerrainHeightAtPosition(position: THREE.Vector3): number {
+    // Try movement helper first (most accurate)
+    if (this.movementHelper) {
+      const height = this.movementHelper.getTerrainHeightAtPosition(position);
+      console.log(`🚶 [OrcEnemy] MovementHelper terrain height: ${height.toFixed(2)}`);
+      return height;
     }
     
-    return correctedPosition;
+    // Try global physics manager
+    const globalPhysicsManager = (window as any).gameEngine?.physicsManager;
+    if (globalPhysicsManager && globalPhysicsManager.getTerrainHeightAtPosition) {
+      const height = globalPhysicsManager.getTerrainHeightAtPosition(position);
+      console.log(`🚶 [OrcEnemy] Global PhysicsManager terrain height: ${height.toFixed(2)}`);
+      return height;
+    }
+    
+    // Last resort: return 0 but log the failure
+    console.error(`❌ [OrcEnemy] CRITICAL: No terrain height detection available - orc will clip through terrain`);
+    return 0;
+  }
+
+  public setPassiveMode(passive: boolean): void {
+    if (this.isPassive !== passive) {
+      this.isPassive = passive;
+      
+      if (passive) {
+        console.log(`🛡️ [OrcEnemy] Switching to passive mode - starting advanced AI behavior`);
+        // Regenerate waypoints when entering passive mode
+        this.passiveAI.regenerateWaypoints();
+      } else {
+        console.log(`⚔️ [OrcEnemy] Switching to aggressive mode - will pursue player`);
+      }
+    }
+  }
+
+  public getPassiveMode(): boolean {
+    return this.isPassive;
+  }
+
+  public hasTerrainMovement(): boolean {
+    return this.movementHelper !== null;
+  }
+
+  public getAIBehaviorInfo(): {
+    currentState: PassiveBehaviorState;
+    personality: any;
+  } {
+    return {
+      currentState: this.passiveAI.getCurrentState(),
+      personality: this.passiveAI.getPersonality()
+    };
+  }
+
+  public static create(
+    scene: THREE.Scene,
+    position: THREE.Vector3,
+    effectsManager: EffectsManager,
+    audioManager: AudioManager
+  ): OrcEnemy {
+    return new OrcEnemy(scene, position, effectsManager, audioManager);
   }
 
   protected createWeapon(woodTexture: THREE.Texture, metalTexture: THREE.Texture): THREE.Group {
@@ -339,25 +385,5 @@ export class OrcEnemy extends EnemyHumanoid {
     weapon.add(blade2);
 
     return weapon;
-  }
-
-  // Get AI behavior info for debugging
-  public getAIBehaviorInfo(): {
-    currentState: PassiveBehaviorState;
-    personality: any;
-  } {
-    return {
-      currentState: this.passiveAI.getCurrentState(),
-      personality: this.passiveAI.getPersonality()
-    };
-  }
-
-  public static create(
-    scene: THREE.Scene,
-    position: THREE.Vector3,
-    effectsManager: EffectsManager,
-    audioManager: AudioManager
-  ): OrcEnemy {
-    return new OrcEnemy(scene, position, effectsManager, audioManager);
   }
 }
