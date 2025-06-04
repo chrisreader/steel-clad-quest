@@ -232,8 +232,11 @@ export class VolumetricFogSystem {
       uniforms: {
         time: { value: 0.0 },
         timeOfDay: { value: this.timeOfDay },
-        fogColor: { value: new THREE.Color(0xF5F5F5) }, // STANDARDIZED: Always use day time color
-        fogWallDensity: { value: 0.08 }, // STANDARDIZED: Same density for all times
+        dayFogColor: { value: new THREE.Color(0xF5F5F5) },
+        nightFogColor: { value: new THREE.Color(0x505080) },
+        sunriseFogColor: { value: new THREE.Color(0xFFE8D0) },
+        sunsetFogColor: { value: new THREE.Color(0xFFDCC0) },
+        fogWallDensity: { value: 0.08 },
         fogWallHeight: { value: 80.0 },
         horizonBlur: { value: 0.6 },
         playerPosition: { value: new THREE.Vector3() },
@@ -282,7 +285,10 @@ export class VolumetricFogSystem {
       fragmentShader: `
         uniform float time;
         uniform float timeOfDay;
-        uniform vec3 fogColor;
+        uniform vec3 dayFogColor;
+        uniform vec3 nightFogColor;
+        uniform vec3 sunriseFogColor;
+        uniform vec3 sunsetFogColor;
         uniform float fogWallDensity;
         uniform float fogWallHeight;
         uniform float horizonBlur;
@@ -375,9 +381,33 @@ export class VolumetricFogSystem {
           return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
         }
         
+        vec3 getFogColorForTime(float time) {
+          vec3 currentColor = dayFogColor;
+          
+          if (time >= 0.2 && time <= 0.3) {
+            float factor = (time - 0.2) / 0.1;
+            currentColor = mix(nightFogColor, sunriseFogColor, factor);
+          } else if (time > 0.3 && time < 0.4) {
+            float factor = (time - 0.3) / 0.1;
+            currentColor = mix(sunriseFogColor, dayFogColor, factor);
+          } else if (time >= 0.4 && time <= 0.6) {
+            currentColor = dayFogColor;
+          } else if (time > 0.6 && time < 0.7) {
+            float factor = (time - 0.6) / 0.1;
+            currentColor = mix(dayFogColor, sunsetFogColor, factor);
+          } else if (time >= 0.7 && time <= 0.8) {
+            float factor = (time - 0.7) / 0.1;
+            currentColor = mix(sunsetFogColor, nightFogColor, factor);
+          } else {
+            currentColor = nightFogColor;
+          }
+          
+          return currentColor;
+        }
+        
         void main() {
-          // STANDARDIZED: Always use day time fog color for walls
-          vec3 atmosphericColor = fogColor;
+          // DYNAMIC COLOR: Now matches day/night cycle
+          vec3 atmosphericColor = getFogColorForTime(timeOfDay);
           
           // Create 3D volumetric noise for realistic fog volume
           vec3 noisePos = vWorldPosition * noiseScale;
@@ -457,7 +487,7 @@ export class VolumetricFogSystem {
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending, // STANDARDIZED: Always use Additive blending
+      blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     });
   }
@@ -745,7 +775,7 @@ export class VolumetricFogSystem {
       }
     });
     
-    console.log(`Created ${this.fogWallLayers.length} standardized fog walls with day time settings`);
+    console.log(`Created ${this.fogWallLayers.length} fog walls with dynamic day/night colors`);
   }
 
   private createSkyFogLayers(): void {
@@ -827,13 +857,12 @@ export class VolumetricFogSystem {
       }
     });
     
-    // STANDARDIZED FOG WALL UPDATES: No time-based changes
+    // FOG WALL UPDATES: Now with dynamic colors
     this.fogWallLayers.forEach((wall, index) => {
       const material = wall.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
-        // Note: timeOfDay still passed but not used for color in shader
-        material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.timeOfDay.value = timeOfDay; // Now used for dynamic color
         material.uniforms.playerPosition.value.copy(playerPosition);
       }
     });
