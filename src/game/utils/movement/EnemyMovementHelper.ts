@@ -25,6 +25,8 @@ export class EnemyMovementHelper {
     targetPosition: THREE.Vector3,
     config: EnemyMovementConfig
   ): THREE.Vector3 {
+    console.log(`🚶 [EnemyMovementHelper] Starting terrain-aware movement calculation`);
+    
     // Get terrain data at target position
     const terrainData = this.terrainDetector.getSurfaceDataAtPosition(targetPosition);
     
@@ -48,14 +50,16 @@ export class EnemyMovementHelper {
       return currentPosition; // Don't move if slope is too steep
     }
 
-    // Use physics manager for collision detection
-    const checkedPosition = this.physicsManager.checkPlayerMovement(
+    // CRITICAL FIX: Use dedicated enemy terrain movement instead of player movement
+    // This provides pure terrain following without environment collision blocking
+    console.log(`🚶 [EnemyMovementHelper] Using dedicated enemy terrain movement (no environment collision)`);
+    const checkedPosition = this.physicsManager.checkEnemyTerrainMovement(
       currentPosition,
       finalPosition,
       config.radius
     );
 
-    console.log(`🚶 Enemy terrain movement: height=${terrainData.height.toFixed(2)}, slope=${terrainData.slopeAngle.toFixed(1)}°`);
+    console.log(`🚶 [EnemyMovementHelper] Enemy terrain movement result: height=${terrainData.height.toFixed(2)}, slope=${terrainData.slopeAngle.toFixed(1)}°, final_pos=(${checkedPosition.x.toFixed(2)}, ${checkedPosition.y.toFixed(2)}, ${checkedPosition.z.toFixed(2)})`);
     return checkedPosition;
   }
 
