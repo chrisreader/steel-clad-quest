@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { PhysicsManager } from '../../engine/PhysicsManager';
 import { TerrainSurfaceDetector } from '../terrain/TerrainSurfaceDetector';
+import { SurfaceMovementCalculator } from './SurfaceMovementCalculator';
 
 export interface EnemyMovementConfig {
   speed: number;
@@ -13,59 +14,48 @@ export interface EnemyMovementConfig {
 export class EnemyMovementHelper {
   private physicsManager: PhysicsManager;
   private terrainDetector: TerrainSurfaceDetector;
+  private surfaceCalculator: SurfaceMovementCalculator;
 
   constructor(physicsManager: PhysicsManager, terrainDetector: TerrainSurfaceDetector) {
     this.physicsManager = physicsManager;
     this.terrainDetector = terrainDetector;
-    console.log('🚶 EnemyMovementHelper initialized with terrain-aware movement');
+    this.surfaceCalculator = new SurfaceMovementCalculator();
+    console.log('🚶 EnemyMovementHelper initialized with comprehensive surface movement');
   }
 
   public calculateEnemyMovement(
     currentPosition: THREE.Vector3,
-    targetPosition: THREE.Vector3,
-    config: EnemyMovementConfig
+    inputDirection: THREE.Vector3,
+    config: EnemyMovementConfig,
+    deltaTime: number = 0.016
   ): THREE.Vector3 {
-    // Get terrain data at target position
-    const terrainData = this.terrainDetector.getSurfaceDataAtPosition(targetPosition);
+    // Get surface data at current position
+    const surfaceData = this.terrainDetector.getSurfaceDataAtPosition(currentPosition);
     
-    // Calculate base movement with terrain height
-    let finalPosition = targetPosition.clone();
-    finalPosition.y = terrainData.height + config.radius;
-
-    // Apply slope speed adjustment if enabled
-    if (config.slopeSpeedMultiplier) {
-      const slopeMultiplier = this.calculateSlopeSpeedMultiplier(terrainData.slopeAngle);
-      const movementDirection = new THREE.Vector3().subVectors(targetPosition, currentPosition);
-      const adjustedMovement = movementDirection.multiplyScalar(slopeMultiplier);
-      
-      finalPosition = currentPosition.clone().add(adjustedMovement);
-      finalPosition.y = terrainData.height + config.radius;
-    }
+    // Use the same surface movement calculation as the player
+    const movementResult = this.surfaceCalculator.calculateSurfaceMovement(
+      currentPosition,
+      inputDirection,
+      config.speed,
+      surfaceData,
+      deltaTime
+    );
 
     // Check if slope is too steep for movement
-    if (terrainData.slopeAngle > config.maxSlopeAngle) {
-      console.log(`🚶 Enemy movement blocked by steep slope: ${terrainData.slopeAngle.toFixed(1)}°`);
+    if (surfaceData.slopeAngle > config.maxSlopeAngle && !surfaceData.isTerrainBoundary) {
+      console.log(`🚶 Enemy movement blocked by steep slope: ${surfaceData.slopeAngle.toFixed(1)}°`);
       return currentPosition; // Don't move if slope is too steep
     }
 
-    // Use physics manager for collision detection
+    // Use physics manager for collision detection like the player does
     const checkedPosition = this.physicsManager.checkPlayerMovement(
       currentPosition,
-      finalPosition,
+      movementResult.newPosition,
       config.radius
     );
 
-    console.log(`🚶 Enemy terrain movement: height=${terrainData.height.toFixed(2)}, slope=${terrainData.slopeAngle.toFixed(1)}°`);
+    console.log(`🚶 Enemy surface movement: height=${surfaceData.height.toFixed(2)}, slope=${surfaceData.slopeAngle.toFixed(1)}°, blocked=${movementResult.isBlocked}`);
     return checkedPosition;
-  }
-
-  private calculateSlopeSpeedMultiplier(slopeAngle: number): number {
-    // Same slope physics as player movement
-    if (slopeAngle < 5) return 1.0; // Flat ground
-    if (slopeAngle < 15) return 0.95; // Slight incline
-    if (slopeAngle < 25) return 0.85; // Moderate incline  
-    if (slopeAngle < 35) return 0.7; // Steep incline
-    return 0.5; // Very steep (near max walkable)
   }
 
   public getTerrainHeightAtPosition(position: THREE.Vector3): number {
@@ -75,5 +65,9 @@ export class EnemyMovementHelper {
   public isPositionWalkable(position: THREE.Vector3, maxSlopeAngle: number): boolean {
     const surfaceData = this.terrainDetector.getSurfaceDataAtPosition(position);
     return surfaceData.isWalkable && surfaceData.slopeAngle <= maxSlopeAngle;
+  }
+
+  public resetStuckCounter(): void {
+    this.surfaceCalculator.resetStuckCounter();
   }
 }

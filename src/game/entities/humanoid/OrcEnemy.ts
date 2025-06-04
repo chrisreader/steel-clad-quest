@@ -66,7 +66,7 @@ export class OrcEnemy extends EnemyHumanoid {
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
 
-  // NEW: Terrain-aware movement system
+  // Terrain-aware movement system with stuck detection
   private movementHelper: EnemyMovementHelper | null = null;
   private movementConfig: EnemyMovementConfig = {
     speed: 3,
@@ -74,6 +74,9 @@ export class OrcEnemy extends EnemyHumanoid {
     slopeSpeedMultiplier: true,
     maxSlopeAngle: 45
   };
+  private stuckCounter: number = 0;
+  private lastPosition: THREE.Vector3 = new THREE.Vector3();
+  private stuckThreshold: number = 0.01;
 
   constructor(
     scene: THREE.Scene,
@@ -83,6 +86,7 @@ export class OrcEnemy extends EnemyHumanoid {
   ) {
     super(scene, OrcEnemy.ORC_CONFIG, position, effectsManager, audioManager);
     this.spawnPosition.copy(position);
+    this.lastPosition.copy(position);
     
     // Initialize advanced passive AI
     this.passiveAI = new PassiveNPCBehavior(
@@ -92,13 +96,13 @@ export class OrcEnemy extends EnemyHumanoid {
       8 // Safe zone radius
     );
     
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with terrain-aware movement");
+    console.log("🗡️ [OrcEnemy] Created enhanced orc with comprehensive surface movement");
   }
 
   public setMovementHelper(helper: EnemyMovementHelper, config: EnemyMovementConfig): void {
     this.movementHelper = helper;
     this.movementConfig = config;
-    console.log("🚶 [OrcEnemy] Terrain-aware movement system enabled");
+    console.log("🚶 [OrcEnemy] Comprehensive surface movement system enabled");
   }
 
   public setPassiveMode(passive: boolean): void {
@@ -119,6 +123,43 @@ export class OrcEnemy extends EnemyHumanoid {
     return this.isPassive;
   }
 
+  private handleSurfaceMovement(
+    currentPosition: THREE.Vector3,
+    inputDirection: THREE.Vector3,
+    deltaTime: number
+  ): THREE.Vector3 {
+    if (!this.movementHelper) {
+      // Fallback to old flat movement if no movement helper
+      const targetPosition = currentPosition.clone().add(inputDirection.multiplyScalar(this.config.speed * deltaTime));
+      targetPosition.y = 0;
+      return targetPosition;
+    }
+
+    // Use comprehensive surface movement calculation
+    const newPosition = this.movementHelper.calculateEnemyMovement(
+      currentPosition,
+      inputDirection,
+      this.movementConfig,
+      deltaTime
+    );
+
+    // Check for stuck movement
+    const movementDistance = newPosition.distanceTo(this.lastPosition);
+    if (movementDistance < this.stuckThreshold && inputDirection.length() > 0) {
+      this.stuckCounter++;
+      if (this.stuckCounter > 30) { // Stuck for 30 frames
+        console.log(`🚶 OrcEnemy stuck, resetting movement helper`);
+        this.movementHelper.resetStuckCounter();
+        this.stuckCounter = 0;
+      }
+    } else {
+      this.stuckCounter = 0;
+    }
+
+    this.lastPosition.copy(newPosition);
+    return newPosition;
+  }
+
   private handleAdvancedPassiveMovement(deltaTime: number): void {
     const currentPosition = this.mesh.position.clone();
     const aiDecision = this.passiveAI.update(deltaTime, currentPosition);
@@ -134,21 +175,9 @@ export class OrcEnemy extends EnemyHumanoid {
       const baseSpeed = this.config.speed * 0.4; // Base passive speed
       const aiSpeed = baseSpeed * aiDecision.movementSpeed;
       
-      const moveAmount = aiSpeed * deltaTime;
-      const targetPosition = currentPosition.clone().add(direction.multiplyScalar(moveAmount));
-
-      // Use terrain-aware movement if available
-      let finalPosition = targetPosition;
-      if (this.movementHelper) {
-        finalPosition = this.movementHelper.calculateEnemyMovement(
-          currentPosition,
-          targetPosition,
-          this.movementConfig
-        );
-      } else {
-        // Fallback to old flat movement
-        finalPosition.y = 0;
-      }
+      // Apply surface movement calculation
+      const targetDirection = direction.clone().multiplyScalar(aiSpeed);
+      const finalPosition = this.handleSurfaceMovement(currentPosition, targetDirection, deltaTime);
 
       // Safety checks
       const distanceFromSpawn = finalPosition.distanceTo(this.spawnPosition);
@@ -217,29 +246,17 @@ export class OrcEnemy extends EnemyHumanoid {
         .normalize();
       directionAwayFromSafeZone.y = 0;
       
-      const moveAmount = this.config.speed * deltaTime;
-      const targetPosition = this.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
-      
-      // Use terrain-aware movement if available
-      let finalPosition = targetPosition;
-      if (this.movementHelper) {
-        finalPosition = this.movementHelper.calculateEnemyMovement(
-          this.mesh.position,
-          targetPosition,
-          this.movementConfig
-        );
-      } else {
-        // Fallback to old flat movement
-        finalPosition.y = 0;
-      }
-      
+      // Use surface movement for safe zone avoidance
+      const targetDirection = directionAwayFromSafeZone.clone().multiplyScalar(this.config.speed);
+      const finalPosition = this.handleSurfaceMovement(this.mesh.position, targetDirection, deltaTime);
       this.mesh.position.copy(finalPosition);
+      
       // Use animation system for movement animation
       this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
       return;
     }
 
-    // Normal aggressive behavior with terrain-aware movement
+    // Normal aggressive behavior with comprehensive surface movement
     const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
     
     if (distanceToPlayer <= this.config.attackRange) {
@@ -249,22 +266,9 @@ export class OrcEnemy extends EnemyHumanoid {
       directionToPlayer.y = 0;
       
       if (distanceToPlayer > this.config.damageRange) {
-        const moveAmount = this.config.speed * deltaTime;
-        const targetPosition = this.mesh.position.clone().add(directionToPlayer.multiplyScalar(moveAmount));
-        
-        // Use terrain-aware movement if available
-        let finalPosition = targetPosition;
-        if (this.movementHelper) {
-          finalPosition = this.movementHelper.calculateEnemyMovement(
-            this.mesh.position,
-            targetPosition,
-            this.movementConfig
-          );
-        } else {
-          // Fallback to old flat movement
-          finalPosition.y = 0;
-        }
-        
+        // Use surface movement for pursuing player
+        const targetDirection = directionToPlayer.clone().multiplyScalar(this.config.speed);
+        const finalPosition = this.handleSurfaceMovement(this.mesh.position, targetDirection, deltaTime);
         this.mesh.position.copy(finalPosition);
         this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
       }
