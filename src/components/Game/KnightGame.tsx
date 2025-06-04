@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -152,6 +153,12 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     console.log('[KnightGame] 🔄 Equipped weapons:', equippedWeapons);
     
     const player = gameEngine.getPlayer();
+    
+    // CRITICAL FIX: Check if player exists before trying to equip weapons
+    if (!player) {
+      console.log('[KnightGame] ⚠️ WEAPON SYNC SKIPPED - Player not yet initialized');
+      return;
+    }
     
     // Get the weapon for the currently active slot
     const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
