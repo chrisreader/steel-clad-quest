@@ -1,23 +1,20 @@
+
 import * as THREE from 'three';
 
 export class VolumetricFogSystem {
   private scene: THREE.Scene;
   private fogLayers: THREE.Mesh[] = [];
   private fogWallLayers: THREE.Mesh[] = [];
-  private skyFogLayers: THREE.Mesh[] = [];
   private fogMaterial: THREE.ShaderMaterial;
   private fogWallMaterial: THREE.ShaderMaterial;
-  private skyFogMaterial: THREE.ShaderMaterial;
   private timeOfDay: number = 0.25;
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     this.createVolumetricFogMaterial();
     this.createFogWallMaterial();
-    this.createSkyFogMaterial();
     this.createFogLayers();
     this.createFogWallLayers();
-    this.createSkyFogLayers();
   }
   
   private createVolumetricFogMaterial(): void {
@@ -235,16 +232,16 @@ export class VolumetricFogSystem {
       uniforms: {
         time: { value: 0.0 },
         timeOfDay: { value: this.timeOfDay },
-        fogColor: { value: new THREE.Color(0xF5F5F5) },
-        dayFogColor: { value: new THREE.Color(0xF5F5F5) },
-        nightFogColor: { value: new THREE.Color(0x404080) },
-        sunriseFogColor: { value: new THREE.Color(0xFFE4CC) },
-        sunsetFogColor: { value: new THREE.Color(0xFFD0AA) },
-        fogWallDensity: { value: 0.98 },
-        fogWallHeight: { value: 120.0 },
-        horizonBlur: { value: 1.2 },
+        fogColor: { value: new THREE.Color(0xE0E0E0) },
+        dayFogColor: { value: new THREE.Color(0xF0F0F0) },
+        nightFogColor: { value: new THREE.Color(0x404060) },
+        sunriseFogColor: { value: new THREE.Color(0xFFD4AA) },
+        sunsetFogColor: { value: new THREE.Color(0xFFB088) },
+        fogWallDensity: { value: 0.9 },
+        fogWallHeight: { value: 30.0 },
+        horizonBlur: { value: 0.8 },
         playerPosition: { value: new THREE.Vector3() },
-        noiseScale: { value: 0.008 },
+        noiseScale: { value: 0.01 },
         windDirection: { value: new THREE.Vector2(1.0, 0.3) }
       },
       vertexShader: `
@@ -341,42 +338,41 @@ export class VolumetricFogSystem {
           
           // Create subtle noise for wall texture
           vec2 noisePos = vWorldPosition.xz * noiseScale;
-          noisePos += windDirection * time * 0.03;
+          noisePos += windDirection * time * 0.05;
           
           float fogNoise = noise(noisePos);
           fogNoise += noise(noisePos * 2.0) * 0.5;
           fogNoise += noise(noisePos * 4.0) * 0.25;
           fogNoise /= 1.75;
           
-          // Exponential distance-based fog density for aggressive horizon blocking
-          float distanceRatio = vDistance / 45.0; // Start aggressive effect at 45 units
-          float exponentialFog = 1.0 - exp(-distanceRatio * distanceRatio * 4.0);
-          exponentialFog = smoothstep(0.3, 1.0, exponentialFog);
+          // Calculate distance-based exponential fog density for wall effect
+          float distanceRatio = vDistance / 80.0; // Start wall effect at 80 units
+          float exponentialFog = 1.0 - exp(-distanceRatio * distanceRatio * 3.0);
+          exponentialFog = smoothstep(0.2, 1.0, exponentialFog);
           
-          // Enhanced horizon blur effect - creates complete opacity at far distances
-          float horizonEffect = smoothstep(40.0, 80.0, vDistance) * horizonBlur;
-          horizonEffect = clamp(horizonEffect, 0.0, 1.0);
+          // Horizon blur effect - creates aggressive fog mixing at far distances
+          float horizonEffect = smoothstep(60.0, 120.0, vDistance) * horizonBlur;
           
-          // Height-based gradient (thicker at bottom, extending high into sky)
-          float heightGradient = 1.0 - smoothstep(0.0, 0.7, vHeightFactor);
-          heightGradient = pow(heightGradient, 0.4); // Gentler falloff, extends higher
+          // Height-based gradient (thicker at bottom, fading up)
+          float heightGradient = 1.0 - smoothstep(0.0, 1.0, vHeightFactor);
+          heightGradient = pow(heightGradient, 0.6); // Softer falloff
           
           // Combine all effects for final wall density
           float wallDensity = fogWallDensity * exponentialFog * heightGradient;
-          wallDensity += horizonEffect * 0.95; // Add strong horizon blur
-          wallDensity *= (0.95 + fogNoise * 0.1); // Add minimal texture variation
+          wallDensity += horizonEffect * 0.8; // Add horizon blur
+          wallDensity *= (0.9 + fogNoise * 0.2); // Add subtle texture
           
-          // Time-based wall density adjustments for complete blocking
+          // Time-based wall density adjustments
           float timeWallMultiplier = 1.0;
           if (timeOfDay >= 0.2 && timeOfDay <= 0.3 || timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            timeWallMultiplier = 1.0; // Maximum density during transitions
+            timeWallMultiplier = 1.3; // Denser wall during transitions
           } else if (timeOfDay >= 0.8 || timeOfDay <= 0.2) {
-            timeWallMultiplier = 1.0; // Maximum density at night
+            timeWallMultiplier = 1.1; // Slightly denser at night
           }
           wallDensity *= timeWallMultiplier;
           
-          // Ensure complete horizon blocking
-          wallDensity = clamp(wallDensity, 0.0, 0.98);
+          // Clamp density to ensure proper wall effect
+          wallDensity = clamp(wallDensity, 0.0, 0.95);
           
           gl_FragColor = vec4(dynamicFogColor, wallDensity);
         }
@@ -384,84 +380,6 @@ export class VolumetricFogSystem {
       transparent: true,
       depthWrite: false,
       blending: THREE.NormalBlending, // Use normal blending for proper opacity
-      side: THREE.DoubleSide
-    });
-  }
-
-  private createSkyFogMaterial(): void {
-    this.skyFogMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0.0 },
-        timeOfDay: { value: this.timeOfDay },
-        dayFogColor: { value: new THREE.Color(0xF0F0F0) },
-        nightFogColor: { value: new THREE.Color(0x505080) },
-        sunriseFogColor: { value: new THREE.Color(0xFFE8D0) },
-        sunsetFogColor: { value: new THREE.Color(0xFFD8B0) },
-        skyFogDensity: { value: 0.85 },
-        playerPosition: { value: new THREE.Vector3() }
-      },
-      vertexShader: `
-        varying vec3 vWorldPosition;
-        varying float vDistance;
-        
-        uniform vec3 playerPosition;
-        
-        void main() {
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          vDistance = distance(worldPosition.xyz, playerPosition);
-          
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float timeOfDay;
-        uniform vec3 dayFogColor;
-        uniform vec3 nightFogColor;
-        uniform vec3 sunriseFogColor;
-        uniform vec3 sunsetFogColor;
-        uniform float skyFogDensity;
-        
-        varying vec3 vWorldPosition;
-        varying float vDistance;
-        
-        vec3 getSkyFogColorForTime(float time) {
-          vec3 currentColor = dayFogColor;
-          
-          if (time >= 0.2 && time <= 0.3) {
-            float factor = (time - 0.2) / 0.1;
-            currentColor = mix(nightFogColor, sunriseFogColor, factor);
-          } else if (time > 0.3 && time < 0.4) {
-            float factor = (time - 0.3) / 0.1;
-            currentColor = mix(sunriseFogColor, dayFogColor, factor);
-          } else if (time >= 0.4 && time <= 0.6) {
-            currentColor = dayFogColor;
-          } else if (time > 0.6 && time < 0.7) {
-            float factor = (time - 0.6) / 0.1;
-            currentColor = mix(dayFogColor, sunsetFogColor, factor);
-          } else if (time >= 0.7 && time <= 0.8) {
-            float factor = (time - 0.7) / 0.1;
-            currentColor = mix(sunsetFogColor, nightFogColor, factor);
-          } else {
-            currentColor = nightFogColor;
-          }
-          
-          return currentColor;
-        }
-        
-        void main() {
-          vec3 dynamicFogColor = getSkyFogColorForTime(timeOfDay);
-          
-          // Distance-based sky fog density
-          float distanceFactor = smoothstep(50.0, 100.0, vDistance);
-          float density = skyFogDensity * distanceFactor;
-          
-          gl_FragColor = vec4(dynamicFogColor, density);
-        }
-      `,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.NormalBlending,
       side: THREE.DoubleSide
     });
   }
@@ -509,28 +427,28 @@ export class VolumetricFogSystem {
   }
 
   private createFogWallLayers(): void {
-    // Create fog wall layers at multiple distances for complete horizon blocking
-    const wallDistances = [40, 50, 65, 80, 95];
-    const wallHeights = [80, 90, 100, 110, 120];
-    const wallWidths = [400, 500, 600, 700, 800];
+    // Create dedicated fog wall planes at strategic distances for horizon blocking
+    const wallDistances = [60, 80, 100, 120];
+    const wallHeights = [25, 30, 35, 40];
+    const wallWidths = [300, 400, 500, 600];
     
     wallDistances.forEach((distance, distanceIndex) => {
       const wallHeight = wallHeights[distanceIndex];
       const wallWidth = wallWidths[distanceIndex];
       
-      // Create 12 walls in a dodecagon for complete coverage with no gaps
-      for (let i = 0; i < 12; i++) {
-        const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 20, 10);
+      // Create 8 walls in an octagon for better coverage
+      for (let i = 0; i < 8; i++) {
+        const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 16, 8);
         const wall = new THREE.Mesh(wallGeometry, this.fogWallMaterial.clone());
         
-        const angle = (i / 12) * Math.PI * 2;
+        const angle = (i / 8) * Math.PI * 2;
         wall.position.x = Math.cos(angle) * distance;
         wall.position.z = Math.sin(angle) * distance;
         wall.position.y = wallHeight / 2;
         wall.rotation.y = angle + Math.PI / 2;
         
-        // Set distance-specific wall density for layered effect
-        const wallDensity = 0.95 + (distanceIndex * 0.005); // Increasingly dense at farther distances
+        // Set distance-specific wall density
+        const wallDensity = 0.8 + (distanceIndex * 0.05); // Denser walls at farther distances
         (wall.material as THREE.ShaderMaterial).uniforms.fogWallDensity.value = wallDensity;
         
         this.fogWallLayers.push(wall);
@@ -538,31 +456,7 @@ export class VolumetricFogSystem {
       }
     });
     
-    console.log(`Created ${this.fogWallLayers.length} fog wall layers for complete horizon blocking`);
-  }
-
-  private createSkyFogLayers(): void {
-    // Create overhead sky fog planes to block sky view at horizon
-    const skyDistances = [60, 80, 100];
-    const skyHeights = [40, 50, 60];
-    
-    skyDistances.forEach((distance, index) => {
-      const skyHeight = skyHeights[index];
-      const skyGeometry = new THREE.PlaneGeometry(800, 800, 16, 16);
-      const skyFog = new THREE.Mesh(skyGeometry, this.skyFogMaterial.clone());
-      
-      skyFog.position.y = skyHeight;
-      skyFog.rotation.x = -Math.PI / 2;
-      
-      // Set distance-specific sky fog density
-      const skyDensity = 0.8 + (index * 0.05);
-      (skyFog.material as THREE.ShaderMaterial).uniforms.skyFogDensity.value = skyDensity;
-      
-      this.skyFogLayers.push(skyFog);
-      this.scene.add(skyFog);
-    });
-    
-    console.log(`Created ${this.skyFogLayers.length} sky fog layers for overhead horizon blocking`);
+    console.log(`Created ${this.fogWallLayers.length} fog wall layers for horizon blocking`);
   }
   
   public update(deltaTime: number, timeOfDay: number, playerPosition: THREE.Vector3): void {
@@ -588,16 +482,6 @@ export class VolumetricFogSystem {
       }
     });
     
-    // Update sky fog layers
-    this.skyFogLayers.forEach(layer => {
-      const material = layer.material as THREE.ShaderMaterial;
-      if (material.uniforms) {
-        material.uniforms.time.value += deltaTime;
-        material.uniforms.timeOfDay.value = timeOfDay;
-        material.uniforms.playerPosition.value.copy(playerPosition);
-      }
-    });
-    
     // Update fog layer positions to follow player (with lag for depth)
     this.fogLayers.slice(0, 3).forEach((layer, index) => {
       const lagFactor = 0.8 - index * 0.1;
@@ -607,19 +491,13 @@ export class VolumetricFogSystem {
     
     // Update fog wall positions to maintain distance from player
     this.fogWallLayers.forEach((wall, index) => {
-      const wallGroup = Math.floor(index / 12);
-      const wallInGroup = index % 12;
-      const angle = (wallInGroup / 12) * Math.PI * 2;
-      const distance = [40, 50, 65, 80, 95][wallGroup];
+      const wallGroup = Math.floor(index / 8);
+      const wallInGroup = index % 8;
+      const angle = (wallInGroup / 8) * Math.PI * 2;
+      const distance = [60, 80, 100, 120][wallGroup];
       
       wall.position.x = playerPosition.x + Math.cos(angle) * distance;
       wall.position.z = playerPosition.z + Math.sin(angle) * distance;
-    });
-    
-    // Update sky fog positions to follow player
-    this.skyFogLayers.forEach((skyFog, index) => {
-      skyFog.position.x = playerPosition.x;
-      skyFog.position.z = playerPosition.z;
     });
   }
   
@@ -640,14 +518,6 @@ export class VolumetricFogSystem {
     });
     this.fogWallLayers = [];
     
-    // Dispose sky fog layers
-    this.skyFogLayers.forEach(layer => {
-      this.scene.remove(layer);
-      if (layer.geometry) layer.geometry.dispose();
-      if (layer.material) (layer.material as THREE.Material).dispose();
-    });
-    this.skyFogLayers = [];
-    
     if (this.fogMaterial) {
       this.fogMaterial.dispose();
     }
@@ -656,10 +526,6 @@ export class VolumetricFogSystem {
       this.fogWallMaterial.dispose();
     }
     
-    if (this.skyFogMaterial) {
-      this.skyFogMaterial.dispose();
-    }
-    
-    console.log("VolumetricFogSystem with complete horizon blocking disposed");
+    console.log("VolumetricFogSystem with fog wall effect disposed");
   }
 }
