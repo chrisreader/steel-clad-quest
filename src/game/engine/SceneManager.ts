@@ -14,6 +14,7 @@ import { Enemy } from '../entities/Enemy';
 import { BuildingManager } from '../buildings/BuildingManager';
 import { SafeZoneManager } from '../systems/SafeZoneManager';
 import { VolumetricFogSystem } from '../effects/VolumetricFogSystem';
+import { SkyboxSystem } from '../effects/SkyboxSystem';
 import { ColorUtils } from '../utils/ColorUtils';
 import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
@@ -50,7 +51,6 @@ export class SceneManager {
   
   // Environment
   private currentLevel: Level | null = null;
-  private skybox: THREE.Mesh | null = null;
   private ground: THREE.Mesh | null = null;
   
   // Enhanced 3D sun, moon and star system
@@ -58,6 +58,9 @@ export class SceneManager {
   private moon: THREE.Mesh | null = null;
   private stars: THREE.Points | null = null;
   private cloudSpawningSystem: DynamicCloudSpawningSystem | null = null;
+  
+  // Skybox system
+  private skyboxSystem: SkyboxSystem;
   
   // Distance-based fog system
   private fog: THREE.Fog;
@@ -76,7 +79,7 @@ export class SceneManager {
     this.scene = scene;
     this.physicsManager = physicsManager;
     
-    console.log("SceneManager initialized with simplified day/night system");
+    console.log("SceneManager initialized with integrated SkyboxSystem");
     
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
@@ -92,6 +95,9 @@ export class SceneManager {
     
     // Connect StructureGenerator with BuildingManager
     this.structureGenerator.setBuildingManager(this.buildingManager);
+    
+    // Initialize skybox system
+    this.skyboxSystem = new SkyboxSystem(this.scene);
     
     // Setup distance-based fog with visible fog layer
     this.setupEnhancedFog();
@@ -378,149 +384,6 @@ export class SceneManager {
     (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
   }
   
-  private createDayNightSkybox(): void {
-    const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
-    
-    const skyMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        timeOfDay: { value: this.timeOfDay },
-        sunPosition: { value: new THREE.Vector3() },
-        moonElevation: { value: 0.0 }
-      },
-      vertexShader: `
-        varying vec3 vWorldPosition;
-        varying vec3 vDirection;
-        
-        void main() {
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          vDirection = normalize(worldPosition.xyz);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float timeOfDay;
-        uniform vec3 sunPosition;
-        uniform float moonElevation;
-        
-        varying vec3 vWorldPosition;
-        varying vec3 vDirection;
-        
-        vec3 lerpColor(vec3 a, vec3 b, float factor) {
-          return mix(a, b, clamp(factor, 0.0, 1.0));
-        }
-        
-        float exponentialDecay(float factor, float intensity) {
-          return pow(clamp(factor, 0.0, 1.0), intensity);
-        }
-        
-        vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized, float moonElev) {
-          float height = direction.y;
-          float sunDot = dot(direction, normalize(sunDir));
-          
-          vec3 nightZenith = vec3(0.001, 0.001, 0.015);
-          vec3 zenithDay = vec3(0.1, 0.35, 0.75);
-          vec3 zenithSunset = vec3(0.6, 0.4, 0.8);
-          vec3 zenithEvening = vec3(0.02, 0.02, 0.1);
-          
-          vec3 nightHorizon = vec3(0.005, 0.005, 0.04);
-          vec3 horizonDay = vec3(0.6, 0.8, 0.95);
-          vec3 horizonSunset = vec3(1.0, 0.4, 0.1);
-          vec3 horizonEvening = vec3(0.1, 0.05, 0.2);
-          
-          vec3 zenithColor, horizonColor;
-          
-          if (timeNormalized <= 0.2) {
-            zenithColor = nightZenith;
-            horizonColor = nightHorizon;
-          } else if (timeNormalized <= 0.8) {
-            float factor = (timeNormalized - 0.2) / 0.6;
-            zenithColor = lerpColor(nightZenith, zenithDay, factor);
-            horizonColor = lerpColor(nightHorizon, horizonDay, factor);
-          } else if (timeNormalized <= 0.9) {
-            float factor = (timeNormalized - 0.8) / 0.1;
-            zenithColor = lerpColor(zenithDay, zenithSunset, exponentialDecay(factor, 2.0));
-            horizonColor = lerpColor(horizonDay, horizonSunset, exponentialDecay(factor, 2.0));
-          } else {
-            float factor = (timeNormalized - 0.9) / 0.1;
-            zenithColor = lerpColor(zenithSunset, nightZenith, exponentialDecay(factor, 3.0));
-            horizonColor = lerpColor(horizonSunset, nightHorizon, exponentialDecay(factor, 3.0));
-          }
-          
-          float heightFactor = (height + 1.0) * 0.5;
-          heightFactor = pow(heightFactor, 0.6);
-          
-          vec3 baseAtmosphereColor = lerpColor(horizonColor, zenithColor, heightFactor);
-          
-          float sunInfluence = 0.0;
-          if (sunDir.y > -0.2) {
-            float sunDistance = 1.0 - sunDot;
-            float innerGlow = pow(max(0.0, 1.0 - sunDistance * 8.0), 4.0);
-            sunInfluence = innerGlow * max(0.0, (sunDir.y + 0.2) / 1.2);
-          }
-          
-          vec3 sunGlowColor = vec3(1.0, 0.9, 0.6);
-          vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.6);
-          
-          if (timeNormalized < 0.2 || timeNormalized > 0.9) {
-            float starField = fract(sin(dot(direction.xz * 50.0, vec2(12.9898, 78.233))) * 43758.5453);
-            if (starField > 0.999 && direction.y > 0.3) {
-              float nightFactor = 1.0;
-              if (timeNormalized < 0.2) {
-                nightFactor = 1.0 - (timeNormalized / 0.2);
-              } else {
-                nightFactor = (timeNormalized - 0.9) / 0.1;
-              }
-              float starIntensity = 0.3 + 0.4 * moonElev;
-              finalColor += vec3(0.8, 0.8, 1.0) * starIntensity * nightFactor;
-            }
-          }
-          
-          return finalColor;
-        }
-        
-        void main() {
-          vec3 direction = normalize(vDirection);
-          vec3 sunDir = normalize(sunPosition);
-          float normalizedTime = mod(timeOfDay, 1.0);
-          
-          vec3 skyColor = getAtmosphericColor(direction, sunDir, normalizedTime, moonElevation);
-          
-          gl_FragColor = vec4(skyColor, 1.0);
-        }
-      `,
-      side: THREE.BackSide,
-      fog: false
-    });
-    
-    this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
-    this.scene.add(this.skybox);
-    console.log('Simplified atmospheric skybox created with 4-phase transitions');
-  }
-  
-  private updateDayNightSkybox(): void {
-    if (!this.skybox || !this.skybox.material) return;
-    
-    const material = this.skybox.material as THREE.ShaderMaterial;
-    if (material.uniforms) {
-      material.uniforms.timeOfDay.value = this.timeOfDay;
-      material.uniforms.moonElevation.value = this.getMoonElevationFactor();
-      
-      if (this.sun && this.camera) {
-        const sunDirection = new THREE.Vector3();
-        sunDirection.subVectors(this.sun.position, this.camera.position);
-        sunDirection.normalize();
-        
-        material.uniforms.sunPosition.value.copy(sunDirection);
-        console.log("☀️ [SceneManager] Sun direction updated relative to camera:", sunDirection);
-      } else if (this.sun) {
-        material.uniforms.sunPosition.value.copy(this.sun.position);
-      }
-      
-      material.needsUpdate = true;
-    }
-  }
-
   public initializeEnemySpawning(effectsManager: EffectsManager, audioManager: AudioManager): void {
     if (!this.enemySpawningSystem) {
       this.enemySpawningSystem = new DynamicEnemySpawningSystem(
@@ -560,9 +423,18 @@ export class SceneManager {
       
       this.updateSunAndMoonPositions();
       this.updateSynchronizedDayNightLighting();
-      this.updateDayNightSkybox();
       this.updateStarVisibility();
       this.updateSynchronizedFogForTime();
+      
+      // Update skybox system with proper player position and moon elevation
+      if (playerPosition) {
+        this.skyboxSystem.update(this.timeOfDay, playerPosition);
+        
+        // Update moon elevation in skybox
+        if (this.skyboxSystem.skyboxMaterial && this.skyboxSystem.skyboxMaterial.uniforms) {
+          this.skyboxSystem.skyboxMaterial.uniforms.moonElevation.value = this.getMoonElevationFactor();
+        }
+      }
     }
     
     if (this.cloudSpawningSystem && playerPosition) {
@@ -667,7 +539,7 @@ export class SceneManager {
   }
 
   public createDefaultWorld(): void {
-    console.log('Creating default world with simplified day/night system...');
+    console.log('Creating default world with integrated SkyboxSystem...');
     
     this.createSimpleGround();
     console.log('Simple ground plane created at origin');
@@ -685,8 +557,9 @@ export class SceneManager {
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created for shadow testing');
     
-    this.createDayNightSkybox();
-    console.log('Simplified skybox created');
+    // Initialize skybox with initial time
+    this.skyboxSystem.update(this.timeOfDay, new THREE.Vector3(0, 0, 0));
+    console.log('SkyboxSystem initialized and updated');
     
     this.create3DSunAndMoon();
     console.log('3D sun and moon created');
@@ -699,7 +572,6 @@ export class SceneManager {
       console.log('Dynamic cloud spawning system initialized');
     }
     
-    this.updateDayNightSkybox();
     this.updateSynchronizedDayNightLighting();
     this.updateStarVisibility();
     
@@ -707,7 +579,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('Simplified world complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('World with integrated SkyboxSystem complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     if (this.debugMode) {
       (window as any).sceneDebug = {
@@ -1013,6 +885,10 @@ export class SceneManager {
   public dispose(): void {
     this.scene.fog = null;
     
+    if (this.skyboxSystem) {
+      this.skyboxSystem.dispose();
+    }
+    
     if (this.environmentCollisionManager) {
       this.environmentCollisionManager.dispose();
     }
@@ -1076,7 +952,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    console.log("SceneManager with simplified day/night system disposed");
+    console.log("SceneManager with integrated SkyboxSystem disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {

@@ -1,11 +1,10 @@
-
 import * as THREE from 'three';
 import { SKY_COLOR_PALETTES } from '../config/DayNightConfig';
 
 export class SkyboxSystem {
   private scene: THREE.Scene;
   private skyboxMesh: THREE.Mesh;
-  private skyboxMaterial: THREE.ShaderMaterial;
+  public skyboxMaterial: THREE.ShaderMaterial;
   private timeOfDay: number = 0.25;
 
   constructor(scene: THREE.Scene) {
@@ -92,61 +91,65 @@ export class SkyboxSystem {
         vec3 getSkyColorForPhase(float time, float heightFactor) {
           vec3 zenithColor, horizonColor;
           
-          // Determine current phase and colors
-          if (time >= 0.0 && time < 0.15) {
-            // Night
+          // Determine current phase and colors based on new time phases
+          if (time >= 0.0 && time < 0.05) {
+            // Deep night
             zenithColor = nightZenith;
             horizonColor = nightHorizon;
-          } else if (time >= 0.15 && time < 0.25) {
-            // Dawn transition
-            float factor = (time - 0.15) / 0.1;
+          } else if (time >= 0.05 && time < 0.15) {
+            // Pre-dawn to dawn transition
+            float factor = (time - 0.05) / 0.1;
             factor = smoothStep(0.0, 1.0, factor);
             zenithColor = lerpColor(nightZenith, dawnZenith, factor);
             horizonColor = lerpColor(nightHorizon, dawnHorizon, factor);
-          } else if (time >= 0.25 && time < 0.7) {
-            // Day
+          } else if (time >= 0.15 && time < 0.25) {
+            // Dawn to day transition
+            float factor = (time - 0.15) / 0.1;
+            factor = smoothStep(0.0, 1.0, factor);
+            zenithColor = lerpColor(dawnZenith, dayZenith, factor);
+            horizonColor = lerpColor(dawnHorizon, dayHorizon, factor);
+          } else if (time >= 0.25 && time < 0.65) {
+            // Full day
             zenithColor = dayZenith;
             horizonColor = dayHorizon;
-          } else if (time >= 0.7 && time < 0.8) {
-            // Sunset transition
-            float factor = (time - 0.7) / 0.1;
+          } else if (time >= 0.65 && time < 0.75) {
+            // Day to sunset transition
+            float factor = (time - 0.65) / 0.1;
             factor = exponentialDecay(factor, 1.5);
             zenithColor = lerpColor(dayZenith, sunsetZenith, factor);
             horizonColor = lerpColor(dayHorizon, sunsetHorizon, factor);
-          } else if (time >= 0.8 && time < 0.85) {
-            // Civil twilight
-            float factor = (time - 0.8) / 0.05;
+          } else if (time >= 0.75 && time < 0.82) {
+            // Sunset to civil twilight
+            float factor = (time - 0.75) / 0.07;
             factor = exponentialDecay(factor, 2.0);
             zenithColor = lerpColor(sunsetZenith, civilTwilightZenith, factor);
             horizonColor = lerpColor(sunsetHorizon, civilTwilightHorizon, factor);
-          } else if (time >= 0.85 && time < 0.9) {
-            // Nautical twilight
-            float factor = (time - 0.85) / 0.05;
+          } else if (time >= 0.82 && time < 0.88) {
+            // Civil to nautical twilight
+            float factor = (time - 0.82) / 0.06;
             factor = exponentialDecay(factor, 2.5);
             zenithColor = lerpColor(civilTwilightZenith, nauticalTwilightZenith, factor);
             horizonColor = lerpColor(civilTwilightHorizon, nauticalTwilightHorizon, factor);
-          } else {
-            // Astronomical twilight to night
-            float factor = (time - 0.9) / 0.1;
+          } else if (time >= 0.88 && time < 0.95) {
+            // Nautical to astronomical twilight
+            float factor = (time - 0.88) / 0.07;
             factor = exponentialDecay(factor, 3.0);
             zenithColor = lerpColor(nauticalTwilightZenith, astroTwilightZenith, factor);
             horizonColor = lerpColor(nauticalTwilightHorizon, astroTwilightHorizon, factor);
-            
-            // Transition to night at the end
-            if (time > 0.95) {
-              float nightFactor = (time - 0.95) / 0.05;
-              nightFactor = exponentialDecay(nightFactor, 2.0);
-              zenithColor = lerpColor(astroTwilightZenith, nightZenith, nightFactor);
-              horizonColor = lerpColor(astroTwilightHorizon, nightHorizon, nightFactor);
-            }
+          } else {
+            // Astronomical twilight to night
+            float factor = (time - 0.95) / 0.05;
+            factor = exponentialDecay(factor, 2.0);
+            zenithColor = lerpColor(astroTwilightZenith, nightZenith, factor);
+            horizonColor = lerpColor(astroTwilightHorizon, nightHorizon, factor);
           }
           
-          // Height-based gradient with atmospheric perspective
-          float adjustedHeightFactor = pow(heightFactor, 1.2);
+          // Enhanced height-based gradient with atmospheric perspective
+          float adjustedHeightFactor = pow(heightFactor, 1.5);
           
-          // Apply height-based darkening more aggressively during twilight
-          if (time >= 0.8 && time <= 1.0) {
-            float twilightDarkening = pow(heightFactor, 0.8);
+          // Apply stronger height-based darkening during twilight phases
+          if (time >= 0.75 && time <= 1.0) {
+            float twilightDarkening = pow(heightFactor, 0.6);
             adjustedHeightFactor = twilightDarkening;
           }
           
@@ -159,19 +162,19 @@ export class SkyboxSystem {
           
           vec3 skyColor = getSkyColorForPhase(timeOfDay, heightFactor);
           
-          // Add star field during night and twilight phases
-          if (timeOfDay < 0.25 || timeOfDay > 0.8) {
+          // Enhanced star field during night and twilight phases
+          if (timeOfDay < 0.25 || timeOfDay > 0.75) {
             float starField = fract(sin(dot(vDirection.xz * 80.0, vec2(12.9898, 78.233))) * 43758.5453);
             if (starField > 0.9985 && vDirection.y > 0.2) {
               float starVisibility = 1.0;
               if (timeOfDay >= 0.15 && timeOfDay < 0.25) {
                 starVisibility = 1.0 - (timeOfDay - 0.15) / 0.1;
-              } else if (timeOfDay > 0.8) {
-                starVisibility = (timeOfDay - 0.8) / 0.2;
+              } else if (timeOfDay > 0.75 && timeOfDay < 0.95) {
+                starVisibility = (timeOfDay - 0.75) / 0.2;
               }
               starVisibility = clamp(starVisibility, 0.0, 1.0);
               
-              float starIntensity = 0.5 + 0.3 * moonElevation;
+              float starIntensity = 0.5 + 0.4 * moonElevation;
               skyColor += vec3(0.9, 0.9, 1.0) * starIntensity * starVisibility;
             }
           }
