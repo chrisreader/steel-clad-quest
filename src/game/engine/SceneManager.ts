@@ -152,63 +152,42 @@ export class SceneManager {
     return t * t * (3 - 2 * t);
   }
   
+  // UPDATED: Completely smooth fog color transitions using continuous interpolation
   private getSmoothFogColorForTime(time: number): number {
-    // Define key time points and their colors
-    const keyColors = {
-      midnight: new THREE.Color(0x000020),    // Deep night blue
-      dawn: new THREE.Color(0xFF6B35),        // Deep orange
-      sunrise: new THREE.Color(0xFFB366),     // Warm orange/pink
-      morning: new THREE.Color(0xC8D8E8),     // Soft blue-orange blend
-      noon: new THREE.Color(0x87CEEB),        // Sky blue
-      afternoon: new THREE.Color(0xA8D0DD),   // Slightly warmer blue
-      sunset: new THREE.Color(0xFF8C42),      // Warm orange
-      dusk: new THREE.Color(0x8B5A96),        // Purple transition
-      night: new THREE.Color(0x191970)        // Night blue
-    };
-    
-    // Convert time to 0-1 range if needed
     const normalizedTime = time % 1;
     
-    // Define smooth transition segments
+    // Define key colors for smooth interpolation
+    const keyColors = {
+      midnight: new THREE.Color(0x000030),    // Deep night
+      dawn: new THREE.Color(0xFF6B35),        // Orange dawn
+      noon: new THREE.Color(0x87CEEB),        // Sky blue
+      sunset: new THREE.Color(0xFF8C42),      // Orange sunset
+      dusk: new THREE.Color(0x4B0082)         // Purple dusk
+    };
+    
+    // Use smooth sine-based interpolation for seamless transitions
+    const timeAngle = normalizedTime * Math.PI * 2;
+    
+    // Create smooth color progression using weighted blending
     let resultColor: THREE.Color;
     
-    if (normalizedTime >= 0 && normalizedTime < 0.15) {
-      // Midnight to dawn (0.0 - 0.15)
-      const factor = normalizedTime / 0.15;
-      resultColor = this.lerpColor(keyColors.midnight, keyColors.dawn, this.smoothStep(0, 1, factor));
-    } else if (normalizedTime >= 0.15 && normalizedTime < 0.25) {
-      // Dawn to sunrise (0.15 - 0.25)
-      const factor = (normalizedTime - 0.15) / 0.1;
-      resultColor = this.lerpColor(keyColors.dawn, keyColors.sunrise, this.smoothStep(0, 1, factor));
-    } else if (normalizedTime >= 0.25 && normalizedTime < 0.35) {
-      // Sunrise to morning (0.25 - 0.35)
-      const factor = (normalizedTime - 0.25) / 0.1;
-      resultColor = this.lerpColor(keyColors.sunrise, keyColors.morning, this.smoothStep(0, 1, factor));
-    } else if (normalizedTime >= 0.35 && normalizedTime < 0.5) {
-      // Morning to noon (0.35 - 0.5)
-      const factor = (normalizedTime - 0.35) / 0.15;
-      resultColor = this.lerpColor(keyColors.morning, keyColors.noon, this.smoothStep(0, 1, factor));
-    } else if (normalizedTime >= 0.5 && normalizedTime < 0.65) {
-      // Noon to afternoon (0.5 - 0.65)
-      const factor = (normalizedTime - 0.5) / 0.15;
-      resultColor = this.lerpColor(keyColors.noon, keyColors.afternoon, this.smoothStep(0, 1, factor));
-    } else if (normalizedTime >= 0.65 && normalizedTime < 0.75) {
-      // Afternoon to sunset (0.65 - 0.75)
-      const factor = (normalizedTime - 0.65) / 0.1;
-      resultColor = this.lerpColor(keyColors.afternoon, keyColors.sunset, this.smoothStep(0, 1, factor));
-    } else if (normalizedTime >= 0.75 && normalizedTime < 0.85) {
-      // Sunset to dusk (0.75 - 0.85)
-      const factor = (normalizedTime - 0.75) / 0.1;
-      resultColor = this.lerpColor(keyColors.sunset, keyColors.dusk, this.smoothStep(0, 1, factor));
+    if (normalizedTime <= 0.2) {
+      // Midnight to dawn (0.0 - 0.2)
+      const factor = Math.sin((normalizedTime / 0.2) * Math.PI * 0.5);
+      resultColor = this.lerpColor(keyColors.midnight, keyColors.dawn, factor);
+    } else if (normalizedTime <= 0.5) {
+      // Dawn to noon (0.2 - 0.5)
+      const factor = Math.sin(((normalizedTime - 0.2) / 0.3) * Math.PI * 0.5);
+      resultColor = this.lerpColor(keyColors.dawn, keyColors.noon, factor);
+    } else if (normalizedTime <= 0.8) {
+      // Noon to sunset (0.5 - 0.8)
+      const factor = Math.sin(((normalizedTime - 0.5) / 0.3) * Math.PI * 0.5);
+      resultColor = this.lerpColor(keyColors.noon, keyColors.sunset, factor);
     } else {
-      // Dusk to night to midnight (0.85 - 1.0)
-      const factor = (normalizedTime - 0.85) / 0.15;
-      if (normalizedTime < 0.92) {
-        resultColor = this.lerpColor(keyColors.dusk, keyColors.night, this.smoothStep(0, 1, factor * 1.4));
-      } else {
-        const nightFactor = (normalizedTime - 0.92) / 0.08;
-        resultColor = this.lerpColor(keyColors.night, keyColors.midnight, this.smoothStep(0, 1, nightFactor));
-      }
+      // Sunset to midnight (0.8 - 1.0)
+      const factor = Math.sin(((normalizedTime - 0.8) / 0.2) * Math.PI * 0.5);
+      const duskToMidnight = this.lerpColor(keyColors.sunset, keyColors.dusk, Math.min(factor * 2, 1));
+      resultColor = this.lerpColor(duskToMidnight, keyColors.midnight, Math.max(0, (factor - 0.5) * 2));
     }
     
     return resultColor.getHex();
@@ -269,24 +248,23 @@ export class SceneManager {
     console.log("Complete day/night lighting system initialized with smooth transitions");
   }
   
+  // UPDATED: Smooth ambient intensity using continuous sine curve
   private getSmoothAmbientIntensityForTime(time: number): number {
-    // Create smooth sine-based curve for ambient intensity
-    // Peak at noon (0.5), minimum at midnight (0.0/1.0)
     const normalizedTime = time % 1;
-    const dayAngle = normalizedTime * Math.PI * 2;
     
-    // Sine wave shifted so peak is at noon, minimum at midnight
-    const rawIntensity = Math.sin(dayAngle - Math.PI * 0.5);
+    // Use smooth sine curve for natural day/night intensity variation
+    const dayAngle = (normalizedTime - 0.25) * Math.PI * 2; // Offset so noon is at peak
+    const sineValue = Math.sin(dayAngle);
     
-    // Map from [-1, 1] to [minIntensity, maxIntensity] with smooth curve
-    const minIntensity = 0.6;  // Night minimum
-    const maxIntensity = 2.4;  // Day maximum
+    // Map sine curve to intensity range with smooth easing
+    const minIntensity = 0.8;   // Night minimum
+    const maxIntensity = 2.0;   // Day maximum
     
-    // Apply smooth curve and map to intensity range
-    const smoothFactor = (rawIntensity + 1) * 0.5; // Convert to 0-1
-    const easedFactor = this.smoothStep(0, 1, smoothFactor);
+    // Apply smooth curve mapping
+    const normalizedValue = (sineValue + 1) * 0.5; // Convert from [-1,1] to [0,1]
+    const easedValue = normalizedValue * normalizedValue * (3 - 2 * normalizedValue); // Smooth step
     
-    return minIntensity + (maxIntensity - minIntensity) * easedFactor;
+    return minIntensity + (maxIntensity - minIntensity) * easedValue;
   }
   
   private create3DSunAndMoon(): void {
@@ -420,7 +398,7 @@ export class SceneManager {
     this.directionalLight.target.position.set(0, 0, 0);
     this.moonLight.target.position.set(0, 0, 0);
     
-    // Adjust light intensities based on position
+    // UPDATED: Smooth light intensity transitions
     const sunIntensity = Math.max(0, Math.sin(sunAngle)) * 1.2;
     const moonIntensity = Math.max(0, Math.sin(moonAngle)) * 0.3;
     
@@ -443,21 +421,14 @@ export class SceneManager {
     (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
   }
   
+  // UPDATED: Simplified skybox with smooth continuous transitions
   private createDayNightSkybox(): void {
-    // Enhanced skybox with smooth day/night transitions
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
         timeOfDay: { value: this.timeOfDay },
-        sunPosition: { value: new THREE.Vector3() },
-        moonPosition: { value: new THREE.Vector3() },
-        // Simplified color palette for smooth transitions
-        nightColor: { value: new THREE.Color(0x000020) },
-        dawnColor: { value: new THREE.Color(0xFF6B35) },
-        dayColor: { value: new THREE.Color(0x87CEEB) },
-        sunsetColor: { value: new THREE.Color(0xFF8C42) },
-        duskColor: { value: new THREE.Color(0x8B5A96) }
+        sunPosition: { value: new THREE.Vector3() }
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -473,22 +444,10 @@ export class SceneManager {
       fragmentShader: `
         uniform float timeOfDay;
         uniform vec3 sunPosition;
-        uniform vec3 nightColor;
-        uniform vec3 dawnColor;
-        uniform vec3 dayColor;
-        uniform vec3 sunsetColor;
-        uniform vec3 duskColor;
         
         varying vec3 vWorldPosition;
         varying vec3 vDirection;
         
-        // Smooth step function
-        float smoothStep(float edge0, float edge1, float x) {
-          float t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
-          return t * t * (3.0 - 2.0 * t);
-        }
-        
-        // Color interpolation helper
         vec3 lerpColor(vec3 a, vec3 b, float factor) {
           return mix(a, b, clamp(factor, 0.0, 1.0));
         }
@@ -497,55 +456,46 @@ export class SceneManager {
           vec3 direction = normalize(vDirection);
           float height = direction.y;
           
-          // Create smooth vertical gradient (stronger at horizon)
+          // Smooth vertical gradient
           float gradientFactor = (height + 1.0) * 0.5;
-          gradientFactor = smoothStep(0.0, 1.0, gradientFactor);
+          gradientFactor = smoothstep(0.0, 1.0, gradientFactor);
           
-          // Normalize time and create smooth transitions
+          // Continuous time-based color cycling
           float normalizedTime = mod(timeOfDay, 1.0);
+          float timeAngle = normalizedTime * 3.14159 * 2.0;
           
-          vec3 horizonColor, zenithColor;
+          // Define key colors
+          vec3 nightColor = vec3(0.0, 0.0, 0.125);      // Deep night
+          vec3 dawnColor = vec3(1.0, 0.42, 0.21);       // Orange dawn  
+          vec3 dayColor = vec3(0.53, 0.81, 0.92);       // Sky blue
+          vec3 sunsetColor = vec3(1.0, 0.55, 0.26);     // Orange sunset
           
-          // Smooth color transitions based on time segments
-          if (normalizedTime < 0.2) {
-            // Night to dawn transition (0.0 - 0.2)
-            float factor = smoothStep(0.0, 0.2, normalizedTime);
-            horizonColor = lerpColor(nightColor, dawnColor, factor);
-            zenithColor = lerpColor(nightColor * 0.8, dawnColor * 0.7, factor);
-          } else if (normalizedTime < 0.4) {
-            // Dawn to day transition (0.2 - 0.4)
-            float factor = smoothStep(0.2, 0.4, normalizedTime);
-            horizonColor = lerpColor(dawnColor, dayColor, factor);
-            zenithColor = lerpColor(dawnColor * 0.7, dayColor * 0.9, factor);
-          } else if (normalizedTime < 0.6) {
-            // Day (0.4 - 0.6)
-            horizonColor = dayColor;
-            zenithColor = dayColor * 0.9;
-          } else if (normalizedTime < 0.8) {
-            // Day to sunset transition (0.6 - 0.8)
-            float factor = smoothStep(0.6, 0.8, normalizedTime);
-            horizonColor = lerpColor(dayColor, sunsetColor, factor);
-            zenithColor = lerpColor(dayColor * 0.9, sunsetColor * 0.8, factor);
+          // Smooth sine-based color interpolation
+          float dayFactor = (sin(timeAngle - 1.57) + 1.0) * 0.5; // Shifted sine for noon peak
+          
+          vec3 baseColor;
+          if (normalizedTime < 0.25) {
+            // Night to dawn (0.0 - 0.25)
+            float factor = Math.sin((normalizedTime / 0.25) * Math.PI * 0.5);
+            baseColor = lerpColor(nightColor, dawnColor, factor);
+          } else if (normalizedTime < 0.5) {
+            // Dawn to day (0.25 - 0.5)
+            float factor = Math.sin(((normalizedTime - 0.25) / 0.25) * Math.PI * 0.5);
+            baseColor = lerpColor(dawnColor, dayColor, factor);
+          } else if (normalizedTime < 0.75) {
+            // Day to sunset (0.5 - 0.75)
+            float factor = Math.sin(((normalizedTime - 0.5) / 0.25) * Math.PI * 0.5);
+            baseColor = lerpColor(dayColor, sunsetColor, factor);
           } else {
-            // Sunset to night transition (0.8 - 1.0)
-            float factor = smoothStep(0.8, 1.0, normalizedTime);
-            vec3 currentSunset = lerpColor(sunsetColor, duskColor, factor * 0.5);
-            horizonColor = lerpColor(currentSunset, nightColor, factor);
-            zenithColor = lerpColor(currentSunset * 0.8, nightColor * 0.8, factor);
+            // Sunset to night (0.75 - 1.0)
+            float factor = Math.sin(((normalizedTime - 0.75) / 0.25) * Math.PI * 0.5);
+            baseColor = lerpColor(sunsetColor, nightColor, factor);
           }
           
           // Apply vertical gradient
+          vec3 horizonColor = baseColor;
+          vec3 zenithColor = baseColor * 0.8;
           vec3 finalColor = lerpColor(horizonColor, zenithColor, gradientFactor);
-          
-          // Add subtle atmospheric scattering
-          float sunProximity = dot(direction, normalize(sunPosition));
-          float scatteringEffect = pow(max(0.0, sunProximity), 6.0) * 0.2;
-          
-          // Only apply scattering during day hours
-          float dayIntensity = sin((normalizedTime - 0.25) * 3.14159 * 2.0) * 0.5 + 0.5;
-          dayIntensity = smoothStep(0.2, 0.8, dayIntensity);
-          
-          finalColor += vec3(1.0, 0.9, 0.7) * scatteringEffect * dayIntensity;
           
           gl_FragColor = vec4(finalColor, 1.0);
         }
@@ -556,7 +506,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Smooth day/night skybox created with continuous color transitions');
+    console.log('Smooth continuous day/night skybox created');
   }
   
   private updateDayNightSkybox(): void {
@@ -569,13 +519,6 @@ export class SceneManager {
       if (this.sun) {
         material.uniforms.sunPosition.value.copy(this.sun.position);
       }
-      if (this.moon) {
-        material.uniforms.moonPosition.value.copy(this.moon.position);
-      }
-      
-      // Update fog color to match current time
-      const currentFogColor = this.getSmoothFogColorForTime(this.timeOfDay);
-      material.uniforms.fogColor.value.setHex(currentFogColor);
       
       material.needsUpdate = true;
     }
@@ -693,47 +636,52 @@ export class SceneManager {
     const nightFactor = this.getSmoothNightFactor(this.timeOfDay);
     this.tavernLight.intensity = 0.5 + (0.5 * nightFactor);
     
-    // Smooth directional light color transitions
+    // UPDATED: Smooth directional light color transitions
     const lightColor = this.getSmoothLightColorForTime(this.timeOfDay);
     this.directionalLight.color.copy(lightColor);
   }
   
-  // NEW: Smooth night factor calculation
+  // UPDATED: Smooth night factor calculation using continuous curve
   private getSmoothNightFactor(time: number): number {
     const normalizedTime = time % 1;
-    const dayAngle = normalizedTime * Math.PI * 2;
+    const dayAngle = (normalizedTime - 0.25) * Math.PI * 2; // Offset for noon
     
-    // Inverted sine wave - high at night, low during day
-    const rawFactor = -Math.sin(dayAngle - Math.PI * 0.5);
-    return Math.max(0, (rawFactor + 1) * 0.5);
+    // Smooth inverted sine curve for night intensity
+    const rawFactor = -Math.sin(dayAngle);
+    const smoothFactor = (rawFactor + 1) * 0.5;
+    
+    // Apply easing for natural transition
+    return smoothFactor * smoothFactor * (3 - 2 * smoothFactor);
   }
   
-  // NEW: Smooth light color transitions
+  // UPDATED: Smooth light color transitions using continuous interpolation
   private getSmoothLightColorForTime(time: number): THREE.Color {
     const normalizedTime = time % 1;
     
     // Define key light colors
-    const sunriseColor = new THREE.Color(0xFFF4E6);  // Warm morning light
-    const noonColor = new THREE.Color(0xFFFAF0);     // Bright white light
-    const sunsetColor = new THREE.Color(0xFFE4B5);   // Warm evening light
-    const moonColor = new THREE.Color(0xB0C4DE);     // Cool moonlight
-    const nightColor = new THREE.Color(0x4169E1);    // Deep night blue
+    const nightColor = new THREE.Color(0x4169E1);       // Cool night blue
+    const dawnColor = new THREE.Color(0xFFF4E6);        // Warm dawn light
+    const noonColor = new THREE.Color(0xFFFAF0);        // Bright white light
+    const sunsetColor = new THREE.Color(0xFFE4B5);      // Warm sunset light
     
-    if (normalizedTime < 0.25) {
-      // Night to sunrise
-      const factor = this.smoothStep(0, 0.25, normalizedTime);
-      return this.lerpColor(nightColor, sunriseColor, factor);
-    } else if (normalizedTime < 0.5) {
-      // Sunrise to noon
-      const factor = this.smoothStep(0.25, 0.5, normalizedTime);
-      return this.lerpColor(sunriseColor, noonColor, factor);
-    } else if (normalizedTime < 0.75) {
-      // Noon to sunset
-      const factor = this.smoothStep(0.5, 0.75, normalizedTime);
+    // Use smooth sine-based interpolation
+    const timeAngle = normalizedTime * Math.PI * 2;
+    
+    if (normalizedTime <= 0.25) {
+      // Night to dawn (0.0 - 0.25)
+      const factor = Math.sin((normalizedTime / 0.25) * Math.PI * 0.5);
+      return this.lerpColor(nightColor, dawnColor, factor);
+    } else if (normalizedTime <= 0.5) {
+      // Dawn to noon (0.25 - 0.5)
+      const factor = Math.sin(((normalizedTime - 0.25) / 0.25) * Math.PI * 0.5);
+      return this.lerpColor(dawnColor, noonColor, factor);
+    } else if (normalizedTime <= 0.75) {
+      // Noon to sunset (0.5 - 0.75)
+      const factor = Math.sin(((normalizedTime - 0.5) / 0.25) * Math.PI * 0.5);
       return this.lerpColor(noonColor, sunsetColor, factor);
     } else {
-      // Sunset to night
-      const factor = this.smoothStep(0.75, 1.0, normalizedTime);
+      // Sunset to night (0.75 - 1.0)
+      const factor = Math.sin(((normalizedTime - 0.75) / 0.25) * Math.PI * 0.5);
       return this.lerpColor(sunsetColor, nightColor, factor);
     }
   }
@@ -744,7 +692,6 @@ export class SceneManager {
     this.fog.color.setHex(newFogColor);
     this.scene.background = new THREE.Color(newFogColor);
     
-    // Update volumetric fog to match
     if (this.volumetricFogSystem) {
       console.log(`Smooth fog color updated for time ${(this.timeOfDay * 24).toFixed(1)}h: #${newFogColor.toString(16).padStart(6, '0')}`);
     }
@@ -806,7 +753,7 @@ export class SceneManager {
     
     // Force initial updates
     this.updateDayNightSkybox();
-    this.updateDayNightLighting();
+    this.updateSmoothDayNightLighting();
     this.updateStarVisibility();
     
     console.log('🔧 Registering environment collisions...');
