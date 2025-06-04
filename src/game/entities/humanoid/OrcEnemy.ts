@@ -106,6 +106,9 @@ export class OrcEnemy extends EnemyHumanoid {
   private maxSpeedCooldown: number = 3000; // 3 seconds
   private lastPlayerDistance: number = Infinity;
 
+  // Attack state tracking
+  private isCurrentlyAttacking: boolean = false;
+
   constructor(
     scene: THREE.Scene,
     position: THREE.Vector3,
@@ -354,7 +357,7 @@ export class OrcEnemy extends EnemyHumanoid {
     super.update(deltaTime, playerPosition);
     
     // Reset speed after attacking
-    if (this.isAttacking) {
+    if (this.isCurrentlyAttacking) {
       this.speedCooldownTimer = this.maxSpeedCooldown * 0.5;
     }
   }

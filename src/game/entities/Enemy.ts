@@ -718,6 +718,42 @@ export class Enemy {
     }
   }
   
+  private calculateSpeedMultiplier(distanceToPlayer: number): number {
+    const zones = this.speedZones;
+    
+    // Determine current zone and base multiplier
+    let targetMultiplier: number;
+    
+    if (distanceToPlayer > zones.detectionRange) {
+      targetMultiplier = 0.1; // Very slow when far away
+    } else if (distanceToPlayer > zones.pursuitRange) {
+      targetMultiplier = zones.detectionSpeedMultiplier;
+    } else if (distanceToPlayer > zones.attackRange) {
+      targetMultiplier = zones.pursuitSpeedMultiplier;
+    } else if (distanceToPlayer > zones.damageRange) {
+      targetMultiplier = zones.attackSpeedMultiplier;
+    } else {
+      targetMultiplier = zones.damageSpeedMultiplier;
+    }
+    
+    // Apply speed cooldown - gradually reduce speed when moving away from player
+    if (distanceToPlayer > this.lastPlayerDistance) {
+      this.speedCooldownTimer += 16; // Assume ~60fps (16ms per frame)
+      const cooldownProgress = Math.min(this.speedCooldownTimer / this.maxSpeedCooldown, 1);
+      targetMultiplier = Math.max(targetMultiplier * (1 - cooldownProgress * 0.5), 0.2);
+    } else {
+      this.speedCooldownTimer = Math.max(0, this.speedCooldownTimer - 32); // Reset cooldown when approaching
+    }
+    
+    this.lastPlayerDistance = distanceToPlayer;
+    
+    // Smooth transition between speed changes
+    const smoothingFactor = 0.05;
+    this.currentSpeedMultiplier += (targetMultiplier - this.currentSpeedMultiplier) * smoothingFactor;
+    
+    return this.currentSpeedMultiplier;
+  }
+  
   private handleSurfaceMovement(
     currentPosition: THREE.Vector3,
     inputDirection: THREE.Vector3,
