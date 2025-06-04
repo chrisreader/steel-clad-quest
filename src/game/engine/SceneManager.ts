@@ -20,6 +20,9 @@ export class SceneManager {
   private physicsManager: PhysicsManager;
   private environmentCollisionManager: EnvironmentCollisionManager;
   
+  // NEW: Camera reference for sun direction calculations
+  private camera: THREE.PerspectiveCamera | null = null;
+  
   // Ring-quadrant world system
   private ringSystem: RingQuadrantSystem;
   private terrainFeatureGenerator: TerrainFeatureGenerator;
@@ -65,12 +68,25 @@ export class SceneManager {
   private sunRadius: number = 150;
   private moonRadius: number = 140;
   
-  // NEW: Time phases for different lighting
+  // UPDATED: Adjusted time phases for 15% sunset-to-night transition
   private readonly TIME_PHASES = {
-    SUNRISE: 0.25,
-    NOON: 0.5,
-    SUNSET: 0.75,
-    MIDNIGHT: 0.0
+    DEEP_NIGHT_START: 0.0,
+    DEEP_NIGHT_END: 0.15,     // Extended deep night when moon is high
+    DAWN_START: 0.15,
+    DAWN_END: 0.25,
+    DAY_START: 0.25,
+    DAY_END: 0.75,
+    // UPDATED: 15% total for sunset-to-night transition (9 seconds)
+    SUNSET_START: 0.75,
+    SUNSET_END: 0.7875,       // 3.75% for sunset (2.25 seconds)
+    EVENING_START: 0.7875,
+    EVENING_END: 0.825,       // 3.75% for evening (2.25 seconds)
+    TWILIGHT_START: 0.825,
+    TWILIGHT_END: 0.8625,     // 3.75% for twilight (2.25 seconds)
+    RAPID_NIGHT_START: 0.8625,
+    RAPID_NIGHT_END: 0.9,     // 3.75% for final darkness transition (2.25 seconds)
+    EXTENDED_DEEP_NIGHT_START: 0.9,
+    EXTENDED_DEEP_NIGHT_END: 1.0   // 10% in full darkness
   };
   
   // Enemy spawning system
@@ -83,7 +99,7 @@ export class SceneManager {
     this.scene = scene;
     this.physicsManager = physicsManager;
     
-    console.log("SceneManager initialized with day/night cycle system");
+    console.log("SceneManager initialized with synchronized day/night cycle system");
     
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
@@ -106,6 +122,10 @@ export class SceneManager {
     // Setup enhanced lighting with day/night cycle
     this.setupDayNightLighting();
     
+    // Initialize volumetric fog system with horizon blocking
+    this.volumetricFogSystem = new VolumetricFogSystem(this.scene);
+    console.log("VolumetricFogSystem with horizon blocking initialized");
+    
     // Add debug ring markers
     if (this.debugMode) {
       this.ringSystem.createDebugRingMarkers(this.scene);
@@ -121,12 +141,18 @@ export class SceneManager {
     this.terrainFeatureGenerator.setCollisionRegistrationCallback((object: THREE.Object3D) => {
       this.environmentCollisionManager.registerSingleObject(object);
     });
-    console.log('🔧 Day/night cycle collision system established');
+    console.log('🔧 Synchronized day/night cycle collision system established');
+  }
+
+  // NEW: Method to set camera reference for proper sun glow calculations
+  public setCamera(camera: THREE.PerspectiveCamera): void {
+    this.camera = camera;
+    console.log("📹 [SceneManager] Camera reference set for sun glow calculations");
   }
 
   private setupEnhancedFog(): void {
     // Enhanced fog system that changes color based on time of day
-    const fogColor = this.getFogColorForTime(this.timeOfDay);
+    const fogColor = this.getSynchronizedFogColorForTime(this.timeOfDay);
     const fogNear = 25;
     const fogFar = 120; // Increased for better volumetric fog blending
     
@@ -134,46 +160,107 @@ export class SceneManager {
     this.scene.fog = this.fog;
     this.scene.background = new THREE.Color(fogColor);
     
-    console.log("Enhanced day/night fog system initialized with volumetric fog support");
+    console.log("Enhanced synchronized day/night fog system initialized");
   }
   
-  private getFogColorForTime(time: number): number {
-    // More granular fog color transitions for smoother effect
-    if (time >= 0.2 && time <= 0.25) {
-      // Early sunrise - deep orange
-      return 0xFF6B35;
-    } else if (time > 0.25 && time <= 0.3) {
-      // Sunrise - warm orange/pink
-      return 0xFFB366;
-    } else if (time > 0.3 && time <= 0.4) {
-      // Morning - soft blue-orange blend
-      return 0xC8D8E8;
-    } else if (time > 0.4 && time <= 0.6) {
-      // Day - atmospheric blue
-      return 0xB0E0E6;
-    } else if (time > 0.6 && time <= 0.7) {
-      // Afternoon - slightly warmer blue
-      return 0xA8D0DD;
-    } else if (time > 0.7 && time <= 0.75) {
-      // Early sunset - warm orange
-      return 0xFF8C42;
-    } else if (time > 0.75 && time <= 0.8) {
-      // Sunset - deep orange/red
-      return 0xFF6B42;
-    } else if (time > 0.8 && time <= 0.85) {
-      // Dusk - purple transition
-      return 0x8B5A96;
+  private lerpColor(color1: THREE.Color, color2: THREE.Color, factor: number): THREE.Color {
+    const result = new THREE.Color();
+    result.lerpColors(color1, color2, Math.max(0, Math.min(1, factor)));
+    return result;
+  }
+  
+  private smoothStep(edge0: number, edge1: number, x: number): number {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * (3 - 2 * t);
+  }
+  
+  // UPDATED: Moon elevation-based night intensity calculation
+  private getMoonElevationFactor(): number {
+    if (!this.moon) return 0;
+    
+    // Calculate moon's elevation (-1 = below horizon, 1 = zenith)
+    const moonElevation = this.moon.position.y / this.moonRadius;
+    
+    // When moon is high (near zenith), night should be darkest
+    // When moon is low/setting, night should be lighter
+    const elevationFactor = Math.max(0, moonElevation); // 0 when below horizon, 1 at zenith
+    
+    return elevationFactor;
+  }
+  
+  // UPDATED: Synchronized fog color system with updated time phases
+  private getSynchronizedFogColorForTime(time: number): number {
+    const normalizedTime = time % 1;
+    
+    // Define key colors with deeper night progression
+    const keyColors = {
+      deepNight: new THREE.Color(0x000008),     // Extremely dark when moon is high
+      lightNight: new THREE.Color(0x000020),   // Lighter when moon is low
+      dawn: new THREE.Color(0xFF6B35),         // Orange dawn
+      noon: new THREE.Color(0x4682B4),         // Steel blue for day
+      sunset: new THREE.Color(0xFF8C42),       // Orange sunset
+      dusk: new THREE.Color(0x1a0030),         // Dark purple dusk
+      rapidNight: new THREE.Color(0x000010)    // NEW: Rapid transition to darkness
+    };
+    
+    let resultColor: THREE.Color;
+    
+    // Get moon elevation factor for dynamic night darkness
+    const moonElevation = this.getMoonElevationFactor();
+    
+    if (normalizedTime >= this.TIME_PHASES.DEEP_NIGHT_START && normalizedTime <= this.TIME_PHASES.DEEP_NIGHT_END) {
+      // Deep night (0.0 - 0.15) - Darkness varies with moon elevation
+      const nightColor = this.lerpColor(keyColors.lightNight, keyColors.deepNight, moonElevation);
+      resultColor = nightColor;
+    } else if (normalizedTime >= this.TIME_PHASES.DAWN_START && normalizedTime <= this.TIME_PHASES.DAWN_END) {
+      // Dawn transition (0.15 - 0.25)
+      const factor = (normalizedTime - this.TIME_PHASES.DAWN_START) / (this.TIME_PHASES.DAWN_END - this.TIME_PHASES.DAWN_START);
+      const nightColor = this.lerpColor(keyColors.lightNight, keyColors.deepNight, moonElevation);
+      resultColor = this.lerpColor(nightColor, keyColors.dawn, this.smoothStep(0, 1, factor));
+    } else if (normalizedTime >= this.TIME_PHASES.DAY_START && normalizedTime <= this.TIME_PHASES.DAY_END) {
+      // Day period (0.25 - 0.75)
+      const factor = (normalizedTime - this.TIME_PHASES.DAY_START) / (this.TIME_PHASES.DAY_END - this.TIME_PHASES.DAY_START);
+      resultColor = this.lerpColor(keyColors.dawn, keyColors.noon, Math.sin(factor * Math.PI * 0.5));
+    } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
+      // UPDATED: Sunset transition (0.75 - 0.7875) - 3.75% (2.25 seconds)
+      const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      resultColor = this.lerpColor(keyColors.noon, keyColors.sunset, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // UPDATED: Evening transition (0.7875 - 0.825) - 3.75% (2.25 seconds)
+      const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      resultColor = this.lerpColor(keyColors.sunset, keyColors.dusk, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // UPDATED: Twilight transition (0.825 - 0.8625) - 3.75% (2.25 seconds)
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      resultColor = this.lerpColor(keyColors.dusk, keyColors.rapidNight, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // UPDATED: Rapid night transition (0.8625 - 0.9) - 3.75% (2.25 seconds)
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
+      const nightColor = this.lerpColor(keyColors.lightNight, keyColors.deepNight, moonElevation);
+      resultColor = this.lerpColor(keyColors.rapidNight, nightColor, exponentialFactor);
     } else {
-      // Night - dark blue
-      return 0x191970;
+      // UPDATED: Deep night (0.9 - 1.0) - 10% in full darkness
+      const nightColor = this.lerpColor(keyColors.lightNight, keyColors.deepNight, moonElevation);
+      resultColor = nightColor;
     }
+    
+    return resultColor.getHex();
+  }
+  
+  // NEW: Exponential decay helper for dramatic color transitions
+  private exponentialDecay(factor: number, intensity: number = 3): number {
+    return Math.pow(factor, intensity);
   }
   
   private setupDayNightLighting(): void {
-    // Enhanced ambient light that varies with time
-    this.ambientLight = new THREE.AmbientLight(0x404040, this.getAmbientIntensityForTime(this.timeOfDay));
+    // Enhanced ambient light that varies with time - now using realistic night darkness
+    this.ambientLight = new THREE.AmbientLight(0x404040, this.getSynchronizedAmbientIntensityForTime(this.timeOfDay));
     this.scene.add(this.ambientLight);
-    console.log("Day/night ambient light system initialized");
+    console.log("Realistic night lighting ambient system initialized");
     
     // Main directional light (sun) - position will be updated dynamically
     this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -194,20 +281,20 @@ export class SceneManager {
     this.scene.add(this.directionalLight);
     console.log("Dynamic sun lighting system initialized");
     
-    // NEW: Moon directional light
-    this.moonLight = new THREE.DirectionalLight(0xB0C4DE, 0.3);
-    this.moonLight.castShadow = false;
+    // REALISTIC: Moon directional light with reduced intensity
+    this.moonLight = new THREE.DirectionalLight(0x6495ED, 0.12); // Cooler blue moonlight, reduced intensity
+    this.moonLight.castShadow = false; // Disable moon shadows for realism
     this.scene.add(this.moonLight);
-    console.log("Moon lighting system initialized");
+    console.log("Realistic moon lighting system initialized");
     
-    // Enhanced fill light for better coverage
-    this.fillLight = new THREE.DirectionalLight(0xB0E0E6, 0.4);
+    // REALISTIC: Fill light with day/night control - initially off
+    this.fillLight = new THREE.DirectionalLight(0xB0E0E6, 0.0);
     this.fillLight.position.set(-10, 15, -10);
     this.fillLight.castShadow = false;
     this.scene.add(this.fillLight);
     
-    // Tavern light - becomes more prominent at night
-    this.tavernLight = new THREE.PointLight(0xffa500, 0.8, 30);
+    // REALISTIC: Tavern light with enhanced nighttime prominence
+    this.tavernLight = new THREE.PointLight(0xFFB366, 0.8, 30); // Warmer color temperature
     this.tavernLight.position.set(0, 6, 0);
     this.tavernLight.castShadow = true;
     this.tavernLight.shadow.mapSize.width = 1024;
@@ -215,23 +302,145 @@ export class SceneManager {
     this.tavernLight.shadow.bias = -0.00005;
     this.scene.add(this.tavernLight);
     
-    // Rim light for atmospheric effect
-    this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.5);
+    // REALISTIC: Rim light with day/night control - initially off
+    this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.0);
     this.rimLight.position.set(-12, 8, -12);
     this.rimLight.castShadow = false;
     this.scene.add(this.rimLight);
     
-    console.log("Complete day/night lighting system initialized");
+    console.log("Complete realistic night lighting system initialized");
   }
   
-  private getAmbientIntensityForTime(time: number): number {
-    // Ambient light intensity based on time of day
-    if (time >= 0.3 && time <= 0.7) {
-      return 2.2; // Bright during day
-    } else if ((time >= 0.2 && time < 0.3) || (time > 0.7 && time <= 0.8)) {
-      return 1.5; // Medium during sunrise/sunset
+  // UPDATED: Synchronized ambient intensity with realistic night darkness
+  private getSynchronizedAmbientIntensityForTime(time: number): number {
+    const normalizedTime = time % 1;
+    const moonElevation = this.getMoonElevationFactor();
+    
+    let baseIntensity: number;
+    
+    if (normalizedTime >= this.TIME_PHASES.DEEP_NIGHT_START && normalizedTime <= this.TIME_PHASES.DEEP_NIGHT_END) {
+      // REALISTIC: Deep night - extremely dark ambient (0.02-0.08)
+      const minNightIntensity = 0.02;  // Very dark when moon is high
+      const maxNightIntensity = 0.08;  // Slightly lighter when moon is low
+      baseIntensity = minNightIntensity + (maxNightIntensity - minNightIntensity) * (1 - moonElevation);
+    } else if (normalizedTime >= this.TIME_PHASES.DAWN_START && normalizedTime <= this.TIME_PHASES.DAWN_END) {
+      // Dawn transition
+      const factor = (normalizedTime - this.TIME_PHASES.DAWN_START) / (this.TIME_PHASES.DAWN_END - this.TIME_PHASES.DAWN_START);
+      const nightIntensity = 0.02 + (0.08 - 0.02) * (1 - moonElevation);
+      baseIntensity = nightIntensity + (1.0 - nightIntensity) * this.smoothStep(0, 1, factor);
+    } else if (normalizedTime >= this.TIME_PHASES.DAY_START && normalizedTime <= this.TIME_PHASES.DAY_END) {
+      // Day period - bright and stable
+      baseIntensity = 1.8;
+    } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
+      // Sunset transition with exponential decay
+      const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      baseIntensity = 1.8 - (1.8 - 1.2) * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // Evening transition with aggressive decay
+      const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      baseIntensity = 1.2 - (1.2 - 0.4) * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // Twilight transition with very aggressive decay
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      baseIntensity = 0.4 - (0.4 - 0.15) * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // Rapid night transition to final darkness
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
+      const nightIntensity = 0.02 + (0.08 - 0.02) * (1 - moonElevation);
+      baseIntensity = 0.15 - (0.15 - nightIntensity) * exponentialFactor;
     } else {
-      return 0.8; // Dim during night
+      // Deep night with realistic darkness
+      const nightIntensity = 0.02 + (0.08 - 0.02) * (1 - moonElevation);
+      baseIntensity = nightIntensity;
+    }
+    
+    return baseIntensity;
+  }
+  
+  // UPDATED: Adjusted night factor calculation for new time phases
+  private getSynchronizedNightFactor(time: number): number {
+    const normalizedTime = time % 1;
+    
+    if (normalizedTime >= this.TIME_PHASES.DEEP_NIGHT_START && normalizedTime <= this.TIME_PHASES.DEEP_NIGHT_END) {
+      return 1.0;  // Full night
+    } else if (normalizedTime >= this.TIME_PHASES.DAWN_START && normalizedTime <= this.TIME_PHASES.DAWN_END) {
+      const factor = (normalizedTime - this.TIME_PHASES.DAWN_START) / (this.TIME_PHASES.DAWN_END - this.TIME_PHASES.DAWN_START);
+      return 1.0 - this.smoothStep(0, 1, factor);
+    } else if (normalizedTime >= this.TIME_PHASES.DAY_START && normalizedTime <= this.TIME_PHASES.DAY_END) {
+      return 0.0;  // No night factor during day
+    } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
+      // UPDATED: Begin night factor with exponential increase
+      const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      return exponentialFactor * 0.3;
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // UPDATED: Rapid night factor increase
+      const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      return 0.3 + 0.4 * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // UPDATED: Very rapid increase to near full night
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      return 0.7 + 0.25 * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // UPDATED: Final push to full night
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
+      return 0.95 + 0.05 * exponentialFactor;
+    } else {
+      // UPDATED: Full night
+      return 1.0;
+    }
+  }
+  
+  // UPDATED: Light color transitions with new time phases
+  private getSynchronizedLightColorForTime(time: number): THREE.Color {
+    const normalizedTime = time % 1;
+    
+    // Define key light colors
+    const nightColor = new THREE.Color(0x4169E1);       // Cool night blue
+    const dawnColor = new THREE.Color(0xFFF4E6);        // Warm dawn light
+    const noonColor = new THREE.Color(0xFFFAF0);        // Bright white light
+    const sunsetColor = new THREE.Color(0xFFE4B5);      // Warm sunset light
+    const duskColor = new THREE.Color(0x6A5ACD);        // Purple dusk light
+    const rapidNightColor = new THREE.Color(0x2F4F4F);  // NEW: Dark slate for rapid transition
+    
+    if (normalizedTime >= this.TIME_PHASES.DEEP_NIGHT_START && normalizedTime <= this.TIME_PHASES.DEEP_NIGHT_END) {
+      return nightColor;
+    } else if (normalizedTime >= this.TIME_PHASES.DAWN_START && normalizedTime <= this.TIME_PHASES.DAWN_END) {
+      const factor = (normalizedTime - this.TIME_PHASES.DAWN_START) / (this.TIME_PHASES.DAWN_END - this.TIME_PHASES.DAWN_START);
+      return this.lerpColor(nightColor, dawnColor, this.smoothStep(0, 1, factor));
+    } else if (normalizedTime >= this.TIME_PHASES.DAY_START && normalizedTime <= this.TIME_PHASES.DAY_END) {
+      const factor = (normalizedTime - this.TIME_PHASES.DAY_START) / (this.TIME_PHASES.DAY_END - this.TIME_PHASES.DAY_START);
+      return this.lerpColor(dawnColor, noonColor, Math.sin(factor * Math.PI * 0.5));
+    } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
+      // UPDATED: Sunset light transition with exponential change
+      const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      return this.lerpColor(noonColor, sunsetColor, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // UPDATED: Evening light transition
+      const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      return this.lerpColor(sunsetColor, duskColor, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // UPDATED: Twilight light transition
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      return this.lerpColor(duskColor, rapidNightColor, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // UPDATED: Rapid night light transition to full night
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
+      return this.lerpColor(rapidNightColor, nightColor, exponentialFactor);
+    } else {
+      // UPDATED: Full night
+      return nightColor;
     }
   }
   
@@ -241,18 +450,18 @@ export class SceneManager {
     const sunMaterial = new THREE.MeshStandardMaterial({
       color: 0xFFF8DC,
       emissive: 0xFFD700,
-      emissiveIntensity: 0.5,
+      emissiveIntensity: 0.2, // Reduced from 0.5 to 0.2
       fog: false
     });
     
     this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
     
-    // Add sun glow effect
-    const sunGlowGeometry = new THREE.SphereGeometry(12, 16, 16);
+    // Add much more subtle sun glow effect
+    const sunGlowGeometry = new THREE.SphereGeometry(8.5, 16, 16); // Reduced from 9 to 8.5
     const sunGlowMaterial = new THREE.MeshBasicMaterial({
       color: 0xFFFFAA,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.08, // Reduced from 0.15 to 0.08
       fog: false
     });
     const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
@@ -287,7 +496,7 @@ export class SceneManager {
     // Initial positioning
     this.updateSunAndMoonPositions();
     
-    console.log("3D sun and moon created with dynamic positioning");
+    console.log("3D sun and moon created with significantly reduced sun glow effect");
   }
   
   // NEW: Create star field for night sky
@@ -366,11 +575,13 @@ export class SceneManager {
     this.directionalLight.target.position.set(0, 0, 0);
     this.moonLight.target.position.set(0, 0, 0);
     
-    // Adjust light intensities based on position
+    // REALISTIC: Sun shadows only when sun is above horizon
     const sunIntensity = Math.max(0, Math.sin(sunAngle)) * 1.2;
-    const moonIntensity = Math.max(0, Math.sin(moonAngle)) * 0.3;
-    
     this.directionalLight.intensity = sunIntensity;
+    this.directionalLight.castShadow = sunY > 0; // Only cast shadows when sun is visible
+    
+    // REALISTIC: Reduced moon intensity with elevation variation
+    const moonIntensity = Math.max(0, Math.sin(moonAngle)) * 0.12; // Reduced from 0.3 to 0.12
     this.moonLight.intensity = moonIntensity;
     
     // Update sun and moon visibility
@@ -389,28 +600,15 @@ export class SceneManager {
     (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
   }
   
+  // UPDATED: Synchronized skybox with updated time phases
   private createDayNightSkybox(): void {
-    // Enhanced skybox with day/night transitions
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
         timeOfDay: { value: this.timeOfDay },
         sunPosition: { value: new THREE.Vector3() },
-        moonPosition: { value: new THREE.Vector3() },
-        // Day colors
-        dayTopColor: { value: new THREE.Color(0x4A90E2) },
-        dayHorizonColor: { value: new THREE.Color(0xB0E0E6) },
-        // Night colors
-        nightTopColor: { value: new THREE.Color(0x000011) },
-        nightHorizonColor: { value: new THREE.Color(0x191970) },
-        // Sunrise/sunset colors
-        sunriseColor: { value: new THREE.Color(0xFF8C42) },
-        sunsetColor: { value: new THREE.Color(0xFF6B6B) },
-        // Fog parameters
-        fogColor: { value: new THREE.Color() },
-        fogNear: { value: 25.0 },
-        fogFar: { value: 80.0 }
+        moonElevation: { value: 0.0 }  // NEW: Moon elevation for night darkness
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -426,73 +624,149 @@ export class SceneManager {
       fragmentShader: `
         uniform float timeOfDay;
         uniform vec3 sunPosition;
-        uniform vec3 moonPosition;
-        uniform vec3 dayTopColor;
-        uniform vec3 dayHorizonColor;
-        uniform vec3 nightTopColor;
-        uniform vec3 nightHorizonColor;
-        uniform vec3 sunriseColor;
-        uniform vec3 sunsetColor;
-        uniform vec3 fogColor;
-        uniform float fogNear;
-        uniform float fogFar;
+        uniform float moonElevation;
         
         varying vec3 vWorldPosition;
         varying vec3 vDirection;
         
+        vec3 lerpColor(vec3 a, vec3 b, float factor) {
+          return mix(a, b, clamp(factor, 0.0, 1.0));
+        }
+        
+        // NEW: Exponential decay function for aggressive color transitions
+        float exponentialDecay(float factor, float intensity) {
+          return pow(clamp(factor, 0.0, 1.0), intensity);
+        }
+        
+        // UPDATED: Updated atmospheric scattering with new time phases
+        vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized, float moonElev) {
+          float height = direction.y;
+          float sunDot = dot(direction, normalize(sunDir));
+          
+          // Define atmospheric color zones with new transition phases
+          vec3 deepNightZenith = vec3(0.001, 0.001, 0.015);
+          vec3 lightNightZenith = vec3(0.005, 0.005, 0.035);
+          vec3 zenithDawn = vec3(0.3, 0.5, 0.8);
+          vec3 zenithDay = vec3(0.1, 0.35, 0.75);
+          vec3 zenithSunset = vec3(0.6, 0.4, 0.8);
+          vec3 zenithDusk = vec3(0.2, 0.1, 0.4);        // NEW: Dusk zenith
+          vec3 zenithRapidNight = vec3(0.02, 0.02, 0.1); // NEW: Rapid night zenith
+          
+          vec3 deepNightHorizon = vec3(0.005, 0.005, 0.04);
+          vec3 lightNightHorizon = vec3(0.015, 0.015, 0.08);
+          vec3 horizonDawn = vec3(1.0, 0.6, 0.3);
+          vec3 horizonDay = vec3(0.6, 0.8, 0.95);
+          vec3 horizonSunset = vec3(1.0, 0.4, 0.1);
+          vec3 horizonDusk = vec3(0.8, 0.3, 0.2);       // NEW: Dusk horizon
+          vec3 horizonRapidNight = vec3(0.1, 0.05, 0.2); // NEW: Rapid night horizon
+          
+          vec3 zenithColor, horizonColor;
+          
+          // Calculate night colors based on moon elevation
+          vec3 nightZenith = lerpColor(lightNightZenith, deepNightZenith, moonElev);
+          vec3 nightHorizon = lerpColor(lightNightHorizon, deepNightHorizon, moonElev);
+          
+          // UPDATED: Updated time phases for 15% transition
+          if (timeNormalized <= 0.15) {
+            // Deep night (0.0 - 0.15)
+            zenithColor = nightZenith;
+            horizonColor = nightHorizon;
+          } else if (timeNormalized <= 0.25) {
+            // Dawn transition (0.15 - 0.25)
+            float factor = smoothstep(0.15, 0.25, timeNormalized);
+            zenithColor = lerpColor(nightZenith, zenithDawn, factor);
+            horizonColor = lerpColor(nightHorizon, horizonDawn, factor);
+          } else if (timeNormalized <= 0.75) {
+            // Day period (0.25 - 0.75)
+            float factor = smoothstep(0.25, 0.75, timeNormalized);
+            zenithColor = lerpColor(zenithDawn, zenithDay, factor);
+            horizonColor = lerpColor(horizonDawn, horizonDay, factor);
+          } else if (timeNormalized <= 0.7875) {
+            // UPDATED: Sunset (0.75 - 0.7875) with exponential decay
+            float factor = (timeNormalized - 0.75) / 0.0375;
+            float expFactor = exponentialDecay(factor, 2.0);
+            zenithColor = lerpColor(zenithDay, zenithSunset, expFactor);
+            horizonColor = lerpColor(horizonDay, horizonSunset, expFactor);
+          } else if (timeNormalized <= 0.825) {
+            // UPDATED: Evening (0.7875 - 0.825) with aggressive decay
+            float factor = (timeNormalized - 0.7875) / 0.0375;
+            float expFactor = exponentialDecay(factor, 3.0);
+            zenithColor = lerpColor(zenithSunset, zenithDusk, expFactor);
+            horizonColor = lerpColor(horizonSunset, horizonDusk, expFactor);
+          } else if (timeNormalized <= 0.8625) {
+            // UPDATED: Twilight (0.825 - 0.8625) with very aggressive decay
+            float factor = (timeNormalized - 0.825) / 0.0375;
+            float expFactor = exponentialDecay(factor, 4.0);
+            zenithColor = lerpColor(zenithDusk, zenithRapidNight, expFactor);
+            horizonColor = lerpColor(horizonDusk, horizonRapidNight, expFactor);
+          } else if (timeNormalized <= 0.9) {
+            // UPDATED: Rapid night (0.8625 - 0.9) with extreme decay
+            float factor = (timeNormalized - 0.8625) / 0.0375;
+            float expFactor = exponentialDecay(factor, 5.0);
+            zenithColor = lerpColor(zenithRapidNight, nightZenith, expFactor);
+            horizonColor = lerpColor(horizonRapidNight, nightHorizon, expFactor);
+          } else {
+            // UPDATED: Deep night (0.9 - 1.0)
+            zenithColor = nightZenith;
+            horizonColor = nightHorizon;
+          }
+          
+          // Create vertical atmospheric gradient
+          float heightFactor = (height + 1.0) * 0.5;
+          heightFactor = pow(heightFactor, 0.6);
+          
+          vec3 baseAtmosphereColor = lerpColor(horizonColor, zenithColor, heightFactor);
+          
+          // Sun glow effect
+          float sunInfluence = 0.0;
+          if (sunDir.y > -0.2) {
+            float sunDistance = 1.0 - sunDot;
+            
+            float innerGlow = pow(max(0.0, 1.0 - sunDistance * 8.0), 4.0);
+            float middleGlow = pow(max(0.0, 1.0 - sunDistance * 4.0), 6.0);
+            float outerGlow = pow(max(0.0, 1.0 - sunDistance * 2.0), 8.0);
+            
+            sunInfluence = innerGlow * 0.8 + middleGlow * 0.5 + outerGlow * 0.2;
+            sunInfluence *= max(0.0, (sunDir.y + 0.2) / 1.2);
+          }
+          
+          vec3 sunGlowColor = vec3(1.0, 0.9, 0.6);
+          if (timeNormalized > 0.75 && timeNormalized < 0.9) {
+            // UPDATED: Sunset glow color transition for new phases
+            float sunsetFactor = (timeNormalized - 0.75) / 0.15;
+            float expSunsetFactor = exponentialDecay(sunsetFactor, 3.0);
+            sunGlowColor = lerpColor(vec3(1.0, 0.9, 0.6), vec3(1.0, 0.6, 0.3), expSunsetFactor);
+          }
+          
+          vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.6);
+          
+          // Add stars during night with moon elevation consideration
+          if (timeNormalized < 0.25 || timeNormalized > 0.9) {
+            float starField = fract(sin(dot(direction.xz * 50.0, vec2(12.9898, 78.233))) * 43758.5453);
+            if (starField > 0.999 && direction.y > 0.3) {
+              float nightFactor = 1.0;
+              if (timeNormalized < 0.25) {
+                nightFactor = 1.0 - (timeNormalized / 0.25);
+              } else {
+                nightFactor = (timeNormalized - 0.9) / 0.1;
+              }
+              // Stars more visible when moon is high
+              float starIntensity = 0.3 + 0.4 * moonElev;
+              finalColor += vec3(0.8, 0.8, 1.0) * starIntensity * nightFactor;
+            }
+          }
+          
+          return finalColor;
+        }
+        
         void main() {
           vec3 direction = normalize(vDirection);
-          float height = direction.y;
+          vec3 sunDir = normalize(sunPosition);
+          float normalizedTime = mod(timeOfDay, 1.0);
           
-          // Determine time phase
-          float dayFactor = 0.0;
-          float sunriseFactor = 0.0;
-          float sunsetFactor = 0.0;
-          float nightFactor = 0.0;
+          vec3 skyColor = getAtmosphericColor(direction, sunDir, normalizedTime, moonElevation);
           
-          if (timeOfDay >= 0.2 && timeOfDay <= 0.3) {
-            // Sunrise
-            sunriseFactor = 1.0 - abs(timeOfDay - 0.25) / 0.05;
-            dayFactor = (timeOfDay - 0.2) / 0.1;
-          } else if (timeOfDay > 0.3 && timeOfDay < 0.7) {
-            // Day
-            dayFactor = 1.0;
-          } else if (timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            // Sunset
-            sunsetFactor = 1.0 - abs(timeOfDay - 0.75) / 0.05;
-            dayFactor = 1.0 - (timeOfDay - 0.7) / 0.1;
-          } else {
-            // Night
-            nightFactor = 1.0;
-          }
-          
-          // Base gradient
-          float gradientFactor = (height + 1.0) * 0.5;
-          gradientFactor = pow(gradientFactor, 0.8);
-          
-          // Calculate base colors
-          vec3 dayColor = mix(dayHorizonColor, dayTopColor, gradientFactor);
-          vec3 nightColor = mix(nightHorizonColor, nightTopColor, gradientFactor);
-          
-          // Blend colors based on time
-          vec3 baseColor = dayColor * dayFactor + nightColor * nightFactor;
-          
-          // Add sunrise/sunset colors
-          if (sunriseFactor > 0.0) {
-            vec3 sunriseGradient = mix(sunriseColor, dayTopColor, gradientFactor);
-            baseColor = mix(baseColor, sunriseGradient, sunriseFactor);
-          }
-          
-          if (sunsetFactor > 0.0) {
-            vec3 sunsetGradient = mix(sunsetColor, nightTopColor, gradientFactor);
-            baseColor = mix(baseColor, sunsetGradient, sunsetFactor);
-          }
-          
-          // Apply fog effect at horizon
-          float horizonFog = 1.0 - smoothstep(0.0, 0.3, abs(height));
-          baseColor = mix(baseColor, fogColor, horizonFog * 0.7);
-          
-          gl_FragColor = vec4(baseColor, 1.0);
+          gl_FragColor = vec4(skyColor, 1.0);
         }
       `,
       side: THREE.BackSide,
@@ -501,7 +775,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Day/night skybox created with dynamic color transitions');
+    console.log('Atmospheric gradient skybox created with 15% sunset-to-night transition (9 seconds)');
   }
   
   private updateDayNightSkybox(): void {
@@ -510,17 +784,20 @@ export class SceneManager {
     const material = this.skybox.material as THREE.ShaderMaterial;
     if (material.uniforms) {
       material.uniforms.timeOfDay.value = this.timeOfDay;
+      material.uniforms.moonElevation.value = this.getMoonElevationFactor();
       
-      if (this.sun) {
+      // FIXED: Calculate sun direction relative to camera position
+      if (this.sun && this.camera) {
+        const sunDirection = new THREE.Vector3();
+        sunDirection.subVectors(this.sun.position, this.camera.position);
+        sunDirection.normalize();
+        
+        material.uniforms.sunPosition.value.copy(sunDirection);
+        console.log("☀️ [SceneManager] Sun direction updated relative to camera:", sunDirection);
+      } else if (this.sun) {
+        // Fallback to world position if camera not available
         material.uniforms.sunPosition.value.copy(this.sun.position);
       }
-      if (this.moon) {
-        material.uniforms.moonPosition.value.copy(this.moon.position);
-      }
-      
-      // Update fog color to match current time
-      const currentFogColor = this.getFogColorForTime(this.timeOfDay);
-      material.uniforms.fogColor.value.setHex(currentFogColor);
       
       material.needsUpdate = true;
     }
@@ -558,7 +835,7 @@ export class SceneManager {
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
-    // NEW: Update day/night cycle
+    // UPDATED: Synchronized day/night cycle with moon-based lighting
     if (this.dayNightCycleEnabled) {
       this.timeOfDay += deltaTime * this.dayNightCycleSpeed;
       if (this.timeOfDay >= 1.0) {
@@ -568,8 +845,8 @@ export class SceneManager {
       // Update sun and moon positions
       this.updateSunAndMoonPositions();
       
-      // Update lighting based on time
-      this.updateDayNightLighting();
+      // Update lighting based on time with synchronized transitions
+      this.updateSynchronizedDayNightLighting();
       
       // Update skybox
       this.updateDayNightSkybox();
@@ -577,8 +854,8 @@ export class SceneManager {
       // Update star visibility
       this.updateStarVisibility();
       
-      // Update fog color
-      this.updateFogForTime();
+      // Update fog color with synchronized system
+      this.updateSynchronizedFogForTime();
     }
     
     // Update cloud spawning system
@@ -629,36 +906,63 @@ export class SceneManager {
     }
   }
   
-  // NEW: Update lighting intensities based on time of day
-  private updateDayNightLighting(): void {
-    // Update ambient light intensity
-    this.ambientLight.intensity = this.getAmbientIntensityForTime(this.timeOfDay);
+  // REALISTIC: Enhanced lighting transitions with day/night controlled fill and rim lights
+  private updateSynchronizedDayNightLighting(): void {
+    // Update ambient light intensity with realistic night darkness
+    this.ambientLight.intensity = this.getSynchronizedAmbientIntensityForTime(this.timeOfDay);
     
-    // Update tavern light intensity (brighter at night)
-    const nightFactor = this.timeOfDay < 0.2 || this.timeOfDay > 0.8 ? 1.0 : 0.3;
-    this.tavernLight.intensity = 0.8 * nightFactor;
+    // Calculate day factor for fill and rim light control
+    const dayFactor = this.getDayFactor(this.timeOfDay);
     
-    // Update light colors based on time
-    const sunAngle = (this.timeOfDay - 0.25) * Math.PI * 2;
-    if (Math.sin(sunAngle) > 0) {
-      // Daytime - warm white light
-      this.directionalLight.color.setHex(0xFFFAF0);
+    // REALISTIC: Fill light responds to day/night cycle
+    this.fillLight.intensity = 0.4 * dayFactor; // Only active during day
+    
+    // REALISTIC: Rim light responds to day/night cycle  
+    this.rimLight.intensity = 0.5 * dayFactor; // Only active during day
+    
+    // Update tavern light intensity with enhanced nighttime prominence
+    const moonElevation = this.getMoonElevationFactor();
+    const nightFactor = this.getSynchronizedNightFactor(this.timeOfDay);
+    
+    // REALISTIC: Tavern light becomes primary light source at night
+    this.tavernLight.intensity = 0.6 + (1.2 * nightFactor) + (0.4 * moonElevation * nightFactor);
+    
+    // Update directional light color with synchronized transitions
+    const lightColor = this.getSynchronizedLightColorForTime(this.timeOfDay);
+    this.directionalLight.color.copy(lightColor);
+    
+    // REALISTIC: Enhanced moon light color temperature
+    this.moonLight.color.setHex(0x4169E1); // Cool blue moonlight
+  }
+  
+  // NEW: Calculate day factor for controlling day-only lights
+  private getDayFactor(time: number): number {
+    const normalizedTime = time % 1;
+    
+    if (normalizedTime >= this.TIME_PHASES.DAY_START && normalizedTime <= this.TIME_PHASES.DAY_END) {
+      return 1.0; // Full day
+    } else if (normalizedTime >= this.TIME_PHASES.DAWN_START && normalizedTime <= this.TIME_PHASES.DAWN_END) {
+      // Dawn transition
+      const factor = (normalizedTime - this.TIME_PHASES.DAWN_START) / (this.TIME_PHASES.DAWN_END - this.TIME_PHASES.DAWN_START);
+      return this.smoothStep(0, 1, factor);
+    } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // Sunset to night transition - fade out fill and rim lights
+      const sunsetProgress = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.SUNSET_START);
+      const exponentialFactor = this.exponentialDecay(sunsetProgress, 3);
+      return 1.0 - exponentialFactor;
     } else {
-      // Nighttime - cool blue light from moon
-      this.directionalLight.color.setHex(0xB0C4DE);
+      return 0.0; // No day factor during night
     }
   }
   
-  // NEW: Update fog color based on time of day
-  private updateFogForTime(): void {
-    const newFogColor = this.getFogColorForTime(this.timeOfDay);
+  // UPDATED: Synchronized fog color updates
+  private updateSynchronizedFogForTime(): void {
+    const newFogColor = this.getSynchronizedFogColorForTime(this.timeOfDay);
     this.fog.color.setHex(newFogColor);
     this.scene.background = new THREE.Color(newFogColor);
     
-    // Update volumetric fog to match
     if (this.volumetricFogSystem) {
-      // The volumetric fog system handles its own color transitions via shaders
-      console.log(`Fog color updated for time ${(this.timeOfDay * 24).toFixed(1)}h: #${newFogColor.toString(16).padStart(6, '0')}`);
+      console.log(`Synchronized fog color updated for time ${(this.timeOfDay * 24).toFixed(1)}h: #${newFogColor.toString(16).padStart(6, '0')}`);
     }
   }
   
@@ -681,7 +985,7 @@ export class SceneManager {
   }
   
   public createDefaultWorld(): void {
-    console.log('Creating default world with day/night cycle...');
+    console.log('Creating default world with synchronized day/night cycle...');
     
     this.createSimpleGround();
     console.log('Simple ground plane created at origin');
@@ -699,9 +1003,9 @@ export class SceneManager {
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created for shadow testing');
     
-    // Create day/night skybox
+    // Create synchronized day/night skybox
     this.createDayNightSkybox();
-    console.log('Day/night skybox created');
+    console.log('Synchronized day/night skybox created');
     
     // Create 3D sun and moon
     this.create3DSunAndMoon();
@@ -716,16 +1020,16 @@ export class SceneManager {
       console.log('Dynamic cloud spawning system initialized');
     }
     
-    // Force initial updates
+    // Force initial updates with synchronized system
     this.updateDayNightSkybox();
-    this.updateDayNightLighting();
+    this.updateSynchronizedDayNightLighting();
     this.updateStarVisibility();
     
     console.log('🔧 Registering environment collisions...');
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('Default world with day/night cycle complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('Synchronized world with moon-based day/night cycle complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     // Add debug commands to window for testing
     if (this.debugMode) {
@@ -733,9 +1037,10 @@ export class SceneManager {
         setTime: (time: number) => this.setTimeOfDay(time / 24),
         toggleCycle: () => this.toggleDayNightCycle(),
         setSpeed: (speed: number) => this.setCycleSpeed(speed),
-        getCurrentTime: () => (this.timeOfDay * 24).toFixed(1) + ' hours'
+        getCurrentTime: () => (this.timeOfDay * 24).toFixed(1) + ' hours',
+        getMoonElevation: () => this.getMoonElevationFactor().toFixed(2)
       };
-      console.log('Debug commands available: sceneDebug.setTime(hour), sceneDebug.toggleCycle(), sceneDebug.setSpeed(speed)');
+      console.log('Debug commands available: sceneDebug.setTime(hour), sceneDebug.toggleCycle(), sceneDebug.setSpeed(speed), sceneDebug.getMoonElevation()');
     }
   }
 
@@ -1052,6 +1357,12 @@ export class SceneManager {
       this.cloudSpawningSystem = null;
     }
     
+    // Dispose volumetric fog system
+    if (this.volumetricFogSystem) {
+      this.volumetricFogSystem.dispose();
+      this.volumetricFogSystem = null;
+    }
+    
     // Clean up day/night cycle objects
     if (this.sun) {
       this.scene.remove(this.sun);
@@ -1090,7 +1401,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    console.log("SceneManager with day/night cycle and volumetric fog disposed");
+    console.log("SceneManager with synchronized day/night cycle and volumetric fog disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
