@@ -88,7 +88,7 @@ export class FogMaterialFactory {
   }
 
   public static createFogWallMaterial(): THREE.ShaderMaterial {
-    const baseUniforms = this.createUnifiedFogMaterial(1).uniforms;
+    const baseUniforms = this.createUnifiedFogMaterial(1).uniforms as FogMaterialUniforms;
     const uniforms: WallFogMaterialUniforms = {
       ...baseUniforms,
       fogWallHeight: { value: 25.0 },
