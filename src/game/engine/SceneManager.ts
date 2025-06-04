@@ -13,6 +13,7 @@ import { AudioManager } from './AudioManager';
 import { Enemy } from '../entities/Enemy';
 import { BuildingManager } from '../buildings/BuildingManager';
 import { SafeZoneManager } from '../systems/SafeZoneManager';
+import { VolumetricFogSystem } from '../effects/VolumetricFogSystem';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -75,6 +76,9 @@ export class SceneManager {
   // Enemy spawning system
   private enemySpawningSystem: DynamicEnemySpawningSystem | null = null;
   
+  // NEW: Volumetric fog system
+  private volumetricFogSystem: VolumetricFogSystem | null = null;
+  
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
@@ -124,26 +128,41 @@ export class SceneManager {
     // Enhanced fog system that changes color based on time of day
     const fogColor = this.getFogColorForTime(this.timeOfDay);
     const fogNear = 25;
-    const fogFar = 80;
+    const fogFar = 120; // Increased for better volumetric fog blending
     
     this.fog = new THREE.Fog(fogColor, fogNear, fogFar);
     this.scene.fog = this.fog;
     this.scene.background = new THREE.Color(fogColor);
     
-    console.log("Enhanced day/night fog system initialized");
+    console.log("Enhanced day/night fog system initialized with volumetric fog support");
   }
   
   private getFogColorForTime(time: number): number {
-    // Determine fog color based on time of day
-    if (time >= 0.2 && time <= 0.3) {
+    // More granular fog color transitions for smoother effect
+    if (time >= 0.2 && time <= 0.25) {
+      // Early sunrise - deep orange
+      return 0xFF6B35;
+    } else if (time > 0.25 && time <= 0.3) {
       // Sunrise - warm orange/pink
       return 0xFFB366;
-    } else if (time >= 0.3 && time <= 0.7) {
+    } else if (time > 0.3 && time <= 0.4) {
+      // Morning - soft blue-orange blend
+      return 0xC8D8E8;
+    } else if (time > 0.4 && time <= 0.6) {
       // Day - atmospheric blue
       return 0xB0E0E6;
-    } else if (time >= 0.7 && time <= 0.8) {
-      // Sunset - warm orange/red
+    } else if (time > 0.6 && time <= 0.7) {
+      // Afternoon - slightly warmer blue
+      return 0xA8D0DD;
+    } else if (time > 0.7 && time <= 0.75) {
+      // Early sunset - warm orange
       return 0xFF8C42;
+    } else if (time > 0.75 && time <= 0.8) {
+      // Sunset - deep orange/red
+      return 0xFF6B42;
+    } else if (time > 0.8 && time <= 0.85) {
+      // Dusk - purple transition
+      return 0x8B5A96;
     } else {
       // Night - dark blue
       return 0x191970;
@@ -603,6 +622,11 @@ export class SceneManager {
     if (playerPosition) {
       this.lastPlayerPosition.copy(playerPosition);
     }
+    
+    // Update volumetric fog system
+    if (this.volumetricFogSystem && playerPosition) {
+      this.volumetricFogSystem.update(deltaTime, this.timeOfDay, playerPosition);
+    }
   }
   
   // NEW: Update lighting intensities based on time of day
@@ -630,6 +654,12 @@ export class SceneManager {
     const newFogColor = this.getFogColorForTime(this.timeOfDay);
     this.fog.color.setHex(newFogColor);
     this.scene.background = new THREE.Color(newFogColor);
+    
+    // Update volumetric fog to match
+    if (this.volumetricFogSystem) {
+      // The volumetric fog system handles its own color transitions via shaders
+      console.log(`Fog color updated for time ${(this.timeOfDay * 24).toFixed(1)}h: #${newFogColor.toString(16).padStart(6, '0')}`);
+    }
   }
   
   // NEW: Debug method to set specific time
@@ -1060,7 +1090,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    console.log("SceneManager with day/night cycle disposed");
+    console.log("SceneManager with day/night cycle and volumetric fog disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
