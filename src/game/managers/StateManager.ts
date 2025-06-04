@@ -1,4 +1,4 @@
-import { GameState } from '../types/GameTypes';
+import { GameState } from '../../types/GameTypes';
 
 export class StateManager {
   private gameState: GameState;
