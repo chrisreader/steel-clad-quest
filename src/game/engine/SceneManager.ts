@@ -272,12 +272,12 @@ export class SceneManager {
     
     this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
     
-    // Add sun glow effect
-    const sunGlowGeometry = new THREE.SphereGeometry(12, 16, 16);
+    // Add reduced sun glow effect - much smaller and less prominent
+    const sunGlowGeometry = new THREE.SphereGeometry(9, 16, 16); // Reduced from 12 to 9
     const sunGlowMaterial = new THREE.MeshBasicMaterial({
       color: 0xFFFFAA,
       transparent: true,
-      opacity: 0.3,
+      opacity: 0.15, // Reduced from 0.3 to 0.15
       fog: false
     });
     const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
@@ -312,7 +312,7 @@ export class SceneManager {
     // Initial positioning
     this.updateSunAndMoonPositions();
     
-    console.log("3D sun and moon created with dynamic positioning");
+    console.log("3D sun and moon created with reduced sun glow effect");
   }
   
   // NEW: Create star field for night sky
