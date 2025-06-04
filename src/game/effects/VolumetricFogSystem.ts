@@ -233,7 +233,7 @@ export class VolumetricFogSystem {
       new THREE.PlaneGeometry(100, 100, 16, 16)
     ];
     
-    const positions = [
+    const layerConfigs = [
       { y: 2, density: 0.25 },
       { y: 8, density: 0.15 },
       { y: 15, density: 0.1 }
@@ -252,11 +252,11 @@ export class VolumetricFogSystem {
       
       // Create fog layer
       const fogLayer = new THREE.Mesh(geometry, this.fogMaterial.clone());
-      fogLayer.position.y = positions[index].y;
+      fogLayer.position.y = layerConfigs[index].y;
       fogLayer.rotation.x = -Math.PI / 2;
       
       // Set layer-specific density
-      (fogLayer.material as THREE.ShaderMaterial).uniforms.fogDensity.value = positions[index].density;
+      (fogLayer.material as THREE.ShaderMaterial).uniforms.fogDensity.value = layerConfigs[index].density;
       
       this.fogLayers.push(fogLayer);
       this.scene.add(fogLayer);
