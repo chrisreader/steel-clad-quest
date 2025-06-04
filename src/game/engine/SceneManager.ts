@@ -24,49 +24,62 @@ export class SceneManager {
   private terrainFeatureGenerator: TerrainFeatureGenerator;
   private structureGenerator: StructureGenerator;
   private loadedRegions: Map<string, Region> = new Map();
-  private renderDistance: number = 800; // How far to load terrain
-  private debugMode: boolean = true; // Set to false for production
+  private renderDistance: number = 800;
+  private debugMode: boolean = true;
   
-  // NEW: Building management system
+  // Building management system
   private buildingManager: BuildingManager;
   
   // Enhanced lighting system for realistic shadows
   private ambientLight: THREE.AmbientLight;
   private directionalLight: THREE.DirectionalLight;
+  private moonLight: THREE.DirectionalLight;
   private tavernLight: THREE.PointLight;
   private rimLight: THREE.DirectionalLight;
-  private fillLight: THREE.DirectionalLight; // NEW: Fill light for softer shadows
+  private fillLight: THREE.DirectionalLight;
   
-  // NEW: Dynamic shadow system
-  private shadowCameraSize: number = 200; // Large shadow camera bounds
+  // Dynamic shadow system
+  private shadowCameraSize: number = 200;
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
-  private shadowUpdateThreshold: number = 20; // Update shadows when player moves this distance
+  private shadowUpdateThreshold: number = 10;
   
   // Environment
   private currentLevel: Level | null = null;
   private skybox: THREE.Mesh | null = null;
   private ground: THREE.Mesh | null = null;
   
-  // New 3D sun and cloud system
+  // Enhanced 3D sun, moon and star system
   private sun: THREE.Mesh | null = null;
+  private moon: THREE.Mesh | null = null;
+  private stars: THREE.Points | null = null;
   private cloudSpawningSystem: DynamicCloudSpawningSystem | null = null;
   
   // Distance-based fog system
   private fog: THREE.Fog;
   
-  // Time of day
-  private timeOfDay: number = 0.5; // 0-1, 0 = midnight, 0.5 = noon
-  private dayNightCycleEnabled: boolean = false;
-  private dayNightCycleSpeed: number = 0.001; // How quickly time passes
+  // Enhanced time of day system (1-minute cycle)
+  private timeOfDay: number = 0.25;
+  private dayNightCycleEnabled: boolean = true;
+  private dayNightCycleSpeed: number = 1 / 60;
+  private sunRadius: number = 150;
+  private moonRadius: number = 140;
   
-  // New enemy spawning system
+  // NEW: Time phases for different lighting
+  private readonly TIME_PHASES = {
+    SUNRISE: 0.25,
+    NOON: 0.5,
+    SUNSET: 0.75,
+    MIDNIGHT: 0.0
+  };
+  
+  // Enemy spawning system
   private enemySpawningSystem: DynamicEnemySpawningSystem | null = null;
   
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
     
-    console.log("SceneManager initialized with enhanced shadow system");
+    console.log("SceneManager initialized with day/night cycle system");
     
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
@@ -77,17 +90,17 @@ export class SceneManager {
     // Initialize structure generator with PhysicsManager
     this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene, this.physicsManager);
     
-    // NEW: Initialize building manager
+    // Initialize building manager
     this.buildingManager = new BuildingManager(this.scene, this.physicsManager);
     
-    // NEW: Connect StructureGenerator with BuildingManager
+    // Connect StructureGenerator with BuildingManager
     this.structureGenerator.setBuildingManager(this.buildingManager);
     
     // Setup distance-based fog with visible fog layer
     this.setupEnhancedFog();
     
-    // Setup enhanced lighting with realistic shadows
-    this.setupEnhancedLighting();
+    // Setup enhanced lighting with day/night cycle
+    this.setupDayNightLighting();
     
     // Add debug ring markers
     if (this.debugMode) {
@@ -100,297 +113,400 @@ export class SceneManager {
     // Initialize environment collision manager
     this.environmentCollisionManager = new EnvironmentCollisionManager(this.scene, this.physicsManager);
     
-    // Set up collision registration callback BEFORE any regions are loaded
+    // Set up collision registration callback
     this.terrainFeatureGenerator.setCollisionRegistrationCallback((object: THREE.Object3D) => {
       this.environmentCollisionManager.registerSingleObject(object);
     });
-    console.log('🔧 Collision registration callback established between TerrainFeatureGenerator and EnvironmentCollisionManager');
+    console.log('🔧 Day/night cycle collision system established');
   }
 
   private setupEnhancedFog(): void {
-    // Enhanced fog system with visible fog layer and atmospheric depth
-    const fogColor = 0xB0E0E6; // Atmospheric blue-white
-    const fogNear = 25; // Start fading objects closer for denser effect
-    const fogFar = 80; // Objects completely faded closer for wall effect
+    // Enhanced fog system that changes color based on time of day
+    const fogColor = this.getFogColorForTime(this.timeOfDay);
+    const fogNear = 25;
+    const fogFar = 80;
     
-    // Create THREE.js fog for distance-based object fading
     this.fog = new THREE.Fog(fogColor, fogNear, fogFar);
     this.scene.fog = this.fog;
-    
-    // Set scene background to fog color to create visible fog layer
     this.scene.background = new THREE.Color(fogColor);
     
-    console.log("Enhanced dense fog system initialized:", {
-      color: fogColor.toString(16),
-      near: fogNear,
-      far: fogFar,
-      background: "fog color for dense wall effect"
-    });
+    console.log("Enhanced day/night fog system initialized");
   }
   
-  private setupEnhancedLighting(): void {
-    // Enhanced ambient light for softer shadows - increased from 1.5 to 2.2
-    this.ambientLight = new THREE.AmbientLight(0x404040, 2.2);
+  private getFogColorForTime(time: number): number {
+    // Determine fog color based on time of day
+    if (time >= 0.2 && time <= 0.3) {
+      // Sunrise - warm orange/pink
+      return 0xFFB366;
+    } else if (time >= 0.3 && time <= 0.7) {
+      // Day - atmospheric blue
+      return 0xB0E0E6;
+    } else if (time >= 0.7 && time <= 0.8) {
+      // Sunset - warm orange/red
+      return 0xFF8C42;
+    } else {
+      // Night - dark blue
+      return 0x191970;
+    }
+  }
+  
+  private setupDayNightLighting(): void {
+    // Enhanced ambient light that varies with time
+    this.ambientLight = new THREE.AmbientLight(0x404040, this.getAmbientIntensityForTime(this.timeOfDay));
     this.scene.add(this.ambientLight);
-    console.log("Enhanced ambient light added with intensity 2.2 for realistic shadows");
+    console.log("Day/night ambient light system initialized");
     
-    // Main directional light (sun) repositioned for better quadrant coverage
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Slightly increased intensity
-    this.directionalLight.position.set(5, 30, 5); // More central, elevated position for better coverage
+    // Main directional light (sun) - position will be updated dynamically
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
     this.directionalLight.castShadow = true;
     
-    // Enhanced shadow settings for better quality and coverage
-    this.directionalLight.shadow.mapSize.width = 4096; // Increased resolution
+    // Enhanced shadow settings
+    this.directionalLight.shadow.mapSize.width = 4096;
     this.directionalLight.shadow.mapSize.height = 4096;
     this.directionalLight.shadow.camera.left = -this.shadowCameraSize;
     this.directionalLight.shadow.camera.right = this.shadowCameraSize;
     this.directionalLight.shadow.camera.top = this.shadowCameraSize;
     this.directionalLight.shadow.camera.bottom = -this.shadowCameraSize;
-    this.directionalLight.shadow.camera.far = 500; // Increased for hill coverage
-    this.directionalLight.shadow.bias = -0.00005; // Improved bias for hill shadows
-    this.directionalLight.shadow.normalBias = 0.003; // Reduced for softer shadows
-    
-    // Set shadow camera to use orthographic projection for consistent shadows
+    this.directionalLight.shadow.camera.far = 500;
+    this.directionalLight.shadow.bias = -0.00005;
+    this.directionalLight.shadow.normalBias = 0.003;
     this.directionalLight.shadow.camera.near = 0.1;
     
     this.scene.add(this.directionalLight);
-    console.log("Enhanced directional light repositioned for better quadrant coverage");
+    console.log("Dynamic sun lighting system initialized");
     
-    // Enhanced fill light for better shadow coverage in all quadrants
-    this.fillLight = new THREE.DirectionalLight(0xB0E0E6, 0.5); // Increased intensity
-    this.fillLight.position.set(-8, 20, -8); // Repositioned for better hill coverage
-    this.fillLight.castShadow = false; // No shadows from fill light
+    // NEW: Moon directional light
+    this.moonLight = new THREE.DirectionalLight(0xB0C4DE, 0.3);
+    this.moonLight.castShadow = false;
+    this.scene.add(this.moonLight);
+    console.log("Moon lighting system initialized");
+    
+    // Enhanced fill light for better coverage
+    this.fillLight = new THREE.DirectionalLight(0xB0E0E6, 0.4);
+    this.fillLight.position.set(-10, 15, -10);
+    this.fillLight.castShadow = false;
     this.scene.add(this.fillLight);
-    console.log("Fill light enhanced and repositioned for better quadrant coverage");
     
-    // Tavern light (warm) - positioned better for quadrant transitions
-    this.tavernLight = new THREE.PointLight(0xffa500, 0.8, 30); // Increased range
+    // Tavern light - becomes more prominent at night
+    this.tavernLight = new THREE.PointLight(0xffa500, 0.8, 30);
     this.tavernLight.position.set(0, 6, 0);
     this.tavernLight.castShadow = true;
     this.tavernLight.shadow.mapSize.width = 1024;
     this.tavernLight.shadow.mapSize.height = 1024;
-    this.tavernLight.shadow.bias = -0.00005; // Improved bias
+    this.tavernLight.shadow.bias = -0.00005;
     this.scene.add(this.tavernLight);
-    console.log("Tavern light enhanced with better range and shadow settings");
     
-    // Enhanced rim light for better atmospheric coverage
-    this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.6); // Increased intensity
-    this.rimLight.position.set(-12, 8, -12); // Better positioning for hill areas
-    this.rimLight.castShadow = false; // No shadows from rim light
+    // Rim light for atmospheric effect
+    this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.5);
+    this.rimLight.position.set(-12, 8, -12);
+    this.rimLight.castShadow = false;
     this.scene.add(this.rimLight);
-    console.log("Rim light enhanced for better atmospheric coverage in all quadrants");
     
-    // NEW: Additional quadrant fill light for hill-adjacent areas
-    const quadrantFillLight = new THREE.DirectionalLight(0xE0F0FF, 0.3);
-    quadrantFillLight.position.set(15, 15, 25); // Positioned to help with hill-adjacent shadows
-    quadrantFillLight.castShadow = false;
-    this.scene.add(quadrantFillLight);
-    console.log("Additional quadrant fill light added for hill-adjacent shadow compensation");
+    console.log("Complete day/night lighting system initialized");
   }
   
-  private create3DSun(): void {
-    // Calculate sun position based on directional light direction
-    const lightDirection = this.directionalLight.position.clone().normalize();
-    const sunDistance = 200; // Far away to appear on horizon
-    
-    // Create sun geometry
+  private getAmbientIntensityForTime(time: number): number {
+    // Ambient light intensity based on time of day
+    if (time >= 0.3 && time <= 0.7) {
+      return 2.2; // Bright during day
+    } else if ((time >= 0.2 && time < 0.3) || (time > 0.7 && time <= 0.8)) {
+      return 1.5; // Medium during sunrise/sunset
+    } else {
+      return 0.8; // Dim during night
+    }
+  }
+  
+  private create3DSunAndMoon(): void {
+    // Create sun
     const sunGeometry = new THREE.SphereGeometry(8, 32, 32);
     const sunMaterial = new THREE.MeshStandardMaterial({
-      color: 0xFFF8DC, // Cream color
-      emissive: 0xFFD700, // Golden emissive
-      emissiveIntensity: 0.3,
-      fog: false // Don't let fog affect the sun
+      color: 0xFFF8DC,
+      emissive: 0xFFD700,
+      emissiveIntensity: 0.5,
+      fog: false
     });
     
     this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
-    this.sun.position.copy(lightDirection.multiplyScalar(sunDistance));
     
-    // Add subtle glow effect
-    const glowGeometry = new THREE.SphereGeometry(12, 16, 16);
-    const glowMaterial = new THREE.MeshBasicMaterial({
+    // Add sun glow effect
+    const sunGlowGeometry = new THREE.SphereGeometry(12, 16, 16);
+    const sunGlowMaterial = new THREE.MeshBasicMaterial({
       color: 0xFFFFAA,
+      transparent: true,
+      opacity: 0.3,
+      fog: false
+    });
+    const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
+    this.sun.add(sunGlow);
+    
+    this.scene.add(this.sun);
+    
+    // NEW: Create moon
+    const moonGeometry = new THREE.SphereGeometry(6, 32, 32);
+    const moonMaterial = new THREE.MeshStandardMaterial({
+      color: 0xF5F5DC,
+      emissive: 0x444444,
+      emissiveIntensity: 0.1,
+      fog: false
+    });
+    
+    this.moon = new THREE.Mesh(moonGeometry, moonMaterial);
+    
+    // Add subtle moon glow
+    const moonGlowGeometry = new THREE.SphereGeometry(9, 16, 16);
+    const moonGlowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xB0C4DE,
       transparent: true,
       opacity: 0.2,
       fog: false
     });
-    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-    this.sun.add(glow);
+    const moonGlow = new THREE.Mesh(moonGlowGeometry, moonGlowMaterial);
+    this.moon.add(moonGlow);
     
-    this.scene.add(this.sun);
-    console.log("3D sun created at position:", this.sun.position);
+    this.scene.add(this.moon);
+    
+    // Initial positioning
+    this.updateSunAndMoonPositions();
+    
+    console.log("3D sun and moon created with dynamic positioning");
   }
   
-  private createSkybox(): void {
-    // Create a skybox with enhanced dense fog wall at horizon
+  // NEW: Create star field for night sky
+  private createStarField(): void {
+    const starCount = 1000;
+    const starGeometry = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(starCount * 3);
+    
+    // Generate random star positions on a sphere
+    for (let i = 0; i < starCount; i++) {
+      const radius = 300;
+      const phi = Math.random() * Math.PI * 2;
+      const theta = Math.random() * Math.PI;
+      
+      const x = radius * Math.sin(theta) * Math.cos(phi);
+      const y = radius * Math.cos(theta);
+      const z = radius * Math.sin(theta) * Math.sin(phi);
+      
+      starPositions[i * 3] = x;
+      starPositions[i * 3 + 1] = Math.abs(y);
+      starPositions[i * 3 + 2] = z;
+    }
+    
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    
+    const starMaterial = new THREE.PointsMaterial({
+      color: 0xFFFFFF,
+      size: 2,
+      transparent: true,
+      opacity: 0.8,
+      fog: false
+    });
+    
+    this.stars = new THREE.Points(starGeometry, starMaterial);
+    this.scene.add(this.stars);
+    
+    console.log("Star field created with", starCount, "stars");
+  }
+  
+  // NEW: Update sun and moon positions based on time of day
+  private updateSunAndMoonPositions(): void {
+    if (!this.sun || !this.moon) return;
+    
+    // Convert time of day to angle (0 = midnight, 0.5 = noon)
+    const sunAngle = (this.timeOfDay - 0.25) * Math.PI * 2;
+    const moonAngle = sunAngle + Math.PI;
+    
+    // Calculate sun position (rises in east +X, sets in west -X)
+    const sunHeight = Math.sin(sunAngle) * this.sunRadius;
+    const sunX = Math.cos(sunAngle) * this.sunRadius;
+    const sunY = Math.max(sunHeight, -50);
+    
+    this.sun.position.set(sunX, sunY, 0);
+    
+    // Calculate moon position (opposite to sun)
+    const moonHeight = Math.sin(moonAngle) * this.moonRadius;
+    const moonX = Math.cos(moonAngle) * this.moonRadius;
+    const moonY = Math.max(moonHeight, -50);
+    
+    this.moon.position.set(moonX, moonY, 0);
+    
+    // Update directional lights to follow sun and moon
+    this.directionalLight.position.copy(this.sun.position);
+    this.moonLight.position.copy(this.moon.position);
+    
+    // Update light targets
+    if (!this.directionalLight.target) {
+      this.directionalLight.target = new THREE.Object3D();
+      this.scene.add(this.directionalLight.target);
+    }
+    if (!this.moonLight.target) {
+      this.moonLight.target = new THREE.Object3D();
+      this.scene.add(this.moonLight.target);
+    }
+    
+    this.directionalLight.target.position.set(0, 0, 0);
+    this.moonLight.target.position.set(0, 0, 0);
+    
+    // Adjust light intensities based on position
+    const sunIntensity = Math.max(0, Math.sin(sunAngle)) * 1.2;
+    const moonIntensity = Math.max(0, Math.sin(moonAngle)) * 0.3;
+    
+    this.directionalLight.intensity = sunIntensity;
+    this.moonLight.intensity = moonIntensity;
+    
+    // Update sun and moon visibility
+    this.sun.visible = sunY > -10;
+    this.moon.visible = moonY > -10;
+  }
+  
+  // NEW: Update star visibility based on time of day
+  private updateStarVisibility(): void {
+    if (!this.stars) return;
+    
+    // Stars are visible during night (when sun is down)
+    const sunAngle = (this.timeOfDay - 0.25) * Math.PI * 2;
+    const starOpacity = Math.max(0, -Math.sin(sunAngle)) * 0.8;
+    
+    (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
+  }
+  
+  private createDayNightSkybox(): void {
+    // Enhanced skybox with day/night transitions
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
-    // Enhanced dense fog wall shader for complete horizon obscuration
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        topColor: { value: new THREE.Color(0x4A90E2) }, // Clear sky blue
-        horizonColor: { value: new THREE.Color(0xB0E0E6) }, // Atmospheric haze (matches fog)
-        groundColor: { value: new THREE.Color(0xE8F4F8) }, // Very light fog color
-        fogWallColor: { value: new THREE.Color(0xD0E8E8) }, // Dense fog wall color
-        exponent: { value: 0.3 }, // Very gradual transition for higher fog extend
-        horizonHeight: { value: 0.0 }, // Height of horizon line
-        atmosphericDensity: { value: 6.0 }, // Stronger atmospheric effect
-        fogDistance: { value: 80.0 }, // Match fog far distance
-        fogIntensity: { value: 0.98 }, // Near-complete opacity at horizon
-        fogWallDensity: { value: 0.95 }, // Dense fog wall opacity
-        horizonFogThickness: { value: 0.6 }, // Thicker fog layer
-        atmosphericExtend: { value: 0.8 }, // How high the atmospheric effect extends
-        fogWallHeight: { value: 0.4 }, // How high the dense fog wall extends
-        blurIntensity: { value: 0.9 }, // Strong blur effect
-        layeredFogStrength: { value: 0.8 } // Multiple fog layer strength
+        timeOfDay: { value: this.timeOfDay },
+        sunPosition: { value: new THREE.Vector3() },
+        moonPosition: { value: new THREE.Vector3() },
+        // Day colors
+        dayTopColor: { value: new THREE.Color(0x4A90E2) },
+        dayHorizonColor: { value: new THREE.Color(0xB0E0E6) },
+        // Night colors
+        nightTopColor: { value: new THREE.Color(0x000011) },
+        nightHorizonColor: { value: new THREE.Color(0x191970) },
+        // Sunrise/sunset colors
+        sunriseColor: { value: new THREE.Color(0xFF8C42) },
+        sunsetColor: { value: new THREE.Color(0xFF6B6B) },
+        // Fog parameters
+        fogColor: { value: new THREE.Color() },
+        fogNear: { value: 25.0 },
+        fogFar: { value: 80.0 }
       },
       vertexShader: `
         varying vec3 vWorldPosition;
-        varying vec3 vNormal;
-        varying float vDistance;
-        varying float vHeightFactor;
+        varying vec3 vDirection;
         
         void main() {
           vec4 worldPosition = modelMatrix * vec4(position, 1.0);
           vWorldPosition = worldPosition.xyz;
-          vNormal = normalize(normalMatrix * normal);
-          
-          // Calculate distance from camera for atmospheric effect
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          vDistance = length(mvPosition.xyz);
-          
-          // Calculate normalized height factor (-1 to 1, where -1 is bottom, 1 is top)
-          vec3 direction = normalize(worldPosition.xyz);
-          vHeightFactor = direction.y;
-          
-          gl_Position = projectionMatrix * mvPosition;
+          vDirection = normalize(worldPosition.xyz);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: `
-        uniform vec3 topColor;
-        uniform vec3 horizonColor;
-        uniform vec3 groundColor;
-        uniform vec3 fogWallColor;
-        uniform float exponent;
-        uniform float horizonHeight;
-        uniform float atmosphericDensity;
-        uniform float fogDistance;
-        uniform float fogIntensity;
-        uniform float fogWallDensity;
-        uniform float horizonFogThickness;
-        uniform float atmosphericExtend;
-        uniform float fogWallHeight;
-        uniform float blurIntensity;
-        uniform float layeredFogStrength;
+        uniform float timeOfDay;
+        uniform vec3 sunPosition;
+        uniform vec3 moonPosition;
+        uniform vec3 dayTopColor;
+        uniform vec3 dayHorizonColor;
+        uniform vec3 nightTopColor;
+        uniform vec3 nightHorizonColor;
+        uniform vec3 sunriseColor;
+        uniform vec3 sunsetColor;
+        uniform vec3 fogColor;
+        uniform float fogNear;
+        uniform float fogFar;
         
         varying vec3 vWorldPosition;
-        varying vec3 vNormal;
-        varying float vDistance;
-        varying float vHeightFactor;
+        varying vec3 vDirection;
         
         void main() {
-          // Normalize the world position to get direction
-          vec3 direction = normalize(vWorldPosition);
-          
-          // Calculate height factor (y component of normalized direction)
+          vec3 direction = normalize(vDirection);
           float height = direction.y;
           
-          // Create DENSE fog wall at horizon - much more aggressive
-          float horizonDistance = abs(height); // Distance from horizon
+          // Determine time phase
+          float dayFactor = 0.0;
+          float sunriseFactor = 0.0;
+          float sunsetFactor = 0.0;
+          float nightFactor = 0.0;
           
-          // Primary dense fog wall that completely obscures horizon
-          float fogWall = 1.0 - smoothstep(0.0, fogWallHeight, horizonDistance);
-          fogWall = pow(fogWall, 0.8); // Sharp but not too harsh falloff
+          if (timeOfDay >= 0.2 && timeOfDay <= 0.3) {
+            // Sunrise
+            sunriseFactor = 1.0 - abs(timeOfDay - 0.25) / 0.05;
+            dayFactor = (timeOfDay - 0.2) / 0.1;
+          } else if (timeOfDay > 0.3 && timeOfDay < 0.7) {
+            // Day
+            dayFactor = 1.0;
+          } else if (timeOfDay >= 0.7 && timeOfDay <= 0.8) {
+            // Sunset
+            sunsetFactor = 1.0 - abs(timeOfDay - 0.75) / 0.05;
+            dayFactor = 1.0 - (timeOfDay - 0.7) / 0.1;
+          } else {
+            // Night
+            nightFactor = 1.0;
+          }
           
-          // Secondary fog layer for extended coverage
-          float fogLayer = 1.0 - smoothstep(0.0, horizonFogThickness, horizonDistance);
-          fogLayer = pow(fogLayer, 1.2); // Slightly softer falloff for blending
+          // Base gradient
+          float gradientFactor = (height + 1.0) * 0.5;
+          gradientFactor = pow(gradientFactor, 0.8);
           
-          // Tertiary atmospheric layer for even higher extension
-          float atmosphericLayer = 1.0 - smoothstep(0.0, atmosphericExtend, horizonDistance);
-          atmosphericLayer = pow(atmosphericLayer, atmosphericDensity);
+          // Calculate base colors
+          vec3 dayColor = mix(dayHorizonColor, dayTopColor, gradientFactor);
+          vec3 nightColor = mix(nightHorizonColor, nightTopColor, gradientFactor);
           
-          // Create main gradient from top to horizon
-          float gradientFactor = (height + 1.0) * 0.5; // Normalize to 0-1
-          gradientFactor = pow(gradientFactor, exponent);
+          // Blend colors based on time
+          vec3 baseColor = dayColor * dayFactor + nightColor * nightFactor;
           
-          // Start with base sky color gradient
-          vec3 skyColor = mix(horizonColor, topColor, gradientFactor);
+          // Add sunrise/sunset colors
+          if (sunriseFactor > 0.0) {
+            vec3 sunriseGradient = mix(sunriseColor, dayTopColor, gradientFactor);
+            baseColor = mix(baseColor, sunriseGradient, sunriseFactor);
+          }
           
-          // Apply dense fog wall first (strongest effect)
-          vec3 denseWallColor = mix(fogWallColor, groundColor, gradientFactor * 0.1);
-          skyColor = mix(denseWallColor, skyColor, 1.0 - fogWall * fogWallDensity);
+          if (sunsetFactor > 0.0) {
+            vec3 sunsetGradient = mix(sunsetColor, nightTopColor, gradientFactor);
+            baseColor = mix(baseColor, sunsetGradient, sunsetFactor);
+          }
           
-          // Apply secondary fog layer
-          vec3 secondaryFogColor = mix(groundColor, horizonColor, gradientFactor * 0.2);
-          skyColor = mix(secondaryFogColor, skyColor, 1.0 - fogLayer * fogIntensity);
+          // Apply fog effect at horizon
+          float horizonFog = 1.0 - smoothstep(0.0, 0.3, abs(height));
+          baseColor = mix(baseColor, fogColor, horizonFog * 0.7);
           
-          // Apply atmospheric layer for height extension
-          vec3 atmosphericColor = mix(groundColor, horizonColor, gradientFactor * 0.4);
-          skyColor = mix(atmosphericColor, skyColor, 1.0 - atmosphericLayer * layeredFogStrength);
-          
-          // Enhanced horizon blur effect with much higher intensity
-          float horizonBlur = 1.0 - smoothstep(0.0, 0.5, abs(height));
-          horizonBlur = pow(horizonBlur, 1.5);
-          vec3 blurColor = mix(fogWallColor, groundColor, 0.3); // More opaque blur
-          skyColor = mix(skyColor, blurColor, horizonBlur * blurIntensity);
-          
-          // Distance-based atmospheric perspective for depth
-          float distanceFactor = min(vDistance / fogDistance, 1.0);
-          skyColor = mix(skyColor, fogWallColor, distanceFactor * 0.6);
-          
-          // Additional dense base layer near horizon line
-          float baseLayer = 1.0 - smoothstep(0.0, 0.15, abs(height));
-          baseLayer = pow(baseLayer, 0.5);
-          vec3 baseLayerColor = mix(fogWallColor, groundColor, 0.1);
-          skyColor = mix(skyColor, baseLayerColor, baseLayer * 0.85);
-          
-          // Final atmospheric haze overlay
-          float finalHaze = 1.0 - smoothstep(0.0, 0.7, abs(height));
-          finalHaze = pow(finalHaze, 2.5);
-          vec3 hazeColor = mix(fogWallColor, horizonColor, 0.6);
-          skyColor = mix(skyColor, hazeColor, finalHaze * 0.4);
-          
-          gl_FragColor = vec4(skyColor, 1.0);
+          gl_FragColor = vec4(baseColor, 1.0);
         }
       `,
       side: THREE.BackSide,
-      fog: false // Don't let THREE.js fog affect the skybox
+      fog: false
     });
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Enhanced dense fog wall skybox created with complete horizon obscuration');
+    console.log('Day/night skybox created with dynamic color transitions');
   }
   
-  private updateSkybox(): void {
+  private updateDayNightSkybox(): void {
     if (!this.skybox || !this.skybox.material) return;
     
-    // Update skybox with enhanced dense fog wall parameters
     const material = this.skybox.material as THREE.ShaderMaterial;
     if (material.uniforms) {
-      // Ensure colors create proper fog wall effect
-      material.uniforms.topColor.value.setHex(0x4A90E2); // Clear sky blue
-      material.uniforms.horizonColor.value.setHex(0xB0E0E6); // Match fog color exactly
-      material.uniforms.groundColor.value.setHex(0xE8F4F8); // Very light fog
-      material.uniforms.fogWallColor.value.setHex(0xD0E8E8); // Dense fog wall
+      material.uniforms.timeOfDay.value = this.timeOfDay;
       
-      // Enhanced parameters for dense fog wall
-      material.uniforms.exponent.value = 0.3; // Very gradual transition
-      material.uniforms.atmosphericDensity.value = 6.0; // Stronger effect
-      material.uniforms.fogDistance.value = this.fog ? this.fog.far : 80.0; // Match fog distance
-      material.uniforms.fogIntensity.value = 0.98; // Near-complete opacity
-      material.uniforms.fogWallDensity.value = 0.95; // Dense wall opacity
-      material.uniforms.horizonFogThickness.value = 0.6; // Thicker layer
-      material.uniforms.atmosphericExtend.value = 0.8; // High extension
-      material.uniforms.fogWallHeight.value = 0.4; // Dense wall height
-      material.uniforms.blurIntensity.value = 0.9; // Strong blur
-      material.uniforms.layeredFogStrength.value = 0.8; // Layered effect
+      if (this.sun) {
+        material.uniforms.sunPosition.value.copy(this.sun.position);
+      }
+      if (this.moon) {
+        material.uniforms.moonPosition.value.copy(this.moon.position);
+      }
+      
+      // Update fog color to match current time
+      const currentFogColor = this.getFogColorForTime(this.timeOfDay);
+      material.uniforms.fogColor.value.setHex(currentFogColor);
       
       material.needsUpdate = true;
     }
-    console.log('Skybox updated with enhanced dense fog wall effect completely obscuring horizon');
   }
-  
+
   // NEW: Enemy spawning methods that GameEngine expects
   public initializeEnemySpawning(effectsManager: EffectsManager, audioManager: AudioManager): void {
     if (!this.enemySpawningSystem) {
@@ -417,27 +533,39 @@ export class SceneManager {
     return [];
   }
   
-  /**
-   * Updates fog parameters based on player position (optional for dynamic adjustments)
-   */
   public updateDistanceFog(playerPosition: THREE.Vector3): void {
-    // Store player position for potential future fog adjustments
     this.lastPlayerPosition.copy(playerPosition);
-    
-    // NEW: Update shadow camera when fog updates
     this.updateShadowCamera(playerPosition);
-    
-    // The fog automatically works with THREE.js rendering pipeline
-    // No manual updates needed as it's built into the renderer
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
-    // Update cloud spawning system with player position
+    // NEW: Update day/night cycle
+    if (this.dayNightCycleEnabled) {
+      this.timeOfDay += deltaTime * this.dayNightCycleSpeed;
+      if (this.timeOfDay >= 1.0) {
+        this.timeOfDay -= 1.0;
+      }
+      
+      // Update sun and moon positions
+      this.updateSunAndMoonPositions();
+      
+      // Update lighting based on time
+      this.updateDayNightLighting();
+      
+      // Update skybox
+      this.updateDayNightSkybox();
+      
+      // Update star visibility
+      this.updateStarVisibility();
+      
+      // Update fog color
+      this.updateFogForTime();
+    }
+    
+    // Update cloud spawning system
     if (this.cloudSpawningSystem && playerPosition) {
-      console.log(`Updating cloud spawning system with player position: ${playerPosition.x.toFixed(2)}, ${playerPosition.y.toFixed(2)}, ${playerPosition.z.toFixed(2)}`);
       this.cloudSpawningSystem.update(deltaTime, playerPosition);
     } else if (this.cloudSpawningSystem) {
-      // Fallback update without player position
       this.cloudSpawningSystem.update(deltaTime);
     }
     
@@ -446,20 +574,16 @@ export class SceneManager {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
     }
     
-    // NEW: Update shadow camera based on player position
+    // Update shadow camera based on player position
     if (playerPosition) {
       this.updateShadowCamera(playerPosition);
     }
     
-    // NEW: Manage region loading/unloading based on player position
+    // Manage region loading/unloading
     if (playerPosition) {
-      // Get regions that should be active
       const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
-      
-      // Track current region keys for comparison
       const activeRegionKeys = new Set<string>();
       
-      // Load new regions
       for (const region of activeRegions) {
         const regionKey = this.ringSystem.getRegionKey(region);
         activeRegionKeys.add(regionKey);
@@ -469,7 +593,6 @@ export class SceneManager {
         }
       }
       
-      // Unload regions that are no longer active
       for (const [regionKey, region] of this.loadedRegions.entries()) {
         if (!activeRegionKeys.has(regionKey)) {
           this.unloadRegion(region.coordinates);
@@ -477,77 +600,125 @@ export class SceneManager {
       }
     }
     
-    // Update stored player position if provided
     if (playerPosition) {
       this.lastPlayerPosition.copy(playerPosition);
     }
   }
   
-  public createDefaultWorld(): void {
-    console.log('Creating default world with enhanced dense fog wall effect...');
+  // NEW: Update lighting intensities based on time of day
+  private updateDayNightLighting(): void {
+    // Update ambient light intensity
+    this.ambientLight.intensity = this.getAmbientIntensityForTime(this.timeOfDay);
     
-    // Create simple ground plane at origin as fallback
+    // Update tavern light intensity (brighter at night)
+    const nightFactor = this.timeOfDay < 0.2 || this.timeOfDay > 0.8 ? 1.0 : 0.3;
+    this.tavernLight.intensity = 0.8 * nightFactor;
+    
+    // Update light colors based on time
+    const sunAngle = (this.timeOfDay - 0.25) * Math.PI * 2;
+    if (Math.sin(sunAngle) > 0) {
+      // Daytime - warm white light
+      this.directionalLight.color.setHex(0xFFFAF0);
+    } else {
+      // Nighttime - cool blue light from moon
+      this.directionalLight.color.setHex(0xB0C4DE);
+    }
+  }
+  
+  // NEW: Update fog color based on time of day
+  private updateFogForTime(): void {
+    const newFogColor = this.getFogColorForTime(this.timeOfDay);
+    this.fog.color.setHex(newFogColor);
+    this.scene.background = new THREE.Color(newFogColor);
+  }
+  
+  // NEW: Debug method to set specific time
+  public setTimeOfDay(time: number): void {
+    this.timeOfDay = Math.max(0, Math.min(1, time));
+    console.log(`Time set to: ${(this.timeOfDay * 24).toFixed(1)} hours`);
+  }
+  
+  // NEW: Debug method to toggle day/night cycle
+  public toggleDayNightCycle(): void {
+    this.dayNightCycleEnabled = !this.dayNightCycleEnabled;
+    console.log(`Day/night cycle: ${this.dayNightCycleEnabled ? 'enabled' : 'disabled'}`);
+  }
+  
+  // NEW: Debug method to adjust cycle speed
+  public setCycleSpeed(speed: number): void {
+    this.dayNightCycleSpeed = speed;
+    console.log(`Day/night cycle speed set to: ${speed} (${60/speed} seconds per cycle)`);
+  }
+  
+  public createDefaultWorld(): void {
+    console.log('Creating default world with day/night cycle...');
+    
     this.createSimpleGround();
     console.log('Simple ground plane created at origin');
     
-    // Create starting region (center ring, NE quadrant)
     const startRegion = { ringIndex: 0, quadrant: 0 };
     this.loadRegion(startRegion);
     console.log('🔧 Starting region loaded');
     
-    // NEW: Create tavern using BuildingManager
     this.buildingManager.createBuilding({
       type: 'tavern',
       position: new THREE.Vector3(0, 0, 0)
     });
     console.log('🏗️ Tavern created using BuildingManager');
     
-    // Create test hill
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
-    console.log('Test hill created at (20, 0, 30) for slope walking testing');
+    console.log('Test hill created for shadow testing');
     
-    // Create enhanced dense fog wall skybox FIRST
-    this.createSkybox();
-    console.log('Enhanced dense fog wall skybox created');
+    // Create day/night skybox
+    this.createDayNightSkybox();
+    console.log('Day/night skybox created');
     
-    // Create 3D sun
-    this.create3DSun();
-    console.log('3D sun created');
+    // Create 3D sun and moon
+    this.create3DSunAndMoon();
+    console.log('3D sun and moon created');
     
-    // Initialize cloud spawning system
+    // Create star field
+    this.createStarField();
+    console.log('Star field created');
+    
     if (this.cloudSpawningSystem) {
       this.cloudSpawningSystem.initialize();
       console.log('Dynamic cloud spawning system initialized');
     }
     
-    // Force update skybox to apply enhanced foggy horizon effects
-    this.updateSkybox();
-    console.log('Skybox updated with enhanced foggy horizon gradient');
+    // Force initial updates
+    this.updateDayNightSkybox();
+    this.updateDayNightLighting();
+    this.updateStarVisibility();
     
-    // Register environment collisions AFTER everything is created
-    console.log('🔧 Registering environment collisions after all objects created...');
+    console.log('🔧 Registering environment collisions...');
     this.environmentCollisionManager.registerEnvironmentCollisions();
-    console.log('🔧 Environment collision system initialized (after all objects created)');
+    console.log('🔧 Environment collision system initialized');
     
-    console.log('Default world creation complete with enhanced dense fog wall effect. Total scene children:', this.scene.children.length);
+    console.log('Default world with day/night cycle complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    
+    // Add debug commands to window for testing
+    if (this.debugMode) {
+      (window as any).sceneDebug = {
+        setTime: (time: number) => this.setTimeOfDay(time / 24),
+        toggleCycle: () => this.toggleDayNightCycle(),
+        setSpeed: (speed: number) => this.setCycleSpeed(speed),
+        getCurrentTime: () => (this.timeOfDay * 24).toFixed(1) + ' hours'
+      };
+      console.log('Debug commands available: sceneDebug.setTime(hour), sceneDebug.toggleCycle(), sceneDebug.setSpeed(speed)');
+    }
   }
-  
-  // NEW: Region management methods
+
   private loadRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
     
-    // Skip if already loaded
     if (this.loadedRegions.has(regionKey)) return;
     
     console.log(`Loading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
-    // Get region center
     const centerPosition = this.ringSystem.getRegionCenter(region);
-    
-    // Create terrain for this region
     const terrain = this.createRegionTerrain(region, centerPosition);
     
-    // Store region data
     const newRegion: Region = {
       coordinates: region,
       centerPosition,
@@ -556,27 +727,8 @@ export class SceneManager {
     };
     
     this.loadedRegions.set(regionKey, newRegion);
-    
-    // Generate terrain features for this region
     this.terrainFeatureGenerator.generateFeaturesForRegion(region);
-    
-    // Generate structures for this region
     this.structureGenerator.generateStructuresForRegion(region);
-  }
-  
-  // NEW: Manual collision registration for region features
-  private registerCollisionForRegionFeatures(region: RegionCoordinates): void {
-    const regionKey = this.ringSystem.getRegionKey(region);
-    const spawnedFeatures = this.terrainFeatureGenerator.getSpawnedFeaturesForRegion(regionKey);
-    
-    if (spawnedFeatures) {
-      let registeredCount = 0;
-      spawnedFeatures.forEach(feature => {
-        this.environmentCollisionManager.registerSingleObject(feature);
-        registeredCount++;
-      });
-      console.log(`🔧 Manually registered ${registeredCount} features for collision in region ${regionKey}`);
-    }
   }
   
   private unloadRegion(region: RegionCoordinates): void {
@@ -587,17 +739,12 @@ export class SceneManager {
     
     console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
-    // Clean up structures first
     this.structureGenerator.cleanupStructuresForRegion(region);
-    
-    // Clean up terrain features
     this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
     
-    // Remove terrain
     if (loadedRegion.terrain) {
       this.scene.remove(loadedRegion.terrain);
       
-      // Clean up geometry and materials
       if (loadedRegion.terrain.geometry) {
         loadedRegion.terrain.geometry.dispose();
       }
@@ -611,11 +758,9 @@ export class SceneManager {
       }
     }
     
-    // Remove from loaded regions
     this.loadedRegions.delete(regionKey);
   }
   
-  // Add simple ground plane at origin as safety measure
   private createSimpleGround(): void {
     const groundGeometry = new THREE.PlaneGeometry(100, 100);
     const groundMaterial = new THREE.MeshLambertMaterial({ 
@@ -624,100 +769,83 @@ export class SceneManager {
       transparent: false
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2; // Make it horizontal
-    ground.position.set(0, 0, 0); // At world origin
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(0, 0, 0);
     ground.receiveShadow = true;
     this.scene.add(ground);
   }
   
-  // Create terrain for a specific region
   private createRegionTerrain(region: RegionCoordinates, centerPosition: THREE.Vector3): THREE.Mesh {
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     
     let terrainGeometry: THREE.BufferGeometry;
     let terrainPosition: THREE.Vector3;
     
-    // Handle center ring differently - create full circle at origin
     if (region.ringIndex === 0) {
-      // For center ring, create a simple circle at the origin
       terrainGeometry = new THREE.CircleGeometry(ringDef.outerRadius, 32);
-      terrainPosition = new THREE.Vector3(0, 0, 0); // Always at world origin
+      terrainPosition = new THREE.Vector3(0, 0, 0);
       console.log('Creating center ring terrain at origin');
     } else {
-      // For outer rings, create quadrant segments positioned correctly in world space
       const innerRadius = ringDef.innerRadius;
       const outerRadius = ringDef.outerRadius;
       terrainGeometry = this.createQuadrantGeometry(innerRadius, outerRadius, region.quadrant);
-      // Don't offset the position since geometry is already in world coordinates
       terrainPosition = new THREE.Vector3(0, 0, 0);
       console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} with geometry in world coordinates`);
     }
     
-    // Create material with appropriate color for the ring
     const terrainMaterial = new THREE.MeshLambertMaterial({ 
       color: ringDef.terrainColor,
       map: TextureGenerator.createGrassTexture(),
       transparent: false
     });
     
-    // REMOVED: Height variation to ensure consistent floor levels across all quadrants
-    // All terrain will now have perfectly level floors at y=0
     console.log(`Terrain for ring ${region.ringIndex}, quadrant ${region.quadrant} created with level floor`);
     
-    // Create mesh
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
-    terrain.rotation.x = -Math.PI / 2; // Make it horizontal
+    terrain.rotation.x = -Math.PI / 2;
     terrain.position.copy(terrainPosition);
-    terrain.position.y = 0; // Ensure at ground level
+    terrain.position.y = 0;
     terrain.receiveShadow = true;
     
-    // Add to scene
     this.scene.add(terrain);
     
     return terrain;
   }
   
-  // Create quadrant geometry using XY plane (like CircleGeometry)
   private createQuadrantGeometry(innerRadius: number, outerRadius: number, quadrant: number): THREE.BufferGeometry {
-    // Define quadrant angles (in radians)
     const quadrantAngles = [
-      { start: 0, end: Math.PI / 2 },           // NE: 0° to 90°
-      { start: Math.PI / 2, end: Math.PI },     // SE: 90° to 180°
-      { start: Math.PI, end: 3 * Math.PI / 2 }, // SW: 180° to 270°
-      { start: 3 * Math.PI / 2, end: 2 * Math.PI } // NW: 270° to 360°
+      { start: 0, end: Math.PI / 2 },
+      { start: Math.PI / 2, end: Math.PI },
+      { start: Math.PI, end: 3 * Math.PI / 2 },
+      { start: 3 * Math.PI / 2, end: 2 * Math.PI }
     ];
     
     const angles = quadrantAngles[quadrant];
-    const radialSegments = 16; // Number of segments in the quadrant
-    const ringSegments = 1; // We only need one ring segment for each quadrant
+    const radialSegments = 16;
+    const ringSegments = 1;
     
     const vertices: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
     
-    // FIXED: Generate vertices in XY plane (like CircleGeometry does)
     for (let j = 0; j <= ringSegments; j++) {
       const radius = innerRadius + (outerRadius - innerRadius) * (j / ringSegments);
       
       for (let i = 0; i <= radialSegments; i++) {
         const angle = angles.start + (angles.end - angles.start) * (i / radialSegments);
         
-        // CORRECTED: Create in XY plane to match CircleGeometry behavior
-        const x = Math.cos(angle) * radius;  // X coordinate
-        const y = Math.sin(angle) * radius;  // Y coordinate (NOT Z!)
-        const z = 0;                         // Z is always 0 in XY plane
+        const x = Math.cos(angle) * radius;
+        const y = Math.sin(angle) * radius;
+        const z = 0;
         
-        // Push vertices in XY plane format (matches CircleGeometry)
         vertices.push(x, y, z);
         
-        // Generate UV coordinates
         const u = i / radialSegments;
         const v = j / ringSegments;
         uvs.push(u, v);
       }
     }
     
-    // Generate indices for triangles
     for (let j = 0; j < ringSegments; j++) {
       for (let i = 0; i < radialSegments; i++) {
         const a = (radialSegments + 1) * j + i;
@@ -725,41 +853,23 @@ export class SceneManager {
         const c = (radialSegments + 1) * (j + 1) + i + 1;
         const d = (radialSegments + 1) * j + i + 1;
         
-        // Create two triangles for each quad
         indices.push(a, b, d);
         indices.push(b, c, d);
       }
     }
     
-    // Create geometry
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     geometry.setIndex(indices);
     
-    // Compute normals for proper lighting
     geometry.computeVertexNormals();
     
     console.log(`Created quadrant ${quadrant} geometry in XY plane with ${vertices.length / 3} vertices and ${indices.length / 3} triangles`);
     
     return geometry;
   }
-  
-  // Add height variation to Z coordinate (since we're in XY plane before rotation)
-  private addTerrainHeightVariation(geometry: THREE.BufferGeometry): void {
-    const positions = geometry.attributes.position.array as Float32Array;
-    
-    // Add random height variation to Z coordinate (since we're in XY plane before rotation)
-    for (let i = 0; i < positions.length; i += 3) {
-      // CORRECTED: Modify Z coordinate (index i+2) instead of Y coordinate
-      positions[i + 2] = Math.random() * 0.3 - 0.15;  // Add height variation to Z
-    }
-    
-    geometry.attributes.position.needsUpdate = true;
-    geometry.computeVertexNormals();
-  }
-  
-  // Legacy compatibility methods
+
   public loadLevel(levelName: string): void {
     console.log(`Loading level: ${levelName}`);
     this.clearScene();
@@ -884,42 +994,35 @@ export class SceneManager {
     return this.currentLevel?.name || 'default';
   }
   
-  // NEW: Safe zone management
   public getSafeZoneManager(): SafeZoneManager | null {
     return this.buildingManager.getSafeZoneManager();
   }
   
   public dispose(): void {
-    // Clean up fog
     this.scene.fog = null;
     
-    // Dispose collision manager
     if (this.environmentCollisionManager) {
       this.environmentCollisionManager.dispose();
     }
     
-    // NEW: Dispose building manager
     if (this.buildingManager) {
       this.buildingManager.dispose();
     }
     
-    // Dispose structure generator
     if (this.structureGenerator) {
       this.structureGenerator.dispose();
     }
     
-    // Dispose terrain feature generator
     if (this.terrainFeatureGenerator) {
       this.terrainFeatureGenerator.dispose();
     }
     
-    // Dispose cloud spawning system
     if (this.cloudSpawningSystem) {
       this.cloudSpawningSystem.dispose();
       this.cloudSpawningSystem = null;
     }
     
-    // Clean up sun
+    // Clean up day/night cycle objects
     if (this.sun) {
       this.scene.remove(this.sun);
       if (this.sun.geometry) this.sun.geometry.dispose();
@@ -929,26 +1032,41 @@ export class SceneManager {
       this.sun = null;
     }
     
-    // Dispose enemy spawning system
+    if (this.moon) {
+      this.scene.remove(this.moon);
+      if (this.moon.geometry) this.moon.geometry.dispose();
+      if (this.moon.material instanceof THREE.Material) {
+        this.moon.material.dispose();
+      }
+      this.moon = null;
+    }
+    
+    if (this.stars) {
+      this.scene.remove(this.stars);
+      if (this.stars.geometry) this.stars.geometry.dispose();
+      if (this.stars.material instanceof THREE.Material) {
+        this.stars.material.dispose();
+      }
+      this.stars = null;
+    }
+    
     if (this.enemySpawningSystem) {
       this.enemySpawningSystem.dispose();
       this.enemySpawningSystem = null;
     }
     
-    // Clean up loaded regions
     for (const [regionKey, region] of this.loadedRegions.entries()) {
       this.unloadRegion(region.coordinates);
     }
     this.loadedRegions.clear();
     
-    console.log("SceneManager disposed with enhanced shadow system cleanup");
+    console.log("SceneManager with day/night cycle disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
     return this.environmentCollisionManager;
   }
 
-  // NEW: Get building manager
   public getBuildingManager(): BuildingManager {
     return this.buildingManager;
   }
@@ -957,45 +1075,34 @@ export class SceneManager {
     return this.scene;
   }
   
-  // NEW: Dynamic shadow camera positioning system with quadrant awareness
   public updateShadowCamera(playerPosition: THREE.Vector3): void {
-    // Reduced threshold for more responsive shadow updates near quadrant boundaries
     const distanceMoved = this.lastPlayerPosition.distanceTo(playerPosition);
     
-    if (distanceMoved > 10 || this.lastPlayerPosition.length() === 0) { // Reduced from 20 to 10
-      // Update shadow camera to follow player with expanded coverage
+    if (distanceMoved > this.shadowUpdateThreshold || this.lastPlayerPosition.length() === 0) {
       const shadowCamera = this.directionalLight.shadow.camera;
+      const expandedSize = this.shadowCameraSize * 1.2;
       
-      // Expanded shadow camera size for better hill coverage
-      const expandedSize = this.shadowCameraSize * 1.2; // 20% larger coverage
-      
-      // Position shadow camera center on player position
       shadowCamera.left = playerPosition.x - expandedSize;
       shadowCamera.right = playerPosition.x + expandedSize;
       shadowCamera.top = playerPosition.z + expandedSize;
       shadowCamera.bottom = playerPosition.z - expandedSize;
       
-      // Update shadow camera projection matrix
       shadowCamera.updateProjectionMatrix();
       
-      // Update light target to point towards player area with offset for hill coverage
       if (!this.directionalLight.target) {
         this.directionalLight.target = new THREE.Object3D();
         this.scene.add(this.directionalLight.target);
       }
       
-      // Offset target slightly towards hill area for better coverage
       const targetPosition = playerPosition.clone();
-      const hillPosition = new THREE.Vector3(20, 0, 30); // Hill location
+      const hillPosition = new THREE.Vector3(20, 0, 30);
       const toHill = hillPosition.clone().sub(playerPosition).normalize().multiplyScalar(10);
       targetPosition.add(toHill);
       
       this.directionalLight.target.position.copy(targetPosition);
-      
-      // Store last player position
       this.lastPlayerPosition.copy(playerPosition);
       
-      console.log(`Enhanced shadow camera updated for position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)} with hill coverage`);
+      console.log(`Enhanced shadow camera updated for position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)} with dynamic sun tracking`);
     }
   }
 }
