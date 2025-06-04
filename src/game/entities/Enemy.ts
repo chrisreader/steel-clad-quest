@@ -21,6 +21,18 @@ enum EnemyMovementState {
   STUNNED = 'stunned'
 }
 
+// Distance-based speed zones for balanced enemy behavior
+interface EnemySpeedZones {
+  detectionRange: number;
+  pursuitRange: number;
+  attackRange: number;
+  damageRange: number;
+  detectionSpeedMultiplier: number;
+  pursuitSpeedMultiplier: number;
+  attackSpeedMultiplier: number;
+  damageSpeedMultiplier: number;
+}
+
 export class Enemy {
   private enemy: EnemyInterface;
   private scene: THREE.Scene;
@@ -60,6 +72,13 @@ export class Enemy {
   private lastPosition: THREE.Vector3 = new THREE.Vector3();
   private stuckThreshold: number = 0.01;
 
+  // NEW: Distance-based speed scaling system
+  private speedZones: EnemySpeedZones;
+  private currentSpeedMultiplier: number = 1.0;
+  private speedCooldownTimer: number = 0;
+  private maxSpeedCooldown: number = 3000; // 3 seconds to return to base speed
+  private lastPlayerDistance: number = Infinity;
+
   constructor(
     scene: THREE.Scene,
     type: EnemyType,
@@ -81,10 +100,31 @@ export class Enemy {
       maxSlopeAngle: 45
     };
 
+    // Initialize distance-based speed zones
+    this.speedZones = type === EnemyType.ORC ? {
+      detectionRange: 30,
+      pursuitRange: 15,
+      attackRange: 8,
+      damageRange: 2.5,
+      detectionSpeedMultiplier: 0.3, // Slow approach when first spotted
+      pursuitSpeedMultiplier: 0.6,   // Moderate chase speed
+      attackSpeedMultiplier: 1.2,    // Brief burst of speed for final approach
+      damageSpeedMultiplier: 0.4     // Slow down for attacking
+    } : {
+      detectionRange: 25,
+      pursuitRange: 12,
+      attackRange: 6,
+      damageRange: 1.5,
+      detectionSpeedMultiplier: 0.4,
+      pursuitSpeedMultiplier: 0.7,
+      attackSpeedMultiplier: 1.3,
+      damageSpeedMultiplier: 0.3
+    };
+
     // Initialize comprehensive terrain-aware movement
     if (physicsManager && terrainDetector) {
       this.movementHelper = new EnemyMovementHelper(physicsManager, terrainDetector);
-      console.log(`🚶 Enemy ${type} initialized with comprehensive surface movement`);
+      console.log(`🚶 Enemy ${type} initialized with comprehensive surface movement and speed scaling`);
     }
     
     // Create enemy based on type with humanoid system for orcs
@@ -97,13 +137,16 @@ export class Enemy {
         this.humanoidEnemy.setMovementHelper(this.movementHelper, this.movementConfig);
       }
       
+      // Set speed zones for humanoid enemy
+      this.humanoidEnemy.setSpeedZones(this.speedZones);
+      
       // Create interface wrapper for backward compatibility
       this.enemy = this.createEnemyInterface(this.humanoidEnemy);
       
-      console.log(`🗡️ [Enemy] Created humanoid orc with comprehensive surface movement`);
+      console.log(`🗡️ [Enemy] Created humanoid orc with speed scaling system`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created legacy goblin enemy with comprehensive surface movement");
+      console.log("🗡️ [Enemy] Created legacy goblin enemy with speed scaling system");
       
       // Initialize AI behavior for legacy enemies
       this.passiveAI = new PassiveNPCBehavior(
@@ -607,15 +650,18 @@ export class Enemy {
       
       this.targetRotation = Math.atan2(directionAwayFromSafeZone.x, directionAwayFromSafeZone.z);
       
-      // Use surface movement for safe zone avoidance
-      const targetDirection = directionAwayFromSafeZone.clone().multiplyScalar(this.enemy.speed);
+      // Use surface movement for safe zone avoidance with base speed
+      const targetDirection = directionAwayFromSafeZone.clone().multiplyScalar(this.enemy.speed * 0.8);
       const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
       this.enemy.mesh.position.copy(finalPosition);
       this.updateLegacyWalkAnimation(deltaTime);
       return;
     }
     
-    if (distanceToPlayer <= this.enemy.attackRange) {
+    // Calculate distance-based speed multiplier
+    const speedMultiplier = this.calculateSpeedMultiplier(distanceToPlayer);
+    
+    if (distanceToPlayer <= this.speedZones.detectionRange) {
       this.movementState = EnemyMovementState.PURSUING;
       
       const directionToPlayer = new THREE.Vector3()
@@ -625,21 +671,29 @@ export class Enemy {
       
       this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
-      if (distanceToPlayer > this.enemy.damageRange) {
-        // Use surface movement for pursuing player
-        const targetDirection = directionToPlayer.clone().multiplyScalar(this.enemy.speed);
+      if (distanceToPlayer > this.speedZones.damageRange) {
+        // Use surface movement with distance-based speed scaling
+        const adjustedSpeed = this.enemy.speed * speedMultiplier;
+        const targetDirection = directionToPlayer.clone().multiplyScalar(adjustedSpeed);
         const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
         this.enemy.mesh.position.copy(finalPosition);
         this.updateLegacyWalkAnimation(deltaTime);
+        
+        // Debug speed scaling
+        if (Math.random() < 0.01) { // 1% chance to log
+          console.log(`🏃 [Enemy] Speed: ${adjustedSpeed.toFixed(1)} (${speedMultiplier.toFixed(2)}x), Distance: ${distanceToPlayer.toFixed(1)}`);
+        }
       }
       
-      if (distanceToPlayer <= this.enemy.damageRange && now - this.enemy.lastAttackTime > this.enemy.attackCooldown) {
+      if (distanceToPlayer <= this.speedZones.damageRange && now - this.enemy.lastAttackTime > this.enemy.attackCooldown) {
         this.movementState = EnemyMovementState.ATTACKING;
         this.attack(playerPosition);
         this.enemy.lastAttackTime = now;
+        // Reset speed after attacking
+        this.speedCooldownTimer = this.maxSpeedCooldown * 0.5;
       }
     } else {
-      if (distanceToPlayer > this.enemy.attackRange && distanceToPlayer < 50) {
+      if (distanceToPlayer > this.speedZones.detectionRange && distanceToPlayer < 50) {
         this.movementState = EnemyMovementState.PURSUING;
         
         const direction = new THREE.Vector3()
@@ -649,13 +703,17 @@ export class Enemy {
         
         this.targetRotation = Math.atan2(direction.x, direction.z);
         
-        // Use surface movement for slow pursuit
-        const targetDirection = direction.clone().multiplyScalar(this.enemy.speed * 0.3);
+        // Use surface movement for slow distant pursuit
+        const adjustedSpeed = this.enemy.speed * 0.2; // Very slow when far
+        const targetDirection = direction.clone().multiplyScalar(adjustedSpeed);
         const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
         this.enemy.mesh.position.copy(finalPosition);
       } else {
         this.movementState = EnemyMovementState.IDLE;
         this.updateLegacyIdleAnimation();
+        // Reset speed when idle
+        this.currentSpeedMultiplier = 0.1;
+        this.speedCooldownTimer = 0;
       }
     }
   }
@@ -960,7 +1018,7 @@ export class Enemy {
     );
     
     const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager, physicsManager, terrainDetector);
-    console.log(`🗡️ [Enemy] Created ${type} with comprehensive surface movement - Humanoid: ${enemy.isHumanoidEnemy}`);
+    console.log(`🗡️ [Enemy] Created ${type} with comprehensive surface movement and speed scaling - Humanoid: ${enemy.isHumanoidEnemy}`);
     return enemy;
   }
   

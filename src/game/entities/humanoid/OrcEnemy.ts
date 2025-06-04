@@ -7,6 +7,18 @@ import { EnemyHumanoid, HumanoidConfig } from './EnemyHumanoid';
 import { PassiveNPCBehavior, PassiveBehaviorState } from '../../ai/PassiveNPCBehavior';
 import { EnemyMovementHelper, EnemyMovementConfig } from '../../utils/movement/EnemyMovementHelper';
 
+// Distance-based speed zones interface
+interface EnemySpeedZones {
+  detectionRange: number;
+  pursuitRange: number;
+  attackRange: number;
+  damageRange: number;
+  detectionSpeedMultiplier: number;
+  pursuitSpeedMultiplier: number;
+  attackSpeedMultiplier: number;
+  damageSpeedMultiplier: number;
+}
+
 export class OrcEnemy extends EnemyHumanoid {
   private static readonly ORC_CONFIG: HumanoidConfig = {
     type: EnemyType.ORC,
@@ -78,6 +90,22 @@ export class OrcEnemy extends EnemyHumanoid {
   private lastPosition: THREE.Vector3 = new THREE.Vector3();
   private stuckThreshold: number = 0.01;
 
+  // NEW: Distance-based speed scaling system
+  private speedZones: EnemySpeedZones = {
+    detectionRange: 30,
+    pursuitRange: 15,
+    attackRange: 8,
+    damageRange: 2.5,
+    detectionSpeedMultiplier: 0.3,
+    pursuitSpeedMultiplier: 0.6,
+    attackSpeedMultiplier: 1.2,
+    damageSpeedMultiplier: 0.4
+  };
+  private currentSpeedMultiplier: number = 1.0;
+  private speedCooldownTimer: number = 0;
+  private maxSpeedCooldown: number = 3000; // 3 seconds
+  private lastPlayerDistance: number = Infinity;
+
   constructor(
     scene: THREE.Scene,
     position: THREE.Vector3,
@@ -96,13 +124,54 @@ export class OrcEnemy extends EnemyHumanoid {
       8 // Safe zone radius
     );
     
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with comprehensive surface movement");
+    console.log("🗡️ [OrcEnemy] Created enhanced orc with speed scaling system");
   }
 
   public setMovementHelper(helper: EnemyMovementHelper, config: EnemyMovementConfig): void {
     this.movementHelper = helper;
     this.movementConfig = config;
     console.log("🚶 [OrcEnemy] Comprehensive surface movement system enabled");
+  }
+
+  public setSpeedZones(zones: EnemySpeedZones): void {
+    this.speedZones = zones;
+    console.log("🏃 [OrcEnemy] Speed scaling zones configured");
+  }
+
+  private calculateSpeedMultiplier(distanceToPlayer: number): number {
+    const zones = this.speedZones;
+    
+    // Determine current zone and base multiplier
+    let targetMultiplier: number;
+    
+    if (distanceToPlayer > zones.detectionRange) {
+      targetMultiplier = 0.1; // Very slow when far away
+    } else if (distanceToPlayer > zones.pursuitRange) {
+      targetMultiplier = zones.detectionSpeedMultiplier;
+    } else if (distanceToPlayer > zones.attackRange) {
+      targetMultiplier = zones.pursuitSpeedMultiplier;
+    } else if (distanceToPlayer > zones.damageRange) {
+      targetMultiplier = zones.attackSpeedMultiplier;
+    } else {
+      targetMultiplier = zones.damageSpeedMultiplier;
+    }
+    
+    // Apply speed cooldown - gradually reduce speed when moving away from player
+    if (distanceToPlayer > this.lastPlayerDistance) {
+      this.speedCooldownTimer += 16; // Assume ~60fps (16ms per frame)
+      const cooldownProgress = Math.min(this.speedCooldownTimer / this.maxSpeedCooldown, 1);
+      targetMultiplier = Math.max(targetMultiplier * (1 - cooldownProgress * 0.5), 0.2);
+    } else {
+      this.speedCooldownTimer = Math.max(0, this.speedCooldownTimer - 32); // Reset cooldown when approaching
+    }
+    
+    this.lastPlayerDistance = distanceToPlayer;
+    
+    // Smooth transition between speed changes
+    const smoothingFactor = 0.05;
+    this.currentSpeedMultiplier += (targetMultiplier - this.currentSpeedMultiplier) * smoothingFactor;
+    
+    return this.currentSpeedMultiplier;
   }
 
   public setPassiveMode(passive: boolean): void {
@@ -246,36 +315,48 @@ export class OrcEnemy extends EnemyHumanoid {
         .normalize();
       directionAwayFromSafeZone.y = 0;
       
-      // Use surface movement for safe zone avoidance
-      const targetDirection = directionAwayFromSafeZone.clone().multiplyScalar(this.config.speed);
+      // Use surface movement for safe zone avoidance with base speed
+      const targetDirection = directionAwayFromSafeZone.clone().multiplyScalar(this.config.speed * 0.8);
       const finalPosition = this.handleSurfaceMovement(this.mesh.position, targetDirection, deltaTime);
       this.mesh.position.copy(finalPosition);
       
       // Use animation system for movement animation
-      this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
+      this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed * 0.8);
       return;
     }
 
-    // Normal aggressive behavior with comprehensive surface movement
+    // Normal aggressive behavior with distance-based speed scaling
     const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
+    const speedMultiplier = this.calculateSpeedMultiplier(distanceToPlayer);
     
-    if (distanceToPlayer <= this.config.attackRange) {
+    if (distanceToPlayer <= this.speedZones.detectionRange) {
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
-      if (distanceToPlayer > this.config.damageRange) {
-        // Use surface movement for pursuing player
-        const targetDirection = directionToPlayer.clone().multiplyScalar(this.config.speed);
+      if (distanceToPlayer > this.speedZones.damageRange) {
+        // Use surface movement for pursuing player with speed scaling
+        const adjustedSpeed = this.config.speed * speedMultiplier;
+        const targetDirection = directionToPlayer.clone().multiplyScalar(adjustedSpeed);
         const finalPosition = this.handleSurfaceMovement(this.mesh.position, targetDirection, deltaTime);
         this.mesh.position.copy(finalPosition);
-        this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
+        this.animationSystem.updateWalkAnimation(deltaTime, true, adjustedSpeed);
+        
+        // Debug speed scaling
+        if (Math.random() < 0.01) { // 1% chance to log
+          console.log(`🏃 [OrcEnemy] Speed: ${adjustedSpeed.toFixed(1)} (${speedMultiplier.toFixed(2)}x), Distance: ${distanceToPlayer.toFixed(1)}`);
+        }
       }
     }
 
     // Call parent update for other behaviors (attacking, etc.)
     super.update(deltaTime, playerPosition);
+    
+    // Reset speed after attacking
+    if (this.isAttacking) {
+      this.speedCooldownTimer = this.maxSpeedCooldown * 0.5;
+    }
   }
 
   protected createWeapon(woodTexture: THREE.Texture, metalTexture: THREE.Texture): THREE.Group {
