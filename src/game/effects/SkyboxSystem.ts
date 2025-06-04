@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class SkyboxSystem {
@@ -23,7 +22,9 @@ export class SkyboxSystem {
         nightTopColor: { value: new THREE.Color(0x0B1426) },
         nightBottomColor: { value: new THREE.Color(0x1E2951) },
         sunsetTopColor: { value: new THREE.Color(0x4A5D7A) },
-        sunsetBottomColor: { value: new THREE.Color(0xFF6B35) }
+        sunsetBottomColor: { value: new THREE.Color(0xFF4500) },
+        twilightTopColor: { value: new THREE.Color(0x191970) },
+        twilightBottomColor: { value: new THREE.Color(0x483D8B) }
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -46,6 +47,8 @@ export class SkyboxSystem {
         uniform vec3 nightBottomColor;
         uniform vec3 sunsetTopColor;
         uniform vec3 sunsetBottomColor;
+        uniform vec3 twilightTopColor;
+        uniform vec3 twilightBottomColor;
         
         varying vec3 vWorldPosition;
         varying vec3 vDirection;
@@ -54,48 +57,59 @@ export class SkyboxSystem {
           vec3 topColor = dayTopColor;
           vec3 bottomColor = dayBottomColor;
           
-          float adjustedHeightFactor = pow(heightFactor, 1.5);
+          float adjustedHeightFactor = pow(heightFactor, 1.2);
+          float horizonZone = smoothstep(0.0, 0.5, heightFactor);
           
-          float horizonZone = smoothstep(0.0, 0.4, heightFactor);
-          
-          if (time >= 0.0 && time <= 0.2) {
+          if (time >= 0.0 && time <= 0.15) {
             // Night period
             topColor = nightTopColor;
             bottomColor = nightBottomColor;
-          } else if (time >= 0.2 && time <= 0.8) {
-            // Day period with smooth transition
-            float factor = (time - 0.2) / 0.6;
-            factor = factor * factor * (3.0 - 2.0 * factor);
+          } else if (time >= 0.15 && time <= 0.25) {
+            // Dawn period
+            float factor = (time - 0.15) / 0.1;
+            factor = smoothstep(0.0, 1.0, factor);
             
-            topColor = mix(nightTopColor, dayTopColor, factor);
-            bottomColor = mix(nightBottomColor, dayBottomColor, factor);
+            topColor = mix(nightTopColor, dayTopColor * 0.7, factor);
+            bottomColor = mix(nightBottomColor, dayBottomColor * 0.8, factor);
+          } else if (time >= 0.25 && time <= 0.7) {
+            // Day period
+            topColor = dayTopColor;
+            bottomColor = dayBottomColor;
+          } else if (time >= 0.7 && time <= 0.8) {
+            // Sunset period - more dramatic colors
+            float factor = (time - 0.7) / 0.1;
+            factor = pow(factor, 1.2);
+            
+            topColor = mix(dayTopColor, sunsetTopColor, factor);
+            
+            vec3 dramaticSunsetBottom = mix(sunsetBottomColor, vec3(1.0, 0.3, 0.1), 0.3);
+            float sunsetIntensity = (1.0 - pow(heightFactor, 1.5)) * horizonZone;
+            bottomColor = mix(dayBottomColor, dramaticSunsetBottom, factor * (0.7 + 0.3 * sunsetIntensity));
           } else if (time >= 0.8 && time <= 0.9) {
-            // Sunset period
+            // Twilight period - blue hour effect
             float factor = (time - 0.8) / 0.1;
-            factor = factor * factor * (3.0 - 2.0 * factor);
+            factor = pow(factor, 1.8);
             
-            vec3 neutralTopColor = mix(dayTopColor, sunsetTopColor, 0.6);
-            topColor = mix(dayTopColor, neutralTopColor, factor);
+            topColor = mix(sunsetTopColor, twilightTopColor, factor);
             
-            vec3 dramaticBottomColor = mix(dayBottomColor, sunsetBottomColor, factor);
-            float sunsetIntensity = (1.0 - pow(heightFactor, 2.0)) * horizonZone;
-            bottomColor = mix(dayBottomColor, dramaticBottomColor, sunsetIntensity);
+            vec3 twilightHorizon = mix(twilightBottomColor, sunsetBottomColor * 0.4, 0.6);
+            float twilightIntensity = (1.0 - pow(heightFactor, 2.0)) * horizonZone;
+            bottomColor = mix(sunsetBottomColor, twilightHorizon, factor * (0.8 + 0.2 * twilightIntensity));
           } else {
-            // Evening to night transition
+            // Deep night transition
             float factor = (time - 0.9) / 0.1;
-            factor = factor * factor * (3.0 - 2.0 * factor);
+            factor = pow(factor, 2.0);
             
-            topColor = mix(sunsetTopColor, nightTopColor, factor);
-            
-            vec3 fullBottomColor = mix(sunsetBottomColor, nightBottomColor, factor);
-            float sunsetIntensity = (1.0 - pow(heightFactor, 3.0)) * horizonZone;
-            bottomColor = mix(nightBottomColor, fullBottomColor, sunsetIntensity);
+            topColor = mix(twilightTopColor, nightTopColor, factor);
+            bottomColor = mix(twilightBottomColor, nightBottomColor, factor);
           }
           
           float blendFactor = 1.0 - adjustedHeightFactor;
           
-          if ((time >= 0.8 && time <= 1.0) || (time >= 0.0 && time <= 0.2)) {
-            blendFactor *= (1.0 - pow(heightFactor, 1.5));
+          // Enhanced horizon effects during sunset and twilight
+          if ((time >= 0.7 && time <= 0.9)) {
+            blendFactor *= (1.0 - pow(heightFactor, 1.2));
+            blendFactor = max(blendFactor, 0.1);
           }
           
           return mix(topColor, bottomColor, blendFactor);
