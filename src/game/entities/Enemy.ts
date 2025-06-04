@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
@@ -137,19 +136,20 @@ export class Enemy {
     this.validateAndCorrectTerrainPosition();
   }
 
-  // PHASE 3: Add terrain height validation
-  private validateAndCorrectTerrainPosition(): void {
-    const currentPosition = this.getPosition();
-    const correctedPosition = this.ensureTerrainHeight(currentPosition);
-    
-    if (Math.abs(currentPosition.y - correctedPosition.y) > 0.1) {
-      console.log(`🚶 [Enemy] Terrain height correction applied: ${currentPosition.y.toFixed(2)} → ${correctedPosition.y.toFixed(2)}`);
-      this.getMesh().position.copy(correctedPosition);
-    }
-  }
-  
   // Create enemy interface wrapper for humanoid enemies
   private createEnemyInterface(humanoidEnemy: OrcEnemy): EnemyInterface {
+    // Get materials for originalMaterials property
+    const materials: THREE.Material[] = [];
+    humanoidEnemy.getMesh().traverse((child) => {
+      if (child instanceof THREE.Mesh && child.material) {
+        if (Array.isArray(child.material)) {
+          materials.push(...child.material);
+        } else {
+          materials.push(child.material);
+        }
+      }
+    });
+
     return {
       type: EnemyType.ORC,
       mesh: humanoidEnemy.getMesh(),
@@ -178,6 +178,7 @@ export class Enemy {
       rightLeg: null,
       weapon: null,
       hitBox: null,
+      originalMaterials: materials,
       deathAnimation: {
         falling: false,
         fallSpeed: 0,
@@ -231,6 +232,9 @@ export class Enemy {
     rightLeg.castShadow = true;
     mesh.add(rightLeg);
 
+    // Collect materials for originalMaterials
+    const materials = [bodyMaterial, headMaterial, limbMaterial];
+
     return {
       type,
       mesh,
@@ -259,12 +263,34 @@ export class Enemy {
       rightLeg,
       weapon: null,
       hitBox: null,
+      originalMaterials: materials,
       deathAnimation: {
         falling: false,
         fallSpeed: 0,
         rotationSpeed: 0.02
       }
     };
+  }
+
+  // PHASE 4: Standardized terrain-aware movement calculation
+  private calculateTerrainAwareMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3): THREE.Vector3 {
+    console.log(`🚶 [Enemy] Calculating terrain-aware movement from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
+    
+    if (this.movementHelper) {
+      console.log(`✅ [Enemy] Using EnemyMovementHelper for terrain-following`);
+      const finalPosition = this.movementHelper.calculateEnemyMovement(
+        currentPosition,
+        targetPosition,
+        this.movementConfig
+      );
+      console.log(`🚶 [Enemy] Movement helper result: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
+      return finalPosition;
+    } else {
+      console.warn(`⚠️ [Enemy] No movement helper - using enhanced terrain height detection`);
+      const finalPosition = this.ensureTerrainHeight(targetPosition);
+      console.log(`🚶 [Enemy] Enhanced terrain result: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
+      return finalPosition;
+    }
   }
 
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
@@ -313,6 +339,17 @@ export class Enemy {
     
     // PHASE 3: Final terrain position validation after all movement
     this.validateAndCorrectTerrainPosition();
+  }
+
+  // PHASE 3: Add terrain position validation
+  private validateAndCorrectTerrainPosition(): void {
+    const currentPosition = this.getPosition();
+    const correctedPosition = this.ensureTerrainHeight(currentPosition);
+    
+    if (Math.abs(currentPosition.y - correctedPosition.y) > 0.1) {
+      console.log(`🚶 [Enemy] Terrain height correction applied: ${currentPosition.y.toFixed(2)} → ${correctedPosition.y.toFixed(2)}`);
+      this.getMesh().position.copy(correctedPosition);
+    }
   }
 
   // PHASE 3: Validate humanoid enemy terrain position
@@ -388,27 +425,6 @@ export class Enemy {
       
       // Use idle animation when not moving
       this.updateLegacyIdleAnimation();
-    }
-  }
-
-  // PHASE 4: Standardized terrain-aware movement calculation
-  private calculateTerrainAwareMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3): THREE.Vector3 {
-    console.log(`🚶 [Enemy] Calculating terrain-aware movement from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
-    
-    if (this.movementHelper) {
-      console.log(`✅ [Enemy] Using EnemyMovementHelper for terrain-following`);
-      const finalPosition = this.movementHelper.calculateEnemyMovement(
-        currentPosition,
-        targetPosition,
-        this.movementConfig
-      );
-      console.log(`🚶 [Enemy] Movement helper result: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
-      return finalPosition;
-    } else {
-      console.warn(`⚠️ [Enemy] No movement helper - using enhanced terrain height detection`);
-      const finalPosition = this.ensureTerrainHeight(targetPosition);
-      console.log(`🚶 [Enemy] Enhanced terrain result: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
-      return finalPosition;
     }
   }
 
@@ -720,7 +736,8 @@ export class Enemy {
     this.enemy.deathAnimation.fallSpeed += deltaTime * 2;
     
     this.enemy.mesh.rotation.x += this.enemy.deathAnimation.rotationSpeed;
-    this.enemy.mesh.position.y -= this.enemy.deathAnimation.fallSpeed;
+    const terrainHeight = this.getTerrainHeightAtPosition(this.enemy.mesh.position);
+    this.enemy.mesh.position.y = Math.max(terrainHeight, this.enemy.mesh.position.y - this.enemy.deathAnimation.fallSpeed);
     
     const fadeProgress = Math.min((Date.now() - this.enemy.deathTime) / 5000, 1);
     this.enemy.mesh.children.forEach(child => {
@@ -730,7 +747,7 @@ export class Enemy {
       }
     });
     
-    if (this.enemy.mesh.position.y < -2) {
+    if (this.enemy.mesh.position.y <= terrainHeight + 0.1) {
       this.enemy.deathAnimation.falling = false;
     }
   }
