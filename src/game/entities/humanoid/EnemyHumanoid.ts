@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { TextureGenerator } from '../../utils';
 import { EnemyType } from '../../../types/GameTypes';
-import { EffectsManager } from '../../engine/EffectsManager';
-import { AudioManager } from '../../engine/AudioManager';
-import { EnemyAnimationSystem } from '../../animation/EnemyAnimationSystem';
+import { TextureGenerator } from '../../utils';
+import { EffectsManager } from '../../managers/EffectsManager';
+import { AudioManager } from '../../managers/AudioManager';
+import { HumanoidAnimationSystem } from '../../animation/HumanoidAnimationSystem';
 
 // Export all necessary types and interfaces
 export interface EnemyBodyParts {
@@ -151,7 +151,7 @@ export abstract class EnemyHumanoid {
   protected hitTime: number = 0;
   
   protected bodyParts: EnemyBodyParts;
-  protected animationSystem: EnemyAnimationSystem;
+  protected animationSystem: HumanoidAnimationSystem;
   
   protected movementState: EnemyMovementState = EnemyMovementState.IDLE;
   protected knockbackVelocity: THREE.Vector3 = new THREE.Vector3();
@@ -184,7 +184,7 @@ export abstract class EnemyHumanoid {
     this.mesh = bodyResult.group;
     this.bodyParts = bodyResult.bodyParts;
     
-    this.animationSystem = new EnemyAnimationSystem(bodyResult.bodyParts, bodyResult.metrics, config.type);
+    this.animationSystem = new HumanoidAnimationSystem(bodyResult.bodyParts, bodyResult.metrics, config.type);
     
     scene.add(this.mesh);
   }
@@ -1201,7 +1201,7 @@ export abstract class EnemyHumanoid {
     return this.bodyParts;
   }
 
-  public getAnimationSystem(): EnemyAnimationSystem {
+  public getAnimationSystem(): HumanoidAnimationSystem {
     return this.animationSystem;
   }
 }

@@ -1,9 +1,10 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { Gold } from '../entities/Gold';
-import { EffectsManager } from '../engine/EffectsManager';
-import { AudioManager } from '../engine/AudioManager';
+import { EffectsManager } from '../managers/EffectsManager';
+import { AudioManager } from '../managers/AudioManager';
 import { PhysicsManager } from '../engine/PhysicsManager';
 import { ProjectileSystem } from './ProjectileSystem';
 import { BaseBow } from '../weapons';

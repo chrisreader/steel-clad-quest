@@ -4,8 +4,8 @@ import { Arrow } from '../entities/Arrow';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { Gold } from '../entities/Gold';
-import { EffectsManager } from '../engine/EffectsManager';
-import { AudioManager } from '../engine/AudioManager';
+import { EffectsManager } from '../managers/EffectsManager';
+import { AudioManager } from '../managers/AudioManager';
 import { PhysicsManager } from '../engine/PhysicsManager';
 
 export class ProjectileSystem {

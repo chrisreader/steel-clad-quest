@@ -1,10 +1,11 @@
+
 import * as THREE from 'three';
 import { Enemy } from '../entities/Enemy';
 import { DynamicSpawningSystem } from './DynamicSpawningSystem';
 import { SpawnableEntity, EntityLifecycleState, SpawningConfig } from '../../types/SpawnableEntity';
 import { EnemyType } from '../../types/GameTypes';
-import { EffectsManager } from '../engine/EffectsManager';
-import { AudioManager } from '../engine/AudioManager';
+import { EffectsManager } from '../managers/EffectsManager';
+import { AudioManager } from '../managers/AudioManager';
 import { SafeZoneManager } from './SafeZoneManager';
 
 // Enemy wrapper to implement SpawnableEntity interface
