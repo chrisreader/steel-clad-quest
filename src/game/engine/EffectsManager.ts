@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import { ParticleSystem } from '../utils/ParticleSystem';
 import { SwordTrailEffect } from '../effects/SwordTrailEffect';
-import { VolumetricLightRaySystem } from '../effects/VolumetricLightRaySystem';
-import { PhysicsManager } from './PhysicsManager';
 
 export class EffectsManager {
   private scene: THREE.Scene;
@@ -13,21 +11,13 @@ export class EffectsManager {
   private cameraShakeDecay: number = 0.9;
   private cameraOriginalPosition: THREE.Vector3 = new THREE.Vector3();
   private camera: THREE.Camera;
-  private volumetricLightRaySystem: VolumetricLightRaySystem | null = null;
   
-  constructor(scene: THREE.Scene, camera?: THREE.Camera, physicsManager?: PhysicsManager) {
+  constructor(scene: THREE.Scene, camera?: THREE.Camera) {
     this.scene = scene;
     this.camera = camera || new THREE.Camera();
     if (camera) {
       this.cameraOriginalPosition.copy(camera.position);
     }
-    
-    // Initialize volumetric light ray system if physics manager is available
-    if (physicsManager) {
-      this.volumetricLightRaySystem = new VolumetricLightRaySystem(scene, physicsManager);
-      console.log('Effects Manager initialized with realistic sun/moon light rays');
-    }
-    
     console.log('Effects Manager initialized with realistic combat effects');
   }
   
@@ -356,23 +346,6 @@ export class EffectsManager {
     }
   }
   
-  public updateVolumetricLightRays(
-    sunPosition: THREE.Vector3,
-    moonPosition: THREE.Vector3,
-    timeOfDay: number,
-    playerPosition: THREE.Vector3
-  ): void {
-    if (this.volumetricLightRaySystem) {
-      this.volumetricLightRaySystem.update(sunPosition, moonPosition, timeOfDay, playerPosition);
-    }
-  }
-  
-  public setVolumetricLightRaysEnabled(enabled: boolean): void {
-    if (this.volumetricLightRaySystem) {
-      this.volumetricLightRaySystem.setEnabled(enabled);
-    }
-  }
-  
   public clearEffects(): void {
     this.effects.forEach(effect => {
       // Proper cleanup with type guards
@@ -400,8 +373,5 @@ export class EffectsManager {
   
   public dispose(): void {
     this.clearEffects();
-    if (this.volumetricLightRaySystem) {
-      this.volumetricLightRaySystem.dispose();
-    }
   }
 }
