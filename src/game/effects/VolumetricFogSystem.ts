@@ -96,6 +96,82 @@ export class VolumetricFogSystem {
     const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
     return t * t * (3 - 2 * t);
   }
+
+  // Restored dynamic parameter methods
+  private getDarknessFactor(timeOfDay: number): number {
+    const normalizedTime = ((timeOfDay % 1.0) + 1.0) % 1.0;
+    
+    // Define dark periods with smooth transitions
+    if (normalizedTime >= 0.0 && normalizedTime <= 0.2) {
+      // Night to early dawn - high darkness
+      return this.smoothStep(0.8, 1.0, (0.2 - normalizedTime) / 0.2);
+    } else if (normalizedTime >= 0.2 && normalizedTime <= 0.4) {
+      // Dawn to morning - decreasing darkness
+      return this.smoothStep(0.0, 0.8, (0.4 - normalizedTime) / 0.2);
+    } else if (normalizedTime >= 0.4 && normalizedTime <= 0.65) {
+      // Day - minimal darkness
+      return 0.0;
+    } else if (normalizedTime >= 0.65 && normalizedTime <= 0.85) {
+      // Sunset to dusk - increasing darkness
+      return this.smoothStep(0.0, 0.8, (normalizedTime - 0.65) / 0.2);
+    } else {
+      // Night - high darkness
+      return this.smoothStep(0.8, 1.0, (normalizedTime - 0.85) / 0.15);
+    }
+  }
+
+  private getFogDensityMultiplier(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    // Smooth interpolation between day (1.0x) and night (2.8x) density
+    return 1.0 + (darknessFactor * 1.8);
+  }
+
+  private getFogMaxDistance(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    // Smooth interpolation between day (300) and night (180) distance
+    return 300 - (darknessFactor * 120);
+  }
+
+  private getFogMaxOpacity(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    // Smooth interpolation between day (0.35) and night (0.55) opacity
+    return 0.35 + (darknessFactor * 0.2);
+  }
+
+  private getBlendingAlpha(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    // Smooth blending alpha for transition effects
+    return darknessFactor * 0.3;
+  }
+
+  private getSkyDensityMultiplier(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    return 0.5 + (darknessFactor * 1.0);
+  }
+
+  private getGroundDensityMultiplier(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    return 0.6 + (darknessFactor * 1.2);
+  }
+
+  private getFogWallDensityMultiplier(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    return 1.0 + (darknessFactor * 1.5);
+  }
+
+  private updateDarkPeriodFogWalls(timeOfDay: number): void {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    
+    this.darkPeriodFogWalls.forEach(wall => {
+      if (wall.material instanceof THREE.ShaderMaterial) {
+        // Smooth fade in/out for dark period walls
+        wall.visible = darknessFactor > 0.1;
+        if (wall.material.uniforms.fogWallDensityMultiplier) {
+          wall.material.uniforms.fogWallDensityMultiplier.value = darknessFactor * 1.8;
+        }
+      }
+    });
+  }
   
   private createVolumetricFogMaterial(): void {
     this.fogMaterial = new THREE.ShaderMaterial({
@@ -513,47 +589,73 @@ export class VolumetricFogSystem {
     // Get the blended color for current time
     const blendedColor = this.getBlendedFogColor(timeOfDay);
     
-    // Create arrays of all materials to update
-    const allMaterials = [this.fogMaterial, this.skyFogMaterial, this.groundFogMaterial];
+    // Calculate all dynamic parameters based on time of day
+    const fogDensityMultiplier = this.getFogDensityMultiplier(timeOfDay);
+    const maxFogDistance = this.getFogMaxDistance(timeOfDay);
+    const maxFogOpacity = this.getFogMaxOpacity(timeOfDay);
+    const blendingAlpha = this.getBlendingAlpha(timeOfDay);
+    const skyDensityMultiplier = this.getSkyDensityMultiplier(timeOfDay);
+    const groundDensityMultiplier = this.getGroundDensityMultiplier(timeOfDay);
+    const fogWallDensityMultiplier = this.getFogWallDensityMultiplier(timeOfDay);
     
-    // Create arrays of all fog wall materials (including cloned ones)
-    const allFogWallMaterials: THREE.ShaderMaterial[] = [];
-    this.fogWallLayers.forEach(layer => {
-      if (layer.material instanceof THREE.ShaderMaterial) {
-        allFogWallMaterials.push(layer.material);
+    // Update main fog material
+    if (this.fogMaterial?.uniforms) {
+      if (this.fogMaterial.uniforms.time?.value !== undefined) this.fogMaterial.uniforms.time.value += deltaTime;
+      if (this.fogMaterial.uniforms.timeOfDay?.value !== undefined) this.fogMaterial.uniforms.timeOfDay.value = timeOfDay;
+      if (this.fogMaterial.uniforms.blendedFogColor?.value) this.fogMaterial.uniforms.blendedFogColor.value.copy(blendedColor);
+      if (this.fogMaterial.uniforms.fogDensityMultiplier?.value !== undefined) this.fogMaterial.uniforms.fogDensityMultiplier.value = fogDensityMultiplier;
+      if (this.fogMaterial.uniforms.maxFogDistance?.value !== undefined) this.fogMaterial.uniforms.maxFogDistance.value = maxFogDistance;
+      if (this.fogMaterial.uniforms.maxFogOpacity?.value !== undefined) this.fogMaterial.uniforms.maxFogOpacity.value = maxFogOpacity;
+      if (this.fogMaterial.uniforms.blendingAlpha?.value !== undefined) this.fogMaterial.uniforms.blendingAlpha.value = blendingAlpha;
+      
+      if (playerPosition && this.fogMaterial.uniforms.playerPosition?.value) {
+        this.fogMaterial.uniforms.playerPosition.value.copy(playerPosition);
       }
-    });
-    this.darkPeriodFogWalls.forEach(wall => {
-      if (wall.material instanceof THREE.ShaderMaterial) {
-        allFogWallMaterials.push(wall.material);
-      }
-    });
+    }
     
-    // Update main materials - check for uniforms existence to prevent errors
-    allMaterials.forEach(material => {
-      if (material && material.uniforms) {
-        if (material.uniforms.time && material.uniforms.time.value !== undefined) material.uniforms.time.value += deltaTime;
-        if (material.uniforms.timeOfDay && material.uniforms.timeOfDay.value !== undefined) material.uniforms.timeOfDay.value = timeOfDay;
-        if (material.uniforms.blendedFogColor && material.uniforms.blendedFogColor.value !== undefined) material.uniforms.blendedFogColor.value.copy(blendedColor);
+    // Update sky fog material
+    if (this.skyFogMaterial?.uniforms) {
+      if (this.skyFogMaterial.uniforms.time?.value !== undefined) this.skyFogMaterial.uniforms.time.value += deltaTime;
+      if (this.skyFogMaterial.uniforms.timeOfDay?.value !== undefined) this.skyFogMaterial.uniforms.timeOfDay.value = timeOfDay;
+      if (this.skyFogMaterial.uniforms.blendedFogColor?.value) this.skyFogMaterial.uniforms.blendedFogColor.value.copy(blendedColor);
+      if (this.skyFogMaterial.uniforms.skyDensityMultiplier?.value !== undefined) this.skyFogMaterial.uniforms.skyDensityMultiplier.value = skyDensityMultiplier;
+      
+      if (playerPosition && this.skyFogMaterial.uniforms.playerPosition?.value) {
+        this.skyFogMaterial.uniforms.playerPosition.value.copy(playerPosition);
+      }
+    }
+    
+    // Update ground fog material
+    if (this.groundFogMaterial?.uniforms) {
+      if (this.groundFogMaterial.uniforms.time?.value !== undefined) this.groundFogMaterial.uniforms.time.value += deltaTime;
+      if (this.groundFogMaterial.uniforms.timeOfDay?.value !== undefined) this.groundFogMaterial.uniforms.timeOfDay.value = timeOfDay;
+      if (this.groundFogMaterial.uniforms.blendedFogColor?.value) this.groundFogMaterial.uniforms.blendedFogColor.value.copy(blendedColor);
+      if (this.groundFogMaterial.uniforms.groundDensityMultiplier?.value !== undefined) this.groundFogMaterial.uniforms.groundDensityMultiplier.value = groundDensityMultiplier;
+      
+      if (playerPosition && this.groundFogMaterial.uniforms.playerPosition?.value) {
+        this.groundFogMaterial.uniforms.playerPosition.value.copy(playerPosition);
+      }
+    }
+    
+    // Update fog wall layers (including cloned materials)
+    this.fogWallLayers.forEach(wall => {
+      if (wall.material instanceof THREE.ShaderMaterial && wall.material.uniforms) {
+        if (wall.material.uniforms.time?.value !== undefined) wall.material.uniforms.time.value += deltaTime;
+        if (wall.material.uniforms.timeOfDay?.value !== undefined) wall.material.uniforms.timeOfDay.value = timeOfDay;
+        if (wall.material.uniforms.blendedFogColor?.value) wall.material.uniforms.blendedFogColor.value.copy(blendedColor);
+        if (wall.material.uniforms.fogWallDensityMultiplier?.value !== undefined) wall.material.uniforms.fogWallDensityMultiplier.value = fogWallDensityMultiplier;
+        if (wall.material.uniforms.maxWallDistance?.value !== undefined) wall.material.uniforms.maxWallDistance.value = maxFogDistance;
+        if (wall.material.uniforms.maxWallOpacity?.value !== undefined) wall.material.uniforms.maxWallOpacity.value = maxFogOpacity;
+        if (wall.material.uniforms.blendingAlpha?.value !== undefined) wall.material.uniforms.blendingAlpha.value = blendingAlpha;
         
-        if (playerPosition) {
-          if (material.uniforms.playerPosition && material.uniforms.playerPosition.value !== undefined) material.uniforms.playerPosition.value.copy(playerPosition);
+        if (playerPosition && wall.material.uniforms.playerPosition?.value) {
+          wall.material.uniforms.playerPosition.value.copy(playerPosition);
         }
       }
     });
     
-    // Update fog wall materials (including clones) - check for uniforms existence
-    allFogWallMaterials.forEach(material => {
-      if (material && material.uniforms) {
-        if (material.uniforms.time && material.uniforms.time.value !== undefined) material.uniforms.time.value += deltaTime;
-        if (material.uniforms.timeOfDay && material.uniforms.timeOfDay.value !== undefined) material.uniforms.timeOfDay.value = timeOfDay;
-        if (material.uniforms.blendedFogColor && material.uniforms.blendedFogColor.value !== undefined) material.uniforms.blendedFogColor.value.copy(blendedColor);
-        
-        if (playerPosition) {
-          if (material.uniforms.playerPosition && material.uniforms.playerPosition.value !== undefined) material.uniforms.playerPosition.value.copy(playerPosition);
-        }
-      }
-    });
+    // Update dark period fog walls with special handling
+    this.updateDarkPeriodFogWalls(timeOfDay);
   }
 
   public dispose(): void {
