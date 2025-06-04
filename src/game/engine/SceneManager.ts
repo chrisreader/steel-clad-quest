@@ -414,7 +414,7 @@ export class SceneManager {
     (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
   }
   
-  // UPDATED: Simplified skybox with reduced but visible sun glow and smooth continuous transitions
+  // UPDATED: Simplified skybox with intense sun glow that disperses outwards
   private createDayNightSkybox(): void {
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
@@ -445,7 +445,7 @@ export class SceneManager {
           return mix(a, b, clamp(factor, 0.0, 1.0));
         }
         
-        // Enhanced atmospheric scattering with smaller but visible sun glow
+        // Enhanced atmospheric scattering with intense sun glow that disperses outwards
         vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized) {
           float height = direction.y;
           float sunDot = dot(direction, normalize(sunDir));
@@ -493,24 +493,33 @@ export class SceneManager {
           
           vec3 baseAtmosphereColor = lerpColor(horizonColor, zenithColor, heightFactor);
           
-          // UPDATED: Smaller but visible sun proximity influence
+          // UPDATED: Intense sun glow that disperses outwards
           float sunInfluence = 0.0;
           if (sunDir.y > -0.2) { // Only when sun is near or above horizon
             float sunDistance = 1.0 - sunDot; // Distance from sun direction
-            // UPDATED: Smaller area (4.0 instead of 2.5) but more visible intensity
-            sunInfluence = pow(max(0.0, 1.0 - sunDistance * 4.0), 5.0);
+            
+            // Create multiple glow layers for intensity gradation
+            // Inner intense core
+            float innerGlow = pow(max(0.0, 1.0 - sunDistance * 8.0), 4.0);
+            // Middle dispersion layer
+            float middleGlow = pow(max(0.0, 1.0 - sunDistance * 4.0), 6.0);
+            // Outer soft dispersion
+            float outerGlow = pow(max(0.0, 1.0 - sunDistance * 2.0), 8.0);
+            
+            // Combine layers with different intensities
+            sunInfluence = innerGlow * 0.8 + middleGlow * 0.5 + outerGlow * 0.2;
             sunInfluence *= max(0.0, (sunDir.y + 0.2) / 1.2); // Fade when sun is below horizon
           }
           
-          // Sun glow colors
-          vec3 sunGlowColor = vec3(1.0, 0.8, 0.4); // Warm sun glow
+          // Sun glow colors with more intensity
+          vec3 sunGlowColor = vec3(1.0, 0.9, 0.6); // Brighter, more intense sun glow
           if (timeNormalized > 0.75 && timeNormalized < 0.85) {
             // Enhanced sunset/sunrise glow
-            sunGlowColor = vec3(1.0, 0.5, 0.2);
+            sunGlowColor = vec3(1.0, 0.6, 0.3);
           }
           
-          // UPDATED: Apply moderate sun influence (0.35 instead of 0.15) for visible but contained glow
-          vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.35);
+          // UPDATED: Apply intense sun influence that disperses outwards
+          vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.6);
           
           // Add subtle atmospheric perspective for distance
           float atmosphericDepth = 1.0 - abs(height); // More atmosphere at horizon
@@ -524,7 +533,7 @@ export class SceneManager {
           vec3 sunDir = normalize(sunPosition);
           float normalizedTime = mod(timeOfDay, 1.0);
           
-          // Get realistic atmospheric color with smaller but visible sun glow
+          // Get realistic atmospheric color with intense dispersing sun glow
           vec3 skyColor = getAtmosphericColor(direction, sunDir, normalizedTime);
           
           // Add subtle stars for extended night sky periods
@@ -550,7 +559,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Realistic atmospheric gradient skybox created with smaller but visible sun glow');
+    console.log('Realistic atmospheric gradient skybox created with intense dispersing sun glow');
   }
   
   private updateDayNightSkybox(): void {
