@@ -45,47 +45,6 @@ export interface PlayerBody {
   rightFoot?: THREE.Mesh;
 }
 
-// NEW: Player speed tracking for enemy AI
-export interface PlayerSpeedInfo {
-  baseSpeed: number;
-  currentSpeed: number;
-  isSprinting: boolean;
-  position: THREE.Vector3;
-}
-
-// NEW: Player-relative enemy speed system
-export interface EnemySpeedProfile {
-  baseSpeed: number; // Individual enemy base speed
-  baseSpeedRatio: number; // Ratio to player base speed (e.g., 0.8 for orc = 20% slower)
-  detectionSpeedRatio: number; // 0.68 (15% slower than normal)
-  pursuitSpeedRatio: number; // 0.8 (normal speed relative to player)
-  attackSpeedRatio: number; // 1.04 (30% boost from normal)
-  damageSpeedRatio: number; // 0.8 (80% of player speed)
-}
-
-// NEW: Combat timing mechanics
-export interface EnemyCombatTimers {
-  lastAttackBurstTime: number;
-  attackBurstCooldown: number; // 30 seconds
-  damageZoneEnterTime: number;
-  damageZoneLockDuration: number; // 10 seconds
-  isInAttackBurstCooldown: boolean;
-  isLockedInDamageZone: boolean;
-}
-
-// NEW: Enhanced enemy speed zones with player-relative calculations
-export interface PlayerRelativeSpeedZones {
-  detectionRange: number;
-  pursuitRange: number;
-  attackRange: number;
-  damageRange: number;
-  // These are now ratios to player speed, not fixed multipliers
-  detectionSpeedRatio: number; // 0.68 (85% of enemy base speed)
-  pursuitSpeedRatio: number; // 0.8 (100% of enemy base speed)
-  attackSpeedRatio: number; // 1.04 (130% of enemy base speed)
-  damageSpeedRatio: number; // 0.8 (80% of player speed)
-}
-
 // Equipment slot types - updated to use new 3-slot system
 export type EquipmentSlotType = 'helmet' | 'chestplate' | 'leggings' | 'boots' | 'primary' | 'secondary' | 'offhand';
 
