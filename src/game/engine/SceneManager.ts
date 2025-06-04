@@ -620,13 +620,22 @@ export class SceneManager {
     const moonElevation = this.getMoonElevationFactor();
     const nightFactor = TimeUtils.getSynchronizedNightFactor(this.timeOfDay, TIME_PHASES);
     
-    this.tavernLight.intensity = 0.8 + (2.0 * nightFactor) + (0.8 * moonElevation * nightFactor);
+    // Enhanced tavern lighting during darker phases
+    const currentPhase = TimeUtils.getCurrentPhase(this.timeOfDay, TIME_PHASES);
+    let tavernIntensity = 0.8;
+    
+    if (currentPhase === 'civilTwilight' || currentPhase === 'nauticalTwilight' || currentPhase === 'astronomicalTwilight' || currentPhase === 'night') {
+      tavernIntensity = 1.5 + (1.5 * nightFactor) + (0.8 * moonElevation * nightFactor);
+    }
+    
+    this.tavernLight.intensity = tavernIntensity;
     
     const lightColor = ColorUtils.getSynchronizedLightColorForTime(this.timeOfDay, TIME_PHASES);
     this.directionalLight.color.copy(lightColor);
     
+    // Enhanced moon lighting with proper color temperature
     this.moonLight.color.setHex(0x6495ED);
-    const moonIntensity = Math.max(0.2, Math.sin((this.timeOfDay - 0.25) * Math.PI * 2 + Math.PI)) * (0.4 + 0.3 * moonElevation);
+    const moonIntensity = Math.max(0.15, Math.sin((this.timeOfDay - 0.25) * Math.PI * 2 + Math.PI)) * (0.5 + 0.4 * moonElevation);
     this.moonLight.intensity = moonIntensity;
   }
   
@@ -639,9 +648,8 @@ export class SceneManager {
     this.fog.color.setHex(newFogColor);
     this.scene.background = new THREE.Color(newFogColor);
     
-    if (this.volumetricFogSystem) {
-      console.log(`Simplified fog color updated for time ${(this.timeOfDay * 24).toFixed(1)}h: #${newFogColor.toString(16).padStart(6, '0')}`);
-    }
+    const currentPhase = TimeUtils.getCurrentPhase(this.timeOfDay, TIME_PHASES);
+    console.log(`Sky system synchronized - Phase: ${currentPhase}, Time: ${(this.timeOfDay * 24).toFixed(1)}h, Color: #${newFogColor.toString(16).padStart(6, '0')}`);
   }
 
   public setTimeOfDay(time: number): void {

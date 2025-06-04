@@ -2,66 +2,142 @@
 import { ColorUtils } from './ColorUtils';
 
 export class TimeUtils {
+  static getCurrentPhase(time: number, timePhases: any): string {
+    const normalizedTime = time % 1;
+    
+    if (normalizedTime >= timePhases.NIGHT_START && normalizedTime < timePhases.DAWN_START) {
+      return 'night';
+    } else if (normalizedTime >= timePhases.DAWN_START && normalizedTime < timePhases.DAY_START) {
+      return 'dawn';
+    } else if (normalizedTime >= timePhases.DAY_START && normalizedTime < timePhases.SUNSET_START) {
+      return 'day';
+    } else if (normalizedTime >= timePhases.SUNSET_START && normalizedTime < timePhases.CIVIL_TWILIGHT_START) {
+      return 'sunset';
+    } else if (normalizedTime >= timePhases.CIVIL_TWILIGHT_START && normalizedTime < timePhases.NAUTICAL_TWILIGHT_START) {
+      return 'civilTwilight';
+    } else if (normalizedTime >= timePhases.NAUTICAL_TWILIGHT_START && normalizedTime < timePhases.ASTRONOMICAL_TWILIGHT_START) {
+      return 'nauticalTwilight';
+    } else {
+      return 'astronomicalTwilight';
+    }
+  }
+
+  static getPhaseTransitionFactor(time: number, timePhases: any): { phase: string, nextPhase: string, factor: number } {
+    const normalizedTime = time % 1;
+    const currentPhase = this.getCurrentPhase(time, timePhases);
+    
+    let phaseStart: number, phaseEnd: number, nextPhase: string;
+    
+    if (normalizedTime >= timePhases.NIGHT_START && normalizedTime < timePhases.DAWN_START) {
+      phaseStart = timePhases.NIGHT_START;
+      phaseEnd = timePhases.DAWN_START;
+      nextPhase = 'dawn';
+    } else if (normalizedTime >= timePhases.DAWN_START && normalizedTime < timePhases.DAY_START) {
+      phaseStart = timePhases.DAWN_START;
+      phaseEnd = timePhases.DAY_START;
+      nextPhase = 'day';
+    } else if (normalizedTime >= timePhases.DAY_START && normalizedTime < timePhases.SUNSET_START) {
+      phaseStart = timePhases.DAY_START;
+      phaseEnd = timePhases.SUNSET_START;
+      nextPhase = 'sunset';
+    } else if (normalizedTime >= timePhases.SUNSET_START && normalizedTime < timePhases.CIVIL_TWILIGHT_START) {
+      phaseStart = timePhases.SUNSET_START;
+      phaseEnd = timePhases.CIVIL_TWILIGHT_START;
+      nextPhase = 'civilTwilight';
+    } else if (normalizedTime >= timePhases.CIVIL_TWILIGHT_START && normalizedTime < timePhases.NAUTICAL_TWILIGHT_START) {
+      phaseStart = timePhases.CIVIL_TWILIGHT_START;
+      phaseEnd = timePhases.NAUTICAL_TWILIGHT_START;
+      nextPhase = 'nauticalTwilight';
+    } else if (normalizedTime >= timePhases.NAUTICAL_TWILIGHT_START && normalizedTime < timePhases.ASTRONOMICAL_TWILIGHT_START) {
+      phaseStart = timePhases.NAUTICAL_TWILIGHT_START;
+      phaseEnd = timePhases.ASTRONOMICAL_TWILIGHT_START;
+      nextPhase = 'astronomicalTwilight';
+    } else {
+      phaseStart = timePhases.ASTRONOMICAL_TWILIGHT_START;
+      phaseEnd = 1.0;
+      nextPhase = 'night';
+    }
+    
+    const factor = (normalizedTime - phaseStart) / (phaseEnd - phaseStart);
+    return { phase: currentPhase, nextPhase, factor: Math.max(0, Math.min(1, factor)) };
+  }
+
   static getSynchronizedAmbientIntensityForTime(
     time: number, 
     timePhases: any, 
     getMoonElevationFactor: () => number
   ): number {
-    const normalizedTime = time % 1;
+    const phase = this.getCurrentPhase(time, timePhases);
     const moonElevation = getMoonElevationFactor();
     
-    let baseIntensity: number;
-    
-    if (normalizedTime >= timePhases.NIGHT_START && normalizedTime <= timePhases.NIGHT_END) {
-      const minNightIntensity = 0.15;
-      const maxNightIntensity = 0.35;
-      baseIntensity = minNightIntensity + (maxNightIntensity - minNightIntensity) * moonElevation;
-    } else if (normalizedTime >= timePhases.DAY_START && normalizedTime <= timePhases.DAY_END) {
-      baseIntensity = 1.8;
-    } else if (normalizedTime >= timePhases.SUNSET_START && normalizedTime <= timePhases.SUNSET_END) {
-      const factor = (normalizedTime - timePhases.SUNSET_START) / (timePhases.SUNSET_END - timePhases.SUNSET_START);
-      const exponentialFactor = ColorUtils.exponentialDecay(factor, 2);
-      baseIntensity = 1.8 - (1.8 - 0.6) * exponentialFactor;
-    } else {
-      const factor = (normalizedTime - timePhases.EVENING_START) / (timePhases.EVENING_END - timePhases.EVENING_START);
-      const exponentialFactor = ColorUtils.exponentialDecay(factor, 3);
-      const nightIntensity = 0.15 + (0.35 - 0.15) * moonElevation;
-      baseIntensity = 0.6 - (0.6 - nightIntensity) * exponentialFactor;
+    switch (phase) {
+      case 'night':
+        return 0.1 + (0.3 * moonElevation);
+      case 'dawn':
+        const { factor: dawnFactor } = this.getPhaseTransitionFactor(time, timePhases);
+        return 0.3 + (1.5 * ColorUtils.smoothStep(0, 1, dawnFactor));
+      case 'day':
+        return 1.8;
+      case 'sunset':
+        const { factor: sunsetFactor } = this.getPhaseTransitionFactor(time, timePhases);
+        return 1.8 - (1.2 * ColorUtils.exponentialDecay(sunsetFactor, 2));
+      case 'civilTwilight':
+        return 0.6;
+      case 'nauticalTwilight':
+        return 0.4;
+      case 'astronomicalTwilight':
+        const { factor: astroFactor } = this.getPhaseTransitionFactor(time, timePhases);
+        return 0.4 - (0.3 * ColorUtils.exponentialDecay(astroFactor, 2));
+      default:
+        return 1.0;
     }
-    
-    return baseIntensity;
   }
 
   static getSynchronizedNightFactor(time: number, timePhases: any): number {
-    const normalizedTime = time % 1;
+    const phase = this.getCurrentPhase(time, timePhases);
     
-    if (normalizedTime >= timePhases.NIGHT_START && normalizedTime <= timePhases.NIGHT_END) {
-      return 1.0;
-    } else if (normalizedTime >= timePhases.DAY_START && normalizedTime <= timePhases.DAY_END) {
-      return 0.0;
-    } else if (normalizedTime >= timePhases.SUNSET_START && normalizedTime <= timePhases.EVENING_END) {
-      const sunsetProgress = (normalizedTime - timePhases.SUNSET_START) / (timePhases.EVENING_END - timePhases.SUNSET_START);
-      const exponentialFactor = ColorUtils.exponentialDecay(sunsetProgress, 3);
-      return exponentialFactor;
-    } else {
-      return 0.0;
+    switch (phase) {
+      case 'night':
+        return 1.0;
+      case 'dawn':
+        const { factor: dawnFactor } = this.getPhaseTransitionFactor(time, timePhases);
+        return 1.0 - ColorUtils.smoothStep(0, 1, dawnFactor);
+      case 'day':
+        return 0.0;
+      case 'sunset':
+        return 0.0;
+      case 'civilTwilight':
+        return 0.3;
+      case 'nauticalTwilight':
+        return 0.6;
+      case 'astronomicalTwilight':
+        const { factor: astroFactor } = this.getPhaseTransitionFactor(time, timePhases);
+        return 0.6 + (0.4 * ColorUtils.exponentialDecay(astroFactor, 2));
+      default:
+        return 0.0;
     }
   }
 
   static getDayFactor(time: number, timePhases: any): number {
-    const normalizedTime = time % 1;
+    const phase = this.getCurrentPhase(time, timePhases);
     
-    if (normalizedTime >= timePhases.DAY_START && normalizedTime <= timePhases.DAY_END) {
-      return 1.0;
-    } else if (normalizedTime >= timePhases.NIGHT_START && normalizedTime <= timePhases.NIGHT_END) {
-      const factor = (normalizedTime - timePhases.NIGHT_START) / (timePhases.NIGHT_END - timePhases.NIGHT_START);
-      return ColorUtils.smoothStep(0, 1, factor);
-    } else if (normalizedTime >= timePhases.SUNSET_START && normalizedTime <= timePhases.EVENING_END) {
-      const sunsetProgress = (normalizedTime - timePhases.SUNSET_START) / (timePhases.EVENING_END - timePhases.SUNSET_START);
-      const exponentialFactor = ColorUtils.exponentialDecay(sunsetProgress, 3);
-      return 1.0 - exponentialFactor;
-    } else {
-      return 0.0;
+    switch (phase) {
+      case 'night':
+        return 0.0;
+      case 'dawn':
+        const { factor: dawnFactor } = this.getPhaseTransitionFactor(time, timePhases);
+        return ColorUtils.smoothStep(0, 1, dawnFactor);
+      case 'day':
+        return 1.0;
+      case 'sunset':
+        const { factor: sunsetFactor } = this.getPhaseTransitionFactor(time, timePhases);
+        return 1.0 - ColorUtils.exponentialDecay(sunsetFactor, 2);
+      case 'civilTwilight':
+      case 'nauticalTwilight':
+      case 'astronomicalTwilight':
+        return 0.0;
+      default:
+        return 0.0;
     }
   }
 }

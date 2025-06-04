@@ -1,13 +1,19 @@
 
 export const TIME_PHASES = {
   NIGHT_START: 0.0,
-  NIGHT_END: 0.2,
-  DAY_START: 0.2,
-  DAY_END: 0.8,
-  SUNSET_START: 0.8,
-  SUNSET_END: 0.9,
-  EVENING_START: 0.9,
-  EVENING_END: 1.0
+  NIGHT_END: 0.15,
+  DAWN_START: 0.15,
+  DAWN_END: 0.25,
+  DAY_START: 0.25,
+  DAY_END: 0.7,
+  SUNSET_START: 0.7,
+  SUNSET_END: 0.8,
+  CIVIL_TWILIGHT_START: 0.8,
+  CIVIL_TWILIGHT_END: 0.85,
+  NAUTICAL_TWILIGHT_START: 0.85,
+  NAUTICAL_TWILIGHT_END: 0.9,
+  ASTRONOMICAL_TWILIGHT_START: 0.9,
+  ASTRONOMICAL_TWILIGHT_END: 1.0
 };
 
 export const DAY_NIGHT_CONFIG = {
@@ -56,4 +62,46 @@ export const LIGHTING_CONFIG = {
 export const FOG_CONFIG = {
   near: 25,
   far: 120
+};
+
+// Realistic color palettes for each phase
+export const SKY_COLOR_PALETTES = {
+  night: {
+    zenith: 0x000428,
+    horizon: 0x004e92
+  },
+  dawn: {
+    zenith: 0x87CEEB,
+    horizon: 0xFFB347
+  },
+  day: {
+    zenith: 0x4A90E2,
+    horizon: 0x87CEEB
+  },
+  sunset: {
+    zenith: 0x4A5D7A,
+    horizon: 0xFF6B35
+  },
+  civilTwilight: {
+    zenith: 0x1a1a3a,
+    horizon: 0x4A5D7A
+  },
+  nauticalTwilight: {
+    zenith: 0x0f0f2a,
+    horizon: 0x1a1a3a
+  },
+  astronomicalTwilight: {
+    zenith: 0x080820,
+    horizon: 0x0f0f2a
+  }
+};
+
+export const FOG_COLOR_PALETTES = {
+  night: 0x000050,
+  dawn: 0xFFE4B5,
+  day: 0x4682B4,
+  sunset: 0xFF8C42,
+  civilTwilight: 0x2E2E5E,
+  nauticalTwilight: 0x1A1A3A,
+  astronomicalTwilight: 0x0D0D26
 };
