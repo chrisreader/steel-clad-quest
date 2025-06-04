@@ -23,8 +23,8 @@ export class SkyboxSystem {
         nightBottomColor: { value: new THREE.Color(0x1E2951) },
         sunsetTopColor: { value: new THREE.Color(0x4A5D7A) },
         sunsetBottomColor: { value: new THREE.Color(0xFF4500) },
-        twilightTopColor: { value: new THREE.Color(0x191970) },
-        twilightBottomColor: { value: new THREE.Color(0x483D8B) }
+        twilightTopColor: { value: new THREE.Color(0x0D1B2A) },
+        twilightBottomColor: { value: new THREE.Color(0x2B1B40) }
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -86,15 +86,19 @@ export class SkyboxSystem {
             float sunsetIntensity = (1.0 - pow(heightFactor, 1.5)) * horizonZone;
             bottomColor = mix(dayBottomColor, dramaticSunsetBottom, factor * (0.7 + 0.3 * sunsetIntensity));
           } else if (time >= 0.8 && time <= 0.9) {
-            // Twilight period - blue hour effect
+            // Twilight period - accelerated transition with reduced sunset bleeding
             float factor = (time - 0.8) / 0.1;
-            factor = pow(factor, 1.8);
+            factor = pow(factor, 1.2); // Faster transition from 1.8 to 1.2
+            
+            // More aggressive darkening
+            float darkeningFactor = smoothstep(0.0, 0.7, factor);
             
             topColor = mix(sunsetTopColor, twilightTopColor, factor);
             
-            vec3 twilightHorizon = mix(twilightBottomColor, sunsetBottomColor * 0.4, 0.6);
-            float twilightIntensity = (1.0 - pow(heightFactor, 2.0)) * horizonZone;
-            bottomColor = mix(sunsetBottomColor, twilightHorizon, factor * (0.8 + 0.2 * twilightIntensity));
+            // Reduced sunset color bleeding from 40% to 15%
+            vec3 deepTwilightHorizon = mix(twilightBottomColor, sunsetBottomColor * 0.15, 0.85);
+            float twilightIntensity = (1.0 - pow(heightFactor, 2.2)) * horizonZone * (1.0 - darkeningFactor * 0.5);
+            bottomColor = mix(sunsetBottomColor, deepTwilightHorizon, factor * (0.9 + 0.1 * twilightIntensity));
           } else {
             // Deep night transition
             float factor = (time - 0.9) / 0.1;
@@ -106,10 +110,12 @@ export class SkyboxSystem {
           
           float blendFactor = 1.0 - adjustedHeightFactor;
           
-          // Enhanced horizon effects during sunset and twilight
+          // Enhanced horizon effects during sunset and twilight with faster darkening
           if ((time >= 0.7 && time <= 0.9)) {
-            blendFactor *= (1.0 - pow(heightFactor, 1.2));
-            blendFactor = max(blendFactor, 0.1);
+            // More aggressive horizon blending during twilight
+            float horizonBoost = (time >= 0.8) ? 1.5 : 1.0;
+            blendFactor *= (1.0 - pow(heightFactor, 1.0 / horizonBoost));
+            blendFactor = max(blendFactor, 0.05);
           }
           
           return mix(topColor, bottomColor, blendFactor);
