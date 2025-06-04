@@ -900,9 +900,9 @@ export class SceneManager {
       this.lastPlayerPosition.copy(playerPosition);
     }
     
-    // Update volumetric fog system
+    // Update volumetric fog system with correct parameter order
     if (this.volumetricFogSystem && playerPosition) {
-      this.volumetricFogSystem.update(deltaTime, this.timeOfDay, playerPosition);
+      this.volumetricFogSystem.update(playerPosition, deltaTime);
     }
   }
   
