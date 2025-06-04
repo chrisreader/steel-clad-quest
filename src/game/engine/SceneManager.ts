@@ -452,52 +452,101 @@ export class SceneManager {
           return mix(a, b, clamp(factor, 0.0, 1.0));
         }
         
-        void main() {
-          vec3 direction = normalize(vDirection);
+        // Enhanced atmospheric scattering simulation
+        vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized) {
           float height = direction.y;
+          float sunDot = dot(direction, normalize(sunDir));
           
-          // Smooth vertical gradient
-          float gradientFactor = (height + 1.0) * 0.5;
-          gradientFactor = smoothstep(0.0, 1.0, gradientFactor);
+          // Define atmospheric color zones based on time of day
+          vec3 zenithNight = vec3(0.01, 0.01, 0.08);     // Deep night blue
+          vec3 zenithDawn = vec3(0.3, 0.5, 0.8);         // Dawn blue
+          vec3 zenithDay = vec3(0.4, 0.7, 1.0);          // Day blue
+          vec3 zenithSunset = vec3(0.6, 0.4, 0.8);       // Sunset purple
           
-          // Continuous time-based color cycling
-          float normalizedTime = mod(timeOfDay, 1.0);
-          float timeAngle = normalizedTime * 3.14159 * 2.0;
+          vec3 horizonNight = vec3(0.05, 0.05, 0.2);     // Night horizon
+          vec3 horizonDawn = vec3(1.0, 0.6, 0.3);        // Dawn orange
+          vec3 horizonDay = vec3(0.8, 0.9, 1.0);         // Day white-blue
+          vec3 horizonSunset = vec3(1.0, 0.4, 0.1);      // Sunset orange-red
           
-          // Define key colors
-          vec3 nightColor = vec3(0.0, 0.0, 0.125);      // Deep night
-          vec3 dawnColor = vec3(1.0, 0.42, 0.21);       // Orange dawn  
-          vec3 dayColor = vec3(0.53, 0.81, 0.92);       // Sky blue
-          vec3 sunsetColor = vec3(1.0, 0.55, 0.26);     // Orange sunset
+          // Calculate base colors for zenith and horizon
+          vec3 zenithColor, horizonColor;
           
-          // Smooth sine-based color interpolation
-          float dayFactor = (sin(timeAngle - 1.57) + 1.0) * 0.5; // Shifted sine for noon peak
-          
-          vec3 baseColor;
-          if (normalizedTime < 0.25) {
+          if (timeNormalized < 0.25) {
             // Night to dawn (0.0 - 0.25)
-            float factor = Math.sin((normalizedTime / 0.25) * Math.PI * 0.5);
-            baseColor = lerpColor(nightColor, dawnColor, factor);
-          } else if (normalizedTime < 0.5) {
+            float factor = smoothstep(0.0, 0.25, timeNormalized);
+            zenithColor = lerpColor(zenithNight, zenithDawn, factor);
+            horizonColor = lerpColor(horizonNight, horizonDawn, factor);
+          } else if (timeNormalized < 0.5) {
             // Dawn to day (0.25 - 0.5)
-            float factor = Math.sin(((normalizedTime - 0.25) / 0.25) * Math.PI * 0.5);
-            baseColor = lerpColor(dawnColor, dayColor, factor);
-          } else if (normalizedTime < 0.75) {
+            float factor = smoothstep(0.25, 0.5, timeNormalized);
+            zenithColor = lerpColor(zenithDawn, zenithDay, factor);
+            horizonColor = lerpColor(horizonDawn, horizonDay, factor);
+          } else if (timeNormalized < 0.75) {
             // Day to sunset (0.5 - 0.75)
-            float factor = Math.sin(((normalizedTime - 0.5) / 0.25) * Math.PI * 0.5);
-            baseColor = lerpColor(dayColor, sunsetColor, factor);
+            float factor = smoothstep(0.5, 0.75, timeNormalized);
+            zenithColor = lerpColor(zenithDay, zenithSunset, factor);
+            horizonColor = lerpColor(horizonDay, horizonSunset, factor);
           } else {
             // Sunset to night (0.75 - 1.0)
-            float factor = Math.sin(((normalizedTime - 0.75) / 0.25) * Math.PI * 0.5);
-            baseColor = lerpColor(sunsetColor, nightColor, factor);
+            float factor = smoothstep(0.75, 1.0, timeNormalized);
+            zenithColor = lerpColor(zenithSunset, zenithNight, factor);
+            horizonColor = lerpColor(horizonSunset, horizonNight, factor);
           }
           
-          // Apply vertical gradient
-          vec3 horizonColor = baseColor;
-          vec3 zenithColor = baseColor * 0.8;
-          vec3 finalColor = lerpColor(horizonColor, zenithColor, gradientFactor);
+          // Create vertical atmospheric gradient (Rayleigh scattering simulation)
+          float heightFactor = (height + 1.0) * 0.5; // Convert from [-1,1] to [0,1]
+          heightFactor = pow(heightFactor, 0.6); // Non-linear for more realistic atmosphere
           
-          gl_FragColor = vec4(finalColor, 1.0);
+          vec3 baseAtmosphereColor = lerpColor(horizonColor, zenithColor, heightFactor);
+          
+          // Sun proximity influence for realistic sunset/sunrise glow
+          float sunInfluence = 0.0;
+          if (sunDir.y > -0.2) { // Only when sun is near or above horizon
+            float sunDistance = 1.0 - sunDot; // Distance from sun direction
+            sunInfluence = pow(max(0.0, 1.0 - sunDistance * 0.8), 3.0);
+            sunInfluence *= max(0.0, (sunDir.y + 0.2) / 1.2); // Fade when sun is below horizon
+          }
+          
+          // Sun glow colors
+          vec3 sunGlowColor = vec3(1.0, 0.8, 0.4); // Warm sun glow
+          if (timeNormalized > 0.6 && timeNormalized < 0.9) {
+            // Enhanced sunset/sunrise glow
+            sunGlowColor = vec3(1.0, 0.5, 0.2);
+          }
+          
+          // Apply sun influence to create realistic sun glow
+          vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.7);
+          
+          // Add subtle atmospheric perspective for distance
+          float atmosphericDepth = 1.0 - abs(height); // More atmosphere at horizon
+          finalColor = lerpColor(finalColor, horizonColor, atmosphericDepth * 0.2);
+          
+          return finalColor;
+        }
+        
+        void main() {
+          vec3 direction = normalize(vDirection);
+          vec3 sunDir = normalize(sunPosition);
+          float normalizedTime = mod(timeOfDay, 1.0);
+          
+          // Get realistic atmospheric color
+          vec3 skyColor = getAtmosphericColor(direction, sunDir, normalizedTime);
+          
+          // Add subtle stars for night sky
+          if (normalizedTime < 0.3 || normalizedTime > 0.8) {
+            float starField = fract(sin(dot(direction.xz * 50.0, vec2(12.9898, 78.233))) * 43758.5453);
+            if (starField > 0.999 && direction.y > 0.3) {
+              float nightFactor = 1.0;
+              if (normalizedTime < 0.3) {
+                nightFactor = 1.0 - (normalizedTime / 0.3);
+              } else {
+                nightFactor = (normalizedTime - 0.8) / 0.2;
+              }
+              skyColor += vec3(0.8, 0.8, 1.0) * 0.5 * nightFactor;
+            }
+          }
+          
+          gl_FragColor = vec4(skyColor, 1.0);
         }
       `,
       side: THREE.BackSide,
@@ -506,7 +555,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Smooth continuous day/night skybox created');
+    console.log('Realistic atmospheric gradient skybox created with proper color zones');
   }
   
   private updateDayNightSkybox(): void {
