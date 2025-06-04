@@ -92,13 +92,19 @@ export class OrcEnemy extends EnemyHumanoid {
       8 // Safe zone radius
     );
     
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with terrain-aware movement");
+    console.log("🗡️ [OrcEnemy] Created enhanced orc - terrain movement will be set via setMovementHelper()");
   }
 
+  // ENHANCED: Set movement helper with proper validation and logging
   public setMovementHelper(helper: EnemyMovementHelper, config: EnemyMovementConfig): void {
     this.movementHelper = helper;
     this.movementConfig = config;
-    console.log("🚶 [OrcEnemy] Terrain-aware movement system enabled");
+    console.log("🚶 [OrcEnemy] Terrain-aware movement system enabled and configured");
+  }
+
+  // NEW: Check if terrain movement is available
+  public hasTerrainMovement(): boolean {
+    return this.movementHelper !== null;
   }
 
   public setPassiveMode(passive: boolean): void {
@@ -137,9 +143,10 @@ export class OrcEnemy extends EnemyHumanoid {
       const moveAmount = aiSpeed * deltaTime;
       const targetPosition = currentPosition.clone().add(direction.multiplyScalar(moveAmount));
 
-      // Use terrain-aware movement if available
+      // CRITICAL FIX: Use terrain-aware movement for passive AI with proper logging
       let finalPosition = targetPosition;
       if (this.movementHelper) {
+        console.log(`🚶 [OrcEnemy] Passive AI using terrain-aware movement`);
         finalPosition = this.movementHelper.calculateEnemyMovement(
           currentPosition,
           targetPosition,
@@ -147,6 +154,7 @@ export class OrcEnemy extends EnemyHumanoid {
         );
       } else {
         // Fallback to old flat movement
+        console.log(`⚠️ [OrcEnemy] Passive AI using FLAT movement fallback`);
         finalPosition.y = 0;
       }
 
@@ -170,7 +178,7 @@ export class OrcEnemy extends EnemyHumanoid {
         // Debug log for behavior state changes
         const currentState = aiDecision.behaviorState;
         if (Math.random() < 0.01) { // 1% chance to log current behavior
-          console.log(`🤖 [OrcEnemy] Current behavior: ${currentState}, speed: ${aiSpeed.toFixed(2)}`);
+          console.log(`🤖 [OrcEnemy] Current behavior: ${currentState}, speed: ${aiSpeed.toFixed(2)}, terrain: ${!!this.movementHelper}`);
         }
       }
     } else {
@@ -205,7 +213,6 @@ export class OrcEnemy extends EnemyHumanoid {
     }
 
     // Check if we should avoid safe zone when in aggressive mode
-    // Updated to use rectangular safe zone bounds
     const isInSafeZone = this.mesh.position.x >= -6 && this.mesh.position.x <= 6 && 
                         this.mesh.position.z >= -6 && this.mesh.position.z <= 6;
     
@@ -220,9 +227,10 @@ export class OrcEnemy extends EnemyHumanoid {
       const moveAmount = this.config.speed * deltaTime;
       const targetPosition = this.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
       
-      // Use terrain-aware movement if available
+      // CRITICAL FIX: Use terrain-aware movement with proper logging
       let finalPosition = targetPosition;
       if (this.movementHelper) {
+        console.log(`🚶 [OrcEnemy] Safe zone avoidance using terrain-aware movement`);
         finalPosition = this.movementHelper.calculateEnemyMovement(
           this.mesh.position,
           targetPosition,
@@ -230,11 +238,11 @@ export class OrcEnemy extends EnemyHumanoid {
         );
       } else {
         // Fallback to old flat movement
+        console.log(`⚠️ [OrcEnemy] Safe zone avoidance using FLAT movement fallback`);
         finalPosition.y = 0;
       }
       
       this.mesh.position.copy(finalPosition);
-      // Use animation system for movement animation
       this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
       return;
     }
@@ -252,16 +260,19 @@ export class OrcEnemy extends EnemyHumanoid {
         const moveAmount = this.config.speed * deltaTime;
         const targetPosition = this.mesh.position.clone().add(directionToPlayer.multiplyScalar(moveAmount));
         
-        // Use terrain-aware movement if available
+        // CRITICAL FIX: Use terrain-aware movement with detailed logging
         let finalPosition = targetPosition;
         if (this.movementHelper) {
+          console.log(`🚶 [OrcEnemy] Aggressive pursuit using terrain-aware movement from (${this.mesh.position.x.toFixed(1)}, ${this.mesh.position.y.toFixed(1)}, ${this.mesh.position.z.toFixed(1)})`);
           finalPosition = this.movementHelper.calculateEnemyMovement(
             this.mesh.position,
             targetPosition,
             this.movementConfig
           );
+          console.log(`🚶 [OrcEnemy] Terrain result: (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)})`);
         } else {
           // Fallback to old flat movement
+          console.log(`⚠️ [OrcEnemy] Aggressive pursuit using FLAT movement fallback - no terrain helper`);
           finalPosition.y = 0;
         }
         

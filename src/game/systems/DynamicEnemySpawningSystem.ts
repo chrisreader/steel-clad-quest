@@ -114,8 +114,11 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       () => this.onPlayerExitSafeZone()
     );
     
+    // Enhanced logging to verify terrain systems are available
     const terrainStatus = this.physicsManager && this.terrainDetector ? 'with terrain-aware movement' : 'with basic movement';
     console.log(`[DynamicEnemySpawningSystem] Initialized ${terrainStatus}`);
+    console.log(`[DynamicEnemySpawningSystem] PhysicsManager available: ${!!this.physicsManager}`);
+    console.log(`[DynamicEnemySpawningSystem] TerrainDetector available: ${!!this.terrainDetector}`);
   }
 
   private onPlayerEnterSafeZone(): void {
@@ -166,15 +169,21 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       playerPosition
     );
     
-    // Create the actual enemy with terrain-aware movement
+    // CRITICAL FIX: Ensure terrain systems are passed to enemy creation
+    console.log(`[DynamicEnemySpawningSystem] Creating enemy with terrain systems:`);
+    console.log(`  - PhysicsManager: ${!!this.physicsManager}`);
+    console.log(`  - TerrainDetector: ${!!this.terrainDetector}`);
+    console.log(`  - Spawn position: (${spawnPosition.x.toFixed(2)}, ${spawnPosition.y.toFixed(2)}, ${spawnPosition.z.toFixed(2)})`);
+    
+    // Create the actual enemy with terrain-aware movement - PASS BOTH SYSTEMS
     const enemy = Enemy.createRandomEnemy(
       this.scene,
       spawnPosition,
       this.effectsManager,
       this.audioManager,
       this.difficulty,
-      this.physicsManager || undefined,
-      this.terrainDetector || undefined
+      this.physicsManager || undefined,  // Ensure undefined instead of null
+      this.terrainDetector || undefined  // Ensure undefined instead of null
     );
 
     // Set initial passive state based on player location
@@ -184,7 +193,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     const wrapper = new SpawnableEnemyWrapper(enemy);
     wrapper.initialize(spawnPosition);
     
-    console.log(`[DynamicEnemySpawningSystem] Created terrain-aware enemy at position:`, spawnPosition);
+    console.log(`[DynamicEnemySpawningSystem] Enemy created with terrain-following: ${enemy.hasTerrainMovement()}`);
     return wrapper;
   }
 

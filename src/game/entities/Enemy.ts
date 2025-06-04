@@ -78,10 +78,15 @@ export class Enemy {
       maxSlopeAngle: 45
     };
 
-    // Initialize terrain-aware movement if physics systems are available
+    // CRITICAL FIX: Properly initialize terrain-aware movement system
+    console.log(`🚶 [Enemy] Constructor - PhysicsManager: ${!!physicsManager}, TerrainDetector: ${!!terrainDetector}`);
+    
     if (physicsManager && terrainDetector) {
       this.movementHelper = new EnemyMovementHelper(physicsManager, terrainDetector);
-      console.log(`🚶 Enemy ${type} initialized with terrain-aware movement`);
+      console.log(`🚶 [Enemy] ${type} initialized WITH terrain-aware movement`);
+    } else {
+      this.movementHelper = null;
+      console.log(`⚠️ [Enemy] ${type} initialized WITHOUT terrain-aware movement - will use flat movement`);
     }
     
     // Create enemy based on type with humanoid system for orcs
@@ -89,9 +94,10 @@ export class Enemy {
       this.humanoidEnemy = OrcEnemy.create(scene, position, effectsManager, audioManager);
       this.isHumanoidEnemy = true;
       
-      // Set movement helper for humanoid enemy
-      if (this.movementHelper) {
+      // Set movement helper for humanoid enemy if available
+      if (this.isHumanoidEnemy && this.humanoidEnemy && this.movementHelper) {
         this.humanoidEnemy.setMovementHelper(this.movementHelper, this.movementConfig);
+        console.log(`🚶 [Enemy] Movement helper set for humanoid ${type}`);
       }
       
       // Create interface wrapper for backward compatibility
@@ -479,9 +485,10 @@ export class Enemy {
       const moveAmount = aiSpeed * deltaTime;
       const targetPosition = currentPosition.clone().add(direction.multiplyScalar(moveAmount));
       
-      // Use terrain-aware movement if available
+      // CRITICAL FIX: Use terrain-aware movement with proper logging for passive AI
       let finalPosition = targetPosition;
       if (this.movementHelper) {
+        console.log(`🚶 [Enemy] Passive AI using terrain-aware movement`);
         finalPosition = this.movementHelper.calculateEnemyMovement(
           currentPosition,
           targetPosition,
@@ -489,6 +496,7 @@ export class Enemy {
         );
       } else {
         // Fallback to old flat movement
+        console.log(`⚠️ [Enemy] Passive AI using FLAT movement fallback`);
         finalPosition.y = 0;
       }
 
@@ -618,16 +626,19 @@ export class Enemy {
       const moveAmount = this.enemy.speed * deltaTime;
       const targetPosition = this.enemy.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
       
-      // Use terrain-aware movement if available
+      // CRITICAL FIX: Use terrain-aware movement with proper logging
       let finalPosition = targetPosition;
       if (this.movementHelper) {
+        console.log(`🚶 [Enemy] Using terrain-aware movement from (${this.enemy.mesh.position.x.toFixed(1)}, ${this.enemy.mesh.position.y.toFixed(1)}, ${this.enemy.mesh.position.z.toFixed(1)}) to (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
         finalPosition = this.movementHelper.calculateEnemyMovement(
           this.enemy.mesh.position,
           targetPosition,
           this.movementConfig
         );
+        console.log(`🚶 [Enemy] Terrain-aware result: (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)})`);
       } else {
         // Fallback to old flat movement
+        console.log(`⚠️ [Enemy] Using FLAT movement fallback - no terrain helper available`);
         finalPosition.y = 0;
       }
       
@@ -651,19 +662,22 @@ export class Enemy {
         const targetPosition = this.enemy.mesh.position.clone();
         targetPosition.add(directionToPlayer.multiplyScalar(moveAmount));
         
-        // Use terrain-aware movement if available
+        // CRITICAL FIX: Use terrain-aware movement with proper logging
         let finalPosition = targetPosition;
         if (this.movementHelper) {
+          console.log(`🚶 [Enemy] Using terrain-aware movement from (${this.enemy.mesh.position.x.toFixed(1)}, ${this.enemy.mesh.position.y.toFixed(1)}, ${this.enemy.mesh.position.z.toFixed(1)}) to (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
           finalPosition = this.movementHelper.calculateEnemyMovement(
             this.enemy.mesh.position,
             targetPosition,
             this.movementConfig
           );
+          console.log(`🚶 [Enemy] Terrain-aware result: (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)})`);
         } else {
           // Fallback to old flat movement
+          console.log(`⚠️ [Enemy] Using FLAT movement fallback - no terrain helper available`);
           finalPosition.y = 0;
         }
-      
+        
         this.enemy.mesh.position.copy(finalPosition);
         this.updateLegacyWalkAnimation(deltaTime);
       }
@@ -688,16 +702,19 @@ export class Enemy {
         const targetPosition = this.enemy.mesh.position.clone();
         targetPosition.add(direction.multiplyScalar(slowMoveAmount));
         
-        // Use terrain-aware movement if available
+        // CRITICAL FIX: Use terrain-aware movement with proper logging
         let finalPosition = targetPosition;
         if (this.movementHelper) {
+          console.log(`🚶 [Enemy] Using terrain-aware movement from (${this.enemy.mesh.position.x.toFixed(1)}, ${this.enemy.mesh.position.y.toFixed(1)}, ${this.enemy.mesh.position.z.toFixed(1)}) to (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
           finalPosition = this.movementHelper.calculateEnemyMovement(
             this.enemy.mesh.position,
             targetPosition,
             this.movementConfig
           );
+          console.log(`🚶 [Enemy] Terrain-aware result: (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)})`);
         } else {
           // Fallback to old flat movement
+          console.log(`⚠️ [Enemy] Using FLAT movement fallback - no terrain helper available`);
           finalPosition.y = 0;
         }
         
@@ -971,8 +988,12 @@ export class Enemy {
       playerPosition.z + Math.sin(angle) * spawnDistance
     );
     
+    // CRITICAL FIX: Log terrain system availability during enemy creation
+    console.log(`🗡️ [Enemy] Creating ${type} with terrain systems - PhysicsManager: ${!!physicsManager}, TerrainDetector: ${!!terrainDetector}`);
+    
     const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager, physicsManager, terrainDetector);
-    console.log(`🗡️ [Enemy] Created ${type} with terrain-aware movement - Humanoid: ${enemy.isHumanoidEnemy}`);
+    
+    console.log(`🗡️ [Enemy] Created ${type} - Terrain movement available: ${enemy.hasTerrainMovement()}`);
     return enemy;
   }
   
@@ -1036,5 +1057,13 @@ export class Enemy {
     }
     
     return null;
+  }
+
+  // NEW: Method to check if enemy has terrain movement capability
+  public hasTerrainMovement(): boolean {
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      return this.humanoidEnemy.hasTerrainMovement();
+    }
+    return this.movementHelper !== null;
   }
 }
