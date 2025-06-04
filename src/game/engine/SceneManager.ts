@@ -444,11 +444,6 @@ export class SceneManager {
         varying vec3 vWorldPosition;
         varying vec3 vDirection;
         
-        // Smooth interpolation function
-        float smoothTransition(float value, float center, float width) {
-          return smoothstep(center - width, center + width, value);
-        }
-        
         void main() {
           vec3 direction = normalize(vDirection);
           float height = direction.y;
@@ -457,73 +452,58 @@ export class SceneManager {
           float gradientFactor = (height + 1.0) * 0.5;
           gradientFactor = pow(gradientFactor, 0.8);
           
-          // Define time phase centers and widths for smooth transitions
-          float sunriseCenter = 0.25;
-          float noonCenter = 0.5;
-          float sunsetCenter = 0.75;
-          float midnightCenter = 0.0;
+          // Convert time to angle for smooth sine-based transitions
+          float dayAngle = timeOfDay * 2.0 * 3.14159;
           
-          float transitionWidth = 0.1; // Wider for smoother transitions
+          // Calculate smooth transition factors using sine waves
+          // Day factor peaks at noon (timeOfDay = 0.5)
+          float dayFactor = max(0.0, sin(dayAngle - 3.14159 * 0.5));
+          dayFactor = pow(dayFactor, 1.5); // Sharpen the peak slightly
           
-          // Calculate smooth factors for each time phase
-          float sunriseFactor = 1.0 - smoothTransition(abs(timeOfDay - sunriseCenter), 0.0, transitionWidth);
-          float dayFactor = 1.0 - smoothTransition(abs(timeOfDay - noonCenter), 0.0, transitionWidth * 2.0);
-          float sunsetFactor = 1.0 - smoothTransition(abs(timeOfDay - sunsetCenter), 0.0, transitionWidth);
+          // Night factor peaks at midnight (timeOfDay = 0.0 or 1.0)
+          float nightFactor = max(0.0, -sin(dayAngle - 3.14159 * 0.5));
+          nightFactor = pow(nightFactor, 1.2);
           
-          // Handle midnight transition (wrapping around 0/1)
-          float midnightDist = min(timeOfDay, 1.0 - timeOfDay);
-          float nightFactor = 1.0 - smoothTransition(midnightDist, 0.0, transitionWidth * 1.5);
+          // Sunrise factor peaks around timeOfDay = 0.25
+          float sunriseFactor = max(0.0, sin(dayAngle));
+          sunriseFactor *= smoothstep(0.15, 0.35, timeOfDay) * smoothstep(0.35, 0.15, timeOfDay);
+          sunriseFactor = pow(sunriseFactor, 2.0);
           
-          // Ensure smooth transitions between adjacent phases
-          if (timeOfDay >= 0.15 && timeOfDay <= 0.35) {
-            // Sunrise to early day transition
-            float t = (timeOfDay - 0.15) / 0.2;
-            sunriseFactor = mix(1.0, 0.0, smoothstep(0.0, 1.0, t));
-            dayFactor = mix(0.0, 1.0, smoothstep(0.0, 1.0, t));
-          } else if (timeOfDay >= 0.65 && timeOfDay <= 0.85) {
-            // Day to sunset to night transition
-            float t = (timeOfDay - 0.65) / 0.2;
-            dayFactor = mix(1.0, 0.0, smoothstep(0.0, 0.5, t));
-            sunsetFactor = mix(0.0, 1.0, smoothstep(0.0, 0.5, t));
-            sunsetFactor = mix(1.0, 0.0, smoothstep(0.5, 1.0, t));
-            nightFactor = mix(0.0, 1.0, smoothstep(0.5, 1.0, t));
-          } else if (timeOfDay >= 0.85 || timeOfDay <= 0.15) {
-            // Night period
-            nightFactor = 1.0;
-            sunriseFactor = 0.0;
-            dayFactor = 0.0;
-            sunsetFactor = 0.0;
-          }
+          // Sunset factor peaks around timeOfDay = 0.75
+          float sunsetFactor = max(0.0, -sin(dayAngle));
+          sunsetFactor *= smoothstep(0.65, 0.85, timeOfDay) * smoothstep(0.85, 0.65, timeOfDay);
+          sunsetFactor = pow(sunsetFactor, 2.0);
           
-          // Normalize factors to ensure they sum to 1
-          float totalFactor = sunriseFactor + dayFactor + sunsetFactor + nightFactor;
+          // Ensure smooth transitions and normalize factors
+          float totalFactor = dayFactor + nightFactor + sunriseFactor + sunsetFactor;
           if (totalFactor > 0.0) {
-            sunriseFactor /= totalFactor;
             dayFactor /= totalFactor;
-            sunsetFactor /= totalFactor;
             nightFactor /= totalFactor;
+            sunriseFactor /= totalFactor;
+            sunsetFactor /= totalFactor;
           }
           
-          // Calculate base colors for each phase
+          // Calculate base colors for each phase with smooth gradients
           vec3 dayColor = mix(dayHorizonColor, dayTopColor, gradientFactor);
           vec3 nightColor = mix(nightHorizonColor, nightTopColor, gradientFactor);
-          vec3 sunriseGradient = mix(sunriseColor, mix(sunriseColor, dayTopColor, 0.6), gradientFactor);
-          vec3 sunsetGradient = mix(sunsetColor, mix(sunsetColor, nightTopColor, 0.6), gradientFactor);
+          vec3 sunriseGradient = mix(sunriseColor, mix(sunriseColor * 0.8, dayTopColor * 0.6, 0.4), gradientFactor);
+          vec3 sunsetGradient = mix(sunsetColor, mix(sunsetColor * 0.7, nightTopColor * 0.5, 0.3), gradientFactor);
           
-          // Blend all colors smoothly
-          vec3 baseColor = vec3(0.0);
-          baseColor += dayColor * dayFactor;
-          baseColor += nightColor * nightFactor;
-          baseColor += sunriseGradient * sunriseFactor;
-          baseColor += sunsetGradient * sunsetFactor;
+          // Smooth color blending with continuous interpolation
+          vec3 baseColor = 
+            dayColor * dayFactor +
+            nightColor * nightFactor +
+            sunriseGradient * sunriseFactor +
+            sunsetGradient * sunsetFactor;
+          
+          // Add atmospheric scattering for more realism
+          float sunProximity = dot(direction, normalize(sunPosition));
+          float scatteringEffect = pow(max(0.0, sunProximity), 8.0) * 0.3;
+          baseColor += vec3(1.0, 0.8, 0.6) * scatteringEffect * dayFactor;
           
           // Apply subtle fog effect at horizon for atmospheric depth
-          float horizonFog = 1.0 - smoothstep(0.0, 0.4, abs(height));
-          baseColor = mix(baseColor, fogColor, horizonFog * 0.3);
-          
-          // Add subtle atmospheric scattering effect
-          float scattering = pow(1.0 - abs(height), 2.0) * 0.1;
-          baseColor += vec3(scattering * (sunriseFactor + sunsetFactor));
+          float horizonFog = 1.0 - smoothstep(0.0, 0.3, abs(height));
+          baseColor = mix(baseColor, fogColor, horizonFog * 0.2);
           
           gl_FragColor = vec4(baseColor, 1.0);
         }
@@ -534,7 +514,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Day/night skybox created with smooth color transitions');
+    console.log('Day/night skybox created with smooth continuous color transitions');
   }
   
   private updateDayNightSkybox(): void {
