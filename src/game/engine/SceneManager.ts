@@ -134,9 +134,9 @@ export class SceneManager {
     this.scene.add(this.ambientLight);
     console.log("Enhanced ambient light added with intensity 2.2 for realistic shadows");
     
-    // Main directional light (sun) with enhanced shadow settings
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // Reduced intensity for softer shadows
-    this.directionalLight.position.set(15, 20, 10);
+    // Main directional light (sun) repositioned for better quadrant coverage
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); // Slightly increased intensity
+    this.directionalLight.position.set(5, 30, 5); // More central, elevated position for better coverage
     this.directionalLight.castShadow = true;
     
     // Enhanced shadow settings for better quality and coverage
@@ -146,39 +146,46 @@ export class SceneManager {
     this.directionalLight.shadow.camera.right = this.shadowCameraSize;
     this.directionalLight.shadow.camera.top = this.shadowCameraSize;
     this.directionalLight.shadow.camera.bottom = -this.shadowCameraSize;
-    this.directionalLight.shadow.camera.far = 400; // Increased for better coverage
-    this.directionalLight.shadow.bias = -0.0001; // Improved bias for better quality
-    this.directionalLight.shadow.normalBias = 0.005; // Reduced for softer shadows
+    this.directionalLight.shadow.camera.far = 500; // Increased for hill coverage
+    this.directionalLight.shadow.bias = -0.00005; // Improved bias for hill shadows
+    this.directionalLight.shadow.normalBias = 0.003; // Reduced for softer shadows
     
     // Set shadow camera to use orthographic projection for consistent shadows
     this.directionalLight.shadow.camera.near = 0.1;
     
     this.scene.add(this.directionalLight);
-    console.log("Enhanced directional light added with dynamic shadow camera system");
+    console.log("Enhanced directional light repositioned for better quadrant coverage");
     
-    // NEW: Fill light for softer shadows (opposite direction, lower intensity)
-    this.fillLight = new THREE.DirectionalLight(0xB0E0E6, 0.3); // Soft blue fill light
-    this.fillLight.position.set(-10, 15, -8);
+    // Enhanced fill light for better shadow coverage in all quadrants
+    this.fillLight = new THREE.DirectionalLight(0xB0E0E6, 0.5); // Increased intensity
+    this.fillLight.position.set(-8, 20, -8); // Repositioned for better hill coverage
     this.fillLight.castShadow = false; // No shadows from fill light
     this.scene.add(this.fillLight);
-    console.log("Fill light added for realistic shadow softening");
+    console.log("Fill light enhanced and repositioned for better quadrant coverage");
     
-    // Tavern light (warm) - slightly reduced intensity
-    this.tavernLight = new THREE.PointLight(0xffa500, 0.8, 25);
+    // Tavern light (warm) - positioned better for quadrant transitions
+    this.tavernLight = new THREE.PointLight(0xffa500, 0.8, 30); // Increased range
     this.tavernLight.position.set(0, 6, 0);
     this.tavernLight.castShadow = true;
     this.tavernLight.shadow.mapSize.width = 1024;
     this.tavernLight.shadow.mapSize.height = 1024;
-    this.tavernLight.shadow.bias = -0.0001;
+    this.tavernLight.shadow.bias = -0.00005; // Improved bias
     this.scene.add(this.tavernLight);
-    console.log("Tavern light added with improved shadow settings");
+    console.log("Tavern light enhanced with better range and shadow settings");
     
-    // Rim light for atmosphere - reduced intensity
-    this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.4);
-    this.rimLight.position.set(-10, 5, -10);
+    // Enhanced rim light for better atmospheric coverage
+    this.rimLight = new THREE.DirectionalLight(0xB0E0E6, 0.6); // Increased intensity
+    this.rimLight.position.set(-12, 8, -12); // Better positioning for hill areas
     this.rimLight.castShadow = false; // No shadows from rim light
     this.scene.add(this.rimLight);
-    console.log("Rim light added for atmospheric lighting");
+    console.log("Rim light enhanced for better atmospheric coverage in all quadrants");
+    
+    // NEW: Additional quadrant fill light for hill-adjacent areas
+    const quadrantFillLight = new THREE.DirectionalLight(0xE0F0FF, 0.3);
+    quadrantFillLight.position.set(15, 15, 25); // Positioned to help with hill-adjacent shadows
+    quadrantFillLight.castShadow = false;
+    this.scene.add(quadrantFillLight);
+    console.log("Additional quadrant fill light added for hill-adjacent shadow compensation");
   }
   
   private create3DSun(): void {
@@ -950,35 +957,45 @@ export class SceneManager {
     return this.scene;
   }
   
-  // NEW: Dynamic shadow camera positioning system
+  // NEW: Dynamic shadow camera positioning system with quadrant awareness
   public updateShadowCamera(playerPosition: THREE.Vector3): void {
-    // Check if player has moved enough to warrant shadow camera update
+    // Reduced threshold for more responsive shadow updates near quadrant boundaries
     const distanceMoved = this.lastPlayerPosition.distanceTo(playerPosition);
     
-    if (distanceMoved > this.shadowUpdateThreshold || this.lastPlayerPosition.length() === 0) {
-      // Update shadow camera to follow player
+    if (distanceMoved > 10 || this.lastPlayerPosition.length() === 0) { // Reduced from 20 to 10
+      // Update shadow camera to follow player with expanded coverage
       const shadowCamera = this.directionalLight.shadow.camera;
       
+      // Expanded shadow camera size for better hill coverage
+      const expandedSize = this.shadowCameraSize * 1.2; // 20% larger coverage
+      
       // Position shadow camera center on player position
-      shadowCamera.left = playerPosition.x - this.shadowCameraSize;
-      shadowCamera.right = playerPosition.x + this.shadowCameraSize;
-      shadowCamera.top = playerPosition.z + this.shadowCameraSize;
-      shadowCamera.bottom = playerPosition.z - this.shadowCameraSize;
+      shadowCamera.left = playerPosition.x - expandedSize;
+      shadowCamera.right = playerPosition.x + expandedSize;
+      shadowCamera.top = playerPosition.z + expandedSize;
+      shadowCamera.bottom = playerPosition.z - expandedSize;
       
       // Update shadow camera projection matrix
       shadowCamera.updateProjectionMatrix();
       
-      // Update light target to point towards player area
+      // Update light target to point towards player area with offset for hill coverage
       if (!this.directionalLight.target) {
         this.directionalLight.target = new THREE.Object3D();
         this.scene.add(this.directionalLight.target);
       }
-      this.directionalLight.target.position.copy(playerPosition);
+      
+      // Offset target slightly towards hill area for better coverage
+      const targetPosition = playerPosition.clone();
+      const hillPosition = new THREE.Vector3(20, 0, 30); // Hill location
+      const toHill = hillPosition.clone().sub(playerPosition).normalize().multiplyScalar(10);
+      targetPosition.add(toHill);
+      
+      this.directionalLight.target.position.copy(targetPosition);
       
       // Store last player position
       this.lastPlayerPosition.copy(playerPosition);
       
-      console.log(`Shadow camera updated for player position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)}`);
+      console.log(`Enhanced shadow camera updated for position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)} with hill coverage`);
     }
   }
 }
