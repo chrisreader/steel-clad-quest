@@ -1,5 +1,4 @@
-
-import { GameState } from '../../types/GameTypes';
+import { GameState } from '../types/GameTypes';
 
 export class StateManager {
   private gameState: GameState;
@@ -83,7 +82,6 @@ export class StateManager {
     this.onLocationChange(isInTavern);
   }
   
-  // Callback setters
   public setOnUpdateHealth(callback: (health: number) => void): void {
     this.onUpdateHealth = callback;
   }
