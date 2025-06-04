@@ -1,15 +1,20 @@
+
 import * as THREE from 'three';
+import { MoonCycleSystem, MoonPhaseData } from './MoonCycleSystem';
 
 export class SkyboxSystem {
   private scene: THREE.Scene;
   private skyboxMesh: THREE.Mesh;
   private skyboxMaterial: THREE.ShaderMaterial;
   private timeOfDay: number = 0.25;
+  private moonCycleSystem: MoonCycleSystem;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
+    this.moonCycleSystem = new MoonCycleSystem(0); // Start at New Moon
     this.createSkyboxMaterial();
     this.createSkyboxMesh();
+    console.log("🌙 SkyboxSystem initialized with moon cycle integration");
   }
 
   private createSkyboxMaterial(): void {
@@ -17,6 +22,8 @@ export class SkyboxSystem {
       uniforms: {
         timeOfDay: { value: this.timeOfDay },
         sunPosition: { value: new THREE.Vector3() },
+        moonPhaseIntensity: { value: 0.0 },  // NEW: Moon phase intensity
+        moonIllumination: { value: 0.0 },    // NEW: Moon illumination percentage
         dayTopColor: { value: new THREE.Color(0x87CEEB) },
         dayBottomColor: { value: new THREE.Color(0xE6F3FF) },
         nightTopColor: { value: new THREE.Color(0x0B1426) },
@@ -41,6 +48,8 @@ export class SkyboxSystem {
       fragmentShader: `
         uniform float timeOfDay;
         uniform vec3 sunPosition;
+        uniform float moonPhaseIntensity;
+        uniform float moonIllumination;
         uniform vec3 dayTopColor;
         uniform vec3 dayBottomColor;
         uniform vec3 nightTopColor;
@@ -58,12 +67,12 @@ export class SkyboxSystem {
           vec3 bottomColor = dayBottomColor;
           
           // PHASE 1: Modified height gradient calculation - steeper transition
-          float adjustedHeightFactor = pow(heightFactor, 2.0); // Increased from 0.6 to 2.0 for steeper gradient
+          float adjustedHeightFactor = pow(heightFactor, 2.0);
           
           // PHASE 3: Create height-based color zones with cutoff
-          float horizonZone = smoothstep(0.0, 0.3, heightFactor); // Only lower 30% gets full sunset colors
-          float midZone = smoothstep(0.3, 0.6, heightFactor); // Transition zone
-          float upperZone = smoothstep(0.6, 1.0, heightFactor); // Upper sky stays neutral
+          float horizonZone = smoothstep(0.0, 0.3, heightFactor);
+          float midZone = smoothstep(0.3, 0.6, heightFactor);
+          float upperZone = smoothstep(0.6, 1.0, heightFactor);
           
           if (time >= 0.15 && time <= 0.35) {
             // Sunrise period
@@ -71,12 +80,14 @@ export class SkyboxSystem {
               float factor = (time - 0.15) / 0.1;
               factor = factor * factor * (3.0 - 2.0 * factor);
               
-              // PHASE 2: Reduce zenith colors during sunrise - keep upper sky more neutral
-              vec3 neutralTopColor = mix(nightTopColor, dayTopColor, 0.7);
-              topColor = mix(nightTopColor, neutralTopColor, factor);
+              // UPDATED: Night colors now affected by moon phase
+              vec3 baseNightTop = mix(nightTopColor, vec3(0.02, 0.02, 0.05), moonPhaseIntensity * 0.3);
+              vec3 baseNightBottom = mix(nightBottomColor, vec3(0.05, 0.05, 0.1), moonPhaseIntensity * 0.3);
               
-              // PHASE 3: Apply sunset colors only to lower zones
-              vec3 fullBottomColor = mix(nightBottomColor, sunriseBottomColor, factor);
+              vec3 neutralTopColor = mix(baseNightTop, dayTopColor, 0.7);
+              topColor = mix(baseNightTop, neutralTopColor, factor);
+              
+              vec3 fullBottomColor = mix(baseNightBottom, sunriseBottomColor, factor);
               bottomColor = mix(fullBottomColor * (1.0 - upperZone), fullBottomColor, horizonZone);
             } else {
               float factor = (time - 0.25) / 0.1;
@@ -93,37 +104,39 @@ export class SkyboxSystem {
             topColor = dayTopColor;
             bottomColor = dayBottomColor;
           } else if (time >= 0.65 && time <= 0.85) {
-            // Sunset period - MAIN FOCUS AREA
+            // Sunset period
             if (time <= 0.75) {
               float factor = (time - 0.65) / 0.1;
               factor = factor * factor * (3.0 - 2.0 * factor);
               
-              // PHASE 2: Keep zenith colors more neutral during sunset
-              vec3 neutralTopColor = mix(dayTopColor, sunsetTopColor, 0.4); // Reduced from full transition
+              vec3 neutralTopColor = mix(dayTopColor, sunsetTopColor, 0.4);
               topColor = mix(dayTopColor, neutralTopColor, factor);
               
-              // PHASE 3 & 4: Apply dramatic sunset colors only near horizon with aggressive height cutoff
               vec3 dramaticBottomColor = mix(dayBottomColor, sunsetBottomColor, factor);
-              float sunsetIntensity = (1.0 - pow(heightFactor, 3.0)) * horizonZone; // Aggressive height decay
+              float sunsetIntensity = (1.0 - pow(heightFactor, 3.0)) * horizonZone;
               bottomColor = mix(dayBottomColor, dramaticBottomColor, sunsetIntensity);
               
             } else {
               float factor = (time - 0.75) / 0.1;
               factor = factor * factor * (3.0 - 2.0 * factor);
               
-              // PHASE 2: Transition to night with minimal sunset colors in upper sky
-              vec3 neutralTopColor = mix(sunsetTopColor, nightTopColor, 0.8);
-              topColor = mix(neutralTopColor, nightTopColor, factor);
+              // UPDATED: Transition to moon-phase affected night colors
+              vec3 baseNightTop = mix(nightTopColor, vec3(0.02, 0.02, 0.05), moonPhaseIntensity * 0.3);
+              vec3 baseNightBottom = mix(nightBottomColor, vec3(0.05, 0.05, 0.1), moonPhaseIntensity * 0.3);
               
-              // PHASE 3: Keep sunset colors only at horizon level
-              vec3 fullBottomColor = mix(sunsetBottomColor, nightBottomColor, factor);
-              float sunsetIntensity = (1.0 - pow(heightFactor, 4.0)) * horizonZone; // Very aggressive height decay
-              bottomColor = mix(nightBottomColor, fullBottomColor, sunsetIntensity);
+              vec3 neutralTopColor = mix(sunsetTopColor, baseNightTop, 0.8);
+              topColor = mix(neutralTopColor, baseNightTop, factor);
+              
+              vec3 fullBottomColor = mix(sunsetBottomColor, baseNightBottom, factor);
+              float sunsetIntensity = (1.0 - pow(heightFactor, 4.0)) * horizonZone;
+              bottomColor = mix(baseNightBottom, fullBottomColor, sunsetIntensity);
             }
           } else {
-            // Night period
-            topColor = nightTopColor;
-            bottomColor = nightBottomColor;
+            // Night period - UPDATED: Colors affected by moon phase
+            vec3 baseNightTop = mix(nightTopColor, vec3(0.02, 0.02, 0.05), moonPhaseIntensity * 0.3);
+            vec3 baseNightBottom = mix(nightBottomColor, vec3(0.05, 0.05, 0.1), moonPhaseIntensity * 0.3);
+            topColor = baseNightTop;
+            bottomColor = baseNightBottom;
           }
           
           // PHASE 4: Fine-tuned transition with more aggressive height masking
@@ -131,7 +144,7 @@ export class SkyboxSystem {
           
           // Additional height-based masking for sunset periods
           if ((time >= 0.65 && time <= 0.85) || (time >= 0.15 && time <= 0.35)) {
-            blendFactor *= (1.0 - pow(heightFactor, 1.8)); // Extra masking for transition periods
+            blendFactor *= (1.0 - pow(heightFactor, 1.8));
           }
           
           return mix(topColor, bottomColor, blendFactor);
@@ -158,11 +171,17 @@ export class SkyboxSystem {
     this.scene.add(this.skyboxMesh);
   }
 
-  public update(timeOfDay: number, playerPosition: THREE.Vector3): void {
+  public update(timeOfDay: number, playerPosition: THREE.Vector3, deltaTime: number, cycleSpeed: number): void {
     this.timeOfDay = timeOfDay;
+    
+    // Update moon cycle system
+    this.moonCycleSystem.update(timeOfDay, deltaTime, cycleSpeed);
+    const moonPhaseData = this.moonCycleSystem.getCurrentPhaseData();
     
     if (this.skyboxMaterial && this.skyboxMaterial.uniforms) {
       this.skyboxMaterial.uniforms.timeOfDay.value = timeOfDay;
+      this.skyboxMaterial.uniforms.moonPhaseIntensity.value = moonPhaseData.directionalLightMultiplier;
+      this.skyboxMaterial.uniforms.moonIllumination.value = moonPhaseData.illuminationPercentage / 100.0;
       
       // Update sun position for reference
       const sunAngle = (timeOfDay - 0.25) * Math.PI * 2;
@@ -177,8 +196,20 @@ export class SkyboxSystem {
     // Keep skybox centered on player
     this.skyboxMesh.position.copy(playerPosition);
   }
+  
+  public getMoonPhaseData(): MoonPhaseData {
+    return this.moonCycleSystem.getCurrentPhaseData();
+  }
+  
+  public setMoonCycleDay(day: number): void {
+    this.moonCycleSystem.setCycleDay(day);
+  }
 
   public dispose(): void {
+    if (this.moonCycleSystem) {
+      this.moonCycleSystem.dispose();
+    }
+    
     if (this.skyboxMesh) {
       this.scene.remove(this.skyboxMesh);
       if (this.skyboxMesh.geometry) this.skyboxMesh.geometry.dispose();
