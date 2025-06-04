@@ -764,7 +764,7 @@ export class VolumetricFogSystem {
         const angle = (i / 24) * Math.PI * 2;
         wall.position.x = Math.cos(angle) * distance;
         wall.position.z = Math.sin(angle) * distance;
-        wall.position.y = wallHeight / 2; // Start at ground level (0) and extend up
+        wall.position.y = wallHeight / 2 - 5; // Start at -5 for all time periods
         wall.rotation.y = angle + Math.PI / 2;
         
         // Add slight random rotation for organic feel
