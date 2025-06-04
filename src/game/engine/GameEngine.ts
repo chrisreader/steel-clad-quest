@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -66,6 +67,10 @@ export class GameEngine {
       
       // Create the scene manager using the render engine's scene and physics manager
       this.sceneManager = new SceneManager(this.renderEngine.getScene(), this.physicsManager);
+      
+      // FIXED: Set camera reference in SceneManager for proper sun glow calculations
+      this.sceneManager.setCamera(this.renderEngine.getCamera());
+      console.log("📹 [GameEngine] Camera reference passed to SceneManager for sun glow calculations");
       
       // Create default world
       this.sceneManager.createDefaultWorld();

@@ -20,6 +20,9 @@ export class SceneManager {
   private physicsManager: PhysicsManager;
   private environmentCollisionManager: EnvironmentCollisionManager;
   
+  // NEW: Camera reference for sun direction calculations
+  private camera: THREE.PerspectiveCamera | null = null;
+  
   // Ring-quadrant world system
   private ringSystem: RingQuadrantSystem;
   private terrainFeatureGenerator: TerrainFeatureGenerator;
@@ -126,6 +129,12 @@ export class SceneManager {
       this.environmentCollisionManager.registerSingleObject(object);
     });
     console.log('🔧 Day/night cycle collision system established');
+  }
+
+  // NEW: Method to set camera reference for proper sun glow calculations
+  public setCamera(camera: THREE.PerspectiveCamera): void {
+    this.camera = camera;
+    console.log("📹 [SceneManager] Camera reference set for sun glow calculations");
   }
 
   private setupEnhancedFog(): void {
@@ -569,7 +578,16 @@ export class SceneManager {
     if (material.uniforms) {
       material.uniforms.timeOfDay.value = this.timeOfDay;
       
-      if (this.sun) {
+      // FIXED: Calculate sun direction relative to camera position
+      if (this.sun && this.camera) {
+        const sunDirection = new THREE.Vector3();
+        sunDirection.subVectors(this.sun.position, this.camera.position);
+        sunDirection.normalize();
+        
+        material.uniforms.sunPosition.value.copy(sunDirection);
+        console.log("☀️ [SceneManager] Sun direction updated relative to camera:", sunDirection);
+      } else if (this.sun) {
+        // Fallback to world position if camera not available
         material.uniforms.sunPosition.value.copy(this.sun.position);
       }
       
