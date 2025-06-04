@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class VolumetricFogSystem {
@@ -241,12 +240,13 @@ export class VolumetricFogSystem {
         nightFogColor: { value: new THREE.Color(0x404080) },
         sunriseFogColor: { value: new THREE.Color(0xFFE4CC) },
         sunsetFogColor: { value: new THREE.Color(0xFFD0AA) },
-        fogWallDensity: { value: 0.65 },
+        fogWallDensity: { value: 0.3 }, // Reduced for transparency
         fogWallHeight: { value: 50.0 },
-        horizonBlur: { value: 0.8 },
+        horizonBlur: { value: 0.6 },
         playerPosition: { value: new THREE.Vector3() },
-        noiseScale: { value: 0.008 },
-        windDirection: { value: new THREE.Vector2(1.0, 0.3) }
+        noiseScale: { value: 0.015 }, // Increased for more detail
+        windDirection: { value: new THREE.Vector2(1.0, 0.3) },
+        layerDepth: { value: 0.0 } // For depth layering
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -254,22 +254,36 @@ export class VolumetricFogSystem {
         varying vec2 vUv;
         varying float vDistance;
         varying float vHeightFactor;
+        varying vec3 vLocalPosition;
         
         uniform vec3 playerPosition;
         uniform float fogWallHeight;
+        uniform float time;
         
         void main() {
           vPosition = position;
           vUv = uv;
+          vLocalPosition = position;
           
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          // Add organic vertex displacement
+          vec3 displacedPosition = position;
+          float noiseScale = 0.02;
+          float displacement = sin(position.x * noiseScale + time * 0.5) * 
+                              cos(position.z * noiseScale + time * 0.3) * 
+                              sin(position.y * noiseScale * 2.0 + time * 0.2);
+          
+          // Apply displacement mainly to edges
+          float edgeFactor = smoothstep(0.3, 1.0, abs(uv.x - 0.5) * 2.0);
+          displacedPosition += normal * displacement * 2.0 * edgeFactor;
+          
+          vec4 worldPosition = modelMatrix * vec4(displacedPosition, 1.0);
           vWorldPosition = worldPosition.xyz;
           vDistance = distance(worldPosition.xyz, playerPosition);
           
           // Calculate height factor for vertical fog wall gradient
           vHeightFactor = clamp(worldPosition.y / fogWallHeight, 0.0, 1.0);
           
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
         }
       `,
       fragmentShader: `
@@ -286,33 +300,93 @@ export class VolumetricFogSystem {
         uniform vec3 playerPosition;
         uniform float noiseScale;
         uniform vec2 windDirection;
+        uniform float layerDepth;
         
         varying vec3 vWorldPosition;
         varying vec3 vPosition;
         varying vec2 vUv;
         varying float vDistance;
         varying float vHeightFactor;
+        varying vec3 vLocalPosition;
         
-        // Simple noise function for fog wall effect
-        float hash(vec2 p) {
-          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        // 3D Simplex noise function for volumetric effects
+        vec3 mod289(vec3 x) {
+          return x - floor(x * (1.0 / 289.0)) * 289.0;
         }
         
-        float noise(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          f = f * f * (3.0 - 2.0 * f);
+        vec4 mod289(vec4 x) {
+          return x - floor(x * (1.0 / 289.0)) * 289.0;
+        }
+        
+        vec4 permute(vec4 x) {
+          return mod289(((x*34.0)+1.0)*x);
+        }
+        
+        vec4 taylorInvSqrt(vec4 r) {
+          return 1.79284291400159 - 0.85373472095314 * r;
+        }
+        
+        float snoise3D(vec3 v) {
+          const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+          const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
           
-          float a = hash(i);
-          float b = hash(i + vec2(1.0, 0.0));
-          float c = hash(i + vec2(0.0, 1.0));
-          float d = hash(i + vec2(1.0, 1.0));
+          vec3 i = floor(v + dot(v, C.yyy));
+          vec3 x0 = v - i + dot(i, C.xxx);
           
-          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+          vec3 g = step(x0.yzx, x0.xyz);
+          vec3 l = 1.0 - g;
+          vec3 i1 = min(g.xyz, l.zxy);
+          vec3 i2 = max(g.xyz, l.zxy);
+          
+          vec3 x1 = x0 - i1 + C.xxx;
+          vec3 x2 = x0 - i2 + C.yyy;
+          vec3 x3 = x0 - D.yyy;
+          
+          i = mod289(i);
+          vec4 p = permute(permute(permute(
+            i.z + vec4(0.0, i1.z, i2.z, 1.0))
+            + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+            + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+          
+          float n_ = 0.142857142857;
+          vec3 ns = n_ * D.wyz - D.xzx;
+          
+          vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+          
+          vec4 x_ = floor(j * ns.z);
+          vec4 y_ = floor(j - 7.0 * x_);
+          
+          vec4 x = x_ *ns.x + ns.yyyy;
+          vec4 y = y_ *ns.x + ns.yyyy;
+          vec4 h = 1.0 - abs(x) - abs(y);
+          
+          vec4 b0 = vec4(x.xy, y.xy);
+          vec4 b1 = vec4(x.zw, y.zw);
+          
+          vec4 s0 = floor(b0)*2.0 + 1.0;
+          vec4 s1 = floor(b1)*2.0 + 1.0;
+          vec4 sh = -step(h, vec4(0.0));
+          
+          vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+          vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+          
+          vec3 p0 = vec3(a0.xy, h.x);
+          vec3 p1 = vec3(a0.zw, h.y);
+          vec3 p2 = vec3(a1.xy, h.z);
+          vec3 p3 = vec3(a1.zw, h.w);
+          
+          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+          p0 *= norm.x;
+          p1 *= norm.y;
+          p2 *= norm.z;
+          p3 *= norm.w;
+          
+          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+          m = m * m;
+          return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
         }
         
         vec3 getFogWallColorForTime(float time) {
-          // Blend fog colors with sky for more realistic atmospheric perspective
           vec3 currentColor = dayFogColor;
           
           if (time >= 0.2 && time <= 0.3) {
@@ -340,53 +414,78 @@ export class VolumetricFogSystem {
           // Get dynamic fog color for wall effect
           vec3 dynamicFogColor = getFogWallColorForTime(timeOfDay);
           
-          // Create subtle noise for wall texture
-          vec2 noisePos = vWorldPosition.xz * noiseScale;
-          noisePos += windDirection * time * 0.03;
+          // Create 3D volumetric noise for realistic fog volume
+          vec3 noisePos = vWorldPosition * noiseScale;
+          noisePos += vec3(windDirection * time * 0.02, time * 0.01);
           
-          float fogNoise = noise(noisePos);
-          fogNoise += noise(noisePos * 2.0) * 0.5;
-          fogNoise += noise(noisePos * 4.0) * 0.25;
-          fogNoise /= 1.75;
+          // Multiple octaves of 3D noise for detail
+          float noise1 = snoise3D(noisePos) * 0.5 + 0.5;
+          float noise2 = snoise3D(noisePos * 2.1 + vec3(1.7)) * 0.25 + 0.25;
+          float noise3 = snoise3D(noisePos * 4.3 + vec3(3.4)) * 0.125 + 0.125;
+          float noise4 = snoise3D(noisePos * 8.7 + vec3(6.8)) * 0.0625 + 0.0625;
+          
+          float volumetricNoise = noise1 + noise2 + noise3 + noise4;
+          
+          // Create density holes for see-through effect
+          float densityVariation = smoothstep(0.3, 0.8, volumetricNoise);
           
           // ALIGNED WITH THREE.JS FOG: Distance-based fog density matching THREE.js fog (25-120 units)
-          float distanceRatio = (vDistance - 25.0) / (120.0 - 25.0); // Normalize to 0-1 over THREE.js fog range
+          float distanceRatio = (vDistance - 25.0) / (120.0 - 25.0);
           distanceRatio = clamp(distanceRatio, 0.0, 1.0);
-          float exponentialFog = distanceRatio * distanceRatio; // Quadratic curve for natural fog progression
-          exponentialFog = smoothstep(0.0, 1.0, exponentialFog); // Smooth transition
+          float exponentialFog = pow(distanceRatio, 1.5); // Smoother curve
+          exponentialFog = smoothstep(0.0, 1.0, exponentialFog);
           
-          // ALIGNED WITH THREE.JS FOG: Horizon blur effect starts at 80 units and completes at 120
-          float horizonEffect = smoothstep(80.0, 120.0, vDistance) * horizonBlur;
-          horizonEffect = clamp(horizonEffect, 0.0, 1.0);
+          // Atmospheric perspective - color shifts with distance
+          vec3 atmosphericColor = dynamicFogColor;
+          float atmosphericShift = smoothstep(25.0, 120.0, vDistance);
+          atmosphericColor = mix(atmosphericColor, atmosphericColor * 0.7, atmosphericShift * 0.3);
           
-          // Improved height-based gradient with exponential falloff for natural sky blending
+          // SMOOTH SKY GRADIENT - Multiple transition zones for natural blending
+          float skyTransition1 = smoothstep(0.4, 0.7, vHeightFactor); // Early fade start
+          float skyTransition2 = smoothstep(0.6, 0.9, vHeightFactor); // Main fade
+          float skyTransition3 = smoothstep(0.8, 1.0, vHeightFactor); // Final fade to transparent
+          
           float heightGradient = 1.0 - vHeightFactor;
-          heightGradient = pow(heightGradient, 2.5); // Stronger exponential falloff for better sky transition
-          heightGradient *= (1.0 - smoothstep(0.5, 1.0, vHeightFactor)); // Earlier fade out at top
+          heightGradient *= (1.0 - skyTransition1 * 0.3); // Gentle fade start
+          heightGradient *= (1.0 - skyTransition2 * 0.5); // Main fade
+          heightGradient *= (1.0 - skyTransition3 * 0.7); // Strong fade at top
           
-          // Combine all effects for final wall density - adjusted for closer range
-          float wallDensity = fogWallDensity * exponentialFog * heightGradient;
-          wallDensity += horizonEffect * 0.7; // Increased horizon blur for closer range
-          wallDensity *= (0.9 + fogNoise * 0.12); // Subtle texture variation
+          // SOFT EDGE BLENDING - Radial falloff and seamless wall transitions
+          vec2 centerUV = vUv - 0.5;
+          float radialDistance = length(centerUV);
+          float radialFalloff = 1.0 - smoothstep(0.3, 0.5, radialDistance);
           
-          // Time-based wall density adjustments - more subtle
+          // Edge softening for seamless blending
+          float edgeSoftness = smoothstep(0.0, 0.15, vUv.x) * smoothstep(1.0, 0.85, vUv.x) *
+                              smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
+          
+          // LAYERED DENSITY - Combine all effects for realistic volumetric fog
+          float baseDensity = fogWallDensity * exponentialFog * heightGradient;
+          baseDensity *= densityVariation; // Add volume variation
+          baseDensity *= radialFalloff * 0.7 + 0.3; // Soft radial falloff
+          baseDensity *= edgeSoftness; // Smooth edges
+          
+          // Add subtle depth layering based on layer position
+          baseDensity *= (0.8 + layerDepth * 0.4);
+          
+          // Time-based density adjustments - more subtle for realism
           float timeWallMultiplier = 1.0;
           if (timeOfDay >= 0.2 && timeOfDay <= 0.3 || timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            timeWallMultiplier = 1.15; // Slightly thicker during transitions
+            timeWallMultiplier = 1.1;
           } else if (timeOfDay >= 0.8 || timeOfDay <= 0.2) {
-            timeWallMultiplier = 1.08; // Slightly thicker at night
+            timeWallMultiplier = 1.05;
           }
-          wallDensity *= timeWallMultiplier;
+          baseDensity *= timeWallMultiplier;
           
-          // Ensure proper horizon blocking - optimized for 25-120 unit range
-          wallDensity = clamp(wallDensity, 0.0, 0.85);
+          // Ensure transparency for see-through effect
+          baseDensity = clamp(baseDensity, 0.0, 0.6); // Max 60% opacity for see-through
           
-          gl_FragColor = vec4(dynamicFogColor, wallDensity);
+          gl_FragColor = vec4(atmosphericColor, baseDensity);
         }
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.NormalBlending, // Use normal blending for proper opacity
+      blending: THREE.AdditiveBlending, // Changed back for proper volumetric layering
       side: THREE.DoubleSide
     });
   }
@@ -400,7 +499,7 @@ export class VolumetricFogSystem {
         nightFogColor: { value: new THREE.Color(0x606090) },
         sunriseFogColor: { value: new THREE.Color(0xFFECE0) },
         sunsetFogColor: { value: new THREE.Color(0xFFE0C0) },
-        skyFogDensity: { value: 0.2 }, // Reduced for closer range
+        skyFogDensity: { value: 0.15 }, // Further reduced for subtlety
         playerPosition: { value: new THREE.Vector3() }
       },
       vertexShader: `
@@ -456,15 +555,15 @@ export class VolumetricFogSystem {
           vec3 dynamicFogColor = getSkyFogColorForTime(timeOfDay);
           
           // ALIGNED WITH THREE.JS FOG: Sky fog density matching THREE.js fog completion range
-          float distanceFactor = smoothstep(100.0, 120.0, vDistance); // Start near THREE.js fog completion
-          float density = skyFogDensity * distanceFactor * 0.6; // Reduced intensity for natural blending
+          float distanceFactor = smoothstep(100.0, 120.0, vDistance);
+          float density = skyFogDensity * distanceFactor * 0.5; // Further reduced
           
           gl_FragColor = vec4(dynamicFogColor, density);
         }
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.NormalBlending,
+      blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide
     });
   }
@@ -512,36 +611,69 @@ export class VolumetricFogSystem {
   }
 
   private createFogWallLayers(): void {
-    // ALIGNED WITH THREE.JS FOG: Create fog wall layers at THREE.js fog range (25-120 units)
-    const wallDistances = [25, 40, 60, 80, 120]; // Aligned with THREE.js fog system
-    const wallHeights = [15, 20, 25, 30, 35]; // Scaled for closer range
-    const wallWidths = [400, 500, 600, 700, 800]; // Scaled for closer distances
+    // ALIGNED WITH THREE.JS FOG: Create realistic fog wall layers at THREE.js fog range (25-120 units)
+    const wallDistances = [25, 35, 50, 75, 105]; // Better distribution for realism
+    const wallHeights = [12, 18, 24, 30, 36]; // Varied heights for organic look
+    const wallWidths = [350, 450, 550, 650, 750]; // Scaled for close distances
+    const layerDepths = [0.0, 0.2, 0.4, 0.6, 0.8]; // For depth variation
     
     wallDistances.forEach((distance, distanceIndex) => {
       const wallHeight = wallHeights[distanceIndex];
       const wallWidth = wallWidths[distanceIndex];
+      const layerDepth = layerDepths[distanceIndex];
       
-      // Create 12 walls in a dodecagon for complete coverage
-      for (let i = 0; i < 12; i++) {
-        const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 20, 10);
+      // Create 16 walls for smoother coverage and better blending
+      for (let i = 0; i < 16; i++) {
+        // Create organic wall geometry with more segments for deformation
+        const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 32, 16);
+        
+        // Add organic vertex displacement for natural fog shapes
+        const positionAttribute = wallGeometry.getAttribute('position');
+        const positions = positionAttribute.array as Float32Array;
+        
+        for (let j = 0; j < positions.length; j += 3) {
+          const x = positions[j];
+          const y = positions[j + 1];
+          const z = positions[j + 2];
+          
+          // Create billowing, organic displacement
+          const displacement = Math.sin(x * 0.02) * Math.cos(y * 0.03) * Math.sin(z * 0.01) * 3.0;
+          const heightFactor = (y + wallHeight / 2) / wallHeight; // 0 to 1 from bottom to top
+          const edgeFactor = Math.abs(x) / (wallWidth / 2); // 0 to 1 from center to edge
+          
+          // Apply more displacement at edges and top for organic look
+          positions[j] += displacement * edgeFactor * 0.5;
+          positions[j + 1] += displacement * heightFactor * 1.5;
+          positions[j + 2] += displacement * 0.3;
+        }
+        
+        positionAttribute.needsUpdate = true;
+        wallGeometry.computeVertexNormals();
+        
         const wall = new THREE.Mesh(wallGeometry, this.fogWallMaterial.clone());
         
-        const angle = (i / 12) * Math.PI * 2;
+        const angle = (i / 16) * Math.PI * 2;
         wall.position.x = Math.cos(angle) * distance;
         wall.position.z = Math.sin(angle) * distance;
         wall.position.y = wallHeight / 2;
         wall.rotation.y = angle + Math.PI / 2;
         
-        // Set distance-specific wall density for layered effect - optimized for 25-120 range
-        const wallDensity = 0.45 + (distanceIndex * 0.05); // Progressive density increase
-        (wall.material as THREE.ShaderMaterial).uniforms.fogWallDensity.value = wallDensity;
+        // Add slight random rotation for organic feel
+        wall.rotation.x += (Math.random() - 0.5) * 0.1;
+        wall.rotation.z += (Math.random() - 0.5) * 0.05;
+        
+        // Set distance-specific wall density and depth for layered effect
+        const wallDensity = 0.2 + (distanceIndex * 0.02); // More subtle progression
+        const material = wall.material as THREE.ShaderMaterial;
+        material.uniforms.fogWallDensity.value = wallDensity;
+        material.uniforms.layerDepth.value = layerDepth;
         
         this.fogWallLayers.push(wall);
         this.scene.add(wall);
       }
     });
     
-    console.log(`Created ${this.fogWallLayers.length} fog wall layers aligned with THREE.js fog system (25-120 units)`);
+    console.log(`Created ${this.fogWallLayers.length} realistic volumetric fog wall layers with organic shapes`);
   }
 
   private createSkyFogLayers(): void {
@@ -558,7 +690,7 @@ export class VolumetricFogSystem {
       skyFog.rotation.x = -Math.PI / 2;
       
       // Set distance-specific sky fog density - optimized for THREE.js fog range
-      const skyDensity = 0.15 + (index * 0.05); // Subtle progression
+      const skyDensity = 0.1 + (index * 0.03); // More subtle progression
       (skyFog.material as THREE.ShaderMaterial).uniforms.skyFogDensity.value = skyDensity;
       
       this.skyFogLayers.push(skyFog);
@@ -610,10 +742,10 @@ export class VolumetricFogSystem {
     
     // ALIGNED WITH THREE.JS FOG: Update fog wall positions to maintain THREE.js fog range distances
     this.fogWallLayers.forEach((wall, index) => {
-      const wallGroup = Math.floor(index / 12);
-      const wallInGroup = index % 12;
-      const angle = (wallInGroup / 12) * Math.PI * 2;
-      const distance = [25, 40, 60, 80, 120][wallGroup]; // THREE.js fog range distances
+      const wallGroup = Math.floor(index / 16); // Changed to 16 walls per group
+      const wallInGroup = index % 16;
+      const angle = (wallInGroup / 16) * Math.PI * 2;
+      const distance = [25, 35, 50, 75, 105][wallGroup]; // Updated distances
       
       wall.position.x = playerPosition.x + Math.cos(angle) * distance;
       wall.position.z = playerPosition.z + Math.sin(angle) * distance;
@@ -663,6 +795,6 @@ export class VolumetricFogSystem {
       this.skyFogMaterial.dispose();
     }
     
-    console.log("VolumetricFogSystem with complete horizon blocking disposed");
+    console.log("Realistic VolumetricFogSystem with depth and smooth sky blending disposed");
   }
 }
