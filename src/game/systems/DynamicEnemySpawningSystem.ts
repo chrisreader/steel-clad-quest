@@ -3,8 +3,8 @@ import { Enemy } from '../entities/Enemy';
 import { DynamicSpawningSystem } from './DynamicSpawningSystem';
 import { SpawnableEntity, EntityLifecycleState, SpawningConfig } from '../../types/SpawnableEntity';
 import { EnemyType } from '../../types/GameTypes';
-import { EffectsManager } from '../managers/EffectsManager';
-import { AudioManager } from '../managers/AudioManager';
+import { EffectsManager } from '../engine/EffectsManager';
+import { AudioManager } from '../engine/AudioManager';
 import { SafeZoneManager } from './SafeZoneManager';
 
 // Enemy wrapper to implement SpawnableEntity interface
@@ -125,14 +125,6 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       const enemy = wrapper.getEnemy();
       enemy.setPassiveMode(false);
     });
-  }
-
-  public startSpawning(playerPosition: THREE.Vector3): void {
-    this.start(playerPosition);
-  }
-
-  public stopSpawning(): void {
-    this.stop();
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {

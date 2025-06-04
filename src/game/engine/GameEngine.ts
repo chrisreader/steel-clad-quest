@@ -1,14 +1,17 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
-import { Enemy } from '../entities/Enemy';
 import { SceneManager } from './SceneManager';
 import { InputManager } from './InputManager';
-import { RenderEngine } from './RenderEngine';
-import { PhysicsManager } from './PhysicsManager';
-import { UIIntegrationManager } from './UIIntegrationManager';
+import { EffectsManager } from './EffectsManager';
+import { AudioManager, SoundCategory } from './AudioManager';
 import { CombatSystem } from '../systems/CombatSystem';
-import { GameState } from '../../types/GameTypes';
-import { EffectsManager, AudioManager, StateManager } from '../managers';
+import { MovementSystem } from '../systems/MovementSystem';
+import { RenderEngine } from './RenderEngine';
+import { StateManager } from './StateManager';
+import { UIIntegrationManager } from './UIIntegrationManager';
+import { PhysicsManager } from './PhysicsManager';
+import { GameState, EnemyType } from '../../types/GameTypes';
 
 export class GameEngine {
   // Core managers

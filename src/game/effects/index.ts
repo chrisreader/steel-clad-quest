@@ -1,2 +1,0 @@
-
-export { SwordTrailEffect } from './SwordTrailEffect';

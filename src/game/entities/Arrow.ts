@@ -1,7 +1,6 @@
-
 import * as THREE from 'three';
-import { EffectsManager } from '../managers/EffectsManager';
-import { AudioManager } from '../managers/AudioManager';
+import { EffectsManager } from '../engine/EffectsManager';
+import { AudioManager } from '../engine/AudioManager';
 import { PhysicsManager } from '../engine/PhysicsManager';
 
 export class Arrow {

@@ -1,13 +1,14 @@
 import * as THREE from 'three';
-import { PlayerStats, PlayerBody, WeaponSwingAnimation, InventorySlot, EquippedItems, Item, WeaponSlots } from '../../types/GameTypes';
 import { TextureGenerator } from '../utils';
-import { AudioManager } from '../managers/AudioManager';
-import { EffectsManager } from '../managers/EffectsManager';
-import { Weapon } from '../weapons/Weapon';
-import { Sword } from '../weapons/Sword';
-import { Axe } from '../weapons/Axe';
-import { Mace } from '../weapons/Mace';
-import { BaseBow } from '../weapons/BaseBow';
+import { PlayerBody, WeaponSwingAnimation, PlayerStats } from '../../types/GameTypes';
+import { AudioManager, SoundCategory } from '../engine/AudioManager';
+import { EffectsManager } from '../engine/EffectsManager';
+import { BaseWeapon } from '../weapons/BaseWeapon';
+import { BaseBow } from '../weapons';
+import { WeaponManager } from '../weapons/WeaponManager';
+import { WeaponAnimationSystem, WeaponType } from '../animation/WeaponAnimationSystem';
+import { SwordSwingAnimation } from '../animation/animations/SwordSwingAnimation';
+import { STANDARD_SWORD_ANIMATION } from '../animation/StandardSwordAnimation';
 
 export class Player {
   // THREE.js objects
