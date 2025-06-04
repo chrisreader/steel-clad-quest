@@ -234,10 +234,10 @@ export class VolumetricFogSystem {
         timeOfDay: { value: this.timeOfDay },
         fogColor: { value: new THREE.Color(0xF5F5F5) },
         dayFogColor: { value: new THREE.Color(0xF5F5F5) },
-        nightFogColor: { value: new THREE.Color(0x8080B0) }, // Brightened from 0x606090
-        sunriseFogColor: { value: new THREE.Color(0xFFE8D4) }, // More saturated
-        sunsetFogColor: { value: new THREE.Color(0xFFD4B8) }, // More saturated
-        fogWallDensity: { value: 0.08 },
+        nightFogColor: { value: new THREE.Color(0x606090) },
+        sunriseFogColor: { value: new THREE.Color(0xFFE4CC) },
+        sunsetFogColor: { value: new THREE.Color(0xFFD0AA) },
+        fogWallDensity: { value: 0.08 }, // Standardized density for all times
         fogWallHeight: { value: 80.0 },
         horizonBlur: { value: 0.6 },
         playerPosition: { value: new THREE.Vector3() },
@@ -416,6 +416,8 @@ export class VolumetricFogSystem {
           // Get dynamic fog color for wall effect
           vec3 dynamicFogColor = getFogWallColorForTime(timeOfDay);
           
+          // STANDARDIZED FOG WALL BEHAVIOR: Use same logic for all time periods
+          
           // Create 3D volumetric noise for realistic fog volume
           vec3 noisePos = vWorldPosition * noiseScale;
           noisePos += vec3(windDirection * time * 0.02, time * 0.01);
@@ -431,7 +433,7 @@ export class VolumetricFogSystem {
           // Create density holes for see-through effect
           float densityVariation = smoothstep(0.3, 0.8, volumetricNoise);
           
-          // STANDARDIZED DISTANCE CALCULATION: Same for all time periods
+          // STANDARDIZED DISTANCE CALCULATION: Match day time behavior exactly
           float distanceRatio;
           float exponentialFog;
           
@@ -439,40 +441,38 @@ export class VolumetricFogSystem {
             // Near zone: 15-60 units - very gentle start
             distanceRatio = (vDistance - 15.0) / (60.0 - 15.0);
             distanceRatio = clamp(distanceRatio, 0.0, 1.0);
-            exponentialFog = pow(distanceRatio, 0.8) * 0.3;
+            exponentialFog = pow(distanceRatio, 0.8) * 0.3; // Very gentle curve, low density
           } else if (vDistance < 150.0) {
             // Mid zone: 60-150 units - gradual increase
             distanceRatio = (vDistance - 60.0) / (150.0 - 60.0);
             distanceRatio = clamp(distanceRatio, 0.0, 1.0);
-            exponentialFog = 0.3 + pow(distanceRatio, 0.9) * 0.4;
+            exponentialFog = 0.3 + pow(distanceRatio, 0.9) * 0.4; // 0.3 to 0.7 range
           } else {
             // Far zone: 150+ units - stronger fog for complete coverage
             distanceRatio = (vDistance - 150.0) / (300.0 - 150.0);
             distanceRatio = clamp(distanceRatio, 0.0, 1.0);
-            exponentialFog = 0.7 + pow(distanceRatio, 1.2) * 0.3;
+            exponentialFog = 0.7 + pow(distanceRatio, 1.2) * 0.3; // 0.7 to 1.0 range
           }
           
           exponentialFog = smoothstep(0.0, 1.0, exponentialFog);
+          
+          // STANDARDIZED ATMOSPHERIC COLOR: No brightness compensation
+          vec3 atmosphericColor = dynamicFogColor;
           
           // ENHANCED BOTTOM COVERAGE - Stronger density at bottom
           float bottomDensityBoost = 1.0 - smoothstep(0.0, 0.3, vHeightFactor);
           bottomDensityBoost = pow(bottomDensityBoost, 0.5);
           
-          // REDUCED SKY GRADIENT - Minimize horizon transparency for dark periods
-          float skyReduction = 0.1; // Reduced from 0.2, 0.4, 0.6
-          if (isDarkPeriod(timeOfDay)) {
-            skyReduction = 0.05; // Even less reduction for dark periods
-          }
-          
+          // SMOOTH SKY GRADIENT - Multiple transition zones
           float skyTransition1 = smoothstep(0.5, 0.7, vHeightFactor);
           float skyTransition2 = smoothstep(0.7, 0.9, vHeightFactor);
           float skyTransition3 = smoothstep(0.85, 1.0, vHeightFactor);
           
           float heightGradient = 1.0 - vHeightFactor;
           heightGradient += bottomDensityBoost * 0.5;
-          heightGradient *= (1.0 - skyTransition1 * skyReduction);
-          heightGradient *= (1.0 - skyTransition2 * skyReduction * 2.0);
-          heightGradient *= (1.0 - skyTransition3 * skyReduction * 3.0);
+          heightGradient *= (1.0 - skyTransition1 * 0.2);
+          heightGradient *= (1.0 - skyTransition2 * 0.4);
+          heightGradient *= (1.0 - skyTransition3 * 0.6);
           
           // SOFT EDGE BLENDING
           vec2 centerUV = vUv - 0.5;
@@ -491,22 +491,15 @@ export class VolumetricFogSystem {
           // Add subtle depth layering
           baseDensity *= (0.8 + layerDepth * 0.4);
           
-          // MINIMUM DENSITY THRESHOLD: Prevent complete transparency at horizon
-          float minDensity = isDarkPeriod(timeOfDay) ? 0.12 : 0.08;
-          if (vDistance > 120.0 && vHeightFactor > 0.4 && vHeightFactor < 0.8) {
-            // Critical horizon zone - ensure minimum visibility blocking
-            baseDensity = max(baseDensity, minDensity);
-          }
-          
           // STANDARDIZED OPACITY LIMITS: Same max opacity for all time periods
           baseDensity = clamp(baseDensity, 0.0, 0.35);
           
-          gl_FragColor = vec4(dynamicFogColor, baseDensity);
+          gl_FragColor = vec4(atmosphericColor, baseDensity);
         }
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending, // Will be dynamically changed
+      blending: THREE.AdditiveBlending, // Standardized blending for all time periods
       side: THREE.DoubleSide
     });
   }
@@ -876,20 +869,13 @@ export class VolumetricFogSystem {
       }
     });
     
-    // Update fog wall layers with dynamic blending
+    // Update fog wall layers
     this.fogWallLayers.forEach((wall, index) => {
       const material = wall.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
         material.uniforms.playerPosition.value.copy(playerPosition);
-        
-        // DYNAMIC BLENDING MODE: Normal for dark periods, Additive for day
-        if (this.isDarkPeriod(timeOfDay)) {
-          material.blending = THREE.NormalBlending;
-        } else {
-          material.blending = THREE.AdditiveBlending;
-        }
       }
     });
     
