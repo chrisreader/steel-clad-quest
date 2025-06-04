@@ -16,7 +16,7 @@ export class VolumetricLightRaySystem {
     this.scene = scene;
     this.physicsManager = physicsManager;
     this.createLightRayMaterial();
-    console.log('VolumetricLightRaySystem initialized with realistic sun/moon ray positioning');
+    console.log('VolumetricLightRaySystem initialized - matching shadow system angles');
   }
   
   private createLightRayMaterial(): void {
@@ -253,22 +253,29 @@ export class VolumetricLightRaySystem {
     });
     this.lightRays = [];
     
-    // Calculate light direction
-    const lightDirection = new THREE.Vector3(0, -1, 0);
-    if (lightPosition.y > 0) {
-      lightDirection.copy(lightPosition).normalize();
-      lightDirection.y = Math.abs(lightDirection.y) * -1; // Always point downward
+    // Only create rays if the light source is above horizon (like shadows)
+    if (lightPosition.y <= 0) {
+      console.log('🌅 Light source below horizon - no rays created');
+      return;
     }
     
-    // Create rays emanating from the light source
-    const numRays = 12;
-    const rayLength = 150;
-    const rayWidth = 8;
-    const spreadAngle = Math.PI / 6; // 30 degree spread
+    // Calculate light direction FROM light source TO ground (matching shadow system)
+    const lightDirection = new THREE.Vector3(0, -1, 0);
+    lightDirection.copy(lightPosition).normalize();
+    lightDirection.y = -Math.abs(lightDirection.y); // Always point downward
+    
+    console.log('🌅 Light direction (matching shadows):', lightDirection);
+    console.log('🌅 Light position:', lightPosition);
+    
+    // Create rays emanating from the light source at the same angle as shadows
+    const numRays = 8;
+    const rayLength = 200;
+    const rayWidth = 12;
+    const raySpread = 60; // Spread rays around the light source
     
     for (let i = 0; i < numRays; i++) {
-      // Create cylinder geometry for each ray
-      const geometry = new THREE.CylinderGeometry(rayWidth * 0.5, rayWidth * 2, rayLength, 8, 16);
+      // Create plane geometry for each ray beam
+      const geometry = new THREE.PlaneGeometry(rayWidth, rayLength, 1, 32);
       
       // Add organic variation to ray shape
       const positionAttribute = geometry.getAttribute('position');
@@ -280,9 +287,8 @@ export class VolumetricLightRaySystem {
         const z = positions[j + 2];
         
         // Add subtle wave to make rays feel more organic
-        const wave = Math.sin(y * 0.02) * Math.cos(x * 0.1) * 0.3;
+        const wave = Math.sin(y * 0.01) * Math.cos(x * 0.05) * 0.5;
         positions[j] += wave;
-        positions[j + 2] += wave * 0.5;
       }
       
       positionAttribute.needsUpdate = true;
@@ -290,18 +296,18 @@ export class VolumetricLightRaySystem {
       
       const ray = new THREE.Mesh(geometry, this.lightRayMaterial.clone());
       
-      // Position rays emanating from light source
+      // Position rays around the light source (like sun rays through clouds)
       const angle = (i / numRays) * Math.PI * 2;
-      const spreadX = Math.cos(angle) * Math.sin(spreadAngle) * 30;
-      const spreadZ = Math.sin(angle) * Math.sin(spreadAngle) * 30;
+      const offsetX = Math.cos(angle) * raySpread;
+      const offsetZ = Math.sin(angle) * raySpread;
       
       // Start position near the light source
       const startPosition = lightPosition.clone();
-      startPosition.x += spreadX;
-      startPosition.z += spreadZ;
+      startPosition.x += offsetX;
+      startPosition.z += offsetZ;
       startPosition.y -= 20; // Start slightly below light source
       
-      // End position extending toward ground in light direction
+      // End position extending in the light direction (matching shadow direction)
       const endPosition = startPosition.clone();
       endPosition.add(lightDirection.clone().multiplyScalar(rayLength));
       
@@ -309,9 +315,9 @@ export class VolumetricLightRaySystem {
       const midPosition = startPosition.clone().add(endPosition).multiplyScalar(0.5);
       ray.position.copy(midPosition);
       
-      // Orient ray along light direction
-      ray.lookAt(endPosition);
-      ray.rotateX(Math.PI / 2); // Align with cylinder geometry
+      // Orient ray along light direction (same as shadow direction)
+      const lookDirection = endPosition.clone().sub(startPosition).normalize();
+      ray.lookAt(ray.position.clone().add(lookDirection));
       
       // Calculate distance from light source for shader
       const rayDistance = startPosition.distanceTo(lightPosition);
@@ -330,21 +336,22 @@ export class VolumetricLightRaySystem {
       this.scene.add(ray);
     }
     
-    console.log(`Created ${this.lightRays.length} volumetric light rays emanating from light source at`, lightPosition);
+    console.log(`🌅 Created ${this.lightRays.length} volumetric light rays from light source at correct angle`);
   }
   
   private calculateShadowFactor(rayPosition: THREE.Vector3, lightDirection: THREE.Vector3): number {
     if (!this.physicsManager) return 1.0;
     
-    // Cast ray from light source to ray position to check for obstacles
-    this.raycastHelper.set(rayPosition, lightDirection.clone().negate());
+    // Use the correct physics method that exists (checkRayCollision instead of raycast)
+    const collision = this.physicsManager.checkRayCollision(
+      rayPosition, 
+      lightDirection.clone().negate(), // Ray from position toward light
+      100, // Distance to check
+      ['player'] // Exclude player from collision
+    );
     
-    // Check collision with environment objects (trees, buildings, etc.)
-    const intersections = this.physicsManager.raycast(this.raycastHelper);
-    
-    if (intersections.length > 0) {
-      const closestIntersection = intersections[0];
-      const distanceToObstacle = closestIntersection.distance;
+    if (collision) {
+      const distanceToObstacle = collision.distance;
       
       // Create shadow falloff based on distance to obstacle
       if (distanceToObstacle < 50) {
@@ -363,30 +370,41 @@ export class VolumetricLightRaySystem {
   public update(deltaTime: number, timeOfDay: number, playerPosition: THREE.Vector3): void {
     this.timeOfDay = timeOfDay;
     
-    // Determine active light source based on time of day
+    // Determine active light source based on time of day (matching shadow system)
     const isNightTime = timeOfDay < 0.25 || timeOfDay > 0.75;
     const activeLightPosition = isNightTime ? this.moonPosition : this.sunPosition;
     
-    // Only recreate rays if light position or player position changed significantly
-    const lightPositionChanged = this.sunPosition.distanceTo(this.moonPosition) > 0.1;
-    const playerMoved = playerPosition.distanceTo(this.lastPlayerPosition) > 20;
+    // Only show rays if the light source is above horizon (like shadows)
+    if (activeLightPosition.y <= 0) {
+      // Hide all rays when light is below horizon
+      this.lightRays.forEach(ray => {
+        ray.visible = false;
+      });
+      return;
+    }
+    
+    // Recreate rays if light position changed significantly or no rays exist
+    const lightPositionChanged = activeLightPosition.distanceTo(this.lastPlayerPosition) > 0.1;
+    const playerMoved = playerPosition.distanceTo(this.lastPlayerPosition) > 30;
     
     if (lightPositionChanged || playerMoved || this.lightRays.length === 0) {
       this.createLightRayGeometry(activeLightPosition, playerPosition);
       this.lastPlayerPosition.copy(playerPosition);
     }
     
-    // Calculate light direction from active celestial body
-    const lightDirection = new THREE.Vector3()
-      .subVectors(playerPosition, activeLightPosition)
-      .normalize();
+    // Calculate light direction FROM light source TO ground (matching shadows)
+    const lightDirection = new THREE.Vector3();
+    lightDirection.copy(activeLightPosition).normalize();
+    lightDirection.y = -Math.abs(lightDirection.y); // Always point downward like shadows
     
-    // Calculate light intensity based on celestial body elevation
+    // Calculate light intensity based on celestial body elevation (matching shadow system)
     const lightElevation = Math.max(0, activeLightPosition.y);
     const lightIntensity = Math.min(1.0, lightElevation / 100.0);
     
     // Update each light ray
     this.lightRays.forEach((ray, index) => {
+      ray.visible = true; // Make sure rays are visible
+      
       const material = ray.material as THREE.ShaderMaterial;
       const rayData = ray as any;
       
@@ -397,17 +415,20 @@ export class VolumetricLightRaySystem {
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
-        material.uniforms.lightDirection.value.copy(rayData.lightDirection);
+        material.uniforms.lightDirection.value.copy(lightDirection);
         material.uniforms.lightPosition.value.copy(activeLightPosition);
         material.uniforms.playerPosition.value.copy(playerPosition);
         material.uniforms.lightIntensity.value = lightIntensity;
         material.uniforms.shadowFactor.value = shadowFactor;
         
-        // Adjust atmospheric density based on time and weather
-        const baseDensity = isNightTime ? 0.08 : 0.15;
+        // Adjust atmospheric density based on time and light elevation
+        const baseDensity = isNightTime ? 0.08 : 0.20;
         material.uniforms.atmosphericDensity.value = baseDensity * lightIntensity;
+        material.uniforms.scatteringFactor.value = 0.9; // Increase visibility
       }
     });
+    
+    console.log(`🌅 Updated ${this.lightRays.length} rays - Light elevation: ${lightElevation.toFixed(1)}, Intensity: ${lightIntensity.toFixed(2)}`);
   }
   
   public setIntensity(intensity: number): void {
