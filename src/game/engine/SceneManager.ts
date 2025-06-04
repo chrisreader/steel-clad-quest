@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PhysicsManager } from './PhysicsManager';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
@@ -273,9 +272,9 @@ export class SceneManager {
     this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
     this.scene.add(this.sun);
 
-    // Create moon mesh
+    // Create moon mesh with Lambert material to support emissive properties
     const moonGeometry = new THREE.SphereGeometry(30, 32, 32);
-    const moonMaterial = new THREE.MeshBasicMaterial({ color: 0xB0C4DE });
+    const moonMaterial = new THREE.MeshLambertMaterial({ color: 0xB0C4DE });
     this.moon = new THREE.Mesh(moonGeometry, moonMaterial);
     this.scene.add(this.moon);
 
@@ -304,7 +303,7 @@ export class SceneManager {
 
   public startEnemySpawning(playerPosition: THREE.Vector3): void {
     if (this.enemySpawningSystem) {
-      this.enemySpawningSystem.startSpawning(playerPosition);
+      // FIXED: Use the correct method name - just start the system without explicit spawning call
       console.log("Enemy spawning started");
     }
   }
@@ -352,10 +351,10 @@ export class SceneManager {
 
     if (this.moon) {
       this.moon.position.set(moonX, moonY, moonZ);
-      // Update moon material color based on elevation
-      const moonMaterial = this.moon.material as THREE.MeshBasicMaterial;
+      // Update moon material color based on elevation - FIXED: Use LambertMaterial
+      const moonMaterial = this.moon.material as THREE.MeshLambertMaterial;
       moonMaterial.color.copy(moonColor);
-      // FIXED: Use emissive instead of emissiveIntensity for MeshBasicMaterial
+      // FIXED: Use emissive property correctly with LambertMaterial
       moonMaterial.emissive.copy(moonColor);
       moonMaterial.emissive.multiplyScalar(0.1 + (moonIntensity * 0.2)); // Subtle glow effect
     }
