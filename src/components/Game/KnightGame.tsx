@@ -153,12 +153,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     
     const player = gameEngine.getPlayer();
     
-    // Add null check to prevent runtime error
-    if (!player) {
-      console.log('[KnightGame] 🔄 WEAPON SYNC - Player not available yet, skipping sync');
-      return;
-    }
-    
     // Get the weapon for the currently active slot
     const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
                         activeWeaponSlot === 2 ? equippedWeapons.secondary : 
