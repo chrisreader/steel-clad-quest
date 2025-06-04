@@ -17,8 +17,8 @@ export class Tavern {
   public async load(): Promise<void> {
     try {
       // Create the tavern building
-      this.building = new TavernBuilding(this.scene, this.physicsManager);
-      await this.building.build();
+      this.building = new TavernBuilding(this.scene, this.physicsManager, new THREE.Vector3(0, 0, 0));
+      await this.building.initialize();
       
       this.isLoaded = true;
       console.log("🏠 [Tavern] Tavern loaded successfully");

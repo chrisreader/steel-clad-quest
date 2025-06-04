@@ -1,15 +1,10 @@
 import * as THREE from 'three';
 import { Enemy } from '../entities/Enemy';
-import { EnemyFactory } from '../entities/EnemyFactory';
-import { Weapon } from '../weapons';
 import { Tavern } from '../entities/Tavern';
-import { NameGenerator } from '../utils/NameGenerator';
-import { TextureGenerator } from '../utils';
-import { VolumetricFogSystem } from '../atmosphere/VolumetricFogSystem';
+import { VolumetricFogSystem } from '../effects/VolumetricFogSystem';
 import { DynamicCloudSystem } from '../utils/DynamicCloudSystem';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
-import { EffectsManager } from '../managers/EffectsManager';
-import { AudioManager } from '../managers/AudioManager';
+import { EffectsManager, AudioManager } from '../managers';
 import { PhysicsManager } from './PhysicsManager';
 
 export class SceneManager {
@@ -78,7 +73,7 @@ export class SceneManager {
   
   public startEnemySpawning(playerPosition: THREE.Vector3): void {
     if (this.enemySpawningSystem) {
-      this.enemySpawningSystem.start(playerPosition);
+      this.enemySpawningSystem.startSpawning(playerPosition);
       console.log("🏠 [SceneManager] Enemy spawning started");
     } else {
       console.warn("🏠 [SceneManager] Enemy spawning system not initialized");
@@ -87,7 +82,7 @@ export class SceneManager {
   
   public stopEnemySpawning(): void {
     if (this.enemySpawningSystem) {
-      this.enemySpawningSystem.stop();
+      this.enemySpawningSystem.stopSpawning();
       console.log("🏠 [SceneManager] Enemy spawning stopped");
     } else {
       console.warn("🏠 [SceneManager] Enemy spawning system not initialized");
@@ -157,7 +152,7 @@ export class SceneManager {
     
     geometry.rotateX(-Math.PI / 2);
     
-    const vertices = geometry.attributes.position.array as Array<number>;
+    const vertices = geometry.attributes.position.array as Float32Array;
     for (let i = 0; i < vertices.length; i += 3) {
       const x = vertices[i];
       const z = vertices[i + 2];
@@ -178,8 +173,10 @@ export class SceneManager {
     this.terrain.receiveShadow = true;
     this.scene.add(this.terrain);
     
-    // Add terrain collision
-    this.physicsManager.addCollision(this.terrain, 'terrain');
+    // Add terrain collision if the method exists
+    if (this.physicsManager && typeof this.physicsManager.addCollision === 'function') {
+      this.physicsManager.addCollision(this.terrain, 'terrain');
+    }
   }
   
   private createLighting(): void {
@@ -325,7 +322,9 @@ export class SceneManager {
       this.scene.remove(this.terrain);
       (this.terrain.geometry as THREE.BufferGeometry).dispose();
       (this.terrain.material as THREE.Material).dispose();
-      this.physicsManager.removeCollision(this.terrain);
+      if (this.physicsManager && typeof this.physicsManager.removeCollision === 'function') {
+        this.physicsManager.removeCollision(this.terrain);
+      }
     }
     
     // Dispose lighting
@@ -363,4 +362,3 @@ export class SceneManager {
     console.log("🏠 [SceneManager] Scene manager disposed!");
   }
 }
-

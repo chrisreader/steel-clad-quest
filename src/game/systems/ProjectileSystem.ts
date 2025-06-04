@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Arrow } from '../entities/Arrow';
 import { Player } from '../entities/Player';
@@ -120,7 +119,7 @@ export class ProjectileSystem {
     arrowBox.setFromCenterAndSize(arrowPosition, new THREE.Vector3(0.2, 0.2, 0.2));
     
     this.enemies.forEach(enemy => {
-      if (enemy.isDead()) return;
+      if (enemy.isDead) return;
       
       const enemyMesh = enemy.getMesh();
       const enemyBox = new THREE.Box3().setFromObject(enemyMesh);
@@ -138,7 +137,7 @@ export class ProjectileSystem {
         this.audioManager.play('arrow_hit');
         
         // Handle gold and experience rewards when enemy dies from arrow
-        if (enemy.isDead()) {
+        if (enemy.isDead) {
           this.spawnGold(enemyPosition, enemy.getGoldReward());
           this.player.addExperience(enemy.getExperienceReward());
           console.log(`🏹 Enemy killed by arrow - spawned ${enemy.getGoldReward()} gold and ${enemy.getExperienceReward()} XP`);

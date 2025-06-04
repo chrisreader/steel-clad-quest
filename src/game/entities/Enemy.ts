@@ -162,8 +162,12 @@ export class Enemy {
     
     // Hitbox
     const hitBoxGeometry = new THREE.BoxGeometry(bodyScale.body.radius * 2, bodyScale.body.height, bodyScale.body.radius * 2);
-    const hitBoxMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, visible: false });
-    this.hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
+    const hitMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xff0000,
+      transparent: true,
+      opacity: 0.8
+    });
+    this.hitBox = new THREE.Mesh(hitBoxGeometry, hitMaterial);
     this.hitBox.position.y = bodyScale.body.height / 2;
     
     // Weapon
@@ -497,13 +501,13 @@ export class Enemy {
     }
     
     // Body scale
-    const bodyScale = {
-      body: { radius: 0.4, height: 1.2 },
-      head: { radius: 0.3 },
-      arm: { radius: [0.15, 0.15], length: 0.7 },
-      forearm: { radius: [0.12, 0.12], length: 0.6 },
-      leg: { radius: [0.18, 0.18], length: 0.6 },
-      shin: { radius: [0.15, 0.15], length: 0.5 }
+    const orcHumanoidConfig = {
+      body: { radius: 0.25, height: 1.5 },
+      head: { radius: 0.15 },
+      arm: { radius: [0.08, 0.06] as [number, number], length: 0.6 },
+      forearm: { radius: [0.06, 0.05] as [number, number], length: 0.5 },
+      leg: { radius: [0.12, 0.08] as [number, number], length: 0.7 },
+      shin: { radius: [0.08, 0.06] as [number, number], length: 0.6 }
     };
     
     // Colors
@@ -535,7 +539,7 @@ export class Enemy {
       points,
       effectsManager,
       audioManager,
-      bodyScale,
+      orcHumanoidConfig,
       colors,
       features,
       new THREE.Vector3(
@@ -548,4 +552,3 @@ export class Enemy {
     return enemy;
   }
 }
-
