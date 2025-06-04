@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -65,15 +64,8 @@ export class GameEngine {
       // Initialize render engine
       this.renderEngine.initialize();
       
-      // Create the scene manager using the render engine's scene and physics manager
-      this.sceneManager = new SceneManager(this.renderEngine.getScene(), this.physicsManager);
-      
-      // FIXED: Set camera reference in SceneManager for proper sun glow calculations
-      this.sceneManager.setCamera(this.renderEngine.getCamera());
-      console.log("📹 [GameEngine] Camera reference passed to SceneManager for sun glow calculations");
-      
-      // Create default world
-      this.sceneManager.createDefaultWorld();
+      // Create the scene manager using the render engine's scene and renderer
+      this.sceneManager = new SceneManager(this.renderEngine.getScene(), this.renderEngine.getRenderer());
       
       // Create the input manager
       this.inputManager = new InputManager();
@@ -109,18 +101,12 @@ export class GameEngine {
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
       
-      // Initialize enemy spawning system in scene manager
-      if (this.sceneManager) {
-        this.sceneManager.initializeEnemySpawning(this.effectsManager, this.audioManager);
-        this.sceneManager.startEnemySpawning(this.player.getPosition());
-      }
-      
       // Set first-person camera position
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete with distance-based fog system and enemy spawning!");
+      console.log("🎮 [GameEngine] Initialization complete with distance-based fog system!");
       
       // Start the game
       this.start();
@@ -276,17 +262,6 @@ export class GameEngine {
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
     
-    // Sync enemies from scene manager to combat system
-    if (this.sceneManager) {
-      const sceneEnemies = this.sceneManager.getEnemies();
-      // Update combat system with current enemies
-      sceneEnemies.forEach(enemy => {
-        if (!this.combatSystem!.getEnemies().includes(enemy)) {
-          this.combatSystem!.addEnemy(enemy);
-        }
-      });
-    }
-    
     // Update combat system
     this.combatSystem.update(deltaTime);
     
@@ -302,9 +277,9 @@ export class GameEngine {
     // Update camera to follow player
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // NEW: Update scene manager with player position for ring-quadrant system
+    // Update scene manager (skybox and lighting)
     if (this.sceneManager) {
-      this.sceneManager.update(deltaTime, this.player.getPosition());
+      this.sceneManager.update(deltaTime);
     }
     
     // Check location changes
@@ -371,12 +346,6 @@ export class GameEngine {
       
       // Reset first-person camera
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
-    }
-    
-    // Restart enemy spawning
-    if (this.sceneManager && this.effectsManager && this.audioManager) {
-      this.sceneManager.initializeEnemySpawning(this.effectsManager, this.audioManager);
-      this.sceneManager.startEnemySpawning(this.player!.getPosition());
     }
     
     // Start ambient sounds
