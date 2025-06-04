@@ -21,7 +21,7 @@ enum EnemyMovementState {
   STUNNED = 'stunned'
 }
 
-// Distance-based speed zones for balanced enemy behavior
+// Fixed distance-based speed zones for balanced enemy behavior
 interface EnemySpeedZones {
   detectionRange: number;
   pursuitRange: number;
@@ -72,12 +72,14 @@ export class Enemy {
   private lastPosition: THREE.Vector3 = new THREE.Vector3();
   private stuckThreshold: number = 0.01;
 
-  // NEW: Distance-based speed scaling system
+  // FIXED: Properly balanced distance-based speed scaling system
   private speedZones: EnemySpeedZones;
-  private currentSpeedMultiplier: number = 1.0;
+  private currentSpeedMultiplier: number = 0.3;
   private speedCooldownTimer: number = 0;
-  private maxSpeedCooldown: number = 3000; // 3 seconds to return to base speed
+  private maxSpeedCooldown: number = 2000; // 2 seconds for faster recovery
   private lastPlayerDistance: number = Infinity;
+  private attackExhaustionTimer: number = 0;
+  private maxAttackExhaustion: number = 2000; // 2 seconds of exhaustion after attacking
 
   constructor(
     scene: THREE.Scene,
@@ -100,31 +102,31 @@ export class Enemy {
       maxSlopeAngle: 45
     };
 
-    // Initialize distance-based speed zones
+    // FIXED: Initialize properly balanced distance-based speed zones
     this.speedZones = type === EnemyType.ORC ? {
       detectionRange: 30,
       pursuitRange: 15,
-      attackRange: 8,
-      damageRange: 2.5,
-      detectionSpeedMultiplier: 0.3, // Slow approach when first spotted
-      pursuitSpeedMultiplier: 0.6,   // Moderate chase speed
-      attackSpeedMultiplier: 1.2,    // Brief burst of speed for final approach
-      damageSpeedMultiplier: 0.4     // Slow down for attacking
+      attackRange: 4,      // Reduced from 8 to 4
+      damageRange: 3,      // Increased from 2.5 to 3
+      detectionSpeedMultiplier: 0.3,
+      pursuitSpeedMultiplier: 0.6,
+      attackSpeedMultiplier: 1.0,  // Reduced from 1.2 to 1.0 (no speed boost)
+      damageSpeedMultiplier: 0.4
     } : {
       detectionRange: 25,
       pursuitRange: 12,
-      attackRange: 6,
-      damageRange: 1.5,
+      attackRange: 3,      // Reduced from 6 to 3
+      damageRange: 2,      // Increased from 1.5 to 2
       detectionSpeedMultiplier: 0.4,
       pursuitSpeedMultiplier: 0.7,
-      attackSpeedMultiplier: 1.3,
+      attackSpeedMultiplier: 1.0,  // Reduced from 1.3 to 1.0
       damageSpeedMultiplier: 0.3
     };
 
     // Initialize comprehensive terrain-aware movement
     if (physicsManager && terrainDetector) {
       this.movementHelper = new EnemyMovementHelper(physicsManager, terrainDetector);
-      console.log(`🚶 Enemy ${type} initialized with comprehensive surface movement and speed scaling`);
+      console.log(`🚶 Enemy ${type} initialized with fixed speed zones and recovery system`);
     }
     
     // Create enemy based on type with humanoid system for orcs
@@ -143,10 +145,10 @@ export class Enemy {
       // Create interface wrapper for backward compatibility
       this.enemy = this.createEnemyInterface(this.humanoidEnemy);
       
-      console.log(`🗡️ [Enemy] Created humanoid orc with speed scaling system`);
+      console.log(`🗡️ [Enemy] Created humanoid orc with fixed speed scaling system`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created legacy goblin enemy with speed scaling system");
+      console.log("🗡️ [Enemy] Created legacy goblin enemy with fixed speed scaling system");
       
       // Initialize AI behavior for legacy enemies
       this.passiveAI = new PassiveNPCBehavior(
@@ -489,6 +491,11 @@ export class Enemy {
     
     this.updateMovementState(deltaTime);
     
+    // Update attack exhaustion timer
+    if (this.attackExhaustionTimer > 0) {
+      this.attackExhaustionTimer -= deltaTime * 1000;
+    }
+    
     if (this.enemy.isHit && now - this.enemy.hitTime < 300) {
       // Hit feedback
     } else if (this.enemy.isHit) {
@@ -658,7 +665,7 @@ export class Enemy {
       return;
     }
     
-    // Calculate distance-based speed multiplier
+    // Calculate distance-based speed multiplier with new fixed system
     const speedMultiplier = this.calculateSpeedMultiplier(distanceToPlayer);
     
     if (distanceToPlayer <= this.speedZones.detectionRange) {
@@ -672,7 +679,7 @@ export class Enemy {
       this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
       if (distanceToPlayer > this.speedZones.damageRange) {
-        // Use surface movement with distance-based speed scaling
+        // Use surface movement with fixed speed scaling
         const adjustedSpeed = this.enemy.speed * speedMultiplier;
         const targetDirection = directionToPlayer.clone().multiplyScalar(adjustedSpeed);
         const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
@@ -681,7 +688,7 @@ export class Enemy {
         
         // Debug speed scaling
         if (Math.random() < 0.01) { // 1% chance to log
-          console.log(`🏃 [Enemy] Speed: ${adjustedSpeed.toFixed(1)} (${speedMultiplier.toFixed(2)}x), Distance: ${distanceToPlayer.toFixed(1)}`);
+          console.log(`🏃 [Enemy] Speed: ${adjustedSpeed.toFixed(1)} (${speedMultiplier.toFixed(2)}x), Distance: ${distanceToPlayer.toFixed(1)}, Exhausted: ${this.attackExhaustionTimer > 0}`);
         }
       }
       
@@ -689,8 +696,10 @@ export class Enemy {
         this.movementState = EnemyMovementState.ATTACKING;
         this.attack(playerPosition);
         this.enemy.lastAttackTime = now;
-        // Reset speed after attacking
-        this.speedCooldownTimer = this.maxSpeedCooldown * 0.5;
+        // FIXED: Set attack exhaustion to force slow speed for 2 seconds
+        this.attackExhaustionTimer = this.maxAttackExhaustion;
+        this.speedCooldownTimer = this.maxSpeedCooldown;
+        this.currentSpeedMultiplier = 0.2; // Force very slow speed immediately
       }
     } else {
       if (distanceToPlayer > this.speedZones.detectionRange && distanceToPlayer < 50) {
@@ -712,14 +721,20 @@ export class Enemy {
         this.movementState = EnemyMovementState.IDLE;
         this.updateLegacyIdleAnimation();
         // Reset speed when idle
-        this.currentSpeedMultiplier = 0.1;
+        this.currentSpeedMultiplier = 0.3;
         this.speedCooldownTimer = 0;
+        this.attackExhaustionTimer = 0;
       }
     }
   }
   
   private calculateSpeedMultiplier(distanceToPlayer: number): number {
     const zones = this.speedZones;
+    
+    // FIXED: Apply attack exhaustion first - if enemy just attacked, force very slow speed
+    if (this.attackExhaustionTimer > 0) {
+      return 0.2; // Very slow when exhausted from attacking
+    }
     
     // Determine current zone and base multiplier
     let targetMultiplier: number;
@@ -736,19 +751,21 @@ export class Enemy {
       targetMultiplier = zones.damageSpeedMultiplier;
     }
     
-    // Apply speed cooldown - gradually reduce speed when moving away from player
+    // FIXED: Apply stronger speed decay when moving away from player
     if (distanceToPlayer > this.lastPlayerDistance) {
-      this.speedCooldownTimer += 16; // Assume ~60fps (16ms per frame)
+      this.speedCooldownTimer += deltaTime * 1000; // Use actual deltaTime
       const cooldownProgress = Math.min(this.speedCooldownTimer / this.maxSpeedCooldown, 1);
-      targetMultiplier = Math.max(targetMultiplier * (1 - cooldownProgress * 0.5), 0.2);
+      // Stronger decay: 80% reduction instead of 50%
+      targetMultiplier = Math.max(targetMultiplier * (1 - cooldownProgress * 0.8), 0.1);
     } else {
-      this.speedCooldownTimer = Math.max(0, this.speedCooldownTimer - 32); // Reset cooldown when approaching
+      // FIXED: Faster recovery when approaching - reset cooldown faster
+      this.speedCooldownTimer = Math.max(0, this.speedCooldownTimer - deltaTime * 1000 * 2); // 2x faster recovery
     }
     
     this.lastPlayerDistance = distanceToPlayer;
     
-    // Smooth transition between speed changes
-    const smoothingFactor = 0.05;
+    // FIXED: Reduced smoothing for faster speed transitions
+    const smoothingFactor = 0.15; // Increased from 0.05 for faster transitions
     this.currentSpeedMultiplier += (targetMultiplier - this.currentSpeedMultiplier) * smoothingFactor;
     
     return this.currentSpeedMultiplier;
@@ -913,6 +930,10 @@ export class Enemy {
     this.stunDuration = 150;
     this.movementState = EnemyMovementState.KNOCKED_BACK;
     
+    // FIXED: Reset speed and add exhaustion when taking damage
+    this.currentSpeedMultiplier = 0.2;
+    this.speedCooldownTimer = this.maxSpeedCooldown * 0.5;
+    
     const bloodDirection = knockbackDirection.clone();
     bloodDirection.y = 0.5;
     this.effectsManager.createBloodEffect(this.enemy.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), bloodDirection);
@@ -1054,7 +1075,7 @@ export class Enemy {
     );
     
     const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager, physicsManager, terrainDetector);
-    console.log(`🗡️ [Enemy] Created ${type} with comprehensive surface movement and speed scaling - Humanoid: ${enemy.isHumanoidEnemy}`);
+    console.log(`🗡️ [Enemy] Created ${type} with fixed speed zones and recovery system - Humanoid: ${enemy.isHumanoidEnemy}`);
     return enemy;
   }
   

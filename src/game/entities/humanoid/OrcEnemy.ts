@@ -7,7 +7,7 @@ import { EnemyHumanoid, HumanoidConfig } from './EnemyHumanoid';
 import { PassiveNPCBehavior, PassiveBehaviorState } from '../../ai/PassiveNPCBehavior';
 import { EnemyMovementHelper, EnemyMovementConfig } from '../../utils/movement/EnemyMovementHelper';
 
-// Distance-based speed zones interface
+// Fixed distance-based speed zones interface
 interface EnemySpeedZones {
   detectionRange: number;
   pursuitRange: number;
@@ -90,24 +90,26 @@ export class OrcEnemy extends EnemyHumanoid {
   private lastPosition: THREE.Vector3 = new THREE.Vector3();
   private stuckThreshold: number = 0.01;
 
-  // NEW: Distance-based speed scaling system
+  // FIXED: Properly balanced distance-based speed scaling system
   private speedZones: EnemySpeedZones = {
     detectionRange: 30,
     pursuitRange: 15,
-    attackRange: 8,
-    damageRange: 2.5,
+    attackRange: 4,      // Reduced from 8 to 4
+    damageRange: 3,      // Increased from 2.5 to 3
     detectionSpeedMultiplier: 0.3,
     pursuitSpeedMultiplier: 0.6,
-    attackSpeedMultiplier: 1.2,
+    attackSpeedMultiplier: 1.0,  // Reduced from 1.2 to 1.0 (no speed boost)
     damageSpeedMultiplier: 0.4
   };
-  private currentSpeedMultiplier: number = 1.0;
+  private currentSpeedMultiplier: number = 0.3;
   private speedCooldownTimer: number = 0;
-  private maxSpeedCooldown: number = 3000; // 3 seconds
+  private maxSpeedCooldown: number = 2000; // 2 seconds for faster recovery
   private lastPlayerDistance: number = Infinity;
 
-  // Attack state tracking
+  // FIXED: Attack state tracking with proper exhaustion
   private isCurrentlyAttacking: boolean = false;
+  private attackExhaustionTimer: number = 0;
+  private maxAttackExhaustion: number = 2000; // 2 seconds of exhaustion after attacking
 
   constructor(
     scene: THREE.Scene,
@@ -127,7 +129,7 @@ export class OrcEnemy extends EnemyHumanoid {
       8 // Safe zone radius
     );
     
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with speed scaling system");
+    console.log("🗡️ [OrcEnemy] Created enhanced orc with fixed speed scaling system");
   }
 
   public setMovementHelper(helper: EnemyMovementHelper, config: EnemyMovementConfig): void {
@@ -144,6 +146,11 @@ export class OrcEnemy extends EnemyHumanoid {
   private calculateSpeedMultiplier(distanceToPlayer: number): number {
     const zones = this.speedZones;
     
+    // FIXED: Apply attack exhaustion first - if enemy just attacked, force very slow speed
+    if (this.attackExhaustionTimer > 0) {
+      return 0.2; // Very slow when exhausted from attacking
+    }
+    
     // Determine current zone and base multiplier
     let targetMultiplier: number;
     
@@ -159,19 +166,21 @@ export class OrcEnemy extends EnemyHumanoid {
       targetMultiplier = zones.damageSpeedMultiplier;
     }
     
-    // Apply speed cooldown - gradually reduce speed when moving away from player
+    // FIXED: Apply stronger speed decay when moving away from player
     if (distanceToPlayer > this.lastPlayerDistance) {
       this.speedCooldownTimer += 16; // Assume ~60fps (16ms per frame)
       const cooldownProgress = Math.min(this.speedCooldownTimer / this.maxSpeedCooldown, 1);
-      targetMultiplier = Math.max(targetMultiplier * (1 - cooldownProgress * 0.5), 0.2);
+      // Stronger decay: 80% reduction instead of 50%
+      targetMultiplier = Math.max(targetMultiplier * (1 - cooldownProgress * 0.8), 0.1);
     } else {
-      this.speedCooldownTimer = Math.max(0, this.speedCooldownTimer - 32); // Reset cooldown when approaching
+      // FIXED: Faster recovery when approaching - reset cooldown faster
+      this.speedCooldownTimer = Math.max(0, this.speedCooldownTimer - 64); // 4x faster recovery
     }
     
     this.lastPlayerDistance = distanceToPlayer;
     
-    // Smooth transition between speed changes
-    const smoothingFactor = 0.05;
+    // FIXED: Reduced smoothing for faster speed transitions
+    const smoothingFactor = 0.15; // Increased from 0.05 for faster transitions
     this.currentSpeedMultiplier += (targetMultiplier - this.currentSpeedMultiplier) * smoothingFactor;
     
     return this.currentSpeedMultiplier;
@@ -299,6 +308,11 @@ export class OrcEnemy extends EnemyHumanoid {
       return;
     }
 
+    // Update attack exhaustion timer
+    if (this.attackExhaustionTimer > 0) {
+      this.attackExhaustionTimer -= deltaTime * 1000;
+    }
+
     // Handle advanced passive movement if in passive mode
     if (this.isPassive) {
       this.handleAdvancedPassiveMovement(deltaTime);
@@ -328,7 +342,7 @@ export class OrcEnemy extends EnemyHumanoid {
       return;
     }
 
-    // Normal aggressive behavior with distance-based speed scaling
+    // Normal aggressive behavior with fixed distance-based speed scaling
     const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
     const speedMultiplier = this.calculateSpeedMultiplier(distanceToPlayer);
     
@@ -339,7 +353,7 @@ export class OrcEnemy extends EnemyHumanoid {
       directionToPlayer.y = 0;
       
       if (distanceToPlayer > this.speedZones.damageRange) {
-        // Use surface movement for pursuing player with speed scaling
+        // Use surface movement for pursuing player with fixed speed scaling
         const adjustedSpeed = this.config.speed * speedMultiplier;
         const targetDirection = directionToPlayer.clone().multiplyScalar(adjustedSpeed);
         const finalPosition = this.handleSurfaceMovement(this.mesh.position, targetDirection, deltaTime);
@@ -348,7 +362,7 @@ export class OrcEnemy extends EnemyHumanoid {
         
         // Debug speed scaling
         if (Math.random() < 0.01) { // 1% chance to log
-          console.log(`🏃 [OrcEnemy] Speed: ${adjustedSpeed.toFixed(1)} (${speedMultiplier.toFixed(2)}x), Distance: ${distanceToPlayer.toFixed(1)}`);
+          console.log(`🏃 [OrcEnemy] Speed: ${adjustedSpeed.toFixed(1)} (${speedMultiplier.toFixed(2)}x), Distance: ${distanceToPlayer.toFixed(1)}, Exhausted: ${this.attackExhaustionTimer > 0}`);
         }
       }
     }
@@ -356,9 +370,11 @@ export class OrcEnemy extends EnemyHumanoid {
     // Call parent update for other behaviors (attacking, etc.)
     super.update(deltaTime, playerPosition);
     
-    // Reset speed after attacking
+    // FIXED: Set attack exhaustion when attacking
     if (this.isCurrentlyAttacking) {
-      this.speedCooldownTimer = this.maxSpeedCooldown * 0.5;
+      this.attackExhaustionTimer = this.maxAttackExhaustion;
+      this.speedCooldownTimer = this.maxSpeedCooldown;
+      this.currentSpeedMultiplier = 0.2; // Force very slow speed immediately
     }
   }
 
