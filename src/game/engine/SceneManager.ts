@@ -414,7 +414,7 @@ export class SceneManager {
     (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
   }
   
-  // UPDATED: Simplified skybox with intense sun glow that disperses outwards
+  // UPDATED: Simplified skybox with intense sun glow that disperses outwards and is locked to sun position
   private createDayNightSkybox(): void {
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
@@ -446,9 +446,12 @@ export class SceneManager {
         }
         
         // Enhanced atmospheric scattering with intense sun glow that disperses outwards
-        vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized) {
+        vec3 getAtmosphericColor(vec3 direction, vec3 sunPos, float timeNormalized) {
           float height = direction.y;
-          float sunDot = dot(direction, normalize(sunDir));
+          
+          // UPDATED: Calculate sun direction from actual sun position in world space
+          vec3 sunDir = normalize(sunPos);
+          float sunDot = dot(direction, sunDir);
           
           // Define atmospheric color zones - deeper blues and extended night
           vec3 zenithNight = vec3(0.002, 0.002, 0.025);     // Much darker, longer night
@@ -493,10 +496,12 @@ export class SceneManager {
           
           vec3 baseAtmosphereColor = lerpColor(horizonColor, zenithColor, heightFactor);
           
-          // UPDATED: Intense sun glow that disperses outwards
+          // UPDATED: Intense sun glow that disperses outwards - properly centered on sun
           float sunInfluence = 0.0;
           if (sunDir.y > -0.2) { // Only when sun is near or above horizon
-            float sunDistance = 1.0 - sunDot; // Distance from sun direction
+            // UPDATED: Use accurate angular distance from sun direction
+            float angularDistance = acos(clamp(sunDot, -1.0, 1.0)); // Angle in radians
+            float sunDistance = angularDistance / 3.14159; // Normalize to [0,1]
             
             // Create multiple glow layers for intensity gradation
             // Inner intense core
@@ -530,11 +535,10 @@ export class SceneManager {
         
         void main() {
           vec3 direction = normalize(vDirection);
-          vec3 sunDir = normalize(sunPosition);
           float normalizedTime = mod(timeOfDay, 1.0);
           
-          // Get realistic atmospheric color with intense dispersing sun glow
-          vec3 skyColor = getAtmosphericColor(direction, sunDir, normalizedTime);
+          // UPDATED: Pass actual sun position to atmospheric calculation
+          vec3 skyColor = getAtmosphericColor(direction, sunPosition, normalizedTime);
           
           // Add subtle stars for extended night sky periods
           if (normalizedTime < 0.25 || normalizedTime > 0.75) {
@@ -559,7 +563,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Realistic atmospheric gradient skybox created with intense dispersing sun glow');
+    console.log('Realistic atmospheric gradient skybox created with sun-locked intense dispersing glow');
   }
   
   private updateDayNightSkybox(): void {
