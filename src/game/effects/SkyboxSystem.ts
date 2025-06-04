@@ -91,25 +91,26 @@ export class SkyboxSystem {
         vec3 getSkyColorForPhase(float time, float heightFactor) {
           vec3 zenithColor, horizonColor;
           
-          // Determine current phase and colors based on new time phases
+          // Improved phase boundaries with better color isolation
           if (time >= 0.0 && time < 0.05) {
             // Deep night
             zenithColor = nightZenith;
             horizonColor = nightHorizon;
           } else if (time >= 0.05 && time < 0.15) {
-            // Pre-dawn to dawn transition
+            // Pre-dawn to dawn transition with delayed brightening
             float factor = (time - 0.05) / 0.1;
-            factor = smoothStep(0.0, 1.0, factor);
+            // Delay the transition to prevent early brightening
+            factor = exponentialDecay(max(0.0, factor - 0.3) / 0.7, 2.0);
             zenithColor = lerpColor(nightZenith, dawnZenith, factor);
             horizonColor = lerpColor(nightHorizon, dawnHorizon, factor);
           } else if (time >= 0.15 && time < 0.25) {
-            // Dawn to day transition
+            // Dawn to day transition with smoother curve
             float factor = (time - 0.15) / 0.1;
-            factor = smoothStep(0.0, 1.0, factor);
+            factor = smoothStep(0.2, 1.0, factor);
             zenithColor = lerpColor(dawnZenith, dayZenith, factor);
             horizonColor = lerpColor(dawnHorizon, dayHorizon, factor);
           } else if (time >= 0.25 && time < 0.65) {
-            // Full day
+            // Full day - maintain clean blue-white atmosphere
             zenithColor = dayZenith;
             horizonColor = dayHorizon;
           } else if (time >= 0.65 && time < 0.75) {
@@ -144,8 +145,13 @@ export class SkyboxSystem {
             horizonColor = lerpColor(astroTwilightHorizon, nightHorizon, factor);
           }
           
-          // Enhanced height-based gradient with atmospheric perspective
-          float adjustedHeightFactor = pow(heightFactor, 1.5);
+          // Enhanced atmospheric perspective for more realistic look
+          float adjustedHeightFactor = pow(heightFactor, 1.2);
+          
+          // Special handling for day phase to maintain clean blue-white horizon
+          if (time >= 0.25 && time < 0.65) {
+            adjustedHeightFactor = pow(heightFactor, 0.8);
+          }
           
           // Apply stronger height-based darkening during twilight phases
           if (time >= 0.75 && time <= 1.0) {
@@ -210,6 +216,12 @@ export class SkyboxSystem {
     }
     
     this.skyboxMesh.position.copy(playerPosition);
+  }
+
+  public setMoonElevation(elevation: number): void {
+    if (this.skyboxMaterial && this.skyboxMaterial.uniforms) {
+      this.skyboxMaterial.uniforms.moonElevation.value = elevation;
+    }
   }
 
   public dispose(): void {

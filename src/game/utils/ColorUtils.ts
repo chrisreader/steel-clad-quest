@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class ColorUtils {
@@ -23,8 +22,8 @@ export class ColorUtils {
     
     const fogPalettes = {
       night: new THREE.Color(0x000050),
-      dawn: new THREE.Color(0xFFE4B5),
-      day: new THREE.Color(0x4682B4),
+      dawn: new THREE.Color(0x8B9DC3),     // Updated to softer blue-gray
+      day: new THREE.Color(0x87CEEB),      // Updated to cleaner blue-white
       sunset: new THREE.Color(0xFF8C42),
       civilTwilight: new THREE.Color(0x2E2E5E),
       nauticalTwilight: new THREE.Color(0x1A1A3A),
@@ -36,8 +35,14 @@ export class ColorUtils {
     
     let transitionFactor = factor;
     
-    // Apply different transition curves for different phases
-    if (phase === 'sunset' || phase === 'civilTwilight') {
+    // Improved transition curves to prevent early brightening
+    if (phase === 'night' && nextPhase === 'dawn') {
+      // Delay the dawn transition to prevent early brightening
+      transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.3) / 0.7, 2);
+    } else if (phase === 'dawn' && nextPhase === 'day') {
+      // Smoother transition from dawn to day
+      transitionFactor = this.smoothStep(0.2, 1.0, factor);
+    } else if (phase === 'sunset' || phase === 'civilTwilight') {
       transitionFactor = this.exponentialDecay(factor, 2);
     } else if (phase === 'dawn') {
       transitionFactor = this.smoothStep(0, 1, factor);
@@ -45,9 +50,9 @@ export class ColorUtils {
     
     const resultColor = this.lerpColor(currentColor, nextColor, transitionFactor);
     
-    // Add moon influence during night phases
+    // Add moon influence during night phases only
     if (phase === 'night' || phase === 'astronomicalTwilight') {
-      const moonInfluence = moonElevation * 0.3;
+      const moonInfluence = moonElevation * 0.2; // Reduced influence
       resultColor.lerp(new THREE.Color(0x001155), moonInfluence);
     }
     
@@ -59,7 +64,7 @@ export class ColorUtils {
     
     const lightColors = {
       night: new THREE.Color(0x4169E1),
-      dawn: new THREE.Color(0xFFD4AA),
+      dawn: new THREE.Color(0xFFE4CC),     // Softer dawn light
       day: new THREE.Color(0xFFFAF0),
       sunset: new THREE.Color(0xFFE4B5),
       civilTwilight: new THREE.Color(0x8A8ACD),
@@ -72,8 +77,13 @@ export class ColorUtils {
     
     let transitionFactor = factor;
     
-    // Apply smooth transitions for lighting
-    if (phase === 'sunset' || phase === 'dawn') {
+    // Apply smooth transitions for lighting with phase-specific curves
+    if (phase === 'night' && nextPhase === 'dawn') {
+      // Prevent early light brightening
+      transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.4) / 0.6, 1.5);
+    } else if (phase === 'dawn' && nextPhase === 'day') {
+      transitionFactor = this.smoothStep(0.3, 1.0, factor);
+    } else if (phase === 'sunset' || phase === 'dawn') {
       transitionFactor = this.smoothStep(0, 1, factor);
     } else if (phase === 'civilTwilight' || phase === 'nauticalTwilight') {
       transitionFactor = this.exponentialDecay(factor, 1.5);

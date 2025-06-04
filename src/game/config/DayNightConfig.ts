@@ -72,11 +72,11 @@ export const SKY_COLOR_PALETTES = {
   },
   dawn: {
     zenith: 0x87CEEB,
-    horizon: 0xFFB347
+    horizon: 0xFFC373  // Less pink, more natural orange
   },
   day: {
     zenith: 0x4A90E2,
-    horizon: 0x87CEEB
+    horizon: 0xB0C4DE  // More blue-white, less sky blue
   },
   sunset: {
     zenith: 0x4A5D7A,
@@ -98,8 +98,8 @@ export const SKY_COLOR_PALETTES = {
 
 export const FOG_COLOR_PALETTES = {
   night: 0x000050,
-  dawn: 0xFFE4B5,
-  day: 0x4682B4,
+  dawn: 0x8B9DC3,     // Softer blue-gray instead of bright cream
+  day: 0x87CEEB,      // Cleaner blue-white instead of steel blue
   sunset: 0xFF8C42,
   civilTwilight: 0x2E2E5E,
   nauticalTwilight: 0x1A1A3A,
