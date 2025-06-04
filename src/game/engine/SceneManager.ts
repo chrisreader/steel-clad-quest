@@ -64,7 +64,8 @@ export class SceneManager {
   // Enhanced time of day system (1-minute cycle)
   private timeOfDay: number = 0.25;
   private dayNightCycleEnabled: boolean = true;
-  private dayNightCycleSpeed: number = 1 / 60;
+  private baseDayNightCycleSpeed: number = 1 / 60; // Base 1-minute cycle
+  private currentCycleSpeed: number = 1 / 60; // Current dynamic speed
   private sunRadius: number = 150;
   private moonRadius: number = 140;
   
@@ -86,6 +87,15 @@ export class SceneManager {
     ULTRA_RAPID_NIGHT_END: 0.90,    // ULTRA-SHORTENED: was 1.0, now 0.90 (2% vs 8%)
     EXTENDED_DEEP_NIGHT_START: 0.90, // NEW: Extended deep night period
     EXTENDED_DEEP_NIGHT_END: 1.0     // Now 10% of cycle in deep darkness
+  };
+  
+  // NEW: Dynamic speed control zones
+  private readonly SPEED_ZONES = {
+    ACCELERATION_START: 0.80,    // Begin speeding up
+    FAST_ZONE_START: 0.82,      // Full 2x speed starts
+    FAST_ZONE_END: 0.15,        // Full 2x speed ends (wraps around)
+    DECELERATION_END: 0.17,     // Return to normal speed
+    ACCELERATION_FACTOR: 2.0    // 2x speed during moon rising
   };
   
   // Enemy spawning system
@@ -753,11 +763,21 @@ export class SceneManager {
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
-    // UPDATED: Accelerated day/night cycle with rapid twilight transitions
+    // UPDATED: Dynamic day/night cycle with variable speed
     if (this.dayNightCycleEnabled) {
-      this.timeOfDay += deltaTime * this.dayNightCycleSpeed;
+      // Calculate current dynamic speed
+      this.currentCycleSpeed = this.calculateDynamicCycleSpeed();
+      
+      // Update time of day using dynamic speed
+      this.timeOfDay += deltaTime * this.currentCycleSpeed;
       if (this.timeOfDay >= 1.0) {
         this.timeOfDay -= 1.0;
+      }
+      
+      // Log speed changes for debugging
+      const speedMultiplier = this.currentCycleSpeed / this.baseDayNightCycleSpeed;
+      if (speedMultiplier > 1.1) {
+        console.log(`🌙 [SceneManager] Accelerated moon rising phase: ${speedMultiplier.toFixed(1)}x speed at time ${(this.timeOfDay * 24).toFixed(1)}h`);
       }
       
       // Update sun and moon positions
@@ -824,6 +844,44 @@ export class SceneManager {
     }
   }
   
+  // NEW: Calculate dynamic cycle speed based on time of day
+  private calculateDynamicCycleSpeed(): number {
+    if (!this.dayNightCycleEnabled) return this.baseDayNightCycleSpeed;
+    
+    const normalizedTime = this.timeOfDay % 1;
+    
+    // Check if we're in the moon rising acceleration zone
+    // Note: This zone wraps around midnight (0.82 -> 1.0 -> 0.0 -> 0.15)
+    const inFastZone = normalizedTime >= this.SPEED_ZONES.FAST_ZONE_START || 
+                       normalizedTime <= this.SPEED_ZONES.FAST_ZONE_END;
+    
+    if (inFastZone) {
+      // Full acceleration during moon rising phase
+      return this.baseDayNightCycleSpeed * this.SPEED_ZONES.ACCELERATION_FACTOR;
+    }
+    
+    // Smooth acceleration ramp-up (0.80 -> 0.82)
+    if (normalizedTime >= this.SPEED_ZONES.ACCELERATION_START && 
+        normalizedTime < this.SPEED_ZONES.FAST_ZONE_START) {
+      const rampFactor = (normalizedTime - this.SPEED_ZONES.ACCELERATION_START) / 
+                        (this.SPEED_ZONES.FAST_ZONE_START - this.SPEED_ZONES.ACCELERATION_START);
+      const speedMultiplier = 1 + (this.SPEED_ZONES.ACCELERATION_FACTOR - 1) * rampFactor;
+      return this.baseDayNightCycleSpeed * speedMultiplier;
+    }
+    
+    // Smooth deceleration ramp-down (0.15 -> 0.17)
+    if (normalizedTime > this.SPEED_ZONES.FAST_ZONE_END && 
+        normalizedTime <= this.SPEED_ZONES.DECELERATION_END) {
+      const rampFactor = 1 - ((normalizedTime - this.SPEED_ZONES.FAST_ZONE_END) / 
+                             (this.SPEED_ZONES.DECELERATION_END - this.SPEED_ZONES.FAST_ZONE_END));
+      const speedMultiplier = 1 + (this.SPEED_ZONES.ACCELERATION_FACTOR - 1) * rampFactor;
+      return this.baseDayNightCycleSpeed * speedMultiplier;
+    }
+    
+    // Normal speed during day
+    return this.baseDayNightCycleSpeed;
+  }
+
   // UPDATED: Ultra-fast lighting transitions with exponential decay
   private updateAcceleratedDayNightLighting(): void {
     // Update ambient light intensity with ultra-fast system
@@ -925,6 +983,12 @@ export class SceneManager {
     }
   }
   
+  // NEW: Debug method to set cycle speed multiplier
+  public setCycleSpeedMultiplier(multiplier: number): void {
+    this.SPEED_ZONES.ACCELERATION_FACTOR = Math.max(0.5, Math.min(5.0, multiplier));
+    console.log(`Cycle speed multiplier set to: ${this.SPEED_ZONES.ACCELERATION_FACTOR}x during moon rising`);
+  }
+  
   // NEW: Debug method to set specific time
   public setTimeOfDay(time: number): void {
     this.timeOfDay = Math.max(0, Math.min(1, time));
@@ -939,12 +1003,12 @@ export class SceneManager {
   
   // NEW: Debug method to adjust cycle speed
   public setCycleSpeed(speed: number): void {
-    this.dayNightCycleSpeed = speed;
+    this.baseDayNightCycleSpeed = speed;
     console.log(`Day/night cycle speed set to: ${speed} (${60/speed} seconds per cycle)`);
   }
   
   public createDefaultWorld(): void {
-    console.log('Creating default world with ultra-fast twilight transitions...');
+    console.log('Creating default world with dynamic cycle speed for accelerated moon rising...');
     
     this.createSimpleGround();
     console.log('Simple ground plane created at origin');
@@ -988,7 +1052,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('Accelerated world with exponential twilight decay complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('Accelerated world with dynamic moon rising speed complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     // Add debug commands to window for testing
     if (this.debugMode) {
@@ -996,13 +1060,16 @@ export class SceneManager {
         setTime: (time: number) => this.setTimeOfDay(time / 24),
         toggleCycle: () => this.toggleDayNightCycle(),
         setSpeed: (speed: number) => this.setCycleSpeed(speed),
+        setSpeedMultiplier: (multiplier: number) => this.setCycleSpeedMultiplier(multiplier),
         getCurrentTime: () => (this.timeOfDay * 24).toFixed(1) + ' hours',
+        getCurrentSpeed: () => `${(this.currentCycleSpeed / this.baseDayNightCycleSpeed).toFixed(1)}x`,
         getMoonElevation: () => this.getMoonElevationFactor().toFixed(2),
         setTwilight: () => this.setTimeOfDay(0.86), // Set to middle of ultra-short twilight
         setRapidNight: () => this.setTimeOfDay(0.89), // Set to middle of ultra-rapid night
-        setExtendedNight: () => this.setTimeOfDay(0.95) // Set to extended deep night
+        setExtendedNight: () => this.setTimeOfDay(0.95), // Set to extended deep night
+        setMoonRising: () => this.setTimeOfDay(0.90) // Set to start of moon rising acceleration
       };
-      console.log('Debug commands available: sceneDebug.setTwilight(), sceneDebug.setRapidNight(), sceneDebug.setExtendedNight()');
+      console.log('Debug commands available: sceneDebug.setMoonRising(), sceneDebug.setSpeedMultiplier(2.5), sceneDebug.getCurrentSpeed()');
     }
   }
 
