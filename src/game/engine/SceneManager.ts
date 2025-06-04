@@ -1,5 +1,10 @@
+
 import * as THREE from 'three';
 import { PhysicsManager } from './PhysicsManager';
+import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
+import { EffectsManager } from './EffectsManager';
+import { AudioManager } from './AudioManager';
+import { Enemy } from '../entities/Enemy';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -24,6 +29,9 @@ export class SceneManager {
   private stars!: THREE.Points;
 
   private shadowCameraSize: number = 200;
+
+  // Enemy spawning system
+  private enemySpawningSystem: DynamicEnemySpawningSystem | null = null;
 
   private TIME_PHASES = {
     DEEP_NIGHT_START: 0.75,
@@ -259,7 +267,53 @@ export class SceneManager {
   }
 
   public createDefaultWorld(): void {
-    // Implementation for creating default world, including sun, moon, stars, terrain, etc.
+    // Create sun mesh
+    const sunGeometry = new THREE.SphereGeometry(50, 32, 32);
+    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFAA });
+    this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    this.scene.add(this.sun);
+
+    // Create moon mesh
+    const moonGeometry = new THREE.SphereGeometry(30, 32, 32);
+    const moonMaterial = new THREE.MeshBasicMaterial({ color: 0xB0C4DE });
+    this.moon = new THREE.Mesh(moonGeometry, moonMaterial);
+    this.scene.add(this.moon);
+
+    // Create stars
+    const starGeometry = new THREE.BufferGeometry();
+    const starPositions = [];
+    for (let i = 0; i < 1000; i++) {
+      const x = (Math.random() - 0.5) * 4000;
+      const y = Math.random() * 2000 + 500;
+      const z = (Math.random() - 0.5) * 4000;
+      starPositions.push(x, y, z);
+    }
+    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starPositions, 3));
+    const starMaterial = new THREE.PointsMaterial({ color: 0xFFFFFF, size: 2 });
+    this.stars = new THREE.Points(starGeometry, starMaterial);
+    this.scene.add(this.stars);
+
+    console.log("Default world created with sun, moon, and stars");
+  }
+
+  // NEW: Enemy spawning system initialization
+  public initializeEnemySpawning(effectsManager: EffectsManager, audioManager: AudioManager): void {
+    this.enemySpawningSystem = new DynamicEnemySpawningSystem(this.scene, effectsManager, audioManager);
+    console.log("Enemy spawning system initialized");
+  }
+
+  public startEnemySpawning(playerPosition: THREE.Vector3): void {
+    if (this.enemySpawningSystem) {
+      this.enemySpawningSystem.startSpawning(playerPosition);
+      console.log("Enemy spawning started");
+    }
+  }
+
+  public getEnemies(): Enemy[] {
+    if (this.enemySpawningSystem) {
+      return this.enemySpawningSystem.getEnemies();
+    }
+    return [];
   }
 
   // UPDATED: Enhanced day/night lighting updates with dynamic moon system
@@ -301,7 +355,9 @@ export class SceneManager {
       // Update moon material color based on elevation
       const moonMaterial = this.moon.material as THREE.MeshBasicMaterial;
       moonMaterial.color.copy(moonColor);
-      moonMaterial.emissiveIntensity = 0.1 + (moonIntensity * 0.2); // Subtle glow effect
+      // FIXED: Use emissive instead of emissiveIntensity for MeshBasicMaterial
+      moonMaterial.emissive.copy(moonColor);
+      moonMaterial.emissive.multiplyScalar(0.1 + (moonIntensity * 0.2)); // Subtle glow effect
     }
 
     // Update sun intensity and color temperature based on time
@@ -347,6 +403,11 @@ export class SceneManager {
     this.updateSynchronizedDayNightLighting();
     this.updateSynchronizedFogForTime();
     this.updateStarVisibility();
+
+    // Update enemy spawning system
+    if (this.enemySpawningSystem) {
+      this.enemySpawningSystem.update(deltaTime, playerPosition);
+    }
 
     // Additional updates related to player position and region loading can be added here
   }
@@ -403,6 +464,9 @@ export class SceneManager {
       } else {
         this.stars.material.dispose();
       }
+    }
+    if (this.enemySpawningSystem) {
+      this.enemySpawningSystem.dispose();
     }
   }
 }
