@@ -72,22 +72,25 @@ export class TimeUtils {
     
     switch (phase) {
       case 'night':
-        return 0.1 + (0.3 * moonElevation);
+        // Much darker night with minimal moon influence
+        return 0.05 + (0.1 * moonElevation);
       case 'dawn':
         const { factor: dawnFactor } = this.getPhaseTransitionFactor(time, timePhases);
-        return 0.3 + (1.5 * ColorUtils.smoothStep(0, 1, dawnFactor));
+        // Very gradual brightening that starts late in dawn phase
+        const delayedDawnFactor = ColorUtils.exponentialDecay(Math.max(0, dawnFactor - 0.6) / 0.4, 3);
+        return 0.15 + (0.8 * delayedDawnFactor);
       case 'day':
         return 1.8;
       case 'sunset':
         const { factor: sunsetFactor } = this.getPhaseTransitionFactor(time, timePhases);
-        return 1.8 - (1.2 * ColorUtils.exponentialDecay(sunsetFactor, 2));
+        return 1.8 - (1.3 * ColorUtils.exponentialDecay(sunsetFactor, 2));
       case 'civilTwilight':
-        return 0.6;
+        return 0.5;
       case 'nauticalTwilight':
-        return 0.4;
+        return 0.25;
       case 'astronomicalTwilight':
         const { factor: astroFactor } = this.getPhaseTransitionFactor(time, timePhases);
-        return 0.4 - (0.3 * ColorUtils.exponentialDecay(astroFactor, 2));
+        return 0.25 - (0.2 * ColorUtils.exponentialDecay(astroFactor, 2));
       default:
         return 1.0;
     }

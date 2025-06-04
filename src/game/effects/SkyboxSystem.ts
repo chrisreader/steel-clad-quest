@@ -91,26 +91,25 @@ export class SkyboxSystem {
         vec3 getSkyColorForPhase(float time, float heightFactor) {
           vec3 zenithColor, horizonColor;
           
-          // Improved phase boundaries with better color isolation
-          if (time >= 0.0 && time < 0.05) {
-            // Deep night
+          // Much more realistic phase transitions with delayed brightening
+          if (time >= 0.0 && time < 0.08) {
+            // Deep night - stay dark longer
             zenithColor = nightZenith;
             horizonColor = nightHorizon;
-          } else if (time >= 0.05 && time < 0.15) {
-            // Pre-dawn to dawn transition with delayed brightening
-            float factor = (time - 0.05) / 0.1;
-            // Delay the transition to prevent early brightening
-            factor = exponentialDecay(max(0.0, factor - 0.3) / 0.7, 2.0);
+          } else if (time >= 0.08 && time < 0.12) {
+            // Very gradual pre-dawn transition
+            float factor = (time - 0.08) / 0.04;
+            factor = exponentialDecay(max(0.0, factor - 0.5) / 0.5, 4.0);
             zenithColor = lerpColor(nightZenith, dawnZenith, factor);
             horizonColor = lerpColor(nightHorizon, dawnHorizon, factor);
-          } else if (time >= 0.15 && time < 0.25) {
-            // Dawn to day transition with smoother curve
-            float factor = (time - 0.15) / 0.1;
-            factor = smoothStep(0.2, 1.0, factor);
+          } else if (time >= 0.12 && time < 0.25) {
+            // Dawn phase with severe delay in brightening
+            float factor = (time - 0.12) / 0.13;
+            factor = exponentialDecay(max(0.0, factor - 0.7) / 0.3, 3.0);
             zenithColor = lerpColor(dawnZenith, dayZenith, factor);
             horizonColor = lerpColor(dawnHorizon, dayHorizon, factor);
           } else if (time >= 0.25 && time < 0.65) {
-            // Full day - maintain clean blue-white atmosphere
+            // Full day - maintain clean colors longer
             zenithColor = dayZenith;
             horizonColor = dayHorizon;
           } else if (time >= 0.65 && time < 0.75) {
@@ -140,23 +139,17 @@ export class SkyboxSystem {
           } else {
             // Astronomical twilight to night
             float factor = (time - 0.95) / 0.05;
-            factor = exponentialDecay(factor, 2.0);
+            factor = smoothStep(0.0, 1.0, factor);
             zenithColor = lerpColor(astroTwilightZenith, nightZenith, factor);
             horizonColor = lerpColor(astroTwilightHorizon, nightHorizon, factor);
           }
           
-          // Enhanced atmospheric perspective for more realistic look
-          float adjustedHeightFactor = pow(heightFactor, 1.2);
+          // Atmospheric perspective adjusted for more realistic look
+          float adjustedHeightFactor = pow(heightFactor, 1.0);
           
-          // Special handling for day phase to maintain clean blue-white horizon
-          if (time >= 0.25 && time < 0.65) {
+          // Special handling for night and dawn phases
+          if (time < 0.25) {
             adjustedHeightFactor = pow(heightFactor, 0.8);
-          }
-          
-          // Apply stronger height-based darkening during twilight phases
-          if (time >= 0.75 && time <= 1.0) {
-            float twilightDarkening = pow(heightFactor, 0.6);
-            adjustedHeightFactor = twilightDarkening;
           }
           
           return lerpColor(horizonColor, zenithColor, adjustedHeightFactor);
@@ -180,8 +173,8 @@ export class SkyboxSystem {
               }
               starVisibility = clamp(starVisibility, 0.0, 1.0);
               
-              float starIntensity = 0.5 + 0.4 * moonElevation;
-              skyColor += vec3(0.9, 0.9, 1.0) * starIntensity * starVisibility;
+              float starIntensity = 0.3 + 0.2 * moonElevation; // Reduced star intensity
+              skyColor += vec3(0.8, 0.8, 1.0) * starIntensity * starVisibility;
             }
           }
           

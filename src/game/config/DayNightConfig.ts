@@ -1,8 +1,8 @@
 
 export const TIME_PHASES = {
   NIGHT_START: 0.0,
-  NIGHT_END: 0.15,
-  DAWN_START: 0.15,
+  NIGHT_END: 0.12,
+  DAWN_START: 0.12,
   DAWN_END: 0.25,
   DAY_START: 0.25,
   DAY_END: 0.7,
@@ -26,8 +26,8 @@ export const DAY_NIGHT_CONFIG = {
 
 export const LIGHTING_CONFIG = {
   ambient: {
-    color: 0x404040,
-    baseIntensity: 1.0
+    color: 0x1a1a2e, // Cooler night color
+    baseIntensity: 0.8
   },
   directional: {
     color: 0xffffff,
@@ -39,8 +39,8 @@ export const LIGHTING_CONFIG = {
     shadowCameraFar: 500
   },
   moon: {
-    color: 0x6495ED,
-    baseIntensity: 0.4
+    color: 0x4a5d7a, // Cooler moon color
+    baseIntensity: 0.25 // Reduced moon influence
   },
   tavern: {
     color: 0xFFB366,
@@ -64,19 +64,19 @@ export const FOG_CONFIG = {
   far: 120
 };
 
-// Realistic color palettes for each phase
+// More realistic color palettes with darker pre-sunrise colors
 export const SKY_COLOR_PALETTES = {
   night: {
     zenith: 0x000428,
-    horizon: 0x004e92
+    horizon: 0x001122
   },
   dawn: {
-    zenith: 0x87CEEB,
-    horizon: 0xFFC373  // Less pink, more natural orange
+    zenith: 0x1a1a3a, // Much darker dawn zenith
+    horizon: 0x4a3c5a  // Muted purple instead of bright orange
   },
   day: {
     zenith: 0x4A90E2,
-    horizon: 0xB0C4DE  // More blue-white, less sky blue
+    horizon: 0xB0C4DE
   },
   sunset: {
     zenith: 0x4A5D7A,
@@ -84,7 +84,7 @@ export const SKY_COLOR_PALETTES = {
   },
   civilTwilight: {
     zenith: 0x1a1a3a,
-    horizon: 0x4A5D7A
+    horizon: 0x2a2a4a
   },
   nauticalTwilight: {
     zenith: 0x0f0f2a,
@@ -97,11 +97,11 @@ export const SKY_COLOR_PALETTES = {
 };
 
 export const FOG_COLOR_PALETTES = {
-  night: 0x000050,
-  dawn: 0x8B9DC3,     // Softer blue-gray instead of bright cream
-  day: 0x87CEEB,      // Cleaner blue-white instead of steel blue
+  night: 0x000040,
+  dawn: 0x2a2a4a,     // Much darker dawn fog
+  day: 0x87CEEB,
   sunset: 0xFF8C42,
-  civilTwilight: 0x2E2E5E,
-  nauticalTwilight: 0x1A1A3A,
-  astronomicalTwilight: 0x0D0D26
+  civilTwilight: 0x1e1e3e,
+  nauticalTwilight: 0x1a1a3a,
+  astronomicalTwilight: 0x0d0d26
 };

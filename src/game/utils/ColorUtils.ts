@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class ColorUtils {
@@ -21,13 +22,13 @@ export class ColorUtils {
     const moonElevation = getMoonElevationFactor();
     
     const fogPalettes = {
-      night: new THREE.Color(0x000050),
-      dawn: new THREE.Color(0x8B9DC3),     // Updated to softer blue-gray
-      day: new THREE.Color(0x87CEEB),      // Updated to cleaner blue-white
+      night: new THREE.Color(0x000040),
+      dawn: new THREE.Color(0x2a2a4a),     // Much darker dawn fog
+      day: new THREE.Color(0x87CEEB),
       sunset: new THREE.Color(0xFF8C42),
-      civilTwilight: new THREE.Color(0x2E2E5E),
-      nauticalTwilight: new THREE.Color(0x1A1A3A),
-      astronomicalTwilight: new THREE.Color(0x0D0D26)
+      civilTwilight: new THREE.Color(0x1e1e3e),
+      nauticalTwilight: new THREE.Color(0x1a1a3a),
+      astronomicalTwilight: new THREE.Color(0x0d0d26)
     };
     
     const currentColor = fogPalettes[phase as keyof typeof fogPalettes] || fogPalettes.day;
@@ -51,23 +52,24 @@ export class ColorUtils {
         transitionFactor = this.exponentialDecay(lateTransition, 1.5);
       }
     } else if (phase === 'night' && nextPhase === 'dawn') {
-      // Delay the dawn transition to prevent early brightening
-      transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.3) / 0.7, 2);
+      // Severely delay the dawn transition to prevent early brightening
+      transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.7) / 0.3, 4);
     } else if (phase === 'dawn' && nextPhase === 'day') {
-      // Smoother transition from dawn to day
-      transitionFactor = this.smoothStep(0.2, 1.0, factor);
+      // Much more gradual transition from dawn to day
+      transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.5) / 0.5, 2);
     } else if (phase === 'sunset' || phase === 'civilTwilight') {
       transitionFactor = this.exponentialDecay(factor, 2);
-    } else if (phase === 'dawn') {
+    } else if (phase === 'astronomicalTwilight' && nextPhase === 'night') {
+      // Smoother transition to deep night
       transitionFactor = this.smoothStep(0, 1, factor);
     }
     
     const resultColor = this.lerpColor(currentColor, nextColor, transitionFactor);
     
-    // Add moon influence during night phases only
+    // Minimal moon influence during night phases only
     if (phase === 'night' || phase === 'astronomicalTwilight') {
-      const moonInfluence = moonElevation * 0.2; // Reduced influence
-      resultColor.lerp(new THREE.Color(0x001155), moonInfluence);
+      const moonInfluence = moonElevation * 0.1; // Further reduced influence
+      resultColor.lerp(new THREE.Color(0x000a1a), moonInfluence);
     }
     
     return resultColor.getHex();
@@ -77,13 +79,13 @@ export class ColorUtils {
     const { phase, nextPhase, factor } = this.getPhaseTransitionFactor(time, timePhases);
     
     const lightColors = {
-      night: new THREE.Color(0x4169E1),
-      dawn: new THREE.Color(0xFFE4CC),     // Softer dawn light
+      night: new THREE.Color(0x2a3a5a), // Cooler night light
+      dawn: new THREE.Color(0x4a4a6a),  // Much darker dawn light
       day: new THREE.Color(0xFFFAF0),
       sunset: new THREE.Color(0xFFE4B5),
-      civilTwilight: new THREE.Color(0x8A8ACD),
-      nauticalTwilight: new THREE.Color(0x6A5ACD),
-      astronomicalTwilight: new THREE.Color(0x4169E1)
+      civilTwilight: new THREE.Color(0x3a3a5a),
+      nauticalTwilight: new THREE.Color(0x2a2a4a),
+      astronomicalTwilight: new THREE.Color(0x2a3a5a)
     };
     
     const currentColor = lightColors[phase as keyof typeof lightColors] || lightColors.day;
@@ -106,10 +108,11 @@ export class ColorUtils {
         transitionFactor = this.smoothStep(0, 1, lateTransition);
       }
     } else if (phase === 'night' && nextPhase === 'dawn') {
-      // Prevent early light brightening
-      transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.4) / 0.6, 1.5);
+      // Prevent early light brightening with severe delay
+      transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.8) / 0.2, 5);
     } else if (phase === 'dawn' && nextPhase === 'day') {
-      transitionFactor = this.smoothStep(0.3, 1.0, factor);
+      // Very gradual transition from dawn to day
+      transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.6) / 0.4, 2.5);
     } else if (phase === 'sunset' || phase === 'dawn') {
       transitionFactor = this.smoothStep(0, 1, factor);
     } else if (phase === 'civilTwilight' || phase === 'nauticalTwilight') {
