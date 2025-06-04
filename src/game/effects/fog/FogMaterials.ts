@@ -95,14 +95,15 @@ export class FogMaterialFactory {
       layerDepth: { value: 0.0 }
     };
 
-    // Override specific settings for walls
-    uniforms.dayFogColor.value = new THREE.Color(0xF5F5F5);
-    uniforms.nightFogColor.value = new THREE.Color(0x707090);
+    // Enhanced colors and settings for better wall visibility
+    uniforms.dayFogColor.value = new THREE.Color(0xE8E8E8);
+    uniforms.nightFogColor.value = new THREE.Color(0x808090);
     uniforms.sunriseFogColor.value = new THREE.Color(0xFFE8D0);
     uniforms.sunsetFogColor.value = new THREE.Color(0xFFDCC0);
-    uniforms.fogDensity.value = 0.05;
-    uniforms.noiseScale.value = 0.015;
+    uniforms.fogDensity.value = 0.12; // Increased base density
+    uniforms.noiseScale.value = 0.02;
     uniforms.windDirection.value = new THREE.Vector2(1.0, 0.3);
+    uniforms.maxFogOpacity.value = 0.6; // Increased max opacity
 
     return new THREE.ShaderMaterial({
       uniforms,

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { FogMaterialFactory } from './FogMaterials';
 import { FogGeometryFactory } from './FogGeometryFactory';
@@ -51,54 +50,56 @@ export class FogLayerManager {
   }
 
   public createFogWalls(): void {
-    const layerConfigs: LayerConfig[] = [
-      { distances: [25, 45, 70, 100, 140, 190], heights: [15, 18, 22, 25, 28, 30] },
-      { distances: [35, 60, 90, 130, 180, 240], heights: [12, 15, 18, 20, 22, 25] },
-      { distances: [50, 80, 120, 170, 230, 300], heights: [10, 12, 15, 18, 20, 22] }
+    console.log("🌫️ [FogLayerManager] Creating fog walls...");
+    
+    // Simplified fog wall configuration for better visibility
+    const wallConfigs = [
+      { distance: 30, height: 20, wallCount: 12 },
+      { distance: 60, height: 25, wallCount: 16 },
+      { distance: 100, height: 30, wallCount: 20 }
     ];
     
-    layerConfigs.forEach((layerConfig, layerIndex) => {
-      layerConfig.distances!.forEach((distance, distanceIndex) => {
-        const wallHeight = layerConfig.heights![distanceIndex];
-        const wallWidth = 400 + distanceIndex * 100;
+    wallConfigs.forEach((config, layerIndex) => {
+      for (let i = 0; i < config.wallCount; i++) {
+        const geometry = FogGeometryFactory.createFogGeometry({
+          size: 60, // Wall width
+          height: config.height,
+          segments: 12,
+          displacement: 2.0,
+          type: 'wall'
+        });
         
-        // Reduced wall count for better performance
-        for (let i = 0; i < 16; i++) {
-          const geometry = FogGeometryFactory.createFogGeometry({
-            size: wallWidth,
-            height: wallHeight,
-            segments: 16,
-            displacement: 1.5,
-            type: 'wall'
-          });
-          
-          const material = FogMaterialFactory.createFogWallMaterial();
-          const wall = new THREE.Mesh(geometry, material);
-          
-          const angle = (i / 16) * Math.PI * 2;
-          wall.position.x = Math.cos(angle) * distance;
-          wall.position.z = Math.sin(angle) * distance;
-          wall.position.y = wallHeight / 2 - 2;
-          wall.rotation.y = angle + Math.PI / 2;
-          
-          const wallDensity = 0.02 + (distanceIndex * 0.008) + (layerIndex * 0.005);
-          material.uniforms.fogDensity.value = wallDensity;
-          material.uniforms.layerDepth.value = layerIndex * 0.3;
-          material.uniforms.fogWallHeight.value = wallHeight;
-          
-          // Store metadata for updates
-          (wall as any).baseDistance = distance;
-          (wall as any).wallIndex = i;
-          (wall as any).layerIndex = layerIndex;
-          (wall as any).distanceIndex = distanceIndex;
-          
-          this.fogWallLayers.push(wall);
-          this.scene.add(wall);
-        }
-      });
+        const material = FogMaterialFactory.createFogWallMaterial();
+        const wall = new THREE.Mesh(geometry, material);
+        
+        // Position walls in a circle around the origin
+        const angle = (i / config.wallCount) * Math.PI * 2;
+        wall.position.x = Math.cos(angle) * config.distance;
+        wall.position.z = Math.sin(angle) * config.distance;
+        wall.position.y = config.height / 2; // Center the wall vertically
+        
+        // Rotate wall to face inward
+        wall.rotation.y = angle + Math.PI / 2;
+        
+        // Set wall-specific uniforms
+        material.uniforms.fogDensity.value = 0.08 + (layerIndex * 0.02);
+        material.uniforms.fogWallHeight.value = config.height;
+        material.uniforms.layerDepth.value = layerIndex * 0.2;
+        
+        // Store metadata for updates
+        (wall as any).baseDistance = config.distance;
+        (wall as any).wallIndex = i;
+        (wall as any).layerIndex = layerIndex;
+        (wall as any).wallCount = config.wallCount;
+        
+        this.fogWallLayers.push(wall);
+        this.scene.add(wall);
+        
+        console.log(`🌫️ Created fog wall ${i} at distance ${config.distance}, angle ${(angle * 180 / Math.PI).toFixed(1)}°`);
+      }
     });
     
-    console.log(`Created ${this.fogWallLayers.length} optimized fog walls`);
+    console.log(`🌫️ [FogLayerManager] Created ${this.fogWallLayers.length} fog walls total`);
   }
 
   public createAtmosphericLayers(): void {
@@ -216,17 +217,19 @@ export class FogLayerManager {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
         material.uniforms.playerPosition.value.copy(playerPosition);
-        material.uniforms.fogDensityMultiplier.value = updateData.densityMultiplier * 0.6;
+        material.uniforms.fogDensityMultiplier.value = updateData.densityMultiplier * 1.2; // Increased visibility
         material.uniforms.maxFogDistance.value = updateData.maxDistance;
-        material.uniforms.maxFogOpacity.value = updateData.maxOpacity * 0.5;
+        material.uniforms.maxFogOpacity.value = updateData.maxOpacity * 0.8; // Increased opacity
         material.uniforms.blendingAlpha.value = updateData.blendingAlpha;
       }
       
       const wallData = wall as any;
       const baseDistance = wallData.baseDistance;
       const wallIndex = wallData.wallIndex;
+      const wallCount = wallData.wallCount;
       
-      const angle = (wallIndex / 16) * Math.PI * 2;
+      // Update wall position to follow player at fixed distance
+      const angle = (wallIndex / wallCount) * Math.PI * 2;
       wall.position.x = playerPosition.x + Math.cos(angle) * baseDistance;
       wall.position.z = playerPosition.z + Math.sin(angle) * baseDistance;
     });
