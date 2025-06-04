@@ -720,18 +720,18 @@ export class VolumetricFogSystem {
   }
 
   private createFogWallLayers(): void {
-    // ENHANCED COVERAGE: Create more comprehensive fog wall layers to prevent horizon visibility
-    const wallDistances = [20, 30, 45, 65, 90, 115]; // Extended range with closer start
-    const wallHeights = [25, 35, 50, 65, 80, 95]; // Increased heights for complete coverage
-    const wallWidths = [400, 500, 600, 700, 800, 900]; // Scaled for distances
-    const layerDepths = [0.0, 0.15, 0.3, 0.45, 0.6, 0.75]; // More layers for depth
+    // FIXED COVERAGE: Start at 30 units and extend backwards for realistic depth perception
+    const wallDistances = [30, 45, 65, 90, 120, 150, 200, 280, 400]; // Extended range for depth perception
+    const wallHeights = [35, 50, 65, 80, 95, 110, 130, 150, 180]; // Increased heights for complete coverage
+    const wallWidths = [500, 600, 700, 800, 900, 1000, 1200, 1500, 2000]; // Scaled for distances
+    const layerDepths = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]; // More layers for depth
     
     wallDistances.forEach((distance, distanceIndex) => {
       const wallHeight = wallHeights[distanceIndex];
       const wallWidth = wallWidths[distanceIndex];
       const layerDepth = layerDepths[distanceIndex];
       
-      // Create 24 walls for better coverage (increased from 16)
+      // Create 24 walls for better coverage
       for (let i = 0; i < 24; i++) {
         // Create organic wall geometry with more segments for deformation
         const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 32, 16);
@@ -761,7 +761,7 @@ export class VolumetricFogSystem {
         
         const wall = new THREE.Mesh(wallGeometry, this.fogWallMaterial.clone());
         
-        const angle = (i / 24) * Math.PI * 2; // Updated for 24 walls
+        const angle = (i / 24) * Math.PI * 2;
         wall.position.x = Math.cos(angle) * distance;
         wall.position.z = Math.sin(angle) * distance;
         wall.position.y = wallHeight / 2 - 5; // Position to extend below ground level
@@ -771,8 +771,8 @@ export class VolumetricFogSystem {
         wall.rotation.x += (Math.random() - 0.5) * 0.1;
         wall.rotation.z += (Math.random() - 0.5) * 0.05;
         
-        // Set distance-specific wall density and depth for layered effect
-        const wallDensity = 0.25 + (distanceIndex * 0.03); // Increased base density
+        // Set distance-specific wall density for gradual depth perception
+        const wallDensity = 0.15 + (distanceIndex * 0.04); // Progressive density increase
         const material = wall.material as THREE.ShaderMaterial;
         material.uniforms.fogWallDensity.value = wallDensity;
         material.uniforms.layerDepth.value = layerDepth;
@@ -782,7 +782,7 @@ export class VolumetricFogSystem {
       }
     });
     
-    console.log(`Created ${this.fogWallLayers.length} enhanced fog wall layers with complete horizon coverage`);
+    console.log(`Created ${this.fogWallLayers.length} enhanced fog wall layers starting at 30 units for realistic depth perception`);
   }
 
   private createSkyFogLayers(): void {
@@ -897,12 +897,12 @@ export class VolumetricFogSystem {
       layer.position.z = THREE.MathUtils.lerp(layer.position.z, playerPosition.z, lagFactor * deltaTime);
     });
     
-    // ALIGNED WITH THREE.JS FOG: Update fog wall positions to maintain THREE.js fog range distances
+    // FIXED: Update fog wall positions to maintain proper depth perception distances starting at 30 units
     this.fogWallLayers.forEach((wall, index) => {
-      const wallGroup = Math.floor(index / 24); // Changed to 24 walls per group
+      const wallGroup = Math.floor(index / 24);
       const wallInGroup = index % 24;
-      const angle = (wallInGroup / 24) * Math.PI * 2; // Updated for 24 walls
-      const distance = [20, 30, 45, 65, 90, 115][wallGroup]; // Updated distances
+      const angle = (wallInGroup / 24) * Math.PI * 2;
+      const distance = [30, 45, 65, 90, 120, 150, 200, 280, 400][wallGroup]; // Updated distances starting at 30
       
       wall.position.x = playerPosition.x + Math.cos(angle) * distance;
       wall.position.z = playerPosition.z + Math.sin(angle) * distance;
