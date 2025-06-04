@@ -22,7 +22,7 @@ export class VolumetricFogSystem {
     this.createHorizonFogMaterial();
     this.createGroundFogMaterial();
     this.createFogLayers();
-    this.createReducedFogWalls();
+    this.createRealisticFogWalls();
     this.createAtmosphericLayers();
     this.createHorizonBlendingLayers();
     this.createGroundFogLayers();
@@ -956,23 +956,24 @@ export class VolumetricFogSystem {
     console.log(`Created ${this.fogLayers.length} realistic low-lying fog layers`);
   }
 
-  private createReducedFogWalls(): void {
-    // UPDATED: Significantly reduced fog walls to eliminate vertical ray artifacts
+  private createRealisticFogWalls(): void {
+    // Create multiple layers of realistic fog walls with reduced heights
     const layerConfigs = [
-      { distances: [60, 120, 200], heights: [8, 12, 15] }, // Much lower heights
-      { distances: [80, 150, 250], heights: [6, 10, 12] }  // Fewer and lower walls
+      { distances: [25, 45, 70, 100, 140, 190], heights: [15, 18, 22, 25, 28, 30] },
+      { distances: [35, 60, 90, 130, 180, 240], heights: [12, 15, 18, 20, 22, 25] },
+      { distances: [50, 80, 120, 170, 230, 300], heights: [10, 12, 15, 18, 20, 22] }
     ];
     
     layerConfigs.forEach((layerConfig, layerIndex) => {
       layerConfig.distances.forEach((distance, distanceIndex) => {
         const wallHeight = layerConfig.heights[distanceIndex];
-        const wallWidth = 200 + distanceIndex * 50; // Reduced width
+        const wallWidth = 400 + distanceIndex * 100;
         
-        // Create fewer walls per ring (reduced from 20 to 8)
-        for (let i = 0; i < 8; i++) {
-          const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 12, 6);
+        // Create fewer walls per ring for better performance
+        for (let i = 0; i < 20; i++) {
+          const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 20, 10);
           
-          // Minimal displacement to reduce streaking
+          // Add subtle organic displacement
           const positionAttribute = wallGeometry.getAttribute('position');
           const positions = positionAttribute.array as Float32Array;
           
@@ -980,12 +981,12 @@ export class VolumetricFogSystem {
             const x = positions[j];
             const y = positions[j + 1];
             
-            const displacement = Math.sin(x * 0.01) * Math.cos(y * 0.02) * 0.5; // Much reduced
+            const displacement = Math.sin(x * 0.02) * Math.cos(y * 0.03) * 1.5; // Reduced displacement
             const heightFactor = (y + wallHeight / 2) / wallHeight;
             
-            positions[j] += displacement * 0.1;
-            positions[j + 1] += displacement * heightFactor * 0.3;
-            positions[j + 2] += displacement * 0.05;
+            positions[j] += displacement * 0.2;
+            positions[j + 1] += displacement * heightFactor * 0.8;
+            positions[j + 2] += displacement * 0.15;
           }
           
           positionAttribute.needsUpdate = true;
@@ -993,17 +994,17 @@ export class VolumetricFogSystem {
           
           const wall = new THREE.Mesh(wallGeometry, this.fogWallMaterial.clone());
           
-          const angle = (i / 8) * Math.PI * 2;
+          const angle = (i / 20) * Math.PI * 2;
           wall.position.x = Math.cos(angle) * distance;
           wall.position.z = Math.sin(angle) * distance;
-          wall.position.y = wallHeight / 2 - 3; // Lower positioning
+          wall.position.y = wallHeight / 2 - 2; // Lower positioning
           wall.rotation.y = angle + Math.PI / 2;
           
-          // Much reduced density for subtle atmospheric effect
-          const wallDensity = 0.008 + (distanceIndex * 0.003); // Significantly reduced
+          // Reduced density for realism
+          const wallDensity = 0.02 + (distanceIndex * 0.008) + (layerIndex * 0.005);
           const material = wall.material as THREE.ShaderMaterial;
           material.uniforms.fogWallDensity.value = wallDensity;
-          material.uniforms.layerDepth.value = layerIndex * 0.2;
+          material.uniforms.layerDepth.value = layerIndex * 0.3;
           material.uniforms.fogWallHeight.value = wallHeight;
           
           // Store for smooth transitions
@@ -1018,9 +1019,9 @@ export class VolumetricFogSystem {
       });
     });
     
-    console.log(`Created ${this.fogWallLayers.length} reduced fog walls to eliminate vertical ray artifacts`);
+    console.log(`Created ${this.fogWallLayers.length} realistic fog walls with atmospheric perspective`);
   }
-  
+
   private createAtmosphericLayers(): void {
     // Create atmospheric fog layers for distant haze
     const atmosphericDistances = [200, 300, 400];
