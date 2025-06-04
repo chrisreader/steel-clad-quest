@@ -103,6 +103,10 @@ export class SceneManager {
     // Setup distance-based fog with visible fog layer
     this.setupEnhancedFog();
     
+    // Initialize volumetric fog system after scene setup
+    this.volumetricFogSystem = new VolumetricFogSystem(this.scene);
+    console.log("VolumetricFogSystem initialized with complete horizon blocking");
+    
     // Setup enhanced lighting with day/night cycle
     this.setupDayNightLighting();
     
@@ -128,7 +132,7 @@ export class SceneManager {
     // Enhanced fog system that changes color based on time of day
     const fogColor = this.getFogColorForTime(this.timeOfDay);
     const fogNear = 25;
-    const fogFar = 120; // Increased for better volumetric fog blending
+    const fogFar = 80; // Reduced for better volumetric fog blending
     
     this.fog = new THREE.Fog(fogColor, fogNear, fogFar);
     this.scene.fog = this.fog;
@@ -623,7 +627,7 @@ export class SceneManager {
       this.lastPlayerPosition.copy(playerPosition);
     }
     
-    // Update volumetric fog system
+    // Update volumetric fog system with proper parameter order
     if (this.volumetricFogSystem && playerPosition) {
       this.volumetricFogSystem.update(deltaTime, this.timeOfDay, playerPosition);
     }
@@ -1083,6 +1087,12 @@ export class SceneManager {
     if (this.enemySpawningSystem) {
       this.enemySpawningSystem.dispose();
       this.enemySpawningSystem = null;
+    }
+    
+    // NEW: Dispose volumetric fog system
+    if (this.volumetricFogSystem) {
+      this.volumetricFogSystem.dispose();
+      this.volumetricFogSystem = null;
     }
     
     for (const [regionKey, region] of this.loadedRegions.entries()) {
