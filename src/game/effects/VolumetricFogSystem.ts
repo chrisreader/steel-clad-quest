@@ -41,6 +41,25 @@ export class VolumetricFogSystem {
     return 0.0;
   }
   
+  private getFogDensityMultiplier(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    return 1.0 + darknessFactor * 0.5;
+  }
+  
+  private getFogMaxDistance(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    return 300.0 - darknessFactor * 50.0;
+  }
+  
+  private getFogMaxOpacity(timeOfDay: number): number {
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    return 0.25 + darknessFactor * 0.2;
+  }
+  
+  private getBlendingAlpha(timeOfDay: number): number {
+    return this.getDarknessFactor(timeOfDay);
+  }
+  
   private smoothStep(edge0: number, edge1: number, x: number): number {
     const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
     return t * t * (3 - 2 * t);
