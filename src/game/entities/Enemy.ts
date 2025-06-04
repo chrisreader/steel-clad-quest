@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
 import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
@@ -147,7 +148,124 @@ export class Enemy {
     }
   }
   
-  // ... keep existing code (createEnemyInterface, createEnemy methods) the same ...
+  // Create enemy interface wrapper for humanoid enemies
+  private createEnemyInterface(humanoidEnemy: OrcEnemy): EnemyInterface {
+    return {
+      type: EnemyType.ORC,
+      mesh: humanoidEnemy.getMesh(),
+      health: humanoidEnemy.getHealth(),
+      maxHealth: humanoidEnemy.getMaxHealth(),
+      speed: 3,
+      damage: 20,
+      goldReward: 50,
+      experienceReward: 25,
+      attackRange: 3.5,
+      damageRange: 2.5,
+      attackCooldown: 2000,
+      points: 50,
+      lastAttackTime: 0,
+      isDead: false,
+      isHit: false,
+      hitTime: 0,
+      deathTime: 0,
+      idleTime: 0,
+      walkTime: 0,
+      body: null,
+      head: null,
+      leftArm: null,
+      rightArm: null,
+      leftLeg: null,
+      rightLeg: null,
+      weapon: null,
+      hitBox: null,
+      deathAnimation: {
+        falling: false,
+        fallSpeed: 0,
+        rotationSpeed: 0.02
+      }
+    };
+  }
+
+  // Create legacy enemy for non-humanoid types
+  private createEnemy(type: EnemyType, position: THREE.Vector3): EnemyInterface {
+    const mesh = new THREE.Group();
+    mesh.position.copy(position);
+
+    // Create basic goblin geometry
+    const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.2, 8);
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x4A5D23 });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.6;
+    body.castShadow = true;
+    mesh.add(body);
+
+    // Create head
+    const headGeometry = new THREE.SphereGeometry(0.35, 8, 6);
+    const headMaterial = new THREE.MeshLambertMaterial({ color: 0x4A5D23 });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1.5;
+    head.castShadow = true;
+    mesh.add(head);
+
+    // Create simple limbs
+    const limbGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.8, 6);
+    const limbMaterial = new THREE.MeshLambertMaterial({ color: 0x4A5D23 });
+    
+    const leftArm = new THREE.Mesh(limbGeometry, limbMaterial);
+    leftArm.position.set(-0.5, 1.0, 0);
+    leftArm.castShadow = true;
+    mesh.add(leftArm);
+
+    const rightArm = new THREE.Mesh(limbGeometry, limbMaterial);
+    rightArm.position.set(0.5, 1.0, 0);
+    rightArm.castShadow = true;
+    mesh.add(rightArm);
+
+    const leftLeg = new THREE.Mesh(limbGeometry, limbMaterial);
+    leftLeg.position.set(-0.2, 0.0, 0);
+    leftLeg.castShadow = true;
+    mesh.add(leftLeg);
+
+    const rightLeg = new THREE.Mesh(limbGeometry, limbMaterial);
+    rightLeg.position.set(0.2, 0.0, 0);
+    rightLeg.castShadow = true;
+    mesh.add(rightLeg);
+
+    return {
+      type,
+      mesh,
+      health: 40,
+      maxHealth: 40,
+      speed: 4,
+      damage: 15,
+      goldReward: 30,
+      experienceReward: 15,
+      attackRange: 3.0,
+      damageRange: 2.0,
+      attackCooldown: 1500,
+      points: 30,
+      lastAttackTime: 0,
+      isDead: false,
+      isHit: false,
+      hitTime: 0,
+      deathTime: 0,
+      idleTime: 0,
+      walkTime: 0,
+      body,
+      head,
+      leftArm,
+      rightArm,
+      leftLeg,
+      rightLeg,
+      weapon: null,
+      hitBox: null,
+      deathAnimation: {
+        falling: false,
+        fallSpeed: 0,
+        rotationSpeed: 0.02
+      }
+    };
+  }
 
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
     if (this.isHumanoidEnemy && this.humanoidEnemy) {
@@ -270,6 +388,27 @@ export class Enemy {
       
       // Use idle animation when not moving
       this.updateLegacyIdleAnimation();
+    }
+  }
+
+  // PHASE 4: Standardized terrain-aware movement calculation
+  private calculateTerrainAwareMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3): THREE.Vector3 {
+    console.log(`🚶 [Enemy] Calculating terrain-aware movement from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
+    
+    if (this.movementHelper) {
+      console.log(`✅ [Enemy] Using EnemyMovementHelper for terrain-following`);
+      const finalPosition = this.movementHelper.calculateEnemyMovement(
+        currentPosition,
+        targetPosition,
+        this.movementConfig
+      );
+      console.log(`🚶 [Enemy] Movement helper result: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
+      return finalPosition;
+    } else {
+      console.warn(`⚠️ [Enemy] No movement helper - using enhanced terrain height detection`);
+      const finalPosition = this.ensureTerrainHeight(targetPosition);
+      console.log(`🚶 [Enemy] Enhanced terrain result: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
+      return finalPosition;
     }
   }
 
