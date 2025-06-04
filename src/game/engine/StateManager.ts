@@ -1,4 +1,3 @@
-
 import { GameState } from '../../types/GameTypes';
 
 export class StateManager {
@@ -39,9 +38,18 @@ export class StateManager {
   
   public start(): void {
     console.log("📊 [StateManager] Starting game...");
-    this.gameState.isPlaying = true;
-    this.gameState.isPaused = false;
-    this.gameState.isGameOver = false;
+    try {
+      this.gameState.isPlaying = true;
+      this.gameState.isPaused = false;
+      this.gameState.isGameOver = false;
+      console.log("📊 [StateManager] Game started successfully");
+    } catch (error) {
+      console.error("📊 [StateManager] Error starting game:", error);
+      // Continue anyway to prevent blocking
+      this.gameState.isPlaying = true;
+      this.gameState.isPaused = false;
+      this.gameState.isGameOver = false;
+    }
   }
   
   public pause(): void {
@@ -52,11 +60,22 @@ export class StateManager {
   
   public restart(): void {
     console.log("📊 [StateManager] Restarting game...");
-    this.gameState.isGameOver = false;
-    this.gameState.isPaused = false;
-    this.gameState.timeElapsed = 0;
-    this.gameState.score = 0;
-    this.totalElapsedTime = 0;
+    try {
+      this.gameState.isGameOver = false;
+      this.gameState.isPaused = false;
+      this.gameState.timeElapsed = 0;
+      this.gameState.score = 0;
+      this.totalElapsedTime = 0;
+      console.log("📊 [StateManager] Game restarted successfully");
+    } catch (error) {
+      console.error("📊 [StateManager] Error restarting game:", error);
+      // Continue anyway
+      this.gameState.isGameOver = false;
+      this.gameState.isPaused = false;
+      this.gameState.timeElapsed = 0;
+      this.gameState.score = 0;
+      this.totalElapsedTime = 0;
+    }
   }
   
   public stop(): void {
@@ -67,20 +86,37 @@ export class StateManager {
   public update(deltaTime: number): void {
     if (!this.gameState.isPlaying || this.gameState.isPaused) return;
     
-    this.totalElapsedTime += deltaTime;
-    this.gameState.timeElapsed = this.totalElapsedTime;
+    try {
+      this.totalElapsedTime += deltaTime;
+      this.gameState.timeElapsed = this.totalElapsedTime;
+    } catch (error) {
+      console.error("📊 [StateManager] Error updating state:", error);
+      // Continue silently to prevent blocking game loop
+    }
   }
   
   public setGameOver(score: number): void {
-    if (!this.gameState.isGameOver) {
+    try {
+      if (!this.gameState.isGameOver) {
+        this.gameState.isGameOver = true;
+        this.gameState.isPaused = true;
+        this.onGameOver(score);
+      }
+    } catch (error) {
+      console.error("📊 [StateManager] Error setting game over:", error);
+      // Set game over anyway
       this.gameState.isGameOver = true;
       this.gameState.isPaused = true;
-      this.onGameOver(score);
     }
   }
   
   public updateLocationState(isInTavern: boolean): void {
-    this.onLocationChange(isInTavern);
+    try {
+      this.onLocationChange(isInTavern);
+    } catch (error) {
+      console.error("📊 [StateManager] Error updating location state:", error);
+      // Continue silently
+    }
   }
   
   // Callback setters
