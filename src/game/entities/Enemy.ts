@@ -8,6 +8,9 @@ import { EnemyBodyParts } from './EnemyBody';
 import { EnemyAnimationSystem } from '../animation/EnemyAnimationSystem';
 import { OrcEnemy } from './humanoid/OrcEnemy';
 import { PassiveNPCBehavior, PassiveBehaviorState } from '../ai/PassiveNPCBehavior';
+import { EnemyMovementHelper, EnemyMovementConfig } from '../utils/movement/EnemyMovementHelper';
+import { TerrainSurfaceDetector } from '../utils/terrain/TerrainSurfaceDetector';
+import { PhysicsManager } from '../engine/PhysicsManager';
 
 // Enhanced enemy states for better movement control
 enum EnemyMovementState {
@@ -50,29 +53,54 @@ export class Enemy {
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
 
+  // NEW: Terrain-aware movement system
+  private movementHelper: EnemyMovementHelper | null = null;
+  private movementConfig: EnemyMovementConfig;
+
   constructor(
     scene: THREE.Scene,
     type: EnemyType,
     position: THREE.Vector3,
     effectsManager: EffectsManager,
-    audioManager: AudioManager
+    audioManager: AudioManager,
+    physicsManager?: PhysicsManager,
+    terrainDetector?: TerrainSurfaceDetector
   ) {
     this.scene = scene;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    
+    // Initialize movement config based on enemy type
+    this.movementConfig = {
+      speed: type === EnemyType.ORC ? 3 : 4,
+      radius: type === EnemyType.ORC ? 0.9 : 0.6,
+      slopeSpeedMultiplier: true,
+      maxSlopeAngle: 45
+    };
+
+    // Initialize terrain-aware movement if physics systems are available
+    if (physicsManager && terrainDetector) {
+      this.movementHelper = new EnemyMovementHelper(physicsManager, terrainDetector);
+      console.log(`🚶 Enemy ${type} initialized with terrain-aware movement`);
+    }
     
     // Create enemy based on type with humanoid system for orcs
     if (type === EnemyType.ORC) {
       this.humanoidEnemy = OrcEnemy.create(scene, position, effectsManager, audioManager);
       this.isHumanoidEnemy = true;
       
+      // Set movement helper for humanoid enemy
+      if (this.movementHelper) {
+        this.humanoidEnemy.setMovementHelper(this.movementHelper, this.movementConfig);
+      }
+      
       // Create interface wrapper for backward compatibility
       this.enemy = this.createEnemyInterface(this.humanoidEnemy);
       
-      console.log(`🗡️ [Enemy] Created humanoid orc with preserved functionality`);
+      console.log(`🗡️ [Enemy] Created humanoid orc with terrain-aware movement`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created legacy goblin enemy");
+      console.log("🗡️ [Enemy] Created legacy goblin enemy with terrain-aware movement");
       
       // Initialize AI behavior for legacy enemies
       this.passiveAI = new PassiveNPCBehavior(
@@ -448,19 +476,31 @@ export class Enemy {
       const baseSpeed = this.enemy.speed * 0.4; // Base passive speed
       const aiSpeed = baseSpeed * aiDecision.movementSpeed;
       
-      const movement = direction.multiplyScalar(aiSpeed * deltaTime);
-      const newPosition = currentPosition.add(movement);
-      newPosition.y = 0;
+      const moveAmount = aiSpeed * deltaTime;
+      const targetPosition = currentPosition.clone().add(direction.multiplyScalar(moveAmount));
+      
+      // Use terrain-aware movement if available
+      let finalPosition = targetPosition;
+      if (this.movementHelper) {
+        finalPosition = this.movementHelper.calculateEnemyMovement(
+          currentPosition,
+          targetPosition,
+          this.movementConfig
+        );
+      } else {
+        // Fallback to old flat movement
+        finalPosition.y = 0;
+      }
 
       // Safety checks
-      const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
+      const distanceFromSpawn = finalPosition.distanceTo(this.spawnPosition);
       
       // Updated to use rectangular safe zone bounds
-      const isInSafeZone = newPosition.x >= -6 && newPosition.x <= 6 && 
-                          newPosition.z >= -6 && newPosition.z <= 6;
+      const isInSafeZone = finalPosition.x >= -6 && finalPosition.x <= 6 && 
+                          finalPosition.z >= -6 && finalPosition.z <= 6;
 
       if (distanceFromSpawn < this.maxWanderDistance && !isInSafeZone) {
-        this.enemy.mesh.position.copy(newPosition);
+        this.enemy.mesh.position.copy(finalPosition);
         
         // Set rotation to face movement direction
         this.targetRotation = Math.atan2(direction.x, direction.z);
@@ -576,10 +616,22 @@ export class Enemy {
       this.targetRotation = Math.atan2(directionAwayFromSafeZone.x, directionAwayFromSafeZone.z);
       
       const moveAmount = this.enemy.speed * deltaTime;
-      const newPosition = this.enemy.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
-      newPosition.y = 0;
+      const targetPosition = this.enemy.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
       
-      this.enemy.mesh.position.copy(newPosition);
+      // Use terrain-aware movement if available
+      let finalPosition = targetPosition;
+      if (this.movementHelper) {
+        finalPosition = this.movementHelper.calculateEnemyMovement(
+          this.enemy.mesh.position,
+          targetPosition,
+          this.movementConfig
+        );
+      } else {
+        // Fallback to old flat movement
+        finalPosition.y = 0;
+      }
+      
+      this.enemy.mesh.position.copy(finalPosition);
       this.updateLegacyWalkAnimation(deltaTime);
       return;
     }
@@ -596,11 +648,23 @@ export class Enemy {
       
       if (distanceToPlayer > this.enemy.damageRange) {
         const moveAmount = this.enemy.speed * deltaTime;
-        const newPosition = this.enemy.mesh.position.clone();
-        newPosition.add(directionToPlayer.multiplyScalar(moveAmount));
-        newPosition.y = 0;
+        const targetPosition = this.enemy.mesh.position.clone();
+        targetPosition.add(directionToPlayer.multiplyScalar(moveAmount));
+        
+        // Use terrain-aware movement if available
+        let finalPosition = targetPosition;
+        if (this.movementHelper) {
+          finalPosition = this.movementHelper.calculateEnemyMovement(
+            this.enemy.mesh.position,
+            targetPosition,
+            this.movementConfig
+          );
+        } else {
+          // Fallback to old flat movement
+          finalPosition.y = 0;
+        }
       
-        this.enemy.mesh.position.copy(newPosition);
+        this.enemy.mesh.position.copy(finalPosition);
         this.updateLegacyWalkAnimation(deltaTime);
       }
       
@@ -621,11 +685,23 @@ export class Enemy {
         this.targetRotation = Math.atan2(direction.x, direction.z);
         
         const slowMoveAmount = this.enemy.speed * deltaTime * 0.3;
-        const newPosition = this.enemy.mesh.position.clone();
-        newPosition.add(direction.multiplyScalar(slowMoveAmount));
-        newPosition.y = 0;
+        const targetPosition = this.enemy.mesh.position.clone();
+        targetPosition.add(direction.multiplyScalar(slowMoveAmount));
         
-        this.enemy.mesh.position.copy(newPosition);
+        // Use terrain-aware movement if available
+        let finalPosition = targetPosition;
+        if (this.movementHelper) {
+          finalPosition = this.movementHelper.calculateEnemyMovement(
+            this.enemy.mesh.position,
+            targetPosition,
+            this.movementConfig
+          );
+        } else {
+          // Fallback to old flat movement
+          finalPosition.y = 0;
+        }
+        
+        this.enemy.mesh.position.copy(finalPosition);
       } else {
         this.movementState = EnemyMovementState.IDLE;
         this.updateLegacyIdleAnimation();
@@ -880,7 +956,9 @@ export class Enemy {
     playerPosition: THREE.Vector3,
     effectsManager: EffectsManager,
     audioManager: AudioManager,
-    difficulty: number = 1
+    difficulty: number = 1,
+    physicsManager?: PhysicsManager,
+    terrainDetector?: TerrainSurfaceDetector
   ): Enemy {
     const typeRoll = Math.random() * (1 + difficulty * 0.3);
     const type = typeRoll < 0.5 ? EnemyType.GOBLIN : EnemyType.ORC;
@@ -893,8 +971,8 @@ export class Enemy {
       playerPosition.z + Math.sin(angle) * spawnDistance
     );
     
-    const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager);
-    console.log(`🗡️ [Enemy] Created ${type} - Humanoid: ${enemy.isHumanoidEnemy}`);
+    const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager, physicsManager, terrainDetector);
+    console.log(`🗡️ [Enemy] Created ${type} with terrain-aware movement - Humanoid: ${enemy.isHumanoidEnemy}`);
     return enemy;
   }
   

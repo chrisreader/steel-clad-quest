@@ -5,6 +5,7 @@ import { AudioManager } from '../../engine/AudioManager';
 import { TextureGenerator } from '../../utils';
 import { EnemyHumanoid, HumanoidConfig } from './EnemyHumanoid';
 import { PassiveNPCBehavior, PassiveBehaviorState } from '../../ai/PassiveNPCBehavior';
+import { EnemyMovementHelper, EnemyMovementConfig } from '../../utils/movement/EnemyMovementHelper';
 
 export class OrcEnemy extends EnemyHumanoid {
   private static readonly ORC_CONFIG: HumanoidConfig = {
@@ -65,6 +66,15 @@ export class OrcEnemy extends EnemyHumanoid {
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
 
+  // NEW: Terrain-aware movement system
+  private movementHelper: EnemyMovementHelper | null = null;
+  private movementConfig: EnemyMovementConfig = {
+    speed: 3,
+    radius: 0.9,
+    slopeSpeedMultiplier: true,
+    maxSlopeAngle: 45
+  };
+
   constructor(
     scene: THREE.Scene,
     position: THREE.Vector3,
@@ -82,7 +92,13 @@ export class OrcEnemy extends EnemyHumanoid {
       8 // Safe zone radius
     );
     
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with advanced passive AI");
+    console.log("🗡️ [OrcEnemy] Created enhanced orc with terrain-aware movement");
+  }
+
+  public setMovementHelper(helper: EnemyMovementHelper, config: EnemyMovementConfig): void {
+    this.movementHelper = helper;
+    this.movementConfig = config;
+    console.log("🚶 [OrcEnemy] Terrain-aware movement system enabled");
   }
 
   public setPassiveMode(passive: boolean): void {
@@ -118,19 +134,31 @@ export class OrcEnemy extends EnemyHumanoid {
       const baseSpeed = this.config.speed * 0.4; // Base passive speed
       const aiSpeed = baseSpeed * aiDecision.movementSpeed;
       
-      const movement = direction.multiplyScalar(aiSpeed * deltaTime);
-      const newPosition = currentPosition.add(movement);
-      newPosition.y = 0;
+      const moveAmount = aiSpeed * deltaTime;
+      const targetPosition = currentPosition.clone().add(direction.multiplyScalar(moveAmount));
+
+      // Use terrain-aware movement if available
+      let finalPosition = targetPosition;
+      if (this.movementHelper) {
+        finalPosition = this.movementHelper.calculateEnemyMovement(
+          currentPosition,
+          targetPosition,
+          this.movementConfig
+        );
+      } else {
+        // Fallback to old flat movement
+        finalPosition.y = 0;
+      }
 
       // Safety checks
-      const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
+      const distanceFromSpawn = finalPosition.distanceTo(this.spawnPosition);
       
       // Updated to use rectangular safe zone bounds
-      const isInSafeZone = newPosition.x >= -6 && newPosition.x <= 6 && 
-                          newPosition.z >= -6 && newPosition.z <= 6;
+      const isInSafeZone = finalPosition.x >= -6 && finalPosition.x <= 6 && 
+                          finalPosition.z >= -6 && finalPosition.z <= 6;
 
       if (distanceFromSpawn < this.maxWanderDistance && !isInSafeZone) {
-        this.mesh.position.copy(newPosition);
+        this.mesh.position.copy(finalPosition);
         
         // Set rotation to face movement direction
         const targetRotation = Math.atan2(direction.x, direction.z);
@@ -190,16 +218,59 @@ export class OrcEnemy extends EnemyHumanoid {
       directionAwayFromSafeZone.y = 0;
       
       const moveAmount = this.config.speed * deltaTime;
-      const newPosition = this.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
-      newPosition.y = 0;
+      const targetPosition = this.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
       
-      this.mesh.position.copy(newPosition);
+      // Use terrain-aware movement if available
+      let finalPosition = targetPosition;
+      if (this.movementHelper) {
+        finalPosition = this.movementHelper.calculateEnemyMovement(
+          this.mesh.position,
+          targetPosition,
+          this.movementConfig
+        );
+      } else {
+        // Fallback to old flat movement
+        finalPosition.y = 0;
+      }
+      
+      this.mesh.position.copy(finalPosition);
       // Use animation system for movement animation
       this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
       return;
     }
 
-    // Normal aggressive behavior
+    // Normal aggressive behavior with terrain-aware movement
+    const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
+    
+    if (distanceToPlayer <= this.config.attackRange) {
+      const directionToPlayer = new THREE.Vector3()
+        .subVectors(playerPosition, this.mesh.position)
+        .normalize();
+      directionToPlayer.y = 0;
+      
+      if (distanceToPlayer > this.config.damageRange) {
+        const moveAmount = this.config.speed * deltaTime;
+        const targetPosition = this.mesh.position.clone().add(directionToPlayer.multiplyScalar(moveAmount));
+        
+        // Use terrain-aware movement if available
+        let finalPosition = targetPosition;
+        if (this.movementHelper) {
+          finalPosition = this.movementHelper.calculateEnemyMovement(
+            this.mesh.position,
+            targetPosition,
+            this.movementConfig
+          );
+        } else {
+          // Fallback to old flat movement
+          finalPosition.y = 0;
+        }
+        
+        this.mesh.position.copy(finalPosition);
+        this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
+      }
+    }
+
+    // Call parent update for other behaviors (attacking, etc.)
     super.update(deltaTime, playerPosition);
   }
 
