@@ -34,7 +34,7 @@ export class VolumetricFogSystem {
         nightFogColor: { value: new THREE.Color(0x191970) },
         sunriseFogColor: { value: new THREE.Color(0xFFB366) },
         sunsetFogColor: { value: new THREE.Color(0xFF8C42) },
-        fogDensity: { value: 0.08 }, // Reduced from 0.15
+        fogDensity: { value: 0.08 },
         layerHeight: { value: 1.0 },
         playerPosition: { value: new THREE.Vector3() },
         noiseScale: { value: 0.02 },
@@ -203,13 +203,13 @@ export class VolumetricFogSystem {
           float heightFactor = 1.0 - abs(vPosition.y) / layerHeight;
           heightFactor = smoothstep(0.0, 1.0, heightFactor);
           
-          // REALISTIC DISTANCE-BASED FOG: Extended range with gentler curve
-          float distanceFactor = 1.0 - smoothstep(15.0, 300.0, vDistance); // Extended range
+          // STANDARDIZED DISTANCE FOG: Same for all time periods
+          float distanceFactor = 1.0 - smoothstep(15.0, 300.0, vDistance);
           
           // Calculate final fog density
           float density = fogDensity * heightFactor * distanceFactor;
           density *= (0.8 + combinedNoise * 0.4);
-          density = clamp(density, 0.0, 0.3); // Reduced max opacity
+          density = clamp(density, 0.0, 0.3);
           
           // Edge fade for smooth blending
           float edgeFade = smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x) *
@@ -233,12 +233,11 @@ export class VolumetricFogSystem {
         time: { value: 0.0 },
         timeOfDay: { value: this.timeOfDay },
         dayFogColor: { value: new THREE.Color(0xF5F5F5) },
-        nightFogColor: { value: new THREE.Color(0x707090) }, // Brightened from 0x505080
+        nightFogColor: { value: new THREE.Color(0x707090) },
         sunriseFogColor: { value: new THREE.Color(0xFFE8D0) },
         sunsetFogColor: { value: new THREE.Color(0xFFDCC0) },
         fogWallDensity: { value: 0.08 },
         fogWallHeight: { value: 80.0 },
-        horizonBlur: { value: 0.6 },
         playerPosition: { value: new THREE.Vector3() },
         noiseScale: { value: 0.015 },
         windDirection: { value: new THREE.Vector2(1.0, 0.3) },
@@ -291,7 +290,6 @@ export class VolumetricFogSystem {
         uniform vec3 sunsetFogColor;
         uniform float fogWallDensity;
         uniform float fogWallHeight;
-        uniform float horizonBlur;
         uniform vec3 playerPosition;
         uniform float noiseScale;
         uniform vec2 windDirection;
@@ -405,12 +403,8 @@ export class VolumetricFogSystem {
           return currentColor;
         }
         
-        bool isDarkPeriod(float time) {
-          return time < 0.4 || time > 0.6;
-        }
-        
         void main() {
-          // DYNAMIC COLOR: Now matches day/night cycle
+          // DYNAMIC COLOR ONLY: Colors change, but coverage/depth remains constant
           vec3 atmosphericColor = getFogColorForTime(timeOfDay);
           
           // Create 3D volumetric noise for realistic fog volume
@@ -428,22 +422,22 @@ export class VolumetricFogSystem {
           // Create density holes for see-through effect
           float densityVariation = smoothstep(0.3, 0.8, volumetricNoise);
           
-          // UNIFORM DISTANCE CALCULATION: Same for all time periods
+          // STANDARDIZED DISTANCE CALCULATION: Same for all time periods
           float distanceRatio;
           float exponentialFog;
           
           if (vDistance < 60.0) {
-            // Near zone: 15-60 units - very gentle start
+            // Near zone: 15-60 units
             distanceRatio = (vDistance - 15.0) / (60.0 - 15.0);
             distanceRatio = clamp(distanceRatio, 0.0, 1.0);
             exponentialFog = pow(distanceRatio, 0.8) * 0.3;
           } else if (vDistance < 150.0) {
-            // Mid zone: 60-150 units - gradual increase
+            // Mid zone: 60-150 units
             distanceRatio = (vDistance - 60.0) / (150.0 - 60.0);
             distanceRatio = clamp(distanceRatio, 0.0, 1.0);
             exponentialFog = 0.3 + pow(distanceRatio, 0.9) * 0.4;
           } else {
-            // Far zone: 150+ units - stronger fog for complete coverage
+            // Far zone: 150+ units
             distanceRatio = (vDistance - 150.0) / (300.0 - 150.0);
             distanceRatio = clamp(distanceRatio, 0.0, 1.0);
             exponentialFog = 0.7 + pow(distanceRatio, 1.2) * 0.3;
@@ -451,35 +445,10 @@ export class VolumetricFogSystem {
           
           exponentialFog = smoothstep(0.0, 1.0, exponentialFog);
           
-          // ENHANCED BOTTOM COVERAGE with dark period boost
-          float bottomDensityBoost = 1.0 - smoothstep(0.0, 0.3, vHeightFactor);
-          bottomDensityBoost = pow(bottomDensityBoost, 0.5);
-          
-          // Add extra horizon coverage during dark periods
-          if (isDarkPeriod(timeOfDay)) {
-            float horizonBoost = 1.0 - smoothstep(0.4, 0.9, vHeightFactor);
-            bottomDensityBoost += horizonBoost * 0.3;
-          }
-          
-          // UNIFORM SKY GRADIENT with dark period adjustments
-          float skyTransition1 = smoothstep(0.6, 0.8, vHeightFactor);
-          float skyTransition2 = smoothstep(0.8, 0.95, vHeightFactor);
-          float skyTransition3 = smoothstep(0.9, 1.0, vHeightFactor);
-          
-          // Reduce sky transitions during dark periods for better horizon coverage
-          if (isDarkPeriod(timeOfDay)) {
-            skyTransition1 *= 0.5;
-            skyTransition2 *= 0.3;
-            skyTransition3 *= 0.2;
-          }
-          
+          // STANDARDIZED HEIGHT GRADIENT: Same for all time periods
           float heightGradient = 1.0 - vHeightFactor;
-          heightGradient += bottomDensityBoost * 0.5;
-          heightGradient *= (1.0 - skyTransition1 * 0.1);
-          heightGradient *= (1.0 - skyTransition2 * 0.2);
-          heightGradient *= (1.0 - skyTransition3 * 0.3);
           
-          // SOFT EDGE BLENDING
+          // STANDARDIZED EDGE BLENDING: Same for all time periods
           vec2 centerUV = vUv - 0.5;
           float radialDistance = length(centerUV);
           float radialFalloff = 1.0 - smoothstep(0.3, 0.5, radialDistance);
@@ -487,14 +456,8 @@ export class VolumetricFogSystem {
           float edgeSoftness = smoothstep(0.0, 0.15, vUv.x) * smoothstep(1.0, 0.85, vUv.x) *
                               smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
           
-          // DYNAMIC DENSITY: Increased for dark periods to maintain visibility
+          // STANDARDIZED DENSITY: Same calculation for all time periods
           float baseDensity = fogWallDensity * exponentialFog * heightGradient;
-          
-          // Boost density during dark periods for consistent coverage
-          if (isDarkPeriod(timeOfDay)) {
-            baseDensity *= 1.8; // Increase density significantly
-          }
-          
           baseDensity *= densityVariation;
           baseDensity *= radialFalloff * 0.7 + 0.3;
           baseDensity *= edgeSoftness;
@@ -502,16 +465,15 @@ export class VolumetricFogSystem {
           // Add subtle depth layering
           baseDensity *= (0.8 + layerDepth * 0.4);
           
-          // UNIFORM OPACITY LIMITS: Ensure consistent visual coverage
-          float maxOpacity = isDarkPeriod(timeOfDay) ? 0.55 : 0.35; // Higher max for dark periods
-          baseDensity = clamp(baseDensity, 0.0, maxOpacity);
+          // STANDARDIZED OPACITY LIMITS: Same max for all time periods
+          baseDensity = clamp(baseDensity, 0.0, 0.4);
           
           gl_FragColor = vec4(atmosphericColor, baseDensity);
         }
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.NormalBlending, // Start with Normal - will be dynamic
+      blending: THREE.AdditiveBlending, // STANDARDIZED: Always use Additive
       side: THREE.DoubleSide
     });
   }
@@ -525,7 +487,7 @@ export class VolumetricFogSystem {
         nightFogColor: { value: new THREE.Color(0x606090) },
         sunriseFogColor: { value: new THREE.Color(0xFFECE0) },
         sunsetFogColor: { value: new THREE.Color(0xFFE0C0) },
-        skyFogDensity: { value: 0.08 }, // Reduced from 0.15
+        skyFogDensity: { value: 0.08 },
         playerPosition: { value: new THREE.Vector3() }
       },
       vertexShader: `
@@ -580,9 +542,9 @@ export class VolumetricFogSystem {
         void main() {
           vec3 dynamicFogColor = getSkyFogColorForTime(timeOfDay);
           
-          // EXTENDED SKY FOG: Matches new distance range
-          float distanceFactor = smoothstep(200.0, 300.0, vDistance); // Extended range
-          float density = skyFogDensity * distanceFactor * 0.4; // Reduced intensity
+          // STANDARDIZED DISTANCE: Same range for all time periods
+          float distanceFactor = smoothstep(200.0, 300.0, vDistance);
+          float density = skyFogDensity * distanceFactor * 0.4;
           
           gl_FragColor = vec4(dynamicFogColor, density);
         }
@@ -603,7 +565,7 @@ export class VolumetricFogSystem {
         nightFogColor: { value: new THREE.Color(0x505080) },
         sunriseFogColor: { value: new THREE.Color(0xFFE8D0) },
         sunsetFogColor: { value: new THREE.Color(0xFFDCC0) },
-        groundFogDensity: { value: 0.12 }, // Reduced from 0.25
+        groundFogDensity: { value: 0.12 },
         playerPosition: { value: new THREE.Vector3() },
         noiseScale: { value: 0.01 }
       },
@@ -673,7 +635,7 @@ export class VolumetricFogSystem {
           vec2 noisePos = vWorldPosition.xz * noiseScale + time * 0.01;
           float noiseValue = noise(noisePos) * 0.5 + 0.5;
           
-          // EXTENDED DISTANCE: Match new fog range
+          // STANDARDIZED DISTANCE: Same range for all time periods
           float distanceFactor = smoothstep(15.0, 300.0, vDistance);
           
           // Radial falloff from center
@@ -682,7 +644,7 @@ export class VolumetricFogSystem {
           float radialFalloff = 1.0 - smoothstep(0.3, 0.5, radialDistance);
           
           float density = groundFogDensity * distanceFactor * radialFalloff * noiseValue;
-          density = clamp(density, 0.0, 0.25); // Reduced from 0.4
+          density = clamp(density, 0.0, 0.25);
           
           gl_FragColor = vec4(dynamicFogColor, density);
         }
@@ -738,10 +700,10 @@ export class VolumetricFogSystem {
 
   private createFogWallLayers(): void {
     // STANDARDIZED FOG WALLS: Same settings for all time periods
-    const wallDistances = [30, 50, 80, 120, 180, 250, 350, 500, 750]; // Extended range
-    const wallHeights = [35, 50, 65, 80, 95, 110, 130, 150, 180]; // Progressive heights
-    const wallWidths = [500, 600, 700, 800, 900, 1000, 1200, 1500, 2000]; // Scaled appropriately
-    const layerDepths = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]; // Depth progression
+    const wallDistances = [30, 50, 80, 120, 180, 250, 350, 500, 750];
+    const wallHeights = [35, 50, 65, 80, 95, 110, 130, 150, 180];
+    const wallWidths = [500, 600, 700, 800, 900, 1000, 1200, 1500, 2000];
+    const layerDepths = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8];
     
     wallDistances.forEach((distance, distanceIndex) => {
       const wallHeight = wallHeights[distanceIndex];
@@ -781,7 +743,7 @@ export class VolumetricFogSystem {
         const angle = (i / 24) * Math.PI * 2;
         wall.position.x = Math.cos(angle) * distance;
         wall.position.z = Math.sin(angle) * distance;
-        wall.position.y = wallHeight / 2 - 5; // STANDARDIZED: Same position for all times
+        wall.position.y = wallHeight / 2 - 5;
         wall.rotation.y = angle + Math.PI / 2;
         
         // Add slight random rotation for organic feel
@@ -789,7 +751,7 @@ export class VolumetricFogSystem {
         wall.rotation.z += (Math.random() - 0.5) * 0.05;
         
         // STANDARDIZED DENSITY PROGRESSION: Same for all time periods
-        const wallDensity = 0.03 + (distanceIndex * 0.01); // Gradual progression (0.03 to 0.11)
+        const wallDensity = 0.03 + (distanceIndex * 0.01);
         const material = wall.material as THREE.ShaderMaterial;
         material.uniforms.fogWallDensity.value = wallDensity;
         material.uniforms.layerDepth.value = layerDepth;
@@ -799,37 +761,34 @@ export class VolumetricFogSystem {
       }
     });
     
-    console.log(`Created ${this.fogWallLayers.length} fog walls with dynamic day/night colors`);
+    console.log(`Created ${this.fogWallLayers.length} standardized fog walls`);
   }
 
   private createSkyFogLayers(): void {
-    // EXTENDED SKY FOG: Match new distance range
-    const skyDistances = [200, 250, 300]; // Extended for new range
-    const skyHeights = [20, 30, 40]; // Progressive heights
+    const skyDistances = [200, 250, 300];
+    const skyHeights = [20, 30, 40];
     
     skyDistances.forEach((distance, index) => {
       const skyHeight = skyHeights[index];
-      const skyGeometry = new THREE.PlaneGeometry(400, 400, 16, 16); // Larger for extended range
+      const skyGeometry = new THREE.PlaneGeometry(400, 400, 16, 16);
       const skyFog = new THREE.Mesh(skyGeometry, this.skyFogMaterial.clone());
       
       skyFog.position.y = skyHeight;
       skyFog.rotation.x = -Math.PI / 2;
       
-      // Subtle sky fog density progression
-      const skyDensity = 0.05 + (index * 0.02); // More subtle (0.05 to 0.09)
+      const skyDensity = 0.05 + (index * 0.02);
       (skyFog.material as THREE.ShaderMaterial).uniforms.skyFogDensity.value = skyDensity;
       
       this.skyFogLayers.push(skyFog);
       this.scene.add(skyFog);
     });
     
-    console.log(`Created ${this.skyFogLayers.length} extended sky fog layers (200-300 units)`);
+    console.log(`Created ${this.skyFogLayers.length} standardized sky fog layers`);
   }
   
   private createGroundFogLayers(): void {
-    // EXTENDED GROUND FOG: Match new distance range
-    const groundDistances = [0, 50, 150, 300]; // Extended distances
-    const groundSizes = [200, 400, 600, 800]; // Larger sizes for extended range
+    const groundDistances = [0, 50, 150, 300];
+    const groundSizes = [200, 400, 600, 800];
     
     groundDistances.forEach((distance, index) => {
       const groundSize = groundSizes[index];
@@ -853,25 +812,20 @@ export class VolumetricFogSystem {
       groundFog.position.y = -1;
       groundFog.rotation.x = -Math.PI / 2;
       
-      // Subtle ground fog density progression
-      const groundDensity = 0.08 + (index * 0.01); // More gradual (0.08 to 0.11)
+      const groundDensity = 0.08 + (index * 0.01);
       (groundFog.material as THREE.ShaderMaterial).uniforms.groundFogDensity.value = groundDensity;
       
       this.groundFogLayers.push(groundFog);
       this.scene.add(groundFog);
     });
     
-    console.log(`Created ${this.groundFogLayers.length} extended ground fog layers for realistic depth`);
-  }
-  
-  private isDarkPeriod(timeOfDay: number): boolean {
-    return timeOfDay < 0.4 || timeOfDay > 0.6;
+    console.log(`Created ${this.groundFogLayers.length} standardized ground fog layers`);
   }
   
   public update(deltaTime: number, timeOfDay: number, playerPosition: THREE.Vector3): void {
     this.timeOfDay = timeOfDay;
     
-    // Update atmospheric fog layers (keep existing behavior with time-based colors)
+    // Update all fog systems with standardized behavior
     this.fogLayers.forEach(layer => {
       const material = layer.material as THREE.ShaderMaterial;
       if (material.uniforms) {
@@ -881,20 +835,13 @@ export class VolumetricFogSystem {
       }
     });
     
-    // FOG WALL UPDATES: Dynamic colors and blending
+    // STANDARDIZED FOG WALL UPDATES: No special time-based logic
     this.fogWallLayers.forEach((wall, index) => {
       const material = wall.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
         material.uniforms.playerPosition.value.copy(playerPosition);
-        
-        // DYNAMIC BLENDING: Normal for dark periods, Additive for day
-        if (this.isDarkPeriod(timeOfDay)) {
-          material.blending = THREE.NormalBlending;
-        } else {
-          material.blending = THREE.AdditiveBlending;
-        }
       }
     });
     
@@ -925,12 +872,12 @@ export class VolumetricFogSystem {
       layer.position.z = THREE.MathUtils.lerp(layer.position.z, playerPosition.z, lagFactor * deltaTime);
     });
     
-    // UPDATE FOG WALL POSITIONS: Use new extended distances
+    // STANDARDIZED FOG WALL POSITIONS: Same positioning logic for all times
     this.fogWallLayers.forEach((wall, index) => {
       const wallGroup = Math.floor(index / 24);
       const wallInGroup = index % 24;
       const angle = (wallInGroup / 24) * Math.PI * 2;
-      const distance = [30, 50, 80, 120, 180, 250, 350, 500, 750][wallGroup]; // Extended distances
+      const distance = [30, 50, 80, 120, 180, 250, 350, 500, 750][wallGroup];
       
       wall.position.x = playerPosition.x + Math.cos(angle) * distance;
       wall.position.z = playerPosition.z + Math.sin(angle) * distance;
@@ -1002,6 +949,6 @@ export class VolumetricFogSystem {
       this.skyFogMaterial.dispose();
     }
     
-    console.log("Enhanced VolumetricFogSystem with time-based fog wall visibility disposed");
+    console.log("Standardized VolumetricFogSystem with uniform depth perception disposed");
   }
 }
