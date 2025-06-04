@@ -53,12 +53,9 @@ export class Enemy {
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
 
-  // Terrain-aware movement system with stuck detection
+  // NEW: Terrain-aware movement system
   private movementHelper: EnemyMovementHelper | null = null;
   private movementConfig: EnemyMovementConfig;
-  private stuckCounter: number = 0;
-  private lastPosition: THREE.Vector3 = new THREE.Vector3();
-  private stuckThreshold: number = 0.01;
 
   constructor(
     scene: THREE.Scene,
@@ -81,10 +78,10 @@ export class Enemy {
       maxSlopeAngle: 45
     };
 
-    // Initialize comprehensive terrain-aware movement
+    // Initialize terrain-aware movement if physics systems are available
     if (physicsManager && terrainDetector) {
       this.movementHelper = new EnemyMovementHelper(physicsManager, terrainDetector);
-      console.log(`🚶 Enemy ${type} initialized with comprehensive surface movement`);
+      console.log(`🚶 Enemy ${type} initialized with terrain-aware movement`);
     }
     
     // Create enemy based on type with humanoid system for orcs
@@ -100,10 +97,10 @@ export class Enemy {
       // Create interface wrapper for backward compatibility
       this.enemy = this.createEnemyInterface(this.humanoidEnemy);
       
-      console.log(`🗡️ [Enemy] Created humanoid orc with comprehensive surface movement`);
+      console.log(`🗡️ [Enemy] Created humanoid orc with terrain-aware movement`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created legacy goblin enemy with comprehensive surface movement");
+      console.log("🗡️ [Enemy] Created legacy goblin enemy with terrain-aware movement");
       
       // Initialize AI behavior for legacy enemies
       this.passiveAI = new PassiveNPCBehavior(
@@ -122,9 +119,8 @@ export class Enemy {
       scene.add(this.enemy.mesh);
     }
 
-    // Store spawn position and initial position for stuck detection
+    // Store spawn position for wandering reference
     this.spawnPosition.copy(position);
-    this.lastPosition.copy(position);
   }
   
   private createEnemyInterface(humanoidEnemy: OrcEnemy): EnemyInterface {
@@ -431,7 +427,7 @@ export class Enemy {
       return;
     }
     
-    // Legacy update logic for non-humanoid enemies with enhanced surface movement
+    // Legacy update logic for non-humanoid enemies
     const now = Date.now();
     
     if (this.enemy.isDead) {
@@ -480,9 +476,21 @@ export class Enemy {
       const baseSpeed = this.enemy.speed * 0.4; // Base passive speed
       const aiSpeed = baseSpeed * aiDecision.movementSpeed;
       
-      // Apply surface movement calculation
-      const targetDirection = direction.clone().multiplyScalar(aiSpeed);
-      const finalPosition = this.handleSurfaceMovement(currentPosition, targetDirection, deltaTime);
+      const moveAmount = aiSpeed * deltaTime;
+      const targetPosition = currentPosition.clone().add(direction.multiplyScalar(moveAmount));
+      
+      // Use terrain-aware movement if available
+      let finalPosition = targetPosition;
+      if (this.movementHelper) {
+        finalPosition = this.movementHelper.calculateEnemyMovement(
+          currentPosition,
+          targetPosition,
+          this.movementConfig
+        );
+      } else {
+        // Fallback to old flat movement
+        finalPosition.y = 0;
+      }
 
       // Safety checks
       const distanceFromSpawn = finalPosition.distanceTo(this.spawnPosition);
@@ -607,9 +615,22 @@ export class Enemy {
       
       this.targetRotation = Math.atan2(directionAwayFromSafeZone.x, directionAwayFromSafeZone.z);
       
-      // Use surface movement for safe zone avoidance
-      const targetDirection = directionAwayFromSafeZone.clone().multiplyScalar(this.enemy.speed);
-      const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
+      const moveAmount = this.enemy.speed * deltaTime;
+      const targetPosition = this.enemy.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
+      
+      // Use terrain-aware movement if available
+      let finalPosition = targetPosition;
+      if (this.movementHelper) {
+        finalPosition = this.movementHelper.calculateEnemyMovement(
+          this.enemy.mesh.position,
+          targetPosition,
+          this.movementConfig
+        );
+      } else {
+        // Fallback to old flat movement
+        finalPosition.y = 0;
+      }
+      
       this.enemy.mesh.position.copy(finalPosition);
       this.updateLegacyWalkAnimation(deltaTime);
       return;
@@ -626,9 +647,23 @@ export class Enemy {
       this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
       if (distanceToPlayer > this.enemy.damageRange) {
-        // Use surface movement for pursuing player
-        const targetDirection = directionToPlayer.clone().multiplyScalar(this.enemy.speed);
-        const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
+        const moveAmount = this.enemy.speed * deltaTime;
+        const targetPosition = this.enemy.mesh.position.clone();
+        targetPosition.add(directionToPlayer.multiplyScalar(moveAmount));
+        
+        // Use terrain-aware movement if available
+        let finalPosition = targetPosition;
+        if (this.movementHelper) {
+          finalPosition = this.movementHelper.calculateEnemyMovement(
+            this.enemy.mesh.position,
+            targetPosition,
+            this.movementConfig
+          );
+        } else {
+          // Fallback to old flat movement
+          finalPosition.y = 0;
+        }
+      
         this.enemy.mesh.position.copy(finalPosition);
         this.updateLegacyWalkAnimation(deltaTime);
       }
@@ -649,52 +684,29 @@ export class Enemy {
         
         this.targetRotation = Math.atan2(direction.x, direction.z);
         
-        // Use surface movement for slow pursuit
-        const targetDirection = direction.clone().multiplyScalar(this.enemy.speed * 0.3);
-        const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
+        const slowMoveAmount = this.enemy.speed * deltaTime * 0.3;
+        const targetPosition = this.enemy.mesh.position.clone();
+        targetPosition.add(direction.multiplyScalar(slowMoveAmount));
+        
+        // Use terrain-aware movement if available
+        let finalPosition = targetPosition;
+        if (this.movementHelper) {
+          finalPosition = this.movementHelper.calculateEnemyMovement(
+            this.enemy.mesh.position,
+            targetPosition,
+            this.movementConfig
+          );
+        } else {
+          // Fallback to old flat movement
+          finalPosition.y = 0;
+        }
+        
         this.enemy.mesh.position.copy(finalPosition);
       } else {
         this.movementState = EnemyMovementState.IDLE;
         this.updateLegacyIdleAnimation();
       }
     }
-  }
-  
-  private handleSurfaceMovement(
-    currentPosition: THREE.Vector3,
-    inputDirection: THREE.Vector3,
-    deltaTime: number
-  ): THREE.Vector3 {
-    if (!this.movementHelper) {
-      // Fallback to old flat movement if no movement helper
-      const targetPosition = currentPosition.clone().add(inputDirection.multiplyScalar(this.movementConfig.speed * deltaTime));
-      targetPosition.y = 0;
-      return targetPosition;
-    }
-
-    // Use comprehensive surface movement calculation
-    const newPosition = this.movementHelper.calculateEnemyMovement(
-      currentPosition,
-      inputDirection,
-      this.movementConfig,
-      deltaTime
-    );
-
-    // Check for stuck movement
-    const movementDistance = newPosition.distanceTo(this.lastPosition);
-    if (movementDistance < this.stuckThreshold && inputDirection.length() > 0) {
-      this.stuckCounter++;
-      if (this.stuckCounter > 30) { // Stuck for 30 frames
-        console.log(`🚶 Enemy stuck, resetting movement helper`);
-        this.movementHelper.resetStuckCounter();
-        this.stuckCounter = 0;
-      }
-    } else {
-      this.stuckCounter = 0;
-    }
-
-    this.lastPosition.copy(newPosition);
-    return newPosition;
   }
   
   private updateLegacyWalkAnimation(deltaTime: number): void {
@@ -960,7 +972,7 @@ export class Enemy {
     );
     
     const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager, physicsManager, terrainDetector);
-    console.log(`🗡️ [Enemy] Created ${type} with comprehensive surface movement - Humanoid: ${enemy.isHumanoidEnemy}`);
+    console.log(`🗡️ [Enemy] Created ${type} with terrain-aware movement - Humanoid: ${enemy.isHumanoidEnemy}`);
     return enemy;
   }
   
