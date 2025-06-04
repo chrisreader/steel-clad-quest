@@ -18,7 +18,6 @@ import { ColorUtils } from '../utils/ColorUtils';
 import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG } from '../config/TimeConfig';
 import { LIGHTING_CONFIG, FOG_CONFIG } from '../config/LightingConfig';
-import { TerrainSurfaceDetector } from '../utils/terrain/TerrainSurfaceDetector';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -749,7 +748,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('Enhanced world with improved night visibility complete. Current time:', (this.timeOfDay * 24).toFixed(1) + ' hours');
+    console.log('Enhanced world with improved night visibility complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     if (this.debugMode) {
       (window as any).sceneDebug = {

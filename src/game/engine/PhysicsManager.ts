@@ -458,34 +458,4 @@ export class PhysicsManager {
     
     return null;
   }
-
-  // NEW: Pure terrain-following movement for enemies (no environment collision)
-  public checkEnemyTerrainMovement(currentPosition: THREE.Vector3, targetPosition: THREE.Vector3, enemyRadius: number = 0.9): THREE.Vector3 {
-    console.log(`🚶 [PhysicsManager] Enemy terrain movement from (${currentPosition.x.toFixed(1)}, ${currentPosition.y.toFixed(1)}, ${currentPosition.z.toFixed(1)}) to (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
-    
-    // Get smooth terrain data at target position
-    const terrainData = this.getTerrainDataAtPosition(targetPosition);
-    const targetTerrainHeight = terrainData.height;
-    
-    // Get current terrain height for smooth interpolation
-    const currentTerrainData = this.getTerrainDataAtPosition(currentPosition);
-    const currentTerrainHeight = currentTerrainData.height;
-    
-    // Calculate smooth height transition (limit vertical change per frame)
-    const maxVerticalChange = 0.15; // Maximum height change per frame
-    const heightDifference = targetTerrainHeight - currentTerrainHeight;
-    const clampedHeightDifference = THREE.MathUtils.clamp(heightDifference, -maxVerticalChange, maxVerticalChange);
-    
-    // Apply smooth height following
-    let smoothTerrainHeight = currentTerrainHeight + clampedHeightDifference;
-    let surfacePosition = targetPosition.clone();
-    surfacePosition.y = smoothTerrainHeight + enemyRadius;
-    
-    console.log(`🚶 [PhysicsManager] Enemy SMOOTH terrain movement: current=${currentTerrainHeight.toFixed(2)}, target=${targetTerrainHeight.toFixed(2)}, smooth=${smoothTerrainHeight.toFixed(2)}, final_y=${surfacePosition.y.toFixed(2)}`);
-    
-    // NO environment collision detection for enemies - they handle their own collision logic
-    // This ensures pure terrain following without getting blocked by trees/walls
-    
-    return surfacePosition;
-  }
 }
