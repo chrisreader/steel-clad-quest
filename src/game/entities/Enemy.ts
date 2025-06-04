@@ -485,7 +485,7 @@ export class Enemy {
       const moveAmount = aiSpeed * deltaTime;
       const targetPosition = currentPosition.clone().add(direction.multiplyScalar(moveAmount));
       
-      // CRITICAL FIX: Use terrain-aware movement with proper logging for passive AI
+      // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
       let finalPosition = targetPosition;
       if (this.movementHelper) {
         console.log(`🚶 [Enemy] Passive AI using terrain-aware movement`);
@@ -495,9 +495,10 @@ export class Enemy {
           this.movementConfig
         );
       } else {
-        // Fallback to old flat movement
-        console.log(`⚠️ [Enemy] Passive AI using FLAT movement fallback`);
-        finalPosition.y = 0;
+        // REMOVED: No more Y=0 fallback - use basic terrain height detection
+        console.log(`⚠️ [Enemy] No movement helper - using basic terrain height detection`);
+        const terrainHeight = this.getBasicTerrainHeight(targetPosition);
+        finalPosition.y = terrainHeight + this.movementConfig.radius;
       }
 
       // Safety checks
@@ -519,7 +520,7 @@ export class Enemy {
         // Debug log for behavior state changes
         const currentState = aiDecision.behaviorState;
         if (Math.random() < 0.01) { // 1% chance to log current behavior
-          console.log(`🤖 [Enemy] ${this.enemy.type} behavior: ${currentState}, speed: ${aiSpeed.toFixed(2)}`);
+          console.log(`🤖 [Enemy] ${this.enemy.type} behavior: ${currentState}, speed: ${aiSpeed.toFixed(2)}, final_y: ${finalPosition.y.toFixed(2)}`);
         }
       }
     } else {
@@ -626,20 +627,20 @@ export class Enemy {
       const moveAmount = this.enemy.speed * deltaTime;
       const targetPosition = this.enemy.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
       
-      // CRITICAL FIX: Use terrain-aware movement with proper logging
+      // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
       let finalPosition = targetPosition;
       if (this.movementHelper) {
-        console.log(`🚶 [Enemy] Using terrain-aware movement from (${this.enemy.mesh.position.x.toFixed(1)}, ${this.enemy.mesh.position.y.toFixed(1)}, ${this.enemy.mesh.position.z.toFixed(1)}) to (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
+        console.log(`🚶 [Enemy] Safe zone avoidance using terrain-aware movement`);
         finalPosition = this.movementHelper.calculateEnemyMovement(
           this.enemy.mesh.position,
           targetPosition,
           this.movementConfig
         );
-        console.log(`🚶 [Enemy] Terrain-aware result: (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)})`);
       } else {
-        // Fallback to old flat movement
-        console.log(`⚠️ [Enemy] Using FLAT movement fallback - no terrain helper available`);
-        finalPosition.y = 0;
+        // REMOVED: No more Y=0 fallback - use basic terrain height detection
+        console.log(`⚠️ [Enemy] No movement helper - using basic terrain height detection for safe zone avoidance`);
+        const terrainHeight = this.getBasicTerrainHeight(targetPosition);
+        finalPosition.y = terrainHeight + this.movementConfig.radius;
       }
       
       this.enemy.mesh.position.copy(finalPosition);
@@ -662,20 +663,20 @@ export class Enemy {
         const targetPosition = this.enemy.mesh.position.clone();
         targetPosition.add(directionToPlayer.multiplyScalar(moveAmount));
         
-        // CRITICAL FIX: Use terrain-aware movement with proper logging
+        // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
         let finalPosition = targetPosition;
         if (this.movementHelper) {
-          console.log(`🚶 [Enemy] Using terrain-aware movement from (${this.enemy.mesh.position.x.toFixed(1)}, ${this.enemy.mesh.position.y.toFixed(1)}, ${this.enemy.mesh.position.z.toFixed(1)}) to (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
+          console.log(`🚶 [Enemy] Pursuit using terrain-aware movement`);
           finalPosition = this.movementHelper.calculateEnemyMovement(
             this.enemy.mesh.position,
             targetPosition,
             this.movementConfig
           );
-          console.log(`🚶 [Enemy] Terrain-aware result: (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)})`);
         } else {
-          // Fallback to old flat movement
-          console.log(`⚠️ [Enemy] Using FLAT movement fallback - no terrain helper available`);
-          finalPosition.y = 0;
+          // REMOVED: No more Y=0 fallback - use basic terrain height detection
+          console.log(`⚠️ [Enemy] No movement helper - using basic terrain height detection for pursuit`);
+          const terrainHeight = this.getBasicTerrainHeight(targetPosition);
+          finalPosition.y = terrainHeight + this.movementConfig.radius;
         }
         
         this.enemy.mesh.position.copy(finalPosition);
@@ -702,20 +703,20 @@ export class Enemy {
         const targetPosition = this.enemy.mesh.position.clone();
         targetPosition.add(direction.multiplyScalar(slowMoveAmount));
         
-        // CRITICAL FIX: Use terrain-aware movement with proper logging
+        // CRITICAL FIX: Always use terrain-aware movement - NO flat movement fallback
         let finalPosition = targetPosition;
         if (this.movementHelper) {
-          console.log(`🚶 [Enemy] Using terrain-aware movement from (${this.enemy.mesh.position.x.toFixed(1)}, ${this.enemy.mesh.position.y.toFixed(1)}, ${this.enemy.mesh.position.z.toFixed(1)}) to (${targetPosition.x.toFixed(1)}, ${targetPosition.y.toFixed(1)}, ${targetPosition.z.toFixed(1)})`);
+          console.log(`🚶 [Enemy] Slow pursuit using terrain-aware movement`);
           finalPosition = this.movementHelper.calculateEnemyMovement(
             this.enemy.mesh.position,
             targetPosition,
             this.movementConfig
           );
-          console.log(`🚶 [Enemy] Terrain-aware result: (${finalPosition.x.toFixed(1)}, ${finalPosition.y.toFixed(1)}, ${finalPosition.z.toFixed(1)})`);
         } else {
-          // Fallback to old flat movement
-          console.log(`⚠️ [Enemy] Using FLAT movement fallback - no terrain helper available`);
-          finalPosition.y = 0;
+          // REMOVED: No more Y=0 fallback - use basic terrain height detection
+          console.log(`⚠️ [Enemy] No movement helper - using basic terrain height detection for slow pursuit`);
+          const terrainHeight = this.getBasicTerrainHeight(targetPosition);
+          finalPosition.y = terrainHeight + this.movementConfig.radius;
         }
         
         this.enemy.mesh.position.copy(finalPosition);
@@ -1065,5 +1066,21 @@ export class Enemy {
       return this.humanoidEnemy.hasTerrainMovement();
     }
     return this.movementHelper !== null;
+  }
+
+  // NEW: Basic terrain height detection fallback when movement helper is not available
+  private getBasicTerrainHeight(position: THREE.Vector3): number {
+    // This is a minimal fallback that should rarely be used
+    // It attempts to get terrain height directly from physics manager
+    const physicsManager = (window as any).gameEngine?.physicsManager;
+    if (physicsManager && physicsManager.getTerrainHeightAtPosition) {
+      const height = physicsManager.getTerrainHeightAtPosition(position);
+      console.log(`🚶 [Enemy] Basic terrain height at (${position.x.toFixed(2)}, ${position.z.toFixed(2)}): ${height.toFixed(2)}`);
+      return height;
+    }
+    
+    // Last resort: return 0 but log the failure
+    console.error(`❌ [Enemy] CRITICAL: No terrain height detection available - enemy may clip through terrain`);
+    return 0;
   }
 }

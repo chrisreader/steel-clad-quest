@@ -25,14 +25,21 @@ export class EnemyMovementHelper {
     targetPosition: THREE.Vector3,
     config: EnemyMovementConfig
   ): THREE.Vector3 {
-    console.log(`🚶 [EnemyMovementHelper] Starting terrain-aware movement calculation`);
+    console.log(`🚶 [EnemyMovementHelper] Starting terrain-aware movement calculation from (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)}) to (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
     
     // Get terrain data at target position
     const terrainData = this.terrainDetector.getSurfaceDataAtPosition(targetPosition);
     
+    // CRITICAL: Always ensure we have valid terrain height
+    let terrainHeight = terrainData.height;
+    if (terrainHeight === undefined || terrainHeight === null || isNaN(terrainHeight)) {
+      console.log(`⚠️ [EnemyMovementHelper] Invalid terrain height detected, using physics manager fallback`);
+      terrainHeight = this.physicsManager.getTerrainHeightAtPosition(targetPosition);
+    }
+    
     // Calculate base movement with terrain height
     let finalPosition = targetPosition.clone();
-    finalPosition.y = terrainData.height + config.radius;
+    finalPosition.y = terrainHeight + config.radius;
 
     // Apply slope speed adjustment if enabled
     if (config.slopeSpeedMultiplier) {
@@ -41,17 +48,20 @@ export class EnemyMovementHelper {
       const adjustedMovement = movementDirection.multiplyScalar(slopeMultiplier);
       
       finalPosition = currentPosition.clone().add(adjustedMovement);
-      finalPosition.y = terrainData.height + config.radius;
+      finalPosition.y = terrainHeight + config.radius; // ALWAYS apply terrain height
     }
 
     // Check if slope is too steep for movement
     if (terrainData.slopeAngle > config.maxSlopeAngle) {
       console.log(`🚶 Enemy movement blocked by steep slope: ${terrainData.slopeAngle.toFixed(1)}°`);
-      return currentPosition; // Don't move if slope is too steep
+      // Even when blocked, ensure we're on terrain surface
+      const blockedPosition = currentPosition.clone();
+      const currentTerrainHeight = this.physicsManager.getTerrainHeightAtPosition(currentPosition);
+      blockedPosition.y = currentTerrainHeight + config.radius;
+      return blockedPosition;
     }
 
-    // CRITICAL FIX: Use dedicated enemy terrain movement instead of player movement
-    // This provides pure terrain following without environment collision blocking
+    // CRITICAL FIX: Use dedicated enemy terrain movement for smooth terrain following
     console.log(`🚶 [EnemyMovementHelper] Using dedicated enemy terrain movement (no environment collision)`);
     const checkedPosition = this.physicsManager.checkEnemyTerrainMovement(
       currentPosition,
@@ -59,7 +69,15 @@ export class EnemyMovementHelper {
       config.radius
     );
 
-    console.log(`🚶 [EnemyMovementHelper] Enemy terrain movement result: height=${terrainData.height.toFixed(2)}, slope=${terrainData.slopeAngle.toFixed(1)}°, final_pos=(${checkedPosition.x.toFixed(2)}, ${checkedPosition.y.toFixed(2)}, ${checkedPosition.z.toFixed(2)})`);
+    // VALIDATION: Ensure the final position has proper terrain height
+    if (checkedPosition.y <= config.radius) {
+      console.log(`⚠️ [EnemyMovementHelper] Position Y too low (${checkedPosition.y.toFixed(2)}), applying terrain height correction`);
+      const correctedHeight = this.physicsManager.getTerrainHeightAtPosition(checkedPosition);
+      checkedPosition.y = correctedHeight + config.radius;
+    }
+
+    console.log(`🚶 [EnemyMovementHelper] Final movement result: terrain_height=${terrainHeight.toFixed(2)}, slope=${terrainData.slopeAngle.toFixed(1)}°, final_pos=(${checkedPosition.x.toFixed(2)}, ${checkedPosition.y.toFixed(2)}, ${checkedPosition.z.toFixed(2)})`);
+    
     return checkedPosition;
   }
 
@@ -79,5 +97,15 @@ export class EnemyMovementHelper {
   public isPositionWalkable(position: THREE.Vector3, maxSlopeAngle: number): boolean {
     const surfaceData = this.terrainDetector.getSurfaceDataAtPosition(position);
     return surfaceData.isWalkable && surfaceData.slopeAngle <= maxSlopeAngle;
+  }
+
+  // NEW: Ensure terrain height is always applied to any position
+  public ensureTerrainHeight(position: THREE.Vector3, radius: number): THREE.Vector3 {
+    const correctedPosition = position.clone();
+    const terrainHeight = this.physicsManager.getTerrainHeightAtPosition(position);
+    correctedPosition.y = terrainHeight + radius;
+    
+    console.log(`🚶 [EnemyMovementHelper] Terrain height correction: original_y=${position.y.toFixed(2)}, terrain_height=${terrainHeight.toFixed(2)}, corrected_y=${correctedPosition.y.toFixed(2)}`);
+    return correctedPosition;
   }
 }
