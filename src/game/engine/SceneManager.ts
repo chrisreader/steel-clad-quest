@@ -152,40 +152,33 @@ export class SceneManager {
     return t * t * (3 - 2 * t);
   }
   
-  // UPDATED: Completely smooth fog color transitions using continuous interpolation
+  // UPDATED: Completely smooth fog color transitions using faster time phases
   private getSmoothFogColorForTime(time: number): number {
     const normalizedTime = time % 1;
     
-    // Define key colors for smooth interpolation
+    // Define key colors for smooth interpolation - UPDATED with deeper blues and darker nights
     const keyColors = {
-      midnight: new THREE.Color(0x000030),    // Deep night
+      midnight: new THREE.Color(0x000020),    // Much darker night
       dawn: new THREE.Color(0xFF6B35),        // Orange dawn
-      noon: new THREE.Color(0x87CEEB),        // Sky blue
+      noon: new THREE.Color(0x6699CC),        // Deeper day blue
       sunset: new THREE.Color(0xFF8C42),      // Orange sunset
-      dusk: new THREE.Color(0x4B0082)         // Purple dusk
+      dusk: new THREE.Color(0x2B0040)         // Darker purple dusk
     };
     
-    // Use smooth sine-based interpolation for seamless transitions
-    const timeAngle = normalizedTime * Math.PI * 2;
-    
-    // Create smooth color progression using weighted blending
+    // UPDATED: Use faster transition phases matching skybox
     let resultColor: THREE.Color;
     
-    if (normalizedTime <= 0.2) {
-      // Midnight to dawn (0.0 - 0.2)
-      const factor = Math.sin((normalizedTime / 0.2) * Math.PI * 0.5);
+    if (normalizedTime <= 0.15) {
+      // Night to dawn (0.0 - 0.15) - FASTER
+      const factor = Math.pow(normalizedTime / 0.15, 0.7); // Steeper curve
       resultColor = this.lerpColor(keyColors.midnight, keyColors.dawn, factor);
-    } else if (normalizedTime <= 0.5) {
-      // Dawn to noon (0.2 - 0.5)
-      const factor = Math.sin(((normalizedTime - 0.2) / 0.3) * Math.PI * 0.5);
+    } else if (normalizedTime <= 0.85) {
+      // Dawn to peak day (0.15 - 0.85) - LONGER stable period
+      const factor = Math.sin(((normalizedTime - 0.15) / 0.7) * Math.PI * 0.5);
       resultColor = this.lerpColor(keyColors.dawn, keyColors.noon, factor);
-    } else if (normalizedTime <= 0.8) {
-      // Noon to sunset (0.5 - 0.8)
-      const factor = Math.sin(((normalizedTime - 0.5) / 0.3) * Math.PI * 0.5);
-      resultColor = this.lerpColor(keyColors.noon, keyColors.sunset, factor);
     } else {
-      // Sunset to midnight (0.8 - 1.0)
-      const factor = Math.sin(((normalizedTime - 0.8) / 0.2) * Math.PI * 0.5);
+      // Sunset to night (0.85 - 1.0) - FASTER
+      const factor = Math.pow((normalizedTime - 0.85) / 0.15, 0.7); // Steeper curve
       const duskToMidnight = this.lerpColor(keyColors.sunset, keyColors.dusk, Math.min(factor * 2, 1));
       resultColor = this.lerpColor(duskToMidnight, keyColors.midnight, Math.max(0, (factor - 0.5) * 2));
     }
@@ -421,7 +414,7 @@ export class SceneManager {
     (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
   }
   
-  // UPDATED: Simplified skybox with smooth continuous transitions
+  // UPDATED: Simplified skybox with smooth continuous transitions and deeper day blues
   private createDayNightSkybox(): void {
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
@@ -452,45 +445,44 @@ export class SceneManager {
           return mix(a, b, clamp(factor, 0.0, 1.0));
         }
         
-        // Enhanced atmospheric scattering simulation
+        // Enhanced atmospheric scattering simulation with faster transitions
         vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized) {
           float height = direction.y;
           float sunDot = dot(direction, normalize(sunDir));
           
-          // Define atmospheric color zones based on time of day
-          vec3 zenithNight = vec3(0.01, 0.01, 0.08);     // Deep night blue
-          vec3 zenithDawn = vec3(0.3, 0.5, 0.8);         // Dawn blue
-          vec3 zenithDay = vec3(0.4, 0.7, 1.0);          // Day blue
-          vec3 zenithSunset = vec3(0.6, 0.4, 0.8);       // Sunset purple
+          // Define atmospheric color zones - UPDATED with deeper blues and darker nights
+          vec3 zenithNight = vec3(0.005, 0.005, 0.04);     // Much darker night blue
+          vec3 zenithDawn = vec3(0.3, 0.5, 0.8);           // Dawn blue
+          vec3 zenithDay = vec3(0.1, 0.4, 0.8);            // Deeper, more realistic day blue
+          vec3 zenithSunset = vec3(0.6, 0.4, 0.8);         // Sunset purple
           
-          vec3 horizonNight = vec3(0.05, 0.05, 0.2);     // Night horizon
-          vec3 horizonDawn = vec3(1.0, 0.6, 0.3);        // Dawn orange
-          vec3 horizonDay = vec3(0.8, 0.9, 1.0);         // Day white-blue
-          vec3 horizonSunset = vec3(1.0, 0.4, 0.1);      // Sunset orange-red
+          vec3 horizonNight = vec3(0.02, 0.02, 0.1);       // Darker night horizon
+          vec3 horizonDawn = vec3(1.0, 0.6, 0.3);          // Dawn orange
+          vec3 horizonDay = vec3(0.6, 0.8, 0.95);          // Lighter day horizon blue
+          vec3 horizonSunset = vec3(1.0, 0.4, 0.1);        // Sunset orange-red
           
-          // Calculate base colors for zenith and horizon
+          // UPDATED: Faster transitions with new time phases
+          // 0.0-0.15: Night to dawn (3.6h equivalent - faster)
+          // 0.15-0.85: Peak day period (16.8h equivalent - longer stable)
+          // 0.85-1.0: Sunset to night (3.6h equivalent - faster)
+          
           vec3 zenithColor, horizonColor;
           
-          if (timeNormalized < 0.25) {
-            // Night to dawn (0.0 - 0.25)
-            float factor = smoothstep(0.0, 0.25, timeNormalized);
+          if (timeNormalized < 0.15) {
+            // Night to dawn (0.0 - 0.15) - FASTER transition with steeper curve
+            float factor = pow(timeNormalized / 0.15, 0.7); // Steeper curve for faster transition
             zenithColor = lerpColor(zenithNight, zenithDawn, factor);
             horizonColor = lerpColor(horizonNight, horizonDawn, factor);
-          } else if (timeNormalized < 0.5) {
-            // Dawn to day (0.25 - 0.5)
-            float factor = smoothstep(0.25, 0.5, timeNormalized);
+          } else if (timeNormalized < 0.85) {
+            // Peak day period (0.15 - 0.85) - LONGER stable period
+            float factor = smoothstep(0.15, 0.85, timeNormalized);
             zenithColor = lerpColor(zenithDawn, zenithDay, factor);
             horizonColor = lerpColor(horizonDawn, horizonDay, factor);
-          } else if (timeNormalized < 0.75) {
-            // Day to sunset (0.5 - 0.75)
-            float factor = smoothstep(0.5, 0.75, timeNormalized);
-            zenithColor = lerpColor(zenithDay, zenithSunset, factor);
-            horizonColor = lerpColor(horizonDay, horizonSunset, factor);
           } else {
-            // Sunset to night (0.75 - 1.0)
-            float factor = smoothstep(0.75, 1.0, timeNormalized);
-            zenithColor = lerpColor(zenithSunset, zenithNight, factor);
-            horizonColor = lerpColor(horizonSunset, horizonNight, factor);
+            // Sunset to night (0.85 - 1.0) - FASTER transition with steeper curve
+            float factor = pow((timeNormalized - 0.85) / 0.15, 0.7); // Steeper curve for faster transition
+            zenithColor = lerpColor(zenithDay, zenithNight, factor);
+            horizonColor = lerpColor(horizonDay, horizonNight, factor);
           }
           
           // Create vertical atmospheric gradient (Rayleigh scattering simulation)
@@ -509,7 +501,7 @@ export class SceneManager {
           
           // Sun glow colors
           vec3 sunGlowColor = vec3(1.0, 0.8, 0.4); // Warm sun glow
-          if (timeNormalized > 0.6 && timeNormalized < 0.9) {
+          if (timeNormalized > 0.8 && timeNormalized < 0.9) {
             // Enhanced sunset/sunrise glow
             sunGlowColor = vec3(1.0, 0.5, 0.2);
           }
@@ -532,15 +524,15 @@ export class SceneManager {
           // Get realistic atmospheric color
           vec3 skyColor = getAtmosphericColor(direction, sunDir, normalizedTime);
           
-          // Add subtle stars for night sky
-          if (normalizedTime < 0.3 || normalizedTime > 0.8) {
+          // Add subtle stars for night sky - UPDATED for darker nights
+          if (normalizedTime < 0.2 || normalizedTime > 0.9) {
             float starField = fract(sin(dot(direction.xz * 50.0, vec2(12.9898, 78.233))) * 43758.5453);
             if (starField > 0.999 && direction.y > 0.3) {
               float nightFactor = 1.0;
-              if (normalizedTime < 0.3) {
-                nightFactor = 1.0 - (normalizedTime / 0.3);
+              if (normalizedTime < 0.2) {
+                nightFactor = 1.0 - (normalizedTime / 0.2);
               } else {
-                nightFactor = (normalizedTime - 0.8) / 0.2;
+                nightFactor = (normalizedTime - 0.9) / 0.1; // Faster night transition
               }
               skyColor += vec3(0.8, 0.8, 1.0) * 0.5 * nightFactor;
             }
@@ -555,7 +547,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Realistic atmospheric gradient skybox created with proper color zones');
+    console.log('Realistic atmospheric gradient skybox created with deeper day blues and faster transitions');
   }
   
   private updateDayNightSkybox(): void {
