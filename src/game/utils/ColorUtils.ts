@@ -35,8 +35,22 @@ export class ColorUtils {
     
     let transitionFactor = factor;
     
-    // Improved transition curves to prevent early brightening
-    if (phase === 'night' && nextPhase === 'dawn') {
+    // Special handling for day phase to prevent early sunset colors
+    if (phase === 'day' && nextPhase === 'sunset') {
+      const normalizedTime = time % 1;
+      const dayStart = timePhases.DAY_START;
+      const sunsetStart = timePhases.SUNSET_START;
+      const dayProgress = (normalizedTime - dayStart) / (sunsetStart - dayStart);
+      
+      // Only start transitioning to sunset in the final 20% of day phase
+      if (dayProgress < 0.8) {
+        transitionFactor = 0; // Keep pure day color
+      } else {
+        // Smooth transition in final 20% of day
+        const lateTransition = (dayProgress - 0.8) / 0.2;
+        transitionFactor = this.exponentialDecay(lateTransition, 1.5);
+      }
+    } else if (phase === 'night' && nextPhase === 'dawn') {
       // Delay the dawn transition to prevent early brightening
       transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.3) / 0.7, 2);
     } else if (phase === 'dawn' && nextPhase === 'day') {
@@ -77,8 +91,21 @@ export class ColorUtils {
     
     let transitionFactor = factor;
     
-    // Apply smooth transitions for lighting with phase-specific curves
-    if (phase === 'night' && nextPhase === 'dawn') {
+    // Apply similar logic for lighting to prevent early sunset colors
+    if (phase === 'day' && nextPhase === 'sunset') {
+      const normalizedTime = time % 1;
+      const dayStart = timePhases.DAY_START;
+      const sunsetStart = timePhases.SUNSET_START;
+      const dayProgress = (normalizedTime - dayStart) / (sunsetStart - dayStart);
+      
+      // Keep pure day lighting until final 15% of day phase
+      if (dayProgress < 0.85) {
+        transitionFactor = 0;
+      } else {
+        const lateTransition = (dayProgress - 0.85) / 0.15;
+        transitionFactor = this.smoothStep(0, 1, lateTransition);
+      }
+    } else if (phase === 'night' && nextPhase === 'dawn') {
       // Prevent early light brightening
       transitionFactor = this.exponentialDecay(Math.max(0, factor - 0.4) / 0.6, 1.5);
     } else if (phase === 'dawn' && nextPhase === 'day') {
