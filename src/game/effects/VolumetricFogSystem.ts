@@ -211,13 +211,6 @@ export class VolumetricFogSystem {
           density *= (0.8 + combinedNoise * 0.4);
           density = clamp(density, 0.0, 0.3); // Reduced max opacity
           
-          // Time-based density adjustment (NEW SETTINGS)
-          float timeDensityMultiplier = 1.0;
-          if (timeOfDay >= 0.2 && timeOfDay <= 0.3 || timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            timeDensityMultiplier = 1.2; // Dawn/Dusk: 20% denser
-          }
-          density *= timeDensityMultiplier;
-          
           // Edge fade for smooth blending
           float edgeFade = smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x) *
                           smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
@@ -492,16 +485,6 @@ export class VolumetricFogSystem {
           
           // Add subtle depth layering
           baseDensity *= (0.8 + layerDepth * 0.4);
-          
-          // Time-based density adjustments (NEW SETTINGS)
-          float timeWallMultiplier = 1.0;
-          if (timeOfDay >= 0.2 && timeOfDay <= 0.3 || timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            timeWallMultiplier = 1.05; // Dawn/Dusk: 5% denser
-          } else if (timeOfDay >= 0.8 || timeOfDay <= 0.2) {
-            timeWallMultiplier = 1.02; // Night: 2% denser
-          }
-          // Day (0.4-0.6) remains 1.0 (normal density)
-          baseDensity *= timeWallMultiplier;
           
           // Ensure realistic transparency with much lower max opacity
           baseDensity = clamp(baseDensity, 0.0, 0.35); // Reduced from 0.7 to 0.35
@@ -781,7 +764,7 @@ export class VolumetricFogSystem {
         const angle = (i / 24) * Math.PI * 2;
         wall.position.x = Math.cos(angle) * distance;
         wall.position.z = Math.sin(angle) * distance;
-        wall.position.y = wallHeight / 2 - 5;
+        wall.position.y = wallHeight / 2; // Start at ground level (0) and extend up
         wall.rotation.y = angle + Math.PI / 2;
         
         // Add slight random rotation for organic feel
@@ -991,6 +974,6 @@ export class VolumetricFogSystem {
       this.skyFogMaterial.dispose();
     }
     
-    console.log("Enhanced VolumetricFogSystem with complete horizon coverage disposed");
+    console.log("Enhanced VolumetricFogSystem with consistent density across day/night cycle disposed");
   }
 }
