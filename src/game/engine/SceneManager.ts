@@ -79,7 +79,9 @@ export class SceneManager {
     SUNSET_START: 0.75,
     SUNSET_END: 0.85,
     EVENING_START: 0.85,
-    EVENING_END: 1.0          // Back to deep night
+    EVENING_END: 0.95,        // Shortened evening period
+    RAPID_TWILIGHT_START: 0.95,
+    RAPID_TWILIGHT_END: 1.0   // Rapid transition to deep night
   };
   
   // Enemy spawning system
@@ -217,14 +219,23 @@ export class SceneManager {
       // Sunset transition (0.75 - 0.85)
       const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
       resultColor = this.lerpColor(keyColors.noon, keyColors.sunset, this.smoothStep(0, 1, factor));
-    } else {
-      // Evening to deep night (0.85 - 1.0)
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // Evening (0.85 - 0.95) - Accelerated transition to dusk
       const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
+      resultColor = this.lerpColor(keyColors.sunset, keyColors.dusk, this.steepStep(0, 1, factor));
+    } else {
+      // Rapid twilight to deep night (0.95 - 1.0) - Very fast transition
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_TWILIGHT_START) / (this.TIME_PHASES.RAPID_TWILIGHT_END - this.TIME_PHASES.RAPID_TWILIGHT_START);
       const nightColor = this.lerpColor(keyColors.lightNight, keyColors.deepNight, moonElevation);
-      resultColor = this.lerpColor(keyColors.dusk, nightColor, this.smoothStep(0, 1, factor));
+      resultColor = this.lerpColor(keyColors.dusk, nightColor, this.steepStep(0, 1, factor));
     }
     
     return resultColor.getHex();
+  }
+  
+  private steepStep(edge0: number, edge1: number, x: number): number {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * t * (t * (t * 6.0 - 15.0) + 10.0); // Quintic interpolation for steeper curve
   }
   
   private setupDayNightLighting(): void {
@@ -306,11 +317,16 @@ export class SceneManager {
       // Sunset transition
       const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
       baseIntensity = 1.8 - (1.8 - 0.6) * this.smoothStep(0, 1, factor);
-    } else {
-      // Evening to deep night
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // Evening (0.85 - 0.95) - Accelerated light reduction
       const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
       const nightIntensity = 0.1 + (0.4 - 0.1) * (1 - moonElevation);
-      baseIntensity = 0.6 - (0.6 - nightIntensity) * this.smoothStep(0, 1, factor);
+      baseIntensity = 0.6 - (0.6 - 0.4) * this.steepStep(0, 1, factor);
+    } else {
+      // Rapid twilight to deep night (0.95 - 1.0) - Very fast light reduction
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_TWILIGHT_START) / (this.TIME_PHASES.RAPID_TWILIGHT_END - this.TIME_PHASES.RAPID_TWILIGHT_START);
+      const nightIntensity = 0.1 + (0.4 - 0.1) * (1 - moonElevation);
+      baseIntensity = 0.4 - (0.4 - nightIntensity) * this.steepStep(0, 1, factor);
     }
     
     return baseIntensity;
@@ -503,7 +519,13 @@ export class SceneManager {
           return mix(a, b, clamp(factor, 0.0, 1.0));
         }
         
-        // UPDATED: Synchronized atmospheric scattering with moon-based night darkness
+        // Steeper easing function for accelerated transitions
+        float steepStep(float edge0, float edge1, float x) {
+          float t = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+          return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+        }
+        
+        // UPDATED: Accelerated atmospheric scattering with faster twilight
         vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized, float moonElev) {
           float height = direction.y;
           float sunDot = dot(direction, normalize(sunDir));
@@ -514,12 +536,14 @@ export class SceneManager {
           vec3 zenithDawn = vec3(0.3, 0.5, 0.8);
           vec3 zenithDay = vec3(0.1, 0.35, 0.75);
           vec3 zenithSunset = vec3(0.6, 0.4, 0.8);
+          vec3 zenithDusk = vec3(0.05, 0.02, 0.15);
           
           vec3 deepNightHorizon = vec3(0.005, 0.005, 0.04);
           vec3 lightNightHorizon = vec3(0.015, 0.015, 0.08);
           vec3 horizonDawn = vec3(1.0, 0.6, 0.3);
           vec3 horizonDay = vec3(0.6, 0.8, 0.95);
           vec3 horizonSunset = vec3(1.0, 0.4, 0.1);
+          vec3 horizonDusk = vec3(0.2, 0.1, 0.4);
           
           vec3 zenithColor, horizonColor;
           
@@ -527,7 +551,7 @@ export class SceneManager {
           vec3 nightZenith = lerpColor(lightNightZenith, deepNightZenith, moonElev);
           vec3 nightHorizon = lerpColor(lightNightHorizon, deepNightHorizon, moonElev);
           
-          // UPDATED: Use standardized time phases
+          // UPDATED: Use accelerated time phases
           if (timeNormalized <= 0.15) {
             // Deep night (0.0 - 0.15)
             zenithColor = nightZenith;
@@ -547,11 +571,16 @@ export class SceneManager {
             float factor = smoothstep(0.75, 0.85, timeNormalized);
             zenithColor = lerpColor(zenithDay, zenithSunset, factor);
             horizonColor = lerpColor(horizonDay, horizonSunset, factor);
+          } else if (timeNormalized <= 0.95) {
+            // Evening (0.85 - 0.95) - Accelerated transition to dusk
+            float factor = (timeNormalized - 0.85) / (0.95 - 0.85);
+            zenithColor = lerpColor(zenithSunset, zenithDusk, steepStep(0.0, 1.0, factor));
+            horizonColor = lerpColor(horizonSunset, horizonDusk, steepStep(0.0, 1.0, factor));
           } else {
-            // Evening to deep night (0.85 - 1.0)
-            float factor = smoothstep(0.85, 1.0, timeNormalized);
-            zenithColor = lerpColor(zenithSunset, nightZenith, factor);
-            horizonColor = lerpColor(horizonSunset, nightHorizon, factor);
+            // Rapid twilight to deep night (0.95 - 1.0) - Very fast transition
+            float factor = (timeNormalized - 0.95) / (1.0 - 0.95);
+            zenithColor = lerpColor(zenithDusk, nightZenith, steepStep(0.0, 1.0, factor));
+            horizonColor = lerpColor(horizonDusk, nightHorizon, steepStep(0.0, 1.0, factor));
           }
           
           // Create vertical atmospheric gradient
@@ -615,7 +644,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Synchronized atmospheric gradient skybox created with moon-based night darkness');
+    console.log('Accelerated atmospheric gradient skybox created with faster twilight transitions');
   }
   
   private updateDayNightSkybox(): void {
@@ -777,10 +806,14 @@ export class SceneManager {
     } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
       const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
       return this.smoothStep(0, 1, factor) * 0.5;  // Partial night factor
-    } else {
-      // Evening to deep night
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // Evening (0.85 - 0.95) - Accelerated night factor increase
       const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
-      return 0.5 + 0.5 * this.smoothStep(0, 1, factor);
+      return 0.5 + 0.3 * this.steepStep(0, 1, factor);
+    } else {
+      // Rapid twilight to deep night (0.95 - 1.0) - Very fast night factor increase
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_TWILIGHT_START) / (this.TIME_PHASES.RAPID_TWILIGHT_END - this.TIME_PHASES.RAPID_TWILIGHT_START);
+      return 0.8 + 0.2 * this.steepStep(0, 1, factor);
     }
   }
   
@@ -793,6 +826,7 @@ export class SceneManager {
     const dawnColor = new THREE.Color(0xFFF4E6);        // Warm dawn light
     const noonColor = new THREE.Color(0xFFFAF0);        // Bright white light
     const sunsetColor = new THREE.Color(0xFFE4B5);      // Warm sunset light
+    const duskColor = new THREE.Color(0x2F1B69);        // Deep twilight purple
     
     if (normalizedTime >= this.TIME_PHASES.DEEP_NIGHT_START && normalizedTime <= this.TIME_PHASES.DEEP_NIGHT_END) {
       return nightColor;
@@ -805,10 +839,14 @@ export class SceneManager {
     } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
       const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
       return this.lerpColor(noonColor, sunsetColor, this.smoothStep(0, 1, factor));
-    } else {
-      // Evening to deep night
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // Evening (0.85 - 0.95) - Accelerated transition to dusk color
       const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
-      return this.lerpColor(sunsetColor, nightColor, this.smoothStep(0, 1, factor));
+      return this.lerpColor(sunsetColor, duskColor, this.steepStep(0, 1, factor));
+    } else {
+      // Rapid twilight to deep night (0.95 - 1.0) - Very fast transition to night color
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_TWILIGHT_START) / (this.TIME_PHASES.RAPID_TWILIGHT_END - this.TIME_PHASES.RAPID_TWILIGHT_START);
+      return this.lerpColor(duskColor, nightColor, this.steepStep(0, 1, factor));
     }
   }
   
