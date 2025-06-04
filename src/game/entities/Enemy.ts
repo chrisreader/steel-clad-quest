@@ -753,13 +753,13 @@ export class Enemy {
     
     // FIXED: Apply stronger speed decay when moving away from player
     if (distanceToPlayer > this.lastPlayerDistance) {
-      this.speedCooldownTimer += deltaTime * 1000; // Use actual deltaTime
+      this.speedCooldownTimer += 16; // Assume ~60fps (16ms per frame)
       const cooldownProgress = Math.min(this.speedCooldownTimer / this.maxSpeedCooldown, 1);
       // Stronger decay: 80% reduction instead of 50%
       targetMultiplier = Math.max(targetMultiplier * (1 - cooldownProgress * 0.8), 0.1);
     } else {
       // FIXED: Faster recovery when approaching - reset cooldown faster
-      this.speedCooldownTimer = Math.max(0, this.speedCooldownTimer - deltaTime * 1000 * 2); // 2x faster recovery
+      this.speedCooldownTimer = Math.max(0, this.speedCooldownTimer - 64); // 4x faster recovery
     }
     
     this.lastPlayerDistance = distanceToPlayer;
