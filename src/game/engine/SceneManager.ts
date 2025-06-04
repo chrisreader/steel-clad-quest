@@ -653,10 +653,9 @@ export class SceneManager {
       transparent: false
     });
     
-    // Add height variation only for outer rings
-    if (region.ringIndex > 0) {
-      this.addTerrainHeightVariation(terrainGeometry);
-    }
+    // REMOVED: Height variation to ensure consistent floor levels across all quadrants
+    // All terrain will now have perfectly level floors at y=0
+    console.log(`Terrain for ring ${region.ringIndex}, quadrant ${region.quadrant} created with level floor`);
     
     // Create mesh
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
