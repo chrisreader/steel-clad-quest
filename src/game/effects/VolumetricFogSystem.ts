@@ -234,10 +234,10 @@ export class VolumetricFogSystem {
         timeOfDay: { value: this.timeOfDay },
         fogColor: { value: new THREE.Color(0xF5F5F5) },
         dayFogColor: { value: new THREE.Color(0xF5F5F5) },
-        nightFogColor: { value: new THREE.Color(0x404080) },
+        nightFogColor: { value: new THREE.Color(0x606090) }, // Brightened from 0x404080
         sunriseFogColor: { value: new THREE.Color(0xFFE4CC) },
         sunsetFogColor: { value: new THREE.Color(0xFFD0AA) },
-        fogWallDensity: { value: 0.08 }, // Significantly reduced from 0.4
+        fogWallDensity: { value: 0.08 },
         fogWallHeight: { value: 80.0 },
         horizonBlur: { value: 0.6 },
         playerPosition: { value: new THREE.Vector3() },
@@ -306,7 +306,7 @@ export class VolumetricFogSystem {
         varying float vHeightFactor;
         varying vec3 vLocalPosition;
         
-        // 3D Simplex noise function for volumetric effects
+        // Simplex noise function
         vec3 mod289(vec3 x) {
           return x - floor(x * (1.0 / 289.0)) * 289.0;
         }
@@ -407,9 +407,18 @@ export class VolumetricFogSystem {
           return currentColor;
         }
         
+        // Determine if current time is dark period (non-day)
+        bool isDarkPeriod(float time) {
+          return time < 0.4 || time > 0.6;
+        }
+        
         void main() {
           // Get dynamic fog color for wall effect
           vec3 dynamicFogColor = getFogWallColorForTime(timeOfDay);
+          
+          // TIME-BASED DENSITY ADJUSTMENT: Increase density for dark periods only
+          float densityMultiplier = isDarkPeriod(timeOfDay) ? 1.5 : 1.0; // 50% increase for dark periods
+          float adjustedFogWallDensity = fogWallDensity * densityMultiplier;
           
           // Create 3D volumetric noise for realistic fog volume
           vec3 noisePos = vWorldPosition * noiseScale;
@@ -449,10 +458,16 @@ export class VolumetricFogSystem {
           
           exponentialFog = smoothstep(0.0, 1.0, exponentialFog);
           
-          // Atmospheric perspective - stronger color shifts with distance
+          // BRIGHTNESS COMPENSATION: Ensure minimum visibility during dark periods
           vec3 atmosphericColor = dynamicFogColor;
-          float atmosphericShift = smoothstep(50.0, 300.0, vDistance);
-          atmosphericColor = mix(atmosphericColor, atmosphericColor * 0.6, atmosphericShift * 0.5);
+          if (isDarkPeriod(timeOfDay)) {
+            // Add minimum brightness for dark periods only
+            float minBrightness = 0.3;
+            float currentBrightness = (atmosphericColor.r + atmosphericColor.g + atmosphericColor.b) / 3.0;
+            if (currentBrightness < minBrightness) {
+              atmosphericColor = mix(atmosphericColor, vec3(minBrightness), (minBrightness - currentBrightness) / minBrightness);
+            }
+          }
           
           // ENHANCED BOTTOM COVERAGE - Stronger density at bottom
           float bottomDensityBoost = 1.0 - smoothstep(0.0, 0.3, vHeightFactor);
@@ -477,8 +492,8 @@ export class VolumetricFogSystem {
           float edgeSoftness = smoothstep(0.0, 0.15, vUv.x) * smoothstep(1.0, 0.85, vUv.x) *
                               smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
           
-          // LAYERED DENSITY - Much more subtle for realistic depth
-          float baseDensity = fogWallDensity * exponentialFog * heightGradient;
+          // LAYERED DENSITY with time-based adjustments
+          float baseDensity = adjustedFogWallDensity * exponentialFog * heightGradient;
           baseDensity *= densityVariation;
           baseDensity *= radialFalloff * 0.7 + 0.3;
           baseDensity *= edgeSoftness;
@@ -486,8 +501,15 @@ export class VolumetricFogSystem {
           // Add subtle depth layering
           baseDensity *= (0.8 + layerDepth * 0.4);
           
-          // Ensure realistic transparency with much lower max opacity
-          baseDensity = clamp(baseDensity, 0.0, 0.35); // Reduced from 0.7 to 0.35
+          // TIME-BASED OPACITY LIMITS: Higher max opacity for dark periods
+          float maxOpacity = isDarkPeriod(timeOfDay) ? 0.5 : 0.35;
+          
+          // MINIMUM VISIBILITY: Ensure fog walls are always somewhat visible
+          float minVisibility = isDarkPeriod(timeOfDay) ? 0.1 : 0.0;
+          baseDensity = max(baseDensity, minVisibility);
+          
+          // Ensure realistic transparency
+          baseDensity = clamp(baseDensity, 0.0, maxOpacity);
           
           gl_FragColor = vec4(atmosphericColor, baseDensity);
         }
@@ -847,10 +869,27 @@ export class VolumetricFogSystem {
     console.log(`Created ${this.groundFogLayers.length} extended ground fog layers for realistic depth`);
   }
   
+  private isDarkPeriod(timeOfDay: number): boolean {
+    return timeOfDay < 0.4 || timeOfDay > 0.6;
+  }
+  
   public update(deltaTime: number, timeOfDay: number, playerPosition: THREE.Vector3): void {
     this.timeOfDay = timeOfDay;
     
-    // Update atmospheric fog layers
+    // TIME-BASED BLENDING MODE SWITCHING for fog walls only
+    const isDark = this.isDarkPeriod(timeOfDay);
+    const targetBlending = isDark ? THREE.NormalBlending : THREE.AdditiveBlending;
+    
+    // Update fog wall blending modes based on time of day
+    this.fogWallLayers.forEach(wall => {
+      const material = wall.material as THREE.ShaderMaterial;
+      if (material.blending !== targetBlending) {
+        material.blending = targetBlending;
+        material.needsUpdate = true;
+      }
+    });
+    
+    // Update atmospheric fog layers (keep existing behavior)
     this.fogLayers.forEach(layer => {
       const material = layer.material as THREE.ShaderMaterial;
       if (material.uniforms) {
@@ -974,6 +1013,6 @@ export class VolumetricFogSystem {
       this.skyFogMaterial.dispose();
     }
     
-    console.log("Enhanced VolumetricFogSystem with consistent density across day/night cycle disposed");
+    console.log("Enhanced VolumetricFogSystem with time-based fog wall visibility disposed");
   }
 }
