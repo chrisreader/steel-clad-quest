@@ -414,14 +414,15 @@ export class SceneManager {
     (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
   }
   
-  // UPDATED: Simplified skybox with intense sun glow that disperses outwards and is locked to sun position
+  // UPDATED: Skybox with sun glow properly locked to sun position from camera perspective
   private createDayNightSkybox(): void {
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
     const skyMaterial = new THREE.ShaderMaterial({
       uniforms: {
         timeOfDay: { value: this.timeOfDay },
-        sunPosition: { value: new THREE.Vector3() }
+        sunPosition: { value: new THREE.Vector3() },
+        cameraPosition: { value: new THREE.Vector3() }
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -437,6 +438,7 @@ export class SceneManager {
       fragmentShader: `
         uniform float timeOfDay;
         uniform vec3 sunPosition;
+        uniform vec3 cameraPosition;
         
         varying vec3 vWorldPosition;
         varying vec3 vDirection;
@@ -445,12 +447,12 @@ export class SceneManager {
           return mix(a, b, clamp(factor, 0.0, 1.0));
         }
         
-        // Enhanced atmospheric scattering with intense sun glow that disperses outwards
-        vec3 getAtmosphericColor(vec3 direction, vec3 sunPos, float timeNormalized) {
+        // Enhanced atmospheric scattering with sun glow locked to camera perspective
+        vec3 getAtmosphericColor(vec3 direction, vec3 sunPos, vec3 camPos, float timeNormalized) {
           float height = direction.y;
           
-          // UPDATED: Calculate sun direction from actual sun position in world space
-          vec3 sunDir = normalize(sunPos);
+          // FIXED: Calculate sun direction relative to camera position
+          vec3 sunDir = normalize(sunPos - camPos);
           float sunDot = dot(direction, sunDir);
           
           // Define atmospheric color zones - deeper blues and extended night
@@ -496,10 +498,10 @@ export class SceneManager {
           
           vec3 baseAtmosphereColor = lerpColor(horizonColor, zenithColor, heightFactor);
           
-          // UPDATED: Intense sun glow that disperses outwards - properly centered on sun
+          // FIXED: Sun glow properly centered on sun from camera perspective
           float sunInfluence = 0.0;
           if (sunDir.y > -0.2) { // Only when sun is near or above horizon
-            // UPDATED: Use accurate angular distance from sun direction
+            // Use accurate angular distance from sun direction relative to camera
             float angularDistance = acos(clamp(sunDot, -1.0, 1.0)); // Angle in radians
             float sunDistance = angularDistance / 3.14159; // Normalize to [0,1]
             
@@ -523,7 +525,7 @@ export class SceneManager {
             sunGlowColor = vec3(1.0, 0.6, 0.3);
           }
           
-          // UPDATED: Apply intense sun influence that disperses outwards
+          // Apply intense sun influence that disperses outwards
           vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.6);
           
           // Add subtle atmospheric perspective for distance
@@ -537,8 +539,8 @@ export class SceneManager {
           vec3 direction = normalize(vDirection);
           float normalizedTime = mod(timeOfDay, 1.0);
           
-          // UPDATED: Pass actual sun position to atmospheric calculation
-          vec3 skyColor = getAtmosphericColor(direction, sunPosition, normalizedTime);
+          // FIXED: Pass camera position to ensure sun glow is locked to camera perspective
+          vec3 skyColor = getAtmosphericColor(direction, sunPosition, cameraPosition, normalizedTime);
           
           // Add subtle stars for extended night sky periods
           if (normalizedTime < 0.25 || normalizedTime > 0.75) {
@@ -563,7 +565,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Realistic atmospheric gradient skybox created with sun-locked intense dispersing glow');
+    console.log('Skybox created with sun glow properly locked to camera perspective');
   }
   
   private updateDayNightSkybox(): void {
