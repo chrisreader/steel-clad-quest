@@ -1,23 +1,11 @@
 import * as THREE from 'three';
-import { EnemyType } from '../../../types/GameTypes';
+import { EnemyType, PlayerSpeedInfo, EnemySpeedProfile, EnemyCombatTimers, PlayerRelativeSpeedZones } from '../../../types/GameTypes';
 import { EffectsManager } from '../../engine/EffectsManager';
 import { AudioManager } from '../../engine/AudioManager';
 import { TextureGenerator } from '../../utils';
 import { EnemyHumanoid, HumanoidConfig } from './EnemyHumanoid';
 import { PassiveNPCBehavior, PassiveBehaviorState } from '../../ai/PassiveNPCBehavior';
 import { EnemyMovementHelper, EnemyMovementConfig } from '../../utils/movement/EnemyMovementHelper';
-
-// Fixed distance-based speed zones interface
-interface EnemySpeedZones {
-  detectionRange: number;
-  pursuitRange: number;
-  attackRange: number;
-  damageRange: number;
-  detectionSpeedMultiplier: number;
-  pursuitSpeedMultiplier: number;
-  attackSpeedMultiplier: number;
-  damageSpeedMultiplier: number;
-}
 
 export class OrcEnemy extends EnemyHumanoid {
   private static readonly ORC_CONFIG: HumanoidConfig = {
@@ -90,26 +78,12 @@ export class OrcEnemy extends EnemyHumanoid {
   private lastPosition: THREE.Vector3 = new THREE.Vector3();
   private stuckThreshold: number = 0.01;
 
-  // FIXED: Properly balanced distance-based speed scaling system with 40% reduction
-  private speedZones: EnemySpeedZones = {
-    detectionRange: 30,
-    pursuitRange: 15,
-    attackRange: 4,      // Reduced from 8 to 4
-    damageRange: 3,      // Increased from 2.5 to 3
-    detectionSpeedMultiplier: 0.18,  // Reduced from 0.3 to 0.18 (40% reduction)
-    pursuitSpeedMultiplier: 0.36,    // Reduced from 0.6 to 0.36 (40% reduction)
-    attackSpeedMultiplier: 0.6,      // Reduced from 1.0 to 0.6 (40% reduction)
-    damageSpeedMultiplier: 0.24      // Reduced from 0.4 to 0.24 (40% reduction)
-  };
-  private currentSpeedMultiplier: number = 0.18;
-  private speedCooldownTimer: number = 0;
-  private maxSpeedCooldown: number = 2000; // 2 seconds for faster recovery
-  private lastPlayerDistance: number = Infinity;
-
-  // FIXED: Attack state tracking with proper exhaustion
-  private isCurrentlyAttacking: boolean = false;
-  private attackExhaustionTimer: number = 0;
-  private maxAttackExhaustion: number = 2000; // 2 seconds of exhaustion after attacking
+  // NEW: Player-relative speed system with combat timing mechanics
+  private speedProfile: EnemySpeedProfile | null = null;
+  private speedZones: PlayerRelativeSpeedZones | null = null;
+  private combatTimers: EnemyCombatTimers | null = null;
+  private currentCalculatedSpeed: number = 0;
+  private lastPlayerSpeedInfo: PlayerSpeedInfo | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -129,79 +103,132 @@ export class OrcEnemy extends EnemyHumanoid {
       8 // Safe zone radius
     );
     
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with fixed speed scaling system");
+    console.log("🗡️ [OrcEnemy] Created enhanced orc with player-relative speed system");
+  }
+
+  // NEW: Set player-relative speed system (called from Enemy class)
+  public setPlayerRelativeSpeedSystem(
+    speedProfile: EnemySpeedProfile, 
+    speedZones: PlayerRelativeSpeedZones, 
+    combatTimers: EnemyCombatTimers
+  ): void {
+    this.speedProfile = speedProfile;
+    this.speedZones = speedZones;
+    this.combatTimers = combatTimers;
+    console.log("🏃 [OrcEnemy] Player-relative speed system configured");
+  }
+
+  // NEW: Update player speed information
+  public updatePlayerSpeedInfo(playerSpeedInfo: PlayerSpeedInfo): void {
+    this.lastPlayerSpeedInfo = playerSpeedInfo;
+  }
+
+  // NEW: Calculate enemy speed based on player speed and current zone
+  private calculatePlayerRelativeSpeed(distanceToPlayer: number): number {
+    if (!this.lastPlayerSpeedInfo || !this.speedProfile || !this.speedZones || !this.combatTimers) {
+      // Fallback to old system if not configured
+      return this.config.speed * 0.3;
+    }
+
+    const now = Date.now();
+    let targetSpeedRatio: number;
+    let isInSpecialZone = false;
+
+    // Update combat timers
+    this.updateCombatTimers(distanceToPlayer, now);
+
+    // Determine speed zone and ratio
+    if (distanceToPlayer > this.speedZones.detectionRange) {
+      targetSpeedRatio = 0.2; // Very slow when far away
+    } else if (distanceToPlayer > this.speedZones.pursuitRange) {
+      targetSpeedRatio = this.speedZones.detectionSpeedRatio;
+    } else if (distanceToPlayer > this.speedZones.attackRange) {
+      targetSpeedRatio = this.speedZones.pursuitSpeedRatio;
+    } else if (distanceToPlayer > this.speedZones.damageRange) {
+      // Attack zone - only allow speed boost if not in cooldown
+      if (!this.combatTimers.isInAttackBurstCooldown) {
+        targetSpeedRatio = this.speedZones.attackSpeedRatio;
+        // Trigger attack burst cooldown
+        this.combatTimers.lastAttackBurstTime = now;
+        this.combatTimers.isInAttackBurstCooldown = true;
+        isInSpecialZone = true;
+        console.log(`⚡ [OrcEnemy] Attack speed burst activated! Speed: ${(targetSpeedRatio * 100).toFixed(0)}% of player`);
+      } else {
+        // In cooldown, use normal pursuit speed
+        targetSpeedRatio = this.speedZones.pursuitSpeedRatio;
+      }
+    } else {
+      // Damage zone - lock in slow speed
+      targetSpeedRatio = this.speedZones.damageSpeedRatio;
+      if (!this.combatTimers.isLockedInDamageZone) {
+        this.combatTimers.damageZoneEnterTime = now;
+        this.combatTimers.isLockedInDamageZone = true;
+        isInSpecialZone = true;
+        console.log(`🛑 [OrcEnemy] Locked in damage zone! Speed: ${(targetSpeedRatio * 100).toFixed(0)}% of player for ${this.combatTimers.damageZoneLockDuration/1000}s`);
+      }
+    }
+
+    // Apply combat timer overrides
+    if (this.combatTimers.isLockedInDamageZone) {
+      targetSpeedRatio = this.speedZones.damageSpeedRatio;
+    }
+
+    // Calculate final speed relative to current player speed
+    const calculatedSpeed = this.lastPlayerSpeedInfo.currentSpeed * targetSpeedRatio;
+    
+    // Smooth speed transitions (but faster than before for more responsive combat)
+    const smoothingFactor = isInSpecialZone ? 0.3 : 0.15; // Faster transitions for special zones
+    this.currentCalculatedSpeed += (calculatedSpeed - this.currentCalculatedSpeed) * smoothingFactor;
+
+    // Debug logging for speed calculations
+    if (Math.random() < 0.02) { // 2% chance to log
+      console.log(`🏃 [OrcEnemy] Speed: ${this.currentCalculatedSpeed.toFixed(1)} (${(targetSpeedRatio * 100).toFixed(0)}% of player ${this.lastPlayerSpeedInfo.currentSpeed.toFixed(1)}), Distance: ${distanceToPlayer.toFixed(1)}, Zone: ${this.getCurrentSpeedZoneName(distanceToPlayer)}`);
+    }
+
+    return this.currentCalculatedSpeed;
+  }
+
+  // NEW: Update combat timing mechanics
+  private updateCombatTimers(distanceToPlayer: number, currentTime: number): void {
+    if (!this.combatTimers || !this.speedZones) return;
+
+    // Update attack burst cooldown
+    if (this.combatTimers.isInAttackBurstCooldown) {
+      if (currentTime - this.combatTimers.lastAttackBurstTime >= this.combatTimers.attackBurstCooldown) {
+        this.combatTimers.isInAttackBurstCooldown = false;
+        console.log(`⚡ [OrcEnemy] Attack burst cooldown expired - can use speed boost again`);
+      }
+    }
+
+    // Update damage zone lock
+    if (this.combatTimers.isLockedInDamageZone) {
+      if (distanceToPlayer > this.speedZones.damageRange) {
+        // Player moved away - check if lock duration has passed
+        if (currentTime - this.combatTimers.damageZoneEnterTime >= this.combatTimers.damageZoneLockDuration) {
+          this.combatTimers.isLockedInDamageZone = false;
+          console.log(`🛑 [OrcEnemy] Damage zone lock expired - normal speed restored`);
+        }
+      } else {
+        // Still in damage zone - reset the timer
+        this.combatTimers.damageZoneEnterTime = currentTime;
+      }
+    }
+  }
+
+  // NEW: Get current speed zone name for debugging
+  private getCurrentSpeedZoneName(distanceToPlayer: number): string {
+    if (!this.speedZones) return 'UNKNOWN';
+    if (distanceToPlayer > this.speedZones.detectionRange) return 'DISTANT';
+    if (distanceToPlayer > this.speedZones.pursuitRange) return 'DETECTION';
+    if (distanceToPlayer > this.speedZones.attackRange) return 'PURSUIT';
+    if (distanceToPlayer > this.speedZones.damageRange) return 'ATTACK';
+    return 'DAMAGE';
   }
 
   public setMovementHelper(helper: EnemyMovementHelper, config: EnemyMovementConfig): void {
     this.movementHelper = helper;
     this.movementConfig = config;
     console.log("🚶 [OrcEnemy] Comprehensive surface movement system enabled");
-  }
-
-  public setSpeedZones(zones: EnemySpeedZones): void {
-    this.speedZones = zones;
-    console.log("🏃 [OrcEnemy] Speed scaling zones configured");
-  }
-
-  private calculateSpeedMultiplier(distanceToPlayer: number): number {
-    const zones = this.speedZones;
-    
-    // FIXED: Apply attack exhaustion first - if enemy just attacked, force very slow speed
-    if (this.attackExhaustionTimer > 0) {
-      return 0.2; // Very slow when exhausted from attacking
-    }
-    
-    // Determine current zone and base multiplier
-    let targetMultiplier: number;
-    
-    if (distanceToPlayer > zones.detectionRange) {
-      targetMultiplier = 0.1; // Very slow when far away
-    } else if (distanceToPlayer > zones.pursuitRange) {
-      targetMultiplier = zones.detectionSpeedMultiplier;
-    } else if (distanceToPlayer > zones.attackRange) {
-      targetMultiplier = zones.pursuitSpeedMultiplier;
-    } else if (distanceToPlayer > zones.damageRange) {
-      targetMultiplier = zones.attackSpeedMultiplier;
-    } else {
-      targetMultiplier = zones.damageSpeedMultiplier;
-    }
-    
-    // FIXED: Apply stronger speed decay when moving away from player
-    if (distanceToPlayer > this.lastPlayerDistance) {
-      this.speedCooldownTimer += 16; // Assume ~60fps (16ms per frame)
-      const cooldownProgress = Math.min(this.speedCooldownTimer / this.maxSpeedCooldown, 1);
-      // Stronger decay: 80% reduction instead of 50%
-      targetMultiplier = Math.max(targetMultiplier * (1 - cooldownProgress * 0.8), 0.1);
-    } else {
-      // FIXED: Faster recovery when approaching - reset cooldown faster
-      this.speedCooldownTimer = Math.max(0, this.speedCooldownTimer - 64); // 4x faster recovery
-    }
-    
-    this.lastPlayerDistance = distanceToPlayer;
-    
-    // FIXED: Reduced smoothing for faster speed transitions
-    const smoothingFactor = 0.15; // Increased from 0.05 for faster transitions
-    this.currentSpeedMultiplier += (targetMultiplier - this.currentSpeedMultiplier) * smoothingFactor;
-    
-    return this.currentSpeedMultiplier;
-  }
-
-  public setPassiveMode(passive: boolean): void {
-    if (this.isPassive !== passive) {
-      this.isPassive = passive;
-      
-      if (passive) {
-        console.log(`🛡️ [OrcEnemy] Switching to passive mode - starting advanced AI behavior`);
-        // Regenerate waypoints when entering passive mode
-        this.passiveAI.regenerateWaypoints();
-      } else {
-        console.log(`⚔️ [OrcEnemy] Switching to aggressive mode - will pursue player`);
-      }
-    }
-  }
-
-  public getPassiveMode(): boolean {
-    return this.isPassive;
   }
 
   private handleSurfaceMovement(
@@ -252,8 +279,8 @@ export class OrcEnemy extends EnemyHumanoid {
         .normalize();
       direction.y = 0;
 
-      // Calculate movement based on AI speed
-      const baseSpeed = this.config.speed * 0.4; // Base passive speed
+      // Calculate movement based on AI speed using player-relative system if available
+      const baseSpeed = this.speedProfile ? this.speedProfile.baseSpeed * 0.4 : this.config.speed * 0.4;
       const aiSpeed = baseSpeed * aiDecision.movementSpeed;
       
       // Apply surface movement calculation
@@ -308,11 +335,6 @@ export class OrcEnemy extends EnemyHumanoid {
       return;
     }
 
-    // Update attack exhaustion timer
-    if (this.attackExhaustionTimer > 0) {
-      this.attackExhaustionTimer -= deltaTime * 1000;
-    }
-
     // Handle advanced passive movement if in passive mode
     if (this.isPassive) {
       this.handleAdvancedPassiveMovement(deltaTime);
@@ -320,7 +342,6 @@ export class OrcEnemy extends EnemyHumanoid {
     }
 
     // Check if we should avoid safe zone when in aggressive mode
-    // Updated to use rectangular safe zone bounds
     const isInSafeZone = this.mesh.position.x >= -6 && this.mesh.position.x <= 6 && 
                         this.mesh.position.z >= -6 && this.mesh.position.z <= 6;
     
@@ -342,40 +363,27 @@ export class OrcEnemy extends EnemyHumanoid {
       return;
     }
 
-    // Normal aggressive behavior with fixed distance-based speed scaling
+    // Normal aggressive behavior with NEW player-relative speed scaling
     const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
-    const speedMultiplier = this.calculateSpeedMultiplier(distanceToPlayer);
+    const calculatedSpeed = this.calculatePlayerRelativeSpeed(distanceToPlayer);
     
-    if (distanceToPlayer <= this.speedZones.detectionRange) {
+    if (this.speedZones && distanceToPlayer <= this.speedZones.detectionRange) {
       const directionToPlayer = new THREE.Vector3()
         .subVectors(playerPosition, this.mesh.position)
         .normalize();
       directionToPlayer.y = 0;
       
       if (distanceToPlayer > this.speedZones.damageRange) {
-        // Use surface movement for pursuing player with fixed speed scaling
-        const adjustedSpeed = this.config.speed * speedMultiplier;
-        const targetDirection = directionToPlayer.clone().multiplyScalar(adjustedSpeed);
+        // Use surface movement for pursuing player with NEW player-relative speed scaling
+        const targetDirection = directionToPlayer.clone().multiplyScalar(calculatedSpeed);
         const finalPosition = this.handleSurfaceMovement(this.mesh.position, targetDirection, deltaTime);
         this.mesh.position.copy(finalPosition);
-        this.animationSystem.updateWalkAnimation(deltaTime, true, adjustedSpeed);
-        
-        // Debug speed scaling
-        if (Math.random() < 0.01) { // 1% chance to log
-          console.log(`🏃 [OrcEnemy] Speed: ${adjustedSpeed.toFixed(1)} (${speedMultiplier.toFixed(2)}x), Distance: ${distanceToPlayer.toFixed(1)}, Exhausted: ${this.attackExhaustionTimer > 0}`);
-        }
+        this.animationSystem.updateWalkAnimation(deltaTime, true, calculatedSpeed);
       }
     }
 
     // Call parent update for other behaviors (attacking, etc.)
     super.update(deltaTime, playerPosition);
-    
-    // FIXED: Set attack exhaustion when attacking
-    if (this.isCurrentlyAttacking) {
-      this.attackExhaustionTimer = this.maxAttackExhaustion;
-      this.speedCooldownTimer = this.maxSpeedCooldown;
-      this.currentSpeedMultiplier = 0.2; // Force very slow speed immediately
-    }
   }
 
   protected createWeapon(woodTexture: THREE.Texture, metalTexture: THREE.Texture): THREE.Group {
@@ -435,5 +443,17 @@ export class OrcEnemy extends EnemyHumanoid {
     audioManager: AudioManager
   ): OrcEnemy {
     return new OrcEnemy(scene, position, effectsManager, audioManager);
+  }
+
+  public takeDamage(damage: number, playerPosition: THREE.Vector3): void {
+    // NEW: Reset combat timers when taking damage
+    if (this.combatTimers) {
+      this.combatTimers.isInAttackBurstCooldown = true;
+      this.combatTimers.lastAttackBurstTime = Date.now();
+      this.currentCalculatedSpeed = this.speedProfile ? this.speedProfile.baseSpeed * 0.3 : this.config.speed * 0.3;
+    }
+
+    // Call parent damage handling
+    super.takeDamage(damage, playerPosition);
   }
 }

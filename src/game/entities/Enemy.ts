@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils';
-import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
+import { EnemyType, Enemy as EnemyInterface, PlayerSpeedInfo, EnemySpeedProfile, EnemyCombatTimers, PlayerRelativeSpeedZones } from '../../types/GameTypes';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { MathUtils } from '../utils';
@@ -81,6 +81,13 @@ export class Enemy {
   private attackExhaustionTimer: number = 0;
   private maxAttackExhaustion: number = 2000; // 2 seconds of exhaustion after attacking
 
+  // NEW: Player-relative speed system with combat timing mechanics
+  private speedProfile: EnemySpeedProfile;
+  private speedZones: PlayerRelativeSpeedZones;
+  private combatTimers: EnemyCombatTimers;
+  private currentCalculatedSpeed: number = 0;
+  private lastPlayerSpeedInfo: PlayerSpeedInfo | null = null;
+
   constructor(
     scene: THREE.Scene,
     type: EnemyType,
@@ -102,31 +109,49 @@ export class Enemy {
       maxSlopeAngle: 45
     };
 
-    // FIXED: Initialize properly balanced distance-based speed zones with 40% reduction
-    this.speedZones = type === EnemyType.ORC ? {
-      detectionRange: 30,
-      pursuitRange: 15,
-      attackRange: 4,      // Reduced from 8 to 4
-      damageRange: 3,      // Increased from 2.5 to 3
-      detectionSpeedMultiplier: 0.18,  // Reduced from 0.3 to 0.18 (40% reduction)
-      pursuitSpeedMultiplier: 0.36,    // Reduced from 0.6 to 0.36 (40% reduction)
-      attackSpeedMultiplier: 0.6,      // Reduced from 1.0 to 0.6 (40% reduction)
-      damageSpeedMultiplier: 0.24      // Reduced from 0.4 to 0.24 (40% reduction)
+    // NEW: Initialize player-relative speed profiles
+    this.speedProfile = type === EnemyType.ORC ? {
+      baseSpeed: 4.0, // 20% slower than player base speed (5.0)
+      baseSpeedRatio: 0.8, // 80% of player base speed
+      detectionSpeedRatio: 0.68, // 85% of enemy base speed = 68% of player speed
+      pursuitSpeedRatio: 0.8, // 100% of enemy base speed = 80% of player speed
+      attackSpeedRatio: 1.04, // 130% of enemy base speed = 104% of player speed
+      damageSpeedRatio: 0.8 // 80% of player speed regardless of enemy base
     } : {
-      detectionRange: 25,
-      pursuitRange: 12,
-      attackRange: 3,      // Reduced from 6 to 3
-      damageRange: 2,      // Increased from 1.5 to 2
-      detectionSpeedMultiplier: 0.24,  // Reduced from 0.4 to 0.24 (40% reduction)
-      pursuitSpeedMultiplier: 0.42,    // Reduced from 0.7 to 0.42 (40% reduction)
-      attackSpeedMultiplier: 0.6,      // Reduced from 1.0 to 0.6 (40% reduction)
-      damageSpeedMultiplier: 0.18      // Reduced from 0.3 to 0.18 (40% reduction)
+      baseSpeed: 4.5, // Goblin slightly faster than orc but still slower than player
+      baseSpeedRatio: 0.9, // 90% of player base speed
+      detectionSpeedRatio: 0.765, // 85% of enemy base speed = 76.5% of player speed
+      pursuitSpeedRatio: 0.9, // 100% of enemy base speed = 90% of player speed
+      attackSpeedRatio: 1.17, // 130% of enemy base speed = 117% of player speed
+      damageSpeedRatio: 0.8 // 80% of player speed regardless of enemy base
+    };
+
+    // NEW: Initialize player-relative speed zones
+    this.speedZones = {
+      detectionRange: type === EnemyType.ORC ? 30 : 25,
+      pursuitRange: type === EnemyType.ORC ? 15 : 12,
+      attackRange: type === EnemyType.ORC ? 4 : 3,
+      damageRange: 2, // Same for all enemy types
+      detectionSpeedRatio: this.speedProfile.detectionSpeedRatio,
+      pursuitSpeedRatio: this.speedProfile.pursuitSpeedRatio,
+      attackSpeedRatio: this.speedProfile.attackSpeedRatio,
+      damageSpeedRatio: this.speedProfile.damageSpeedRatio
+    };
+
+    // NEW: Initialize combat timing mechanics
+    this.combatTimers = {
+      lastAttackBurstTime: 0,
+      attackBurstCooldown: 30000, // 30 seconds
+      damageZoneEnterTime: 0,
+      damageZoneLockDuration: 10000, // 10 seconds
+      isInAttackBurstCooldown: false,
+      isLockedInDamageZone: false
     };
 
     // Initialize comprehensive terrain-aware movement
     if (physicsManager && terrainDetector) {
       this.movementHelper = new EnemyMovementHelper(physicsManager, terrainDetector);
-      console.log(`🚶 Enemy ${type} initialized with fixed speed zones and recovery system`);
+      console.log(`🚶 Enemy ${type} initialized with player-relative speed system`);
     }
     
     // Create enemy based on type with humanoid system for orcs
@@ -139,16 +164,16 @@ export class Enemy {
         this.humanoidEnemy.setMovementHelper(this.movementHelper, this.movementConfig);
       }
       
-      // Set speed zones for humanoid enemy
-      this.humanoidEnemy.setSpeedZones(this.speedZones);
+      // NEW: Pass player-relative speed system to humanoid enemy
+      this.humanoidEnemy.setPlayerRelativeSpeedSystem(this.speedProfile, this.speedZones, this.combatTimers);
       
       // Create interface wrapper for backward compatibility
       this.enemy = this.createEnemyInterface(this.humanoidEnemy);
       
-      console.log(`🗡️ [Enemy] Created humanoid orc with fixed speed scaling system`);
+      console.log(`🗡️ [Enemy] Created humanoid orc with player-relative speed system`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created legacy goblin enemy with fixed speed scaling system");
+      console.log("🗡️ [Enemy] Created legacy enemy with player-relative speed system");
       
       // Initialize AI behavior for legacy enemies
       this.passiveAI = new PassiveNPCBehavior(
@@ -476,7 +501,7 @@ export class Enemy {
       return;
     }
     
-    // Legacy update logic for non-humanoid enemies with enhanced surface movement
+    // Legacy update logic for non-humanoid enemies with NEW player-relative speed system
     const now = Date.now();
     
     if (this.enemy.isDead) {
@@ -491,11 +516,6 @@ export class Enemy {
     
     this.updateMovementState(deltaTime);
     
-    // Update attack exhaustion timer
-    if (this.attackExhaustionTimer > 0) {
-      this.attackExhaustionTimer -= deltaTime * 1000;
-    }
-    
     if (this.enemy.isHit && now - this.enemy.hitTime < 300) {
       // Hit feedback
     } else if (this.enemy.isHit) {
@@ -507,7 +527,7 @@ export class Enemy {
       this.handleAdvancedPassiveMovement(deltaTime);
     } else {
       const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
-      this.handleNormalMovement(deltaTime, playerPosition, distanceToPlayer, now);
+      this.handlePlayerRelativeMovement(deltaTime, playerPosition, distanceToPlayer, now);
     }
     
     this.updateRotation(deltaTime);
@@ -633,6 +653,184 @@ export class Enemy {
     }
   }
   
+  private handleKnockbackMovement(deltaTime: number): void {
+    const movement = this.knockbackVelocity.clone().multiplyScalar(deltaTime);
+    this.enemy.mesh.position.add(movement);
+    this.enemy.mesh.position.y = 0;
+  }
+  
+  private handlePlayerRelativeMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
+    this.enemy.idleTime += deltaTime;
+    
+    // Check if we should avoid safe zone when in aggressive mode
+    const isInSafeZone = this.enemy.mesh.position.x >= -6 && this.enemy.mesh.position.x <= 6 && 
+                        this.enemy.mesh.position.z >= -6 && this.enemy.mesh.position.z <= 6;
+    
+    if (isInSafeZone) {
+      // Move away from safe zone instead of towards player
+      const safeZoneCenter = new THREE.Vector3(0, 0, 0);
+      const directionAwayFromSafeZone = new THREE.Vector3()
+        .subVectors(this.enemy.mesh.position, safeZoneCenter)
+        .normalize();
+      directionAwayFromSafeZone.y = 0;
+      
+      this.targetRotation = Math.atan2(directionAwayFromSafeZone.x, directionAwayFromSafeZone.z);
+      
+      // Use surface movement for safe zone avoidance with base speed
+      const targetDirection = directionAwayFromSafeZone.clone().multiplyScalar(this.speedProfile.baseSpeed * 0.8);
+      const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
+      this.enemy.mesh.position.copy(finalPosition);
+      this.updateLegacyWalkAnimation(deltaTime);
+      return;
+    }
+    
+    // NEW: Calculate speed using player-relative system
+    const calculatedSpeed = this.calculatePlayerRelativeSpeed(distanceToPlayer);
+    
+    if (distanceToPlayer <= this.speedZones.detectionRange) {
+      this.movementState = EnemyMovementState.PURSUING;
+      
+      const directionToPlayer = new THREE.Vector3()
+        .subVectors(playerPosition, this.enemy.mesh.position)
+        .normalize();
+      directionToPlayer.y = 0;
+      
+      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
+      
+      if (distanceToPlayer > this.speedZones.damageRange) {
+        // Use surface movement with NEW player-relative speed calculation
+        const targetDirection = directionToPlayer.clone().multiplyScalar(calculatedSpeed);
+        const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
+        this.enemy.mesh.position.copy(finalPosition);
+        this.updateLegacyWalkAnimation(deltaTime);
+      }
+      
+      if (distanceToPlayer <= this.speedZones.damageRange && now - this.enemy.lastAttackTime > this.enemy.attackCooldown) {
+        this.movementState = EnemyMovementState.ATTACKING;
+        this.attack(playerPosition);
+        this.enemy.lastAttackTime = now;
+      }
+    } else {
+      if (distanceToPlayer > this.speedZones.detectionRange && distanceToPlayer < 50) {
+        this.movementState = EnemyMovementState.PURSUING;
+        
+        const direction = new THREE.Vector3()
+          .subVectors(playerPosition, this.enemy.mesh.position)
+          .normalize();
+        direction.y = 0;
+        
+        this.targetRotation = Math.atan2(direction.x, direction.z);
+        
+        // Use surface movement for slow distant pursuit
+        const targetDirection = direction.clone().multiplyScalar(calculatedSpeed);
+        const finalPosition = this.handleSurfaceMovement(this.enemy.mesh.position, targetDirection, deltaTime);
+        this.enemy.mesh.position.copy(finalPosition);
+      } else {
+        this.movementState = EnemyMovementState.IDLE;
+        this.updateLegacyIdleAnimation();
+        // Reset combat timers when idle
+        this.combatTimers.isInAttackBurstCooldown = false;
+        this.combatTimers.isLockedInDamageZone = false;
+      }
+    }
+  }
+  
+  private calculatePlayerRelativeSpeed(distanceToPlayer: number): number {
+    if (!this.lastPlayerSpeedInfo) {
+      // Fallback to old system if no player speed info available
+      return this.speedProfile.baseSpeed * 0.3;
+    }
+
+    const now = Date.now();
+    let targetSpeedRatio: number;
+    let isInSpecialZone = false;
+
+    // Update combat timers
+    this.updateCombatTimers(distanceToPlayer, now);
+
+    // Determine speed zone and ratio
+    if (distanceToPlayer > this.speedZones.detectionRange) {
+      targetSpeedRatio = 0.2; // Very slow when far away
+    } else if (distanceToPlayer > this.speedZones.pursuitRange) {
+      targetSpeedRatio = this.speedZones.detectionSpeedRatio;
+    } else if (distanceToPlayer > this.speedZones.attackRange) {
+      targetSpeedRatio = this.speedZones.pursuitSpeedRatio;
+    } else if (distanceToPlayer > this.speedZones.damageRange) {
+      // Attack zone - only allow speed boost if not in cooldown
+      if (!this.combatTimers.isInAttackBurstCooldown) {
+        targetSpeedRatio = this.speedZones.attackSpeedRatio;
+        // Trigger attack burst cooldown
+        this.combatTimers.lastAttackBurstTime = now;
+        this.combatTimers.isInAttackBurstCooldown = true;
+        isInSpecialZone = true;
+        console.log(`⚡ [Enemy] Attack speed burst activated! Speed: ${(targetSpeedRatio * 100).toFixed(0)}% of player`);
+      } else {
+        // In cooldown, use normal pursuit speed
+        targetSpeedRatio = this.speedZones.pursuitSpeedRatio;
+      }
+    } else {
+      // Damage zone - lock in slow speed
+      targetSpeedRatio = this.speedZones.damageSpeedRatio;
+      if (!this.combatTimers.isLockedInDamageZone) {
+        this.combatTimers.damageZoneEnterTime = now;
+        this.combatTimers.isLockedInDamageZone = true;
+        isInSpecialZone = true;
+        console.log(`🛑 [Enemy] Locked in damage zone! Speed: ${(targetSpeedRatio * 100).toFixed(0)}% of player for ${this.combatTimers.damageZoneLockDuration/1000}s`);
+      }
+    }
+
+    // Apply combat timer overrides
+    if (this.combatTimers.isLockedInDamageZone) {
+      targetSpeedRatio = this.speedZones.damageSpeedRatio;
+    }
+
+    // Calculate final speed relative to current player speed
+    const calculatedSpeed = this.lastPlayerSpeedInfo.currentSpeed * targetSpeedRatio;
+    
+    // Smooth speed transitions (but faster than before for more responsive combat)
+    const smoothingFactor = isInSpecialZone ? 0.3 : 0.15; // Faster transitions for special zones
+    this.currentCalculatedSpeed += (calculatedSpeed - this.currentCalculatedSpeed) * smoothingFactor;
+
+    // Debug logging for speed calculations
+    if (Math.random() < 0.02) { // 2% chance to log
+      console.log(`🏃 [Enemy] Speed: ${this.currentCalculatedSpeed.toFixed(1)} (${(targetSpeedRatio * 100).toFixed(0)}% of player ${this.lastPlayerSpeedInfo.currentSpeed.toFixed(1)}), Distance: ${distanceToPlayer.toFixed(1)}, Zone: ${this.getCurrentSpeedZoneName(distanceToPlayer)}`);
+    }
+
+    return this.currentCalculatedSpeed;
+  }
+
+  private updateCombatTimers(distanceToPlayer: number, currentTime: number): void {
+    // Update attack burst cooldown
+    if (this.combatTimers.isInAttackBurstCooldown) {
+      if (currentTime - this.combatTimers.lastAttackBurstTime >= this.combatTimers.attackBurstCooldown) {
+        this.combatTimers.isInAttackBurstCooldown = false;
+        console.log(`⚡ [Enemy] Attack burst cooldown expired - can use speed boost again`);
+      }
+    }
+
+    // Update damage zone lock
+    if (this.combatTimers.isLockedInDamageZone) {
+      if (distanceToPlayer > this.speedZones.damageRange) {
+        // Player moved away - check if lock duration has passed
+        if (currentTime - this.combatTimers.damageZoneEnterTime >= this.combatTimers.damageZoneLockDuration) {
+          this.combatTimers.isLockedInDamageZone = false;
+          console.log(`🛑 [Enemy] Damage zone lock expired - normal speed restored`);
+        }
+      } else {
+        // Still in damage zone - reset the timer
+        this.combatTimers.damageZoneEnterTime = currentTime;
+      }
+    }
+  }
+
+  private getCurrentSpeedZoneName(distanceToPlayer: number): string {
+    if (distanceToPlayer > this.speedZones.detectionRange) return 'DISTANT';
+    if (distanceToPlayer > this.speedZones.pursuitRange) return 'DETECTION';
+    if (distanceToPlayer > this.speedZones.attackRange) return 'PURSUIT';
+    if (distanceToPlayer > this.speedZones.damageRange) return 'ATTACK';
+    return 'DAMAGE';
+  }
+
   private handleKnockbackMovement(deltaTime: number): void {
     const movement = this.knockbackVelocity.clone().multiplyScalar(deltaTime);
     this.enemy.mesh.position.add(movement);
@@ -930,9 +1128,10 @@ export class Enemy {
     this.stunDuration = 150;
     this.movementState = EnemyMovementState.KNOCKED_BACK;
     
-    // FIXED: Reset speed and add exhaustion when taking damage
-    this.currentSpeedMultiplier = 0.2;
-    this.speedCooldownTimer = this.maxSpeedCooldown * 0.5;
+    // NEW: Reset combat timers when taking damage
+    this.combatTimers.isInAttackBurstCooldown = true;
+    this.combatTimers.lastAttackBurstTime = Date.now();
+    this.currentCalculatedSpeed = this.speedProfile.baseSpeed * 0.3;
     
     const bloodDirection = knockbackDirection.clone();
     bloodDirection.y = 0.5;
@@ -1075,7 +1274,7 @@ export class Enemy {
     );
     
     const enemy = new Enemy(scene, type, spawnPosition, effectsManager, audioManager, physicsManager, terrainDetector);
-    console.log(`🗡️ [Enemy] Created ${type} with fixed speed zones and recovery system - Humanoid: ${enemy.isHumanoidEnemy}`);
+    console.log(`🗡️ [Enemy] Created ${type} with player-relative speed system - Humanoid: ${enemy.isHumanoidEnemy}`);
     return enemy;
   }
   
@@ -1139,5 +1338,14 @@ export class Enemy {
     }
     
     return null;
+  }
+
+  // NEW: Method to update player speed information for all enemies
+  public updatePlayerSpeedInfo(playerSpeedInfo: PlayerSpeedInfo): void {
+    this.lastPlayerSpeedInfo = playerSpeedInfo;
+    
+    if (this.isHumanoidEnemy && this.humanoidEnemy) {
+      this.humanoidEnemy.updatePlayerSpeedInfo(playerSpeedInfo);
+    }
   }
 }
