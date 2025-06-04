@@ -13,6 +13,35 @@ export class VolumetricFogSystem {
   private groundFogMaterial: THREE.ShaderMaterial;
   private timeOfDay: number = 0.25;
   
+  // NEW: Synchronized color palette matching SceneManager
+  private readonly COLOR_PALETTE = [
+    { time: 0.0, color: new THREE.Color(0x191970) },    // Midnight - dark blue
+    { time: 0.1, color: new THREE.Color(0x1F1F80) },    // Late night - slightly lighter
+    { time: 0.15, color: new THREE.Color(0x2F2F70) },   // Pre-dawn - lighter dark blue
+    { time: 0.2, color: new THREE.Color(0x4A4A90) },    // Early dawn - purple-blue
+    { time: 0.22, color: new THREE.Color(0x6B4A90) },   // Dawn purple transition
+    { time: 0.25, color: new THREE.Color(0xFF6B35) },   // Sunrise start - deep orange
+    { time: 0.28, color: new THREE.Color(0xFF8B55) },   // Warm sunrise
+    { time: 0.3, color: new THREE.Color(0xFFB366) },    // Sunrise peak - warm orange
+    { time: 0.33, color: new THREE.Color(0xFFD088) },   // Sunrise fading
+    { time: 0.35, color: new THREE.Color(0xC8D8E8) },   // Morning - soft blue-orange
+    { time: 0.4, color: new THREE.Color(0xB0E0E6) },    // Day transition - atmospheric blue
+    { time: 0.5, color: new THREE.Color(0xB0E0E6) },    // Noon - clear blue
+    { time: 0.6, color: new THREE.Color(0xA8D0DD) },    // Afternoon - slightly warmer blue
+    { time: 0.65, color: new THREE.Color(0xC8C8E8) },   // Pre-sunset - light blue
+    { time: 0.67, color: new THREE.Color(0xE8C8C8) },   // Warm blue transition
+    { time: 0.7, color: new THREE.Color(0xFF8C42) },    // Sunset start - warm orange
+    { time: 0.72, color: new THREE.Color(0xFF7B32) },   // Deep sunset
+    { time: 0.75, color: new THREE.Color(0xFF6B42) },   // Sunset peak - deep orange/red
+    { time: 0.78, color: new THREE.Color(0xCC5A66) },   // Sunset red transition
+    { time: 0.8, color: new THREE.Color(0x8B5A96) },    // Dusk - purple
+    { time: 0.82, color: new THREE.Color(0x7A5A96) },   // Deeper dusk
+    { time: 0.85, color: new THREE.Color(0x5A5A96) },   // Late dusk - dark purple
+    { time: 0.9, color: new THREE.Color(0x2F2F70) },    // Night transition - dark blue-purple
+    { time: 0.95, color: new THREE.Color(0x1F1F80) },   // Early night
+    { time: 1.0, color: new THREE.Color(0x191970) }     // Night - dark blue (wraps to midnight)
+  ];
+  
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     this.createVolumetricFogMaterial();
@@ -24,6 +53,43 @@ export class VolumetricFogSystem {
     this.createDarkPeriodFogWalls();
     this.createSkyFogLayers();
     this.createGroundFogLayers();
+  }
+  
+  // NEW: Enhanced smooth color blending synchronized with SceneManager
+  private getBlendedFogColor(timeOfDay: number): THREE.Color {
+    // Normalize time to 0-1 range
+    const normalizedTime = ((timeOfDay % 1.0) + 1.0) % 1.0;
+    
+    // Find the two closest color stops
+    let prevStop = this.COLOR_PALETTE[this.COLOR_PALETTE.length - 1];
+    let nextStop = this.COLOR_PALETTE[0];
+    
+    for (let i = 0; i < this.COLOR_PALETTE.length; i++) {
+      if (normalizedTime <= this.COLOR_PALETTE[i].time) {
+        nextStop = this.COLOR_PALETTE[i];
+        prevStop = i > 0 ? this.COLOR_PALETTE[i - 1] : this.COLOR_PALETTE[this.COLOR_PALETTE.length - 1];
+        break;
+      }
+      if (i === this.COLOR_PALETTE.length - 1) {
+        prevStop = this.COLOR_PALETTE[i];
+        nextStop = this.COLOR_PALETTE[0];
+      }
+    }
+    
+    // Calculate interpolation factor with smooth easing
+    let timeDiff = nextStop.time - prevStop.time;
+    if (timeDiff <= 0) timeDiff += 1.0; // Handle wrap-around
+    
+    let timeProgress = normalizedTime - prevStop.time;
+    if (timeProgress < 0) timeProgress += 1.0; // Handle wrap-around
+    
+    const factor = this.smoothStep(0, 1, timeProgress / timeDiff);
+    
+    // Interpolate between colors using smooth blending
+    const blendedColor = new THREE.Color();
+    blendedColor.lerpColors(prevStop.color, nextStop.color, factor);
+    
+    return blendedColor;
   }
   
   // NEW: Smooth interpolation functions for seamless transitions
@@ -112,11 +178,7 @@ export class VolumetricFogSystem {
       uniforms: {
         time: { value: 0.0 },
         timeOfDay: { value: this.timeOfDay },
-        fogColor: { value: new THREE.Color(0xB0E0E6) },
-        dayFogColor: { value: new THREE.Color(0xB0E0E6) },
-        nightFogColor: { value: new THREE.Color(0x191970) },
-        sunriseFogColor: { value: new THREE.Color(0xFFB366) },
-        sunsetFogColor: { value: new THREE.Color(0xFF8C42) },
+        blendedFogColor: { value: new THREE.Color(0xB0E0E6) },
         // NEW: Dynamic fog parameters
         fogDensityMultiplier: { value: 1.0 },
         maxFogDistance: { value: 300.0 },
@@ -150,11 +212,7 @@ export class VolumetricFogSystem {
       fragmentShader: `
         uniform float time;
         uniform float timeOfDay;
-        uniform vec3 fogColor;
-        uniform vec3 dayFogColor;
-        uniform vec3 nightFogColor;
-        uniform vec3 sunriseFogColor;
-        uniform vec3 sunsetFogColor;
+        uniform vec3 blendedFogColor;
         uniform float fogDensityMultiplier;
         uniform float maxFogDistance;
         uniform float maxFogOpacity;
@@ -284,7 +342,7 @@ export class VolumetricFogSystem {
         
         void main() {
           // Calculate dynamic fog color with smooth transitions
-          vec3 dynamicFogColor = getFogColorForTime(timeOfDay);
+          vec3 dynamicFogColor = blendedFogColor;
           
           // Create animated noise for fog movement
           vec3 noisePos = vWorldPosition * noiseScale;
@@ -1018,9 +1076,12 @@ export class VolumetricFogSystem {
     console.log(`Created ${this.groundFogLayers.length} enhanced ground fog layers`);
   }
   
-  // ENHANCED: Update method with smooth transitions for all parameters
+  // ENHANCED: Update method with synchronized smooth color transitions
   public update(deltaTime: number, timeOfDay: number, playerPosition: THREE.Vector3): void {
     this.timeOfDay = timeOfDay;
+    
+    // Calculate synchronized smooth blended color
+    const blendedFogColor = this.getBlendedFogColor(timeOfDay);
     
     // Calculate smooth transition parameters
     const darknessFactor = this.getDarknessFactor(timeOfDay);
@@ -1030,12 +1091,13 @@ export class VolumetricFogSystem {
     const maxOpacity = this.getFogMaxOpacity(timeOfDay);
     const blendingAlpha = this.getBlendingAlpha(timeOfDay);
     
-    // Update atmospheric fog layers with smooth parameters
+    // Update atmospheric fog layers with synchronized colors
     this.fogLayers.forEach(layer => {
       const material = layer.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.blendedFogColor.value.copy(blendedFogColor);
         material.uniforms.playerPosition.value.copy(playerPosition);
         material.uniforms.fogDensityMultiplier.value = densityMultiplier;
         material.uniforms.maxFogDistance.value = maxDistance;
@@ -1056,12 +1118,13 @@ export class VolumetricFogSystem {
       }
     });
     
-    // Update main fog wall layers with smooth distance interpolation
+    // Update main fog wall layers with synchronized colors
     this.fogWallLayers.forEach((wall, index) => {
       const material = wall.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.blendedFogColor.value.copy(blendedFogColor);
         material.uniforms.playerPosition.value.copy(playerPosition);
         material.uniforms.fogWallDensityMultiplier.value = densityMultiplier;
         material.uniforms.maxWallDistance.value = maxDistance;
@@ -1094,12 +1157,13 @@ export class VolumetricFogSystem {
       wall.position.z = playerPosition.z + Math.sin(angle) * currentDistance;
     });
     
-    // Update close-range fog walls with smooth opacity transitions
+    // Update close-range fog walls with synchronized colors
     this.darkPeriodFogWalls.forEach((wall, index) => {
       const material = wall.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.blendedFogColor.value.copy(blendedFogColor);
         material.uniforms.playerPosition.value.copy(playerPosition);
         material.uniforms.fogWallDensityMultiplier.value = densityMultiplier;
         material.uniforms.blendingAlpha.value = blendingAlpha;
@@ -1125,24 +1189,26 @@ export class VolumetricFogSystem {
       wall.position.z = playerPosition.z + Math.sin(angle) * distance;
     });
     
-    // Update sky fog layers with smooth parameters
+    // Update sky fog layers with synchronized colors
     this.skyFogLayers.forEach(layer => {
       const material = layer.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.blendedFogColor.value.copy(blendedFogColor);
         material.uniforms.playerPosition.value.copy(playerPosition);
         material.uniforms.skyDensityMultiplier.value = densityMultiplier * 0.7;
         material.uniforms.maxSkyDistance.value = maxDistance * 0.6;
       }
     });
     
-    // Update ground fog layers with smooth parameters
+    // Update ground fog layers with synchronized colors
     this.groundFogLayers.forEach(groundFog => {
       const material = groundFog.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.blendedFogColor.value.copy(blendedFogColor);
         material.uniforms.playerPosition.value.copy(playerPosition);
         material.uniforms.groundDensityMultiplier.value = densityMultiplier * 0.8;
         material.uniforms.maxGroundDistance.value = maxDistance;

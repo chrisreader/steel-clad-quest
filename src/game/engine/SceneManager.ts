@@ -65,6 +65,35 @@ export class SceneManager {
   private sunRadius: number = 150;
   private moonRadius: number = 140;
   
+  // NEW: Enhanced color palette for smooth transitions
+  private readonly COLOR_PALETTE = [
+    { time: 0.0, color: 0x191970, name: 'midnight' },        // Midnight - dark blue
+    { time: 0.1, color: 0x1F1F80, name: 'late_night' },      // Late night - slightly lighter
+    { time: 0.15, color: 0x2F2F70, name: 'pre_dawn' },       // Pre-dawn - lighter dark blue
+    { time: 0.2, color: 0x4A4A90, name: 'early_dawn' },      // Early dawn - purple-blue
+    { time: 0.22, color: 0x6B4A90, name: 'dawn_purple' },    // Dawn purple transition
+    { time: 0.25, color: 0xFF6B35, name: 'sunrise_start' },  // Sunrise start - deep orange
+    { time: 0.28, color: 0xFF8B55, name: 'sunrise_warm' },   // Warm sunrise
+    { time: 0.3, color: 0xFFB366, name: 'sunrise_peak' },    // Sunrise peak - warm orange
+    { time: 0.33, color: 0xFFD088, name: 'sunrise_fade' },   // Sunrise fading
+    { time: 0.35, color: 0xC8D8E8, name: 'morning' },        // Morning - soft blue-orange
+    { time: 0.4, color: 0xB0E0E6, name: 'day_transition' },  // Day transition - atmospheric blue
+    { time: 0.5, color: 0xB0E0E6, name: 'noon' },            // Noon - clear blue
+    { time: 0.6, color: 0xA8D0DD, name: 'afternoon' },       // Afternoon - slightly warmer blue
+    { time: 0.65, color: 0xC8C8E8, name: 'pre_sunset' },     // Pre-sunset - light blue
+    { time: 0.67, color: 0xE8C8C8, name: 'sunset_warm_blue' }, // Warm blue transition
+    { time: 0.7, color: 0xFF8C42, name: 'sunset_start' },    // Sunset start - warm orange
+    { time: 0.72, color: 0xFF7B32, name: 'sunset_deep' },    // Deep sunset
+    { time: 0.75, color: 0xFF6B42, name: 'sunset_peak' },    // Sunset peak - deep orange/red
+    { time: 0.78, color: 0xCC5A66, name: 'sunset_red' },     // Sunset red transition
+    { time: 0.8, color: 0x8B5A96, name: 'dusk' },            // Dusk - purple
+    { time: 0.82, color: 0x7A5A96, name: 'dusk_deep' },      // Deeper dusk
+    { time: 0.85, color: 0x5A5A96, name: 'late_dusk' },      // Late dusk - dark purple
+    { time: 0.9, color: 0x2F2F70, name: 'night_transition' }, // Night transition - dark blue-purple
+    { time: 0.95, color: 0x1F1F80, name: 'early_night' },    // Early night
+    { time: 1.0, color: 0x191970, name: 'midnight_end' }     // Night - dark blue (wraps to midnight)
+  ];
+  
   // NEW: Time phases for different lighting
   private readonly TIME_PHASES = {
     SUNRISE: 0.25,
@@ -83,7 +112,7 @@ export class SceneManager {
     this.scene = scene;
     this.physicsManager = physicsManager;
     
-    console.log("SceneManager initialized with day/night cycle system");
+    console.log("SceneManager initialized with enhanced smooth color transition system");
     
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
@@ -125,12 +154,59 @@ export class SceneManager {
     this.terrainFeatureGenerator.setCollisionRegistrationCallback((object: THREE.Object3D) => {
       this.environmentCollisionManager.registerSingleObject(object);
     });
-    console.log('🔧 Day/night cycle collision system established');
+    console.log('🔧 Enhanced smooth color transition collision system established');
+  }
+
+  // NEW: Enhanced smooth color interpolation system
+  private getBlendedColorForTime(time: number): number {
+    // Normalize time to 0-1 range
+    const normalizedTime = ((time % 1.0) + 1.0) % 1.0;
+    
+    // Find the two closest color stops
+    let prevStop = this.COLOR_PALETTE[this.COLOR_PALETTE.length - 1];
+    let nextStop = this.COLOR_PALETTE[0];
+    
+    for (let i = 0; i < this.COLOR_PALETTE.length; i++) {
+      if (normalizedTime <= this.COLOR_PALETTE[i].time) {
+        nextStop = this.COLOR_PALETTE[i];
+        prevStop = i > 0 ? this.COLOR_PALETTE[i - 1] : this.COLOR_PALETTE[this.COLOR_PALETTE.length - 1];
+        break;
+      }
+      if (i === this.COLOR_PALETTE.length - 1) {
+        prevStop = this.COLOR_PALETTE[i];
+        nextStop = this.COLOR_PALETTE[0];
+      }
+    }
+    
+    // Calculate interpolation factor with smooth easing
+    let timeDiff = nextStop.time - prevStop.time;
+    if (timeDiff <= 0) timeDiff += 1.0; // Handle wrap-around
+    
+    let timeProgress = normalizedTime - prevStop.time;
+    if (timeProgress < 0) timeProgress += 1.0; // Handle wrap-around
+    
+    const factor = this.smoothStep(timeProgress / timeDiff);
+    
+    // Convert hex colors to RGB for interpolation
+    const prevColor = new THREE.Color(prevStop.color);
+    const nextColor = new THREE.Color(nextStop.color);
+    
+    // Interpolate and return as hex
+    const blendedColor = new THREE.Color();
+    blendedColor.lerpColors(prevColor, nextColor, factor);
+    
+    return blendedColor.getHex();
+  }
+  
+  // NEW: Enhanced smooth step function with cubic interpolation
+  private smoothStep(t: number): number {
+    const clamped = Math.max(0, Math.min(1, t));
+    return clamped * clamped * (3 - 2 * clamped);
   }
 
   private setupEnhancedFog(): void {
-    // Enhanced fog system that changes color based on time of day
-    const fogColor = this.getFogColorForTime(this.timeOfDay);
+    // Enhanced fog system that changes color based on time of day with smooth transitions
+    const fogColor = this.getBlendedColorForTime(this.timeOfDay);
     const fogNear = 25;
     const fogFar = 120; // Increased for better volumetric fog blending
     
@@ -138,39 +214,12 @@ export class SceneManager {
     this.scene.fog = this.fog;
     this.scene.background = new THREE.Color(fogColor);
     
-    console.log("Enhanced day/night fog system initialized with volumetric fog support");
+    console.log("Enhanced smooth color transition fog system initialized");
   }
   
+  // UPDATED: Replace discrete color method with smooth blending
   private getFogColorForTime(time: number): number {
-    // More granular fog color transitions for smoother effect
-    if (time >= 0.2 && time <= 0.25) {
-      // Early sunrise - deep orange
-      return 0xFF6B35;
-    } else if (time > 0.25 && time <= 0.3) {
-      // Sunrise - warm orange/pink
-      return 0xFFB366;
-    } else if (time > 0.3 && time <= 0.4) {
-      // Morning - soft blue-orange blend
-      return 0xC8D8E8;
-    } else if (time > 0.4 && time <= 0.6) {
-      // Day - atmospheric blue
-      return 0xB0E0E6;
-    } else if (time > 0.6 && time <= 0.7) {
-      // Afternoon - slightly warmer blue
-      return 0xA8D0DD;
-    } else if (time > 0.7 && time <= 0.75) {
-      // Early sunset - warm orange
-      return 0xFF8C42;
-    } else if (time > 0.75 && time <= 0.8) {
-      // Sunset - deep orange/red
-      return 0xFF6B42;
-    } else if (time > 0.8 && time <= 0.85) {
-      // Dusk - purple transition
-      return 0x8B5A96;
-    } else {
-      // Night - dark blue
-      return 0x191970;
-    }
+    return this.getBlendedColorForTime(time);
   }
   
   private setupDayNightLighting(): void {
@@ -394,7 +443,7 @@ export class SceneManager {
   }
   
   private createDayNightSkybox(): void {
-    // Enhanced skybox with day/night transitions
+    // Enhanced skybox with smooth day/night transitions
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
     const skyMaterial = new THREE.ShaderMaterial({
@@ -402,15 +451,10 @@ export class SceneManager {
         timeOfDay: { value: this.timeOfDay },
         sunPosition: { value: new THREE.Vector3() },
         moonPosition: { value: new THREE.Vector3() },
-        // Day colors
-        dayTopColor: { value: new THREE.Color(0x4A90E2) },
-        dayHorizonColor: { value: new THREE.Color(0xB0E0E6) },
-        // Night colors
-        nightTopColor: { value: new THREE.Color(0x000011) },
-        nightHorizonColor: { value: new THREE.Color(0x191970) },
-        // Sunrise/sunset colors
-        sunriseColor: { value: new THREE.Color(0xFF8C42) },
-        sunsetColor: { value: new THREE.Color(0xFF6B6B) },
+        // Enhanced color palette for smooth transitions
+        colorPalette: { value: this.COLOR_PALETTE.map(stop => new THREE.Color(stop.color)) },
+        colorTimes: { value: this.COLOR_PALETTE.map(stop => stop.time) },
+        paletteSize: { value: this.COLOR_PALETTE.length },
         // Fog parameters
         fogColor: { value: new THREE.Color() },
         fogNear: { value: 25.0 },
@@ -431,12 +475,9 @@ export class SceneManager {
         uniform float timeOfDay;
         uniform vec3 sunPosition;
         uniform vec3 moonPosition;
-        uniform vec3 dayTopColor;
-        uniform vec3 dayHorizonColor;
-        uniform vec3 nightTopColor;
-        uniform vec3 nightHorizonColor;
-        uniform vec3 sunriseColor;
-        uniform vec3 sunsetColor;
+        uniform vec3 colorPalette[25];  // Maximum palette size
+        uniform float colorTimes[25];
+        uniform int paletteSize;
         uniform vec3 fogColor;
         uniform float fogNear;
         uniform float fogFar;
@@ -444,59 +485,66 @@ export class SceneManager {
         varying vec3 vWorldPosition;
         varying vec3 vDirection;
         
+        // Enhanced smooth step function
+        float smoothStep(float t) {
+          float clamped = clamp(t, 0.0, 1.0);
+          return clamped * clamped * (3.0 - 2.0 * clamped);
+        }
+        
+        // Enhanced color blending function
+        vec3 getBlendedColorForTime(float time) {
+          float normalizedTime = mod(time, 1.0);
+          
+          // Find closest color stops
+          int prevIndex = paletteSize - 1;
+          int nextIndex = 0;
+          
+          for (int i = 0; i < paletteSize; i++) {
+            if (normalizedTime <= colorTimes[i]) {
+              nextIndex = i;
+              prevIndex = i > 0 ? i - 1 : paletteSize - 1;
+              break;
+            }
+            if (i == paletteSize - 1) {
+              prevIndex = i;
+              nextIndex = 0;
+            }
+          }
+          
+          // Calculate smooth interpolation
+          float timeDiff = colorTimes[nextIndex] - colorTimes[prevIndex];
+          if (timeDiff <= 0.0) timeDiff += 1.0;
+          
+          float timeProgress = normalizedTime - colorTimes[prevIndex];
+          if (timeProgress < 0.0) timeProgress += 1.0;
+          
+          float factor = smoothStep(timeProgress / timeDiff);
+          
+          return mix(colorPalette[prevIndex], colorPalette[nextIndex], factor);
+        }
+        
         void main() {
           vec3 direction = normalize(vDirection);
           float height = direction.y;
           
-          // Determine time phase
-          float dayFactor = 0.0;
-          float sunriseFactor = 0.0;
-          float sunsetFactor = 0.0;
-          float nightFactor = 0.0;
+          // Get base color from smooth palette
+          vec3 baseColor = getBlendedColorForTime(timeOfDay);
           
-          if (timeOfDay >= 0.2 && timeOfDay <= 0.3) {
-            // Sunrise
-            sunriseFactor = 1.0 - abs(timeOfDay - 0.25) / 0.05;
-            dayFactor = (timeOfDay - 0.2) / 0.1;
-          } else if (timeOfDay > 0.3 && timeOfDay < 0.7) {
-            // Day
-            dayFactor = 1.0;
-          } else if (timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            // Sunset
-            sunsetFactor = 1.0 - abs(timeOfDay - 0.75) / 0.05;
-            dayFactor = 1.0 - (timeOfDay - 0.7) / 0.1;
-          } else {
-            // Night
-            nightFactor = 1.0;
-          }
-          
-          // Base gradient
+          // Create vertical gradient with enhanced blending
           float gradientFactor = (height + 1.0) * 0.5;
-          gradientFactor = pow(gradientFactor, 0.8);
+          gradientFactor = pow(gradientFactor, 0.6); // Slightly more contrast
           
-          // Calculate base colors
-          vec3 dayColor = mix(dayHorizonColor, dayTopColor, gradientFactor);
-          vec3 nightColor = mix(nightHorizonColor, nightTopColor, gradientFactor);
+          // Blend horizon and zenith colors smoothly
+          vec3 horizonColor = getBlendedColorForTime(timeOfDay);
+          vec3 zenithColor = getBlendedColorForTime(timeOfDay + 0.05); // Slight variation for depth
           
-          // Blend colors based on time
-          vec3 baseColor = dayColor * dayFactor + nightColor * nightFactor;
+          vec3 skyColor = mix(horizonColor, zenithColor, gradientFactor);
           
-          // Add sunrise/sunset colors
-          if (sunriseFactor > 0.0) {
-            vec3 sunriseGradient = mix(sunriseColor, dayTopColor, gradientFactor);
-            baseColor = mix(baseColor, sunriseGradient, sunriseFactor);
-          }
+          // Apply subtle fog effect at horizon for atmospheric depth
+          float horizonFog = 1.0 - smoothstep(0.0, 0.4, abs(height));
+          skyColor = mix(skyColor, fogColor, horizonFog * 0.3);
           
-          if (sunsetFactor > 0.0) {
-            vec3 sunsetGradient = mix(sunsetColor, nightTopColor, gradientFactor);
-            baseColor = mix(baseColor, sunsetGradient, sunsetFactor);
-          }
-          
-          // Apply fog effect at horizon
-          float horizonFog = 1.0 - smoothstep(0.0, 0.3, abs(height));
-          baseColor = mix(baseColor, fogColor, horizonFog * 0.7);
-          
-          gl_FragColor = vec4(baseColor, 1.0);
+          gl_FragColor = vec4(skyColor, 1.0);
         }
       `,
       side: THREE.BackSide,
@@ -505,7 +553,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Day/night skybox created with dynamic color transitions');
+    console.log('Enhanced smooth color transition skybox created');
   }
   
   private updateDayNightSkybox(): void {
@@ -522,8 +570,8 @@ export class SceneManager {
         material.uniforms.moonPosition.value.copy(this.moon.position);
       }
       
-      // Update fog color to match current time
-      const currentFogColor = this.getFogColorForTime(this.timeOfDay);
+      // Update fog color to match current smooth transition
+      const currentFogColor = this.getBlendedColorForTime(this.timeOfDay);
       material.uniforms.fogColor.value.setHex(currentFogColor);
       
       material.needsUpdate = true;
@@ -562,7 +610,7 @@ export class SceneManager {
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
-    // NEW: Update day/night cycle
+    // NEW: Update day/night cycle with enhanced smooth transitions
     if (this.dayNightCycleEnabled) {
       this.timeOfDay += deltaTime * this.dayNightCycleSpeed;
       if (this.timeOfDay >= 1.0) {
@@ -575,13 +623,13 @@ export class SceneManager {
       // Update lighting based on time
       this.updateDayNightLighting();
       
-      // Update skybox
+      // Update skybox with smooth transitions
       this.updateDayNightSkybox();
       
       // Update star visibility
       this.updateStarVisibility();
       
-      // Update fog color
+      // Update fog color with smooth transitions
       this.updateFogForTime();
     }
     
@@ -655,14 +703,13 @@ export class SceneManager {
   
   // NEW: Update fog color based on time of day
   private updateFogForTime(): void {
-    const newFogColor = this.getFogColorForTime(this.timeOfDay);
+    const newFogColor = this.getBlendedColorForTime(this.timeOfDay);
     this.fog.color.setHex(newFogColor);
     this.scene.background = new THREE.Color(newFogColor);
     
-    // Update volumetric fog to match
+    // Update volumetric fog to match with smooth transitions
     if (this.volumetricFogSystem) {
-      // The volumetric fog system handles its own color transitions via shaders
-      console.log(`Fog color updated for time ${(this.timeOfDay * 24).toFixed(1)}h: #${newFogColor.toString(16).padStart(6, '0')}`);
+      console.log(`Smooth fog color updated for time ${(this.timeOfDay * 24).toFixed(1)}h: #${newFogColor.toString(16).padStart(6, '0')}`);
     }
   }
   
@@ -685,7 +732,7 @@ export class SceneManager {
   }
   
   public createDefaultWorld(): void {
-    console.log('Creating default world with day/night cycle...');
+    console.log('Creating default world with enhanced smooth color transition system...');
     
     this.createSimpleGround();
     console.log('Simple ground plane created at origin');
@@ -729,7 +776,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('Default world with day/night cycle complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('Default world with enhanced smooth color transition system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     // Add debug commands to window for testing
     if (this.debugMode) {
@@ -1100,7 +1147,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    console.log("SceneManager with day/night cycle and volumetric fog disposed");
+    console.log("SceneManager with enhanced smooth color transition system and volumetric fog disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
