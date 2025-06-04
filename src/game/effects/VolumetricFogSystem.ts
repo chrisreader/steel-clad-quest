@@ -234,10 +234,10 @@ export class VolumetricFogSystem {
         timeOfDay: { value: this.timeOfDay },
         fogColor: { value: new THREE.Color(0xF5F5F5) },
         dayFogColor: { value: new THREE.Color(0xF5F5F5) },
-        nightFogColor: { value: new THREE.Color(0x606090) }, // Brightened from 0x404080
+        nightFogColor: { value: new THREE.Color(0x606090) },
         sunriseFogColor: { value: new THREE.Color(0xFFE4CC) },
         sunsetFogColor: { value: new THREE.Color(0xFFD0AA) },
-        fogWallDensity: { value: 0.08 },
+        fogWallDensity: { value: 0.08 }, // Standardized density for all times
         fogWallHeight: { value: 80.0 },
         horizonBlur: { value: 0.6 },
         playerPosition: { value: new THREE.Vector3() },
@@ -416,9 +416,7 @@ export class VolumetricFogSystem {
           // Get dynamic fog color for wall effect
           vec3 dynamicFogColor = getFogWallColorForTime(timeOfDay);
           
-          // TIME-BASED DENSITY ADJUSTMENT: Increase density for dark periods only
-          float densityMultiplier = isDarkPeriod(timeOfDay) ? 1.5 : 1.0; // 50% increase for dark periods
-          float adjustedFogWallDensity = fogWallDensity * densityMultiplier;
+          // STANDARDIZED FOG WALL BEHAVIOR: Use same logic for all time periods
           
           // Create 3D volumetric noise for realistic fog volume
           vec3 noisePos = vWorldPosition * noiseScale;
@@ -435,7 +433,7 @@ export class VolumetricFogSystem {
           // Create density holes for see-through effect
           float densityVariation = smoothstep(0.3, 0.8, volumetricNoise);
           
-          // REALISTIC DEPTH PERCEPTION: Extended distance range with multiple zones
+          // STANDARDIZED DISTANCE CALCULATION: Match day time behavior exactly
           float distanceRatio;
           float exponentialFog;
           
@@ -458,16 +456,8 @@ export class VolumetricFogSystem {
           
           exponentialFog = smoothstep(0.0, 1.0, exponentialFog);
           
-          // BRIGHTNESS COMPENSATION: Ensure minimum visibility during dark periods
+          // STANDARDIZED ATMOSPHERIC COLOR: No brightness compensation
           vec3 atmosphericColor = dynamicFogColor;
-          if (isDarkPeriod(timeOfDay)) {
-            // Add minimum brightness for dark periods only
-            float minBrightness = 0.3;
-            float currentBrightness = (atmosphericColor.r + atmosphericColor.g + atmosphericColor.b) / 3.0;
-            if (currentBrightness < minBrightness) {
-              atmosphericColor = mix(atmosphericColor, vec3(minBrightness), (minBrightness - currentBrightness) / minBrightness);
-            }
-          }
           
           // ENHANCED BOTTOM COVERAGE - Stronger density at bottom
           float bottomDensityBoost = 1.0 - smoothstep(0.0, 0.3, vHeightFactor);
@@ -492,8 +482,8 @@ export class VolumetricFogSystem {
           float edgeSoftness = smoothstep(0.0, 0.15, vUv.x) * smoothstep(1.0, 0.85, vUv.x) *
                               smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
           
-          // LAYERED DENSITY with time-based adjustments
-          float baseDensity = adjustedFogWallDensity * exponentialFog * heightGradient;
+          // STANDARDIZED DENSITY: Same for all time periods
+          float baseDensity = fogWallDensity * exponentialFog * heightGradient;
           baseDensity *= densityVariation;
           baseDensity *= radialFalloff * 0.7 + 0.3;
           baseDensity *= edgeSoftness;
@@ -501,22 +491,15 @@ export class VolumetricFogSystem {
           // Add subtle depth layering
           baseDensity *= (0.8 + layerDepth * 0.4);
           
-          // TIME-BASED OPACITY LIMITS: Higher max opacity for dark periods
-          float maxOpacity = isDarkPeriod(timeOfDay) ? 0.5 : 0.35;
-          
-          // MINIMUM VISIBILITY: Ensure fog walls are always somewhat visible
-          float minVisibility = isDarkPeriod(timeOfDay) ? 0.1 : 0.0;
-          baseDensity = max(baseDensity, minVisibility);
-          
-          // Ensure realistic transparency
-          baseDensity = clamp(baseDensity, 0.0, maxOpacity);
+          // STANDARDIZED OPACITY LIMITS: Same max opacity for all time periods
+          baseDensity = clamp(baseDensity, 0.0, 0.35);
           
           gl_FragColor = vec4(atmosphericColor, baseDensity);
         }
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.AdditiveBlending, // Standardized blending for all time periods
       side: THREE.DoubleSide
     });
   }
@@ -793,7 +776,7 @@ export class VolumetricFogSystem {
         wall.rotation.x += (Math.random() - 0.5) * 0.1;
         wall.rotation.z += (Math.random() - 0.5) * 0.05;
         
-        // REALISTIC DENSITY PROGRESSION: Much more gradual increase
+        // STANDARDIZED DENSITY PROGRESSION: Same for all time periods
         const wallDensity = 0.03 + (distanceIndex * 0.01); // Much more gradual (0.03 to 0.11)
         const material = wall.material as THREE.ShaderMaterial;
         material.uniforms.fogWallDensity.value = wallDensity;
@@ -804,7 +787,7 @@ export class VolumetricFogSystem {
       }
     });
     
-    console.log(`Created ${this.fogWallLayers.length} realistic depth perception fog walls (30-750 units)`);
+    console.log(`Created ${this.fogWallLayers.length} standardized fog walls (30-750 units)`);
   }
 
   private createSkyFogLayers(): void {
@@ -875,19 +858,6 @@ export class VolumetricFogSystem {
   
   public update(deltaTime: number, timeOfDay: number, playerPosition: THREE.Vector3): void {
     this.timeOfDay = timeOfDay;
-    
-    // TIME-BASED BLENDING MODE SWITCHING for fog walls only
-    const isDark = this.isDarkPeriod(timeOfDay);
-    const targetBlending = isDark ? THREE.NormalBlending : THREE.AdditiveBlending;
-    
-    // Update fog wall blending modes based on time of day
-    this.fogWallLayers.forEach(wall => {
-      const material = wall.material as THREE.ShaderMaterial;
-      if (material.blending !== targetBlending) {
-        material.blending = targetBlending;
-        material.needsUpdate = true;
-      }
-    });
     
     // Update atmospheric fog layers (keep existing behavior)
     this.fogLayers.forEach(layer => {
