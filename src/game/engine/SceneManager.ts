@@ -414,7 +414,7 @@ export class SceneManager {
     (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
   }
   
-  // UPDATED: Simplified skybox with much reduced sun glow and smooth continuous transitions
+  // UPDATED: Simplified skybox with reduced but visible sun glow and smooth continuous transitions
   private createDayNightSkybox(): void {
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
@@ -445,7 +445,7 @@ export class SceneManager {
           return mix(a, b, clamp(factor, 0.0, 1.0));
         }
         
-        // Enhanced atmospheric scattering with much reduced sun glow
+        // Enhanced atmospheric scattering with smaller but visible sun glow
         vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized) {
           float height = direction.y;
           float sunDot = dot(direction, normalize(sunDir));
@@ -493,12 +493,12 @@ export class SceneManager {
           
           vec3 baseAtmosphereColor = lerpColor(horizonColor, zenithColor, heightFactor);
           
-          // UPDATED: Much reduced sun proximity influence for subtle sun glow
+          // UPDATED: Smaller but visible sun proximity influence
           float sunInfluence = 0.0;
           if (sunDir.y > -0.2) { // Only when sun is near or above horizon
             float sunDistance = 1.0 - sunDot; // Distance from sun direction
-            // UPDATED: Tighter area (2.5 instead of 0.8) and sharper falloff (6.0 instead of 3.0)
-            sunInfluence = pow(max(0.0, 1.0 - sunDistance * 2.5), 6.0);
+            // UPDATED: Smaller area (4.0 instead of 2.5) but more visible intensity
+            sunInfluence = pow(max(0.0, 1.0 - sunDistance * 4.0), 5.0);
             sunInfluence *= max(0.0, (sunDir.y + 0.2) / 1.2); // Fade when sun is below horizon
           }
           
@@ -509,8 +509,8 @@ export class SceneManager {
             sunGlowColor = vec3(1.0, 0.5, 0.2);
           }
           
-          // UPDATED: Apply much reduced sun influence (0.15 instead of 0.7)
-          vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.15);
+          // UPDATED: Apply moderate sun influence (0.35 instead of 0.15) for visible but contained glow
+          vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.35);
           
           // Add subtle atmospheric perspective for distance
           float atmosphericDepth = 1.0 - abs(height); // More atmosphere at horizon
@@ -524,7 +524,7 @@ export class SceneManager {
           vec3 sunDir = normalize(sunPosition);
           float normalizedTime = mod(timeOfDay, 1.0);
           
-          // Get realistic atmospheric color with reduced sun glow
+          // Get realistic atmospheric color with smaller but visible sun glow
           vec3 skyColor = getAtmosphericColor(direction, sunDir, normalizedTime);
           
           // Add subtle stars for extended night sky periods
@@ -550,7 +550,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Realistic atmospheric gradient skybox created with significantly reduced sun glow');
+    console.log('Realistic atmospheric gradient skybox created with smaller but visible sun glow');
   }
   
   private updateDayNightSkybox(): void {
