@@ -42,7 +42,7 @@ export class SceneManager {
   private rimLight: THREE.DirectionalLight;
   private fillLight: THREE.DirectionalLight;
   
-  // NEW: Moon glow ambient light for realistic night visibility
+  // ENHANCED: Moon glow ambient light for realistic night visibility
   private moonGlowAmbient: THREE.AmbientLight;
   
   // Dynamic shadow system
@@ -177,14 +177,14 @@ export class SceneManager {
     return t * t * (3 - 2 * t);
   }
   
-  // UPDATED: Moon elevation-based night intensity calculation with enhanced moon glow
+  // FIXED: Moon elevation-based night intensity calculation with proper logic
   private getMoonElevationFactor(): number {
     if (!this.moon) return 0;
     
     // Calculate moon's elevation (-1 = below horizon, 1 = zenith)
     const moonElevation = this.moon.position.y / this.moonRadius;
     
-    // When moon is high (near zenith), provide more ambient moonlight
+    // FIXED: When moon is high (near zenith), provide MORE ambient moonlight
     // When moon is low/setting, provide less ambient moonlight
     const elevationFactor = Math.max(0, moonElevation); // 0 when below horizon, 1 at zenith
     
@@ -203,7 +203,7 @@ export class SceneManager {
       noon: new THREE.Color(0x4682B4),         // Steel blue for day
       sunset: new THREE.Color(0xFF8C42),       // Orange sunset
       dusk: new THREE.Color(0x1a0030),         // Dark purple dusk
-      rapidNight: new THREE.Color(0x000010)    // NEW: Rapid transition to darkness
+      rapidNight: new THREE.Color(0x2F4F4F)    // NEW: Dark slate for rapid transition
     };
     
     let resultColor: THREE.Color;
@@ -319,7 +319,7 @@ export class SceneManager {
     console.log("Complete realistic night lighting system with moon glow initialized");
   }
   
-  // UPDATED: Enhanced ambient intensity with moon glow for night visibility
+  // ENHANCED: Ambient intensity with significantly improved night visibility
   private getSynchronizedAmbientIntensityForTime(time: number): number {
     const normalizedTime = time % 1;
     const moonElevation = this.getMoonElevationFactor();
@@ -327,14 +327,15 @@ export class SceneManager {
     let baseIntensity: number;
     
     if (normalizedTime >= this.TIME_PHASES.DEEP_NIGHT_START && normalizedTime <= this.TIME_PHASES.DEEP_NIGHT_END) {
-      // ENHANCED: Deep night with moon glow (0.12-0.18 instead of 0.02-0.08)
-      const minNightIntensity = 0.12;  // Increased base night visibility
-      const maxNightIntensity = 0.18;  // More moonlight when moon is low
-      baseIntensity = minNightIntensity + (maxNightIntensity - minNightIntensity) * (1 - moonElevation);
+      // ENHANCED: Deep night with significantly improved moon glow (0.20-0.35 instead of 0.12-0.18)
+      const minNightIntensity = 0.20;  // Increased base night visibility significantly
+      const maxNightIntensity = 0.35;  // Much more moonlight when moon is high
+      // FIXED: Higher moon elevation = MORE light (not less)
+      baseIntensity = minNightIntensity + (maxNightIntensity - minNightIntensity) * moonElevation;
     } else if (normalizedTime >= this.TIME_PHASES.DAWN_START && normalizedTime <= this.TIME_PHASES.DAWN_END) {
       // Dawn transition
       const factor = (normalizedTime - this.TIME_PHASES.DAWN_START) / (this.TIME_PHASES.DAWN_END - this.TIME_PHASES.DAWN_START);
-      const nightIntensity = 0.12 + (0.18 - 0.12) * (1 - moonElevation);
+      const nightIntensity = 0.20 + (0.35 - 0.20) * moonElevation;
       baseIntensity = nightIntensity + (1.0 - nightIntensity) * this.smoothStep(0, 1, factor);
     } else if (normalizedTime >= this.TIME_PHASES.DAY_START && normalizedTime <= this.TIME_PHASES.DAY_END) {
       // Day period - bright and stable
@@ -353,16 +354,16 @@ export class SceneManager {
       // Twilight transition with very aggressive decay
       const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
       const exponentialFactor = this.exponentialDecay(factor, 4);
-      baseIntensity = 0.4 - (0.4 - 0.25) * exponentialFactor;
+      baseIntensity = 0.4 - (0.4 - 0.30) * exponentialFactor;
     } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
       // Rapid night transition to enhanced night visibility
       const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
       const exponentialFactor = this.exponentialDecay(factor, 5);
-      const nightIntensity = 0.12 + (0.18 - 0.12) * (1 - moonElevation);
-      baseIntensity = 0.25 - (0.25 - nightIntensity) * exponentialFactor;
+      const nightIntensity = 0.20 + (0.35 - 0.20) * moonElevation;
+      baseIntensity = 0.30 - (0.30 - nightIntensity) * exponentialFactor;
     } else {
       // Deep night with enhanced moon glow visibility
-      const nightIntensity = 0.12 + (0.18 - 0.12) * (1 - moonElevation);
+      const nightIntensity = 0.20 + (0.35 - 0.20) * moonElevation;
       baseIntensity = nightIntensity;
     }
     
@@ -589,7 +590,7 @@ export class SceneManager {
     this.directionalLight.castShadow = sunY > 0; // Only cast shadows when sun is visible
     
     // ENHANCED: Moon intensity with better visibility contribution
-    const moonIntensity = Math.max(0, Math.sin(moonAngle)) * 0.2; // Increased from 0.12 to 0.2
+    const moonIntensity = Math.max(0, Math.sin(moonAngle)) * 0.25; // Increased from 0.2 to 0.25
     this.moonLight.intensity = moonIntensity;
     
     // Update sun and moon visibility
@@ -914,7 +915,7 @@ export class SceneManager {
     }
   }
   
-  // ENHANCED: Lighting transitions with moon glow ambient system
+  // ENHANCED: Lighting transitions with significantly improved moon glow ambient system
   private updateSynchronizedDayNightLighting(): void {
     // Update ambient light intensity with enhanced night visibility
     this.ambientLight.intensity = this.getSynchronizedAmbientIntensityForTime(this.timeOfDay);
@@ -939,27 +940,31 @@ export class SceneManager {
     const lightColor = this.getSynchronizedLightColorForTime(this.timeOfDay);
     this.directionalLight.color.copy(lightColor);
     
-    // REALISTIC: Enhanced moon light color temperature
+    // ENHANCED: Moon light intensity increased for better terrain visibility
+    const moonIntensity = Math.max(0, Math.sin((this.timeOfDay + 0.5) * Math.PI * 2)) * 0.25; // Increased from 0.2 to 0.25
+    this.moonLight.intensity = moonIntensity;
     this.moonLight.color.setHex(0x4169E1); // Cool blue moonlight
     
-    // NEW: Update moon glow ambient light for terrain visibility
+    // ENHANCED: Update moon glow ambient light for significantly improved terrain visibility
     this.updateMoonGlowAmbient();
   }
   
-  // NEW: Moon glow ambient system for realistic night terrain visibility
+  // ENHANCED: Moon glow ambient system for much better night terrain visibility
   private updateMoonGlowAmbient(): void {
     const nightFactor = this.getSynchronizedNightFactor(this.timeOfDay);
     const moonElevation = this.getMoonElevationFactor();
     
-    // Moon glow intensity based on night time and moon position
+    // ENHANCED: Moon glow intensity significantly increased for terrain visibility
     // More glow when moon is higher in sky during night
-    const moonGlowIntensity = nightFactor * moonElevation * 0.08; // Subtle blue ambient boost
+    const moonGlowIntensity = nightFactor * moonElevation * 0.18; // Increased from 0.08 to 0.18
     
     this.moonGlowAmbient.intensity = moonGlowIntensity;
     
-    // Slightly cooler blue color when moon is high
+    // Slightly cooler blue color when moon is high, warmer when low
     const moonGlowColor = new THREE.Color(0x4169E1).lerp(new THREE.Color(0x6495ED), moonElevation);
     this.moonGlowAmbient.color.copy(moonGlowColor);
+    
+    console.log(`🌙 Moon glow: elevation=${moonElevation.toFixed(2)}, night=${nightFactor.toFixed(2)}, intensity=${moonGlowIntensity.toFixed(3)}`);
   }
   
   // NEW: Calculate day factor for controlling day-only lights
