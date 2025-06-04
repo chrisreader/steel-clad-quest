@@ -13,8 +13,6 @@ export class VolumetricFogSystem {
   private horizonFogMaterial: THREE.ShaderMaterial;
   private groundFogMaterial: THREE.ShaderMaterial;
   private timeOfDay: number = 0.25;
-  private sunPosition: THREE.Vector3 = new THREE.Vector3(0, 100, 0);
-  private sunDirection: THREE.Vector3 = new THREE.Vector3(0, -1, 0);
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -24,19 +22,23 @@ export class VolumetricFogSystem {
     this.createHorizonFogMaterial();
     this.createGroundFogMaterial();
     this.createFogLayers();
-    this.createSunBasedGodRays();
+    this.createRealisticFogWalls();
     this.createAtmosphericLayers();
     this.createHorizonBlendingLayers();
     this.createGroundFogLayers();
   }
   
+  // NEW: Smooth interpolation functions for seamless transitions
   private getDarknessFactor(timeOfDay: number): number {
+    // Create smooth darkness factor from 0 (full day) to 1 (full night)
     if (timeOfDay >= 0.35 && timeOfDay <= 0.65) {
       return 0.0; // Full day
     } else if (timeOfDay >= 0.25 && timeOfDay < 0.35) {
+      // Sunrise transition (0.25 -> 0.35)
       const factor = (timeOfDay - 0.25) / 0.1;
       return 1.0 - this.smoothStep(0.0, 1.0, factor);
     } else if (timeOfDay > 0.65 && timeOfDay <= 0.75) {
+      // Sunset transition (0.65 -> 0.75)
       const factor = (timeOfDay - 0.65) / 0.1;
       return this.smoothStep(0.0, 1.0, factor);
     } else {
@@ -45,12 +47,15 @@ export class VolumetricFogSystem {
   }
   
   private getTransitionFactor(timeOfDay: number): number {
+    // Factor for transition periods (0 = stable period, 1 = active transition)
     if ((timeOfDay >= 0.2 && timeOfDay <= 0.4) || (timeOfDay >= 0.6 && timeOfDay <= 0.8)) {
       if (timeOfDay >= 0.2 && timeOfDay <= 0.4) {
+        // Sunrise transition period
         const center = 0.3;
         const distance = Math.abs(timeOfDay - center);
         return 1.0 - (distance / 0.1);
       } else {
+        // Sunset transition period
         const center = 0.7;
         const distance = Math.abs(timeOfDay - center);
         return 1.0 - (distance / 0.1);
@@ -71,24 +76,36 @@ export class VolumetricFogSystem {
   private getFogDensityMultiplier(timeOfDay: number): number {
     const darknessFactor = this.getDarknessFactor(timeOfDay);
     const transitionFactor = this.getTransitionFactor(timeOfDay);
+    
+    // Base multiplier ranges from 1.0 (day) to 2.8 (night)
     const baseMultiplier = 1.0 + (darknessFactor * 1.8);
+    
+    // Add extra density during active transitions for atmospheric effect
     const transitionBoost = transitionFactor * 0.3;
+    
     return baseMultiplier + transitionBoost;
   }
   
   private getFogMaxDistance(timeOfDay: number): number {
     const darknessFactor = this.getDarknessFactor(timeOfDay);
+    
+    // Distance ranges from 300 (day) to 200 (night)
     return 300 - (darknessFactor * 100);
   }
   
   private getFogMaxOpacity(timeOfDay: number): number {
     const darknessFactor = this.getDarknessFactor(timeOfDay);
+    
+    // Opacity ranges from 0.35 (day) to 0.65 (night)
     return 0.35 + (darknessFactor * 0.3);
   }
   
   private getBlendingAlpha(timeOfDay: number): number {
     const darknessFactor = this.getDarknessFactor(timeOfDay);
     const transitionFactor = this.getTransitionFactor(timeOfDay);
+    
+    // During stable periods, use clear blending (0 = additive, 1 = normal)
+    // During transitions, blend between modes
     return darknessFactor * (1.0 - transitionFactor * 0.3);
   }
   
@@ -102,11 +119,12 @@ export class VolumetricFogSystem {
         nightFogColor: { value: new THREE.Color(0x191970) },
         sunriseFogColor: { value: new THREE.Color(0xFFB366) },
         sunsetFogColor: { value: new THREE.Color(0xFF8C42) },
+        // NEW: Dynamic fog parameters
         fogDensityMultiplier: { value: 1.0 },
         maxFogDistance: { value: 300.0 },
-        maxFogOpacity: { value: 0.25 },
+        maxFogOpacity: { value: 0.25 }, // Reduced for realism
         blendingAlpha: { value: 0.0 },
-        fogDensity: { value: 0.08 },
+        fogDensity: { value: 0.08 }, // Reduced base density
         layerHeight: { value: 1.0 },
         playerPosition: { value: new THREE.Vector3() },
         noiseScale: { value: 0.02 },
@@ -154,6 +172,7 @@ export class VolumetricFogSystem {
         varying vec2 vUv;
         varying float vDistance;
         
+        // Simplex noise function
         vec3 mod289(vec3 x) {
           return x - floor(x * (1.0 / 289.0)) * 289.0;
         }
@@ -230,29 +249,32 @@ export class VolumetricFogSystem {
           return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
         }
         
+        // ENHANCED: Smooth color transitions with extended windows and cubic interpolation
         vec3 getFogColorForTime(float time) {
           vec3 currentColor = dayFogColor;
           
           if (time >= 0.15 && time <= 0.35) {
+            // Extended sunrise transition (0.15 -> 0.35)
             if (time <= 0.25) {
               float factor = (time - 0.15) / 0.1;
-              factor = factor * factor * (3.0 - 2.0 * factor);
+              factor = factor * factor * (3.0 - 2.0 * factor); // Cubic smoothing
               currentColor = mix(nightFogColor, sunriseFogColor, factor);
             } else {
               float factor = (time - 0.25) / 0.1;
-              factor = factor * factor * (3.0 - 2.0 * factor);
+              factor = factor * factor * (3.0 - 2.0 * factor); // Cubic smoothing
               currentColor = mix(sunriseFogColor, dayFogColor, factor);
             }
           } else if (time > 0.35 && time < 0.65) {
             currentColor = dayFogColor;
           } else if (time >= 0.65 && time <= 0.85) {
+            // Extended sunset transition (0.65 -> 0.85)
             if (time <= 0.75) {
               float factor = (time - 0.65) / 0.1;
-              factor = factor * factor * (3.0 - 2.0 * factor);
+              factor = factor * factor * (3.0 - 2.0 * factor); // Cubic smoothing
               currentColor = mix(dayFogColor, sunsetFogColor, factor);
             } else {
               float factor = (time - 0.75) / 0.1;
-              factor = factor * factor * (3.0 - 2.0 * factor);
+              factor = factor * factor * (3.0 - 2.0 * factor); // Cubic smoothing
               currentColor = mix(sunsetFogColor, nightFogColor, factor);
             }
           } else {
@@ -263,8 +285,10 @@ export class VolumetricFogSystem {
         }
         
         void main() {
+          // Calculate dynamic fog color with smooth transitions
           vec3 dynamicFogColor = getFogColorForTime(timeOfDay);
           
+          // Create animated noise for fog movement
           vec3 noisePos = vWorldPosition * noiseScale;
           noisePos.xy += windDirection * time * 0.1;
           
@@ -274,15 +298,19 @@ export class VolumetricFogSystem {
           
           float combinedNoise = noise1 * 0.6 + noise2 * 0.3 + noise3 * 0.1;
           
+          // Calculate height-based density
           float heightFactor = 1.0 - abs(vPosition.y) / layerHeight;
           heightFactor = smoothstep(0.0, 1.0, heightFactor);
           
+          // ENHANCED: Smooth distance-based fog with dynamic parameters
           float distanceFactor = 1.0 - smoothstep(15.0, maxFogDistance, vDistance);
           
+          // Calculate final fog density with smooth multiplier
           float density = fogDensity * heightFactor * distanceFactor * fogDensityMultiplier;
           density *= (0.8 + combinedNoise * 0.4);
           density = clamp(density, 0.0, maxFogOpacity);
           
+          // Edge fade for smooth blending
           float edgeFade = smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x) *
                           smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
           
@@ -307,16 +335,14 @@ export class VolumetricFogSystem {
         nightFogColor: { value: new THREE.Color(0x707090) },
         sunriseFogColor: { value: new THREE.Color(0xFFE8D0) },
         sunsetFogColor: { value: new THREE.Color(0xFFDCC0) },
-        sunPosition: { value: new THREE.Vector3() },
-        sunDirection: { value: new THREE.Vector3() },
-        rayIntensity: { value: 1.0 },
+        // NEW: Dynamic parameters for smooth transitions
         fogWallDensityMultiplier: { value: 1.0 },
         maxWallDistance: { value: 300.0 },
-        maxWallOpacity: { value: 0.25 },
+        maxWallOpacity: { value: 0.25 }, // Reduced for realism
         blendingAlpha: { value: 0.0 },
-        fogWallDensity: { value: 0.05 },
-        fogWallHeight: { value: 25.0 },
-        horizonBlur: { value: 0.8 },
+        fogWallDensity: { value: 0.05 }, // Reduced base density
+        fogWallHeight: { value: 25.0 }, // Significantly reduced height
+        horizonBlur: { value: 0.8 }, // Increased for smoother transition
         playerPosition: { value: new THREE.Vector3() },
         noiseScale: { value: 0.015 },
         windDirection: { value: new THREE.Vector2(1.0, 0.3) },
@@ -329,12 +355,8 @@ export class VolumetricFogSystem {
         varying float vDistance;
         varying float vHeightFactor;
         varying vec3 vLocalPosition;
-        varying float vSunAlignment;
-        varying float vRayIntensity;
         
         uniform vec3 playerPosition;
-        uniform vec3 sunPosition;
-        uniform vec3 sunDirection;
         uniform float fogWallHeight;
         uniform float time;
         
@@ -343,25 +365,22 @@ export class VolumetricFogSystem {
           vUv = uv;
           vLocalPosition = position;
           
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          vDistance = distance(worldPosition.xyz, playerPosition);
-          
-          vec3 rayDirection = normalize(worldPosition.xyz - sunPosition);
-          vSunAlignment = max(0.0, dot(rayDirection, normalize(sunDirection)));
-          
-          float sunElevation = sunPosition.y / 100.0;
-          vRayIntensity = smoothstep(0.0, 0.5, sunElevation) * vSunAlignment;
-          
+          // Add organic vertex displacement
           vec3 displacedPosition = position;
           float noiseScale = 0.02;
           float displacement = sin(position.x * noiseScale + time * 0.5) * 
                               cos(position.z * noiseScale + time * 0.3) * 
                               sin(position.y * noiseScale * 2.0 + time * 0.2);
           
-          vec3 sunRayDir = normalize(sunDirection);
-          displacedPosition += sunRayDir * displacement * 2.0 * vSunAlignment;
+          // Apply displacement mainly to edges
+          float edgeFactor = smoothstep(0.3, 1.0, abs(uv.x - 0.5) * 2.0);
+          displacedPosition += normal * displacement * 2.0 * edgeFactor;
           
+          vec4 worldPosition = modelMatrix * vec4(displacedPosition, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          vDistance = distance(worldPosition.xyz, playerPosition);
+          
+          // Calculate height factor for vertical fog wall gradient
           vHeightFactor = clamp(worldPosition.y / fogWallHeight, 0.0, 1.0);
           
           gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
@@ -374,9 +393,6 @@ export class VolumetricFogSystem {
         uniform vec3 nightFogColor;
         uniform vec3 sunriseFogColor;
         uniform vec3 sunsetFogColor;
-        uniform vec3 sunPosition;
-        uniform vec3 sunDirection;
-        uniform float rayIntensity;
         uniform float fogWallDensityMultiplier;
         uniform float maxWallDistance;
         uniform float maxWallOpacity;
@@ -395,9 +411,8 @@ export class VolumetricFogSystem {
         varying float vDistance;
         varying float vHeightFactor;
         varying vec3 vLocalPosition;
-        varying float vSunAlignment;
-        varying float vRayIntensity;
         
+        // Simplex noise function
         vec3 mod289(vec3 x) {
           return x - floor(x * (1.0 / 289.0)) * 289.0;
         }
@@ -474,6 +489,7 @@ export class VolumetricFogSystem {
           return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
         }
         
+        // ENHANCED: Extended color transitions for smooth atmosphere
         vec3 getFogColorForTime(float time) {
           vec3 currentColor = dayFogColor;
           
@@ -509,9 +525,11 @@ export class VolumetricFogSystem {
         void main() {
           vec3 atmosphericColor = getFogColorForTime(timeOfDay);
           
+          // Create 3D volumetric noise for realistic fog volume
           vec3 noisePos = vWorldPosition * noiseScale;
-          noisePos.xy += windDirection * time * 0.02;
+          noisePos += vec3(windDirection * time * 0.02, time * 0.01);
           
+          // Multiple octaves of 3D noise for detail
           float noise1 = snoise3D(noisePos) * 0.5 + 0.5;
           float noise2 = snoise3D(noisePos * 2.1 + vec3(1.7)) * 0.25 + 0.25;
           float noise3 = snoise3D(noisePos * 4.3 + vec3(3.4)) * 0.125 + 0.125;
@@ -520,6 +538,7 @@ export class VolumetricFogSystem {
           float volumetricNoise = noise1 + noise2 + noise3 + noise4;
           float densityVariation = smoothstep(0.3, 0.8, volumetricNoise);
           
+          // ENHANCED: Smooth distance calculation with dynamic parameters
           float distanceRatio;
           float exponentialFog;
           
@@ -539,13 +558,15 @@ export class VolumetricFogSystem {
           
           exponentialFog = smoothstep(0.0, 1.0, exponentialFog);
           
+          // Enhanced bottom coverage with smooth transitions
           float bottomDensityBoost = 1.0 - smoothstep(0.0, 0.3, vHeightFactor);
           bottomDensityBoost = pow(bottomDensityBoost, 0.5);
-          bottomDensityBoost += vRayIntensity * 0.5;
           
+          // Apply smooth darkness-based boost
           float darknessBoost = blendingAlpha * 0.4;
           bottomDensityBoost += darknessBoost;
           
+          // Dynamic sky gradient
           float skyTransition1 = smoothstep(0.6, 0.8, vHeightFactor) * (1.0 - blendingAlpha * 0.6);
           float skyTransition2 = smoothstep(0.8, 0.95, vHeightFactor) * (1.0 - blendingAlpha * 0.7);
           float skyTransition3 = smoothstep(0.9, 1.0, vHeightFactor) * (1.0 - blendingAlpha * 0.8);
@@ -556,6 +577,7 @@ export class VolumetricFogSystem {
           heightGradient *= (1.0 - skyTransition2 * 0.2);
           heightGradient *= (1.0 - skyTransition3 * 0.3);
           
+          // Soft edge blending
           vec2 centerUV = vUv - 0.5;
           float radialDistance = length(centerUV);
           float radialFalloff = 1.0 - smoothstep(0.3, 0.5, radialDistance);
@@ -563,19 +585,16 @@ export class VolumetricFogSystem {
           float edgeSoftness = smoothstep(0.0, 0.15, vUv.x) * smoothstep(1.0, 0.85, vUv.x) *
                               smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
           
+          // Enhanced density for dark periods
           float baseDensity = fogWallDensity * exponentialFog * heightGradient * fogWallDensityMultiplier;
           baseDensity *= densityVariation;
           baseDensity *= radialFalloff * 0.7 + 0.3;
           baseDensity *= edgeSoftness;
           baseDensity *= (0.8 + layerDepth * 0.4);
           
-          baseDensity += vRayIntensity * 0.3;
-          
           baseDensity = clamp(baseDensity, 0.0, maxWallOpacity);
           
-          vec3 finalColor = mix(atmosphericColor, atmosphericColor * 1.5, vRayIntensity);
-          
-          gl_FragColor = vec4(finalColor, baseDensity);
+          gl_FragColor = vec4(atmosphericColor, baseDensity);
         }
       `,
       transparent: true,
@@ -664,9 +683,11 @@ export class VolumetricFogSystem {
         void main() {
           vec3 dynamicFogColor = getAtmosphericColorForTime(timeOfDay);
           
+          // Atmospheric perspective with height and distance
           float heightFactor = clamp(vHeight / 40.0, 0.0, 1.0);
           float distanceFactor = smoothstep(150.0, maxAtmosphericDistance, vDistance);
           
+          // Atmospheric scattering effect
           float scatteringEffect = 1.0 - exp(-vDistance * 0.002);
           vec3 scatteredColor = mix(dynamicFogColor, vec3(0.8, 0.85, 0.9), scatteringEffect * 0.2);
           
@@ -772,6 +793,7 @@ export class VolumetricFogSystem {
           vec2 noisePos = vWorldPosition.xz * noiseScale + time * 0.005;
           float noiseValue = noise(noisePos) * 0.5 + 0.5;
           
+          // Enhanced horizon blending with very long transition
           float horizonBlendStart = 0.1;
           float horizonBlendEnd = 0.8;
           float horizonFactor = smoothstep(horizonBlendStart, horizonBlendEnd, vDistance / maxHorizonDistance);
@@ -902,6 +924,7 @@ export class VolumetricFogSystem {
   }
   
   private createFogLayers(): void {
+    // Create low-lying fog layers with realistic heights
     const fogConfigs = [
       { size: 180, y: 1, density: 0.2 },
       { size: 140, y: 4, density: 0.15 },
@@ -915,7 +938,7 @@ export class VolumetricFogSystem {
       const positions = positionAttribute.array as Float32Array;
       
       for (let i = 0; i < positions.length; i += 3) {
-        positions[i + 1] += (Math.random() - 0.5) * 1.5;
+        positions[i + 1] += (Math.random() - 0.5) * 1.5; // Reduced displacement
       }
       positionAttribute.needsUpdate = true;
       geometry.computeVertexNormals();
@@ -934,6 +957,7 @@ export class VolumetricFogSystem {
   }
 
   private createRealisticFogWalls(): void {
+    // Create multiple layers of realistic fog walls with reduced heights
     const layerConfigs = [
       { distances: [25, 45, 70, 100, 140, 190], heights: [15, 18, 22, 25, 28, 30] },
       { distances: [35, 60, 90, 130, 180, 240], heights: [12, 15, 18, 20, 22, 25] },
@@ -945,9 +969,11 @@ export class VolumetricFogSystem {
         const wallHeight = layerConfig.heights[distanceIndex];
         const wallWidth = 400 + distanceIndex * 100;
         
+        // Create fewer walls per ring for better performance
         for (let i = 0; i < 20; i++) {
           const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 20, 10);
           
+          // Add subtle organic displacement
           const positionAttribute = wallGeometry.getAttribute('position');
           const positions = positionAttribute.array as Float32Array;
           
@@ -955,7 +981,7 @@ export class VolumetricFogSystem {
             const x = positions[j];
             const y = positions[j + 1];
             
-            const displacement = Math.sin(x * 0.02) * Math.cos(y * 0.03) * 1.5;
+            const displacement = Math.sin(x * 0.02) * Math.cos(y * 0.03) * 1.5; // Reduced displacement
             const heightFactor = (y + wallHeight / 2) / wallHeight;
             
             positions[j] += displacement * 0.2;
@@ -971,15 +997,17 @@ export class VolumetricFogSystem {
           const angle = (i / 20) * Math.PI * 2;
           wall.position.x = Math.cos(angle) * distance;
           wall.position.z = Math.sin(angle) * distance;
-          wall.position.y = wallHeight / 2 - 2;
+          wall.position.y = wallHeight / 2 - 2; // Lower positioning
           wall.rotation.y = angle + Math.PI / 2;
           
+          // Reduced density for realism
           const wallDensity = 0.02 + (distanceIndex * 0.008) + (layerIndex * 0.005);
           const material = wall.material as THREE.ShaderMaterial;
           material.uniforms.fogWallDensity.value = wallDensity;
           material.uniforms.layerDepth.value = layerIndex * 0.3;
           material.uniforms.fogWallHeight.value = wallHeight;
           
+          // Store for smooth transitions
           (wall as any).baseDistance = distance;
           (wall as any).wallIndex = i;
           (wall as any).layerIndex = layerIndex;
@@ -995,6 +1023,7 @@ export class VolumetricFogSystem {
   }
 
   private createAtmosphericLayers(): void {
+    // Create atmospheric fog layers for distant haze
     const atmosphericDistances = [200, 300, 400];
     const atmosphericSizes = [600, 800, 1000];
     
@@ -1003,7 +1032,7 @@ export class VolumetricFogSystem {
       const atmosphericGeometry = new THREE.PlaneGeometry(size, size, 12, 12);
       const atmosphericFog = new THREE.Mesh(atmosphericGeometry, this.atmosphericFogMaterial.clone());
       
-      atmosphericFog.position.y = 20 + index * 8;
+      atmosphericFog.position.y = 20 + index * 8; // Higher positioning for atmospheric layers
       atmosphericFog.rotation.x = -Math.PI / 2;
       
       const atmosphericDensity = 0.04 + (index * 0.015);
@@ -1018,6 +1047,7 @@ export class VolumetricFogSystem {
   }
 
   private createHorizonBlendingLayers(): void {
+    // Create horizon fog for seamless sky transition
     const horizonDistances = [150, 250, 350];
     const horizonSizes = [500, 700, 900];
     
@@ -1025,6 +1055,7 @@ export class VolumetricFogSystem {
       const size = horizonSizes[index];
       const horizonGeometry = new THREE.PlaneGeometry(size, size, 16, 16);
       
+      // Add subtle height variation
       const positionAttribute = horizonGeometry.getAttribute('position');
       const positions = positionAttribute.array as Float32Array;
       
@@ -1038,7 +1069,7 @@ export class VolumetricFogSystem {
       horizonGeometry.computeVertexNormals();
       
       const horizonFog = new THREE.Mesh(horizonGeometry, this.horizonFogMaterial.clone());
-      horizonFog.position.y = 8 + index * 4;
+      horizonFog.position.y = 8 + index * 4; // Mid-level positioning
       horizonFog.rotation.x = -Math.PI / 2;
       
       const horizonDensity = 0.08 + (index * 0.02);
@@ -1087,98 +1118,7 @@ export class VolumetricFogSystem {
     console.log(`Created ${this.groundFogLayers.length} realistic ground fog layers`);
   }
   
-  private createSunBasedGodRays(): void {
-    const rayConfigs = [
-      { count: 12, distance: 50, intensity: 1.0 },
-      { count: 8, distance: 100, intensity: 0.8 },
-      { count: 6, distance: 150, intensity: 0.6 }
-    ];
-    
-    rayConfigs.forEach((config, ringIndex) => {
-      for (let i = 0; i < config.count; i++) {
-        const rayGeometry = new THREE.PlaneGeometry(30, 80, 10, 20);
-        
-        const positionAttribute = rayGeometry.getAttribute('position');
-        const positions = positionAttribute.array as Float32Array;
-        
-        for (let j = 0; j < positions.length; j += 3) {
-          const y = positions[j + 1];
-          const heightFactor = (y + 40) / 80;
-          
-          positions[j] *= (1.0 - heightFactor * 0.7);
-          positions[j + 2] *= (1.0 - heightFactor * 0.7);
-        }
-        
-        positionAttribute.needsUpdate = true;
-        rayGeometry.computeVertexNormals();
-        
-        const ray = new THREE.Mesh(rayGeometry, this.fogWallMaterial.clone());
-        
-        const angle = (i / config.count) * Math.PI * 2;
-        ray.position.x = Math.cos(angle) * config.distance;
-        ray.position.z = Math.sin(angle) * config.distance;
-        ray.position.y = 40;
-        
-        (ray as any).rayConfig = {
-          ringIndex,
-          rayIndex: i,
-          distance: config.distance,
-          intensity: config.intensity,
-          baseAngle: angle
-        };
-        
-        const material = ray.material as THREE.ShaderMaterial;
-        material.uniforms.fogWallDensity.value = 0.03 * config.intensity;
-        material.uniforms.rayIntensity.value = config.intensity;
-        material.uniforms.layerDepth.value = ringIndex * 0.2;
-        
-        this.fogWallLayers.push(ray);
-        this.scene.add(ray);
-      }
-    });
-    
-    console.log(`Created ${this.fogWallLayers.length} sun-based god rays`);
-  }
-
-  public updateSunPosition(sunPosition: THREE.Vector3, sunDirection: THREE.Vector3): void {
-    this.sunPosition.copy(sunPosition);
-    this.sunDirection.copy(sunDirection);
-    
-    this.fogWallLayers.forEach(wall => {
-      const material = wall.material as THREE.ShaderMaterial;
-      if (material.uniforms) {
-        material.uniforms.sunPosition.value.copy(sunPosition);
-        material.uniforms.sunDirection.value.copy(sunDirection);
-        
-        const sunElevation = sunPosition.y / 100.0;
-        material.uniforms.rayIntensity.value = Math.max(0.0, sunElevation);
-      }
-    });
-  }
-
-  private updateRayPositions(playerPosition: THREE.Vector3): void {
-    this.fogWallLayers.forEach(wall => {
-      const rayConfig = (wall as any).rayConfig;
-      if (!rayConfig) return;
-      
-      const sunToGround = this.sunDirection.clone().normalize();
-      const perpendicular = new THREE.Vector3(-sunToGround.z, 0, sunToGround.x).normalize();
-      
-      const offset = perpendicular.clone().multiplyScalar(rayConfig.distance);
-      const angleOffset = Math.cos(rayConfig.baseAngle) * offset.x + Math.sin(rayConfig.baseAngle) * offset.z;
-      
-      const rayStart = this.sunPosition.clone();
-      const rayEnd = rayStart.clone().add(sunToGround.clone().multiplyScalar(200));
-      
-      const t = (rayConfig.distance / 200.0);
-      wall.position.copy(rayStart.clone().lerp(rayEnd, t));
-      wall.position.x += playerPosition.x * 0.1;
-      wall.position.z += playerPosition.z * 0.1;
-      
-      wall.lookAt(wall.position.clone().add(sunToGround));
-    });
-  }
-  
+  // ENHANCED: Update method with realistic fog behavior
   public update(deltaTime: number, timeOfDay: number, playerPosition: THREE.Vector3): void {
     this.timeOfDay = timeOfDay;
     
@@ -1189,40 +1129,34 @@ export class VolumetricFogSystem {
     const maxOpacity = this.getFogMaxOpacity(timeOfDay);
     const blendingAlpha = this.getBlendingAlpha(timeOfDay);
     
-    this.updateRayPositions(playerPosition);
-    
+    // Update atmospheric fog layers
     this.fogLayers.forEach(layer => {
       const material = layer.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
         material.uniforms.playerPosition.value.copy(playerPosition);
-        material.uniforms.fogDensityMultiplier.value = densityMultiplier * 0.8;
+        material.uniforms.fogDensityMultiplier.value = densityMultiplier * 0.8; // Reduced for realism
         material.uniforms.maxFogDistance.value = maxDistance;
-        material.uniforms.maxFogOpacity.value = maxOpacity * 0.7;
+        material.uniforms.maxFogOpacity.value = maxOpacity * 0.7; // Reduced for realism
         material.uniforms.blendingAlpha.value = blendingAlpha;
       }
     });
     
+    // Update realistic fog walls
     this.fogWallLayers.forEach((wall, index) => {
       const material = wall.material as THREE.ShaderMaterial;
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
         material.uniforms.playerPosition.value.copy(playerPosition);
-        material.uniforms.fogWallDensityMultiplier.value = densityMultiplier * 0.6;
+        material.uniforms.fogWallDensityMultiplier.value = densityMultiplier * 0.6; // Reduced for realism
         material.uniforms.maxWallDistance.value = maxDistance;
-        material.uniforms.maxWallOpacity.value = maxOpacity * 0.5;
+        material.uniforms.maxWallOpacity.value = maxOpacity * 0.5; // Significantly reduced
         material.uniforms.blendingAlpha.value = blendingAlpha;
-        
-        material.uniforms.sunPosition.value.copy(this.sunPosition);
-        material.uniforms.sunDirection.value.copy(this.sunDirection);
-        
-        const sunElevation = this.sunPosition.y / 100.0;
-        const timeBasedIntensity = this.getTransitionFactor(timeOfDay) + 0.3;
-        material.uniforms.rayIntensity.value = Math.max(0.0, sunElevation) * timeBasedIntensity;
       }
       
+      // Update positions relative to player
       const wallData = wall as any;
       const baseDistance = wallData.baseDistance;
       const wallIndex = wallData.wallIndex;
@@ -1232,6 +1166,7 @@ export class VolumetricFogSystem {
       wall.position.z = playerPosition.z + Math.sin(angle) * baseDistance;
     });
     
+    // Update atmospheric layers
     this.atmosphericFogLayers.forEach(layer => {
       const material = layer.material as THREE.ShaderMaterial;
       if (material.uniforms) {
@@ -1245,6 +1180,7 @@ export class VolumetricFogSystem {
       layer.position.z = playerPosition.z;
     });
     
+    // Update horizon blending layers
     this.horizonFogLayers.forEach(layer => {
       const material = layer.material as THREE.ShaderMaterial;
       if (material.uniforms) {
@@ -1258,6 +1194,7 @@ export class VolumetricFogSystem {
       layer.position.z = playerPosition.z;
     });
     
+    // Update ground fog layers
     this.groundFogLayers.forEach(groundFog => {
       const material = groundFog.material as THREE.ShaderMaterial;
       if (material.uniforms) {
@@ -1271,6 +1208,7 @@ export class VolumetricFogSystem {
       groundFog.position.z = playerPosition.z;
     });
     
+    // Update main fog layer positions with smooth following
     this.fogLayers.forEach((layer, index) => {
       const lagFactor = 0.7 - index * 0.1;
       layer.position.x = THREE.MathUtils.lerp(layer.position.x, playerPosition.x, lagFactor * deltaTime);
