@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class VolumetricFogSystem {
@@ -240,7 +241,7 @@ export class VolumetricFogSystem {
         nightFogColor: { value: new THREE.Color(0x404080) },
         sunriseFogColor: { value: new THREE.Color(0xFFE4CC) },
         sunsetFogColor: { value: new THREE.Color(0xFFD0AA) },
-        fogWallDensity: { value: 0.85 },
+        fogWallDensity: { value: 0.65 },
         fogWallHeight: { value: 50.0 },
         horizonBlur: { value: 0.8 },
         playerPosition: { value: new THREE.Vector3() },
@@ -348,13 +349,14 @@ export class VolumetricFogSystem {
           fogNoise += noise(noisePos * 4.0) * 0.25;
           fogNoise /= 1.75;
           
-          // Updated distance-based fog density - start at 600 units to match render distance
-          float distanceRatio = vDistance / 600.0; // Start fog effect at proper render distance
-          float exponentialFog = 1.0 - exp(-distanceRatio * distanceRatio * 1.8); // Adjusted curve for new distance
-          exponentialFog = smoothstep(0.05, 1.0, exponentialFog); // Smoother transition
+          // ALIGNED WITH THREE.JS FOG: Distance-based fog density matching THREE.js fog (25-120 units)
+          float distanceRatio = (vDistance - 25.0) / (120.0 - 25.0); // Normalize to 0-1 over THREE.js fog range
+          distanceRatio = clamp(distanceRatio, 0.0, 1.0);
+          float exponentialFog = distanceRatio * distanceRatio; // Quadratic curve for natural fog progression
+          exponentialFog = smoothstep(0.0, 1.0, exponentialFog); // Smooth transition
           
-          // Updated horizon blur effect - starts at 650 units and builds to 800
-          float horizonEffect = smoothstep(650.0, 800.0, vDistance) * horizonBlur;
+          // ALIGNED WITH THREE.JS FOG: Horizon blur effect starts at 80 units and completes at 120
+          float horizonEffect = smoothstep(80.0, 120.0, vDistance) * horizonBlur;
           horizonEffect = clamp(horizonEffect, 0.0, 1.0);
           
           // Improved height-based gradient with exponential falloff for natural sky blending
@@ -362,22 +364,22 @@ export class VolumetricFogSystem {
           heightGradient = pow(heightGradient, 2.5); // Stronger exponential falloff for better sky transition
           heightGradient *= (1.0 - smoothstep(0.5, 1.0, vHeightFactor)); // Earlier fade out at top
           
-          // Combine all effects for final wall density
+          // Combine all effects for final wall density - adjusted for closer range
           float wallDensity = fogWallDensity * exponentialFog * heightGradient;
-          wallDensity += horizonEffect * 0.6; // Reduced horizon blur intensity for natural blending
+          wallDensity += horizonEffect * 0.7; // Increased horizon blur for closer range
           wallDensity *= (0.9 + fogNoise * 0.12); // Subtle texture variation
           
           // Time-based wall density adjustments - more subtle
           float timeWallMultiplier = 1.0;
           if (timeOfDay >= 0.2 && timeOfDay <= 0.3 || timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            timeWallMultiplier = 1.08; // Slightly thicker during transitions
+            timeWallMultiplier = 1.15; // Slightly thicker during transitions
           } else if (timeOfDay >= 0.8 || timeOfDay <= 0.2) {
-            timeWallMultiplier = 1.04; // Slightly thicker at night
+            timeWallMultiplier = 1.08; // Slightly thicker at night
           }
           wallDensity *= timeWallMultiplier;
           
-          // Ensure proper horizon blocking without overwhelming - reduced max density for sky blending
-          wallDensity = clamp(wallDensity, 0.0, 0.75);
+          // Ensure proper horizon blocking - optimized for 25-120 unit range
+          wallDensity = clamp(wallDensity, 0.0, 0.85);
           
           gl_FragColor = vec4(dynamicFogColor, wallDensity);
         }
@@ -398,7 +400,7 @@ export class VolumetricFogSystem {
         nightFogColor: { value: new THREE.Color(0x606090) },
         sunriseFogColor: { value: new THREE.Color(0xFFECE0) },
         sunsetFogColor: { value: new THREE.Color(0xFFE0C0) },
-        skyFogDensity: { value: 0.25 }, // Reduced density for subtler sky effect
+        skyFogDensity: { value: 0.2 }, // Reduced for closer range
         playerPosition: { value: new THREE.Vector3() }
       },
       vertexShader: `
@@ -453,9 +455,9 @@ export class VolumetricFogSystem {
         void main() {
           vec3 dynamicFogColor = getSkyFogColorForTime(timeOfDay);
           
-          // Updated distance-based sky fog density to match render distance
-          float distanceFactor = smoothstep(650.0, 800.0, vDistance); // Align with render distance
-          float density = skyFogDensity * distanceFactor * 0.7; // Further reduced intensity for natural sky blending
+          // ALIGNED WITH THREE.JS FOG: Sky fog density matching THREE.js fog completion range
+          float distanceFactor = smoothstep(100.0, 120.0, vDistance); // Start near THREE.js fog completion
+          float density = skyFogDensity * distanceFactor * 0.6; // Reduced intensity for natural blending
           
           gl_FragColor = vec4(dynamicFogColor, density);
         }
@@ -510,16 +512,16 @@ export class VolumetricFogSystem {
   }
 
   private createFogWallLayers(): void {
-    // Create fog wall layers at render distance - moved from 80-140 to 600-800 units
-    const wallDistances = [600, 650, 700, 750, 800]; // Aligned with actual render distance
-    const wallHeights = [30, 35, 40, 45, 50]; // Keep lower heights for better sky blending
-    const wallWidths = [2000, 2400, 2800, 3200, 3600]; // Increased widths for complete coverage at far distances
+    // ALIGNED WITH THREE.JS FOG: Create fog wall layers at THREE.js fog range (25-120 units)
+    const wallDistances = [25, 40, 60, 80, 120]; // Aligned with THREE.js fog system
+    const wallHeights = [15, 20, 25, 30, 35]; // Scaled for closer range
+    const wallWidths = [400, 500, 600, 700, 800]; // Scaled for closer distances
     
     wallDistances.forEach((distance, distanceIndex) => {
       const wallHeight = wallHeights[distanceIndex];
       const wallWidth = wallWidths[distanceIndex];
       
-      // Create 12 walls in a dodecagon for complete coverage with no gaps
+      // Create 12 walls in a dodecagon for complete coverage
       for (let i = 0; i < 12; i++) {
         const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 20, 10);
         const wall = new THREE.Mesh(wallGeometry, this.fogWallMaterial.clone());
@@ -530,8 +532,8 @@ export class VolumetricFogSystem {
         wall.position.y = wallHeight / 2;
         wall.rotation.y = angle + Math.PI / 2;
         
-        // Set distance-specific wall density for layered effect - more gradual progression
-        const wallDensity = 0.65 + (distanceIndex * 0.03); // More gradual density increase
+        // Set distance-specific wall density for layered effect - optimized for 25-120 range
+        const wallDensity = 0.45 + (distanceIndex * 0.05); // Progressive density increase
         (wall.material as THREE.ShaderMaterial).uniforms.fogWallDensity.value = wallDensity;
         
         this.fogWallLayers.push(wall);
@@ -539,31 +541,31 @@ export class VolumetricFogSystem {
       }
     });
     
-    console.log(`Created ${this.fogWallLayers.length} fog wall layers aligned with render distance (600-800 units)`);
+    console.log(`Created ${this.fogWallLayers.length} fog wall layers aligned with THREE.js fog system (25-120 units)`);
   }
 
   private createSkyFogLayers(): void {
-    // Create reduced overhead sky fog planes - aligned with render distance
-    const skyDistances = [650, 750]; // Aligned with render distance for proper sky blending
-    const skyHeights = [25, 35]; // Lower heights to avoid overwhelming sky
+    // ALIGNED WITH THREE.JS FOG: Create sky fog layers near THREE.js fog completion range
+    const skyDistances = [100, 120]; // Aligned with THREE.js fog completion
+    const skyHeights = [20, 30]; // Scaled for closer range
     
     skyDistances.forEach((distance, index) => {
       const skyHeight = skyHeights[index];
-      const skyGeometry = new THREE.PlaneGeometry(800, 800, 16, 16); // Increased coverage for render distance
+      const skyGeometry = new THREE.PlaneGeometry(300, 300, 16, 16); // Scaled for closer range
       const skyFog = new THREE.Mesh(skyGeometry, this.skyFogMaterial.clone());
       
       skyFog.position.y = skyHeight;
       skyFog.rotation.x = -Math.PI / 2;
       
-      // Set distance-specific sky fog density - much more subtle
-      const skyDensity = 0.2 + (index * 0.04); // Further reduced from previous values
+      // Set distance-specific sky fog density - optimized for THREE.js fog range
+      const skyDensity = 0.15 + (index * 0.05); // Subtle progression
       (skyFog.material as THREE.ShaderMaterial).uniforms.skyFogDensity.value = skyDensity;
       
       this.skyFogLayers.push(skyFog);
       this.scene.add(skyFog);
     });
     
-    console.log(`Created ${this.skyFogLayers.length} subtle sky fog layers aligned with render distance`);
+    console.log(`Created ${this.skyFogLayers.length} sky fog layers aligned with THREE.js fog completion range`);
   }
   
   public update(deltaTime: number, timeOfDay: number, playerPosition: THREE.Vector3): void {
@@ -606,12 +608,12 @@ export class VolumetricFogSystem {
       layer.position.z = THREE.MathUtils.lerp(layer.position.z, playerPosition.z, lagFactor * deltaTime);
     });
     
-    // Update fog wall positions to maintain distance from player - updated for new distances
+    // ALIGNED WITH THREE.JS FOG: Update fog wall positions to maintain THREE.js fog range distances
     this.fogWallLayers.forEach((wall, index) => {
       const wallGroup = Math.floor(index / 12);
       const wallInGroup = index % 12;
       const angle = (wallInGroup / 12) * Math.PI * 2;
-      const distance = [600, 650, 700, 750, 800][wallGroup]; // Updated distances
+      const distance = [25, 40, 60, 80, 120][wallGroup]; // THREE.js fog range distances
       
       wall.position.x = playerPosition.x + Math.cos(angle) * distance;
       wall.position.z = playerPosition.z + Math.sin(angle) * distance;
