@@ -959,21 +959,22 @@ export class VolumetricFogSystem {
   private createRealisticFogWalls(): void {
     // Create multiple layers of realistic fog walls with reduced heights
     const layerConfigs = [
-      { distances: [25, 45, 70, 100, 140, 190], heights: [15, 18, 22, 25, 28, 30] },
-      { distances: [35, 60, 90, 130, 180, 240], heights: [12, 15, 18, 20, 22, 25] },
-      { distances: [50, 80, 120, 170, 230, 300], heights: [10, 12, 15, 18, 20, 22] }
+      { distances: [25, 45, 70, 100, 140, 190], heights: [8, 10, 12, 14, 16, 18] },
+      { distances: [35, 60, 90, 130, 180, 240], heights: [6, 8, 10, 12, 14, 16] },
+      { distances: [50, 80, 120, 170, 230, 300], heights: [5, 6, 8, 10, 12, 14] }
     ];
     
     layerConfigs.forEach((layerConfig, layerIndex) => {
       layerConfig.distances.forEach((distance, distanceIndex) => {
         const wallHeight = layerConfig.heights[distanceIndex];
-        const wallWidth = 400 + distanceIndex * 100;
+        // SIGNIFICANTLY REDUCED wall width to prevent beam effect - now creates localized fog patches
+        const wallWidth = 40 + distanceIndex * 15; // Reduced from 400+ to 40-115
         
-        // Create fewer walls per ring for better performance
-        for (let i = 0; i < 20; i++) {
-          const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 20, 10);
+        // Reduced number of walls per ring for better performance and less beam-like appearance
+        for (let i = 0; i < 12; i++) { // Reduced from 20 to 12
+          const wallGeometry = new THREE.PlaneGeometry(wallWidth, wallHeight, 12, 6); // Reduced segments
           
-          // Add subtle organic displacement
+          // Add subtle organic displacement for natural fog appearance
           const positionAttribute = wallGeometry.getAttribute('position');
           const positions = positionAttribute.array as Float32Array;
           
@@ -981,12 +982,13 @@ export class VolumetricFogSystem {
             const x = positions[j];
             const y = positions[j + 1];
             
-            const displacement = Math.sin(x * 0.02) * Math.cos(y * 0.03) * 1.5; // Reduced displacement
+            // Reduced displacement for subtler effect
+            const displacement = Math.sin(x * 0.03) * Math.cos(y * 0.04) * 0.8;
             const heightFactor = (y + wallHeight / 2) / wallHeight;
             
-            positions[j] += displacement * 0.2;
-            positions[j + 1] += displacement * heightFactor * 0.8;
-            positions[j + 2] += displacement * 0.15;
+            positions[j] += displacement * 0.1;
+            positions[j + 1] += displacement * heightFactor * 0.4;
+            positions[j + 2] += displacement * 0.08;
           }
           
           positionAttribute.needsUpdate = true;
@@ -994,17 +996,17 @@ export class VolumetricFogSystem {
           
           const wall = new THREE.Mesh(wallGeometry, this.fogWallMaterial.clone());
           
-          const angle = (i / 20) * Math.PI * 2;
+          const angle = (i / 12) * Math.PI * 2; // Updated for new count
           wall.position.x = Math.cos(angle) * distance;
           wall.position.z = Math.sin(angle) * distance;
-          wall.position.y = wallHeight / 2 - 2; // Lower positioning
+          wall.position.y = wallHeight / 2 - 3; // Slightly lower positioning
           wall.rotation.y = angle + Math.PI / 2;
           
-          // Reduced density for realism
-          const wallDensity = 0.02 + (distanceIndex * 0.008) + (layerIndex * 0.005);
+          // Significantly reduced density to prevent beam-like appearance
+          const wallDensity = 0.008 + (distanceIndex * 0.003) + (layerIndex * 0.002); // Much lower density
           const material = wall.material as THREE.ShaderMaterial;
           material.uniforms.fogWallDensity.value = wallDensity;
-          material.uniforms.layerDepth.value = layerIndex * 0.3;
+          material.uniforms.layerDepth.value = layerIndex * 0.2;
           material.uniforms.fogWallHeight.value = wallHeight;
           
           // Store for smooth transitions
@@ -1019,7 +1021,7 @@ export class VolumetricFogSystem {
       });
     });
     
-    console.log(`Created ${this.fogWallLayers.length} realistic fog walls with atmospheric perspective`);
+    console.log(`Created ${this.fogWallLayers.length} atmospheric fog patches (beams removed) with localized fog effect`);
   }
 
   private createAtmosphericLayers(): void {
@@ -1161,7 +1163,7 @@ export class VolumetricFogSystem {
       const baseDistance = wallData.baseDistance;
       const wallIndex = wallData.wallIndex;
       
-      const angle = (wallIndex / 20) * Math.PI * 2;
+      const angle = (wallIndex / 12) * Math.PI * 2; // Updated for new count
       wall.position.x = playerPosition.x + Math.cos(angle) * baseDistance;
       wall.position.z = playerPosition.z + Math.sin(angle) * baseDistance;
     });
