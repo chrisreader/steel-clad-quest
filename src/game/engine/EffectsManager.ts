@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ParticleSystem } from '../utils/ParticleSystem';
 import { SwordTrailEffect } from '../effects/SwordTrailEffect';
+import { VolumetricLightRaySystem } from '../effects/VolumetricLightRaySystem';
 
 export class EffectsManager {
   private scene: THREE.Scene;
@@ -11,14 +12,19 @@ export class EffectsManager {
   private cameraShakeDecay: number = 0.9;
   private cameraOriginalPosition: THREE.Vector3 = new THREE.Vector3();
   private camera: THREE.Camera;
+  private volumetricLightRaySystem: VolumetricLightRaySystem;
   
-  constructor(scene: THREE.Scene, camera?: THREE.Camera) {
+  constructor(scene: THREE.Scene, camera?: THREE.Camera, physicsManager?: any) {
     this.scene = scene;
     this.camera = camera || new THREE.Camera();
     if (camera) {
       this.cameraOriginalPosition.copy(camera.position);
     }
-    console.log('Effects Manager initialized with realistic combat effects');
+    
+    // Initialize the new volumetric light ray system
+    this.volumetricLightRaySystem = new VolumetricLightRaySystem(scene, physicsManager);
+    
+    console.log('Effects Manager initialized with realistic combat effects and volumetric light rays');
   }
   
   public update(deltaTime: number): void {
@@ -373,5 +379,19 @@ export class EffectsManager {
   
   public dispose(): void {
     this.clearEffects();
+    if (this.volumetricLightRaySystem) {
+      this.volumetricLightRaySystem.dispose();
+    }
+  }
+  
+  // NEW: Method to update celestial positions for light rays
+  public updateCelestialLighting(sunPosition: THREE.Vector3, moonPosition: THREE.Vector3, timeOfDay: number, playerPosition: THREE.Vector3, deltaTime: number): void {
+    this.volumetricLightRaySystem.updateCelestialPositions(sunPosition, moonPosition);
+    this.volumetricLightRaySystem.update(deltaTime, timeOfDay, playerPosition);
+  }
+  
+  // NEW: Method to control light ray intensity
+  public setLightRayIntensity(intensity: number): void {
+    this.volumetricLightRaySystem.setIntensity(intensity);
   }
 }
