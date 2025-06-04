@@ -102,25 +102,25 @@ export class Enemy {
       maxSlopeAngle: 45
     };
 
-    // FIXED: Initialize properly balanced distance-based speed zones
+    // FIXED: Initialize properly balanced distance-based speed zones with 40% reduction
     this.speedZones = type === EnemyType.ORC ? {
       detectionRange: 30,
       pursuitRange: 15,
       attackRange: 4,      // Reduced from 8 to 4
       damageRange: 3,      // Increased from 2.5 to 3
-      detectionSpeedMultiplier: 0.3,
-      pursuitSpeedMultiplier: 0.6,
-      attackSpeedMultiplier: 1.0,  // Reduced from 1.2 to 1.0 (no speed boost)
-      damageSpeedMultiplier: 0.4
+      detectionSpeedMultiplier: 0.18,  // Reduced from 0.3 to 0.18 (40% reduction)
+      pursuitSpeedMultiplier: 0.36,    // Reduced from 0.6 to 0.36 (40% reduction)
+      attackSpeedMultiplier: 0.6,      // Reduced from 1.0 to 0.6 (40% reduction)
+      damageSpeedMultiplier: 0.24      // Reduced from 0.4 to 0.24 (40% reduction)
     } : {
       detectionRange: 25,
       pursuitRange: 12,
       attackRange: 3,      // Reduced from 6 to 3
       damageRange: 2,      // Increased from 1.5 to 2
-      detectionSpeedMultiplier: 0.4,
-      pursuitSpeedMultiplier: 0.7,
-      attackSpeedMultiplier: 1.0,  // Reduced from 1.3 to 1.0
-      damageSpeedMultiplier: 0.3
+      detectionSpeedMultiplier: 0.24,  // Reduced from 0.4 to 0.24 (40% reduction)
+      pursuitSpeedMultiplier: 0.42,    // Reduced from 0.7 to 0.42 (40% reduction)
+      attackSpeedMultiplier: 0.6,      // Reduced from 1.0 to 0.6 (40% reduction)
+      damageSpeedMultiplier: 0.18      // Reduced from 0.3 to 0.18 (40% reduction)
     };
 
     // Initialize comprehensive terrain-aware movement

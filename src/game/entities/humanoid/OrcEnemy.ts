@@ -90,18 +90,18 @@ export class OrcEnemy extends EnemyHumanoid {
   private lastPosition: THREE.Vector3 = new THREE.Vector3();
   private stuckThreshold: number = 0.01;
 
-  // FIXED: Properly balanced distance-based speed scaling system
+  // FIXED: Properly balanced distance-based speed scaling system with 40% reduction
   private speedZones: EnemySpeedZones = {
     detectionRange: 30,
     pursuitRange: 15,
     attackRange: 4,      // Reduced from 8 to 4
     damageRange: 3,      // Increased from 2.5 to 3
-    detectionSpeedMultiplier: 0.3,
-    pursuitSpeedMultiplier: 0.6,
-    attackSpeedMultiplier: 1.0,  // Reduced from 1.2 to 1.0 (no speed boost)
-    damageSpeedMultiplier: 0.4
+    detectionSpeedMultiplier: 0.18,  // Reduced from 0.3 to 0.18 (40% reduction)
+    pursuitSpeedMultiplier: 0.36,    // Reduced from 0.6 to 0.36 (40% reduction)
+    attackSpeedMultiplier: 0.6,      // Reduced from 1.0 to 0.6 (40% reduction)
+    damageSpeedMultiplier: 0.24      // Reduced from 0.4 to 0.24 (40% reduction)
   };
-  private currentSpeedMultiplier: number = 0.3;
+  private currentSpeedMultiplier: number = 0.18;
   private speedCooldownTimer: number = 0;
   private maxSpeedCooldown: number = 2000; // 2 seconds for faster recovery
   private lastPlayerDistance: number = Infinity;
