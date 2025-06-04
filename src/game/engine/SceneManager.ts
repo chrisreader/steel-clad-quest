@@ -68,7 +68,7 @@ export class SceneManager {
   private sunRadius: number = 150;
   private moonRadius: number = 140;
   
-  // UPDATED: Standardized time phases for consistent day/night cycle
+  // UPDATED: Ultra-compressed time phases for rapid darkness after sunset
   private readonly TIME_PHASES = {
     DEEP_NIGHT_START: 0.0,
     DEEP_NIGHT_END: 0.15,     // Extended deep night when moon is high
@@ -76,10 +76,17 @@ export class SceneManager {
     DAWN_END: 0.25,
     DAY_START: 0.25,
     DAY_END: 0.75,
+    // NEW: Ultra-compressed sunset to night transition (4% total instead of 25%)
     SUNSET_START: 0.75,
-    SUNSET_END: 0.85,
-    EVENING_START: 0.85,
-    EVENING_END: 1.0          // Back to deep night
+    SUNSET_END: 0.76,         // 1% for sunset (was 10%)
+    EVENING_START: 0.76,
+    EVENING_END: 0.77,        // 1% for evening (was 15%)
+    TWILIGHT_START: 0.77,
+    TWILIGHT_END: 0.78,       // 1% for twilight
+    RAPID_NIGHT_START: 0.78,
+    RAPID_NIGHT_END: 0.79,    // 1% for final darkness transition
+    EXTENDED_DEEP_NIGHT_START: 0.79,
+    EXTENDED_DEEP_NIGHT_END: 1.0   // 21% in full darkness
   };
   
   // Enemy spawning system
@@ -192,7 +199,8 @@ export class SceneManager {
       dawn: new THREE.Color(0xFF6B35),         // Orange dawn
       noon: new THREE.Color(0x4682B4),         // Steel blue for day
       sunset: new THREE.Color(0xFF8C42),       // Orange sunset
-      dusk: new THREE.Color(0x1a0030)          // Dark purple dusk
+      dusk: new THREE.Color(0x1a0030),         // Dark purple dusk
+      rapidNight: new THREE.Color(0x000010)    // NEW: Rapid transition to darkness
     };
     
     let resultColor: THREE.Color;
@@ -214,17 +222,38 @@ export class SceneManager {
       const factor = (normalizedTime - this.TIME_PHASES.DAY_START) / (this.TIME_PHASES.DAY_END - this.TIME_PHASES.DAY_START);
       resultColor = this.lerpColor(keyColors.dawn, keyColors.noon, Math.sin(factor * Math.PI * 0.5));
     } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
-      // Sunset transition (0.75 - 0.85)
+      // COMPRESSED: Sunset transition (0.75 - 0.76) - 1% instead of 10%
       const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
-      resultColor = this.lerpColor(keyColors.noon, keyColors.sunset, this.smoothStep(0, 1, factor));
-    } else {
-      // Evening to deep night (0.85 - 1.0)
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      resultColor = this.lerpColor(keyColors.noon, keyColors.sunset, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // COMPRESSED: Evening transition (0.76 - 0.77) - 1% instead of 15%
       const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      resultColor = this.lerpColor(keyColors.sunset, keyColors.dusk, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // COMPRESSED: Twilight transition (0.77 - 0.78) - 1%
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      resultColor = this.lerpColor(keyColors.dusk, keyColors.rapidNight, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // NEW: Rapid night transition (0.78 - 0.79) - 1% for final darkness
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
       const nightColor = this.lerpColor(keyColors.lightNight, keyColors.deepNight, moonElevation);
-      resultColor = this.lerpColor(keyColors.dusk, nightColor, this.smoothStep(0, 1, factor));
+      resultColor = this.lerpColor(keyColors.rapidNight, nightColor, exponentialFactor);
+    } else {
+      // EXTENDED: Deep night (0.79 - 1.0) - 21% in full darkness
+      const nightColor = this.lerpColor(keyColors.lightNight, keyColors.deepNight, moonElevation);
+      resultColor = nightColor;
     }
     
     return resultColor.getHex();
+  }
+  
+  // NEW: Exponential decay helper for dramatic color transitions
+  private exponentialDecay(factor: number, intensity: number = 3): number {
+    return Math.pow(factor, intensity);
   }
   
   private setupDayNightLighting(): void {
@@ -303,17 +332,116 @@ export class SceneManager {
       // Day period - bright and stable
       baseIntensity = 1.8;
     } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
-      // Sunset transition
+      // COMPRESSED: Sunset transition with exponential decay
       const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
-      baseIntensity = 1.8 - (1.8 - 0.6) * this.smoothStep(0, 1, factor);
-    } else {
-      // Evening to deep night
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      baseIntensity = 1.8 - (1.8 - 1.2) * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // COMPRESSED: Evening transition with aggressive decay
       const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      baseIntensity = 1.2 - (1.2 - 0.6) * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // COMPRESSED: Twilight transition with very aggressive decay
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      baseIntensity = 0.6 - (0.6 - 0.3) * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // NEW: Rapid night transition to final darkness
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
       const nightIntensity = 0.1 + (0.4 - 0.1) * (1 - moonElevation);
-      baseIntensity = 0.6 - (0.6 - nightIntensity) * this.smoothStep(0, 1, factor);
+      baseIntensity = 0.3 - (0.3 - nightIntensity) * exponentialFactor;
+    } else {
+      // EXTENDED: Deep night with moon elevation variation
+      const nightIntensity = 0.1 + (0.4 - 0.1) * (1 - moonElevation);
+      baseIntensity = nightIntensity;
     }
     
     return baseIntensity;
+  }
+  
+  // UPDATED: Ultra-compressed night factor calculation
+  private getSynchronizedNightFactor(time: number): number {
+    const normalizedTime = time % 1;
+    
+    if (normalizedTime >= this.TIME_PHASES.DEEP_NIGHT_START && normalizedTime <= this.TIME_PHASES.DEEP_NIGHT_END) {
+      return 1.0;  // Full night
+    } else if (normalizedTime >= this.TIME_PHASES.DAWN_START && normalizedTime <= this.TIME_PHASES.DAWN_END) {
+      const factor = (normalizedTime - this.TIME_PHASES.DAWN_START) / (this.TIME_PHASES.DAWN_END - this.TIME_PHASES.DAWN_START);
+      return 1.0 - this.smoothStep(0, 1, factor);
+    } else if (normalizedTime >= this.TIME_PHASES.DAY_START && normalizedTime <= this.TIME_PHASES.DAY_END) {
+      return 0.0;  // No night factor during day
+    } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
+      // COMPRESSED: Begin night factor with exponential increase
+      const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      return exponentialFactor * 0.3;
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // COMPRESSED: Rapid night factor increase
+      const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      return 0.3 + 0.4 * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // COMPRESSED: Very rapid increase to near full night
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      return 0.7 + 0.25 * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // NEW: Final push to full night
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
+      return 0.95 + 0.05 * exponentialFactor;
+    } else {
+      // EXTENDED: Full night
+      return 1.0;
+    }
+  }
+  
+  // UPDATED: Ultra-compressed light color transitions
+  private getSynchronizedLightColorForTime(time: number): THREE.Color {
+    const normalizedTime = time % 1;
+    
+    // Define key light colors
+    const nightColor = new THREE.Color(0x4169E1);       // Cool night blue
+    const dawnColor = new THREE.Color(0xFFF4E6);        // Warm dawn light
+    const noonColor = new THREE.Color(0xFFFAF0);        // Bright white light
+    const sunsetColor = new THREE.Color(0xFFE4B5);      // Warm sunset light
+    const duskColor = new THREE.Color(0x6A5ACD);        // Purple dusk light
+    const rapidNightColor = new THREE.Color(0x2F4F4F);  // NEW: Dark slate for rapid transition
+    
+    if (normalizedTime >= this.TIME_PHASES.DEEP_NIGHT_START && normalizedTime <= this.TIME_PHASES.DEEP_NIGHT_END) {
+      return nightColor;
+    } else if (normalizedTime >= this.TIME_PHASES.DAWN_START && normalizedTime <= this.TIME_PHASES.DAWN_END) {
+      const factor = (normalizedTime - this.TIME_PHASES.DAWN_START) / (this.TIME_PHASES.DAWN_END - this.TIME_PHASES.DAWN_START);
+      return this.lerpColor(nightColor, dawnColor, this.smoothStep(0, 1, factor));
+    } else if (normalizedTime >= this.TIME_PHASES.DAY_START && normalizedTime <= this.TIME_PHASES.DAY_END) {
+      const factor = (normalizedTime - this.TIME_PHASES.DAY_START) / (this.TIME_PHASES.DAY_END - this.TIME_PHASES.DAY_START);
+      return this.lerpColor(dawnColor, noonColor, Math.sin(factor * Math.PI * 0.5));
+    } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
+      // COMPRESSED: Sunset light transition with exponential change
+      const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      return this.lerpColor(noonColor, sunsetColor, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // COMPRESSED: Evening light transition
+      const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      return this.lerpColor(sunsetColor, duskColor, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // COMPRESSED: Twilight light transition
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      return this.lerpColor(duskColor, rapidNightColor, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // NEW: Rapid night light transition to full night
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
+      return this.lerpColor(rapidNightColor, nightColor, exponentialFactor);
+    } else {
+      // EXTENDED: Full night
+      return nightColor;
+    }
   }
   
   private create3DSunAndMoon(): void {
@@ -503,23 +631,32 @@ export class SceneManager {
           return mix(a, b, clamp(factor, 0.0, 1.0));
         }
         
-        // UPDATED: Synchronized atmospheric scattering with moon-based night darkness
+        // NEW: Exponential decay function for aggressive color transitions
+        float exponentialDecay(float factor, float intensity) {
+          return pow(clamp(factor, 0.0, 1.0), intensity);
+        }
+        
+        // UPDATED: Ultra-compressed atmospheric scattering
         vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized, float moonElev) {
           float height = direction.y;
           float sunDot = dot(direction, normalize(sunDir));
           
-          // Define atmospheric color zones with moon-based night variation
-          vec3 deepNightZenith = vec3(0.001, 0.001, 0.015);  // Extremely dark when moon high
-          vec3 lightNightZenith = vec3(0.005, 0.005, 0.035); // Lighter when moon low
+          // Define atmospheric color zones with compressed transitions
+          vec3 deepNightZenith = vec3(0.001, 0.001, 0.015);
+          vec3 lightNightZenith = vec3(0.005, 0.005, 0.035);
           vec3 zenithDawn = vec3(0.3, 0.5, 0.8);
           vec3 zenithDay = vec3(0.1, 0.35, 0.75);
           vec3 zenithSunset = vec3(0.6, 0.4, 0.8);
+          vec3 zenithDusk = vec3(0.2, 0.1, 0.4);        // NEW: Dusk zenith
+          vec3 zenithRapidNight = vec3(0.02, 0.02, 0.1); // NEW: Rapid night zenith
           
           vec3 deepNightHorizon = vec3(0.005, 0.005, 0.04);
           vec3 lightNightHorizon = vec3(0.015, 0.015, 0.08);
           vec3 horizonDawn = vec3(1.0, 0.6, 0.3);
           vec3 horizonDay = vec3(0.6, 0.8, 0.95);
           vec3 horizonSunset = vec3(1.0, 0.4, 0.1);
+          vec3 horizonDusk = vec3(0.8, 0.3, 0.2);       // NEW: Dusk horizon
+          vec3 horizonRapidNight = vec3(0.1, 0.05, 0.2); // NEW: Rapid night horizon
           
           vec3 zenithColor, horizonColor;
           
@@ -527,7 +664,7 @@ export class SceneManager {
           vec3 nightZenith = lerpColor(lightNightZenith, deepNightZenith, moonElev);
           vec3 nightHorizon = lerpColor(lightNightHorizon, deepNightHorizon, moonElev);
           
-          // UPDATED: Use standardized time phases
+          // UPDATED: Ultra-compressed time phases
           if (timeNormalized <= 0.15) {
             // Deep night (0.0 - 0.15)
             zenithColor = nightZenith;
@@ -542,16 +679,34 @@ export class SceneManager {
             float factor = smoothstep(0.25, 0.75, timeNormalized);
             zenithColor = lerpColor(zenithDawn, zenithDay, factor);
             horizonColor = lerpColor(horizonDawn, horizonDay, factor);
-          } else if (timeNormalized <= 0.85) {
-            // Sunset transition (0.75 - 0.85)
-            float factor = smoothstep(0.75, 0.85, timeNormalized);
-            zenithColor = lerpColor(zenithDay, zenithSunset, factor);
-            horizonColor = lerpColor(horizonDay, horizonSunset, factor);
+          } else if (timeNormalized <= 0.76) {
+            // COMPRESSED: Sunset (0.75 - 0.76) with exponential decay
+            float factor = (timeNormalized - 0.75) / 0.01;
+            float expFactor = exponentialDecay(factor, 2.0);
+            zenithColor = lerpColor(zenithDay, zenithSunset, expFactor);
+            horizonColor = lerpColor(horizonDay, horizonSunset, expFactor);
+          } else if (timeNormalized <= 0.77) {
+            // COMPRESSED: Evening (0.76 - 0.77) with aggressive decay
+            float factor = (timeNormalized - 0.76) / 0.01;
+            float expFactor = exponentialDecay(factor, 3.0);
+            zenithColor = lerpColor(zenithSunset, zenithDusk, expFactor);
+            horizonColor = lerpColor(horizonSunset, horizonDusk, expFactor);
+          } else if (timeNormalized <= 0.78) {
+            // COMPRESSED: Twilight (0.77 - 0.78) with very aggressive decay
+            float factor = (timeNormalized - 0.77) / 0.01;
+            float expFactor = exponentialDecay(factor, 4.0);
+            zenithColor = lerpColor(zenithDusk, zenithRapidNight, expFactor);
+            horizonColor = lerpColor(horizonDusk, horizonRapidNight, expFactor);
+          } else if (timeNormalized <= 0.79) {
+            // NEW: Rapid night (0.78 - 0.79) with extreme decay
+            float factor = (timeNormalized - 0.78) / 0.01;
+            float expFactor = exponentialDecay(factor, 5.0);
+            zenithColor = lerpColor(zenithRapidNight, nightZenith, expFactor);
+            horizonColor = lerpColor(horizonRapidNight, nightHorizon, expFactor);
           } else {
-            // Evening to deep night (0.85 - 1.0)
-            float factor = smoothstep(0.85, 1.0, timeNormalized);
-            zenithColor = lerpColor(zenithSunset, nightZenith, factor);
-            horizonColor = lerpColor(horizonSunset, nightHorizon, factor);
+            // EXTENDED: Deep night (0.79 - 1.0)
+            zenithColor = nightZenith;
+            horizonColor = nightHorizon;
           }
           
           // Create vertical atmospheric gradient
@@ -574,21 +729,24 @@ export class SceneManager {
           }
           
           vec3 sunGlowColor = vec3(1.0, 0.9, 0.6);
-          if (timeNormalized > 0.75 && timeNormalized < 0.85) {
-            sunGlowColor = vec3(1.0, 0.6, 0.3);
+          if (timeNormalized > 0.75 && timeNormalized < 0.79) {
+            // Compressed sunset glow color transition
+            float sunsetFactor = (timeNormalized - 0.75) / 0.04;
+            float expSunsetFactor = exponentialDecay(sunsetFactor, 3.0);
+            sunGlowColor = lerpColor(vec3(1.0, 0.9, 0.6), vec3(1.0, 0.6, 0.3), expSunsetFactor);
           }
           
           vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.6);
           
           // Add stars during night with moon elevation consideration
-          if (timeNormalized < 0.25 || timeNormalized > 0.75) {
+          if (timeNormalized < 0.25 || timeNormalized > 0.79) {
             float starField = fract(sin(dot(direction.xz * 50.0, vec2(12.9898, 78.233))) * 43758.5453);
             if (starField > 0.999 && direction.y > 0.3) {
               float nightFactor = 1.0;
               if (timeNormalized < 0.25) {
                 nightFactor = 1.0 - (timeNormalized / 0.25);
               } else {
-                nightFactor = (timeNormalized - 0.75) / 0.25;
+                nightFactor = (timeNormalized - 0.79) / 0.21;
               }
               // Stars more visible when moon is high
               float starIntensity = 0.3 + 0.4 * moonElev;
@@ -615,7 +773,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Synchronized atmospheric gradient skybox created with moon-based night darkness');
+    console.log('Ultra-compressed atmospheric gradient skybox created with 4% sunset-to-night transition');
   }
   
   private updateDayNightSkybox(): void {
@@ -775,12 +933,28 @@ export class SceneManager {
     } else if (normalizedTime >= this.TIME_PHASES.DAY_START && normalizedTime <= this.TIME_PHASES.DAY_END) {
       return 0.0;  // No night factor during day
     } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
+      // COMPRESSED: Begin night factor with exponential increase
       const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
-      return this.smoothStep(0, 1, factor) * 0.5;  // Partial night factor
-    } else {
-      // Evening to deep night
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      return exponentialFactor * 0.3;
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // COMPRESSED: Rapid night factor increase
       const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
-      return 0.5 + 0.5 * this.smoothStep(0, 1, factor);
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      return 0.3 + 0.4 * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // COMPRESSED: Very rapid increase to near full night
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      return 0.7 + 0.25 * exponentialFactor;
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // NEW: Final push to full night
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
+      return 0.95 + 0.05 * exponentialFactor;
+    } else {
+      // EXTENDED: Full night
+      return 1.0;
     }
   }
   
@@ -793,6 +967,8 @@ export class SceneManager {
     const dawnColor = new THREE.Color(0xFFF4E6);        // Warm dawn light
     const noonColor = new THREE.Color(0xFFFAF0);        // Bright white light
     const sunsetColor = new THREE.Color(0xFFE4B5);      // Warm sunset light
+    const duskColor = new THREE.Color(0x6A5ACD);        // Purple dusk light
+    const rapidNightColor = new THREE.Color(0x2F4F4F);  // NEW: Dark slate for rapid transition
     
     if (normalizedTime >= this.TIME_PHASES.DEEP_NIGHT_START && normalizedTime <= this.TIME_PHASES.DEEP_NIGHT_END) {
       return nightColor;
@@ -803,12 +979,28 @@ export class SceneManager {
       const factor = (normalizedTime - this.TIME_PHASES.DAY_START) / (this.TIME_PHASES.DAY_END - this.TIME_PHASES.DAY_START);
       return this.lerpColor(dawnColor, noonColor, Math.sin(factor * Math.PI * 0.5));
     } else if (normalizedTime >= this.TIME_PHASES.SUNSET_START && normalizedTime <= this.TIME_PHASES.SUNSET_END) {
+      // COMPRESSED: Sunset light transition with exponential change
       const factor = (normalizedTime - this.TIME_PHASES.SUNSET_START) / (this.TIME_PHASES.SUNSET_END - this.TIME_PHASES.SUNSET_START);
-      return this.lerpColor(noonColor, sunsetColor, this.smoothStep(0, 1, factor));
-    } else {
-      // Evening to deep night
+      const exponentialFactor = this.exponentialDecay(factor, 2);
+      return this.lerpColor(noonColor, sunsetColor, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.EVENING_START && normalizedTime <= this.TIME_PHASES.EVENING_END) {
+      // COMPRESSED: Evening light transition
       const factor = (normalizedTime - this.TIME_PHASES.EVENING_START) / (this.TIME_PHASES.EVENING_END - this.TIME_PHASES.EVENING_START);
-      return this.lerpColor(sunsetColor, nightColor, this.smoothStep(0, 1, factor));
+      const exponentialFactor = this.exponentialDecay(factor, 3);
+      return this.lerpColor(sunsetColor, duskColor, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.TWILIGHT_START && normalizedTime <= this.TIME_PHASES.TWILIGHT_END) {
+      // COMPRESSED: Twilight light transition
+      const factor = (normalizedTime - this.TIME_PHASES.TWILIGHT_START) / (this.TIME_PHASES.TWILIGHT_END - this.TIME_PHASES.TWILIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 4);
+      return this.lerpColor(duskColor, rapidNightColor, exponentialFactor);
+    } else if (normalizedTime >= this.TIME_PHASES.RAPID_NIGHT_START && normalizedTime <= this.TIME_PHASES.RAPID_NIGHT_END) {
+      // NEW: Rapid night light transition to full night
+      const factor = (normalizedTime - this.TIME_PHASES.RAPID_NIGHT_START) / (this.TIME_PHASES.RAPID_NIGHT_END - this.TIME_PHASES.RAPID_NIGHT_START);
+      const exponentialFactor = this.exponentialDecay(factor, 5);
+      return this.lerpColor(rapidNightColor, nightColor, exponentialFactor);
+    } else {
+      // EXTENDED: Full night
+      return nightColor;
     }
   }
   
