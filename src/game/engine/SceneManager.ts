@@ -444,57 +444,86 @@ export class SceneManager {
         varying vec3 vWorldPosition;
         varying vec3 vDirection;
         
+        // Smooth interpolation function
+        float smoothTransition(float value, float center, float width) {
+          return smoothstep(center - width, center + width, value);
+        }
+        
         void main() {
           vec3 direction = normalize(vDirection);
           float height = direction.y;
           
-          // Determine time phase
-          float dayFactor = 0.0;
-          float sunriseFactor = 0.0;
-          float sunsetFactor = 0.0;
-          float nightFactor = 0.0;
-          
-          if (timeOfDay >= 0.2 && timeOfDay <= 0.3) {
-            // Sunrise
-            sunriseFactor = 1.0 - abs(timeOfDay - 0.25) / 0.05;
-            dayFactor = (timeOfDay - 0.2) / 0.1;
-          } else if (timeOfDay > 0.3 && timeOfDay < 0.7) {
-            // Day
-            dayFactor = 1.0;
-          } else if (timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            // Sunset
-            sunsetFactor = 1.0 - abs(timeOfDay - 0.75) / 0.05;
-            dayFactor = 1.0 - (timeOfDay - 0.7) / 0.1;
-          } else {
-            // Night
-            nightFactor = 1.0;
-          }
-          
-          // Base gradient
+          // Create smooth gradient factor
           float gradientFactor = (height + 1.0) * 0.5;
           gradientFactor = pow(gradientFactor, 0.8);
           
-          // Calculate base colors
+          // Define time phase centers and widths for smooth transitions
+          float sunriseCenter = 0.25;
+          float noonCenter = 0.5;
+          float sunsetCenter = 0.75;
+          float midnightCenter = 0.0;
+          
+          float transitionWidth = 0.1; // Wider for smoother transitions
+          
+          // Calculate smooth factors for each time phase
+          float sunriseFactor = 1.0 - smoothTransition(abs(timeOfDay - sunriseCenter), 0.0, transitionWidth);
+          float dayFactor = 1.0 - smoothTransition(abs(timeOfDay - noonCenter), 0.0, transitionWidth * 2.0);
+          float sunsetFactor = 1.0 - smoothTransition(abs(timeOfDay - sunsetCenter), 0.0, transitionWidth);
+          
+          // Handle midnight transition (wrapping around 0/1)
+          float midnightDist = min(timeOfDay, 1.0 - timeOfDay);
+          float nightFactor = 1.0 - smoothTransition(midnightDist, 0.0, transitionWidth * 1.5);
+          
+          // Ensure smooth transitions between adjacent phases
+          if (timeOfDay >= 0.15 && timeOfDay <= 0.35) {
+            // Sunrise to early day transition
+            float t = (timeOfDay - 0.15) / 0.2;
+            sunriseFactor = mix(1.0, 0.0, smoothstep(0.0, 1.0, t));
+            dayFactor = mix(0.0, 1.0, smoothstep(0.0, 1.0, t));
+          } else if (timeOfDay >= 0.65 && timeOfDay <= 0.85) {
+            // Day to sunset to night transition
+            float t = (timeOfDay - 0.65) / 0.2;
+            dayFactor = mix(1.0, 0.0, smoothstep(0.0, 0.5, t));
+            sunsetFactor = mix(0.0, 1.0, smoothstep(0.0, 0.5, t));
+            sunsetFactor = mix(1.0, 0.0, smoothstep(0.5, 1.0, t));
+            nightFactor = mix(0.0, 1.0, smoothstep(0.5, 1.0, t));
+          } else if (timeOfDay >= 0.85 || timeOfDay <= 0.15) {
+            // Night period
+            nightFactor = 1.0;
+            sunriseFactor = 0.0;
+            dayFactor = 0.0;
+            sunsetFactor = 0.0;
+          }
+          
+          // Normalize factors to ensure they sum to 1
+          float totalFactor = sunriseFactor + dayFactor + sunsetFactor + nightFactor;
+          if (totalFactor > 0.0) {
+            sunriseFactor /= totalFactor;
+            dayFactor /= totalFactor;
+            sunsetFactor /= totalFactor;
+            nightFactor /= totalFactor;
+          }
+          
+          // Calculate base colors for each phase
           vec3 dayColor = mix(dayHorizonColor, dayTopColor, gradientFactor);
           vec3 nightColor = mix(nightHorizonColor, nightTopColor, gradientFactor);
+          vec3 sunriseGradient = mix(sunriseColor, mix(sunriseColor, dayTopColor, 0.6), gradientFactor);
+          vec3 sunsetGradient = mix(sunsetColor, mix(sunsetColor, nightTopColor, 0.6), gradientFactor);
           
-          // Blend colors based on time
-          vec3 baseColor = dayColor * dayFactor + nightColor * nightFactor;
+          // Blend all colors smoothly
+          vec3 baseColor = vec3(0.0);
+          baseColor += dayColor * dayFactor;
+          baseColor += nightColor * nightFactor;
+          baseColor += sunriseGradient * sunriseFactor;
+          baseColor += sunsetGradient * sunsetFactor;
           
-          // Add sunrise/sunset colors
-          if (sunriseFactor > 0.0) {
-            vec3 sunriseGradient = mix(sunriseColor, dayTopColor, gradientFactor);
-            baseColor = mix(baseColor, sunriseGradient, sunriseFactor);
-          }
+          // Apply subtle fog effect at horizon for atmospheric depth
+          float horizonFog = 1.0 - smoothstep(0.0, 0.4, abs(height));
+          baseColor = mix(baseColor, fogColor, horizonFog * 0.3);
           
-          if (sunsetFactor > 0.0) {
-            vec3 sunsetGradient = mix(sunsetColor, nightTopColor, gradientFactor);
-            baseColor = mix(baseColor, sunsetGradient, sunsetFactor);
-          }
-          
-          // Apply fog effect at horizon
-          float horizonFog = 1.0 - smoothstep(0.0, 0.3, abs(height));
-          baseColor = mix(baseColor, fogColor, horizonFog * 0.7);
+          // Add subtle atmospheric scattering effect
+          float scattering = pow(1.0 - abs(height), 2.0) * 0.1;
+          baseColor += vec3(scattering * (sunriseFactor + sunsetFactor));
           
           gl_FragColor = vec4(baseColor, 1.0);
         }
@@ -505,7 +534,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Day/night skybox created with dynamic color transitions');
+    console.log('Day/night skybox created with smooth color transitions');
   }
   
   private updateDayNightSkybox(): void {
