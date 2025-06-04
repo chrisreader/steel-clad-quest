@@ -234,10 +234,10 @@ export class VolumetricFogSystem {
         timeOfDay: { value: this.timeOfDay },
         fogColor: { value: new THREE.Color(0xF5F5F5) },
         dayFogColor: { value: new THREE.Color(0xF5F5F5) },
-        nightFogColor: { value: new THREE.Color(0x404080) },
+        nightFogColor: { value: new THREE.Color(0x808080) }, // Lightened from 0x404080
         sunriseFogColor: { value: new THREE.Color(0xFFE4CC) },
         sunsetFogColor: { value: new THREE.Color(0xFFD0AA) },
-        fogWallDensity: { value: 0.08 }, // Significantly reduced from 0.4
+        fogWallDensity: { value: 0.18 }, // Increased from 0.08
         fogWallHeight: { value: 80.0 },
         horizonBlur: { value: 0.6 },
         playerPosition: { value: new THREE.Vector3() },
@@ -449,10 +449,15 @@ export class VolumetricFogSystem {
           
           exponentialFog = smoothstep(0.0, 1.0, exponentialFog);
           
-          // Atmospheric perspective - stronger color shifts with distance
+          // Remove atmospheric perspective darkening - keep original color
           vec3 atmosphericColor = dynamicFogColor;
-          float atmosphericShift = smoothstep(50.0, 300.0, vDistance);
-          atmosphericColor = mix(atmosphericColor, atmosphericColor * 0.6, atmosphericShift * 0.5);
+          
+          // Add minimum visibility for dark periods
+          float minVisibility = 0.3;
+          float colorBrightness = dot(atmosphericColor, vec3(0.299, 0.587, 0.114));
+          if (colorBrightness < 0.4) {
+            atmosphericColor = mix(atmosphericColor, vec3(0.6), 0.3); // Brighten dark colors
+          }
           
           // ENHANCED BOTTOM COVERAGE - Stronger density at bottom
           float bottomDensityBoost = 1.0 - smoothstep(0.0, 0.3, vHeightFactor);
@@ -477,7 +482,7 @@ export class VolumetricFogSystem {
           float edgeSoftness = smoothstep(0.0, 0.15, vUv.x) * smoothstep(1.0, 0.85, vUv.x) *
                               smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
           
-          // LAYERED DENSITY - Much more subtle for realistic depth
+          // LAYERED DENSITY - Enhanced for better visibility
           float baseDensity = fogWallDensity * exponentialFog * heightGradient;
           baseDensity *= densityVariation;
           baseDensity *= radialFalloff * 0.7 + 0.3;
@@ -486,15 +491,18 @@ export class VolumetricFogSystem {
           // Add subtle depth layering
           baseDensity *= (0.8 + layerDepth * 0.4);
           
-          // Ensure realistic transparency with much lower max opacity
-          baseDensity = clamp(baseDensity, 0.0, 0.35); // Reduced from 0.7 to 0.35
+          // Ensure minimum visibility threshold
+          baseDensity = max(baseDensity, minVisibility * 0.2);
+          
+          // Increased max opacity for better visibility during dark periods
+          baseDensity = clamp(baseDensity, 0.0, 0.6); // Increased from 0.35
           
           gl_FragColor = vec4(atmosphericColor, baseDensity);
         }
       `,
       transparent: true,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending, // Changed from AdditiveBlending
       side: THREE.DoubleSide
     });
   }
@@ -771,8 +779,8 @@ export class VolumetricFogSystem {
         wall.rotation.x += (Math.random() - 0.5) * 0.1;
         wall.rotation.z += (Math.random() - 0.5) * 0.05;
         
-        // REALISTIC DENSITY PROGRESSION: Much more gradual increase
-        const wallDensity = 0.03 + (distanceIndex * 0.01); // Much more gradual (0.03 to 0.11)
+        // ENHANCED DENSITY PROGRESSION: Better visibility across all times
+        const wallDensity = 0.08 + (distanceIndex * 0.015); // Increased progression
         const material = wall.material as THREE.ShaderMaterial;
         material.uniforms.fogWallDensity.value = wallDensity;
         material.uniforms.layerDepth.value = layerDepth;
@@ -782,9 +790,9 @@ export class VolumetricFogSystem {
       }
     });
     
-    console.log(`Created ${this.fogWallLayers.length} realistic depth perception fog walls (30-750 units)`);
+    console.log(`Created ${this.fogWallLayers.length} enhanced fog walls for all time periods`);
   }
-
+  
   private createSkyFogLayers(): void {
     // EXTENDED SKY FOG: Match new distance range
     const skyDistances = [200, 250, 300]; // Extended for new range
