@@ -106,10 +106,6 @@ export class SceneManager {
     // Setup enhanced lighting with day/night cycle
     this.setupDayNightLighting();
     
-    // Initialize volumetric fog system with horizon blocking
-    this.volumetricFogSystem = new VolumetricFogSystem(this.scene);
-    console.log("VolumetricFogSystem with horizon blocking initialized");
-    
     // Add debug ring markers
     if (this.debugMode) {
       this.ringSystem.createDebugRingMarkers(this.scene);
@@ -1054,12 +1050,6 @@ export class SceneManager {
     if (this.cloudSpawningSystem) {
       this.cloudSpawningSystem.dispose();
       this.cloudSpawningSystem = null;
-    }
-    
-    // Dispose volumetric fog system
-    if (this.volumetricFogSystem) {
-      this.volumetricFogSystem.dispose();
-      this.volumetricFogSystem = null;
     }
     
     // Clean up day/night cycle objects
