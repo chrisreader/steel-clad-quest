@@ -266,18 +266,18 @@ export class SceneManager {
     const sunMaterial = new THREE.MeshStandardMaterial({
       color: 0xFFF8DC,
       emissive: 0xFFD700,
-      emissiveIntensity: 0.5,
+      emissiveIntensity: 0.2, // Reduced from 0.5 to 0.2
       fog: false
     });
     
     this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
     
-    // Add reduced sun glow effect - much smaller and less prominent
-    const sunGlowGeometry = new THREE.SphereGeometry(9, 16, 16); // Reduced from 12 to 9
+    // Add much more subtle sun glow effect
+    const sunGlowGeometry = new THREE.SphereGeometry(8.5, 16, 16); // Reduced from 9 to 8.5
     const sunGlowMaterial = new THREE.MeshBasicMaterial({
       color: 0xFFFFAA,
       transparent: true,
-      opacity: 0.15, // Reduced from 0.3 to 0.15
+      opacity: 0.08, // Reduced from 0.15 to 0.08
       fog: false
     });
     const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
@@ -312,7 +312,7 @@ export class SceneManager {
     // Initial positioning
     this.updateSunAndMoonPositions();
     
-    console.log("3D sun and moon created with reduced sun glow effect");
+    console.log("3D sun and moon created with significantly reduced sun glow effect");
   }
   
   // NEW: Create star field for night sky
@@ -414,7 +414,7 @@ export class SceneManager {
     (this.stars.material as THREE.PointsMaterial).opacity = starOpacity;
   }
   
-  // UPDATED: Simplified skybox with smooth continuous transitions and deeper day blues
+  // UPDATED: Simplified skybox with much reduced sun glow and smooth continuous transitions
   private createDayNightSkybox(): void {
     const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
     
@@ -445,7 +445,7 @@ export class SceneManager {
           return mix(a, b, clamp(factor, 0.0, 1.0));
         }
         
-        // Enhanced atmospheric scattering with moon-synced night cycle
+        // Enhanced atmospheric scattering with much reduced sun glow
         vec3 getAtmosphericColor(vec3 direction, vec3 sunDir, float timeNormalized) {
           float height = direction.y;
           float sunDot = dot(direction, normalize(sunDir));
@@ -493,11 +493,12 @@ export class SceneManager {
           
           vec3 baseAtmosphereColor = lerpColor(horizonColor, zenithColor, heightFactor);
           
-          // Sun proximity influence for realistic sunset/sunrise glow
+          // UPDATED: Much reduced sun proximity influence for subtle sun glow
           float sunInfluence = 0.0;
           if (sunDir.y > -0.2) { // Only when sun is near or above horizon
             float sunDistance = 1.0 - sunDot; // Distance from sun direction
-            sunInfluence = pow(max(0.0, 1.0 - sunDistance * 0.8), 3.0);
+            // UPDATED: Tighter area (2.5 instead of 0.8) and sharper falloff (6.0 instead of 3.0)
+            sunInfluence = pow(max(0.0, 1.0 - sunDistance * 2.5), 6.0);
             sunInfluence *= max(0.0, (sunDir.y + 0.2) / 1.2); // Fade when sun is below horizon
           }
           
@@ -508,8 +509,8 @@ export class SceneManager {
             sunGlowColor = vec3(1.0, 0.5, 0.2);
           }
           
-          // Apply sun influence to create realistic sun glow
-          vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.7);
+          // UPDATED: Apply much reduced sun influence (0.15 instead of 0.7)
+          vec3 finalColor = lerpColor(baseAtmosphereColor, sunGlowColor, sunInfluence * 0.15);
           
           // Add subtle atmospheric perspective for distance
           float atmosphericDepth = 1.0 - abs(height); // More atmosphere at horizon
@@ -523,7 +524,7 @@ export class SceneManager {
           vec3 sunDir = normalize(sunPosition);
           float normalizedTime = mod(timeOfDay, 1.0);
           
-          // Get realistic atmospheric color
+          // Get realistic atmospheric color with reduced sun glow
           vec3 skyColor = getAtmosphericColor(direction, sunDir, normalizedTime);
           
           // Add subtle stars for extended night sky periods
@@ -549,7 +550,7 @@ export class SceneManager {
     
     this.skybox = new THREE.Mesh(skyGeometry, skyMaterial);
     this.scene.add(this.skybox);
-    console.log('Realistic atmospheric gradient skybox created with moon-synced night cycle');
+    console.log('Realistic atmospheric gradient skybox created with significantly reduced sun glow');
   }
   
   private updateDayNightSkybox(): void {
