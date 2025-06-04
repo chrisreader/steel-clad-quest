@@ -21,7 +21,7 @@ export class SkyboxSystem {
         dayBottomColor: { value: new THREE.Color(0xE6F3FF) },
         nightTopColor: { value: new THREE.Color(0x0B1426) },
         nightBottomColor: { value: new THREE.Color(0x1E2951) },
-        sunsetTopColor: { value: new THREE.Color(0x4A5D7A) },
+        sunsetTopColor: { value: new THREE.Color(0x3A4A5A) }, // Less pink, more neutral
         sunsetBottomColor: { value: new THREE.Color(0xFF4500) },
         twilightTopColor: { value: new THREE.Color(0x0D1B2A) },
         twilightBottomColor: { value: new THREE.Color(0x2B1B40) }
@@ -86,18 +86,22 @@ export class SkyboxSystem {
             float sunsetIntensity = (1.0 - pow(heightFactor, 1.5)) * horizonZone;
             bottomColor = mix(dayBottomColor, dramaticSunsetBottom, factor * (0.7 + 0.3 * sunsetIntensity));
           } else if (time >= 0.8 && time <= 0.9) {
-            // Twilight period - accelerated transition with reduced sunset bleeding
+            // Twilight period - overhead areas darken much faster
             float factor = (time - 0.8) / 0.1;
-            factor = pow(factor, 1.2); // Faster transition from 1.8 to 1.2
             
-            // More aggressive darkening
-            float darkeningFactor = smoothstep(0.0, 0.7, factor);
+            // Height-based acceleration: overhead areas use much faster transition
+            float overheadFactor = pow(heightFactor, 0.8); // Higher values = more overhead
+            float acceleratedFactor = mix(
+              pow(factor, 1.2), // Horizon transition speed
+              pow(factor, 0.4),  // Much faster overhead transition
+              overheadFactor
+            );
             
-            topColor = mix(sunsetTopColor, twilightTopColor, factor);
+            topColor = mix(sunsetTopColor, twilightTopColor, acceleratedFactor);
             
-            // Reduced sunset color bleeding from 40% to 15%
+            // Bottom color changes normally for horizon effects
             vec3 deepTwilightHorizon = mix(twilightBottomColor, sunsetBottomColor * 0.15, 0.85);
-            float twilightIntensity = (1.0 - pow(heightFactor, 2.2)) * horizonZone * (1.0 - darkeningFactor * 0.5);
+            float twilightIntensity = (1.0 - pow(heightFactor, 2.2)) * horizonZone;
             bottomColor = mix(sunsetBottomColor, deepTwilightHorizon, factor * (0.9 + 0.1 * twilightIntensity));
           } else {
             // Deep night transition
