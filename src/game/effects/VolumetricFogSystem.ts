@@ -211,10 +211,10 @@ export class VolumetricFogSystem {
           density *= (0.8 + combinedNoise * 0.4);
           density = clamp(density, 0.0, 0.3); // Reduced max opacity
           
-          // Time-based density adjustment (thicker fog at dawn/dusk)
+          // Time-based density adjustment (NEW SETTINGS)
           float timeDensityMultiplier = 1.0;
           if (timeOfDay >= 0.2 && timeOfDay <= 0.3 || timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            timeDensityMultiplier = 1.2; // Reduced from 1.5
+            timeDensityMultiplier = 1.2; // Dawn/Dusk: 20% denser
           }
           density *= timeDensityMultiplier;
           
@@ -493,13 +493,14 @@ export class VolumetricFogSystem {
           // Add subtle depth layering
           baseDensity *= (0.8 + layerDepth * 0.4);
           
-          // Time-based density adjustments - more subtle
+          // Time-based density adjustments (NEW SETTINGS)
           float timeWallMultiplier = 1.0;
           if (timeOfDay >= 0.2 && timeOfDay <= 0.3 || timeOfDay >= 0.7 && timeOfDay <= 0.8) {
-            timeWallMultiplier = 1.05; // Much more subtle
+            timeWallMultiplier = 1.05; // Dawn/Dusk: 5% denser
           } else if (timeOfDay >= 0.8 || timeOfDay <= 0.2) {
-            timeWallMultiplier = 1.02;
+            timeWallMultiplier = 1.02; // Night: 2% denser
           }
+          // Day (0.4-0.6) remains 1.0 (normal density)
           baseDensity *= timeWallMultiplier;
           
           // Ensure realistic transparency with much lower max opacity
