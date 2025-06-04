@@ -1,4 +1,23 @@
 
+export const TIME_PHASES = {
+  NIGHT_START: 0.0,
+  NIGHT_END: 0.2,
+  DAY_START: 0.2,
+  DAY_END: 0.8,
+  SUNSET_START: 0.8,
+  SUNSET_END: 0.9,
+  EVENING_START: 0.9,
+  EVENING_END: 1.0
+};
+
+export const DAY_NIGHT_CONFIG = {
+  cycleSpeed: 1 / 60, // 1-minute cycle
+  sunRadius: 150,
+  moonRadius: 140,
+  shadowUpdateThreshold: 10,
+  shadowCameraSize: 200
+};
+
 export const LIGHTING_CONFIG = {
   ambient: {
     color: 0x404040,

@@ -102,7 +102,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       () => this.onPlayerExitSafeZone()
     );
     
-    console.log(`[DynamicEnemySpawningSystem] Initialized with exact tavern safe zone (12x12 square)`);
+    console.log(`[DynamicEnemySpawningSystem] Initialized with simplified safe zone system`);
   }
 
   private onPlayerEnterSafeZone(): void {
