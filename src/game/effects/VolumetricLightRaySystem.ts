@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class VolumetricLightRaySystem {
@@ -17,8 +16,7 @@ export class VolumetricLightRaySystem {
     this.scene = scene;
     this.physicsManager = physicsManager;
     this.createLightRayMaterial();
-    this.createLightRayGeometry();
-    console.log('VolumetricLightRaySystem initialized with collision-based shadows');
+    console.log('VolumetricLightRaySystem initialized with realistic sun/moon ray positioning');
   }
   
   private createLightRayMaterial(): void {
@@ -38,7 +36,8 @@ export class VolumetricLightRaySystem {
         rayLength: { value: 200.0 },
         atmosphericDensity: { value: 0.15 },
         scatteringFactor: { value: 0.8 },
-        noiseScale: { value: 0.02 }
+        noiseScale: { value: 0.02 },
+        rayDistance: { value: 0.0 }
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -46,10 +45,12 @@ export class VolumetricLightRaySystem {
         varying vec2 vUv;
         varying float vDistanceToLight;
         varying float vHeightFactor;
+        varying float vRayDistance;
         
         uniform vec3 lightPosition;
         uniform vec3 playerPosition;
         uniform float rayLength;
+        uniform float rayDistance;
         
         void main() {
           vPosition = position;
@@ -61,8 +62,11 @@ export class VolumetricLightRaySystem {
           // Calculate distance from light source
           vDistanceToLight = distance(worldPosition.xyz, lightPosition);
           
+          // Calculate distance along the ray from light source
+          vRayDistance = rayDistance;
+          
           // Calculate height factor for atmospheric perspective
-          vHeightFactor = clamp(worldPosition.y / rayLength, 0.0, 1.0);
+          vHeightFactor = clamp((lightPosition.y - worldPosition.y) / rayLength, 0.0, 1.0);
           
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
@@ -89,6 +93,7 @@ export class VolumetricLightRaySystem {
         varying vec2 vUv;
         varying float vDistanceToLight;
         varying float vHeightFactor;
+        varying float vRayDistance;
         
         // Simplex noise for atmospheric scattering
         vec3 mod289(vec3 x) {
@@ -202,10 +207,7 @@ export class VolumetricLightRaySystem {
         void main() {
           vec3 dynamicLightColor = getLightColorForTime(timeOfDay);
           
-          // Calculate light ray direction from current position to light source
-          vec3 rayDirection = normalize(lightPosition - vWorldPosition);
-          
-          // Create volumetric scattering effect
+          // Create volumetric scattering effect along the ray
           vec3 noisePos = vWorldPosition * noiseScale + vec3(time * 0.05);
           float noise1 = snoise(noisePos) * 0.5 + 0.5;
           float noise2 = snoise(noisePos * 2.1 + vec3(1.7)) * 0.25 + 0.25;
@@ -213,18 +215,15 @@ export class VolumetricLightRaySystem {
           
           float combinedNoise = noise1 + noise2 + noise3;
           
-          // Distance-based attenuation
-          float distanceAttenuation = 1.0 - smoothstep(50.0, rayLength, vDistanceToLight);
+          // Distance-based attenuation along the ray
+          float rayAttenuation = 1.0 - smoothstep(0.0, rayLength, vRayDistance);
           
-          // Height-based atmospheric scattering
-          float atmosphericScatter = atmosphericDensity * (1.0 - vHeightFactor * 0.5);
+          // Height-based atmospheric scattering (stronger closer to light source)
+          float atmosphericScatter = atmosphericDensity * vHeightFactor;
           
-          // Calculate ray intensity
-          float rayDot = max(0.0, dot(rayDirection, -lightDirection));
-          float rayIntensity = pow(rayDot, 2.0) * lightIntensity;
-          
-          // Apply atmospheric effects
-          rayIntensity *= atmosphericScatter * distanceAttenuation * shadowFactor;
+          // Calculate ray intensity based on position along the beam
+          float rayIntensity = lightIntensity * rayAttenuation * shadowFactor;
+          rayIntensity *= atmosphericScatter;
           rayIntensity *= (0.7 + combinedNoise * 0.6);
           rayIntensity *= scatteringFactor;
           
@@ -233,7 +232,7 @@ export class VolumetricLightRaySystem {
                           smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.9, vUv.y);
           
           rayIntensity *= edgeFade;
-          rayIntensity = clamp(rayIntensity, 0.0, 0.4);
+          rayIntensity = clamp(rayIntensity, 0.0, 0.6);
           
           gl_FragColor = vec4(dynamicLightColor, rayIntensity);
         }
@@ -245,58 +244,93 @@ export class VolumetricLightRaySystem {
     });
   }
   
-  private createLightRayGeometry(): void {
-    // Create light ray volumes that emanate from sun/moon position
-    const rayConfigs = [
-      { width: 30, height: 150, segments: 8 },
-      { width: 20, height: 120, segments: 6 },
-      { width: 15, height: 100, segments: 4 }
-    ];
-    
-    rayConfigs.forEach((config, index) => {
-      // Create multiple rays around the player
-      for (let i = 0; i < 8; i++) {
-        const geometry = new THREE.PlaneGeometry(config.width, config.height, config.segments, 16);
-        
-        // Add organic variation to the ray shape
-        const positionAttribute = geometry.getAttribute('position');
-        const positions = positionAttribute.array as Float32Array;
-        
-        for (let j = 0; j < positions.length; j += 3) {
-          const x = positions[j];
-          const y = positions[j + 1];
-          
-          // Add subtle wave to make rays feel more organic
-          const wave = Math.sin(y * 0.05) * Math.cos(x * 0.1) * 0.5;
-          positions[j] += wave;
-          positions[j + 2] += wave * 0.3;
-        }
-        
-        positionAttribute.needsUpdate = true;
-        geometry.computeVertexNormals();
-        
-        const ray = new THREE.Mesh(geometry, this.lightRayMaterial.clone());
-        
-        // Position rays in a radial pattern
-        const angle = (i / 8) * Math.PI * 2;
-        const distance = 20 + index * 15;
-        
-        ray.position.x = Math.cos(angle) * distance;
-        ray.position.z = Math.sin(angle) * distance;
-        ray.position.y = config.height / 2;
-        
-        // Store ray data for shadow calculations
-        (ray as any).rayIndex = i;
-        (ray as any).layerIndex = index;
-        (ray as any).baseAngle = angle;
-        (ray as any).baseDistance = distance;
-        
-        this.lightRays.push(ray);
-        this.scene.add(ray);
-      }
+  private createLightRayGeometry(lightPosition: THREE.Vector3, playerPosition: THREE.Vector3): void {
+    // Clear existing rays
+    this.lightRays.forEach(ray => {
+      this.scene.remove(ray);
+      if (ray.geometry) ray.geometry.dispose();
+      if (ray.material) (ray.material as THREE.Material).dispose();
     });
+    this.lightRays = [];
     
-    console.log(`Created ${this.lightRays.length} volumetric light rays`);
+    // Calculate light direction
+    const lightDirection = new THREE.Vector3(0, -1, 0);
+    if (lightPosition.y > 0) {
+      lightDirection.copy(lightPosition).normalize();
+      lightDirection.y = Math.abs(lightDirection.y) * -1; // Always point downward
+    }
+    
+    // Create rays emanating from the light source
+    const numRays = 12;
+    const rayLength = 150;
+    const rayWidth = 8;
+    const spreadAngle = Math.PI / 6; // 30 degree spread
+    
+    for (let i = 0; i < numRays; i++) {
+      // Create cylinder geometry for each ray
+      const geometry = new THREE.CylinderGeometry(rayWidth * 0.5, rayWidth * 2, rayLength, 8, 16);
+      
+      // Add organic variation to ray shape
+      const positionAttribute = geometry.getAttribute('position');
+      const positions = positionAttribute.array as Float32Array;
+      
+      for (let j = 0; j < positions.length; j += 3) {
+        const x = positions[j];
+        const y = positions[j + 1];
+        const z = positions[j + 2];
+        
+        // Add subtle wave to make rays feel more organic
+        const wave = Math.sin(y * 0.02) * Math.cos(x * 0.1) * 0.3;
+        positions[j] += wave;
+        positions[j + 2] += wave * 0.5;
+      }
+      
+      positionAttribute.needsUpdate = true;
+      geometry.computeVertexNormals();
+      
+      const ray = new THREE.Mesh(geometry, this.lightRayMaterial.clone());
+      
+      // Position rays emanating from light source
+      const angle = (i / numRays) * Math.PI * 2;
+      const spreadX = Math.cos(angle) * Math.sin(spreadAngle) * 30;
+      const spreadZ = Math.sin(angle) * Math.sin(spreadAngle) * 30;
+      
+      // Start position near the light source
+      const startPosition = lightPosition.clone();
+      startPosition.x += spreadX;
+      startPosition.z += spreadZ;
+      startPosition.y -= 20; // Start slightly below light source
+      
+      // End position extending toward ground in light direction
+      const endPosition = startPosition.clone();
+      endPosition.add(lightDirection.clone().multiplyScalar(rayLength));
+      
+      // Position ray between start and end
+      const midPosition = startPosition.clone().add(endPosition).multiplyScalar(0.5);
+      ray.position.copy(midPosition);
+      
+      // Orient ray along light direction
+      ray.lookAt(endPosition);
+      ray.rotateX(Math.PI / 2); // Align with cylinder geometry
+      
+      // Calculate distance from light source for shader
+      const rayDistance = startPosition.distanceTo(lightPosition);
+      
+      // Update material uniforms for this ray
+      const material = ray.material as THREE.ShaderMaterial;
+      material.uniforms.rayDistance.value = rayDistance;
+      
+      // Store ray data for shadow calculations
+      (ray as any).rayIndex = i;
+      (ray as any).startPosition = startPosition.clone();
+      (ray as any).endPosition = endPosition.clone();
+      (ray as any).lightDirection = lightDirection.clone();
+      
+      this.lightRays.push(ray);
+      this.scene.add(ray);
+    }
+    
+    console.log(`Created ${this.lightRays.length} volumetric light rays emanating from light source at`, lightPosition);
   }
   
   private calculateShadowFactor(rayPosition: THREE.Vector3, lightDirection: THREE.Vector3): number {
@@ -333,6 +367,15 @@ export class VolumetricLightRaySystem {
     const isNightTime = timeOfDay < 0.25 || timeOfDay > 0.75;
     const activeLightPosition = isNightTime ? this.moonPosition : this.sunPosition;
     
+    // Only recreate rays if light position or player position changed significantly
+    const lightPositionChanged = this.sunPosition.distanceTo(this.moonPosition) > 0.1;
+    const playerMoved = playerPosition.distanceTo(this.lastPlayerPosition) > 20;
+    
+    if (lightPositionChanged || playerMoved || this.lightRays.length === 0) {
+      this.createLightRayGeometry(activeLightPosition, playerPosition);
+      this.lastPlayerPosition.copy(playerPosition);
+    }
+    
     // Calculate light direction from active celestial body
     const lightDirection = new THREE.Vector3()
       .subVectors(playerPosition, activeLightPosition)
@@ -347,24 +390,14 @@ export class VolumetricLightRaySystem {
       const material = ray.material as THREE.ShaderMaterial;
       const rayData = ray as any;
       
-      // Position ray relative to player but oriented toward light source
-      const angle = rayData.baseAngle + (timeOfDay * Math.PI * 0.2); // Slow rotation with time
-      const distance = rayData.baseDistance;
-      
-      ray.position.x = playerPosition.x + Math.cos(angle) * distance;
-      ray.position.z = playerPosition.z + Math.sin(angle) * distance;
-      
-      // Orient ray toward light source
-      ray.lookAt(activeLightPosition);
-      
       // Calculate shadow factor for this ray position
-      const shadowFactor = this.calculateShadowFactor(ray.position, lightDirection);
+      const shadowFactor = this.calculateShadowFactor(rayData.startPosition, rayData.lightDirection);
       
       // Update material uniforms
       if (material.uniforms) {
         material.uniforms.time.value += deltaTime;
         material.uniforms.timeOfDay.value = timeOfDay;
-        material.uniforms.lightDirection.value.copy(lightDirection);
+        material.uniforms.lightDirection.value.copy(rayData.lightDirection);
         material.uniforms.lightPosition.value.copy(activeLightPosition);
         material.uniforms.playerPosition.value.copy(playerPosition);
         material.uniforms.lightIntensity.value = lightIntensity;
@@ -375,8 +408,6 @@ export class VolumetricLightRaySystem {
         material.uniforms.atmosphericDensity.value = baseDensity * lightIntensity;
       }
     });
-    
-    this.lastPlayerPosition.copy(playerPosition);
   }
   
   public setIntensity(intensity: number): void {
