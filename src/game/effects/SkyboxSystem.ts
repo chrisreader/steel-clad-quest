@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class SkyboxSystem {
@@ -86,23 +87,50 @@ export class SkyboxSystem {
             float sunsetIntensity = (1.0 - pow(heightFactor, 1.5)) * horizonZone;
             bottomColor = mix(dayBottomColor, dramaticSunsetBottom, factor * (0.7 + 0.3 * sunsetIntensity));
           } else if (time >= 0.8 && time <= 0.9) {
-            // Twilight period - overhead areas darken much faster
+            // Twilight period - immediate overhead darkening with split phases
             float factor = (time - 0.8) / 0.1;
             
-            // Height-based acceleration: overhead areas use much faster transition
-            float overheadFactor = pow(heightFactor, 0.8); // Higher values = more overhead
-            float acceleratedFactor = mix(
-              pow(factor, 1.2), // Horizon transition speed
-              pow(factor, 0.4),  // Much faster overhead transition
-              overheadFactor
-            );
+            // Define overhead threshold - above 60% height is "overhead"
+            float overheadThreshold = 0.6;
+            bool isOverhead = heightFactor > overheadThreshold;
             
-            topColor = mix(sunsetTopColor, twilightTopColor, acceleratedFactor);
+            if (time >= 0.8 && time <= 0.85) {
+              // Early twilight (0.8-0.85) - immediate overhead darkening
+              float earlyFactor = (time - 0.8) / 0.05;
+              
+              if (isOverhead) {
+                // Overhead areas darken immediately and aggressively
+                float aggressiveFactor = pow(earlyFactor, 0.3); // Very fast transition
+                topColor = mix(sunsetTopColor, twilightTopColor, aggressiveFactor);
+              } else {
+                // Horizon areas maintain sunset colors longer
+                topColor = mix(sunsetTopColor, sunsetTopColor * 0.8, earlyFactor * 0.5);
+              }
+              
+              // Bottom color maintains dramatic sunset glow
+              vec3 earlyTwilightHorizon = mix(twilightBottomColor, sunsetBottomColor * 0.4, 0.6);
+              float twilightIntensity = (1.0 - pow(heightFactor, 2.0)) * horizonZone;
+              bottomColor = mix(sunsetBottomColor, earlyTwilightHorizon, earlyFactor * (0.5 + 0.5 * twilightIntensity));
+              
+            } else {
+              // Late twilight (0.85-0.9) - complete transition
+              float lateFactor = (time - 0.85) / 0.05;
+              
+              if (isOverhead) {
+                // Overhead already dark, minor adjustments only
+                topColor = mix(twilightTopColor, twilightTopColor * 0.8, lateFactor);
+              } else {
+                // Horizon catches up to overhead darkness
+                float catchupFactor = pow(lateFactor, 0.8);
+                topColor = mix(sunsetTopColor * 0.8, twilightTopColor, catchupFactor);
+              }
+              
+              // Bottom color completes transition
+              vec3 deepTwilightHorizon = mix(twilightBottomColor, sunsetBottomColor * 0.1, 0.9);
+              float twilightIntensity = (1.0 - pow(heightFactor, 2.5)) * horizonZone;
+              bottomColor = mix(sunsetBottomColor, deepTwilightHorizon, lateFactor * (0.8 + 0.2 * twilightIntensity));
+            }
             
-            // Bottom color changes normally for horizon effects
-            vec3 deepTwilightHorizon = mix(twilightBottomColor, sunsetBottomColor * 0.15, 0.85);
-            float twilightIntensity = (1.0 - pow(heightFactor, 2.2)) * horizonZone;
-            bottomColor = mix(sunsetBottomColor, deepTwilightHorizon, factor * (0.9 + 0.1 * twilightIntensity));
           } else {
             // Deep night transition
             float factor = (time - 0.9) / 0.1;
