@@ -1,11 +1,12 @@
+
 import * as THREE from 'three';
 import { TextureGenerator, EnhancedTextureGenerator, InstancedGrassSystem } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
 import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
 import { PhysicsManager } from './PhysicsManager';
-import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
+import { Level, TerrainConfig, TerrainFeature, LightingConfig, Region } from '../../types/GameTypes';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
-import { RingQuadrantSystem, RegionCoordinates, Region } from '../world/RingQuadrantSystem';
+import { RingQuadrantSystem, RegionCoordinates } from '../world/RingQuadrantSystem';
 import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
 import { StructureGenerator } from '../world/StructureGenerator';
 import { EffectsManager } from './EffectsManager';
