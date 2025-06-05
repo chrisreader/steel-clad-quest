@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../../../utils';
 
@@ -73,10 +72,7 @@ export class RockMaterials {
       ),
       
       // Add ambient occlusion and environment mapping for realism
-      envMapIntensity: 0.2,
-      
-      // Weathered surfaces have less specular reflection
-      reflectivity: Math.max(0.1, 0.4 - weatheringLevel * 0.3)
+      envMapIntensity: 0.2
     });
     
     return material;

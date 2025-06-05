@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { RockShapeType, RockInstance, RockGenerationConfig } from '../types/RockTypes';
 import { RockMaterials } from '../materials/RockMaterials';
+import { BaseRockShape } from '../shapes/BaseRockShape';
 import { BoulderShape } from '../shapes/BoulderShape';
 import { SpireShape } from '../shapes/SpireShape';
 import { SlabShape } from '../shapes/SlabShape';
@@ -11,7 +12,7 @@ import { FlattenedShape } from '../shapes/FlattenedShape';
 import { JaggedShape } from '../shapes/JaggedShape';
 
 export class RockShapeFactory {
-  private shapeGenerators: Map<RockShapeType, any>;
+  private shapeGenerators: Map<RockShapeType, BaseRockShape>;
   
   constructor() {
     this.shapeGenerators = new Map([
