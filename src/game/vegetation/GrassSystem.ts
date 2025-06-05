@@ -1,7 +1,10 @@
+
 import * as THREE from 'three';
 import { GrassGeometry, GrassBladeConfig } from './GrassGeometry';
 import { GrassShader } from './GrassShader';
 import { RegionCoordinates } from '../world/RingQuadrantSystem';
+import { TimeUtils } from '../utils/TimeUtils';
+import { TIME_PHASES } from '../config/DayNightConfig';
 
 export interface GrassConfig {
   baseDensity: number; // grass blades per square unit for sparse coverage
@@ -201,12 +204,22 @@ export class GrassSystem {
     }
   }
   
-  public update(deltaTime: number, playerPosition: THREE.Vector3): void {
+  public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
     this.time += deltaTime;
     
-    // Update wind animation for all grass materials
+    // Calculate day/night factors if game time is provided
+    let nightFactor = 0;
+    let dayFactor = 1;
+    
+    if (gameTime !== undefined) {
+      nightFactor = TimeUtils.getSynchronizedNightFactor(gameTime, TIME_PHASES);
+      dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
+    }
+    
+    // Update wind animation and day/night cycle for all grass materials
     for (const material of this.grassMaterials.values()) {
       GrassShader.updateWindAnimation(material, this.time, 0.2 + Math.sin(this.time * 0.5) * 0.1);
+      GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
     }
     
     // Update fog uniforms if scene has fog

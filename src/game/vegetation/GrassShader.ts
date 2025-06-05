@@ -36,7 +36,10 @@ export class GrassShader {
     
     const fragmentShader = `
       uniform vec3 grassColor;
+      uniform vec3 nightGrassColor;
       uniform float time;
+      uniform float nightFactor;
+      uniform float dayFactor;
       uniform vec3 fogColor;
       uniform float fogNear;
       uniform float fogFar;
@@ -46,16 +49,20 @@ export class GrassShader {
       varying float vHeight;
       
       void main() {
+        // Interpolate between day and night grass colors
+        vec3 currentGrassColor = mix(grassColor, nightGrassColor, nightFactor);
+        
         // Base grass color with height variation
-        vec3 color = grassColor;
+        vec3 color = currentGrassColor;
         color = mix(color * 0.6, color, vHeight); // Darker at base
         
         // Add subtle color variation
         float variation = sin(gl_FragCoord.x * 0.01) * sin(gl_FragCoord.y * 0.01) * 0.1;
         color += variation;
         
-        // Simple lighting
+        // Simple lighting with day/night adjustment
         float light = dot(vNormal, normalize(vec3(1.0, 1.0, 1.0))) * 0.5 + 0.5;
+        light = mix(light * 0.3, light, dayFactor); // Dimmer lighting at night
         color *= light;
         
         // Apply fog
@@ -75,6 +82,9 @@ export class GrassShader {
         windStrength: { value: 0.3 },
         windDirection: { value: new THREE.Vector2(1, 0.5) },
         grassColor: { value: baseColor },
+        nightGrassColor: { value: new THREE.Color().copy(baseColor).multiplyScalar(0.2) }, // Much darker for night
+        nightFactor: { value: 0 },
+        dayFactor: { value: 1 },
         fogColor: { value: new THREE.Color(0x87CEEB) },
         fogNear: { value: 50 },
         fogFar: { value: 200 }
@@ -92,6 +102,19 @@ export class GrassShader {
     }
     if (material.uniforms.windStrength) {
       material.uniforms.windStrength.value = windStrength;
+    }
+  }
+  
+  public static updateDayNightCycle(
+    material: THREE.ShaderMaterial, 
+    nightFactor: number, 
+    dayFactor: number
+  ): void {
+    if (material.uniforms.nightFactor) {
+      material.uniforms.nightFactor.value = nightFactor;
+    }
+    if (material.uniforms.dayFactor) {
+      material.uniforms.dayFactor.value = dayFactor;
     }
   }
 }
