@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { TextureGenerator, EnhancedTextureGenerator, InstancedGrassSystem } from '../utils';
+import { TextureGenerator } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
 import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
 import { PhysicsManager } from './PhysicsManager';
-import { Level, TerrainConfig, TerrainFeature, LightingConfig, Region, RegionCoordinates } from '../../types/GameTypes';
+import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
-import { RingQuadrantSystem } from '../world/RingQuadrantSystem';
+import { RingQuadrantSystem, RegionCoordinates, Region } from '../world/RingQuadrantSystem';
 import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
 import { StructureGenerator } from '../world/StructureGenerator';
 import { EffectsManager } from './EffectsManager';
@@ -82,9 +82,6 @@ export class SceneManager {
   // Volumetric fog system
   private volumetricFogSystem: VolumetricFogSystem | null = null;
   
-  // Enhanced grass system
-  private instancedGrassSystem: InstancedGrassSystem | null = null;
-  
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
@@ -118,10 +115,6 @@ export class SceneManager {
     // Initialize volumetric fog system with horizon blocking
     this.volumetricFogSystem = new VolumetricFogSystem(this.scene);
     console.log("VolumetricFogSystem initialized");
-    
-    // Initialize enhanced grass system
-    this.instancedGrassSystem = new InstancedGrassSystem(this.scene);
-    console.log("InstancedGrassSystem initialized");
     
     // Add debug ring markers
     if (this.debugMode) {
@@ -549,74 +542,6 @@ export class SceneManager {
     this.updateShadowCamera(playerPosition);
   }
   
-  private loadRegion(region: RegionCoordinates): void {
-    const regionKey = this.ringSystem.getRegionKey(region);
-    
-    if (this.loadedRegions.has(regionKey)) {
-      console.log(`Region ${regionKey} already loaded`);
-      return;
-    }
-    
-    console.log(`Loading region ${regionKey} (ring: ${region.ringIndex}, quadrant: ${region.quadrant})`);
-    
-    // Get ring definition
-    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
-    
-    // Calculate center position for the region
-    const centerPosition = this.ringSystem.getRegionCenter(region);
-    
-    // Create terrain for this region
-    const terrain = this.createRegionTerrain(region, centerPosition);
-    
-    // Generate terrain features
-    this.terrainFeatureGenerator.generateFeaturesForRegion(region);
-    
-    // Generate structures
-    this.structureGenerator.generateStructuresForRegion(region);
-    
-    // Create region object and store it
-    const regionObj: Region = {
-      coordinates: region,
-      terrain: terrain,
-      features: [],
-      structures: []
-    };
-    
-    this.loadedRegions.set(regionKey, regionObj);
-    
-    console.log(`Region ${regionKey} loaded successfully`);
-  }
-  
-  private unloadRegion(region: RegionCoordinates): void {
-    const regionKey = this.ringSystem.getRegionKey(region);
-    const regionObj = this.loadedRegions.get(regionKey);
-    
-    if (!regionObj) {
-      console.log(`Region ${regionKey} not found for unloading`);
-      return;
-    }
-    
-    console.log(`Unloading region ${regionKey}`);
-    
-    // Remove terrain
-    if (regionObj.terrain) {
-      this.scene.remove(regionObj.terrain);
-      regionObj.terrain.geometry.dispose();
-      if (regionObj.terrain.material instanceof THREE.Material) {
-        regionObj.terrain.material.dispose();
-      }
-    }
-    
-    // Clean up features and structures
-    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
-    this.structureGenerator.cleanupStructuresForRegion(region);
-    
-    // Remove from loaded regions
-    this.loadedRegions.delete(regionKey);
-    
-    console.log(`Region ${regionKey} unloaded successfully`);
-  }
-  
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     if (this.dayNightCycleEnabled) {
       this.timeOfDay += deltaTime * DAY_NIGHT_CONFIG.cycleSpeed;
@@ -679,12 +604,6 @@ export class SceneManager {
     
     if (this.volumetricFogSystem && playerPosition) {
       this.volumetricFogSystem.update(deltaTime, this.timeOfDay, playerPosition);
-    }
-    
-    // Update 3D grass system with wind effects
-    if (this.instancedGrassSystem) {
-      const windStrength = 0.5 + Math.sin(this.timeOfDay * Math.PI * 4) * 0.3; // Varying wind
-      this.instancedGrassSystem.update(deltaTime, windStrength);
     }
   }
   
@@ -749,10 +668,10 @@ export class SceneManager {
   }
 
   public createDefaultWorld(): void {
-    console.log('Creating default world with enhanced realistic grass system...');
+    console.log('Creating default world with shader-based celestial glow system...');
     
-    this.createEnhancedGround();
-    console.log('Enhanced realistic ground plane created at origin');
+    this.createSimpleGround();
+    console.log('Simple ground plane created at origin');
     
     const startRegion = { ringIndex: 0, quadrant: 0 };
     this.loadRegion(startRegion);
@@ -766,17 +685,6 @@ export class SceneManager {
     
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created for shadow testing');
-    
-    // Generate 3D grass around tavern area
-    if (this.instancedGrassSystem) {
-      this.instancedGrassSystem.generateGrassInArea(
-        new THREE.Vector3(0, 0, 0),
-        50, // radius
-        0.7, // density
-        true // worn area around tavern
-      );
-      console.log('3D instanced grass generated around tavern');
-    }
     
     // Initialize skybox with initial time
     this.skyboxSystem.update(this.timeOfDay, new THREE.Vector3(0, 0, 0));
@@ -800,7 +708,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('World with enhanced realistic grass system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('World with shader-based celestial glow system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     if (this.debugMode) {
       (window as any).sceneDebug = {
@@ -808,63 +716,70 @@ export class SceneManager {
         toggleCycle: () => this.toggleDayNightCycle(),
         setSpeed: (speed: number) => this.setCycleSpeed(speed),
         getCurrentTime: () => (this.timeOfDay * 24).toFixed(1) + ' hours',
-        getMoonElevation: () => this.getMoonElevationFactor().toFixed(2),
-        toggleGrass: () => this.instancedGrassSystem?.setVisibility(!this.instancedGrassSystem?.getInstanceCount()),
-        grassCount: () => this.instancedGrassSystem?.getInstanceCount() || 0
+        getMoonElevation: () => this.getMoonElevationFactor().toFixed(2)
       };
-      console.log('Debug commands available: sceneDebug.setTime(hour), sceneDebug.toggleCycle(), sceneDebug.setSpeed(speed), sceneDebug.toggleGrass(), sceneDebug.grassCount()');
+      console.log('Debug commands available: sceneDebug.setTime(hour), sceneDebug.toggleCycle(), sceneDebug.setSpeed(speed), sceneDebug.getMoonElevation()');
     }
   }
 
-  private createEnhancedGround(): void {
-    const groundGeometry = new THREE.PlaneGeometry(100, 100, 32, 32);
+  private loadRegion(region: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(region);
     
-    // Create enhanced material with standardized color and textures
-    const standardizedColor = 0x5FAD5F; // Standardized green color for all rings
-    const grassTexture = EnhancedTextureGenerator.createRealisticGrassTexture(
-      standardizedColor, // Standardized color
-      0.3,      // Natural variation
-      0.8,      // Good density
-      true      // Worn areas around buildings
-    );
+    if (this.loadedRegions.has(regionKey)) return;
     
-    const grassNormal = EnhancedTextureGenerator.createGrassNormalMap();
+    console.log(`Loading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
-    // Add some subtle height variation to the ground
-    const positions = groundGeometry.attributes.position.array as Float32Array;
-    for (let i = 0; i < positions.length; i += 3) {
-      // Add subtle random height variation
-      positions[i + 2] += (Math.random() - 0.5) * 0.2;
+    const centerPosition = this.ringSystem.getRegionCenter(region);
+    const terrain = this.createRegionTerrain(region, centerPosition);
+    
+    const newRegion: Region = {
+      coordinates: region,
+      centerPosition,
+      terrain,
+      isLoaded: true
+    };
+    
+    this.loadedRegions.set(regionKey, newRegion);
+    this.terrainFeatureGenerator.generateFeaturesForRegion(region);
+    this.structureGenerator.generateStructuresForRegion(region);
+  }
+  
+  private unloadRegion(region: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(region);
+    const loadedRegion = this.loadedRegions.get(regionKey);
+    
+    if (!loadedRegion) return;
+    
+    console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    
+    this.structureGenerator.cleanupStructuresForRegion(region);
+    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
+    
+    if (loadedRegion.terrain) {
+      this.scene.remove(loadedRegion.terrain);
+      
+      if (loadedRegion.terrain.geometry) {
+        loadedRegion.terrain.geometry.dispose();
+      }
+      
+      if (loadedRegion.terrain.material) {
+        if (Array.isArray(loadedRegion.terrain.material)) {
+          loadedRegion.terrain.material.forEach(m => m.dispose());
+        } else {
+          loadedRegion.terrain.material.dispose();
+        }
+      }
     }
-    groundGeometry.attributes.position.needsUpdate = true;
-    groundGeometry.computeVertexNormals();
     
-    const groundMaterial = new THREE.MeshLambertMaterial({ 
-      map: grassTexture,
-      normalMap: grassNormal,
-      normalScale: new THREE.Vector2(0.5, 0.5),
-      transparent: false
-    });
-    
-    // Set texture repeat for better detail
-    grassTexture.repeat.set(8, 8);
-    grassNormal.repeat.set(8, 8);
-    
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.set(0, 0, 0);
-    ground.receiveShadow = true;
-    ground.name = 'enhancedGround';
-    
-    this.scene.add(ground);
-    console.log('Enhanced realistic ground with standardized color and normal mapping created');
+    this.loadedRegions.delete(regionKey);
   }
   
   private createSimpleGround(): void {
     const groundGeometry = new THREE.PlaneGeometry(100, 100);
     const groundMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x5FAD5F,
-      map: TextureGenerator.createGrassTexture()
+      map: TextureGenerator.createGrassTexture(),
+      transparent: false
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
@@ -891,25 +806,13 @@ export class SceneManager {
       console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} with geometry in world coordinates`);
     }
     
-    // Use standardized grass texture (same for all regions)
-    const standardizedColor = 0x5FAD5F; // Standardized green color for all rings
-    const isWornArea = region.ringIndex === 0; // Center areas are more worn
-    const grassTexture = EnhancedTextureGenerator.createRealisticGrassTexture(
-      standardizedColor, // Standardized color
-      0.3,
-      0.8,
-      isWornArea
-    );
-    
     const terrainMaterial = new THREE.MeshLambertMaterial({ 
-      map: grassTexture,
+      color: ringDef.terrainColor,
+      map: TextureGenerator.createGrassTexture(),
       transparent: false
     });
     
-    // Set appropriate texture scaling
-    grassTexture.repeat.set(4, 4);
-    
-    console.log(`Standardized terrain for ring ${region.ringIndex}, quadrant ${region.quadrant} created with consistent grass texture`);
+    console.log(`Terrain for ring ${region.ringIndex}, quadrant ${region.quadrant} created with level floor`);
     
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
     terrain.rotation.x = -Math.PI / 2;
@@ -918,21 +821,6 @@ export class SceneManager {
     terrain.receiveShadow = true;
     
     this.scene.add(terrain);
-    
-    // Generate 3D grass for this region if close to player
-    if (this.instancedGrassSystem && region.ringIndex <= 1) {
-      const grassCenter = centerPosition.clone();
-      grassCenter.y = 0;
-      const radius = region.ringIndex === 0 ? ringDef.outerRadius : (ringDef.outerRadius - ringDef.innerRadius) / 2;
-      
-      this.instancedGrassSystem.generateGrassInArea(
-        grassCenter,
-        radius,
-        0.6, // Moderate density for performance
-        isWornArea
-      );
-      console.log(`3D grass generated for region ring ${region.ringIndex}, quadrant ${region.quadrant}`);
-    }
     
     return terrain;
   }
@@ -1216,12 +1104,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    if (this.instancedGrassSystem) {
-      this.instancedGrassSystem.dispose();
-      this.instancedGrassSystem = null;
-    }
-    
-    console.log("SceneManager with enhanced realistic grass system disposed");
+    console.log("SceneManager with shader-based celestial glow system disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
