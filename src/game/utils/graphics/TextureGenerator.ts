@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class TextureGenerator {
@@ -67,125 +68,38 @@ export class TextureGenerator {
   }
 
   /**
-   * Creates a realistic grass texture with natural color variations
+   * Creates a grass texture with customizable properties
    */
-  static createRealisticGrassTexture(
-    baseColor: number = 0x4A7C59,
-    variation: number = 30,
-    dirtChance: number = 0.15,
-    grassBladeCount: number = 400
+  static createGrassTexture(
+    baseColor: number = 0x32CD32,
+    detailCount: number = 200,
+    variation: number = 40
   ): THREE.Texture {
     const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 512;
+    canvas.width = canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
     
-    // Convert base color to RGB for manipulation
-    const r = (baseColor >> 16) & 255;
-    const g = (baseColor >> 8) & 255;
-    const b = baseColor & 255;
+    // Base color
+    ctx.fillStyle = `#${baseColor.toString(16).padStart(6, '0')}`;
+    ctx.fillRect(0, 0, 256, 256);
     
-    // Base grass color with slight brown undertone
-    ctx.fillStyle = `rgb(${r}, ${g}, ${Math.max(0, b - 10)})`;
-    ctx.fillRect(0, 0, 512, 512);
-    
-    // Add dirt patches
-    const dirtPatches = Math.floor(50 * dirtChance);
-    for (let i = 0; i < dirtPatches; i++) {
-      const patchSize = Math.random() * 20 + 10;
-      const x = Math.random() * 512;
-      const y = Math.random() * 512;
-      
-      // Dirt color variations (browns)
-      const dirtR = 101 + Math.random() * 30;
-      const dirtG = 67 + Math.random() * 20;
-      const dirtB = 33 + Math.random() * 15;
-      
-      ctx.fillStyle = `rgba(${dirtR}, ${dirtG}, ${dirtB}, 0.6)`;
-      ctx.beginPath();
-      ctx.arc(x, y, patchSize, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    // Individual grass blades and variations
-    for (let i = 0; i < grassBladeCount; i++) {
-      const x = Math.random() * 512;
-      const y = Math.random() * 512;
-      const bladeLength = Math.random() * 6 + 2;
-      const bladeWidth = Math.random() * 2 + 0.5;
-      
-      // Grass color variations (different shades of green)
-      const grassHue = 100 + Math.random() * variation - (variation / 2);
-      const saturation = 40 + Math.random() * 25;
-      const lightness = 35 + Math.random() * 25;
-      
-      ctx.strokeStyle = `hsl(${grassHue}, ${saturation}%, ${lightness}%)`;
-      ctx.lineWidth = bladeWidth;
-      ctx.lineCap = 'round';
-      
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + (Math.random() - 0.5) * 2, y - bladeLength);
-      ctx.stroke();
-    }
-    
-    // Add small rocks and debris
-    for (let i = 0; i < 30; i++) {
-      const x = Math.random() * 512;
-      const y = Math.random() * 512;
-      const size = Math.random() * 3 + 1;
-      
-      ctx.fillStyle = `rgba(120, 120, 120, ${0.3 + Math.random() * 0.3})`;
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
+    // Grass variation
+    for (let i = 0; i < detailCount; i++) {
+      const hue = 100 + Math.random() * variation;
+      const sat = 50 + Math.random() * 30;
+      const light = 40 + Math.random() * 40;
+      ctx.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`;
+      ctx.fillRect(
+        Math.random() * 256, 
+        Math.random() * 256, 
+        Math.random() * 4 + 1, 
+        Math.random() * 4 + 1
+      );
     }
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(4, 4);
     return texture;
-  }
-
-  /**
-   * Creates grass texture - legacy method that now uses realistic grass
-   */
-  static createGrassTexture(
-    baseColor: number = 0x4A7C59,
-    detailCount: number = 400,
-    variation: number = 30
-  ): THREE.Texture {
-    return this.createRealisticGrassTexture(baseColor, variation, 0.15, detailCount);
-  }
-
-  /**
-   * Creates a blended grass texture for ring transitions
-   */
-  static createBlendedGrassTexture(
-    color1: number,
-    color2: number,
-    blendFactor: number = 0.5
-  ): THREE.Texture {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 512;
-    const ctx = canvas.getContext('2d')!;
-    
-    // Extract RGB components
-    const r1 = (color1 >> 16) & 255;
-    const g1 = (color1 >> 8) & 255;
-    const b1 = color1 & 255;
-    
-    const r2 = (color2 >> 16) & 255;
-    const g2 = (color2 >> 8) & 255;
-    const b2 = color2 & 255;
-    
-    // Blend colors
-    const blendedR = Math.floor(r1 * (1 - blendFactor) + r2 * blendFactor);
-    const blendedG = Math.floor(g1 * (1 - blendFactor) + g2 * blendFactor);
-    const blendedB = Math.floor(b1 * (1 - blendFactor) + b2 * blendFactor);
-    
-    const blendedColor = (blendedR << 16) | (blendedG << 8) | blendedB;
-    
-    return this.createRealisticGrassTexture(blendedColor, 25, 0.12, 350);
   }
 
   /**
