@@ -819,9 +819,10 @@ export class SceneManager {
   private createEnhancedGround(): void {
     const groundGeometry = new THREE.PlaneGeometry(100, 100, 32, 32);
     
-    // Create enhanced material with normal mapping and better textures
+    // Create enhanced material with standardized color and textures
+    const standardizedColor = 0x5FAD5F; // Standardized green color for all rings
     const grassTexture = EnhancedTextureGenerator.createRealisticGrassTexture(
-      0x4A7C59, // More realistic grass color
+      standardizedColor, // Standardized color
       0.3,      // Natural variation
       0.8,      // Good density
       true      // Worn areas around buildings
@@ -856,7 +857,7 @@ export class SceneManager {
     ground.name = 'enhancedGround';
     
     this.scene.add(ground);
-    console.log('Enhanced realistic ground with normal mapping and height variation created');
+    console.log('Enhanced realistic ground with standardized color and normal mapping created');
   }
   
   private createSimpleGround(): void {
@@ -890,10 +891,11 @@ export class SceneManager {
       console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} with geometry in world coordinates`);
     }
     
-    // Use enhanced grass texture based on region type
+    // Use standardized grass texture (same for all regions)
+    const standardizedColor = 0x5FAD5F; // Standardized green color for all rings
     const isWornArea = region.ringIndex === 0; // Center areas are more worn
     const grassTexture = EnhancedTextureGenerator.createRealisticGrassTexture(
-      ringDef.terrainColor,
+      standardizedColor, // Standardized color
       0.3,
       0.8,
       isWornArea
@@ -907,7 +909,7 @@ export class SceneManager {
     // Set appropriate texture scaling
     grassTexture.repeat.set(4, 4);
     
-    console.log(`Enhanced terrain for ring ${region.ringIndex}, quadrant ${region.quadrant} created with realistic grass texture`);
+    console.log(`Standardized terrain for ring ${region.ringIndex}, quadrant ${region.quadrant} created with consistent grass texture`);
     
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
     terrain.rotation.x = -Math.PI / 2;
