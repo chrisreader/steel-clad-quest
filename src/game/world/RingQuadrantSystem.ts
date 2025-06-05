@@ -188,7 +188,7 @@ export class RingQuadrantSystem {
   }
   
   /**
-   * Check if a position is in a transition zone between rings
+   * Check if a position is in a transition zone between rings - ENHANCED VERSION
    */
   public getTransitionInfo(position: THREE.Vector3): { 
     isInTransition: boolean; 
@@ -209,7 +209,9 @@ export class RingQuadrantSystem {
       // Check if we're in the transition zone
       const distanceFromBoundary = Math.abs(distance - boundary);
       if (distanceFromBoundary <= RingQuadrantSystem.TRANSITION_ZONE_SIZE) {
-        const blendFactor = 1 - (distanceFromBoundary / RingQuadrantSystem.TRANSITION_ZONE_SIZE);
+        // Smoother blend factor calculation to prevent rapid transitions
+        const blendFactor = Math.min(1, Math.max(0, 1 - (distanceFromBoundary / RingQuadrantSystem.TRANSITION_ZONE_SIZE)));
+        const smoothBlendFactor = blendFactor * blendFactor * (3 - 2 * blendFactor); // Smoothstep function
         
         if (distance < boundary) {
           // Transitioning from inner ring to outer ring
@@ -217,7 +219,7 @@ export class RingQuadrantSystem {
             isInTransition: true,
             fromRing: i,
             toRing: i + 1,
-            blendFactor: distance > boundary - RingQuadrantSystem.TRANSITION_ZONE_SIZE ? blendFactor : 0
+            blendFactor: distance > boundary - RingQuadrantSystem.TRANSITION_ZONE_SIZE ? smoothBlendFactor : 0
           };
         } else {
           // Transitioning from outer ring to inner ring (approaching from outside)
@@ -225,7 +227,7 @@ export class RingQuadrantSystem {
             isInTransition: true,
             fromRing: i + 1,
             toRing: i,
-            blendFactor: distance < boundary + RingQuadrantSystem.TRANSITION_ZONE_SIZE ? blendFactor : 0
+            blendFactor: distance < boundary + RingQuadrantSystem.TRANSITION_ZONE_SIZE ? smoothBlendFactor : 0
           };
         }
       }
@@ -263,7 +265,7 @@ export class RingQuadrantSystem {
     return (r << 16) | (g << 8) | b;
   }
 
-  // Enhanced createTerrainWithHills with smooth transitions
+  // Enhanced createTerrainWithHills with smooth transitions and Z-fighting fix
   public createTerrainWithHills(region: RegionCoordinates, size: number = 100): THREE.Mesh {
     const segments = 63;
     const heightmap = this.generateHeightmap(segments + 1, segments + 1, 25);
@@ -289,7 +291,10 @@ export class RingQuadrantSystem {
     
     let material: THREE.MeshStandardMaterial;
     
-    if (transitionInfo.isInTransition && transitionInfo.blendFactor > 0.1) {
+    // Minimum blend factor to prevent constant switching
+    const MIN_BLEND_FACTOR = 0.15;
+    
+    if (transitionInfo.isInTransition && transitionInfo.blendFactor > MIN_BLEND_FACTOR) {
       console.log(`🌈 Creating blended terrain with hills for transition zone (blend: ${transitionInfo.blendFactor.toFixed(2)})`);
       
       // Create blended material for transition zones
@@ -305,17 +310,21 @@ export class RingQuadrantSystem {
       // Standard ring material with realistic grass
       const ring = this.rings[region.ringIndex];
       material = GroundMaterialUtils.createGrassMaterial(ring.terrainColor, region.ringIndex, {
-        roughness: 0.8,
-        metalness: 0.1,
-        textureScale: 4
+        roughness: 0.9,
+        metalness: 0.0,
+        textureScale: 3
       });
     }
     
     const terrain = new THREE.Mesh(geometry, material);
     terrain.rotation.x = -Math.PI / 2;
-    terrain.position.copy(center);
     
-    console.log(`✅ Enhanced terrain with hills created using GroundMaterialUtils for ring ${region.ringIndex}`);
+    // Add small Y-offset to prevent Z-fighting between terrain pieces
+    const yOffset = region.ringIndex * 0.01 + region.quadrant * 0.005;
+    terrain.position.copy(center);
+    terrain.position.y += yOffset;
+    
+    console.log(`✅ Enhanced terrain with hills created for ring ${region.ringIndex}, Y-offset: ${yOffset.toFixed(3)}`);
     
     return terrain;
   }

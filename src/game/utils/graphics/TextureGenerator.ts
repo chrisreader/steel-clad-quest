@@ -102,70 +102,74 @@ export class TextureGenerator {
   }
 
   /**
-   * Creates a realistic grass texture with natural colors and variations
+   * Creates a realistic grass texture with natural colors and variations - FIXED VERSION
    */
   static createRealisticGrassTexture(
     baseColor: number = 0x3A7A3A,
     ringIndex: number = 0
   ): THREE.Texture {
     const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 512;
+    // Reduced canvas size for better performance
+    canvas.width = canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
     
-    // Extract RGB from base color
+    // Extract RGB from base color for proper color integration
     const r = (baseColor >> 16) & 255;
     const g = (baseColor >> 8) & 255;
     const b = baseColor & 255;
     
-    // Base grass color with slight brown undertone
-    ctx.fillStyle = `rgb(${Math.floor(r * 0.9)}, ${g}, ${Math.floor(b * 0.8)})`;
-    ctx.fillRect(0, 0, 512, 512);
+    // Use the actual ring color as foundation instead of hardcoded values
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fillRect(0, 0, 256, 256);
     
-    // Add natural grass variations
-    const grassDensity = 800 + ringIndex * 200; // More detail in higher rings
+    // Reduced grass density to prevent overdraw and glitching
+    const grassDensity = 300 + ringIndex * 50; // Reduced from 800+200
     
+    // Create natural grass blades with directional strokes
     for (let i = 0; i < grassDensity; i++) {
-      // Natural grass blade colors - forest greens with variation
-      const grassHue = 90 + Math.random() * 40; // Green to yellow-green range
-      const grassSat = 40 + Math.random() * 30 + ringIndex * 5; // Ring-based saturation
-      const grassLight = 25 + Math.random() * 35; // Natural darkness range
+      // Use base color as reference for natural grass variations
+      const grassHue = this.rgbToHsl(r, g, b)[0] + Math.random() * 20 - 10; // Stay close to ring color
+      const grassSat = 40 + Math.random() * 20 + ringIndex * 3;
+      const grassLight = 30 + Math.random() * 25;
       
-      ctx.fillStyle = `hsla(${grassHue}, ${grassSat}%, ${grassLight}%, ${0.6 + Math.random() * 0.4})`;
+      ctx.fillStyle = `hsla(${grassHue}, ${grassSat}%, ${grassLight}%, ${0.4 + Math.random() * 0.3})`;
       
-      // Grass blade shapes - small rectangles and lines
-      const x = Math.random() * 512;
-      const y = Math.random() * 512;
-      const width = Math.random() * 2 + 1;
-      const height = Math.random() * 4 + 2;
+      // More natural grass blade shapes - vertical strokes
+      const x = Math.random() * 256;
+      const y = Math.random() * 256;
+      const width = Math.random() * 1.5 + 0.5;
+      const height = Math.random() * 3 + 1;
       
+      // Draw vertical grass blades
       ctx.fillRect(x, y, width, height);
     }
     
-    // Add dirt patches for realism
-    const dirtPatches = 80 - ringIndex * 10; // Fewer dirt patches in higher rings
+    // Reduced dirt patches to prevent visual noise
+    const dirtPatches = 30 - ringIndex * 3; // Reduced from 80-10
     for (let i = 0; i < dirtPatches; i++) {
-      const dirtBrown = 25 + Math.random() * 15;
-      ctx.fillStyle = `hsla(30, 40%, ${dirtBrown}%, 0.3)`;
+      // Use soil color that complements the ring color
+      const soilBrightness = Math.max(15, (r + g + b) / 3 * 0.4);
+      ctx.fillStyle = `hsla(30, 30%, ${soilBrightness}%, 0.2)`;
       
-      const x = Math.random() * 512;
-      const y = Math.random() * 512;
-      const size = Math.random() * 8 + 3;
+      const x = Math.random() * 256;
+      const y = Math.random() * 256;
+      const size = Math.random() * 4 + 2; // Smaller dirt patches
       
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
       ctx.fill();
     }
     
-    // Add some darker grass clumps for depth
-    const clumps = 60;
+    // Subtle grass clumps for depth
+    const clumps = 20; // Reduced from 60
     for (let i = 0; i < clumps; i++) {
-      const clumpHue = 85 + Math.random() * 20;
-      const clumpLight = 15 + Math.random() * 20;
-      ctx.fillStyle = `hsla(${clumpHue}, 60%, ${clumpLight}%, 0.4)`;
+      const clumpHue = this.rgbToHsl(r, g, b)[0] + Math.random() * 15 - 7.5;
+      const clumpLight = Math.max(10, (r + g + b) / 3 * 0.3);
+      ctx.fillStyle = `hsla(${clumpHue}, 50%, ${clumpLight}%, 0.3)`;
       
-      const x = Math.random() * 512;
-      const y = Math.random() * 512;
-      const size = Math.random() * 6 + 2;
+      const x = Math.random() * 256;
+      const y = Math.random() * 256;
+      const size = Math.random() * 3 + 1; // Smaller clumps
       
       ctx.beginPath();
       ctx.arc(x, y, size, 0, Math.PI * 2);
@@ -174,10 +178,45 @@ export class TextureGenerator {
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(4, 4); // Better tiling for ground coverage
+    
+    // Improved texture filtering to reduce glitching
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    texture.generateMipmaps = true;
+    
+    // Remove duplicate texture repeat - let GroundMaterialUtils handle this
+    
     return texture;
   }
 
+  // Helper function to convert RGB to HSL
+  private static rgbToHsl(r: number, g: number, b: number): [number, number, number] {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+    
+    if (max === min) {
+      h = s = 0; // achromatic
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+        default: h = 0;
+      }
+      h /= 6;
+    }
+    
+    return [h * 360, s * 100, l * 100];
+  }
+
+  
   /**
    * Creates a metal texture with customizable properties
    */

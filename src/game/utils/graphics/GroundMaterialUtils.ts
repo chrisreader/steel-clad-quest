@@ -4,7 +4,7 @@ import { TextureGenerator } from './TextureGenerator';
 
 export class GroundMaterialUtils {
   /**
-   * Creates a standard grass material with realistic textures
+   * Creates a standard grass material with realistic textures - FIXED VERSION
    */
   static createGrassMaterial(
     baseColor: number,
@@ -16,9 +16,9 @@ export class GroundMaterialUtils {
     } = {}
   ): THREE.MeshStandardMaterial {
     const {
-      roughness = 0.8,
-      metalness = 0.1,
-      textureScale = 4
+      roughness = 0.9, // Increased for more realistic grass
+      metalness = 0.0, // Grass should not be metallic
+      textureScale = 3 // Reduced from 4 for better visual quality
     } = options;
 
     const material = new THREE.MeshStandardMaterial({
@@ -27,16 +27,24 @@ export class GroundMaterialUtils {
       metalness
     });
 
-    // Apply realistic grass texture
+    // Apply realistic grass texture with proper filtering
     const grassTexture = TextureGenerator.createRealisticGrassTexture(baseColor, ringIndex);
     grassTexture.repeat.set(textureScale, textureScale);
+    
+    // Improved texture filtering to prevent glitching
+    grassTexture.magFilter = THREE.LinearFilter;
+    grassTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    grassTexture.anisotropy = 4; // Better quality at angles
+    
     material.map = grassTexture;
+
+    console.log(`🌱 Created grass material for ring ${ringIndex} with color 0x${baseColor.toString(16)}`);
 
     return material;
   }
 
   /**
-   * Creates a blended material for smooth transitions between rings
+   * Creates a blended material for smooth transitions between rings - ENHANCED VERSION
    */
   static createBlendedGrassMaterial(
     color1: number,
@@ -44,7 +52,7 @@ export class GroundMaterialUtils {
     blendFactor: number,
     ringIndex: number = 0
   ): THREE.MeshStandardMaterial {
-    // Blend the colors
+    // Improved color blending using proper color space
     const r1 = (color1 >> 16) & 255;
     const g1 = (color1 >> 8) & 255;
     const b1 = color1 & 255;
@@ -53,16 +61,32 @@ export class GroundMaterialUtils {
     const g2 = (color2 >> 8) & 255;
     const b2 = color2 & 255;
     
-    const r = Math.round(r1 + (r2 - r1) * blendFactor);
-    const g = Math.round(g1 + (g2 - g1) * blendFactor);
-    const b = Math.round(b1 + (b2 - b1) * blendFactor);
+    // Use gamma-correct blending for more natural results
+    const gamma = 2.2;
+    const r1Linear = Math.pow(r1 / 255, gamma);
+    const g1Linear = Math.pow(g1 / 255, gamma);
+    const b1Linear = Math.pow(b1 / 255, gamma);
+    
+    const r2Linear = Math.pow(r2 / 255, gamma);
+    const g2Linear = Math.pow(g2 / 255, gamma);
+    const b2Linear = Math.pow(b2 / 255, gamma);
+    
+    const rBlended = Math.pow(r1Linear + (r2Linear - r1Linear) * blendFactor, 1/gamma);
+    const gBlended = Math.pow(g1Linear + (g2Linear - g1Linear) * blendFactor, 1/gamma);
+    const bBlended = Math.pow(b1Linear + (b2Linear - b1Linear) * blendFactor, 1/gamma);
+    
+    const r = Math.round(rBlended * 255);
+    const g = Math.round(gBlended * 255);
+    const b = Math.round(bBlended * 255);
     
     const blendedColor = (r << 16) | (g << 8) | b;
 
+    console.log(`🌈 Creating blended material: 0x${color1.toString(16)} → 0x${color2.toString(16)} (factor: ${blendFactor.toFixed(2)}) = 0x${blendedColor.toString(16)}`);
+
     return this.createGrassMaterial(blendedColor, ringIndex, {
-      roughness: 0.8,
-      metalness: 0.1,
-      textureScale: 4
+      roughness: 0.9,
+      metalness: 0.0,
+      textureScale: 3
     });
   }
 
@@ -81,7 +105,7 @@ export class GroundMaterialUtils {
       case 'dirt':
         const material = new THREE.MeshStandardMaterial({
           color: baseColor,
-          roughness: 0.9,
+          roughness: 0.95,
           metalness: 0.0
         });
         // Could add dirt texture here in the future
@@ -94,6 +118,8 @@ export class GroundMaterialUtils {
           metalness: 0.2
         });
         const stoneTexture = TextureGenerator.createStoneTexture(baseColor);
+        stoneTexture.magFilter = THREE.LinearFilter;
+        stoneTexture.minFilter = THREE.LinearMipmapLinearFilter;
         stoneMaterial.map = stoneTexture;
         return stoneMaterial;
       
