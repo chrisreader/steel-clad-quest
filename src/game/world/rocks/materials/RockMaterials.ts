@@ -1,6 +1,6 @@
 
 import * as THREE from 'three';
-import { TextureGenerator } from '../../utils';
+import { TextureGenerator } from '../../../utils';
 
 export class RockMaterials {
   private static materials: Map<string, THREE.Material> = new Map();

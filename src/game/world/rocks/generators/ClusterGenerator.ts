@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { 
   ClusterConfiguration, 
@@ -52,8 +51,9 @@ export class ClusterGenerator {
       // Select appropriate shape for tier
       const shapeType = this.selectShapeForTier(tier);
       
-      // Generate rock instance
+      // Generate rock instance with proper config including shapeType
       const rockInstance = this.shapeFactory.createRock(shapeType, {
+        shapeType,
         sizeRange: this.getSizeRangeForTier(tier, config.radius),
         materialVariation: 0.3,
         weatheringRange: { min: 0.1, max: 0.4 }

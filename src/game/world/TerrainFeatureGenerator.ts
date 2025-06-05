@@ -7,7 +7,7 @@ export interface FeatureCluster {
   position: THREE.Vector3;
   radius: number;
   density: number;
-  type: 'forest' | 'rocks' | 'bushes' | 'mixed';
+  type: 'forest' | 'bushes' | 'mixed';
 }
 
 export class TerrainFeatureGenerator {
@@ -267,9 +267,9 @@ export class TerrainFeatureGenerator {
     this.spawnRandomFeatures(region, 'bushes', 3, features);
   }
   
-  private getRandomClusterType(): 'forest' | 'rocks' | 'bushes' | 'mixed' {
-    const types = ['forest', 'rocks', 'bushes', 'mixed'];
-    const weights = [0.5, 0.2, 0.2, 0.1]; // Forest clusters most common
+  private getRandomClusterType(): 'forest' | 'bushes' | 'mixed' {
+    const types = ['forest', 'bushes', 'mixed'];
+    const weights = [0.6, 0.3, 0.1]; // Forest clusters most common
     
     // Weighted random selection
     const totalWeight = weights.reduce((a, b) => a + b);
@@ -302,11 +302,6 @@ export class TerrainFeatureGenerator {
         // Add some bushes under trees
         this.spawnClusteredFeatures(region, 'bushes', Math.floor(featureCount * 0.6), cluster, features);
         break;
-      
-      case 'rocks':
-        featureCount = Math.floor(clusterArea * 0.01 * cluster.density);
-        this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features);
-        break;
         
       case 'bushes':
         featureCount = Math.floor(clusterArea * 0.025 * cluster.density);
@@ -317,10 +312,6 @@ export class TerrainFeatureGenerator {
         // Trees
         featureCount = Math.floor(clusterArea * 0.008 * cluster.density);
         this.spawnClusteredFeatures(region, 'forest', featureCount, cluster, features);
-        
-        // Rocks
-        featureCount = Math.floor(clusterArea * 0.006 * cluster.density);
-        this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features);
         
         // Bushes
         featureCount = Math.floor(clusterArea * 0.015 * cluster.density);
