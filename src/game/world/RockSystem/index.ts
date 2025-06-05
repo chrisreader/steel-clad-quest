@@ -1,5 +1,5 @@
 
-export { RockVariations, ROCK_VARIATIONS, ROCK_SHAPES, selectRandomVariation, selectRandomShape } from './RockVariations';
+export { ROCK_VARIATIONS, ROCK_SHAPES, selectRandomVariation, selectRandomShape } from './RockVariations';
 export { RockGeometry } from './RockGeometry';
 export { RockMaterials } from './RockMaterials';
 export { RockFeatures } from './RockFeatures';
