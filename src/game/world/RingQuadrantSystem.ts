@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Noise } from 'noisejs';
 import { TextureGenerator } from '../utils/graphics/TextureGenerator';
+import { GroundMaterialUtils } from '../utils/graphics/GroundMaterialUtils';
 
 // Define interfaces for our ring-quadrant system
 export interface RingDefinition {
@@ -282,46 +283,39 @@ export class RingQuadrantSystem {
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
     
-    // Create enhanced material with realistic grass texture
+    // Create enhanced material with realistic grass texture using GroundMaterialUtils
     const center = this.getRegionCenter(region);
     const transitionInfo = this.getTransitionInfo(center);
     
     let material: THREE.MeshStandardMaterial;
     
     if (transitionInfo.isInTransition && transitionInfo.blendFactor > 0.1) {
+      console.log(`🌈 Creating blended terrain with hills for transition zone (blend: ${transitionInfo.blendFactor.toFixed(2)})`);
+      
       // Create blended material for transition zones
-      const blendedColor = this.getBlendedRingColor(
-        transitionInfo.fromRing,
-        transitionInfo.toRing,
-        transitionInfo.blendFactor
+      material = GroundMaterialUtils.createBlendedGrassMaterial(
+        this.rings[transitionInfo.fromRing].terrainColor,
+        this.rings[transitionInfo.toRing].terrainColor,
+        transitionInfo.blendFactor,
+        region.ringIndex
       );
-      
-      material = new THREE.MeshStandardMaterial({ 
-        color: blendedColor,
-        roughness: 0.8,
-        metalness: 0.1
-      });
-      
-      // Use realistic grass texture with blended color influence
-      const grassTexture = TextureGenerator.createRealisticGrassTexture(blendedColor, region.ringIndex);
-      material.map = grassTexture;
     } else {
-      // Standard ring material
-      const ring = this.rings[region.ringIndex];
-      material = new THREE.MeshStandardMaterial({ 
-        color: ring.terrainColor,
-        roughness: 0.8,
-        metalness: 0.1
-      });
+      console.log(`🌱 Creating standard terrain with hills for ring ${region.ringIndex}`);
       
-      // Use realistic grass texture
-      const grassTexture = TextureGenerator.createRealisticGrassTexture(ring.terrainColor, region.ringIndex);
-      material.map = grassTexture;
+      // Standard ring material with realistic grass
+      const ring = this.rings[region.ringIndex];
+      material = GroundMaterialUtils.createGrassMaterial(ring.terrainColor, region.ringIndex, {
+        roughness: 0.8,
+        metalness: 0.1,
+        textureScale: 4
+      });
     }
     
     const terrain = new THREE.Mesh(geometry, material);
     terrain.rotation.x = -Math.PI / 2;
     terrain.position.copy(center);
+    
+    console.log(`✅ Enhanced terrain with hills created using GroundMaterialUtils for ring ${region.ringIndex}`);
     
     return terrain;
   }

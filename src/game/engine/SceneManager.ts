@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TextureGenerator } from '../utils';
+import { TextureGenerator, GroundMaterialUtils } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
 import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
 import { PhysicsManager } from './PhysicsManager';
@@ -776,16 +776,21 @@ export class SceneManager {
   
   private createSimpleGround(): void {
     const groundGeometry = new THREE.PlaneGeometry(100, 100);
-    const groundMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x5FAD5F,
-      map: TextureGenerator.createGrassTexture(),
-      transparent: false
+    
+    // Use enhanced grass material with realistic texture
+    const groundMaterial = GroundMaterialUtils.createGrassMaterial(0x5FAD5F, 0, {
+      roughness: 0.8,
+      metalness: 0.1,
+      textureScale: 4
     });
+    
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, 0, 0);
     ground.receiveShadow = true;
     this.scene.add(ground);
+    
+    console.log("✅ Simple ground created with enhanced realistic grass material");
   }
   
   private createRegionTerrain(region: RegionCoordinates, centerPosition: THREE.Vector3): THREE.Mesh {
@@ -797,22 +802,45 @@ export class SceneManager {
     if (region.ringIndex === 0) {
       terrainGeometry = new THREE.CircleGeometry(ringDef.outerRadius, 32);
       terrainPosition = new THREE.Vector3(0, 0, 0);
-      console.log('Creating center ring terrain at origin');
+      console.log('Creating center ring terrain at origin with enhanced materials');
     } else {
       const innerRadius = ringDef.innerRadius;
       const outerRadius = ringDef.outerRadius;
       terrainGeometry = this.createQuadrantGeometry(innerRadius, outerRadius, region.quadrant);
       terrainPosition = new THREE.Vector3(0, 0, 0);
-      console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} with geometry in world coordinates`);
+      console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} with enhanced materials`);
     }
     
-    const terrainMaterial = new THREE.MeshLambertMaterial({ 
-      color: ringDef.terrainColor,
-      map: TextureGenerator.createGrassTexture(),
-      transparent: false
-    });
+    // Check for smooth transitions and create appropriate material
+    const center = this.ringSystem.getRegionCenter(region);
+    const transitionInfo = this.ringSystem.getTransitionInfo(center);
     
-    console.log(`Terrain for ring ${region.ringIndex}, quadrant ${region.quadrant} created with level floor`);
+    let terrainMaterial: THREE.MeshStandardMaterial;
+    
+    if (transitionInfo.isInTransition && transitionInfo.blendFactor > 0.1) {
+      console.log(`🌈 Creating blended material for ring ${region.ringIndex} with blend factor ${transitionInfo.blendFactor.toFixed(2)}`);
+      
+      // Create blended material for smooth transitions
+      terrainMaterial = GroundMaterialUtils.createBlendedGrassMaterial(
+        this.ringSystem.getRingDefinition(transitionInfo.fromRing).terrainColor,
+        this.ringSystem.getRingDefinition(transitionInfo.toRing).terrainColor,
+        transitionInfo.blendFactor,
+        region.ringIndex
+      );
+    } else {
+      console.log(`🌱 Creating standard grass material for ring ${region.ringIndex}`);
+      
+      // Standard ring material with realistic grass
+      terrainMaterial = GroundMaterialUtils.createGrassMaterial(
+        ringDef.terrainColor,
+        region.ringIndex,
+        {
+          roughness: 0.8,
+          metalness: 0.1,
+          textureScale: 4
+        }
+      );
+    }
     
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
     terrain.rotation.x = -Math.PI / 2;
@@ -821,6 +849,8 @@ export class SceneManager {
     terrain.receiveShadow = true;
     
     this.scene.add(terrain);
+    
+    console.log(`✅ Enhanced terrain created for ring ${region.ringIndex}, quadrant ${region.quadrant} with realistic grass texture`);
     
     return terrain;
   }
