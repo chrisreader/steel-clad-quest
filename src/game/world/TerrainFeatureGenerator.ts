@@ -1,3 +1,7 @@
+import * as THREE from 'three';
+import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
+import { TextureGenerator } from '../utils';
+
 export interface FeatureCluster {
   position: THREE.Vector3;
   radius: number;
@@ -655,10 +659,10 @@ export class TerrainFeatureGenerator {
       { color: 0x8B7355, roughness: 0.9, metalness: 0.1, name: 'granite' },
       { color: 0x696969, roughness: 0.85, metalness: 0.05, name: 'basalt' },
       { color: 0xA0A0A0, roughness: 0.8, metalness: 0.15, name: 'limestone' },
-      { color: 0x8B7D6B, roughness: 0.95, metalness: 0.0, name: 'sandstone' },
+      { color: 0x8B4513, roughness: 0.95, metalness: 0.0, name: 'sandstone' },
       { color: 0x556B2F, roughness: 0.9, metalness: 0.05, name: 'moss_covered' },
       { color: 0x2F4F4F, roughness: 0.9, metalness: 0.2, name: 'slate' },
-      { color: 0x8B4513, roughness: 0.85, metalness: 0.0, name: 'ironstone' }
+      { color: 0x8B7D6B, roughness: 0.95, metalness: 0.0, name: 'ironstone' }
     ];
     
     const rockType = rockTypes[index % rockTypes.length];
