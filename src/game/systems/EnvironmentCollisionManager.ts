@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PhysicsManager } from '../engine/PhysicsManager';
 
@@ -16,8 +15,8 @@ export class EnvironmentCollisionManager {
 
   // Method to register a single object for collision (handles Groups and Meshes)
   public registerSingleObject(object: THREE.Object3D): void {
-    // Skip if already registered OR if it's a known terrain object
-    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid)) return;
+    // Skip if already registered OR if it's a known terrain object OR if it's a bush
+    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid) || this.isBushObject(object)) return;
 
     const material = this.determineMaterial(object);
     const shouldRegister = this.shouldRegisterForCollision(object);
@@ -88,6 +87,41 @@ export class EnvironmentCollisionManager {
     console.log(`🔧 Total collision objects: ${finalCount.size}`);
   }
 
+  // NEW: Check if an object is a bush (should not have collision)
+  private isBushObject(object: THREE.Object3D): boolean {
+    if (object instanceof THREE.Group) {
+      // Check if this is a bush group by looking for sphere geometry (leaves) without cylinder geometry (trunk)
+      const hasSpheresOnly = object.children.some(child => 
+        child instanceof THREE.Mesh && 
+        child.geometry instanceof THREE.SphereGeometry
+      );
+      const hasCylinder = object.children.some(child =>
+        child instanceof THREE.Mesh &&
+        child.geometry instanceof THREE.CylinderGeometry
+      );
+      
+      // If it has spheres but no main cylinder trunk, it's likely a bush
+      if (hasSpheresOnly && !hasCylinder) {
+        console.log(`🌿 Detected bush group - skipping collision registration`);
+        return true;
+      }
+      
+      // Also check for very small cylinders (stems) which indicate bushes
+      const hasSmallStem = object.children.some(child =>
+        child instanceof THREE.Mesh &&
+        child.geometry instanceof THREE.CylinderGeometry &&
+        child.scale.x < 0.1 && child.scale.z < 0.1 // Very thin stems
+      );
+      
+      if (hasSpheresOnly && hasSmallStem) {
+        console.log(`🌿 Detected bush with stem - skipping collision registration`);
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
   // NEW: Check if an object is a building component (managed by BuildingManager)
   private isBuildingComponent(object: THREE.Object3D): boolean {
     // Check if the object is part of a building group
@@ -112,8 +146,11 @@ export class EnvironmentCollisionManager {
   }
 
   private registerObjectCollision(object: THREE.Object3D): void {
-    // Skip if already registered OR if it's a known terrain object OR if it's a building component
-    if (this.registeredObjects.has(object.uuid) || this.terrainObjects.has(object.uuid) || this.isBuildingComponent(object)) {
+    // Skip if already registered OR if it's a known terrain object OR if it's a building component OR if it's a bush
+    if (this.registeredObjects.has(object.uuid) || 
+        this.terrainObjects.has(object.uuid) || 
+        this.isBuildingComponent(object) ||
+        this.isBushObject(object)) {
       return;
     }
 
@@ -250,6 +287,12 @@ export class EnvironmentCollisionManager {
 
   // FIXED: Updated to handle both THREE.Mesh AND THREE.Group objects
   private shouldRegisterForCollision(object: THREE.Object3D): boolean {
+    // Skip bushes
+    if (this.isBushObject(object)) {
+      console.log(`🌿 Skipping bush collision registration`);
+      return false;
+    }
+
     // Skip very small objects (likely decorative)
     const boundingBox = new THREE.Box3().setFromObject(object);
     const size = boundingBox.getSize(new THREE.Vector3());
