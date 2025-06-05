@@ -34,17 +34,52 @@ export class RockMaterials {
     
     const baseColor = baseColors[type];
     
-    // Adjust color based on weathering
+    // Enhanced color variation based on weathering and type
     const weatheredColor = baseColor.clone();
-    weatheredColor.lerp(new THREE.Color(0x888888), weatheringLevel * 0.3);
     
-    return new THREE.MeshStandardMaterial({
+    // Different weathering effects per rock type
+    switch(type) {
+      case 'granite':
+        // Granite weathers to lighter, more brownish tones
+        weatheredColor.lerp(new THREE.Color(0xA0926B), weatheringLevel * 0.4);
+        break;
+      case 'sandstone':
+        // Sandstone can weather to redder or grayer tones
+        weatheredColor.lerp(new THREE.Color(0xB85450), weatheringLevel * 0.3);
+        break;
+      case 'limestone':
+        // Limestone weathers to darker, more gray tones
+        weatheredColor.lerp(new THREE.Color(0xC0B5A0), weatheringLevel * 0.5);
+        break;
+      case 'basalt':
+        // Basalt weathers to brownish-black
+        weatheredColor.lerp(new THREE.Color(0x3D3D2F), weatheringLevel * 0.3);
+        break;
+      case 'weathered':
+        // Already weathered, just add more variation
+        weatheredColor.lerp(new THREE.Color(0x8A7A6A), weatheringLevel * 0.2);
+        break;
+    }
+    
+    // Create realistic material with proper surface properties
+    const material = new THREE.MeshStandardMaterial({
       color: weatheredColor,
       map: TextureGenerator.createStoneTexture(),
-      roughness: 0.8 + (weatheringLevel * 0.2),
-      metalness: 0.05,
-      normalScale: new THREE.Vector2(0.5, 0.5)
+      roughness: 0.7 + (weatheringLevel * 0.3), // Weathered rocks are rougher
+      metalness: type === 'basalt' ? 0.1 : 0.02, // Basalt slightly more metallic
+      normalScale: new THREE.Vector2(
+        0.3 + weatheringLevel * 0.4, // More normal detail with weathering
+        0.3 + weatheringLevel * 0.4
+      ),
+      
+      // Add ambient occlusion and environment mapping for realism
+      envMapIntensity: 0.2,
+      
+      // Weathered surfaces have less specular reflection
+      reflectivity: Math.max(0.1, 0.4 - weatheringLevel * 0.3)
     });
+    
+    return material;
   }
   
   public static dispose(): void {
