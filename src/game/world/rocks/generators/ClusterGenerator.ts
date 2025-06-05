@@ -6,7 +6,7 @@ import {
   ClusterTier, 
   EnvironmentalDetail 
 } from '../types/ClusterTypes';
-import { RockInstance, RockShapeType, RockVariation } from '../types/RockTypes';
+import { RockInstance, RockShapeType, RockVariation, RockVariationSelector } from '../types/RockTypes';
 import { RockShapeFactory } from './RockShapeFactory';
 import { StackingPhysics } from '../physics/StackingPhysics';
 
@@ -61,6 +61,7 @@ export class ClusterGenerator {
     for (let i = 0; i < foundationCount; i++) {
       const size = variation.sizeRange[1] * (0.8 + Math.random() * 0.2);
       const shapeType = this.selectShapeForTier('foundation');
+      const shape = RockVariationSelector.getShapeForType(shapeType);
       
       const rockInstance = this.shapeFactory.createRock(shapeType, {
         shapeType,
@@ -68,7 +69,7 @@ export class ClusterGenerator {
         materialVariation: 0.3,
         weatheringRange: { min: 0.1, max: 0.4 },
         variation,
-        shape: this.shapeFactory.getShapeForType ? this.shapeFactory.getShapeForType(shapeType) : undefined
+        shape
       });
       
       const pos = voronoiPoints[rockIndex++];
@@ -82,13 +83,15 @@ export class ClusterGenerator {
     for (let i = 0; i < supportCount; i++) {
       const size = variation.sizeRange[1] * (0.5 + Math.random() * 0.3);
       const shapeType = this.selectShapeForTier('support');
+      const shape = RockVariationSelector.getShapeForType(shapeType);
       
       const rockInstance = this.shapeFactory.createRock(shapeType, {
         shapeType,
         sizeRange: { min: size, max: size },
         materialVariation: 0.3,
         weatheringRange: { min: 0.1, max: 0.4 },
-        variation
+        variation,
+        shape
       });
       
       const pos = voronoiPoints[rockIndex++];
@@ -100,13 +103,15 @@ export class ClusterGenerator {
     for (let i = 0; i < accentCount; i++) {
       const size = variation.sizeRange[1] * (0.2 + Math.random() * 0.3);
       const shapeType = this.selectShapeForTier('accent');
+      const shape = RockVariationSelector.getShapeForType(shapeType);
       
       const rockInstance = this.shapeFactory.createRock(shapeType, {
         shapeType,
         sizeRange: { min: size, max: size },
         materialVariation: 0.3,
         weatheringRange: { min: 0.1, max: 0.4 },
-        variation
+        variation,
+        shape
       });
       
       const pos = voronoiPoints[rockIndex++];
