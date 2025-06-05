@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { 
   RockShapeType, 
@@ -18,6 +19,7 @@ import { AngularShape } from '../shapes/AngularShape';
 import { WeatheredShape } from '../shapes/WeatheredShape';
 import { FlattenedShape } from '../shapes/FlattenedShape';
 import { JaggedShape } from '../shapes/JaggedShape';
+import { SmoothingUtils } from '../utils/SmoothingUtils';
 
 export class RockShapeFactory {
   private shapeGenerators: Map<RockShapeType, BaseRockShape>;
@@ -45,6 +47,58 @@ export class RockShapeFactory {
     });
   }
   
+  private createBaseGeometry(shape: RockShape): THREE.BufferGeometry {
+    switch (shape.baseGeometry) {
+      case 'icosahedron':
+        return new THREE.IcosahedronGeometry(1, 3); // Detail=3 for high resolution
+      case 'sphere':
+        return new THREE.SphereGeometry(1, 32, 32); // 32 segments for smooth curves
+      case 'dodecahedron':
+        return new THREE.DodecahedronGeometry(1, 2); // Detail=2 for good balance
+      default:
+        return new THREE.IcosahedronGeometry(1, 3);
+    }
+  }
+  
+  private applyDeformation(geometry: THREE.BufferGeometry, intensity: number): void {
+    // Cap deformation intensity at 0.4 and reduce noise amplitude by 50%
+    const cappedIntensity = Math.min(intensity, 0.4) * 0.5;
+    
+    const positions = geometry.attributes.position;
+    const positionArray = positions.array as Float32Array;
+    
+    for (let i = 0; i < positionArray.length; i += 3) {
+      const x = positionArray[i];
+      const y = positionArray[i + 1];
+      const z = positionArray[i + 2];
+      
+      // Apply controlled noise with reduced amplitude
+      const noise = this.generateSmoothNoise(x * 2, y * 2, z * 2) * cappedIntensity;
+      
+      const vertex = new THREE.Vector3(x, y, z);
+      const length = vertex.length();
+      if (length > 0) {
+        vertex.normalize();
+        vertex.multiplyScalar(length + noise);
+        
+        positionArray[i] = vertex.x;
+        positionArray[i + 1] = vertex.y;
+        positionArray[i + 2] = vertex.z;
+      }
+    }
+    
+    positions.needsUpdate = true;
+  }
+  
+  private generateSmoothNoise(x: number, y: number, z: number): number {
+    // Improved smooth noise using multiple octaves
+    const noise1 = Math.sin(x * 0.5) * Math.cos(y * 0.7) * Math.sin(z * 0.3);
+    const noise2 = Math.sin(x * 1.2) * Math.cos(y * 0.9) * Math.sin(z * 1.1) * 0.5;
+    const noise3 = Math.sin(x * 2.1) * Math.cos(y * 1.7) * Math.sin(z * 1.9) * 0.25;
+    
+    return (noise1 + noise2 + noise3) / 1.75;
+  }
+  
   public createRock(shapeType: RockShapeType, config: RockGenerationConfig): RockInstance {
     if (shapeType === 'cluster') {
       throw new Error('Cluster rocks should be generated through ClusterGenerator');
@@ -57,26 +111,26 @@ export class RockShapeFactory {
     // Update generation statistics
     this.updateGenerationStats(variation.category, shapeType);
     
-    const shapeGenerator = this.shapeGenerators.get(shapeType);
-    if (!shapeGenerator) {
-      throw new Error(`Unknown rock shape type: ${shapeType}`);
-    }
-    
     // Use variation size range if no specific size range provided
     const sizeRange = config.sizeRange || {
       min: variation.sizeRange[0],
       max: variation.sizeRange[1]
     };
     
-    // Generate geometry with enhanced config
-    const enhancedConfig = {
-      ...config,
-      sizeRange,
-      variation,
-      shape
-    };
+    const size = sizeRange.min + Math.random() * (sizeRange.max - sizeRange.min);
     
-    const geometry = shapeGenerator.generateGeometry(enhancedConfig);
+    // Create high-resolution base geometry
+    const geometry = this.createBaseGeometry(shape);
+    
+    // Scale to desired size
+    geometry.scale(size, size, size);
+    
+    // Apply controlled deformation
+    this.applyDeformation(geometry, shape.deformationIntensity);
+    
+    // Apply smoothing operations for organic appearance
+    SmoothingUtils.smoothGeometry(geometry, 2);
+    SmoothingUtils.weldVertices(geometry, 0.01);
     
     // Select material type based on shape and weathering
     const materialType = this.selectMaterialType(shapeType);
@@ -203,6 +257,44 @@ export class RockShapeFactory {
     );
     
     return points;
+  }
+  
+  private updateGenerationStats(category: string, shapeType: RockShapeType): void {
+    const key = `${category}_${shapeType}`;
+    const current = RockShapeFactory.generationStats.get(key) || 0;
+    RockShapeFactory.generationStats.set(key, current + 1);
+    
+    // Log stats every 50 rocks generated
+    const totalGenerated = Array.from(RockShapeFactory.generationStats.values())
+      .reduce((sum, count) => sum + count, 0);
+    
+    if (totalGenerated % 50 === 0) {
+      this.logGenerationStats();
+    }
+  }
+  
+  private logGenerationStats(): void {
+    console.log('🗿 Rock Generation Statistics:');
+    
+    // Group by category
+    const categoryStats = new Map<string, number>();
+    const shapeStats = new Map<string, number>();
+    
+    RockShapeFactory.generationStats.forEach((count, key) => {
+      const [category, shape] = key.split('_');
+      categoryStats.set(category, (categoryStats.get(category) || 0) + count);
+      shapeStats.set(shape, (shapeStats.get(shape) || 0) + count);
+    });
+    
+    console.log('  By Category:');
+    categoryStats.forEach((count, category) => {
+      console.log(`    ${category}: ${count}`);
+    });
+    
+    console.log('  By Shape:');
+    shapeStats.forEach((count, shape) => {
+      console.log(`    ${shape}: ${count}`);
+    });
   }
   
   public static getGenerationStats(): Map<string, number> {

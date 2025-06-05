@@ -1,7 +1,106 @@
-
 import * as THREE from 'three';
 
 export class SmoothingUtils {
+  /**
+   * Apply Laplacian smoothing to geometry for organic appearance
+   */
+  public static smoothGeometry(geometry: THREE.BufferGeometry, iterations: number = 2): void {
+    const positions = geometry.attributes.position.array as Float32Array;
+    const vertexCount = positions.length / 3;
+    const newPositions = new Float32Array(positions.length);
+    
+    for (let iter = 0; iter < iterations; iter++) {
+      for (let i = 0; i < vertexCount; i++) {
+        let sumX = 0, sumY = 0, sumZ = 0, count = 0;
+        const index = i * 3;
+        
+        // Find neighboring vertices within threshold distance
+        for (let j = 0; j < vertexCount; j++) {
+          if (i !== j) {
+            const dist = Math.sqrt(
+              Math.pow(positions[index] - positions[j * 3], 2) +
+              Math.pow(positions[index + 1] - positions[j * 3 + 1], 2) +
+              Math.pow(positions[index + 2] - positions[j * 3 + 2], 2)
+            );
+            
+            if (dist < 0.1) { // Neighborhood threshold
+              sumX += positions[j * 3];
+              sumY += positions[j * 3 + 1];
+              sumZ += positions[j * 3 + 2];
+              count++;
+            }
+          }
+        }
+        
+        // Apply smoothing or keep original position
+        newPositions[index] = count > 0 ? sumX / count : positions[index];
+        newPositions[index + 1] = count > 0 ? sumY / count : positions[index + 1];
+        newPositions[index + 2] = count > 0 ? sumZ / count : positions[index + 2];
+      }
+      
+      // Update positions for next iteration
+      positions.set(newPositions);
+    }
+    
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+  }
+  
+  /**
+   * Weld vertices that are closer than threshold to eliminate gaps
+   */
+  public static weldVertices(geometry: THREE.BufferGeometry, threshold: number = 0.01): void {
+    const positions = geometry.attributes.position.array as Float32Array;
+    const vertexCount = positions.length / 3;
+    const mergeMap: number[] = new Array(vertexCount).fill(0).map((_, i) => i);
+    
+    // Find vertices to merge
+    for (let i = 0; i < vertexCount; i++) {
+      for (let j = i + 1; j < vertexCount; j++) {
+        const dist = Math.sqrt(
+          Math.pow(positions[i * 3] - positions[j * 3], 2) +
+          Math.pow(positions[i * 3 + 1] - positions[j * 3 + 1], 2) +
+          Math.pow(positions[i * 3 + 2] - positions[j * 3 + 2], 2)
+        );
+        
+        if (dist < threshold) {
+          mergeMap[j] = i; // Merge j into i
+        }
+      }
+    }
+    
+    // Create new vertex array with merged vertices
+    const newPositions: number[] = [];
+    const remap: number[] = [];
+    
+    for (let i = 0; i < vertexCount; i++) {
+      if (mergeMap[i] === i) {
+        // This vertex is kept
+        remap[i] = newPositions.length / 3;
+        newPositions.push(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+      } else {
+        // This vertex is merged with another
+        remap[i] = remap[mergeMap[i]];
+      }
+    }
+    
+    // Update geometry with new positions
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
+    
+    // Update indices if they exist
+    const indices = geometry.index ? geometry.index.array as Uint16Array : null;
+    if (indices) {
+      const newIndices: number[] = [];
+      for (let i = 0; i < indices.length; i++) {
+        newIndices.push(remap[indices[i]]);
+      }
+      geometry.setIndex(newIndices);
+    }
+    
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+  }
+  
   /**
    * Apply Catmull-Clark subdivision smoothing to geometry
    */
