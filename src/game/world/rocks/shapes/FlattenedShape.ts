@@ -1,5 +1,5 @@
 
-import * * THREE from 'three';
+import * as THREE from 'three';
 import { BaseRockShape } from './BaseRockShape';
 import { RockGenerationConfig } from '../types/RockTypes';
 import { GeometryUtils } from '../utils/GeometryUtils';
