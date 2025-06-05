@@ -18,6 +18,7 @@ import { SkyboxSystem } from '../effects/SkyboxSystem';
 import { ColorUtils } from '../utils/ColorUtils';
 import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
+import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -53,15 +54,17 @@ export class SceneManager {
   private currentLevel: Level | null = null;
   private ground: THREE.Mesh | null = null;
   
-  // Enhanced 3D sun, moon and star system with multi-layer glow
+  // Enhanced 3D sun, moon and star system with shader-based glow
   private sun: THREE.Mesh | null = null;
   private moon: THREE.Mesh | null = null;
   private stars: THREE.Points | null = null;
   private cloudSpawningSystem: DynamicCloudSpawningSystem | null = null;
   
-  // Multi-layer glow systems
-  private sunGlowLayers: THREE.Mesh[] = [];
-  private moonGlowLayers: THREE.Mesh[] = [];
+  // Shader-based glow systems
+  private sunGlow: THREE.Mesh | null = null;
+  private moonGlow: THREE.Mesh | null = null;
+  private sunGlowMaterial: THREE.ShaderMaterial | null = null;
+  private moonGlowMaterial: THREE.ShaderMaterial | null = null;
   
   // Skybox system
   private skyboxSystem: SkyboxSystem;
@@ -83,7 +86,7 @@ export class SceneManager {
     this.scene = scene;
     this.physicsManager = physicsManager;
     
-    console.log("SceneManager initialized with integrated SkyboxSystem");
+    console.log("SceneManager initialized with shader-based celestial glow system");
     
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
@@ -239,7 +242,7 @@ export class SceneManager {
   }
   
   private create3DSunAndMoon(): void {
-    // Create sun with enhanced multi-layer glow
+    // Create sun with enhanced shader-based glow
     const sunGeometry = new THREE.SphereGeometry(8, 32, 32);
     const sunMaterial = new THREE.MeshStandardMaterial({
       color: 0xFFF8DC,
@@ -250,11 +253,11 @@ export class SceneManager {
     
     this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
     
-    // Create multi-layer sun glow system
-    this.createSunGlowLayers();
+    // Create shader-based sun glow
+    this.createShaderSunGlow();
     this.scene.add(this.sun);
     
-    // Create moon with enhanced multi-layer glow
+    // Create moon with enhanced shader-based glow
     const moonGeometry = new THREE.SphereGeometry(6, 32, 32);
     const moonMaterial = new THREE.MeshStandardMaterial({
       color: 0xF5F5DC,
@@ -265,217 +268,152 @@ export class SceneManager {
     
     this.moon = new THREE.Mesh(moonGeometry, moonMaterial);
     
-    // Create multi-layer moon glow system
-    this.createMoonGlowLayers();
+    // Create shader-based moon glow
+    this.createShaderMoonGlow();
     this.scene.add(this.moon);
     
     // Initial positioning
     this.updateSunAndMoonPositions();
     
-    console.log("3D sun and moon created with enhanced multi-layer glow system");
+    console.log("3D sun and moon created with shader-based atmospheric glow system");
   }
 
-  private createSunGlowLayers(): void {
+  private createShaderSunGlow(): void {
     if (!this.sun) return;
     
-    // Clear existing glow layers
-    this.sunGlowLayers.forEach(layer => {
-      this.sun?.remove(layer);
-      layer.geometry.dispose();
-      if (layer.material instanceof THREE.Material) {
-        layer.material.dispose();
+    // Clean up existing glow
+    if (this.sunGlow) {
+      this.sun.remove(this.sunGlow);
+      if (this.sunGlowMaterial) {
+        this.sunGlowMaterial.dispose();
       }
-    });
-    this.sunGlowLayers = [];
+      this.sunGlow.geometry.dispose();
+    }
     
-    // Layer 1: Inner core glow (brightest, white-yellow)
-    const innerGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(10, 16, 16),
-      new THREE.MeshBasicMaterial({
-        color: 0xFFFFAA,
-        transparent: true,
-        opacity: 0.15,
-        fog: false,
-        blending: THREE.AdditiveBlending
-      })
+    // Create shader-based glow with larger plane for smooth atmospheric effect
+    const glowGeometry = new THREE.PlaneGeometry(80, 80);
+    this.sunGlowMaterial = CelestialGlowShader.createGlowMaterial(
+      0.6,  // size - controls falloff radius
+      0.4,  // intensity
+      new THREE.Color(0xFFD700), // golden color
+      0.3,  // atmospheric density
+      1.8   // falloff power for smooth transition
     );
-    this.sun.add(innerGlow);
-    this.sunGlowLayers.push(innerGlow);
     
-    // Layer 2: Middle atmospheric glow (yellow-orange)
-    const middleGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(14, 16, 16),
-      new THREE.MeshBasicMaterial({
-        color: 0xFFDD44,
-        transparent: true,
-        opacity: 0.10,
-        fog: false,
-        blending: THREE.AdditiveBlending
-      })
-    );
-    this.sun.add(middleGlow);
-    this.sunGlowLayers.push(middleGlow);
+    this.sunGlow = new THREE.Mesh(glowGeometry, this.sunGlowMaterial);
     
-    // Layer 3: Outer scattering layer (orange-red)
-    const outerGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(18, 16, 16),
-      new THREE.MeshBasicMaterial({
-        color: 0xFFAA44,
-        transparent: true,
-        opacity: 0.06,
-        fog: false,
-        blending: THREE.AdditiveBlending
-      })
-    );
-    this.sun.add(outerGlow);
-    this.sunGlowLayers.push(outerGlow);
+    // Position glow to always face camera
+    this.sunGlow.renderOrder = -1; // Render behind other objects
+    this.sun.add(this.sunGlow);
     
-    // Layer 4: Distant atmospheric halo (red-orange)
-    const haloGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(22, 16, 16),
-      new THREE.MeshBasicMaterial({
-        color: 0xFF8844,
-        transparent: true,
-        opacity: 0.03,
-        fog: false,
-        blending: THREE.AdditiveBlending
-      })
-    );
-    this.sun.add(haloGlow);
-    this.sunGlowLayers.push(haloGlow);
-    
-    console.log("Sun multi-layer glow system created with 4 layers");
+    console.log("Shader-based sun glow created with atmospheric scattering");
   }
 
-  private createMoonGlowLayers(): void {
+  private createShaderMoonGlow(): void {
     if (!this.moon) return;
     
-    // Clear existing glow layers
-    this.moonGlowLayers.forEach(layer => {
-      this.moon?.remove(layer);
-      layer.geometry.dispose();
-      if (layer.material instanceof THREE.Material) {
-        layer.material.dispose();
+    // Clean up existing glow
+    if (this.moonGlow) {
+      this.moon.remove(this.moonGlow);
+      if (this.moonGlowMaterial) {
+        this.moonGlowMaterial.dispose();
       }
-    });
-    this.moonGlowLayers = [];
+      this.moonGlow.geometry.dispose();
+    }
     
-    // Layer 1: Inner core glow (soft white)
-    const innerGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(8, 16, 16),
-      new THREE.MeshBasicMaterial({
-        color: 0xF0F8FF,
-        transparent: true,
-        opacity: 0.25,
-        fog: false,
-        blending: THREE.AdditiveBlending
-      })
+    // Create shader-based moon glow with cooler tones
+    const glowGeometry = new THREE.PlaneGeometry(60, 60);
+    this.moonGlowMaterial = CelestialGlowShader.createGlowMaterial(
+      0.7,  // size - slightly larger falloff for moon
+      0.5,  // intensity
+      new THREE.Color(0xB0C4DE), // steel blue color
+      0.2,  // atmospheric density
+      2.2   // falloff power for softer transition
     );
-    this.moon.add(innerGlow);
-    this.moonGlowLayers.push(innerGlow);
     
-    // Layer 2: Middle atmospheric glow (pale blue)
-    const middleGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(11, 16, 16),
-      new THREE.MeshBasicMaterial({
-        color: 0xE6F3FF,
-        transparent: true,
-        opacity: 0.18,
-        fog: false,
-        blending: THREE.AdditiveBlending
-      })
-    );
-    this.moon.add(middleGlow);
-    this.moonGlowLayers.push(middleGlow);
+    this.moonGlow = new THREE.Mesh(glowGeometry, this.moonGlowMaterial);
     
-    // Layer 3: Outer diffuse layer (steel blue)
-    const outerGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(14, 16, 16),
-      new THREE.MeshBasicMaterial({
-        color: 0xB0C4DE,
-        transparent: true,
-        opacity: 0.12,
-        fog: false,
-        blending: THREE.AdditiveBlending
-      })
-    );
-    this.moon.add(outerGlow);
-    this.moonGlowLayers.push(outerGlow);
+    // Position glow to always face camera
+    this.moonGlow.renderOrder = -1; // Render behind other objects
+    this.moon.add(this.moonGlow);
     
-    console.log("Moon multi-layer glow system created with 3 layers");
+    console.log("Shader-based moon glow created with atmospheric scattering");
   }
 
   private updateCelestialGlow(): void {
-    if (!this.sun || !this.moon) return;
+    if (!this.sun || !this.moon || !this.sunGlowMaterial || !this.moonGlowMaterial) return;
     
     const sunAngle = (this.timeOfDay - 0.25) * Math.PI * 2;
     const moonAngle = sunAngle + Math.PI;
     
-    // Update sun glow based on elevation and time of day
+    // Update sun glow based on elevation and atmospheric conditions
     const sunElevation = Math.sin(sunAngle);
-    const sunVisible = sunElevation > -0.1; // Slightly below horizon for atmospheric effects
+    const sunVisible = sunElevation > -0.1;
     
-    if (sunVisible && this.sunGlowLayers.length > 0) {
-      // Base intensity increases near horizon (sunrise/sunset effect)
-      const atmosphericFactor = 1.0 + (1.0 - Math.abs(sunElevation)) * 0.8;
-      const baseIntensity = Math.max(0.1, sunElevation * 0.8 + 0.2);
+    if (sunVisible && this.sunGlow) {
+      // Enhanced atmospheric scattering at horizon
+      const atmosphericFactor = 1.0 + (1.0 - Math.abs(sunElevation)) * 1.2;
+      const baseIntensity = Math.max(0.1, sunElevation * 0.6 + 0.4);
       
-      // Layer 0: Inner core - brightest, consistent
-      const innerMaterial = this.sunGlowLayers[0].material as THREE.MeshBasicMaterial;
-      innerMaterial.opacity = baseIntensity * 0.15 * atmosphericFactor;
+      // Dynamic size based on elevation (larger at horizon)
+      const glowSize = 0.6 + (1.0 - Math.abs(sunElevation)) * 0.3;
       
-      // Layer 1: Middle - varies with elevation
-      const middleMaterial = this.sunGlowLayers[1].material as THREE.MeshBasicMaterial;
-      middleMaterial.opacity = baseIntensity * 0.10 * atmosphericFactor;
-      
-      // Layer 2: Outer - more prominent at horizon
-      const outerMaterial = this.sunGlowLayers[2].material as THREE.MeshBasicMaterial;
-      outerMaterial.opacity = baseIntensity * 0.06 * atmosphericFactor * 1.2;
-      
-      // Layer 3: Halo - strongest atmospheric scattering effect
-      if (this.sunGlowLayers[3]) {
-        const haloMaterial = this.sunGlowLayers[3].material as THREE.MeshBasicMaterial;
-        haloMaterial.opacity = baseIntensity * 0.03 * atmosphericFactor * 1.5;
-        
-        // Color shift for sunset/sunrise
-        if (sunElevation < 0.3) {
-          haloMaterial.color.setHex(0xFF6644); // More red at horizon
-        } else {
-          haloMaterial.color.setHex(0xFF8844); // Normal orange
-        }
+      // Color temperature shift for sunrise/sunset
+      let glowColor = new THREE.Color(0xFFD700);
+      if (sunElevation < 0.3) {
+        glowColor = new THREE.Color(0xFF8844); // Warmer orange at horizon
       }
-    } else {
-      // Hide sun glow when below horizon
-      this.sunGlowLayers.forEach(layer => {
-        (layer.material as THREE.MeshBasicMaterial).opacity = 0;
-      });
+      
+      CelestialGlowShader.updateGlowMaterial(
+        this.sunGlowMaterial,
+        glowSize,
+        baseIntensity * atmosphericFactor * 0.8,
+        glowColor,
+        0.3 + atmosphericFactor * 0.2,
+        1.8,
+        this.timeOfDay * 10 // time for subtle animation
+      );
+      
+      this.sunGlow.visible = true;
+      
+      // Make glow face camera
+      if (this.camera) {
+        this.sunGlow.lookAt(this.camera.position);
+      }
+    } else if (this.sunGlow) {
+      this.sunGlow.visible = false;
     }
     
-    // Update moon glow based on elevation and moon phase
+    // Update moon glow based on elevation and phase
     const moonElevation = Math.sin(moonAngle);
     const moonVisible = moonElevation > -0.1;
     const moonElevationFactor = this.getMoonElevationFactor();
     
-    if (moonVisible && this.moonGlowLayers.length > 0) {
-      const baseIntensity = Math.max(0.1, moonElevation * 0.6 + 0.4);
-      const elevationBoost = 1.0 + moonElevationFactor * 0.5;
+    if (moonVisible && this.moonGlow) {
+      const baseIntensity = Math.max(0.2, moonElevation * 0.4 + 0.6);
+      const elevationBoost = 1.0 + moonElevationFactor * 0.8;
       
-      // Layer 0: Inner core - soft and consistent
-      const innerMaterial = this.moonGlowLayers[0].material as THREE.MeshBasicMaterial;
-      innerMaterial.opacity = baseIntensity * 0.25 * elevationBoost;
+      // Larger glow size for moon's softer atmospheric effect
+      const glowSize = 0.7 + moonElevationFactor * 0.2;
       
-      // Layer 1: Middle - varies with elevation
-      const middleMaterial = this.moonGlowLayers[1].material as THREE.MeshBasicMaterial;
-      middleMaterial.opacity = baseIntensity * 0.18 * elevationBoost;
+      CelestialGlowShader.updateGlowMaterial(
+        this.moonGlowMaterial,
+        glowSize,
+        baseIntensity * elevationBoost * 0.6,
+        new THREE.Color(0xB0C4DE),
+        0.2 + moonElevationFactor * 0.1,
+        2.2,
+        this.timeOfDay * 8 // slower animation for moon
+      );
       
-      // Layer 2: Outer - subtle atmospheric diffusion
-      const outerMaterial = this.moonGlowLayers[2].material as THREE.MeshBasicMaterial;
-      outerMaterial.opacity = baseIntensity * 0.12 * elevationBoost;
-    } else {
-      // Hide moon glow when below horizon
-      this.moonGlowLayers.forEach(layer => {
-        (layer.material as THREE.MeshBasicMaterial).opacity = 0;
-      });
+      this.moonGlow.visible = true;
+      
+      // Make glow face camera
+      if (this.camera) {
+        this.moonGlow.lookAt(this.camera.position);
+      }
+    } else if (this.moonGlow) {
+      this.moonGlow.visible = false;
     }
   }
   
@@ -612,7 +550,7 @@ export class SceneManager {
       }
       
       this.updateSunAndMoonPositions();
-      this.updateCelestialGlow(); // Add dynamic glow updates
+      this.updateCelestialGlow(); // Now uses shader-based glow system
       this.updateSynchronizedDayNightLighting();
       this.updateStarVisibility();
       this.updateSynchronizedFogForTime();
@@ -730,7 +668,7 @@ export class SceneManager {
   }
 
   public createDefaultWorld(): void {
-    console.log('Creating default world with integrated SkyboxSystem...');
+    console.log('Creating default world with shader-based celestial glow system...');
     
     this.createSimpleGround();
     console.log('Simple ground plane created at origin');
@@ -753,7 +691,7 @@ export class SceneManager {
     console.log('SkyboxSystem initialized and updated');
     
     this.create3DSunAndMoon();
-    console.log('3D sun and moon created with enhanced multi-layer glow');
+    console.log('3D sun and moon created with shader-based atmospheric glow');
     
     this.createStarField();
     console.log('Star field created');
@@ -770,7 +708,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('World with enhanced celestial glow system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('World with shader-based celestial glow system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     if (this.debugMode) {
       (window as any).sceneDebug = {
@@ -1106,15 +1044,23 @@ export class SceneManager {
       this.volumetricFogSystem = null;
     }
     
+    // Dispose shader-based glow systems
+    if (this.sunGlowMaterial) {
+      this.sunGlowMaterial.dispose();
+      this.sunGlowMaterial = null;
+    }
+    
+    if (this.moonGlowMaterial) {
+      this.moonGlowMaterial.dispose();
+      this.moonGlowMaterial = null;
+    }
+    
     if (this.sun) {
-      // Dispose sun glow layers
-      this.sunGlowLayers.forEach(layer => {
-        if (layer.geometry) layer.geometry.dispose();
-        if (layer.material instanceof THREE.Material) {
-          layer.material.dispose();
-        }
-      });
-      this.sunGlowLayers = [];
+      if (this.sunGlow) {
+        this.sun.remove(this.sunGlow);
+        this.sunGlow.geometry.dispose();
+        this.sunGlow = null;
+      }
       
       this.scene.remove(this.sun);
       if (this.sun.geometry) this.sun.geometry.dispose();
@@ -1125,14 +1071,11 @@ export class SceneManager {
     }
     
     if (this.moon) {
-      // Dispose moon glow layers
-      this.moonGlowLayers.forEach(layer => {
-        if (layer.geometry) layer.geometry.dispose();
-        if (layer.material instanceof THREE.Material) {
-          layer.material.dispose();
-        }
-      });
-      this.moonGlowLayers = [];
+      if (this.moonGlow) {
+        this.moon.remove(this.moonGlow);
+        this.moonGlow.geometry.dispose();
+        this.moonGlow = null;
+      }
       
       this.scene.remove(this.moon);
       if (this.moon.geometry) this.moon.geometry.dispose();
@@ -1161,7 +1104,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    console.log("SceneManager with enhanced celestial glow system disposed");
+    console.log("SceneManager with shader-based celestial glow system disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
