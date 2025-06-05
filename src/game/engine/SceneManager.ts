@@ -76,8 +76,8 @@ export class SceneManager {
   // Distance-based fog system
   private fog: THREE.Fog;
   
-  // Enhanced time of day system (1-minute cycle)
-  private timeOfDay: number = 0.25;
+  // Enhanced time of day system (15-minute cycle, spawn after sunrise)
+  private timeOfDay: number = 0.35; // Start at 0.35 (after sunrise, mid-morning)
   private dayNightCycleEnabled: boolean = true;
   
   // Enemy spawning system
@@ -698,9 +698,9 @@ export class SceneManager {
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created for shadow testing');
     
-    // Initialize skybox with initial time
+    // Initialize skybox with initial time (after sunrise)
     this.skyboxSystem.update(this.timeOfDay, new THREE.Vector3(0, 0, 0));
-    console.log('SkyboxSystem initialized and updated');
+    console.log('SkyboxSystem initialized and updated with morning time');
     
     this.create3DSunAndMoon();
     console.log('3D sun and moon created with shader-based atmospheric glow');
@@ -720,7 +720,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('World with enhanced terrain and 3D grass system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('World with enhanced terrain and 3D grass system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours (morning spawn)');
     
     if (this.debugMode) {
       (window as any).sceneDebug = {
