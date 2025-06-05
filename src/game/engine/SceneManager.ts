@@ -18,6 +18,7 @@ import { SkyboxSystem } from '../effects/SkyboxSystem';
 import { ColorUtils } from '../utils/ColorUtils';
 import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
+import { CelestialGlowSystem } from '../effects/CelestialGlowSystem';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -74,6 +75,9 @@ export class SceneManager {
   
   // Volumetric fog system
   private volumetricFogSystem: VolumetricFogSystem | null = null;
+  
+  // Add celestial glow system
+  private celestialGlowSystem: CelestialGlowSystem;
   
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
@@ -245,19 +249,10 @@ export class SceneManager {
     });
     
     this.sun = new THREE.Mesh(sunGeometry, sunMaterial);
-    
-    // Add sun glow effect
-    const sunGlowGeometry = new THREE.SphereGeometry(8.5, 16, 16);
-    const sunGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xFFFFAA,
-      transparent: true,
-      opacity: 0.08,
-      fog: false
-    });
-    const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
-    this.sun.add(sunGlow);
-    
     this.scene.add(this.sun);
+    
+    // Create enhanced sun glow using the new system
+    this.celestialGlowSystem.createSunGlow(this.sun);
     
     // Create moon
     const moonGeometry = new THREE.SphereGeometry(6, 32, 32);
@@ -269,24 +264,15 @@ export class SceneManager {
     });
     
     this.moon = new THREE.Mesh(moonGeometry, moonMaterial);
-    
-    // Add moon glow
-    const moonGlowGeometry = new THREE.SphereGeometry(9, 16, 16);
-    const moonGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xB0C4DE,
-      transparent: true,
-      opacity: 0.2,
-      fog: false
-    });
-    const moonGlow = new THREE.Mesh(moonGlowGeometry, moonGlowMaterial);
-    this.moon.add(moonGlow);
-    
     this.scene.add(this.moon);
+    
+    // Create enhanced moon glow using the new system
+    this.celestialGlowSystem.createMoonGlow(this.moon);
     
     // Initial positioning
     this.updateSunAndMoonPositions();
     
-    console.log("3D sun and moon created");
+    console.log("3D sun and moon created with enhanced multi-layer glow effects");
   }
   
   private createStarField(): void {
@@ -373,6 +359,30 @@ export class SceneManager {
     // Update sun and moon visibility
     this.sun.visible = sunY > -10;
     this.moon.visible = moonY > -10;
+    
+    // Update glow effects based on position and atmospheric conditions
+    const atmosphericDensity = this.getAtmosphericDensity();
+    this.celestialGlowSystem.updateSunGlow(this.timeOfDay, sunY, atmosphericDensity);
+    this.celestialGlowSystem.updateMoonGlow(this.timeOfDay, moonY, atmosphericDensity);
+  }
+  
+  private getAtmosphericDensity(): number {
+    // Calculate atmospheric density based on fog and time of day
+    const currentPhase = TimeUtils.getCurrentPhase(this.timeOfDay, TIME_PHASES);
+    
+    // Base atmospheric density
+    let density = 1.0;
+    
+    // Increase density during twilight phases for more atmospheric scattering
+    if (currentPhase === 'dawn' || currentPhase === 'sunset') {
+      density = 1.4;
+    } else if (currentPhase === 'civilTwilight' || currentPhase === 'nauticalTwilight') {
+      density = 1.2;
+    } else if (currentPhase === 'night' || currentPhase === 'astronomicalTwilight') {
+      density = 0.8; // Clearer night sky
+    }
+    
+    return density;
   }
   
   private updateStarVisibility(): void {
@@ -889,6 +899,10 @@ export class SceneManager {
       this.skyboxSystem.dispose();
     }
     
+    if (this.celestialGlowSystem) {
+      this.celestialGlowSystem.dispose();
+    }
+    
     if (this.environmentCollisionManager) {
       this.environmentCollisionManager.dispose();
     }
@@ -952,7 +966,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    console.log("SceneManager with integrated SkyboxSystem disposed");
+    console.log("SceneManager with integrated SkyboxSystem and CelestialGlowSystem disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
