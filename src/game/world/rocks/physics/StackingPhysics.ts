@@ -23,6 +23,53 @@ export class StackingPhysics {
     }
   }
   
+  public positionFoundationRock(rock: THREE.Object3D, position: THREE.Vector3, size: number): void {
+    rock.position.copy(position);
+    rock.position.y -= size * 0.15; // Embed 15% into ground
+    rock.scale.set(size, size, size);
+  }
+  
+  public positionSupportRock(rock: THREE.Object3D, position: THREE.Vector3, size: number, existingRocks: THREE.Object3D[]): void {
+    const nearest = this.findNearestRock(position, existingRocks);
+    if (nearest) {
+      const offset = position.clone().sub(nearest.position).normalize().multiplyScalar(size);
+      rock.position.copy(nearest.position).add(offset);
+      rock.position.y = nearest.position.y + size * 0.5;
+      rock.scale.set(size, size, size);
+    } else {
+      // Fallback to foundation positioning
+      this.positionFoundationRock(rock, position, size);
+    }
+  }
+  
+  public positionAccentRock(rock: THREE.Object3D, position: THREE.Vector3, size: number, existingRocks: THREE.Object3D[]): void {
+    const nearest = this.findNearestRock(position, existingRocks);
+    if (nearest) {
+      const offset = position.clone().sub(nearest.position).normalize().multiplyScalar(size * 0.5);
+      rock.position.copy(nearest.position).add(offset);
+      rock.position.y = nearest.position.y + size * 0.7;
+      rock.scale.set(size, size, size);
+    } else {
+      // Fallback to foundation positioning
+      this.positionFoundationRock(rock, position, size);
+    }
+  }
+  
+  private findNearestRock(position: THREE.Vector3, rocks: THREE.Object3D[]): THREE.Object3D | null {
+    let nearest: THREE.Object3D | null = null;
+    let minDist = Infinity;
+    
+    for (const rock of rocks) {
+      const dist = position.distanceTo(rock.position);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = rock;
+      }
+    }
+    
+    return nearest;
+  }
+  
   private static calculateFoundationPosition(
     rock: RockInstance,
     clusterCenter: THREE.Vector3

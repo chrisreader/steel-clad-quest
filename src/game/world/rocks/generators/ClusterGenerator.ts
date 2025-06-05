@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { 
   ClusterConfiguration, 
@@ -5,15 +6,17 @@ import {
   ClusterTier, 
   EnvironmentalDetail 
 } from '../types/ClusterTypes';
-import { RockInstance, RockShapeType } from '../types/RockTypes';
+import { RockInstance, RockShapeType, RockVariation } from '../types/RockTypes';
 import { RockShapeFactory } from './RockShapeFactory';
 import { StackingPhysics } from '../physics/StackingPhysics';
 
 export class ClusterGenerator {
   private shapeFactory: RockShapeFactory;
+  private stackingPhysics: StackingPhysics;
   
   constructor() {
     this.shapeFactory = new RockShapeFactory();
+    this.stackingPhysics = new StackingPhysics();
   }
   
   public generateCluster(config: ClusterConfiguration): {
@@ -37,6 +40,147 @@ export class ClusterGenerator {
       : [];
     
     return { rocks, environmentalDetails };
+  }
+  
+  public generateClusterFromVariation(variation: RockVariation, position: THREE.Vector3): THREE.Group {
+    const cluster = new THREE.Group();
+    const clusterSize = variation.clusterSize || [3, 5];
+    const rockCount = Math.floor(Math.random() * (clusterSize[1] - clusterSize[0] + 1)) + clusterSize[0];
+    
+    // Calculate tier counts (40% foundation, 40% support, 20% accent)
+    const foundationCount = Math.ceil(rockCount * 0.4);
+    const supportCount = Math.ceil(rockCount * 0.4);
+    const accentCount = rockCount - foundationCount - supportCount;
+    
+    const radius = variation.sizeRange[1] * 5;
+    const voronoiPoints = this.generateVoronoiPoints(rockCount, radius);
+    
+    let rockIndex = 0;
+    
+    // Generate foundation rocks
+    for (let i = 0; i < foundationCount; i++) {
+      const size = variation.sizeRange[1] * (0.8 + Math.random() * 0.2);
+      const shapeType = this.selectShapeForTier('foundation');
+      
+      const rockInstance = this.shapeFactory.createRock(shapeType, {
+        shapeType,
+        sizeRange: { min: size, max: size },
+        materialVariation: 0.3,
+        weatheringRange: { min: 0.1, max: 0.4 },
+        variation,
+        shape: this.shapeFactory.getShapeForType ? this.shapeFactory.getShapeForType(shapeType) : undefined
+      });
+      
+      const pos = voronoiPoints[rockIndex++];
+      pos.y = 0;
+      
+      this.stackingPhysics.positionFoundationRock(rockInstance.mesh, pos, size);
+      cluster.add(rockInstance.mesh);
+    }
+    
+    // Generate support rocks
+    for (let i = 0; i < supportCount; i++) {
+      const size = variation.sizeRange[1] * (0.5 + Math.random() * 0.3);
+      const shapeType = this.selectShapeForTier('support');
+      
+      const rockInstance = this.shapeFactory.createRock(shapeType, {
+        shapeType,
+        sizeRange: { min: size, max: size },
+        materialVariation: 0.3,
+        weatheringRange: { min: 0.1, max: 0.4 },
+        variation
+      });
+      
+      const pos = voronoiPoints[rockIndex++];
+      this.stackingPhysics.positionSupportRock(rockInstance.mesh, pos, size, cluster.children);
+      cluster.add(rockInstance.mesh);
+    }
+    
+    // Generate accent rocks
+    for (let i = 0; i < accentCount; i++) {
+      const size = variation.sizeRange[1] * (0.2 + Math.random() * 0.3);
+      const shapeType = this.selectShapeForTier('accent');
+      
+      const rockInstance = this.shapeFactory.createRock(shapeType, {
+        shapeType,
+        sizeRange: { min: size, max: size },
+        materialVariation: 0.3,
+        weatheringRange: { min: 0.1, max: 0.4 },
+        variation
+      });
+      
+      const pos = voronoiPoints[rockIndex++];
+      this.stackingPhysics.positionAccentRock(rockInstance.mesh, pos, size, cluster.children);
+      cluster.add(rockInstance.mesh);
+    }
+    
+    // Add environmental details
+    this.addEnvironmentalDetails(cluster, radius);
+    
+    cluster.position.copy(position);
+    return cluster;
+  }
+  
+  private generateVoronoiPoints(count: number, radius: number): THREE.Vector3[] {
+    const points: THREE.Vector3[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.sqrt(Math.random()) * radius;
+      points.push(new THREE.Vector3(
+        Math.cos(angle) * dist, 
+        0, 
+        Math.sin(angle) * dist
+      ));
+    }
+    
+    return points;
+  }
+  
+  private addEnvironmentalDetails(cluster: THREE.Group, radius: number): void {
+    // Add sediment/debris (6-14 particles)
+    const debrisCount = 6 + Math.floor(Math.random() * 9);
+    for (let i = 0; i < debrisCount; i++) {
+      const debris = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05 + Math.random() * 0.1, 6, 4),
+        new THREE.MeshStandardMaterial({ 
+          color: new THREE.Color(0x8B7355).lerp(new THREE.Color(0x654321), Math.random()),
+          roughness: 0.9 
+        })
+      );
+      
+      const angle = Math.random() * Math.PI * 2;
+      const dist = radius * (0.5 + Math.random() * 0.5);
+      debris.position.set(
+        Math.cos(angle) * dist, 
+        -0.02, // Slightly embedded
+        Math.sin(angle) * dist
+      );
+      
+      cluster.add(debris);
+    }
+    
+    // Add vegetation (2-7 plants, north side preference)
+    const plantCount = 2 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < plantCount; i++) {
+      const plant = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.05, 0.05, 0.2 + Math.random() * 0.3, 8),
+        new THREE.MeshStandardMaterial({ 
+          color: new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.7, 0.4)
+        })
+      );
+      
+      // Prefer north side (negative Z direction) for shelter
+      const angle = -Math.PI/2 + (Math.random() - 0.5) * Math.PI;
+      const dist = radius * (0.3 + Math.random() * 0.4);
+      plant.position.set(
+        Math.cos(angle) * dist, 
+        0.15, 
+        Math.sin(angle) * dist
+      );
+      
+      cluster.add(plant);
+    }
   }
   
   private generateTierRocks(
