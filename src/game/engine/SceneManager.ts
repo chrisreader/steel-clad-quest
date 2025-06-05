@@ -288,67 +288,63 @@ export class SceneManager {
     });
     this.sunGlowLayers = [];
     
-    // Layer 1: Inner core glow (brightest, smooth falloff)
+    // Layer 1: Inner core glow (brightest, white-yellow)
     const innerGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(12, 16, 16),
+      new THREE.SphereGeometry(10, 16, 16),
       new THREE.MeshBasicMaterial({
-        color: 0xFFFFDD,
+        color: 0xFFFFAA,
         transparent: true,
-        opacity: 0.08,
+        opacity: 0.15,
         fog: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide // Render from inside for softer effect
+        blending: THREE.AdditiveBlending
       })
     );
     this.sun.add(innerGlow);
     this.sunGlowLayers.push(innerGlow);
     
-    // Layer 2: Middle atmospheric glow (softer, more diffuse)
+    // Layer 2: Middle atmospheric glow (yellow-orange)
     const middleGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(18, 16, 16),
+      new THREE.SphereGeometry(14, 16, 16),
       new THREE.MeshBasicMaterial({
-        color: 0xFFDD88,
+        color: 0xFFDD44,
         transparent: true,
-        opacity: 0.04,
+        opacity: 0.10,
         fog: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide
+        blending: THREE.AdditiveBlending
       })
     );
     this.sun.add(middleGlow);
     this.sunGlowLayers.push(middleGlow);
     
-    // Layer 3: Outer atmospheric diffusion (very soft)
+    // Layer 3: Outer scattering layer (orange-red)
     const outerGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(25, 16, 16),
+      new THREE.SphereGeometry(18, 16, 16),
       new THREE.MeshBasicMaterial({
-        color: 0xFFAA66,
+        color: 0xFFAA44,
         transparent: true,
-        opacity: 0.02,
+        opacity: 0.06,
         fog: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide
+        blending: THREE.AdditiveBlending
       })
     );
     this.sun.add(outerGlow);
     this.sunGlowLayers.push(outerGlow);
     
-    // Layer 4: Far atmospheric halo (barely visible, very large)
+    // Layer 4: Distant atmospheric halo (red-orange)
     const haloGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(35, 16, 16),
+      new THREE.SphereGeometry(22, 16, 16),
       new THREE.MeshBasicMaterial({
         color: 0xFF8844,
         transparent: true,
-        opacity: 0.01,
+        opacity: 0.03,
         fog: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide
+        blending: THREE.AdditiveBlending
       })
     );
     this.sun.add(haloGlow);
     this.sunGlowLayers.push(haloGlow);
     
-    console.log("Sun multi-layer glow system created with soft atmospheric blending");
+    console.log("Sun multi-layer glow system created with 4 layers");
   }
 
   private createMoonGlowLayers(): void {
@@ -366,50 +362,47 @@ export class SceneManager {
     
     // Layer 1: Inner core glow (soft white)
     const innerGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(9, 16, 16),
+      new THREE.SphereGeometry(8, 16, 16),
       new THREE.MeshBasicMaterial({
-        color: 0xF8F8FF,
+        color: 0xF0F8FF,
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.25,
         fog: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide
+        blending: THREE.AdditiveBlending
       })
     );
     this.moon.add(innerGlow);
     this.moonGlowLayers.push(innerGlow);
     
-    // Layer 2: Middle atmospheric glow (pale blue, very soft)
+    // Layer 2: Middle atmospheric glow (pale blue)
     const middleGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(14, 16, 16),
+      new THREE.SphereGeometry(11, 16, 16),
       new THREE.MeshBasicMaterial({
         color: 0xE6F3FF,
         transparent: true,
-        opacity: 0.06,
+        opacity: 0.18,
         fog: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide
+        blending: THREE.AdditiveBlending
       })
     );
     this.moon.add(middleGlow);
     this.moonGlowLayers.push(middleGlow);
     
-    // Layer 3: Outer diffuse layer (subtle blue tint)
+    // Layer 3: Outer diffuse layer (steel blue)
     const outerGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(20, 16, 16),
+      new THREE.SphereGeometry(14, 16, 16),
       new THREE.MeshBasicMaterial({
-        color: 0xD0E7FF,
+        color: 0xB0C4DE,
         transparent: true,
-        opacity: 0.03,
+        opacity: 0.12,
         fog: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.BackSide
+        blending: THREE.AdditiveBlending
       })
     );
     this.moon.add(outerGlow);
     this.moonGlowLayers.push(outerGlow);
     
-    console.log("Moon multi-layer glow system created with soft atmospheric blending");
+    console.log("Moon multi-layer glow system created with 3 layers");
   }
 
   private updateCelestialGlow(): void {
@@ -418,68 +411,68 @@ export class SceneManager {
     const sunAngle = (this.timeOfDay - 0.25) * Math.PI * 2;
     const moonAngle = sunAngle + Math.PI;
     
-    // Update sun glow based on elevation and atmospheric conditions
+    // Update sun glow based on elevation and time of day
     const sunElevation = Math.sin(sunAngle);
-    const sunVisible = sunElevation > -0.2; // Slightly below horizon for atmospheric effects
+    const sunVisible = sunElevation > -0.1; // Slightly below horizon for atmospheric effects
     
     if (sunVisible && this.sunGlowLayers.length > 0) {
-      // Atmospheric scattering increases near horizon
-      const atmosphericFactor = 1.0 + (1.0 - Math.abs(sunElevation)) * 1.2;
-      const baseIntensity = Math.max(0.05, sunElevation * 0.6 + 0.3);
+      // Base intensity increases near horizon (sunrise/sunset effect)
+      const atmosphericFactor = 1.0 + (1.0 - Math.abs(sunElevation)) * 0.8;
+      const baseIntensity = Math.max(0.1, sunElevation * 0.8 + 0.2);
       
-      // Layer 0: Inner core - smooth, consistent glow
+      // Layer 0: Inner core - brightest, consistent
       const innerMaterial = this.sunGlowLayers[0].material as THREE.MeshBasicMaterial;
-      innerMaterial.opacity = baseIntensity * 0.08 * atmosphericFactor;
+      innerMaterial.opacity = baseIntensity * 0.15 * atmosphericFactor;
       
-      // Layer 1: Middle - atmospheric diffusion
+      // Layer 1: Middle - varies with elevation
       const middleMaterial = this.sunGlowLayers[1].material as THREE.MeshBasicMaterial;
-      middleMaterial.opacity = baseIntensity * 0.04 * atmosphericFactor;
+      middleMaterial.opacity = baseIntensity * 0.10 * atmosphericFactor;
       
-      // Layer 2: Outer - stronger at horizon (sunset/sunrise effect)
+      // Layer 2: Outer - more prominent at horizon
       const outerMaterial = this.sunGlowLayers[2].material as THREE.MeshBasicMaterial;
-      outerMaterial.opacity = baseIntensity * 0.02 * atmosphericFactor * 1.5;
+      outerMaterial.opacity = baseIntensity * 0.06 * atmosphericFactor * 1.2;
       
-      // Layer 3: Halo - maximum atmospheric scattering
+      // Layer 3: Halo - strongest atmospheric scattering effect
       if (this.sunGlowLayers[3]) {
         const haloMaterial = this.sunGlowLayers[3].material as THREE.MeshBasicMaterial;
-        haloMaterial.opacity = baseIntensity * 0.01 * atmosphericFactor * 2.0;
+        haloMaterial.opacity = baseIntensity * 0.03 * atmosphericFactor * 1.5;
         
-        // Color shift for sunrise/sunset atmosphere
+        // Color shift for sunset/sunrise
         if (sunElevation < 0.3) {
-          haloMaterial.color.setHex(0xFF6644); // Warmer at horizon
+          haloMaterial.color.setHex(0xFF6644); // More red at horizon
         } else {
-          haloMaterial.color.setHex(0xFF8844); // Normal atmospheric color
+          haloMaterial.color.setHex(0xFF8844); // Normal orange
         }
       }
     } else {
-      // Fade out sun glow smoothly when below horizon
+      // Hide sun glow when below horizon
       this.sunGlowLayers.forEach(layer => {
         (layer.material as THREE.MeshBasicMaterial).opacity = 0;
       });
     }
     
-    // Update moon glow with soft, natural variation
+    // Update moon glow based on elevation and moon phase
     const moonElevation = Math.sin(moonAngle);
-    const moonVisible = moonElevation > -0.15;
+    const moonVisible = moonElevation > -0.1;
     const moonElevationFactor = this.getMoonElevationFactor();
     
     if (moonVisible && this.moonGlowLayers.length > 0) {
-      const baseIntensity = Math.max(0.08, moonElevation * 0.4 + 0.3);
-      const elevationBoost = 1.0 + moonElevationFactor * 0.3;
+      const baseIntensity = Math.max(0.1, moonElevation * 0.6 + 0.4);
+      const elevationBoost = 1.0 + moonElevationFactor * 0.5;
       
-      // Layer 0: Inner core - soft, consistent moonlight
+      // Layer 0: Inner core - soft and consistent
       const innerMaterial = this.moonGlowLayers[0].material as THREE.MeshBasicMaterial;
-      innerMaterial.opacity = baseIntensity * 0.12 * elevationBoost;
+      innerMaterial.opacity = baseIntensity * 0.25 * elevationBoost;
       
-      // Layer 1: Middle - atmospheric diffusion
+      // Layer 1: Middle - varies with elevation
       const middleMaterial = this.moonGlowLayers[1].material as THREE.MeshBasicMaterial;
-      middleMaterial.opacity = baseIntensity * 0.06 * elevationBoost;
+      middleMaterial.opacity = baseIntensity * 0.18 * elevationBoost;
       
-      // Layer 2: Outer - subtle atmospheric glow
+      // Layer 2: Outer - subtle atmospheric diffusion
       const outerMaterial = this.moonGlowLayers[2].material as THREE.MeshBasicMaterial;
-      outerMaterial.opacity = baseIntensity * 0.03 * elevationBoost;
+      outerMaterial.opacity = baseIntensity * 0.12 * elevationBoost;
     } else {
-      // Fade out moon glow when below horizon
+      // Hide moon glow when below horizon
       this.moonGlowLayers.forEach(layer => {
         (layer.material as THREE.MeshBasicMaterial).opacity = 0;
       });
