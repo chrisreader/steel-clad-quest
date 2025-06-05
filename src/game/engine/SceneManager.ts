@@ -290,8 +290,8 @@ export class SceneManager {
       this.sunGlow.geometry.dispose();
     }
     
-    // Create shader-based glow with larger plane for smooth atmospheric effect
-    const glowGeometry = new THREE.PlaneGeometry(80, 80);
+    // Create shader-based glow with SphereGeometry for seamless edges
+    const glowGeometry = new THREE.SphereGeometry(40, 32, 32);
     this.sunGlowMaterial = CelestialGlowShader.createGlowMaterial(
       0.6,  // size - controls falloff radius
       0.4,  // intensity
@@ -302,11 +302,11 @@ export class SceneManager {
     
     this.sunGlow = new THREE.Mesh(glowGeometry, this.sunGlowMaterial);
     
-    // Position glow to always face camera
-    this.sunGlow.renderOrder = -1; // Render behind other objects
+    // Position glow behind sun
+    this.sunGlow.renderOrder = -1;
     this.sun.add(this.sunGlow);
     
-    console.log("Shader-based sun glow created with atmospheric scattering");
+    console.log("Shader-based sun glow created with spherical geometry for seamless edges");
   }
 
   private createShaderMoonGlow(): void {
@@ -321,8 +321,8 @@ export class SceneManager {
       this.moonGlow.geometry.dispose();
     }
     
-    // Create shader-based moon glow with cooler tones
-    const glowGeometry = new THREE.PlaneGeometry(60, 60);
+    // Create shader-based moon glow with SphereGeometry
+    const glowGeometry = new THREE.SphereGeometry(30, 32, 32);
     this.moonGlowMaterial = CelestialGlowShader.createGlowMaterial(
       0.7,  // size - slightly larger falloff for moon
       0.5,  // intensity
@@ -333,11 +333,11 @@ export class SceneManager {
     
     this.moonGlow = new THREE.Mesh(glowGeometry, this.moonGlowMaterial);
     
-    // Position glow to always face camera
-    this.moonGlow.renderOrder = -1; // Render behind other objects
+    // Position glow behind moon
+    this.moonGlow.renderOrder = -1;
     this.moon.add(this.moonGlow);
     
-    console.log("Shader-based moon glow created with atmospheric scattering");
+    console.log("Shader-based moon glow created with spherical geometry for seamless edges");
   }
 
   private updateCelestialGlow(): void {
@@ -375,11 +375,6 @@ export class SceneManager {
       );
       
       this.sunGlow.visible = true;
-      
-      // Make glow face camera
-      if (this.camera) {
-        this.sunGlow.lookAt(this.camera.position);
-      }
     } else if (this.sunGlow) {
       this.sunGlow.visible = false;
     }
@@ -407,11 +402,6 @@ export class SceneManager {
       );
       
       this.moonGlow.visible = true;
-      
-      // Make glow face camera
-      if (this.camera) {
-        this.moonGlow.lookAt(this.camera.position);
-      }
     } else if (this.moonGlow) {
       this.moonGlow.visible = false;
     }

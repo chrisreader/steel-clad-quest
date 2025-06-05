@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 
 export interface GlowUniforms {
+  [uniform: string]: THREE.IUniform<any>;
   glowSize: { value: number };
   glowIntensity: { value: number };
   glowColor: { value: THREE.Color };
@@ -14,9 +15,11 @@ export class CelestialGlowShader {
   public static vertexShader = `
     varying vec2 vUv;
     varying vec3 vWorldPosition;
+    varying vec3 vNormal;
     
     void main() {
       vUv = uv;
+      vNormal = normalize(normalMatrix * normal);
       vec4 worldPosition = modelMatrix * vec4(position, 1.0);
       vWorldPosition = worldPosition.xyz;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -33,16 +36,17 @@ export class CelestialGlowShader {
     
     varying vec2 vUv;
     varying vec3 vWorldPosition;
+    varying vec3 vNormal;
     
     void main() {
-      // Calculate distance from center
+      // Calculate distance from center using sphere coordinates
       vec2 center = vec2(0.5, 0.5);
       float distance = length(vUv - center);
       
-      // Create smooth radial falloff
+      // Create smooth radial falloff with enhanced edge smoothing
       float glow = 1.0 - smoothstep(0.0, glowSize, distance);
       
-      // Apply atmospheric scattering with multiple layers
+      // Apply multiple atmospheric scattering layers for realistic effect
       float innerGlow = pow(glow, falloffPower * 0.5);
       float middleGlow = pow(glow, falloffPower * 1.5);
       float outerGlow = pow(glow, falloffPower * 3.0);
@@ -50,15 +54,19 @@ export class CelestialGlowShader {
       // Combine layers with different intensities
       float combinedGlow = innerGlow * 0.6 + middleGlow * 0.3 + outerGlow * 0.1;
       
-      // Add atmospheric density variation
+      // Add subtle atmospheric variation
       float atmospheric = 1.0 + sin(time * 0.5 + distance * 10.0) * 0.1 * atmosphericDensity;
       combinedGlow *= atmospheric;
+      
+      // Enhanced edge smoothing to eliminate hard edges
+      float edgeFalloff = 1.0 - pow(distance / 0.7, 4.0);
+      combinedGlow *= edgeFalloff;
       
       // Apply intensity and color
       vec3 finalColor = glowColor * glowIntensity * combinedGlow;
       
-      // Smooth alpha falloff for seamless blending
-      float alpha = combinedGlow * glowIntensity;
+      // Smooth alpha falloff for seamless blending with enhanced transparency at edges
+      float alpha = combinedGlow * glowIntensity * edgeFalloff;
       
       gl_FragColor = vec4(finalColor, alpha);
     }
