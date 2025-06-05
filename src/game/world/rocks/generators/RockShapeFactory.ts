@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RockShapeType, RockInstance, RockGenerationConfig } from '../types/RockTypes';
 import { RockMaterials } from '../materials/RockMaterials';
@@ -15,15 +14,14 @@ export class RockShapeFactory {
   private shapeGenerators: Map<RockShapeType, BaseRockShape>;
   
   constructor() {
-    this.shapeGenerators = new Map([
-      ['boulder', new BoulderShape()],
-      ['spire', new SpireShape()],
-      ['slab', new SlabShape()],
-      ['angular', new AngularShape()],
-      ['weathered', new WeatheredShape()],
-      ['flattened', new FlattenedShape()],
-      ['jagged', new JaggedShape()]
-    ]);
+    this.shapeGenerators = new Map();
+    this.shapeGenerators.set('boulder', new BoulderShape());
+    this.shapeGenerators.set('spire', new SpireShape());
+    this.shapeGenerators.set('slab', new SlabShape());
+    this.shapeGenerators.set('angular', new AngularShape());
+    this.shapeGenerators.set('weathered', new WeatheredShape());
+    this.shapeGenerators.set('flattened', new FlattenedShape());
+    this.shapeGenerators.set('jagged', new JaggedShape());
   }
   
   public createRock(shapeType: RockShapeType, config: RockGenerationConfig): RockInstance {
