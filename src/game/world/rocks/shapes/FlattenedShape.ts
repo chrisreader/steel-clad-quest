@@ -1,8 +1,9 @@
 
-import * as THREE from 'three';
+import * * THREE from 'three';
 import { BaseRockShape } from './BaseRockShape';
 import { RockGenerationConfig } from '../types/RockTypes';
 import { GeometryUtils } from '../utils/GeometryUtils';
+import { SmoothingUtils } from '../utils/SmoothingUtils';
 
 export class FlattenedShape extends BaseRockShape {
   constructor() {
@@ -12,11 +13,24 @@ export class FlattenedShape extends BaseRockShape {
   generateGeometry(config: RockGenerationConfig): THREE.BufferGeometry {
     const size = config.sizeRange.min + Math.random() * (config.sizeRange.max - config.sizeRange.min);
     
+    // Use adaptive subdivision for smooth flattened appearance
+    const subdivisionLevel = SmoothingUtils.getSubdivisionLevel(size);
+    
     // Start with sphere and heavily flatten
-    const geometry = new THREE.SphereGeometry(size, 16, 10);
+    const geometry = new THREE.SphereGeometry(size, Math.max(16, subdivisionLevel * 4), Math.max(10, subdivisionLevel * 2));
     
     // Apply compression deformation
     this.applyCompressionDeformation(geometry, size);
+    
+    // Apply smoothing to eliminate faceting on large flat surfaces
+    SmoothingUtils.applyLaplacianSmoothing(geometry, 0.5);
+    
+    if (size > 1.0) {
+      SmoothingUtils.applyCatmullClarkSmoothing(geometry, 1);
+    }
+    
+    // Add multi-layer noise for natural surface variation
+    SmoothingUtils.addMultiLayerNoise(geometry, 0.06);
     
     // Add weathering appropriate for flattened rocks
     const weatheringLevel = config.weatheringRange.min + 
@@ -24,7 +38,7 @@ export class FlattenedShape extends BaseRockShape {
     GeometryUtils.addWeatheringEffects(geometry, weatheringLevel);
     
     // Add vertex noise for natural surface
-    GeometryUtils.addVertexNoise(geometry, 0.12);
+    GeometryUtils.addVertexNoise(geometry, 0.05);
     
     // Ensure very good grounding for flat rocks
     GeometryUtils.addRealisticGrounding(geometry, 0.15);
@@ -32,7 +46,7 @@ export class FlattenedShape extends BaseRockShape {
     // Apply safe natural variation with extreme flattening
     const scaleVariation = {
       x: 0.9 + Math.random() * 0.3,
-      y: 0.15 + Math.random() * 0.2, // Very flat (15-35% height)
+      y: 0.15 + Math.random() * 0.2,
       z: 0.9 + Math.random() * 0.3
     };
     
@@ -48,14 +62,14 @@ export class FlattenedShape extends BaseRockShape {
       const y = positionArray[i + 1];
       const z = positionArray[i + 2];
       
-      // Create compression patterns - simulate geological pressure
-      const compressionFactor = 1 - Math.abs(y / size) * 0.7; // More compression toward edges
+      // Create smooth compression patterns
+      const compressionFactor = 1 - Math.abs(y / size) * 0.6;
       
-      // Add natural edge irregularities
+      // Add natural edge irregularities with smooth transitions
       const edgeDistance = Math.sqrt(x*x + z*z) / size;
-      const edgeVariation = Math.sin(edgeDistance * Math.PI * 6) * 0.1 * compressionFactor;
+      const edgeVariation = Math.sin(edgeDistance * Math.PI * 4) * 0.08 * compressionFactor;
       
-      // Apply radial compression
+      // Apply smooth radial compression
       const radialFactor = 1 + edgeVariation;
       
       positionArray[i] = x * radialFactor;

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { BaseRockShape } from './BaseRockShape';
 import { RockGenerationConfig } from '../types/RockTypes';
 import { GeometryUtils } from '../utils/GeometryUtils';
+import { SmoothingUtils } from '../utils/SmoothingUtils';
 
 export class WeatheredShape extends BaseRockShape {
   constructor() {
@@ -12,18 +13,31 @@ export class WeatheredShape extends BaseRockShape {
   generateGeometry(config: RockGenerationConfig): THREE.BufferGeometry {
     const size = config.sizeRange.min + Math.random() * (config.sizeRange.max - config.sizeRange.min);
     
-    // Start with icosahedron for organic base
-    const geometry = new THREE.IcosahedronGeometry(size, 1);
+    // Use adaptive subdivision for smooth weathered appearance
+    const subdivisionLevel = SmoothingUtils.getSubdivisionLevel(size);
     
-    // Apply heavy weathering effects
-    const weatheringLevel = Math.max(0.6, config.weatheringRange.max); // Force high weathering
-    GeometryUtils.addWeatheringEffects(geometry, weatheringLevel);
+    // Start with icosahedron with adaptive subdivision
+    const geometry = new THREE.IcosahedronGeometry(size, subdivisionLevel);
     
-    // Apply erosion patterns
+    // Apply erosion patterns first
     this.applyErosionPatterns(geometry, size);
     
+    // Apply multi-layer noise for weathered surface texture
+    SmoothingUtils.addMultiLayerNoise(geometry, 0.12);
+    
+    // Heavy weathering effects
+    const weatheringLevel = Math.max(0.6, config.weatheringRange.max);
+    GeometryUtils.addWeatheringEffects(geometry, weatheringLevel);
+    
+    // Apply extensive smoothing for weathered appearance
+    SmoothingUtils.applyLaplacianSmoothing(geometry, 0.4);
+    
+    if (size > 0.8) {
+      SmoothingUtils.applyCatmullClarkSmoothing(geometry, 2);
+    }
+    
     // Add substantial vertex noise for weathered surface
-    GeometryUtils.addVertexNoise(geometry, 0.25);
+    GeometryUtils.addVertexNoise(geometry, 0.08);
     
     // Ensure proper grounding with more embedding
     GeometryUtils.addRealisticGrounding(geometry, 0.2);
@@ -31,7 +45,7 @@ export class WeatheredShape extends BaseRockShape {
     // Apply safe natural variation
     const scaleVariation = {
       x: 0.8 + Math.random() * 0.3,
-      y: 0.6 + Math.random() * 0.3, // More flattened from weathering
+      y: 0.6 + Math.random() * 0.3,
       z: 0.8 + Math.random() * 0.3
     };
     
@@ -50,17 +64,19 @@ export class WeatheredShape extends BaseRockShape {
       const vertex = new THREE.Vector3(x, y, z);
       const distance = vertex.length();
       
-      // Create erosion channels - more erosion on exposed areas
-      const exposureFactor = Math.max(0, y / size); // Top surfaces more eroded
-      const channelNoise1 = Math.sin(x * 3) * Math.cos(z * 2.5) * exposureFactor;
-      const channelNoise2 = Math.sin(x * 1.5 + z * 1.8) * exposureFactor;
+      // Create smooth erosion channels
+      const exposureFactor = Math.max(0, y / size);
+      const channelNoise1 = Math.sin(x * 2) * Math.cos(z * 1.8) * exposureFactor;
+      const channelNoise2 = Math.sin(x * 1.2 + z * 1.3) * exposureFactor;
       
-      const erosion = (channelNoise1 + channelNoise2) * 0.15 * size;
+      // Smooth the erosion using cubic interpolation
+      const rawErosion = (channelNoise1 + channelNoise2) * 0.1 * size;
+      const smoothErosion = rawErosion * Math.abs(rawErosion) * (3 - 2 * Math.abs(rawErosion));
       
       // Apply erosion inward
       if (distance > 0) {
         vertex.normalize();
-        vertex.multiplyScalar(distance - Math.abs(erosion));
+        vertex.multiplyScalar(distance - Math.abs(smoothErosion));
       }
       
       positionArray[i] = vertex.x;

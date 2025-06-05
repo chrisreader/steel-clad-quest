@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { BaseRockShape } from './BaseRockShape';
 import { RockGenerationConfig } from '../types/RockTypes';
 import { GeometryUtils } from '../utils/GeometryUtils';
+import { SmoothingUtils } from '../utils/SmoothingUtils';
 
 export class BoulderShape extends BaseRockShape {
   constructor() {
@@ -12,14 +13,28 @@ export class BoulderShape extends BaseRockShape {
   generateGeometry(config: RockGenerationConfig): THREE.BufferGeometry {
     const size = config.sizeRange.min + Math.random() * (config.sizeRange.max - config.sizeRange.min);
     
-    // Start with icosahedron for more organic base shape
-    const geometry = new THREE.IcosahedronGeometry(size, 2);
+    // Use adaptive subdivision based on size for smooth appearance
+    const subdivisionLevel = SmoothingUtils.getSubdivisionLevel(size);
     
-    // Apply organic deformation
+    // Start with icosahedron with adaptive subdivision
+    const geometry = new THREE.IcosahedronGeometry(size, subdivisionLevel);
+    
+    // Apply organic deformation first
     this.applyOrganicDeformation(geometry, size);
     
-    // Add vertex noise for natural surface
-    GeometryUtils.addVertexNoise(geometry, 0.15);
+    // Apply multi-layer noise for natural surface variation
+    SmoothingUtils.addMultiLayerNoise(geometry, 0.08);
+    
+    // Apply Laplacian smoothing to eliminate faceting
+    SmoothingUtils.applyLaplacianSmoothing(geometry, 0.3);
+    
+    // Apply Catmull-Clark smoothing for large rocks
+    if (size > 1.0) {
+      SmoothingUtils.applyCatmullClarkSmoothing(geometry, 1);
+    }
+    
+    // Add fine surface details
+    GeometryUtils.addVertexNoise(geometry, 0.05);
     
     // Add weathering effects
     const weatheringLevel = config.weatheringRange.min + 
@@ -45,9 +60,9 @@ export class BoulderShape extends BaseRockShape {
     
     // Create multiple deformation centers for organic boulder shape
     const deformationCenters = [
-      { pos: new THREE.Vector3(size * 0.3, size * 0.2, size * 0.1), strength: 0.3 },
-      { pos: new THREE.Vector3(-size * 0.2, size * 0.4, -size * 0.3), strength: 0.25 },
-      { pos: new THREE.Vector3(size * 0.1, -size * 0.1, size * 0.4), strength: 0.2 }
+      { pos: new THREE.Vector3(size * 0.3, size * 0.2, size * 0.1), strength: 0.2 },
+      { pos: new THREE.Vector3(-size * 0.2, size * 0.4, -size * 0.3), strength: 0.18 },
+      { pos: new THREE.Vector3(size * 0.1, -size * 0.1, size * 0.4), strength: 0.15 }
     ];
     
     for (let i = 0; i < positionArray.length; i += 3) {
@@ -58,9 +73,12 @@ export class BoulderShape extends BaseRockShape {
         const influence = Math.max(0, 1 - (distance / size));
         const deformation = influence * center.strength;
         
+        // Smooth deformation using cubic interpolation
+        const smoothDeformation = deformation * deformation * (3 - 2 * deformation);
+        
         // Pull vertex toward deformation center
         const direction = center.pos.clone().sub(vertex).normalize();
-        vertex.add(direction.multiplyScalar(deformation * size * 0.1));
+        vertex.add(direction.multiplyScalar(smoothDeformation * size * 0.08));
       });
       
       positionArray[i] = vertex.x;
