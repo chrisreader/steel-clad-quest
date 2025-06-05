@@ -1,12 +1,11 @@
-
 import * as THREE from 'three';
 import { TextureGenerator, EnhancedTextureGenerator, InstancedGrassSystem } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
 import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
 import { PhysicsManager } from './PhysicsManager';
-import { Level, TerrainConfig, TerrainFeature, LightingConfig, Region } from '../../types/GameTypes';
+import { Level, TerrainConfig, TerrainFeature, LightingConfig, Region, RegionCoordinates } from '../../types/GameTypes';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
-import { RingQuadrantSystem, RegionCoordinates } from '../world/RingQuadrantSystem';
+import { RingQuadrantSystem } from '../world/RingQuadrantSystem';
 import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
 import { StructureGenerator } from '../world/StructureGenerator';
 import { EffectsManager } from './EffectsManager';
@@ -864,8 +863,7 @@ export class SceneManager {
     const groundGeometry = new THREE.PlaneGeometry(100, 100);
     const groundMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x5FAD5F,
-      map: TextureGenerator.createGrassTexture(),
-      transparent: false
+      map: TextureGenerator.createGrassTexture()
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;

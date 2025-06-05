@@ -457,3 +457,17 @@ export interface Gold {
   value: number;
   rotationSpeed: number;
 }
+
+// Region interface for the ring-quadrant world system
+export interface Region {
+  coordinates: RegionCoordinates;
+  terrain: THREE.Mesh | null;
+  features: TerrainFeature[];
+  structures: THREE.Object3D[];
+}
+
+// RegionCoordinates interface for the ring system
+export interface RegionCoordinates {
+  ringIndex: number;
+  quadrant: number;
+}
