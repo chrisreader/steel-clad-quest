@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class TextureGenerator {
@@ -99,6 +98,83 @@ export class TextureGenerator {
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    return texture;
+  }
+
+  /**
+   * Creates a realistic grass texture with natural colors and variations
+   */
+  static createRealisticGrassTexture(
+    baseColor: number = 0x3A7A3A,
+    ringIndex: number = 0
+  ): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Extract RGB from base color
+    const r = (baseColor >> 16) & 255;
+    const g = (baseColor >> 8) & 255;
+    const b = baseColor & 255;
+    
+    // Base grass color with slight brown undertone
+    ctx.fillStyle = `rgb(${Math.floor(r * 0.9)}, ${g}, ${Math.floor(b * 0.8)})`;
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // Add natural grass variations
+    const grassDensity = 800 + ringIndex * 200; // More detail in higher rings
+    
+    for (let i = 0; i < grassDensity; i++) {
+      // Natural grass blade colors - forest greens with variation
+      const grassHue = 90 + Math.random() * 40; // Green to yellow-green range
+      const grassSat = 40 + Math.random() * 30 + ringIndex * 5; // Ring-based saturation
+      const grassLight = 25 + Math.random() * 35; // Natural darkness range
+      
+      ctx.fillStyle = `hsla(${grassHue}, ${grassSat}%, ${grassLight}%, ${0.6 + Math.random() * 0.4})`;
+      
+      // Grass blade shapes - small rectangles and lines
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const width = Math.random() * 2 + 1;
+      const height = Math.random() * 4 + 2;
+      
+      ctx.fillRect(x, y, width, height);
+    }
+    
+    // Add dirt patches for realism
+    const dirtPatches = 80 - ringIndex * 10; // Fewer dirt patches in higher rings
+    for (let i = 0; i < dirtPatches; i++) {
+      const dirtBrown = 25 + Math.random() * 15;
+      ctx.fillStyle = `hsla(30, 40%, ${dirtBrown}%, 0.3)`;
+      
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const size = Math.random() * 8 + 3;
+      
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Add some darker grass clumps for depth
+    const clumps = 60;
+    for (let i = 0; i < clumps; i++) {
+      const clumpHue = 85 + Math.random() * 20;
+      const clumpLight = 15 + Math.random() * 20;
+      ctx.fillStyle = `hsla(${clumpHue}, 60%, ${clumpLight}%, 0.4)`;
+      
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const size = Math.random() * 6 + 2;
+      
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(4, 4); // Better tiling for ground coverage
     return texture;
   }
 
