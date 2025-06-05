@@ -22,19 +22,27 @@ export class ClusterGenerator {
   } {
     const rocks: ClusterRock[] = [];
     
-    // Generate foundation rocks (40% of cluster)
+    console.log(`🏔️ Generating MASSIVE cluster at (${config.centerPosition.x.toFixed(1)}, ${config.centerPosition.z.toFixed(1)}) with radius ${config.radius}`);
+    
+    // Generate foundation rocks (larger, more stable base)
     this.generateTierRocks('foundation', config.foundationCount, config, rocks);
+    console.log(`🏔️ Generated ${config.foundationCount} foundation rocks`);
     
-    // Generate support rocks (40% of cluster)
+    // Generate support rocks (medium size, stacked on foundation)
     this.generateTierRocks('support', config.supportCount, config, rocks);
+    console.log(`🏔️ Generated ${config.supportCount} support rocks`);
     
-    // Generate accent rocks (20% of cluster)
+    // Generate accent rocks (smaller, final details)
     this.generateTierRocks('accent', config.accentCount, config, rocks);
+    console.log(`🏔️ Generated ${config.accentCount} accent rocks`);
     
-    // Generate environmental details if enabled
+    // Generate extensive environmental details
     const environmentalDetails = config.environmentalDetails 
-      ? this.generateEnvironmentalDetails(config, rocks)
+      ? this.generateEnhancedEnvironmentalDetails(config, rocks)
       : [];
+    
+    console.log(`🏔️ Generated ${environmentalDetails.length} environmental details`);
+    console.log(`🏔️ MASSIVE cluster complete: ${rocks.length} total rocks`);
     
     return { rocks, environmentalDetails };
   }
@@ -48,18 +56,17 @@ export class ClusterGenerator {
     const tierConfig = this.getTierConfiguration(tier);
     
     for (let i = 0; i < count; i++) {
-      // Select appropriate shape for tier
       const shapeType = this.selectShapeForTier(tier);
       
-      // Generate rock instance with proper config including shapeType
+      // Create rock with enhanced size ranges
       const rockInstance = this.shapeFactory.createRock(shapeType, {
         shapeType,
-        sizeRange: this.getSizeRangeForTier(tier, config.radius),
+        sizeRange: this.getEnhancedSizeRangeForTier(tier, config.radius),
         materialVariation: 0.3,
         weatheringRange: { min: 0.1, max: 0.4 }
       });
       
-      // Calculate position using stacking physics
+      // Calculate realistic stacking position
       const position = StackingPhysics.calculateStackingPosition(
         rockInstance,
         tier,
@@ -67,7 +74,7 @@ export class ClusterGenerator {
         config.centerPosition
       );
       
-      // Verify position is stable
+      // Verify position stability with enhanced physics
       if (StackingPhysics.isPositionStable(position, rockInstance, existingRocks)) {
         const clusterRock: ClusterRock = {
           instance: rockInstance,
@@ -77,16 +84,42 @@ export class ClusterGenerator {
           supporting: []
         };
         
-        // Update supporting relationships
         this.updateSupportingRelationships(clusterRock, existingRocks);
-        
         existingRocks.push(clusterRock);
+        
+        console.log(`🏔️ Added ${tier} rock (${shapeType}) at height ${position.y.toFixed(2)}, size ${rockInstance.boundingRadius.toFixed(2)}`);
+      } else {
+        console.log(`🏔️ Rejected unstable ${tier} rock position`);
       }
     }
   }
   
+  // Enhanced size ranges for truly massive rocks
+  private getEnhancedSizeRangeForTier(tier: ClusterTier, clusterRadius: number) {
+    const scaleFactor = Math.max(1.0, clusterRadius / 30); // Scale with cluster size
+    
+    switch (tier) {
+      case 'foundation':
+        return {
+          min: 1.5 * scaleFactor,  // Much larger foundation rocks
+          max: 4.0 * scaleFactor
+        };
+      case 'support':
+        return {
+          min: 1.0 * scaleFactor,  // Substantial support rocks
+          max: 3.0 * scaleFactor
+        };
+      case 'accent':
+        return {
+          min: 0.5 * scaleFactor,  // Visible accent rocks
+          max: 2.0 * scaleFactor
+        };
+      default:
+        return { min: 0.5, max: 1.0 };
+    }
+  }
+  
   private getTierConfiguration(tier: ClusterTier) {
-    // Configuration for each tier type
     const configs = {
       foundation: {
         sizePercentage: { min: 80, max: 100 },
@@ -114,16 +147,6 @@ export class ClusterGenerator {
     return shapes[Math.floor(Math.random() * shapes.length)] as RockShapeType;
   }
   
-  private getSizeRangeForTier(tier: ClusterTier, clusterRadius: number) {
-    const config = this.getTierConfiguration(tier);
-    const baseSize = clusterRadius * 0.15; // 15% of cluster radius as base
-    
-    return {
-      min: baseSize * (config.sizePercentage.min / 100),
-      max: baseSize * (config.sizePercentage.max / 100)
-    };
-  }
-  
   private findSupportingRocks(
     position: THREE.Vector3,
     rock: RockInstance,
@@ -135,7 +158,6 @@ export class ClusterGenerator {
       const distance = position.distanceTo(existing.position);
       const supportRange = rock.boundingRadius + existing.instance.boundingRadius;
       
-      // Check if this rock is close enough and below to provide support
       if (distance < supportRange * 1.2 && existing.position.y < position.y) {
         supporting.push(existing);
       }
@@ -148,7 +170,6 @@ export class ClusterGenerator {
     newRock: ClusterRock,
     existingRocks: ClusterRock[]
   ): void {
-    // Update the supporting arrays of rocks that this new rock is supported by
     for (const supportingRock of newRock.supportedBy) {
       if (!supportingRock.supporting.includes(newRock)) {
         supportingRock.supporting.push(newRock);
@@ -156,45 +177,51 @@ export class ClusterGenerator {
     }
   }
   
-  private generateEnvironmentalDetails(
+  private generateEnhancedEnvironmentalDetails(
     config: ClusterConfiguration,
     rocks: ClusterRock[]
   ): EnvironmentalDetail[] {
     const details: EnvironmentalDetail[] = [];
+    const clusterScale = config.radius / 25; // Scale details with cluster size
     
-    // Generate sediment accumulation (6-14 particles)
-    const sedimentCount = 6 + Math.floor(Math.random() * 9);
+    // Enhanced sediment accumulation (scaled with cluster size)
+    const sedimentCount = Math.floor(15 + Math.random() * 25 * clusterScale);
     for (let i = 0; i < sedimentCount; i++) {
-      details.push(this.createSedimentDetail(config, rocks));
+      details.push(this.createEnhancedSedimentDetail(config, rocks, clusterScale));
     }
     
-    // Generate vegetation (2-7 plants, north side preference)
-    const vegetationCount = 2 + Math.floor(Math.random() * 6);
+    // Larger vegetation patches (north side preference)
+    const vegetationCount = Math.floor(8 + Math.random() * 15 * clusterScale);
     for (let i = 0; i < vegetationCount; i++) {
-      details.push(this.createVegetationDetail(config, rocks));
+      details.push(this.createEnhancedVegetationDetail(config, rocks, clusterScale));
     }
     
-    // Generate debris field (8-20 small fragments)
-    const debrisCount = 8 + Math.floor(Math.random() * 13);
+    // Extensive debris field (rock fragments)
+    const debrisCount = Math.floor(25 + Math.random() * 40 * clusterScale);
     for (let i = 0; i < debrisCount; i++) {
-      details.push(this.createDebrisDetail(config, rocks));
+      details.push(this.createEnhancedDebrisDetail(config, rocks, clusterScale));
     }
+    
+    // Add weathering streaks on large rocks
+    const weatheringCount = Math.floor(5 + Math.random() * 10 * clusterScale);
+    for (let i = 0; i < weatheringCount; i++) {
+      details.push(this.createWeatheringStreakDetail(config, rocks, clusterScale));
+    }
+    
+    console.log(`🏔️ Enhanced environmental details: ${sedimentCount} sediment, ${vegetationCount} vegetation, ${debrisCount} debris, ${weatheringCount} weathering`);
     
     return details;
   }
   
-  private createSedimentDetail(config: ClusterConfiguration, rocks: ClusterRock[]): EnvironmentalDetail {
-    // Create small sediment particles
-    const size = 0.05 + Math.random() * 0.1;
-    const geometry = new THREE.SphereGeometry(size, 6, 4);
+  private createEnhancedSedimentDetail(config: ClusterConfiguration, rocks: ClusterRock[], scale: number): EnvironmentalDetail {
+    const size = (0.08 + Math.random() * 0.15) * scale;
+    const geometry = new THREE.SphereGeometry(size, 8, 6);
     const material = new THREE.MeshLambertMaterial({ 
       color: new THREE.Color(0x8B7355).lerp(new THREE.Color(0x654321), Math.random())
     });
     
     const mesh = new THREE.Mesh(geometry, material);
-    
-    // Position in low spots around rocks
-    const position = this.findLowSpotNearRocks(config, rocks);
+    const position = this.findRealisticSedimentPosition(config, rocks, scale);
     
     return {
       type: 'sediment',
@@ -203,18 +230,15 @@ export class ClusterGenerator {
     };
   }
   
-  private createVegetationDetail(config: ClusterConfiguration, rocks: ClusterRock[]): EnvironmentalDetail {
-    // Create small vegetation
-    const size = 0.1 + Math.random() * 0.2;
-    const geometry = new THREE.SphereGeometry(size, 8, 6);
+  private createEnhancedVegetationDetail(config: ClusterConfiguration, rocks: ClusterRock[], scale: number): EnvironmentalDetail {
+    const size = (0.15 + Math.random() * 0.3) * scale;
+    const geometry = new THREE.SphereGeometry(size, 12, 8);
     const material = new THREE.MeshLambertMaterial({ 
-      color: new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.7, 0.4)
+      color: new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.8, 0.3 + Math.random() * 0.2)
     });
     
     const mesh = new THREE.Mesh(geometry, material);
-    
-    // Position on north side of rocks (preference)
-    const position = this.findShelterSpotNearRocks(config, rocks);
+    const position = this.findRealisticVegetationPosition(config, rocks, scale);
     
     return {
       type: 'vegetation',
@@ -223,22 +247,21 @@ export class ClusterGenerator {
     };
   }
   
-  private createDebrisDetail(config: ClusterConfiguration, rocks: ClusterRock[]): EnvironmentalDetail {
-    // Create small rock fragments
-    const size = 0.03 + Math.random() * 0.05;
-    const geometry = new THREE.OctahedronGeometry(size, 0);
+  private createEnhancedDebrisDetail(config: ClusterConfiguration, rocks: ClusterRock[], scale: number): EnvironmentalDetail {
+    const size = (0.05 + Math.random() * 0.12) * scale;
+    const geometry = new THREE.OctahedronGeometry(size, Math.random() < 0.3 ? 1 : 0);
     const material = new THREE.MeshLambertMaterial({ 
-      color: new THREE.Color(0x666666)
+      color: new THREE.Color(0x555555).lerp(new THREE.Color(0x888888), Math.random())
     });
     
     const mesh = new THREE.Mesh(geometry, material);
     
-    // Position randomly around cluster base
+    // Scatter debris realistically around cluster base
     const angle = Math.random() * Math.PI * 2;
-    const distance = config.radius * (0.8 + Math.random() * 0.4);
+    const distance = config.radius * (0.6 + Math.random() * 0.8);
     const position = new THREE.Vector3(
       config.centerPosition.x + Math.cos(angle) * distance,
-      0,
+      -0.01 + Math.random() * 0.02,
       config.centerPosition.z + Math.sin(angle) * distance
     );
     
@@ -249,26 +272,78 @@ export class ClusterGenerator {
     };
   }
   
-  private findLowSpotNearRocks(config: ClusterConfiguration, rocks: ClusterRock[]): THREE.Vector3 {
-    // Find a spot between rocks where sediment would naturally accumulate
-    const angle = Math.random() * Math.PI * 2;
-    const distance = config.radius * (0.3 + Math.random() * 0.4);
+  private createWeatheringStreakDetail(config: ClusterConfiguration, rocks: ClusterRock[], scale: number): EnvironmentalDetail {
+    // Create small weathering marks near large foundation rocks
+    const size = (0.03 + Math.random() * 0.08) * scale;
+    const geometry = new THREE.PlaneGeometry(size * 2, size * 0.5);
+    const material = new THREE.MeshLambertMaterial({ 
+      color: new THREE.Color(0x444444),
+      transparent: true,
+      opacity: 0.6
+    });
     
+    const mesh = new THREE.Mesh(geometry, material);
+    
+    // Find a large foundation rock to place weathering near
+    const foundationRocks = rocks.filter(r => r.tier === 'foundation');
+    if (foundationRocks.length > 0) {
+      const targetRock = foundationRocks[Math.floor(Math.random() * foundationRocks.length)];
+      const offset = new THREE.Vector3(
+        (Math.random() - 0.5) * targetRock.instance.boundingRadius * 2,
+        targetRock.instance.boundingRadius * 0.3,
+        (Math.random() - 0.5) * targetRock.instance.boundingRadius * 2
+      );
+      
+      const position = targetRock.position.clone().add(offset);
+      
+      return {
+        type: 'debris',
+        position,
+        mesh
+      };
+    }
+    
+    // Fallback position
+    return this.createEnhancedDebrisDetail(config, rocks, scale);
+  }
+  
+  private findRealisticSedimentPosition(config: ClusterConfiguration, rocks: ClusterRock[], scale: number): THREE.Vector3 {
+    // Sediment accumulates in low spots between rocks
+    const foundationRocks = rocks.filter(r => r.tier === 'foundation');
+    
+    if (foundationRocks.length >= 2) {
+      // Find space between two foundation rocks
+      const rock1 = foundationRocks[Math.floor(Math.random() * foundationRocks.length)];
+      const rock2 = foundationRocks[Math.floor(Math.random() * foundationRocks.length)];
+      
+      if (rock1 !== rock2) {
+        const midpoint = rock1.position.clone().lerp(rock2.position, 0.5);
+        midpoint.y = -0.03; // Slightly embedded
+        return midpoint;
+      }
+    }
+    
+    // Fallback: random position near cluster edge
+    const angle = Math.random() * Math.PI * 2;
+    const distance = config.radius * (0.4 + Math.random() * 0.3);
     return new THREE.Vector3(
       config.centerPosition.x + Math.cos(angle) * distance,
-      -0.02, // Slightly below ground level
+      -0.02,
       config.centerPosition.z + Math.sin(angle) * distance
     );
   }
   
-  private findShelterSpotNearRocks(config: ClusterConfiguration, rocks: ClusterRock[]): THREE.Vector3 {
-    // Prefer north side (negative Z direction) for shelter
-    const angle = -Math.PI/2 + (Math.random() - 0.5) * Math.PI; // North-ish direction
-    const distance = config.radius * (0.5 + Math.random() * 0.3);
+  private findRealisticVegetationPosition(config: ClusterConfiguration, rocks: ClusterRock[], scale: number): THREE.Vector3 {
+    // Vegetation grows in sheltered spots, preferably north side
+    const baseAngle = -Math.PI/2; // North direction
+    const angleVariation = (Math.random() - 0.5) * Math.PI * 0.8; // ±72 degrees
+    const angle = baseAngle + angleVariation;
+    
+    const distance = config.radius * (0.6 + Math.random() * 0.4);
     
     return new THREE.Vector3(
       config.centerPosition.x + Math.cos(angle) * distance,
-      0.01,
+      0.02,
       config.centerPosition.z + Math.sin(angle) * distance
     );
   }

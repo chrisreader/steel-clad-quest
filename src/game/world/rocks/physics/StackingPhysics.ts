@@ -11,133 +11,159 @@ export class StackingPhysics {
     existingRocks: ClusterRock[],
     clusterCenter: THREE.Vector3
   ): THREE.Vector3 {
+    console.log(`🏔️ Calculating stacking position for ${tier} rock (size: ${newRock.boundingRadius.toFixed(2)})`);
+    
     switch (tier) {
       case 'foundation':
-        return this.calculateFoundationPosition(newRock, clusterCenter);
+        return this.calculateEnhancedFoundationPosition(newRock, existingRocks, clusterCenter);
       case 'support':
-        return this.calculateSupportPosition(newRock, existingRocks, clusterCenter);
+        return this.calculateEnhancedSupportPosition(newRock, existingRocks, clusterCenter);
       case 'accent':
-        return this.calculateAccentPosition(newRock, existingRocks, clusterCenter);
+        return this.calculateEnhancedAccentPosition(newRock, existingRocks, clusterCenter);
       default:
         return clusterCenter.clone();
     }
   }
   
-  private static calculateFoundationPosition(
-    rock: RockInstance,
-    clusterCenter: THREE.Vector3
-  ): THREE.Vector3 {
-    // Foundation rocks are properly grounded at Y=0
-    const position = clusterCenter.clone();
-    
-    // Add reasonable offset within cluster bounds
-    const offsetRange = rock.boundingRadius * 2;
-    position.x += (Math.random() - 0.5) * offsetRange;
-    position.z += (Math.random() - 0.5) * offsetRange;
-    
-    // Ground properly - rocks sit ON the ground, not embedded deeply
-    position.y = 0;
-    
-    return position;
-  }
-  
-  private static calculateSupportPosition(
+  private static calculateEnhancedFoundationPosition(
     rock: RockInstance,
     existingRocks: ClusterRock[],
     clusterCenter: THREE.Vector3
   ): THREE.Vector3 {
-    // Find suitable foundation rocks to lean against
+    const position = clusterCenter.clone();
+    
+    // Foundation rocks spread out more for massive clusters
+    const spreadRadius = Math.max(rock.boundingRadius * 3, 8); // Minimum 8 unit spread
+    const angle = Math.random() * Math.PI * 2;
+    
+    position.x += Math.cos(angle) * spreadRadius * (0.5 + Math.random() * 1.0);
+    position.z += Math.sin(angle) * spreadRadius * (0.5 + Math.random() * 1.0);
+    
+    // Foundation rocks are properly grounded with slight embedding for stability
+    position.y = -rock.boundingRadius * 0.1; // Slight embedding for massive rocks
+    
+    console.log(`🏔️ Foundation rock positioned at (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+    return position;
+  }
+  
+  private static calculateEnhancedSupportPosition(
+    rock: RockInstance,
+    existingRocks: ClusterRock[],
+    clusterCenter: THREE.Vector3
+  ): THREE.Vector3 {
     const foundationRocks = existingRocks.filter(r => r.tier === 'foundation');
     
     if (foundationRocks.length === 0) {
-      // Fallback to foundation position if no foundation rocks exist
-      return this.calculateFoundationPosition(rock, clusterCenter);
+      console.log(`🏔️ No foundation rocks - placing support as foundation`);
+      return this.calculateEnhancedFoundationPosition(rock, existingRocks, clusterCenter);
     }
     
-    // Choose the most suitable foundation rock (largest and stable)
+    // Choose the best foundation rock for support (largest and most stable)
     const targetFoundation = foundationRocks.reduce((best, current) => {
       const stability = current.instance.properties.stability * current.instance.boundingRadius;
       const bestStability = best.instance.properties.stability * best.instance.boundingRadius;
       return stability > bestStability ? current : best;
     });
     
-    // Calculate realistic contact position
+    // Calculate realistic contact position with enhanced physics
     const contactAngle = Math.random() * Math.PI * 2;
-    const contactDistance = targetFoundation.instance.boundingRadius + rock.boundingRadius * 0.6;
+    const contactDistance = targetFoundation.instance.boundingRadius + rock.boundingRadius * 0.5; // Better contact
     
     const position = targetFoundation.position.clone();
     position.x += Math.cos(contactAngle) * contactDistance;
     position.z += Math.sin(contactAngle) * contactDistance;
     
-    // Calculate realistic height based on actual contact geometry
-    position.y = this.calculateRealisticContactHeight(
+    // Enhanced height calculation for realistic stacking
+    position.y = this.calculateEnhancedContactHeight(
       rock, 
       targetFoundation.instance, 
-      contactAngle
+      contactAngle,
+      'lean' // Support rocks lean against foundation
     );
     
+    console.log(`🏔️ Support rock leaning on foundation at height ${position.y.toFixed(2)}`);
     return position;
   }
   
-  private static calculateAccentPosition(
+  private static calculateEnhancedAccentPosition(
     rock: RockInstance,
     existingRocks: ClusterRock[],
     clusterCenter: THREE.Vector3
   ): THREE.Vector3 {
-    // Accent rocks can rest on foundation or support rocks
     const supportableRocks = existingRocks.filter(r => 
       r.tier === 'foundation' || r.tier === 'support'
     );
     
     if (supportableRocks.length === 0) {
-      return this.calculateFoundationPosition(rock, clusterCenter);
+      console.log(`🏔️ No support rocks - placing accent as foundation`);
+      return this.calculateEnhancedFoundationPosition(rock, existingRocks, clusterCenter);
     }
     
-    // Prefer stable, larger rocks for support
+    // Prefer stable, larger rocks for accent placement
     const targetSupport = supportableRocks.reduce((best, current) => {
       const suitability = current.instance.properties.stability * 
                          current.instance.boundingRadius * 
-                         (current.tier === 'foundation' ? 1.5 : 1.0);
+                         (current.tier === 'foundation' ? 2.0 : 1.2); // Strong preference for foundation
       const bestSuitability = best.instance.properties.stability * 
                              best.instance.boundingRadius * 
-                             (best.tier === 'foundation' ? 1.5 : 1.0);
+                             (best.tier === 'foundation' ? 2.0 : 1.2);
       return suitability > bestSuitability ? current : best;
     });
     
-    // Position on top or against the support rock
     const position = targetSupport.position.clone();
     
-    // Add small offset for natural placement
-    position.x += (Math.random() - 0.5) * rock.boundingRadius * 0.5;
-    position.z += (Math.random() - 0.5) * rock.boundingRadius * 0.5;
+    // Enhanced accent positioning
+    if (Math.random() < 0.7) {
+      // 70% chance to stack on top
+      position.y = this.calculateEnhancedContactHeight(
+        rock,
+        targetSupport.instance,
+        0,
+        'stack'
+      );
+    } else {
+      // 30% chance to lean against
+      const leanAngle = Math.random() * Math.PI * 2;
+      const leanDistance = (targetSupport.instance.boundingRadius + rock.boundingRadius) * 0.6;
+      
+      position.x += Math.cos(leanAngle) * leanDistance;
+      position.z += Math.sin(leanAngle) * leanDistance;
+      position.y = this.calculateEnhancedContactHeight(
+        rock,
+        targetSupport.instance,
+        leanAngle,
+        'lean'
+      );
+    }
     
-    // Calculate proper stacking height
-    position.y = targetSupport.position.y + 
-                 targetSupport.instance.boundingRadius + 
-                 rock.boundingRadius * 0.7; // 70% overlap for stability
-    
+    console.log(`🏔️ Accent rock positioned at height ${position.y.toFixed(2)}`);
     return position;
   }
   
-  private static calculateRealisticContactHeight(
+  private static calculateEnhancedContactHeight(
     rock: RockInstance,
     supportRock: RockInstance,
-    contactAngle: number
+    contactAngle: number,
+    contactType: 'lean' | 'stack'
   ): number {
-    // Calculate realistic contact height based on rock shapes and contact geometry
     const supportRadius = supportRock.boundingRadius;
     const rockRadius = rock.boundingRadius;
     
-    // Base height from support rock center
-    const baseHeight = supportRock.boundingRadius * 0.8; // Support rock mostly above ground
-    
-    // Contact geometry - rocks lean against each other naturally
-    const contactDepth = Math.min(supportRadius, rockRadius) * 0.3;
-    const leanHeight = Math.sqrt(Math.max(0, 
-      Math.pow(rockRadius, 2) - Math.pow(contactDepth, 2)
-    ));
-    
-    return Math.max(0, baseHeight + leanHeight - rockRadius * 0.2);
+    if (contactType === 'stack') {
+      // Stacking on top with realistic contact
+      return supportRadius * 0.9 + rockRadius * 0.8; // Realistic stacking height
+    } else {
+      // Leaning against with realistic physics
+      const baseHeight = supportRadius * 0.7; // Support rock height above ground
+      const contactDepth = Math.min(supportRadius, rockRadius) * 0.4; // Deeper contact for stability
+      
+      // Calculate lean geometry
+      const leanHeight = Math.sqrt(Math.max(0.1, 
+        Math.pow(rockRadius * 0.9, 2) - Math.pow(contactDepth, 2)
+      ));
+      
+      return Math.max(rockRadius * 0.3, baseHeight + leanHeight - rockRadius * 0.3);
+    }
   }
   
   public static isPositionStable(
@@ -145,43 +171,51 @@ export class StackingPhysics {
     rock: RockInstance,
     existingRocks: ClusterRock[]
   ): boolean {
-    // Improved stability checking
+    // Enhanced stability checking for massive rocks
     
-    // Check for reasonable positioning (not floating too high)
-    if (position.y > rock.boundingRadius * 3) {
+    // Check for reasonable positioning (prevent floating islands)
+    const maxFloatingHeight = rock.boundingRadius * 4; // Allow higher for massive rocks
+    if (position.y > maxFloatingHeight) {
+      console.log(`🏔️ ❌ Rock too high: ${position.y.toFixed(2)} > ${maxFloatingHeight.toFixed(2)}`);
       return false;
     }
     
-    // Check overlaps with existing rocks
+    // Enhanced overlap checking
     for (const existing of existingRocks) {
       const distance = position.distanceTo(existing.position);
-      const minDistance = (rock.boundingRadius + existing.instance.boundingRadius) * 0.7;
+      const minDistance = (rock.boundingRadius + existing.instance.boundingRadius) * 0.6; // Allow more contact for stacking
       
-      // Allow natural contact but prevent excessive overlap
       if (distance < minDistance) {
+        console.log(`🏔️ ❌ Overlap detected: distance ${distance.toFixed(2)} < min ${minDistance.toFixed(2)}`);
         return false;
       }
     }
     
-    // Check if rock has adequate support (for non-foundation rocks)
-    if (position.y > rock.boundingRadius * 0.5) {
-      const hasSupport = existingRocks.some(existing => {
+    // Enhanced support checking for elevated rocks
+    if (position.y > rock.boundingRadius * 0.6) {
+      const hasAdequateSupport = existingRocks.some(existing => {
         const horizontalDistance = Math.sqrt(
           Math.pow(position.x - existing.position.x, 2) + 
           Math.pow(position.z - existing.position.z, 2)
         );
         const verticalDistance = Math.abs(position.y - existing.position.y);
         
-        return horizontalDistance < (rock.boundingRadius + existing.instance.boundingRadius) * 0.8 &&
-               verticalDistance < existing.instance.boundingRadius * 1.2 &&
-               existing.position.y < position.y;
+        const supportRange = (rock.boundingRadius + existing.instance.boundingRadius) * 0.9;
+        const heightRange = existing.instance.boundingRadius * 1.5;
+        
+        const isInSupportRange = horizontalDistance < supportRange;
+        const isAtCorrectHeight = verticalDistance < heightRange && existing.position.y < position.y;
+        
+        return isInSupportRange && isAtCorrectHeight;
       });
       
-      if (!hasSupport) {
+      if (!hasAdequateSupport) {
+        console.log(`🏔️ ❌ Insufficient support for elevated rock at height ${position.y.toFixed(2)}`);
         return false;
       }
     }
     
+    console.log(`🏔️ ✅ Position stable at (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
     return true;
   }
 }
