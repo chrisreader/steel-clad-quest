@@ -584,9 +584,9 @@ export class SceneManager {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
     }
     
-    // Update 3D grass system
+    // Update 3D grass system with game time for day/night color changes
     if (this.grassSystem && playerPosition) {
-      this.grassSystem.update(deltaTime, playerPosition);
+      this.grassSystem.update(deltaTime, playerPosition, this.timeOfDay);
     }
     
     if (playerPosition) {
