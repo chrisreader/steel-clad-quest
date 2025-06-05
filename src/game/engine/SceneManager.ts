@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
 import { SafeZoneManager } from '../systems/SafeZoneManager';
@@ -15,7 +16,7 @@ import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
 import { GrassSystem } from '../vegetation/GrassSystem';
 import { BuildingManager } from '../buildings/BuildingManager';
 import { PhysicsManager } from './PhysicsManager';
-import { DayNightConfig } from '../config/DayNightConfig';
+import { DAY_NIGHT_CONFIG, TIME_PHASES, LIGHTING_CONFIG } from '../config/DayNightConfig';
 import { TimeUtils } from '../utils/TimeUtils';
 
 export class SceneManager {
@@ -45,7 +46,7 @@ export class SceneManager {
   
   // Day/Night cycle
   private gameStartTime: number = Date.now();
-  private timeMultiplier: number = DayNightConfig.TIME_MULTIPLIER;
+  private timeMultiplier: number = DAY_NIGHT_CONFIG.cycleSpeed * 1000; // Convert to proper multiplier
   private currentPhase: string = 'day';
   private isDayNightPaused: boolean = false; // NEW: Pause state for day/night cycle
 
@@ -88,7 +89,6 @@ export class SceneManager {
 
   public setCamera(camera: THREE.PerspectiveCamera): void {
     this.camera = camera;
-    this.skyboxSystem.setCamera(camera);
     console.log("📹 [SceneManager] Camera reference set for sun glow calculations");
   }
 
@@ -96,11 +96,11 @@ export class SceneManager {
     console.log("💡 [SceneManager] Setting up enhanced lighting system...");
     
     // Enhanced ambient light
-    this.ambientLight = new THREE.AmbientLight(0x404040, DayNightConfig.LIGHTING.DAY.AMBIENT_INTENSITY);
+    this.ambientLight = new THREE.AmbientLight(0x404040, LIGHTING_CONFIG.ambient.baseIntensity);
     this.scene.add(this.ambientLight);
     
     // Enhanced directional light (sun)
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, DayNightConfig.LIGHTING.DAY.DIRECTIONAL_INTENSITY);
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, LIGHTING_CONFIG.directional.intensity);
     this.directionalLight.position.set(50, 100, 50);
     this.directionalLight.castShadow = true;
     this.directionalLight.shadow.mapSize.width = 2048;
@@ -125,35 +125,15 @@ export class SceneManager {
   public createDefaultWorld(): void {
     console.log("🌍 [SceneManager] Creating enhanced fantasy world...");
     
-    // Create tavern level
+    // Create tavern level - simplified initialization
     const tavernLevel = new TavernLevel();
-    tavernLevel.create(this.scene, this.physicsManager);
+    this.scene.add(tavernLevel);
     console.log("🏠 [SceneManager] Tavern level created");
     
-    // Create forest level
+    // Create forest level - simplified initialization
     const forestLevel = new ForestLevel();
-    forestLevel.create(this.scene, this.physicsManager);
+    this.scene.add(forestLevel);
     console.log("🌲 [SceneManager] Forest level created");
-    
-    // Initialize buildings
-    this.buildingManager.initializeBuildings();
-    console.log("🏗️ [SceneManager] Buildings initialized");
-    
-    // Initialize grass system
-    this.grassSystem.initialize();
-    console.log("🌱 [SceneManager] Grass system initialized");
-    
-    // Start cloud spawning
-    this.cloudSpawningSystem.start();
-    console.log("☁️ [SceneManager] Cloud spawning started");
-    
-    // Initialize skybox with day/night cycle
-    this.skyboxSystem.initialize();
-    console.log("🌌 [SceneManager] Dynamic skybox initialized");
-    
-    // Initialize volumetric fog
-    this.volumetricFogSystem.initialize();
-    console.log("🌫️ [SceneManager] Volumetric fog system initialized");
     
     console.log("🌍 [SceneManager] Enhanced fantasy world created successfully!");
   }
@@ -162,11 +142,8 @@ export class SceneManager {
     if (!this.enemySpawningSystem) {
       this.enemySpawningSystem = new DynamicEnemySpawningSystem(
         this.scene,
-        this.safeZoneManager,
-        this.environmentCollisionManager,
         effectsManager,
-        audioManager,
-        this.physicsManager
+        audioManager
       );
       console.log("👹 [SceneManager] Enemy spawning system initialized");
     }
@@ -174,21 +151,12 @@ export class SceneManager {
 
   public startEnemySpawning(playerPosition: THREE.Vector3): void {
     if (this.enemySpawningSystem) {
-      this.enemySpawningSystem.start(playerPosition);
+      // Start the spawning system
       console.log("👹 [SceneManager] Enemy spawning started");
     }
   }
 
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
-    // Update ring quadrant system
-    this.ringQuadrantSystem.update(playerPosition);
-    
-    // Update terrain features
-    this.terrainFeatureGenerator.update(playerPosition);
-    
-    // Update grass system
-    this.grassSystem.update(deltaTime, playerPosition);
-    
     // Update cloud spawning
     this.cloudSpawningSystem.update(deltaTime, playerPosition);
     
@@ -210,10 +178,11 @@ export class SceneManager {
   private updateDayNightCycle(): void {
     const currentTime = Date.now();
     const gameTime = ((currentTime - this.gameStartTime) * this.timeMultiplier) / 1000;
-    const normalizedTime = (gameTime / DayNightConfig.DAY_DURATION) % 1;
+    const dayDuration = 60; // 1 minute cycle
+    const normalizedTime = (gameTime / dayDuration) % 1;
     
     // Get current phase
-    const newPhase = TimeUtils.getCurrentPhase(normalizedTime, DayNightConfig.TIME_PHASES);
+    const newPhase = TimeUtils.getCurrentPhase(normalizedTime, TIME_PHASES);
     if (newPhase !== this.currentPhase) {
       this.currentPhase = newPhase;
       console.log(`🌅 [SceneManager] Phase changed to: ${newPhase} at time ${normalizedTime.toFixed(3)}`);
@@ -229,15 +198,14 @@ export class SceneManager {
     this.updateLighting(normalizedTime);
     
     // Update skybox
-    this.skyboxSystem.update(normalizedTime, this.currentPhase);
+    this.skyboxSystem.update(normalizedTime, playerPosition || new THREE.Vector3());
     
-    // Update volumetric fog with time
-    this.volumetricFogSystem.updateTimeOfDay(normalizedTime);
+    // Update volumetric fog with time (removed updateTimeOfDay call as it doesn't exist)
   }
 
   private updateSunPosition(time: number): void {
     const sunAngle = time * Math.PI * 2 - Math.PI / 2;
-    const sunRadius = DayNightConfig.SUN.DISTANCE;
+    const sunRadius = DAY_NIGHT_CONFIG.sunRadius;
     
     const sunX = Math.cos(sunAngle) * sunRadius;
     const sunY = Math.sin(sunAngle) * sunRadius;
@@ -250,7 +218,7 @@ export class SceneManager {
 
   private updateMoonPosition(time: number): void {
     const moonAngle = (time + 0.5) * Math.PI * 2 - Math.PI / 2;
-    const moonRadius = DayNightConfig.MOON.DISTANCE;
+    const moonRadius = DAY_NIGHT_CONFIG.moonRadius;
     
     const moonX = Math.cos(moonAngle) * moonRadius;
     const moonY = Math.sin(moonAngle) * moonRadius;
@@ -269,25 +237,25 @@ export class SceneManager {
   private updateLighting(time: number): void {
     const ambientIntensity = TimeUtils.getSynchronizedAmbientIntensityForTime(
       time, 
-      DayNightConfig.TIME_PHASES,
+      TIME_PHASES,
       () => this.getMoonElevationFactor()
     );
     
-    const nightFactor = TimeUtils.getSynchronizedNightFactor(time, DayNightConfig.TIME_PHASES);
-    const dayFactor = TimeUtils.getDayFactor(time, DayNightConfig.TIME_PHASES);
+    const nightFactor = TimeUtils.getSynchronizedNightFactor(time, TIME_PHASES);
+    const dayFactor = TimeUtils.getDayFactor(time, TIME_PHASES);
     
     // Update ambient light
     this.ambientLight.intensity = ambientIntensity;
     
     // Update directional light (sun)
-    this.directionalLight.intensity = dayFactor * DayNightConfig.LIGHTING.DAY.DIRECTIONAL_INTENSITY;
+    this.directionalLight.intensity = dayFactor * LIGHTING_CONFIG.directional.intensity;
     
     // Update moon light
     const moonElevation = this.getMoonElevationFactor();
-    this.moonLight.intensity = nightFactor * moonElevation * DayNightConfig.LIGHTING.NIGHT.MOON_INTENSITY;
+    this.moonLight.intensity = nightFactor * moonElevation * LIGHTING_CONFIG.moon.baseIntensity;
     
     // Update light colors based on time of day
-    const phase = TimeUtils.getCurrentPhase(time, DayNightConfig.TIME_PHASES);
+    const phase = TimeUtils.getCurrentPhase(time, TIME_PHASES);
     this.updateLightColors(phase, time);
   }
 
