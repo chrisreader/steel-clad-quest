@@ -1,5 +1,14 @@
 import * as THREE from 'three';
-import { RockShapeType, RockInstance, RockGenerationConfig } from '../types/RockTypes';
+import { 
+  RockShapeType, 
+  RockInstance, 
+  RockGenerationConfig, 
+  RockVariation,
+  RockShape,
+  RockVariationSelector,
+  ROCK_VARIATIONS,
+  ROCK_SHAPES
+} from '../types/RockTypes';
 import { RockMaterials } from '../materials/RockMaterials';
 import { BaseRockShape } from '../shapes/BaseRockShape';
 import { BoulderShape } from '../shapes/BoulderShape';
@@ -12,6 +21,7 @@ import { JaggedShape } from '../shapes/JaggedShape';
 
 export class RockShapeFactory {
   private shapeGenerators: Map<RockShapeType, BaseRockShape>;
+  private static generationStats: Map<string, number> = new Map();
   
   constructor() {
     this.shapeGenerators = new Map();
@@ -22,6 +32,17 @@ export class RockShapeFactory {
     this.shapeGenerators.set('weathered', new WeatheredShape());
     this.shapeGenerators.set('flattened', new FlattenedShape());
     this.shapeGenerators.set('jagged', new JaggedShape());
+    
+    // Log variation probabilities on initialization
+    this.logVariationProbabilities();
+  }
+  
+  private logVariationProbabilities(): void {
+    console.log('🗿 Rock Variation Probabilities:');
+    const stats = RockVariationSelector.getVariationStats();
+    Object.entries(stats).forEach(([category, percentage]) => {
+      console.log(`  ${category}: ${percentage.toFixed(1)}%`);
+    });
   }
   
   public createRock(shapeType: RockShapeType, config: RockGenerationConfig): RockInstance {
@@ -29,20 +50,40 @@ export class RockShapeFactory {
       throw new Error('Cluster rocks should be generated through ClusterGenerator');
     }
     
+    // Select variation and shape based on new system
+    const variation = config.variation || RockVariationSelector.selectRandomVariation();
+    const shape = config.shape || RockVariationSelector.getShapeForType(shapeType);
+    
+    // Update generation statistics
+    this.updateGenerationStats(variation.category, shapeType);
+    
     const shapeGenerator = this.shapeGenerators.get(shapeType);
     if (!shapeGenerator) {
       throw new Error(`Unknown rock shape type: ${shapeType}`);
     }
     
-    // Generate geometry
-    const geometry = shapeGenerator.generateGeometry(config);
+    // Use variation size range if no specific size range provided
+    const sizeRange = config.sizeRange || {
+      min: variation.sizeRange[0],
+      max: variation.sizeRange[1]
+    };
+    
+    // Generate geometry with enhanced config
+    const enhancedConfig = {
+      ...config,
+      sizeRange,
+      variation,
+      shape
+    };
+    
+    const geometry = shapeGenerator.generateGeometry(enhancedConfig);
     
     // Select material type based on shape and weathering
     const materialType = this.selectMaterialType(shapeType);
-    const weatheringLevel = config.weatheringRange.min + 
-      Math.random() * (config.weatheringRange.max - config.weatheringRange.min);
+    const weatheringLevel = shape.weatheringLevel + 
+      (Math.random() - 0.5) * 0.2; // Add some variation to weathering
     
-    const material = RockMaterials.getRockMaterial(materialType, weatheringLevel);
+    const material = RockMaterials.getRockMaterial(materialType, Math.max(0, Math.min(1, weatheringLevel)));
     
     // Create mesh
     const mesh = new THREE.Mesh(geometry, material);
@@ -56,14 +97,16 @@ export class RockShapeFactory {
     // Generate contact points for physics
     const contactPoints = this.generateContactPoints(geometry, boundingRadius);
     
-    // Create rock properties
+    // Create enhanced rock properties
     const properties = {
       shapeType,
-      sizeCategory: this.determineSizeCategory(boundingRadius),
+      sizeCategory: variation.category,
       baseSize: boundingRadius,
       material,
-      weatheringLevel,
-      stability: this.calculateStability(shapeType, weatheringLevel)
+      weatheringLevel: Math.max(0, Math.min(1, weatheringLevel)),
+      stability: this.calculateStability(shapeType, weatheringLevel, variation),
+      variation,
+      shape
     };
     
     return {
@@ -74,6 +117,44 @@ export class RockShapeFactory {
     };
   }
   
+  private updateGenerationStats(category: string, shapeType: RockShapeType): void {
+    const key = `${category}_${shapeType}`;
+    const current = RockShapeFactory.generationStats.get(key) || 0;
+    RockShapeFactory.generationStats.set(key, current + 1);
+    
+    // Log stats every 50 rocks generated
+    const totalGenerated = Array.from(RockShapeFactory.generationStats.values())
+      .reduce((sum, count) => sum + count, 0);
+    
+    if (totalGenerated % 50 === 0) {
+      this.logGenerationStats();
+    }
+  }
+  
+  private logGenerationStats(): void {
+    console.log('🗿 Rock Generation Statistics:');
+    
+    // Group by category
+    const categoryStats = new Map<string, number>();
+    const shapeStats = new Map<string, number>();
+    
+    RockShapeFactory.generationStats.forEach((count, key) => {
+      const [category, shape] = key.split('_');
+      categoryStats.set(category, (categoryStats.get(category) || 0) + count);
+      shapeStats.set(shape, (shapeStats.get(shape) || 0) + count);
+    });
+    
+    console.log('  By Category:');
+    categoryStats.forEach((count, category) => {
+      console.log(`    ${category}: ${count}`);
+    });
+    
+    console.log('  By Shape:');
+    shapeStats.forEach((count, shape) => {
+      console.log(`    ${shape}: ${count}`);
+    });
+  }
+  
   private selectMaterialType(shapeType: RockShapeType): 'granite' | 'sandstone' | 'limestone' | 'basalt' | 'weathered' {
     const materialMappings = {
       boulder: 'granite',
@@ -82,20 +163,14 @@ export class RockShapeFactory {
       angular: 'basalt',
       weathered: 'weathered',
       flattened: 'limestone',
-      jagged: 'granite'
+      jagged: 'granite',
+      cluster: 'granite'
     };
     
     return materialMappings[shapeType] as any;
   }
   
-  private determineSizeCategory(boundingRadius: number): 'small' | 'medium' | 'large' | 'massive' {
-    if (boundingRadius < 0.5) return 'small';
-    if (boundingRadius < 1.0) return 'medium';
-    if (boundingRadius < 2.0) return 'large';
-    return 'massive';
-  }
-  
-  private calculateStability(shapeType: RockShapeType, weatheringLevel: number): number {
+  private calculateStability(shapeType: RockShapeType, weatheringLevel: number, variation: RockVariation): number {
     const baseStability = {
       boulder: 0.9,
       spire: 0.3,
@@ -103,11 +178,15 @@ export class RockShapeFactory {
       angular: 0.6,
       weathered: 0.7,
       flattened: 0.9,
-      jagged: 0.4
+      jagged: 0.4,
+      cluster: 0.8
     };
     
     const base = baseStability[shapeType];
-    return Math.max(0.1, base - (weatheringLevel * 0.3));
+    const weatheringPenalty = weatheringLevel * 0.3;
+    const sizePenalty = variation.category === 'massive' ? 0.1 : 0; // Massive rocks are slightly less stable
+    
+    return Math.max(0.1, base - weatheringPenalty - sizePenalty);
   }
   
   private generateContactPoints(geometry: THREE.BufferGeometry, boundingRadius: number): THREE.Vector3[] {
@@ -124,5 +203,13 @@ export class RockShapeFactory {
     );
     
     return points;
+  }
+  
+  public static getGenerationStats(): Map<string, number> {
+    return new Map(RockShapeFactory.generationStats);
+  }
+  
+  public static resetGenerationStats(): void {
+    RockShapeFactory.generationStats.clear();
   }
 }
