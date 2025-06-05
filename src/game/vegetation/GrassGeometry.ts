@@ -55,33 +55,14 @@ export class GrassGeometry {
   
   // Create grass clump for dense patches
   public static createGrassClumpGeometry(bladeCount: number = 5, radius: number = 0.3): THREE.BufferGeometry {
-    const group = new THREE.Group();
-    
-    for (let i = 0; i < bladeCount; i++) {
-      const angle = (i / bladeCount) * Math.PI * 2;
-      const distance = Math.random() * radius;
-      
-      const blade = new THREE.Mesh(
-        this.createGrassBladeGeometry({
-          height: 0.8 + Math.random() * 0.4,
-          width: 0.1 + Math.random() * 0.05,
-          segments: 3,
-          curve: 0.2 + Math.random() * 0.1,
-          color: new THREE.Color(0x2d5016)
-        })
-      );
-      
-      blade.position.set(
-        Math.cos(angle) * distance,
-        0,
-        Math.sin(angle) * distance
-      );
-      blade.rotation.y = angle + (Math.random() - 0.5) * 0.5;
-      
-      group.add(blade);
-    }
-    
-    return group.children[0].geometry.clone();
+    // Just return a single blade geometry for now - clumping will be handled by the instance system
+    return this.createGrassBladeGeometry({
+      height: 0.8 + Math.random() * 0.4,
+      width: 0.1 + Math.random() * 0.05,
+      segments: 3,
+      curve: 0.2 + Math.random() * 0.1,
+      color: new THREE.Color(0x2d5016)
+    });
   }
   
   // Predefined grass types
