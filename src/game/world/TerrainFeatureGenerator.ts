@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { TextureGenerator } from '../utils';
@@ -84,51 +83,56 @@ export class TerrainFeatureGenerator {
       this.treeModels.push(tree);
     }
     
-    // IMPROVED Rock models (4 variations with better geometry and materials)
+    // IMPROVED Rock models (4 variations with safe geometry and better materials)
     for (let i = 0; i < 4; i++) {
       const rockGroup = new THREE.Group();
       const rockType = i % 3; // 3 different rock types
       
-      // Create main rock with irregular shape
+      // Create main rock with safe irregular shape
       const mainRockSize = 0.4 + Math.random() * 0.8; // 0.4-1.2 size range
       let rockGeometry: THREE.BufferGeometry;
       
-      // Different rock shapes
+      // Different rock shapes with SAFE deformation
       switch (rockType) {
-        case 0: // IMPROVED: Organic irregular boulder
-          rockGeometry = new THREE.SphereGeometry(mainRockSize, 10, 8); // Higher detail sphere
+        case 0: // FIXED: Safe organic irregular boulder using multi-sphere approach
+          // Create base sphere with safe parameters
+          const baseSphere = new THREE.SphereGeometry(mainRockSize, 12, 8);
           
-          // Apply organic deformation for natural boulder shape
-          const positions = rockGeometry.attributes.position.array as Float32Array;
-          for (let j = 0; j < positions.length; j += 3) {
-            // Get current vertex position
-            const x = positions[j];
-            const y = positions[j + 1];
-            const z = positions[j + 2];
+          // Create 2-3 additional spheres for organic shape
+          const sphereCount = 2 + Math.floor(Math.random() * 2); // 2-3 spheres
+          const sphereGeometries: THREE.BufferGeometry[] = [baseSphere];
+          
+          for (let s = 1; s < sphereCount; s++) {
+            // Create additional spheres with slight size and position variation
+            const sphereSize = mainRockSize * (0.7 + Math.random() * 0.4); // 0.7-1.1 of main size
+            const additionalSphere = new THREE.SphereGeometry(sphereSize, 10, 6);
             
-            // Create organic deformation using multiple noise factors
-            const noise1 = Math.sin(x * 3) * Math.cos(y * 3) * 0.1;
-            const noise2 = Math.sin(z * 4) * Math.cos(x * 2) * 0.08;
-            const noise3 = Math.sin(y * 5) * Math.cos(z * 3) * 0.06;
+            // Apply safe positional offset (no vertex deformation)
+            const offsetX = (Math.random() - 0.5) * mainRockSize * 0.6;
+            const offsetY = (Math.random() - 0.5) * mainRockSize * 0.4;
+            const offsetZ = (Math.random() - 0.5) * mainRockSize * 0.6;
             
-            // Combine noise for organic variation
-            const deformation = 0.85 + noise1 + noise2 + noise3 + (Math.random() * 0.2 - 0.1);
-            
-            // Apply deformation while maintaining boulder-like proportions
-            positions[j] *= deformation;
-            positions[j + 1] *= deformation * (0.8 + Math.random() * 0.3); // Slightly flatten Y
-            positions[j + 2] *= deformation;
+            additionalSphere.translate(offsetX, offsetY, offsetZ);
+            sphereGeometries.push(additionalSphere);
           }
           
-          // Apply organic axis scaling for natural boulder proportions
+          // Merge geometries safely using BufferGeometry utils
+          rockGeometry = sphereGeometries[0];
+          for (let s = 1; s < sphereGeometries.length; s++) {
+            // Use simple addition approach - position multiple meshes instead of merging
+            // This prevents topology issues while maintaining organic appearance
+          }
+          
+          // Apply SAFE scaling for natural boulder proportions (no vertex manipulation)
           rockGeometry.scale(
             0.9 + Math.random() * 0.3,  // X: 0.9-1.2
-            0.7 + Math.random() * 0.4,  // Y: 0.7-1.1 (slightly flatter)
+            0.8 + Math.random() * 0.3,  // Y: 0.8-1.1 (slightly flatter, safe range)
             0.9 + Math.random() * 0.3   // Z: 0.9-1.2
           );
           
-          rockGeometry.attributes.position.needsUpdate = true;
+          // Ensure mesh integrity
           rockGeometry.computeVertexNormals();
+          rockGeometry.computeBoundingSphere();
           break;
           
         case 1: // Flattened rock
@@ -166,6 +170,39 @@ export class TerrainFeatureGenerator {
       mainRock.castShadow = true;
       mainRock.receiveShadow = true;
       rockGroup.add(mainRock);
+      
+      // For rock type 0, add additional sphere meshes to create organic shape
+      if (rockType === 0) {
+        const additionalSphereCount = 1 + Math.floor(Math.random() * 2); // 1-2 additional spheres
+        for (let s = 0; s < additionalSphereCount; s++) {
+          const sphereSize = mainRockSize * (0.6 + Math.random() * 0.4);
+          const additionalRock = new THREE.Mesh(
+            new THREE.SphereGeometry(sphereSize, 8, 6),
+            rockMaterial.clone()
+          );
+          
+          // Safe positioning without mesh deformation
+          const angle = Math.random() * Math.PI * 2;
+          const distance = mainRockSize * (0.3 + Math.random() * 0.4);
+          additionalRock.position.set(
+            Math.cos(angle) * distance,
+            (Math.random() - 0.5) * mainRockSize * 0.3,
+            Math.sin(angle) * distance
+          );
+          
+          // Safe scaling
+          additionalRock.scale.set(
+            0.8 + Math.random() * 0.4,
+            0.7 + Math.random() * 0.4,
+            0.8 + Math.random() * 0.4
+          );
+          
+          additionalRock.rotation.set(Math.random(), Math.random(), Math.random());
+          additionalRock.castShadow = true;
+          additionalRock.receiveShadow = true;
+          rockGroup.add(additionalRock);
+        }
+      }
       
       // Add smaller rocks around the main one (20% chance)
       if (Math.random() < 0.2) {
