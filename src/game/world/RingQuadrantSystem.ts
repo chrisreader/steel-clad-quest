@@ -85,7 +85,6 @@ export class RingQuadrantSystem {
     const dz = position.z - this.worldCenter.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
     
-    // Find which ring contains this distance
     let ringIndex = -1;
     for (let i = 0; i < this.rings.length; i++) {
       if (distance >= this.rings[i].innerRadius && distance < this.rings[i].outerRadius) {
@@ -94,15 +93,13 @@ export class RingQuadrantSystem {
       }
     }
     
-    // If no ring contains this position
     if (ringIndex === -1) return null;
     
-    // Determine quadrant (0=NE, 1=SE, 2=SW, 3=NW)
     let quadrant = 0;
-    if (dx >= 0 && dz >= 0) quadrant = 0;      // North-East
-    else if (dx >= 0 && dz < 0) quadrant = 1;  // South-East
-    else if (dx < 0 && dz < 0) quadrant = 2;   // South-West
-    else if (dx < 0 && dz >= 0) quadrant = 3;  // North-West
+    if (dx >= 0 && dz >= 0) quadrant = 0;
+    else if (dx >= 0 && dz < 0) quadrant = 1;
+    else if (dx < 0 && dz < 0) quadrant = 2;
+    else if (dx < 0 && dz >= 0) quadrant = 3;
     
     return { ringIndex, quadrant };
   }

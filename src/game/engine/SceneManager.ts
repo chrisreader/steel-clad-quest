@@ -19,6 +19,7 @@ import { ColorUtils } from '../utils/ColorUtils';
 import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
 import { CelestialGlowShader } from '../effects/CelestialGlowShader';
+import { GrassSystem } from '../vegetation/GrassSystem';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -38,6 +39,9 @@ export class SceneManager {
   
   // Building management system
   private buildingManager: BuildingManager;
+  
+  // 3D grass system
+  private grassSystem: GrassSystem;
   
   // Enhanced lighting system for realistic shadows
   private ambientLight: THREE.AmbientLight;
@@ -102,6 +106,10 @@ export class SceneManager {
     
     // Connect StructureGenerator with BuildingManager
     this.structureGenerator.setBuildingManager(this.buildingManager);
+    
+    // Initialize 3D grass system
+    this.grassSystem = new GrassSystem(this.scene);
+    console.log("🌱 3D Grass system initialized");
     
     // Initialize skybox system
     this.skyboxSystem = new SkyboxSystem(this.scene);
@@ -576,6 +584,11 @@ export class SceneManager {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
     }
     
+    // Update 3D grass system
+    if (this.grassSystem && playerPosition) {
+      this.grassSystem.update(deltaTime, playerPosition);
+    }
+    
     if (playerPosition) {
       this.updateShadowCamera(playerPosition);
       
@@ -668,9 +681,8 @@ export class SceneManager {
   }
 
   public createDefaultWorld(): void {
-    console.log('Creating default world with enhanced terrain system...');
+    console.log('Creating default world with enhanced terrain and 3D grass system...');
     
-    // REMOVED: this.createSimpleGround(); - This was causing Z-fighting with ring terrain
     console.log('Skipped simple ground creation to prevent Z-fighting');
     
     const startRegion = { ringIndex: 0, quadrant: 0 };
@@ -708,7 +720,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('World with enhanced terrain system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('World with enhanced terrain and 3D grass system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     if (this.debugMode) {
       (window as any).sceneDebug = {
@@ -742,6 +754,12 @@ export class SceneManager {
     this.loadedRegions.set(regionKey, newRegion);
     this.terrainFeatureGenerator.generateFeaturesForRegion(region);
     this.structureGenerator.generateStructuresForRegion(region);
+    
+    // Generate 3D grass for this region
+    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
+    const regionSize = region.ringIndex === 0 ? ringDef.outerRadius * 2 : 100;
+    this.grassSystem.generateGrassForRegion(region, centerPosition, regionSize, ringDef.terrainColor);
+    console.log(`🌱 3D grass generated for region ${regionKey}`);
   }
   
   private unloadRegion(region: RegionCoordinates): void {
@@ -754,6 +772,9 @@ export class SceneManager {
     
     this.structureGenerator.cleanupStructuresForRegion(region);
     this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
+    
+    // Remove 3D grass for this region
+    this.grassSystem.removeGrassForRegion(region);
     
     if (loadedRegion.terrain) {
       this.scene.remove(loadedRegion.terrain);
@@ -1069,6 +1090,11 @@ export class SceneManager {
       this.volumetricFogSystem = null;
     }
     
+    // Dispose 3D grass system
+    if (this.grassSystem) {
+      this.grassSystem.dispose();
+    }
+    
     // Dispose shader-based glow systems
     if (this.sunGlowMaterial) {
       this.sunGlowMaterial.dispose();
@@ -1129,7 +1155,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    console.log("SceneManager with shader-based celestial glow system disposed");
+    console.log("SceneManager with 3D grass system disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {
