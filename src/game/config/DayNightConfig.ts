@@ -17,7 +17,7 @@ export const TIME_PHASES = {
 };
 
 export const DAY_NIGHT_CONFIG = {
-  cycleSpeed: 1 / 600, // 10-minute cycle (changed from 1 / 60)
+  cycleSpeed: 1 / 60, // 1-minute cycle
   sunRadius: 150,
   moonRadius: 140,
   shadowUpdateThreshold: 10,
