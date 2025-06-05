@@ -35,17 +35,17 @@ export class CelestialGlowShader {
     varying vec3 vWorldPosition;
     
     void main() {
-      // Calculate distance from center
+      // Calculate distance from center for circular appearance
       vec2 center = vec2(0.5, 0.5);
       float distance = length(vUv - center);
       
-      // Create smooth radial falloff
-      float glow = 1.0 - smoothstep(0.0, glowSize, distance);
+      // Create circular falloff instead of square
+      float circularFalloff = 1.0 - smoothstep(0.0, glowSize * 0.7, distance);
       
       // Apply atmospheric scattering with multiple layers
-      float innerGlow = pow(glow, falloffPower * 0.5);
-      float middleGlow = pow(glow, falloffPower * 1.5);
-      float outerGlow = pow(glow, falloffPower * 3.0);
+      float innerGlow = pow(circularFalloff, falloffPower * 0.5);
+      float middleGlow = pow(circularFalloff, falloffPower * 1.5);
+      float outerGlow = pow(circularFalloff, falloffPower * 3.0);
       
       // Combine layers with different intensities
       float combinedGlow = innerGlow * 0.6 + middleGlow * 0.3 + outerGlow * 0.1;
@@ -54,18 +54,14 @@ export class CelestialGlowShader {
       float atmospheric = 1.0 + sin(time * 0.5 + distance * 10.0) * 0.1 * atmosphericDensity;
       combinedGlow *= atmospheric;
       
-      // Add edge falloff to eliminate square edges
-      vec2 edgeDistance = abs(vUv - 0.5) * 2.0; // Distance from center to edge (0-1)
-      float maxEdgeDistance = max(edgeDistance.x, edgeDistance.y);
-      float edgeFalloff = 1.0 - smoothstep(0.7, 1.0, maxEdgeDistance);
-      
-      // Apply edge falloff to eliminate sharp cutoffs
-      combinedGlow *= edgeFalloff;
+      // Additional circular edge smoothing to ensure perfect circular appearance
+      float edgeSmoothing = 1.0 - smoothstep(0.4, 0.5, distance);
+      combinedGlow *= edgeSmoothing;
       
       // Apply intensity and color
       vec3 finalColor = glowColor * glowIntensity * combinedGlow;
       
-      // Smooth alpha falloff for seamless blending
+      // Smooth alpha falloff for seamless circular blending
       float alpha = combinedGlow * glowIntensity;
       
       gl_FragColor = vec4(finalColor, alpha);
