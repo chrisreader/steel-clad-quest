@@ -1,7 +1,3 @@
-import * as THREE from 'three';
-import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
-import { TextureGenerator } from '../utils';
-
 export interface FeatureCluster {
   position: THREE.Vector3;
   radius: number;
@@ -698,8 +694,6 @@ export class TerrainFeatureGenerator {
     return material;
   }
   
-  // ... keep existing code (all remaining methods - addSurfaceFeatures through dispose - remain exactly the same)
-  
   private addSurfaceFeatures(
     rockGroup: THREE.Group, 
     rockSize: number, 
@@ -840,8 +834,6 @@ export class TerrainFeatureGenerator {
       rockGroup.add(lichen);
     }
   }
-  
-  // ... keep existing code (all remaining methods through dispose remain exactly the same)
   
   // COMPLETELY REWRITTEN: Enhanced cluster generation with varied shapes and realistic stacking
   private createVariedRockCluster(rockGroup: THREE.Group, variation: RockVariation, index: number): void {
@@ -1001,7 +993,7 @@ export class TerrainFeatureGenerator {
     category: string, 
     rockShape: RockShape, 
     index: number, 
-    role: 'foundation' | 'support' | 'accent'
+    role: 'foundation' | 'support' | 'accent' | 'individual'
   ): THREE.MeshStandardMaterial {
     const material = this.createEnhancedRockMaterial(category, rockShape, index);
     
