@@ -44,16 +44,16 @@ export class TerrainFeatureGenerator {
     { category: 'massive', sizeRange: [4.0, 8.0], weight: 0.1, isCluster: true, clusterSize: [4, 7], shapePersonality: 'character' }
   ];
   
-  // ENHANCED: Expanded rock shapes with specific modifiers
+  // UPDATED: Reduced deformation intensities to max 0.2
   private rockShapes: RockShape[] = [
-    { type: 'boulder', baseGeometry: 'icosahedron', deformationIntensity: 0.3, weatheringLevel: 0.6, shapeModifier: 'erode' },
-    { type: 'spire', baseGeometry: 'icosahedron', deformationIntensity: 0.4, weatheringLevel: 0.3, shapeModifier: 'stretch' },
-    { type: 'slab', baseGeometry: 'sphere', deformationIntensity: 0.2, weatheringLevel: 0.8, shapeModifier: 'flatten' },
-    { type: 'angular', baseGeometry: 'dodecahedron', deformationIntensity: 0.5, weatheringLevel: 0.4, shapeModifier: 'fracture' },
-    { type: 'weathered', baseGeometry: 'sphere', deformationIntensity: 0.6, weatheringLevel: 0.9, shapeModifier: 'erode' },
-    { type: 'flattened', baseGeometry: 'sphere', deformationIntensity: 0.3, weatheringLevel: 0.7, shapeModifier: 'flatten' },
-    { type: 'jagged', baseGeometry: 'icosahedron', deformationIntensity: 0.7, weatheringLevel: 0.5, shapeModifier: 'fracture' },
-    { type: 'cluster', baseGeometry: 'custom', deformationIntensity: 0.4, weatheringLevel: 0.6, shapeModifier: 'none' }
+    { type: 'boulder', baseGeometry: 'icosahedron', deformationIntensity: 0.15, weatheringLevel: 0.6, shapeModifier: 'erode' },
+    { type: 'spire', baseGeometry: 'icosahedron', deformationIntensity: 0.2, weatheringLevel: 0.3, shapeModifier: 'stretch' },
+    { type: 'slab', baseGeometry: 'sphere', deformationIntensity: 0.1, weatheringLevel: 0.8, shapeModifier: 'flatten' },
+    { type: 'angular', baseGeometry: 'dodecahedron', deformationIntensity: 0.2, weatheringLevel: 0.4, shapeModifier: 'fracture' },
+    { type: 'weathered', baseGeometry: 'sphere', deformationIntensity: 0.2, weatheringLevel: 0.9, shapeModifier: 'erode' },
+    { type: 'flattened', baseGeometry: 'sphere', deformationIntensity: 0.15, weatheringLevel: 0.7, shapeModifier: 'flatten' },
+    { type: 'jagged', baseGeometry: 'icosahedron', deformationIntensity: 0.2, weatheringLevel: 0.5, shapeModifier: 'fracture' },
+    { type: 'cluster', baseGeometry: 'custom', deformationIntensity: 0.2, weatheringLevel: 0.6, shapeModifier: 'none' }
   ];
   
   // Track spawned objects by region for cleanup
@@ -698,7 +698,8 @@ export class TerrainFeatureGenerator {
     return material;
   }
   
-  // ... keep existing code (surface features methods)
+  // ... keep existing code (all remaining methods - addSurfaceFeatures through dispose - remain exactly the same)
+  
   private addSurfaceFeatures(
     rockGroup: THREE.Group, 
     rockSize: number, 
@@ -839,6 +840,8 @@ export class TerrainFeatureGenerator {
       rockGroup.add(lichen);
     }
   }
+  
+  // ... keep existing code (all remaining methods through dispose remain exactly the same)
   
   // COMPLETELY REWRITTEN: Enhanced cluster generation with varied shapes and realistic stacking
   private createVariedRockCluster(rockGroup: THREE.Group, variation: RockVariation, index: number): void {
