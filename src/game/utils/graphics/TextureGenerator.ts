@@ -1,5 +1,5 @@
-
 import * as THREE from 'three';
+import { EnhancedTextureGenerator } from './EnhancedTextureGenerator';
 
 export class TextureGenerator {
   /**
@@ -68,37 +68,101 @@ export class TextureGenerator {
   }
 
   /**
-   * Creates a grass texture with customizable properties
+   * Creates enhanced realistic grass texture - IMPROVED VERSION
    */
   static createGrassTexture(
-    baseColor: number = 0x32CD32,
+    baseColor: number = 0x4A7C59,
     detailCount: number = 200,
-    variation: number = 40
+    variation: number = 40,
+    worn: boolean = false
+  ): THREE.Texture {
+    // Use the new enhanced texture generator for much better realism
+    return EnhancedTextureGenerator.createRealisticGrassTexture(
+      baseColor,
+      variation / 100, // Convert to 0-1 range
+      0.8, // density
+      worn
+    );
+  }
+
+  /**
+   * Creates a realistic ground/dirt texture for pathways and worn areas
+   */
+  static createRealisticGroundTexture(
+    baseColor: number = 0x8B7355,
+    rockCount: number = 50,
+    grassPatches: boolean = true
   ): THREE.Texture {
     const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 256;
+    canvas.width = canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
     
-    // Base color
-    ctx.fillStyle = `#${baseColor.toString(16).padStart(6, '0')}`;
-    ctx.fillRect(0, 0, 256, 256);
+    // Base earth color
+    const r = (baseColor >> 16) & 255;
+    const g = (baseColor >> 8) & 255;
+    const b = baseColor & 255;
     
-    // Grass variation
-    for (let i = 0; i < detailCount; i++) {
-      const hue = 100 + Math.random() * variation;
-      const sat = 50 + Math.random() * 30;
-      const light = 40 + Math.random() * 40;
-      ctx.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`;
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // Add soil variation and texture
+    for (let i = 0; i < 300; i++) {
+      const brightness = 0.7 + Math.random() * 0.6;
+      const varR = Math.max(0, Math.min(255, r * brightness + (Math.random() - 0.5) * 40));
+      const varG = Math.max(0, Math.min(255, g * brightness + (Math.random() - 0.5) * 30));
+      const varB = Math.max(0, Math.min(255, b * brightness + (Math.random() - 0.5) * 20));
+      
+      ctx.fillStyle = `rgba(${varR}, ${varG}, ${varB}, 0.7)`;
       ctx.fillRect(
-        Math.random() * 256, 
-        Math.random() * 256, 
-        Math.random() * 4 + 1, 
-        Math.random() * 4 + 1
+        Math.random() * 512,
+        Math.random() * 512,
+        Math.random() * 12 + 3,
+        Math.random() * 12 + 3
       );
+    }
+    
+    // Add small rocks and pebbles
+    for (let i = 0; i < rockCount; i++) {
+      const rockSize = Math.random() * 6 + 2;
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      
+      ctx.fillStyle = `rgba(${90 + Math.random() * 40}, ${85 + Math.random() * 35}, ${80 + Math.random() * 30}, 0.8)`;
+      ctx.beginPath();
+      ctx.arc(x, y, rockSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Add highlight
+      ctx.fillStyle = `rgba(${130 + Math.random() * 30}, ${125 + Math.random() * 25}, ${120 + Math.random() * 20}, 0.4)`;
+      ctx.beginPath();
+      ctx.arc(x - rockSize * 0.3, y - rockSize * 0.3, rockSize * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Add sparse grass patches if enabled
+    if (grassPatches) {
+      for (let i = 0; i < 100; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const grassR = 74 + Math.random() * 50;
+        const grassG = 124 + Math.random() * 40;
+        const grassB = 89 + Math.random() * 30;
+        
+        ctx.fillStyle = `rgba(${grassR}, ${grassG}, ${grassB}, 0.6)`;
+        ctx.fillRect(
+          x,
+          y,
+          Math.random() * 3 + 1,
+          Math.random() * 8 + 2
+        );
+      }
     }
     
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.generateMipmaps = true;
+    texture.minFilter = THREE.LinearMipmapLinearFilter;
+    
     return texture;
   }
 
