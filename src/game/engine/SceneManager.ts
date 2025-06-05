@@ -290,8 +290,8 @@ export class SceneManager {
       this.sunGlow.geometry.dispose();
     }
     
-    // Create shader-based glow with larger plane for smooth atmospheric effect
-    const glowGeometry = new THREE.PlaneGeometry(80, 80);
+    // Create shader-based glow with larger plane for smooth edge falloff
+    const glowGeometry = new THREE.PlaneGeometry(120, 120);
     this.sunGlowMaterial = CelestialGlowShader.createGlowMaterial(
       0.6,  // size - controls falloff radius
       0.4,  // intensity
@@ -306,7 +306,7 @@ export class SceneManager {
     this.sunGlow.renderOrder = -1; // Render behind other objects
     this.sun.add(this.sunGlow);
     
-    console.log("Shader-based sun glow created with atmospheric scattering");
+    console.log("Shader-based sun glow created with expanded plane and edge falloff");
   }
 
   private createShaderMoonGlow(): void {
@@ -321,8 +321,8 @@ export class SceneManager {
       this.moonGlow.geometry.dispose();
     }
     
-    // Create shader-based moon glow with cooler tones
-    const glowGeometry = new THREE.PlaneGeometry(60, 60);
+    // Create shader-based moon glow with larger plane for smooth edge falloff
+    const glowGeometry = new THREE.PlaneGeometry(100, 100);
     this.moonGlowMaterial = CelestialGlowShader.createGlowMaterial(
       0.7,  // size - slightly larger falloff for moon
       0.5,  // intensity
@@ -337,7 +337,7 @@ export class SceneManager {
     this.moonGlow.renderOrder = -1; // Render behind other objects
     this.moon.add(this.moonGlow);
     
-    console.log("Shader-based moon glow created with atmospheric scattering");
+    console.log("Shader-based moon glow created with expanded plane and edge falloff");
   }
 
   private updateCelestialGlow(): void {

@@ -1,7 +1,7 @@
-
 import * as THREE from 'three';
 
 export interface GlowUniforms {
+  [uniform: string]: THREE.IUniform<any>;
   glowSize: { value: number };
   glowIntensity: { value: number };
   glowColor: { value: THREE.Color };
@@ -53,6 +53,14 @@ export class CelestialGlowShader {
       // Add atmospheric density variation
       float atmospheric = 1.0 + sin(time * 0.5 + distance * 10.0) * 0.1 * atmosphericDensity;
       combinedGlow *= atmospheric;
+      
+      // Add edge falloff to eliminate square edges
+      vec2 edgeDistance = abs(vUv - 0.5) * 2.0; // Distance from center to edge (0-1)
+      float maxEdgeDistance = max(edgeDistance.x, edgeDistance.y);
+      float edgeFalloff = 1.0 - smoothstep(0.7, 1.0, maxEdgeDistance);
+      
+      // Apply edge falloff to eliminate sharp cutoffs
+      combinedGlow *= edgeFalloff;
       
       // Apply intensity and color
       vec3 finalColor = glowColor * glowIntensity * combinedGlow;
