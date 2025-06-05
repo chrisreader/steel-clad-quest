@@ -119,6 +119,10 @@ export class SceneManager {
     this.volumetricFogSystem = new VolumetricFogSystem(this.scene);
     console.log("VolumetricFogSystem initialized");
     
+    // Initialize enhanced grass system
+    this.instancedGrassSystem = new InstancedGrassSystem(this.scene);
+    console.log("InstancedGrassSystem initialized");
+    
     // Add debug ring markers
     if (this.debugMode) {
       this.ringSystem.createDebugRingMarkers(this.scene);
@@ -543,6 +547,74 @@ export class SceneManager {
   public updateDistanceFog(playerPosition: THREE.Vector3): void {
     this.lastPlayerPosition.copy(playerPosition);
     this.updateShadowCamera(playerPosition);
+  }
+  
+  private loadRegion(region: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(region);
+    
+    if (this.loadedRegions.has(regionKey)) {
+      console.log(`Region ${regionKey} already loaded`);
+      return;
+    }
+    
+    console.log(`Loading region ${regionKey} (ring: ${region.ringIndex}, quadrant: ${region.quadrant})`);
+    
+    // Get ring definition
+    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
+    
+    // Calculate center position for the region
+    const centerPosition = this.ringSystem.getRegionCenter(region);
+    
+    // Create terrain for this region
+    const terrain = this.createRegionTerrain(region, centerPosition);
+    
+    // Generate terrain features
+    this.terrainFeatureGenerator.generateFeaturesForRegion(region);
+    
+    // Generate structures
+    this.structureGenerator.generateStructuresForRegion(region);
+    
+    // Create region object and store it
+    const regionObj: Region = {
+      coordinates: region,
+      terrain: terrain,
+      features: [],
+      structures: []
+    };
+    
+    this.loadedRegions.set(regionKey, regionObj);
+    
+    console.log(`Region ${regionKey} loaded successfully`);
+  }
+  
+  private unloadRegion(region: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(region);
+    const regionObj = this.loadedRegions.get(regionKey);
+    
+    if (!regionObj) {
+      console.log(`Region ${regionKey} not found for unloading`);
+      return;
+    }
+    
+    console.log(`Unloading region ${regionKey}`);
+    
+    // Remove terrain
+    if (regionObj.terrain) {
+      this.scene.remove(regionObj.terrain);
+      regionObj.terrain.geometry.dispose();
+      if (regionObj.terrain.material instanceof THREE.Material) {
+        regionObj.terrain.material.dispose();
+      }
+    }
+    
+    // Clean up features and structures
+    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
+    this.structureGenerator.cleanupStructuresForRegion(region);
+    
+    // Remove from loaded regions
+    this.loadedRegions.delete(regionKey);
+    
+    console.log(`Region ${regionKey} unloaded successfully`);
   }
   
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
