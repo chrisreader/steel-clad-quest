@@ -44,7 +44,7 @@ export class TerrainFeatureGenerator {
   }
   
   private loadModels(): void {
-    // Tree models (3 variations) - RESTORED ORIGINAL GRAPHICS
+    // Tree models (3 variations) - Keep existing tree graphics
     for (let i = 0; i < 3; i++) {
       const treeHeight = 8; // Fixed height for consistency
       const treeWidth = 0.3 + Math.random() * 0.3; // 0.3-0.6 radius
@@ -64,7 +64,7 @@ export class TerrainFeatureGenerator {
       const tree = new THREE.Group();
       tree.add(trunk);
       
-      // Tree leaves (3 layers like original) - RESTORED ORIGINAL GRAPHICS
+      // Tree leaves (3 layers like original)
       for (let layer = 0; layer < 3; layer++) {
         const leavesGeometry = new THREE.ConeGeometry(2.5 - layer * 0.3, 4, 8);
         const leavesColor = new THREE.Color().setHSL(0.3, 0.7, 0.5 + Math.random() * 0.3);
@@ -83,39 +83,189 @@ export class TerrainFeatureGenerator {
       this.treeModels.push(tree);
     }
     
-    // Rock models (2 variations) - RESTORED ORIGINAL GRAPHICS
-    for (let i = 0; i < 2; i++) {
-      const rockSize = 0.3 + Math.random() * 0.6; // Original sizing: 0.3-0.9
-      const rock = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(rockSize, 1),
-        new THREE.MeshLambertMaterial({ 
-          color: new THREE.Color().setHSL(0, 0, 0.5 + Math.random() * 0.4), // Original HSL grayscale
-          map: TextureGenerator.createStoneTexture()
-        })
-      );
-      rock.rotation.set(Math.random(), Math.random(), Math.random());
-      rock.position.y = rockSize/2;
-      rock.castShadow = true;
-      rock.receiveShadow = true;
+    // IMPROVED Rock models (4 variations with better geometry and materials)
+    for (let i = 0; i < 4; i++) {
+      const rockGroup = new THREE.Group();
+      const rockType = i % 3; // 3 different rock types
       
-      this.rockModels.push(rock);
+      // Create main rock with irregular shape
+      const mainRockSize = 0.4 + Math.random() * 0.8; // 0.4-1.2 size range
+      let rockGeometry: THREE.BufferGeometry;
+      
+      // Different rock shapes
+      switch (rockType) {
+        case 0: // Irregular boulder
+          rockGeometry = new THREE.DodecahedronGeometry(mainRockSize, 1);
+          // Deform the geometry for irregularity
+          const positions = rockGeometry.attributes.position.array as Float32Array;
+          for (let j = 0; j < positions.length; j += 3) {
+            const deformation = 0.2 + Math.random() * 0.3;
+            positions[j] *= deformation;
+            positions[j + 1] *= deformation;
+            positions[j + 2] *= deformation;
+          }
+          rockGeometry.attributes.position.needsUpdate = true;
+          rockGeometry.computeVertexNormals();
+          break;
+          
+        case 1: // Flattened rock
+          rockGeometry = new THREE.SphereGeometry(mainRockSize, 8, 6);
+          rockGeometry.scale(1, 0.4 + Math.random() * 0.4, 1);
+          break;
+          
+        default: // Angular rock
+          rockGeometry = new THREE.OctahedronGeometry(mainRockSize, 1);
+          break;
+      }
+      
+      // Enhanced rock materials with different types
+      const rockColors = [
+        new THREE.Color(0x8B7355), // Brown granite
+        new THREE.Color(0x696969), // Dark gray
+        new THREE.Color(0xA0A0A0), // Light gray
+        new THREE.Color(0x8B7D6B)  // Sandstone
+      ];
+      
+      const rockMaterial = new THREE.MeshStandardMaterial({
+        color: rockColors[i % rockColors.length],
+        map: TextureGenerator.createStoneTexture(),
+        roughness: 0.8 + Math.random() * 0.2,
+        metalness: 0.1
+      });
+      
+      const mainRock = new THREE.Mesh(rockGeometry, rockMaterial);
+      mainRock.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      mainRock.position.y = mainRockSize * 0.3;
+      mainRock.castShadow = true;
+      mainRock.receiveShadow = true;
+      rockGroup.add(mainRock);
+      
+      // Add smaller rocks around the main one (20% chance)
+      if (Math.random() < 0.2) {
+        for (let j = 0; j < 2 + Math.floor(Math.random() * 3); j++) {
+          const smallRockSize = mainRockSize * (0.2 + Math.random() * 0.3);
+          const smallRock = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(smallRockSize, 0),
+            rockMaterial.clone()
+          );
+          
+          const angle = Math.random() * Math.PI * 2;
+          const distance = mainRockSize + smallRockSize + Math.random() * 0.5;
+          smallRock.position.set(
+            Math.cos(angle) * distance,
+            smallRockSize * 0.3,
+            Math.sin(angle) * distance
+          );
+          smallRock.rotation.set(Math.random(), Math.random(), Math.random());
+          smallRock.castShadow = true;
+          smallRock.receiveShadow = true;
+          rockGroup.add(smallRock);
+        }
+      }
+      
+      this.rockModels.push(rockGroup);
     }
     
-    // Bush models (2 variations) - RESTORED ORIGINAL GRAPHICS
-    for (let i = 0; i < 2; i++) {
-      const bushSize = 0.5 + Math.random() * 0.3; // Original sizing: 0.5-0.8
-      const bush = new THREE.Mesh(
-        new THREE.SphereGeometry(bushSize, 8, 6),
-        new THREE.MeshLambertMaterial({ 
-          color: new THREE.Color().setHSL(0.25, 0.6, 0.45 + Math.random() * 0.3) // Original HSL color system
-        })
-      );
-      bush.scale.y = 0.6; // Make bushes flatter like original
-      bush.position.y = 0.4; // Ground level positioning like original
-      bush.castShadow = true;
-      bush.receiveShadow = true;
+    // IMPROVED Bush models (4 variations with organic shapes and better materials)
+    for (let i = 0; i < 4; i++) {
+      const bushGroup = new THREE.Group();
+      const bushType = i % 2;
       
-      this.bushModels.push(bush);
+      // Create bush with multiple organic clusters
+      const mainBushSize = 0.5 + Math.random() * 0.4; // 0.5-0.9 range
+      const clusterCount = 3 + Math.floor(Math.random() * 4); // 3-6 clusters
+      
+      // Different bush color variations
+      const bushColors = [
+        new THREE.Color().setHSL(0.25, 0.6, 0.4), // Dark green
+        new THREE.Color().setHSL(0.3, 0.7, 0.5),  // Bright green
+        new THREE.Color().setHSL(0.2, 0.5, 0.45), // Olive green
+        new THREE.Color().setHSL(0.28, 0.8, 0.4)  // Forest green
+      ];
+      
+      const bushMaterial = new THREE.MeshStandardMaterial({
+        color: bushColors[i % bushColors.length],
+        roughness: 0.9,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 0.95
+      });
+      
+      // Create organic bush shape with multiple spheres
+      for (let j = 0; j < clusterCount; j++) {
+        const clusterSize = mainBushSize * (0.6 + Math.random() * 0.6);
+        const cluster = new THREE.Mesh(
+          new THREE.SphereGeometry(clusterSize, 8, 6),
+          bushMaterial.clone()
+        );
+        
+        // Position clusters organically
+        const angle = (j / clusterCount) * Math.PI * 2 + Math.random() * 0.5;
+        const distance = mainBushSize * (0.2 + Math.random() * 0.3);
+        cluster.position.set(
+          Math.cos(angle) * distance,
+          0.3 + Math.random() * 0.2,
+          Math.sin(angle) * distance
+        );
+        
+        // Deform clusters for organic look
+        cluster.scale.set(
+          0.8 + Math.random() * 0.4,
+          0.6 + Math.random() * 0.3,
+          0.8 + Math.random() * 0.4
+        );
+        
+        cluster.castShadow = true;
+        cluster.receiveShadow = true;
+        bushGroup.add(cluster);
+      }
+      
+      // Add simple stem/branch structure (30% chance)
+      if (Math.random() < 0.3) {
+        const stemHeight = mainBushSize * 0.8;
+        const stem = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.02, 0.04, stemHeight, 6),
+          new THREE.MeshStandardMaterial({
+            color: 0x4A4A2A,
+            roughness: 0.9,
+            metalness: 0.0
+          })
+        );
+        stem.position.y = stemHeight / 2;
+        stem.castShadow = true;
+        stem.receiveShadow = true;
+        bushGroup.add(stem);
+      }
+      
+      // Add berries or flowers (15% chance)
+      if (Math.random() < 0.15) {
+        const berryCount = 3 + Math.floor(Math.random() * 5);
+        for (let k = 0; k < berryCount; k++) {
+          const berry = new THREE.Mesh(
+            new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 4, 3),
+            new THREE.MeshStandardMaterial({
+              color: Math.random() < 0.5 ? 0xFF6B6B : 0x4ECDC4, // Red berries or blue flowers
+              roughness: 0.3,
+              metalness: 0.0
+            })
+          );
+          
+          const angle = Math.random() * Math.PI * 2;
+          const distance = mainBushSize * (0.7 + Math.random() * 0.3);
+          berry.position.set(
+            Math.cos(angle) * distance,
+            0.5 + Math.random() * 0.3,
+            Math.sin(angle) * distance
+          );
+          bushGroup.add(berry);
+        }
+      }
+      
+      this.bushModels.push(bushGroup);
     }
   }
   
