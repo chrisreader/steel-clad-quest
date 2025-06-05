@@ -107,7 +107,7 @@ export class GrassSystem {
     const halfSize = size / 2;
     const baseSpacing = 1 / Math.sqrt(this.config.baseDensity);
     
-    // Generate sparse base grass coverage with better visibility
+    // Generate sparse base grass coverage with reduced height
     for (let x = -halfSize; x < halfSize; x += baseSpacing) {
       for (let z = -halfSize; z < halfSize; z += baseSpacing) {
         if (Math.random() < 0.7) { // 70% chance for base grass
@@ -123,17 +123,17 @@ export class GrassSystem {
             Math.random() * Math.PI * 2
           ));
           
-          // Larger grass scales for better visibility
+          // Reduced grass scales for more realistic height
           scales.push(new THREE.Vector3(
-            1.5 + Math.random() * 0.5, // Larger width
-            2.0 + Math.random() * 1.0, // Much taller height
+            1.5 + Math.random() * 0.5, // Keep width
+            1.0 + Math.random() * 0.5, // Reduced from 2.0 + Math.random() * 1.0
             1.5 + Math.random() * 0.5
           ));
         }
       }
     }
     
-    // Generate dense patches with even larger grass
+    // Generate dense patches with reduced height
     for (let p = 0; p < this.config.patchCount; p++) {
       const patchCenter = new THREE.Vector3(
         centerPosition.x + (Math.random() - 0.5) * size * 0.8,
@@ -161,10 +161,10 @@ export class GrassSystem {
               Math.random() * Math.PI * 2
             ));
             
-            // Even larger grass in dense patches
+            // Reduced grass in dense patches
             scales.push(new THREE.Vector3(
-              2.0 + Math.random() * 0.5, // Wider
-              2.5 + Math.random() * 1.5, // Much taller
+              2.0 + Math.random() * 0.5, // Keep width
+              1.2 + Math.random() * 0.8, // Reduced from 2.5 + Math.random() * 1.5
               2.0 + Math.random() * 0.5
             ));
           }

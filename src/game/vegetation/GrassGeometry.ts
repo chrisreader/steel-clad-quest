@@ -57,34 +57,34 @@ export class GrassGeometry {
   public static createGrassClumpGeometry(bladeCount: number = 5, radius: number = 0.3): THREE.BufferGeometry {
     // Just return a single blade geometry for now - clumping will be handled by the instance system
     return this.createGrassBladeGeometry({
-      height: 1.2 + Math.random() * 0.6, // Taller grass
-      width: 0.15 + Math.random() * 0.05, // Wider grass
+      height: 0.6 + Math.random() * 0.3, // Reduced from 1.2 + Math.random() * 0.6
+      width: 0.15 + Math.random() * 0.05, // Keep width the same
       segments: 4, // More segments for smoother curves
       curve: 0.3 + Math.random() * 0.2,
       color: new THREE.Color(0x2d5016)
     });
   }
   
-  // Predefined grass types - made larger and more visible
+  // Predefined grass types - reduced heights
   public static getGrassTypes(): GrassBladeConfig[] {
     return [
       {
-        height: 0.6, // Increased from 0.3
-        width: 0.12, // Increased from 0.08
+        height: 0.3, // Reduced from 0.6
+        width: 0.12, // Keep width the same
         segments: 3,
         curve: 0.15,
         color: new THREE.Color(0x4a7c59)
       },
       {
-        height: 1.0, // Increased from 0.6
-        width: 0.18, // Increased from 0.12
+        height: 0.5, // Reduced from 1.0
+        width: 0.18, // Keep width the same
         segments: 4,
         curve: 0.25,
         color: new THREE.Color(0x2d5016)
       },
       {
-        height: 1.4, // Increased from 0.9
-        width: 0.22, // Increased from 0.15
+        height: 0.7, // Reduced from 1.4
+        width: 0.22, // Keep width the same
         segments: 5,
         curve: 0.3,
         color: new THREE.Color(0x1e3a0f)
