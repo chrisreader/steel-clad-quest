@@ -8,11 +8,6 @@ export class GrassShader {
       uniform float windStrength;
       uniform vec2 windDirection;
       
-      attribute float instanceId;
-      attribute vec3 instancePosition;
-      attribute float instanceRotation;
-      attribute float instanceScale;
-      
       varying vec2 vUv;
       varying vec3 vNormal;
       varying float vHeight;
@@ -22,25 +17,20 @@ export class GrassShader {
         vNormal = normal;
         vHeight = position.y;
         
-        // Apply instance transformations
-        vec3 pos = position;
-        pos *= instanceScale;
+        // Get instance matrix
+        mat4 instanceMatrix = instanceMatrix;
+        vec3 transformed = position;
         
-        // Wind animation - affects top more than bottom
+        // Apply wind animation - affects top more than bottom
         float windFactor = pow(position.y, 2.0) * windStrength;
-        float windOffset = sin(time * 2.0 + instancePosition.x * 0.1 + instancePosition.z * 0.1) * windFactor;
-        pos.x += windOffset * windDirection.x;
-        pos.z += windOffset * windDirection.y;
+        float windOffset = sin(time * 2.0 + instanceMatrix[3][0] * 0.1 + instanceMatrix[3][2] * 0.1) * windFactor;
+        transformed.x += windOffset * windDirection.x;
+        transformed.z += windOffset * windDirection.y;
         
-        // Rotation
-        float cosR = cos(instanceRotation);
-        float sinR = sin(instanceRotation);
-        mat2 rotation = mat2(cosR, -sinR, sinR, cosR);
-        pos.xz = rotation * pos.xz;
+        // Apply instance transformation
+        vec4 worldPosition = instanceMatrix * vec4(transformed, 1.0);
         
-        pos += instancePosition;
-        
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        gl_Position = projectionMatrix * modelViewMatrix * worldPosition;
       }
     `;
     

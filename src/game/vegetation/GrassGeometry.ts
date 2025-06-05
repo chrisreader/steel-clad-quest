@@ -10,7 +10,7 @@ export interface GrassBladeConfig {
 }
 
 export class GrassGeometry {
-  // Create different grass blade types
+  // Create different grass blade types with better visibility
   public static createGrassBladeGeometry(config: GrassBladeConfig): THREE.BufferGeometry {
     const { height, width, segments, curve } = config;
     const geometry = new THREE.BufferGeometry();
@@ -27,9 +27,9 @@ export class GrassGeometry {
       // Apply curve to make grass bend naturally
       const bendOffset = Math.sin(t * Math.PI * 0.5) * curve;
       
-      // Left and right vertices for each segment
-      const leftX = -width * 0.5 * (1 - t * 0.7); // Taper towards top
-      const rightX = width * 0.5 * (1 - t * 0.7);
+      // Left and right vertices for each segment - wider for visibility
+      const leftX = -width * 0.5 * (1 - t * 0.6); // Less tapering for more visible grass
+      const rightX = width * 0.5 * (1 - t * 0.6);
       
       vertices.push(leftX + bendOffset, y, 0);
       vertices.push(rightX + bendOffset, y, 0);
@@ -57,36 +57,36 @@ export class GrassGeometry {
   public static createGrassClumpGeometry(bladeCount: number = 5, radius: number = 0.3): THREE.BufferGeometry {
     // Just return a single blade geometry for now - clumping will be handled by the instance system
     return this.createGrassBladeGeometry({
-      height: 0.8 + Math.random() * 0.4,
-      width: 0.1 + Math.random() * 0.05,
-      segments: 3,
-      curve: 0.2 + Math.random() * 0.1,
+      height: 1.2 + Math.random() * 0.6, // Taller grass
+      width: 0.15 + Math.random() * 0.05, // Wider grass
+      segments: 4, // More segments for smoother curves
+      curve: 0.3 + Math.random() * 0.2,
       color: new THREE.Color(0x2d5016)
     });
   }
   
-  // Predefined grass types
+  // Predefined grass types - made larger and more visible
   public static getGrassTypes(): GrassBladeConfig[] {
     return [
       {
-        height: 0.3,
-        width: 0.08,
-        segments: 2,
-        curve: 0.1,
+        height: 0.6, // Increased from 0.3
+        width: 0.12, // Increased from 0.08
+        segments: 3,
+        curve: 0.15,
         color: new THREE.Color(0x4a7c59)
       },
       {
-        height: 0.6,
-        width: 0.12,
-        segments: 3,
-        curve: 0.15,
+        height: 1.0, // Increased from 0.6
+        width: 0.18, // Increased from 0.12
+        segments: 4,
+        curve: 0.25,
         color: new THREE.Color(0x2d5016)
       },
       {
-        height: 0.9,
-        width: 0.15,
-        segments: 4,
-        curve: 0.2,
+        height: 1.4, // Increased from 0.9
+        width: 0.22, // Increased from 0.15
+        segments: 5,
+        curve: 0.3,
         color: new THREE.Color(0x1e3a0f)
       }
     ];

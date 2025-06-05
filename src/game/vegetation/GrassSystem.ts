@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GrassGeometry, GrassBladeConfig } from './GrassGeometry';
 import { GrassShader } from './GrassShader';
@@ -21,9 +20,9 @@ export class GrassSystem {
   private time: number = 0;
   
   private config: GrassConfig = {
-    baseDensity: 0.5, // 0.5 grass blades per square unit
-    patchDensity: 4, // 4x more grass in patches
-    patchCount: 8, // 8 dense patches per region
+    baseDensity: 1.0, // Increased from 0.5 for more visible grass
+    patchDensity: 3, // 3x more grass in patches
+    patchCount: 6, // 6 dense patches per region
     maxDistance: 200,
     lodLevels: [1.0, 0.6, 0.3, 0.1] // density at 0-50, 50-100, 100-150, 150-200
   };
@@ -70,15 +69,20 @@ export class GrassSystem {
     
     if (grassData.positions.length === 0) return;
     
-    // Create instanced mesh
+    // Create instanced mesh with larger grass for visibility
     const geometry = this.grassGeometries[region.ringIndex % this.grassGeometries.length];
     const instancedMesh = new THREE.InstancedMesh(geometry, material, grassData.positions.length);
     
-    // Set instance data
+    // Set instance data with better positioning
     for (let i = 0; i < grassData.positions.length; i++) {
       const matrix = new THREE.Matrix4();
+      
+      // Ensure grass is above ground level
+      const adjustedPosition = grassData.positions[i].clone();
+      adjustedPosition.y = Math.max(0.1, adjustedPosition.y); // Minimum height above ground
+      
       matrix.compose(
-        grassData.positions[i],
+        adjustedPosition,
         grassData.rotations[i],
         grassData.scales[i]
       );
@@ -92,7 +96,7 @@ export class GrassSystem {
     this.scene.add(instancedMesh);
     this.grassInstances.set(regionKey, instancedMesh);
     
-    console.log(`✅ Generated ${grassData.positions.length} grass blades for region ${regionKey}`);
+    console.log(`✅ Generated ${grassData.positions.length} visible grass blades for region ${regionKey}`);
   }
   
   private generateGrassDistribution(centerPosition: THREE.Vector3, size: number, region: RegionCoordinates) {
@@ -103,13 +107,13 @@ export class GrassSystem {
     const halfSize = size / 2;
     const baseSpacing = 1 / Math.sqrt(this.config.baseDensity);
     
-    // Generate sparse base grass coverage
+    // Generate sparse base grass coverage with better visibility
     for (let x = -halfSize; x < halfSize; x += baseSpacing) {
       for (let z = -halfSize; z < halfSize; z += baseSpacing) {
-        if (Math.random() < 0.6) { // 60% chance for base grass
+        if (Math.random() < 0.7) { // 70% chance for base grass
           const pos = new THREE.Vector3(
             centerPosition.x + x + (Math.random() - 0.5) * baseSpacing * 0.8,
-            centerPosition.y + 0.01 + region.ringIndex * 0.005,
+            0.2 + region.ringIndex * 0.01, // Higher base position for visibility
             centerPosition.z + z + (Math.random() - 0.5) * baseSpacing * 0.8
           );
           
@@ -118,31 +122,33 @@ export class GrassSystem {
             new THREE.Vector3(0, 1, 0),
             Math.random() * Math.PI * 2
           ));
+          
+          // Larger grass scales for better visibility
           scales.push(new THREE.Vector3(
-            0.8 + Math.random() * 0.4,
-            0.8 + Math.random() * 0.4,
-            0.8 + Math.random() * 0.4
+            1.5 + Math.random() * 0.5, // Larger width
+            2.0 + Math.random() * 1.0, // Much taller height
+            1.5 + Math.random() * 0.5
           ));
         }
       }
     }
     
-    // Generate dense patches
+    // Generate dense patches with even larger grass
     for (let p = 0; p < this.config.patchCount; p++) {
       const patchCenter = new THREE.Vector3(
         centerPosition.x + (Math.random() - 0.5) * size * 0.8,
-        centerPosition.y + 0.01 + region.ringIndex * 0.005,
+        0.2 + region.ringIndex * 0.01,
         centerPosition.z + (Math.random() - 0.5) * size * 0.8
       );
       
-      const patchRadius = 3 + Math.random() * 4;
+      const patchRadius = 4 + Math.random() * 3; // Larger patches
       const patchDensity = this.config.baseDensity * this.config.patchDensity;
       const patchSpacing = 1 / Math.sqrt(patchDensity);
       
       for (let x = -patchRadius; x < patchRadius; x += patchSpacing) {
         for (let z = -patchRadius; z < patchRadius; z += patchSpacing) {
           const distance = Math.sqrt(x * x + z * z);
-          if (distance < patchRadius && Math.random() < 0.8) {
+          if (distance < patchRadius && Math.random() < 0.9) { // Higher density in patches
             const pos = new THREE.Vector3(
               patchCenter.x + x + (Math.random() - 0.5) * patchSpacing * 0.5,
               patchCenter.y,
@@ -155,11 +161,11 @@ export class GrassSystem {
               Math.random() * Math.PI * 2
             ));
             
-            // Slightly larger grass in dense patches
+            // Even larger grass in dense patches
             scales.push(new THREE.Vector3(
-              1.0 + Math.random() * 0.3,
-              1.0 + Math.random() * 0.3,
-              1.0 + Math.random() * 0.3
+              2.0 + Math.random() * 0.5, // Wider
+              2.5 + Math.random() * 1.5, // Much taller
+              2.0 + Math.random() * 0.5
             ));
           }
         }
@@ -175,10 +181,10 @@ export class GrassSystem {
     const g = (terrainColor >> 8) & 255;
     const b = terrainColor & 255;
     
-    // Create slightly darker, more saturated grass color
-    const grassR = Math.max(0, (r - 40)) / 255;
-    const grassG = Math.min(255, (g - 20)) / 255;
-    const grassB = Math.max(0, (b - 60)) / 255;
+    // Create brighter, more visible grass color
+    const grassR = Math.max(0, Math.min(255, r - 20)) / 255;
+    const grassG = Math.max(0, Math.min(255, g + 20)) / 255; // Brighter green
+    const grassB = Math.max(0, Math.min(255, b - 40)) / 255;
     
     return new THREE.Color(grassR, grassG, grassB);
   }
