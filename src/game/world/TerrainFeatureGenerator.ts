@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { TextureGenerator } from '../utils';
+import { RockSystem } from './rocks';
 
 export interface FeatureCluster {
   position: THREE.Vector3;
@@ -13,32 +14,34 @@ export class TerrainFeatureGenerator {
   private ringSystem: RingQuadrantSystem;
   private scene: THREE.Scene;
   private treeModels: THREE.Object3D[] = [];
-  private rockModels: THREE.Object3D[] = [];
   private bushModels: THREE.Object3D[] = [];
+  
+  // NEW: Rock system
+  private rockSystem: RockSystem;
   
   // Track spawned objects by region for cleanup
   private spawnedFeatures: Map<string, THREE.Object3D[]> = new Map();
   
   // Tavern exclusion zone
   private tavernPosition: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
-  private tavernExclusionRadius: number = 15; // Keep clear area around tavern
+  private tavernExclusionRadius: number = 15;
   
-  // NEW: Collision registration callback
+  // Collision registration callback
   private collisionRegistrationCallback?: (object: THREE.Object3D) => void;
   
   constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
+    this.rockSystem = new RockSystem(ringSystem, scene);
     this.loadModels();
   }
   
-  // NEW: Set collision registration callback
   public setCollisionRegistrationCallback(callback: (object: THREE.Object3D) => void): void {
     this.collisionRegistrationCallback = callback;
+    this.rockSystem.setCollisionRegistrationCallback(callback);
     console.log('🔧 TerrainFeatureGenerator collision registration callback set');
   }
   
-  // NEW: Get spawned features for a region (for manual collision registration)
   public getSpawnedFeaturesForRegion(regionKey: string): THREE.Object3D[] | undefined {
     return this.spawnedFeatures.get(regionKey);
   }
@@ -81,153 +84,6 @@ export class TerrainFeatureGenerator {
       }
       
       this.treeModels.push(tree);
-    }
-    
-    // IMPROVED Rock models (4 variations with safe geometry and better materials)
-    for (let i = 0; i < 4; i++) {
-      const rockGroup = new THREE.Group();
-      const rockType = i % 3; // 3 different rock types
-      
-      // Create main rock with safe irregular shape
-      const mainRockSize = 0.4 + Math.random() * 0.8; // 0.4-1.2 size range
-      let rockGeometry: THREE.BufferGeometry;
-      
-      // Different rock shapes with SAFE deformation
-      switch (rockType) {
-        case 0: // FIXED: Safe organic irregular boulder using multi-sphere approach
-          // Create base sphere with safe parameters
-          const baseSphere = new THREE.SphereGeometry(mainRockSize, 12, 8);
-          
-          // Create 2-3 additional spheres for organic shape
-          const sphereCount = 2 + Math.floor(Math.random() * 2); // 2-3 spheres
-          const sphereGeometries: THREE.BufferGeometry[] = [baseSphere];
-          
-          for (let s = 1; s < sphereCount; s++) {
-            // Create additional spheres with slight size and position variation
-            const sphereSize = mainRockSize * (0.7 + Math.random() * 0.4); // 0.7-1.1 of main size
-            const additionalSphere = new THREE.SphereGeometry(sphereSize, 10, 6);
-            
-            // Apply safe positional offset (no vertex deformation)
-            const offsetX = (Math.random() - 0.5) * mainRockSize * 0.6;
-            const offsetY = (Math.random() - 0.5) * mainRockSize * 0.4;
-            const offsetZ = (Math.random() - 0.5) * mainRockSize * 0.6;
-            
-            additionalSphere.translate(offsetX, offsetY, offsetZ);
-            sphereGeometries.push(additionalSphere);
-          }
-          
-          // Merge geometries safely using BufferGeometry utils
-          rockGeometry = sphereGeometries[0];
-          for (let s = 1; s < sphereGeometries.length; s++) {
-            // Use simple addition approach - position multiple meshes instead of merging
-            // This prevents topology issues while maintaining organic appearance
-          }
-          
-          // Apply SAFE scaling for natural boulder proportions (no vertex manipulation)
-          rockGeometry.scale(
-            0.9 + Math.random() * 0.3,  // X: 0.9-1.2
-            0.8 + Math.random() * 0.3,  // Y: 0.8-1.1 (slightly flatter, safe range)
-            0.9 + Math.random() * 0.3   // Z: 0.9-1.2
-          );
-          
-          // Ensure mesh integrity
-          rockGeometry.computeVertexNormals();
-          rockGeometry.computeBoundingSphere();
-          break;
-          
-        case 1: // Flattened rock
-          rockGeometry = new THREE.SphereGeometry(mainRockSize, 8, 6);
-          rockGeometry.scale(1, 0.4 + Math.random() * 0.4, 1);
-          break;
-          
-        default: // Angular rock
-          rockGeometry = new THREE.OctahedronGeometry(mainRockSize, 1);
-          break;
-      }
-      
-      // Enhanced rock materials with different types
-      const rockColors = [
-        new THREE.Color(0x8B7355), // Brown granite
-        new THREE.Color(0x696969), // Dark gray
-        new THREE.Color(0xA0A0A0), // Light gray
-        new THREE.Color(0x8B7D6B)  // Sandstone
-      ];
-      
-      const rockMaterial = new THREE.MeshStandardMaterial({
-        color: rockColors[i % rockColors.length],
-        map: TextureGenerator.createStoneTexture(),
-        roughness: 0.8 + Math.random() * 0.2,
-        metalness: 0.1
-      });
-      
-      const mainRock = new THREE.Mesh(rockGeometry, rockMaterial);
-      mainRock.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-      );
-      mainRock.position.y = mainRockSize * 0.3;
-      mainRock.castShadow = true;
-      mainRock.receiveShadow = true;
-      rockGroup.add(mainRock);
-      
-      // For rock type 0, add additional sphere meshes to create organic shape
-      if (rockType === 0) {
-        const additionalSphereCount = 1 + Math.floor(Math.random() * 2); // 1-2 additional spheres
-        for (let s = 0; s < additionalSphereCount; s++) {
-          const sphereSize = mainRockSize * (0.6 + Math.random() * 0.4);
-          const additionalRock = new THREE.Mesh(
-            new THREE.SphereGeometry(sphereSize, 8, 6),
-            rockMaterial.clone()
-          );
-          
-          // Safe positioning without mesh deformation
-          const angle = Math.random() * Math.PI * 2;
-          const distance = mainRockSize * (0.3 + Math.random() * 0.4);
-          additionalRock.position.set(
-            Math.cos(angle) * distance,
-            (Math.random() - 0.5) * mainRockSize * 0.3,
-            Math.sin(angle) * distance
-          );
-          
-          // Safe scaling
-          additionalRock.scale.set(
-            0.8 + Math.random() * 0.4,
-            0.7 + Math.random() * 0.4,
-            0.8 + Math.random() * 0.4
-          );
-          
-          additionalRock.rotation.set(Math.random(), Math.random(), Math.random());
-          additionalRock.castShadow = true;
-          additionalRock.receiveShadow = true;
-          rockGroup.add(additionalRock);
-        }
-      }
-      
-      // Add smaller rocks around the main one (20% chance)
-      if (Math.random() < 0.2) {
-        for (let j = 0; j < 2 + Math.floor(Math.random() * 3); j++) {
-          const smallRockSize = mainRockSize * (0.2 + Math.random() * 0.3);
-          const smallRock = new THREE.Mesh(
-            new THREE.DodecahedronGeometry(smallRockSize, 0),
-            rockMaterial.clone()
-          );
-          
-          const angle = Math.random() * Math.PI * 2;
-          const distance = mainRockSize + smallRockSize + Math.random() * 0.5;
-          smallRock.position.set(
-            Math.cos(angle) * distance,
-            smallRockSize * 0.3,
-            Math.sin(angle) * distance
-          );
-          smallRock.rotation.set(Math.random(), Math.random(), Math.random());
-          smallRock.castShadow = true;
-          smallRock.receiveShadow = true;
-          rockGroup.add(smallRock);
-        }
-      }
-      
-      this.rockModels.push(rockGroup);
     }
     
     // IMPROVED Bush models (4 variations with organic shapes and better materials)
@@ -342,7 +198,10 @@ export class TerrainFeatureGenerator {
     const features: THREE.Object3D[] = [];
     this.spawnedFeatures.set(regionKey, features);
     
-    // Ring-specific feature generation
+    // Generate rocks using the new RockSystem
+    this.rockSystem.generateRocksForRegion(region);
+    
+    // Ring-specific feature generation (trees and bushes only now)
     switch(region.ringIndex) {
       case 0: // First ring (starter area - evenly distributed forest)
         this.generateEvenlyDistributedFeatures(region, features);
@@ -350,7 +209,7 @@ export class TerrainFeatureGenerator {
       case 1: // Second ring (clustered forests, varied density)
         this.generateClusteredFeatures(region, features);
         break;
-      case 2: // Third ring (sparser, more rocks)
+      case 2: // Third ring (sparser, more vegetation)
         this.generateSparseFeatures(region, features);
         break;
       case 3: // Fourth ring (dangerous wasteland)
@@ -363,9 +222,6 @@ export class TerrainFeatureGenerator {
   private generateEvenlyDistributedFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
     // Generate trees (10-15)
     this.spawnRandomFeatures(region, 'forest', 12, features);
-    
-    // Generate rocks (5-8)
-    this.spawnRandomFeatures(region, 'rocks', 6, features);
     
     // Generate bushes (15-20)
     this.spawnRandomFeatures(region, 'bushes', 18, features);
@@ -394,23 +250,20 @@ export class TerrainFeatureGenerator {
     
     // Add some scattered individual features outside clusters
     this.spawnRandomFeatures(region, 'forest', 5, features);
-    this.spawnRandomFeatures(region, 'rocks', 8, features);
     this.spawnRandomFeatures(region, 'bushes', 10, features);
   }
   
   // Generate sparse features (for ring 2)
   private generateSparseFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    // Fewer trees, more rocks
+    // Fewer trees, same bushes
     this.spawnRandomFeatures(region, 'forest', 8, features);
-    this.spawnRandomFeatures(region, 'rocks', 15, features);
     this.spawnRandomFeatures(region, 'bushes', 5, features);
   }
   
   // Generate wasteland features (for ring 3)
   private generateWastelandFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    // Mostly rocks, very few plants
+    // Very few plants in wasteland
     this.spawnRandomFeatures(region, 'forest', 2, features);
-    this.spawnRandomFeatures(region, 'rocks', 20, features);
     this.spawnRandomFeatures(region, 'bushes', 3, features);
   }
   
@@ -479,7 +332,7 @@ export class TerrainFeatureGenerator {
   // Spawn features in a cluster
   private spawnClusteredFeatures(
     region: RegionCoordinates,
-    type: 'forest' | 'rocks' | 'bushes',
+    type: 'forest' | 'bushes',
     count: number,
     cluster: FeatureCluster,
     features: THREE.Object3D[]
@@ -516,7 +369,7 @@ export class TerrainFeatureGenerator {
   // Spawn random features throughout a region
   private spawnRandomFeatures(
     region: RegionCoordinates,
-    type: 'forest' | 'rocks' | 'bushes',
+    type: 'forest' | 'bushes',
     count: number,
     features: THREE.Object3D[]
   ): void {
@@ -531,7 +384,6 @@ export class TerrainFeatureGenerator {
           features.push(feature);
           this.scene.add(feature);
           
-          // NEW: Register for collision immediately after spawning
           if (this.collisionRegistrationCallback) {
             this.collisionRegistrationCallback(feature);
             console.log(`🔧 Callback registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
@@ -543,7 +395,7 @@ export class TerrainFeatureGenerator {
   
   // Spawn a single feature at position
   private spawnFeature(
-    type: 'forest' | 'rocks' | 'bushes',
+    type: 'forest' | 'bushes',
     position: THREE.Vector3
   ): THREE.Object3D | null {
     let modelArray: THREE.Object3D[];
@@ -552,9 +404,6 @@ export class TerrainFeatureGenerator {
     switch(type) {
       case 'forest':
         modelArray = this.treeModels;
-        break;
-      case 'rocks':
-        modelArray = this.rockModels;
         break;
       case 'bushes':
         modelArray = this.bushModels;
@@ -623,42 +472,45 @@ export class TerrainFeatureGenerator {
     const regionKey = this.ringSystem.getRegionKey(region);
     const features = this.spawnedFeatures.get(regionKey);
     
-    if (!features) return;
-    
-    console.log(`Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-    
-    // Remove all features from scene
-    features.forEach(feature => {
-      this.scene.remove(feature);
+    if (features) {
+      console.log(`Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
       
-      // Dispose geometries and materials
-      if (feature instanceof THREE.Mesh) {
-        if (feature.geometry) feature.geometry.dispose();
-        if (feature.material) {
-          if (Array.isArray(feature.material)) {
-            feature.material.forEach(m => m.dispose());
-          } else {
-            feature.material.dispose();
-          }
-        }
-      } else if (feature instanceof THREE.Group) {
-        feature.traverse(child => {
-          if (child instanceof THREE.Mesh) {
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(m => m.dispose());
-              } else {
-                child.material.dispose();
-              }
+      // Remove all features from scene
+      features.forEach(feature => {
+        this.scene.remove(feature);
+        
+        // Dispose geometries and materials
+        if (feature instanceof THREE.Mesh) {
+          if (feature.geometry) feature.geometry.dispose();
+          if (feature.material) {
+            if (Array.isArray(feature.material)) {
+              feature.material.forEach(m => m.dispose());
+            } else {
+              feature.material.dispose();
             }
           }
-        });
-      }
-    });
+        } else if (feature instanceof THREE.Group) {
+          feature.traverse(child => {
+            if (child instanceof THREE.Mesh) {
+              if (child.geometry) child.geometry.dispose();
+              if (child.material) {
+                if (Array.isArray(child.material)) {
+                  child.material.forEach(m => m.dispose());
+                } else {
+                  child.material.dispose();
+                }
+              }
+            }
+          });
+        }
+      });
+      
+      // Clear the array
+      this.spawnedFeatures.delete(regionKey);
+    }
     
-    // Clear the array
-    this.spawnedFeatures.delete(regionKey);
+    // Clean up rocks using RockSystem
+    this.rockSystem.cleanupRocksForRegion(region);
   }
   
   // Helper method: Gaussian random for natural-looking clusters
@@ -707,5 +559,8 @@ export class TerrainFeatureGenerator {
     }
     
     this.spawnedFeatures.clear();
+    
+    // Dispose rock system
+    this.rockSystem.dispose();
   }
 }
