@@ -83,23 +83,4 @@ export class TerrainSurfaceDetector {
   public resetSmoothing(): void {
     this.lastNormal.set(0, 1, 0);
   }
-
-  // NEW: Get terrain heightmap data for rock positioning
-  public getTerrainHeightmapAtRegion(center: THREE.Vector3, size: number = 100): number[][] {
-    const segments = 32;
-    const heightmap: number[][] = [];
-    
-    for (let x = 0; x <= segments; x++) {
-      heightmap[x] = [];
-      for (let z = 0; z <= segments; z++) {
-        const worldX = center.x + (x / segments - 0.5) * size;
-        const worldZ = center.z + (z / segments - 0.5) * size;
-        const position = new THREE.Vector3(worldX, 0, worldZ);
-        const terrainData = this.physicsManager.getTerrainDataAtPosition(position);
-        heightmap[x][z] = terrainData.height;
-      }
-    }
-    
-    return heightmap;
-  }
 }
