@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Noise } from 'noisejs';
 import { TextureGenerator } from '../utils/graphics/TextureGenerator';
@@ -32,25 +33,25 @@ export class RingQuadrantSystem {
   private rings: RingDefinition[] = [
     {
       innerRadius: 0,
-      outerRadius: 50, // Reduced from 200 to 50
+      outerRadius: 50,
       difficulty: 1,
-      terrainColor: 0x5FAD5F, // Match existing green terrain
+      terrainColor: 0x5FAD5F, // Bright lime green
       enemyTypes: ['goblin', 'wolf'],
       structureTypes: ['tavern'],
       eventChance: 0.1
     },
     {
-      innerRadius: 50, // Updated to match new center ring size
-      outerRadius: 150, // Reduced proportionally
+      innerRadius: 50,
+      outerRadius: 150,
       difficulty: 2,
-      terrainColor: 0x4A9A4A, // Slightly darker green
+      terrainColor: 0x4A9A4A, // Darker green
       enemyTypes: ['goblin', 'wolf', 'orc'],
       structureTypes: ['ruins', 'cabin'],
       eventChance: 0.2
     },
     {
-      innerRadius: 150, // Updated to match previous ring
-      outerRadius: 300, // Reduced proportionally
+      innerRadius: 150,
+      outerRadius: 300,
       difficulty: 3,
       terrainColor: 0x3A8A3A, // Even darker green
       enemyTypes: ['orc', 'bandit', 'troll'],
@@ -58,8 +59,8 @@ export class RingQuadrantSystem {
       eventChance: 0.3
     },
     {
-      innerRadius: 300, // Updated to match previous ring
-      outerRadius: 600, // Reduced proportionally
+      innerRadius: 300,
+      outerRadius: 600,
       difficulty: 4,
       terrainColor: 0x2A7A2A, // Darkest green
       enemyTypes: ['troll', 'warlord', 'witch'],
@@ -70,6 +71,7 @@ export class RingQuadrantSystem {
   
   private worldCenter: THREE.Vector3;
   private activeRegions: Map<string, Region> = new Map();
+  private transitionZoneWidth: number = 15; // Width of transition zones between rings
   
   constructor(worldCenter: THREE.Vector3 = new THREE.Vector3(0, 0, 0)) {
     this.worldCenter = worldCenter;
@@ -103,6 +105,60 @@ export class RingQuadrantSystem {
     else if (dx < 0 && dz >= 0) quadrant = 3;  // North-West
     
     return { ringIndex, quadrant };
+  }
+  
+  // Check if a position is in a transition zone between rings
+  public getTransitionInfo(position: THREE.Vector3): { isTransition: boolean; fromRing: number; toRing: number; blendFactor: number } {
+    const dx = position.x - this.worldCenter.x;
+    const dz = position.z - this.worldCenter.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+    
+    // Check each ring boundary for transitions
+    for (let i = 0; i < this.rings.length - 1; i++) {
+      const ringBoundary = this.rings[i].outerRadius;
+      const distanceFromBoundary = Math.abs(distance - ringBoundary);
+      
+      if (distanceFromBoundary <= this.transitionZoneWidth / 2) {
+        const blendFactor = distanceFromBoundary / (this.transitionZoneWidth / 2);
+        return {
+          isTransition: true,
+          fromRing: distance < ringBoundary ? i : i + 1,
+          toRing: distance < ringBoundary ? i + 1 : i,
+          blendFactor: distance < ringBoundary ? 1 - blendFactor : blendFactor
+        };
+      }
+    }
+    
+    return { isTransition: false, fromRing: -1, toRing: -1, blendFactor: 0 };
+  }
+  
+  // Get blended color for transition zones
+  public getBlendedTerrainColor(position: THREE.Vector3): number {
+    const transitionInfo = this.getTransitionInfo(position);
+    
+    if (!transitionInfo.isTransition) {
+      const region = this.getRegionForPosition(position);
+      return region ? this.rings[region.ringIndex].terrainColor : this.rings[0].terrainColor;
+    }
+    
+    // Blend colors between rings
+    const color1 = this.rings[transitionInfo.fromRing].terrainColor;
+    const color2 = this.rings[transitionInfo.toRing].terrainColor;
+    
+    const r1 = (color1 >> 16) & 255;
+    const g1 = (color1 >> 8) & 255;
+    const b1 = color1 & 255;
+    
+    const r2 = (color2 >> 16) & 255;
+    const g2 = (color2 >> 8) & 255;
+    const b2 = color2 & 255;
+    
+    const blend = transitionInfo.blendFactor;
+    const blendedR = Math.floor(r1 * (1 - blend) + r2 * blend);
+    const blendedG = Math.floor(g1 * (1 - blend) + g2 * blend);
+    const blendedB = Math.floor(b1 * (1 - blend) + b2 * blend);
+    
+    return (blendedR << 16) | (blendedG << 8) | blendedB;
   }
   
   // Get the center position of a region
@@ -185,7 +241,7 @@ export class RingQuadrantSystem {
     return data;
   }
   
-  // New method: Create terrain with hills for a region
+  // Enhanced method: Create terrain with realistic grass and smooth transitions
   public createTerrainWithHills(region: RegionCoordinates, size: number = 100): THREE.Mesh {
     const segments = 63;
     const heightmap = this.generateHeightmap(segments + 1, segments + 1, 25);
@@ -205,34 +261,38 @@ export class RingQuadrantSystem {
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
     
-    // Use ring-appropriate material
-    const ring = this.rings[region.ringIndex];
+    // Get position for terrain center to determine if it's in a transition zone
+    const center = this.getRegionCenter(region);
+    const transitionInfo = this.getTransitionInfo(center);
     
-    // Create material with proper texture loading
-    const textureLoader = new THREE.TextureLoader();
-    const material = new THREE.MeshStandardMaterial({ 
-      color: ring.terrainColor
-    });
+    let material: THREE.MeshLambertMaterial;
     
-    // Load grass texture with proper error handling
-    textureLoader.load(
-      '/assets/grass.jpg',
-      (texture) => {
-        material.map = texture;
-        material.needsUpdate = true;
-      },
-      undefined,
-      (error) => {
-        console.warn('Could not load grass texture:', error);
-        // Material will use the color fallback
-      }
-    );
+    if (transitionInfo.isTransition) {
+      // Create blended texture for transition zones
+      const color1 = this.rings[transitionInfo.fromRing].terrainColor;
+      const color2 = this.rings[transitionInfo.toRing].terrainColor;
+      const blendedTexture = TextureGenerator.createBlendedGrassTexture(color1, color2, transitionInfo.blendFactor);
+      
+      material = new THREE.MeshLambertMaterial({
+        map: blendedTexture,
+        color: this.getBlendedTerrainColor(center)
+      });
+    } else {
+      // Use standard realistic grass texture
+      const ring = this.rings[region.ringIndex];
+      const grassTexture = TextureGenerator.createRealisticGrassTexture(ring.terrainColor);
+      
+      material = new THREE.MeshLambertMaterial({
+        map: grassTexture,
+        color: ring.terrainColor
+      });
+    }
     
     const terrain = new THREE.Mesh(geometry, material);
     terrain.rotation.x = -Math.PI / 2;
+    terrain.receiveShadow = true;
     
     // Position terrain at region center
-    const center = this.getRegionCenter(region);
     terrain.position.copy(center);
     
     return terrain;
