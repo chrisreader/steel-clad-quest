@@ -28,7 +28,7 @@ export interface Region {
 
 export class RingQuadrantSystem {
   private noise: any;
-  private static readonly TRANSITION_ZONE_SIZE = 18; // Size of transition zone between rings
+  private static readonly TRANSITION_ZONE_SIZE = 12; // Reduced for more stable transitions
   
   // Define 4 rings with increasing radius and difficulty
   private rings: RingDefinition[] = [
@@ -167,28 +167,30 @@ export class RingQuadrantSystem {
     return this.rings[region.ringIndex].difficulty;
   }
   
-  // New method: Generate heightmap for terrain with hills
-  public generateHeightmap(width: number, height: number, scale: number = 50): number[][] {
+  // Enhanced heightmap generation with proper base level for hills
+  public generateHeightmap(width: number, height: number, scale: number = 25): number[][] {
     const data: number[][] = [];
     const frequency = 0.02; // Controls hill frequency
+    const baseLevel = 2; // Minimum height above terrain base to prevent Z-fighting
     
     for (let x = 0; x < width; x++) {
       data[x] = [];
       for (let z = 0; z < height; z++) {
         // Use multiple octaves for more natural terrain
-        let height = 0;
+        let height = baseLevel; // Start from base level, not 0
         height += this.noise.perlin2(x * frequency, z * frequency) * scale;
         height += this.noise.perlin2(x * frequency * 2, z * frequency * 2) * (scale * 0.5);
         height += this.noise.perlin2(x * frequency * 4, z * frequency * 4) * (scale * 0.25);
         
-        data[x][z] = Math.max(0, height); // Ensure non-negative heights
+        // Ensure minimum height to prevent terrain conflicts
+        data[x][z] = Math.max(baseLevel, height);
       }
     }
     return data;
   }
   
   /**
-   * Check if a position is in a transition zone between rings - ENHANCED VERSION
+   * Enhanced transition detection with hysteresis to prevent flickering
    */
   public getTransitionInfo(position: THREE.Vector3): { 
     isInTransition: boolean; 
@@ -209,25 +211,31 @@ export class RingQuadrantSystem {
       // Check if we're in the transition zone
       const distanceFromBoundary = Math.abs(distance - boundary);
       if (distanceFromBoundary <= RingQuadrantSystem.TRANSITION_ZONE_SIZE) {
-        // Smoother blend factor calculation to prevent rapid transitions
-        const blendFactor = Math.min(1, Math.max(0, 1 - (distanceFromBoundary / RingQuadrantSystem.TRANSITION_ZONE_SIZE)));
-        const smoothBlendFactor = blendFactor * blendFactor * (3 - 2 * blendFactor); // Smoothstep function
+        // Enhanced blend factor calculation with hysteresis
+        const rawBlendFactor = Math.min(1, Math.max(0, 1 - (distanceFromBoundary / RingQuadrantSystem.TRANSITION_ZONE_SIZE)));
+        
+        // Apply smoothstep function for even smoother transitions
+        const smoothBlendFactor = rawBlendFactor * rawBlendFactor * rawBlendFactor * (rawBlendFactor * (rawBlendFactor * 6 - 15) + 10);
+        
+        // Add hysteresis - minimum threshold to prevent rapid switching
+        const HYSTERESIS_THRESHOLD = 0.1;
+        const finalBlendFactor = smoothBlendFactor < HYSTERESIS_THRESHOLD ? 0 : smoothBlendFactor;
         
         if (distance < boundary) {
           // Transitioning from inner ring to outer ring
           return {
-            isInTransition: true,
+            isInTransition: finalBlendFactor > 0,
             fromRing: i,
             toRing: i + 1,
-            blendFactor: distance > boundary - RingQuadrantSystem.TRANSITION_ZONE_SIZE ? smoothBlendFactor : 0
+            blendFactor: distance > boundary - RingQuadrantSystem.TRANSITION_ZONE_SIZE ? finalBlendFactor : 0
           };
         } else {
           // Transitioning from outer ring to inner ring (approaching from outside)
           return {
-            isInTransition: true,
+            isInTransition: finalBlendFactor > 0,
             fromRing: i + 1,
             toRing: i,
-            blendFactor: distance < boundary + RingQuadrantSystem.TRANSITION_ZONE_SIZE ? smoothBlendFactor : 0
+            blendFactor: distance < boundary + RingQuadrantSystem.TRANSITION_ZONE_SIZE ? finalBlendFactor : 0
           };
         }
       }
@@ -265,15 +273,15 @@ export class RingQuadrantSystem {
     return (r << 16) | (g << 8) | b;
   }
 
-  // Enhanced createTerrainWithHills with smooth transitions and Z-fighting fix
+  // Enhanced createTerrainWithHills with improved base level and Y-offset system
   public createTerrainWithHills(region: RegionCoordinates, size: number = 100): THREE.Mesh {
     const segments = 63;
-    const heightmap = this.generateHeightmap(segments + 1, segments + 1, 25);
+    const heightmap = this.generateHeightmap(segments + 1, segments + 1, 20); // Reduced scale for more subtle hills
     
     const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
     const vertices = geometry.attributes.position.array as Float32Array;
     
-    // Apply heightmap to geometry
+    // Apply heightmap to geometry with proper base level
     for (let i = 0; i < vertices.length; i += 3) {
       const x = Math.floor((i / 3) / (segments + 1));
       const z = (i / 3) % (segments + 1);
@@ -291,8 +299,8 @@ export class RingQuadrantSystem {
     
     let material: THREE.MeshStandardMaterial;
     
-    // Minimum blend factor to prevent constant switching
-    const MIN_BLEND_FACTOR = 0.15;
+    // Enhanced minimum blend factor to prevent constant switching
+    const MIN_BLEND_FACTOR = 0.25;
     
     if (transitionInfo.isInTransition && transitionInfo.blendFactor > MIN_BLEND_FACTOR) {
       console.log(`🌈 Creating blended terrain with hills for transition zone (blend: ${transitionInfo.blendFactor.toFixed(2)})`);
@@ -319,12 +327,18 @@ export class RingQuadrantSystem {
     const terrain = new THREE.Mesh(geometry, material);
     terrain.rotation.x = -Math.PI / 2;
     
-    // Add small Y-offset to prevent Z-fighting between terrain pieces
-    const yOffset = region.ringIndex * 0.01 + region.quadrant * 0.005;
-    terrain.position.copy(center);
-    terrain.position.y += yOffset;
+    // Enhanced Y-offset system to completely prevent Z-fighting
+    const baseLevel = 0.05; // Higher base level to clear other terrain
+    const ringOffset = region.ringIndex * 0.01; // More separation between rings
+    const quadrantOffset = region.quadrant * 0.005; // Quadrant separation
+    const hillOffset = 0.02; // Additional offset for hilly terrain
     
-    console.log(`✅ Enhanced terrain with hills created for ring ${region.ringIndex}, Y-offset: ${yOffset.toFixed(3)}`);
+    const totalYOffset = baseLevel + ringOffset + quadrantOffset + hillOffset;
+    
+    terrain.position.copy(center);
+    terrain.position.y = totalYOffset;
+    
+    console.log(`✅ Enhanced terrain with hills created for ring ${region.ringIndex}, Y-offset: ${totalYOffset.toFixed(4)}`);
     
     return terrain;
   }

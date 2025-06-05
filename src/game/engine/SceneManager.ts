@@ -668,14 +668,14 @@ export class SceneManager {
   }
 
   public createDefaultWorld(): void {
-    console.log('Creating default world with shader-based celestial glow system...');
+    console.log('Creating default world with enhanced terrain system...');
     
-    this.createSimpleGround();
-    console.log('Simple ground plane created at origin');
+    // REMOVED: this.createSimpleGround(); - This was causing Z-fighting with ring terrain
+    console.log('Skipped simple ground creation to prevent Z-fighting');
     
     const startRegion = { ringIndex: 0, quadrant: 0 };
     this.loadRegion(startRegion);
-    console.log('🔧 Starting region loaded');
+    console.log('🔧 Starting region loaded with proper terrain');
     
     this.buildingManager.createBuilding({
       type: 'tavern',
@@ -708,7 +708,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('World with shader-based celestial glow system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('World with enhanced terrain system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     if (this.debugMode) {
       (window as any).sceneDebug = {
@@ -774,41 +774,27 @@ export class SceneManager {
     this.loadedRegions.delete(regionKey);
   }
   
-  private createSimpleGround(): void {
-    const groundGeometry = new THREE.PlaneGeometry(100, 100);
-    
-    // Use enhanced grass material with realistic texture
-    const groundMaterial = GroundMaterialUtils.createGrassMaterial(0x5FAD5F, 0, {
-      roughness: 0.8,
-      metalness: 0.1,
-      textureScale: 4
-    });
-    
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.set(0, 0, 0);
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-    
-    console.log("✅ Simple ground created with enhanced realistic grass material");
-  }
-  
   private createRegionTerrain(region: RegionCoordinates, centerPosition: THREE.Vector3): THREE.Mesh {
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     
     let terrainGeometry: THREE.BufferGeometry;
     let terrainPosition: THREE.Vector3;
+    let terrainSize: number;
     
     if (region.ringIndex === 0) {
+      // Center ring uses circular geometry that properly covers the spawn area
+      terrainSize = ringDef.outerRadius * 2; // Diameter for full coverage
       terrainGeometry = new THREE.CircleGeometry(ringDef.outerRadius, 32);
       terrainPosition = new THREE.Vector3(0, 0, 0);
-      console.log('Creating center ring terrain at origin with enhanced materials');
+      console.log(`Creating center ring terrain with radius ${ringDef.outerRadius} for full spawn coverage`);
     } else {
+      // Outer rings use larger quadrant sizes to ensure proper coverage
       const innerRadius = ringDef.innerRadius;
       const outerRadius = ringDef.outerRadius;
+      terrainSize = (outerRadius - innerRadius) * 1.2; // 20% larger for overlap
       terrainGeometry = this.createQuadrantGeometry(innerRadius, outerRadius, region.quadrant);
       terrainPosition = new THREE.Vector3(0, 0, 0);
-      console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} with enhanced materials`);
+      console.log(`Creating ring ${region.ringIndex} quadrant ${region.quadrant} with enhanced coverage`);
     }
     
     // Check for smooth transitions and create appropriate material
@@ -817,7 +803,10 @@ export class SceneManager {
     
     let terrainMaterial: THREE.MeshStandardMaterial;
     
-    if (transitionInfo.isInTransition && transitionInfo.blendFactor > 0.1) {
+    // Increased minimum blend threshold to prevent rapid switching
+    const MIN_BLEND_THRESHOLD = 0.2;
+    
+    if (transitionInfo.isInTransition && transitionInfo.blendFactor > MIN_BLEND_THRESHOLD) {
       console.log(`🌈 Creating blended material for ring ${region.ringIndex} with blend factor ${transitionInfo.blendFactor.toFixed(2)}`);
       
       // Create blended material for smooth transitions
@@ -837,7 +826,7 @@ export class SceneManager {
         {
           roughness: 0.8,
           metalness: 0.1,
-          textureScale: 4
+          textureScale: 3
         }
       );
     }
@@ -845,12 +834,18 @@ export class SceneManager {
     const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
     terrain.rotation.x = -Math.PI / 2;
     terrain.position.copy(terrainPosition);
-    terrain.position.y = 0;
+    
+    // Enhanced Y-offset system to prevent Z-fighting completely
+    const baseYOffset = 0.01; // Base level separation
+    const ringOffset = region.ringIndex * 0.005; // Ring-based separation
+    const quadrantOffset = region.quadrant * 0.002; // Quadrant micro-separation
+    terrain.position.y = baseYOffset + ringOffset + quadrantOffset;
+    
     terrain.receiveShadow = true;
     
     this.scene.add(terrain);
     
-    console.log(`✅ Enhanced terrain created for ring ${region.ringIndex}, quadrant ${region.quadrant} with realistic grass texture`);
+    console.log(`✅ Enhanced terrain created for ring ${region.ringIndex}, quadrant ${region.quadrant} at Y-offset: ${terrain.position.y.toFixed(4)}`);
     
     return terrain;
   }
