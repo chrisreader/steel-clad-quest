@@ -1,3 +1,4 @@
+
 import React, { useCallback, useEffect } from 'react';
 import { Item, EquipmentSlotType, WeaponSlots } from '../../../types/GameTypes';
 import { EquipmentPanel } from '../components/EquipmentPanel';
@@ -5,8 +6,6 @@ import { InventoryGrid } from '../components/InventoryGrid';
 import { EquipmentStats } from '../components/EquipmentStats';
 import { useInventoryManagement } from '../hooks/useInventoryManagement';
 import { canEquipInSlot } from '../utils/weaponHelpers';
-import { Button } from '../../ui/button';
-import { Pause, Play } from 'lucide-react';
 
 interface InventorySystemProps {
   items: Item[];
@@ -38,25 +37,6 @@ export const InventorySystem: React.FC<InventorySystemProps> = ({
     setDraggedItem,
     moveSelectedItemToSlot
   } = useInventoryManagement(items);
-
-  // Day/Night cycle pause state
-  const [isDayNightPaused, setIsDayNightPaused] = React.useState(false);
-
-  // Handle day/night cycle pause toggle
-  const toggleDayNightPause = useCallback(() => {
-    setIsDayNightPaused(prev => {
-      const newPauseState = !prev;
-      
-      // Dispatch custom event to pause/unpause day/night cycle
-      const event = new CustomEvent('dayNightPauseToggle', {
-        detail: { isPaused: newPauseState }
-      });
-      document.dispatchEvent(event);
-      
-      console.log(`[InventorySystem] Day/Night cycle ${newPauseState ? 'PAUSED' : 'RESUMED'}`);
-      return newPauseState;
-    });
-  }, []);
 
   // Keyboard support
   useEffect(() => {
@@ -219,35 +199,12 @@ export const InventorySystem: React.FC<InventorySystemProps> = ({
       <div className="bg-gray-900 rounded-lg p-6 text-white max-w-4xl w-full mx-4 border-2 border-gray-700">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Inventory</h2>
-          <div className="flex items-center gap-4">
-            {/* Day/Night Cycle Pause Button */}
-            <Button
-              onClick={toggleDayNightPause}
-              variant="outline"
-              size="sm"
-              className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
-              title={`${isDayNightPaused ? 'Resume' : 'Pause'} Day/Night Cycle`}
-            >
-              {isDayNightPaused ? (
-                <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Resume Day/Night
-                </>
-              ) : (
-                <>
-                  <Pause className="w-4 h-4 mr-2" />
-                  Pause Day/Night
-                </>
-              )}
-            </Button>
-            
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white text-xl"
-            >
-              ×
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-xl"
+          >
+            ×
+          </button>
         </div>
         
         {selectedItem && (
