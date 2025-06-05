@@ -42,13 +42,13 @@ export class TerrainFeatureGenerator {
     { category: 'massive', sizeRange: [4.0, 8.0], weight: 0.1, isCluster: true, clusterSize: [2, 3] }
   ];
   
-  // NEW: Rock shape definitions for realistic generation
+  // UPDATED: Rock shape definitions with reduced deformation intensity
   private rockShapes: RockShape[] = [
-    { type: 'boulder', baseGeometry: 'icosahedron', deformationIntensity: 0.3, weatheringLevel: 0.6 },
-    { type: 'spire', baseGeometry: 'icosahedron', deformationIntensity: 0.4, weatheringLevel: 0.3 },
-    { type: 'slab', baseGeometry: 'sphere', deformationIntensity: 0.5, weatheringLevel: 0.8 },
-    { type: 'cluster', baseGeometry: 'dodecahedron', deformationIntensity: 0.6, weatheringLevel: 0.7 },
-    { type: 'weathered', baseGeometry: 'sphere', deformationIntensity: 0.8, weatheringLevel: 0.9 }
+    { type: 'boulder', baseGeometry: 'icosahedron', deformationIntensity: 0.15, weatheringLevel: 0.6 },
+    { type: 'spire', baseGeometry: 'icosahedron', deformationIntensity: 0.2, weatheringLevel: 0.3 },
+    { type: 'slab', baseGeometry: 'sphere', deformationIntensity: 0.25, weatheringLevel: 0.8 },
+    { type: 'cluster', baseGeometry: 'dodecahedron', deformationIntensity: 0.3, weatheringLevel: 0.7 },
+    { type: 'weathered', baseGeometry: 'sphere', deformationIntensity: 0.4, weatheringLevel: 0.9 }
   ];
   
   // Track spawned objects by region for cleanup
@@ -122,8 +122,8 @@ export class TerrainFeatureGenerator {
       this.treeModels.push(tree);
     }
     
-    // COMPLETELY REWRITTEN: Enhanced rock models with realistic organic shapes
-    this.createRealisticRockVariations();
+    // UPDATED: Fixed rock model generation with improved geometry
+    this.createFixedRockVariations();
     
     // IMPROVED Bush models (4 variations with organic shapes and better materials)
     for (let i = 0; i < 4; i++) {
@@ -224,8 +224,8 @@ export class TerrainFeatureGenerator {
     }
   }
   
-  // COMPLETELY NEW: Create realistic rock variations with organic shapes
-  private createRealisticRockVariations(): void {
+  // COMPLETELY REWRITTEN: Fixed rock generation with improved geometry handling
+  private createFixedRockVariations(): void {
     this.rockVariations.forEach((variation, categoryIndex) => {
       const rocksPerCategory = variation.category === 'tiny' || variation.category === 'small' ? 4 : 3;
       
@@ -233,33 +233,36 @@ export class TerrainFeatureGenerator {
         const rockGroup = new THREE.Group();
         
         if (variation.isCluster) {
-          this.createRealisticRockCluster(rockGroup, variation, i);
+          this.createFixedRockCluster(rockGroup, variation, i);
         } else {
-          this.createRealisticSingleRock(rockGroup, variation, i);
+          this.createFixedSingleRock(rockGroup, variation, i);
         }
         
         this.rockModels.push(rockGroup);
       }
     });
     
-    console.log(`🪨 Created ${this.rockModels.length} realistic rock variations across 5 size categories`);
+    console.log(`🪨 Created ${this.rockModels.length} fixed realistic rock variations across 5 size categories`);
   }
   
-  // NEW: Create realistic single rock with organic shapes
-  private createRealisticSingleRock(rockGroup: THREE.Group, variation: RockVariation, index: number): void {
+  // UPDATED: Create single rock with fixed geometry handling
+  private createFixedSingleRock(rockGroup: THREE.Group, variation: RockVariation, index: number): void {
     const [minSize, maxSize] = variation.sizeRange;
     const rockSize = minSize + Math.random() * (maxSize - minSize);
     
-    // Select random rock shape
+    // Select rock shape
     const rockShape = this.rockShapes[index % this.rockShapes.length];
     
-    // Create organic base geometry
-    let rockGeometry = this.createOrganicBaseGeometry(rockShape, rockSize);
+    // Create improved base geometry with higher subdivision
+    let rockGeometry = this.createImprovedBaseGeometry(rockShape, rockSize);
     
-    // Apply multiple deformation passes for realism
-    this.applyAdvancedDeformation(rockGeometry, rockShape.deformationIntensity, rockSize);
+    // Apply conservative deformation
+    this.applyConservativeDeformation(rockGeometry, rockShape.deformationIntensity, rockSize);
     
-    // Create enhanced material with weathering
+    // Validate and fix geometry
+    this.validateAndFixGeometry(rockGeometry);
+    
+    // Create enhanced material
     const rockMaterial = this.createEnhancedRockMaterial(variation.category, rockShape, index);
     
     const mainRock = new THREE.Mesh(rockGeometry, rockMaterial);
@@ -268,81 +271,89 @@ export class TerrainFeatureGenerator {
       Math.random() * Math.PI,
       Math.random() * Math.PI
     );
-    mainRock.position.y = rockSize * 0.2; // Slightly embed in ground
+    mainRock.position.y = rockSize * 0.2;
     mainRock.castShadow = true;
     mainRock.receiveShadow = true;
     
     rockGroup.add(mainRock);
     
-    // Add realistic surface features for medium+ rocks
+    // Add surface features for medium+ rocks
     if (variation.category === 'medium' || variation.category === 'large') {
       this.addSurfaceFeatures(rockGroup, rockSize, rockShape, rockMaterial);
     }
     
-    console.log(`🏔️ Created realistic ${variation.category} ${rockShape.type} rock`);
+    console.log(`🏔️ Created fixed realistic ${variation.category} ${rockShape.type} rock`);
   }
   
-  // NEW: Create organic base geometry based on rock shape
-  private createOrganicBaseGeometry(rockShape: RockShape, rockSize: number): THREE.BufferGeometry {
+  // NEW: Create improved base geometry with higher subdivision
+  private createImprovedBaseGeometry(rockShape: RockShape, rockSize: number): THREE.BufferGeometry {
     let geometry: THREE.BufferGeometry;
     
     switch (rockShape.baseGeometry) {
       case 'icosahedron':
-        // Great for angular, crystalline rocks
-        geometry = new THREE.IcosahedronGeometry(rockSize, 1);
+        // Higher subdivision for smoother deformation
+        geometry = new THREE.IcosahedronGeometry(rockSize, 2);
         break;
         
       case 'sphere':
-        // Good for weathered, rounded rocks
-        geometry = new THREE.SphereGeometry(rockSize, 16, 12);
+        // More segments for better topology
+        geometry = new THREE.SphereGeometry(rockSize, 20, 16);
         break;
         
       case 'dodecahedron':
-        // Interesting multi-faceted rocks
-        geometry = new THREE.DodecahedronGeometry(rockSize, 1);
+        // Higher subdivision
+        geometry = new THREE.DodecahedronGeometry(rockSize, 2);
         break;
         
       case 'custom':
-        // Create custom boulder shape
-        geometry = this.createBoulderGeometry(rockSize);
+        // Improved custom boulder shape
+        geometry = this.createImprovedBoulderGeometry(rockSize);
         break;
         
       default:
-        geometry = new THREE.IcosahedronGeometry(rockSize, 1);
+        geometry = new THREE.IcosahedronGeometry(rockSize, 2);
     }
     
-    // Apply shape-specific modifications
-    this.applyShapeModifications(geometry, rockShape, rockSize);
+    // Apply conservative shape modifications
+    this.applyConservativeShapeModifications(geometry, rockShape, rockSize);
     
     return geometry;
   }
   
-  // NEW: Create custom boulder geometry for more organic shapes
-  private createBoulderGeometry(rockSize: number): THREE.BufferGeometry {
-    // Start with sphere and create multiple bulges
-    const geometry = new THREE.SphereGeometry(rockSize, 12, 8);
+  // UPDATED: Improved boulder geometry with better topology
+  private createImprovedBoulderGeometry(rockSize: number): THREE.BufferGeometry {
+    // Start with higher resolution sphere
+    const geometry = new THREE.SphereGeometry(rockSize, 16, 12);
     const positions = geometry.attributes.position.array as Float32Array;
     
-    // Create organic bulges and indentations
+    // Create more conservative organic variation
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const y = positions[i + 1];
       const z = positions[i + 2];
       
-      // Calculate distance from center
+      // Calculate distance from center for normalization
       const distance = Math.sqrt(x * x + y * y + z * z);
       
-      // Create organic variation using multiple noise functions
-      const noise1 = Math.sin(x * 3) * Math.cos(y * 3) * Math.sin(z * 3);
-      const noise2 = Math.sin(x * 7) * Math.cos(z * 7);
-      const noise3 = Math.cos(y * 5) * Math.sin(x * 5);
+      // Create subtle organic variation with smoother noise
+      const noise1 = Math.sin(x * 2) * Math.cos(y * 2) * Math.sin(z * 2);
+      const noise2 = Math.sin(x * 4) * Math.cos(z * 4);
+      const noise3 = Math.cos(y * 3) * Math.sin(x * 3);
       
-      const organicFactor = 1 + (noise1 * 0.3 + noise2 * 0.2 + noise3 * 0.15);
+      // Reduced intensity and smoother blending
+      const organicFactor = 1 + (noise1 * 0.15 + noise2 * 0.1 + noise3 * 0.08);
       
-      // Apply organic scaling
-      positions[i] = x * organicFactor;
-      positions[i + 1] = y * organicFactor;
-      positions[i + 2] = z * organicFactor;
+      // Apply conservative scaling
+      if (distance > 0) {
+        const normalizedX = x / distance;
+        const normalizedY = y / distance;
+        const normalizedZ = z / distance;
+        
+        const newDistance = distance * organicFactor;
+        positions[i] = normalizedX * newDistance;
+        positions[i + 1] = normalizedY * newDistance;
+        positions[i + 2] = normalizedZ * newDistance;
+      }
     }
     
     geometry.attributes.position.needsUpdate = true;
@@ -351,42 +362,42 @@ export class TerrainFeatureGenerator {
     return geometry;
   }
   
-  // NEW: Apply shape-specific modifications
-  private applyShapeModifications(geometry: THREE.BufferGeometry, rockShape: RockShape, rockSize: number): void {
+  // UPDATED: Conservative shape modifications
+  private applyConservativeShapeModifications(geometry: THREE.BufferGeometry, rockShape: RockShape, rockSize: number): void {
     const positions = geometry.attributes.position.array as Float32Array;
     
     switch (rockShape.type) {
       case 'spire':
-        // Stretch vertically and taper
+        // Conservative vertical stretching
         for (let i = 0; i < positions.length; i += 3) {
           const y = positions[i + 1];
-          positions[i + 1] = y * (1.5 + Math.random() * 0.5); // Stretch up
+          positions[i + 1] = y * 1.3; // Reduced from 1.5+
           
-          // Taper based on height
-          const taperFactor = Math.max(0.3, 1 - Math.abs(y) / rockSize);
+          // Gentler taper
+          const taperFactor = Math.max(0.5, 1 - Math.abs(y) / (rockSize * 1.5));
           positions[i] *= taperFactor;
           positions[i + 2] *= taperFactor;
         }
         break;
         
       case 'slab':
-        // Flatten and widen
+        // Gentler flattening
         for (let i = 0; i < positions.length; i += 3) {
-          positions[i + 1] *= 0.4; // Flatten
-          positions[i] *= 1.3; // Widen X
-          positions[i + 2] *= 1.3; // Widen Z
+          positions[i + 1] *= 0.5; // Less extreme flattening
+          positions[i] *= 1.2; // Less widening
+          positions[i + 2] *= 1.2;
         }
         break;
         
       case 'weathered':
-        // Create weathered, smooth surfaces
+        // Subtle weathering effect
         for (let i = 0; i < positions.length; i += 3) {
           const x = positions[i];
           const y = positions[i + 1];
           const z = positions[i + 2];
           
-          // Smooth weathering effect
-          const weathering = Math.sin(x * 2) * Math.cos(y * 2) * Math.sin(z * 2) * 0.1;
+          // Much more subtle weathering
+          const weathering = Math.sin(x * 1.5) * Math.cos(y * 1.5) * Math.sin(z * 1.5) * 0.05;
           const factor = 1 + weathering;
           
           positions[i] *= factor;
@@ -400,26 +411,22 @@ export class TerrainFeatureGenerator {
     geometry.computeVertexNormals();
   }
   
-  // NEW: Advanced deformation system with multiple passes
-  private applyAdvancedDeformation(geometry: THREE.BufferGeometry, intensity: number, rockSize: number): void {
-    // Pass 1: Large-scale Perlin-like noise
-    this.applyPerlinDeformation(geometry, intensity * 0.6, rockSize * 0.5);
+  // COMPLETELY REWRITTEN: Conservative deformation system
+  private applyConservativeDeformation(geometry: THREE.BufferGeometry, intensity: number, rockSize: number): void {
+    // Single pass with conservative values
+    this.applySmoothedPerlinDeformation(geometry, intensity * 0.3, rockSize * 0.8);
     
-    // Pass 2: Medium-scale surface detail
-    this.applyDetailDeformation(geometry, intensity * 0.3, rockSize * 0.2);
+    // Very subtle detail pass
+    this.applySubtleDetailDeformation(geometry, intensity * 0.1, rockSize * 0.3);
     
-    // Pass 3: Fine surface texture
-    this.applyTextureDeformation(geometry, intensity * 0.1, rockSize * 0.05);
-    
-    // Pass 4: Edge fracturing for angular faces
-    this.applyEdgeFracturing(geometry, intensity * 0.4);
+    // Skip aggressive edge fracturing - it was causing the issues
     
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
   }
   
-  // NEW: Perlin-like noise deformation
-  private applyPerlinDeformation(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
+  // NEW: Smoothed Perlin deformation
+  private applySmoothedPerlinDeformation(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
     const positions = geometry.attributes.position.array as Float32Array;
     
     for (let i = 0; i < positions.length; i += 3) {
@@ -427,14 +434,13 @@ export class TerrainFeatureGenerator {
       const y = positions[i + 1];
       const z = positions[i + 2];
       
-      // Multi-octave noise for natural randomness
+      // Gentler multi-octave noise
       const noise1 = Math.sin(x / scale) * Math.cos(y / scale) * Math.sin(z / scale);
-      const noise2 = Math.sin(x / scale * 2) * Math.cos(z / scale * 2) * 0.5;
-      const noise3 = Math.cos(y / scale * 4) * Math.sin(x / scale * 4) * 0.25;
+      const noise2 = Math.sin(x / scale * 1.5) * Math.cos(z / scale * 1.5) * 0.3;
       
-      const combinedNoise = noise1 + noise2 + noise3;
+      const combinedNoise = noise1 + noise2;
       
-      // Apply noise in direction of vertex normal
+      // Apply displacement along surface normal
       const length = Math.sqrt(x * x + y * y + z * z);
       if (length > 0) {
         const normalX = x / length;
@@ -449,34 +455,8 @@ export class TerrainFeatureGenerator {
     }
   }
   
-  // NEW: Detail deformation for surface irregularities
-  private applyDetailDeformation(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
-    const positions = geometry.attributes.position.array as Float32Array;
-    
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-      
-      // High-frequency detail noise
-      const detailNoise = Math.sin(x / scale * 8) * Math.cos(y / scale * 8) * Math.sin(z / scale * 8);
-      
-      // Random directional displacement for surface irregularities
-      const randomDir = new THREE.Vector3(
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2,
-        (Math.random() - 0.5) * 2
-      ).normalize();
-      
-      const displacement = detailNoise * intensity;
-      positions[i] += randomDir.x * displacement;
-      positions[i + 1] += randomDir.y * displacement;
-      positions[i + 2] += randomDir.z * displacement;
-    }
-  }
-  
-  // NEW: Fine texture deformation
-  private applyTextureDeformation(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
+  // NEW: Subtle detail deformation
+  private applySubtleDetailDeformation(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
     const positions = geometry.attributes.position.array as Float32Array;
     
     for (let i = 0; i < positions.length; i += 3) {
@@ -485,16 +465,16 @@ export class TerrainFeatureGenerator {
       const z = positions[i + 2];
       
       // Very fine surface texture
-      const textureNoise = Math.sin(x / scale * 20) * Math.cos(y / scale * 20) * Math.sin(z / scale * 20);
+      const detailNoise = Math.sin(x / scale * 6) * Math.cos(y / scale * 6) * Math.sin(z / scale * 6);
       
-      // Apply along surface normal
+      // Apply along surface normal only
       const length = Math.sqrt(x * x + y * y + z * z);
       if (length > 0) {
         const normalX = x / length;
         const normalY = y / length;
         const normalZ = z / length;
         
-        const displacement = textureNoise * intensity;
+        const displacement = detailNoise * intensity;
         positions[i] += normalX * displacement;
         positions[i + 1] += normalY * displacement;
         positions[i + 2] += normalZ * displacement;
@@ -502,27 +482,25 @@ export class TerrainFeatureGenerator {
     }
   }
   
-  // NEW: Edge fracturing for angular rock faces
-  private applyEdgeFracturing(geometry: THREE.BufferGeometry, intensity: number): void {
+  // NEW: Geometry validation and fixing
+  private validateAndFixGeometry(geometry: THREE.BufferGeometry): void {
     const positions = geometry.attributes.position.array as Float32Array;
     
-    // Create fracture patterns by identifying edge vertices
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-      
-      // Identify potential fracture points based on position
-      const fractureProbability = Math.abs(Math.sin(x * 5) * Math.cos(y * 5) * Math.sin(z * 5));
-      
-      if (fractureProbability > 0.7) {
-        // Create sharp angular displacement
-        const fracture = (Math.random() - 0.5) * intensity;
-        const direction = Math.random() < 0.33 ? 0 : Math.random() < 0.5 ? 1 : 2;
-        
-        positions[i + direction] += fracture;
+    // Check for NaN or infinite values
+    for (let i = 0; i < positions.length; i++) {
+      if (!isFinite(positions[i])) {
+        positions[i] = 0;
+        console.warn('🔧 Fixed invalid vertex position');
       }
     }
+    
+    // Ensure geometry is manifold by checking for isolated vertices
+    geometry.attributes.position.needsUpdate = true;
+    
+    // Recompute normals and bounds
+    geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
   }
   
   // NEW: Enhanced rock material with weathering and surface details
@@ -714,8 +692,8 @@ export class TerrainFeatureGenerator {
     }
   }
   
-  // UPDATED: Create realistic rock cluster with natural stacking
-  private createRealisticRockCluster(rockGroup: THREE.Group, variation: RockVariation, index: number): void {
+  // UPDATED: Create fixed rock cluster with improved stacking
+  private createFixedRockCluster(rockGroup: THREE.Group, variation: RockVariation, index: number): void {
     const [minSize, maxSize] = variation.sizeRange;
     const [minClusterSize, maxClusterSize] = variation.clusterSize || [2, 3];
     const clusterCount = minClusterSize + Math.floor(Math.random() * (maxClusterSize - minClusterSize + 1));
@@ -726,14 +704,14 @@ export class TerrainFeatureGenerator {
     mainRock.position.set(0, mainRockSize * 0.2, 0);
     rockGroup.add(mainRock);
     
-    // Create secondary rocks with natural stacking
+    // Create secondary rocks with improved stacking
     for (let i = 1; i < clusterCount; i++) {
       const sizeMultiplier = 0.4 + Math.random() * 0.3; // 40-70% of main size
       const rockSize = mainRockSize * sizeMultiplier;
       const rock = this.createClusterRock(rockSize, variation, i, false);
       
-      // Position with natural stacking physics
-      const stackingPosition = this.calculateStackingPosition(mainRockSize, rockSize, i, clusterCount);
+      // Position with improved stacking physics
+      const stackingPosition = this.calculateImprovedStackingPosition(mainRockSize, rockSize, i, clusterCount);
       rock.position.copy(stackingPosition);
       
       rockGroup.add(rock);
@@ -742,19 +720,22 @@ export class TerrainFeatureGenerator {
     // Add cluster-wide features
     this.addClusterFeatures(rockGroup, maxSize, variation);
     
-    console.log(`🏔️ Created realistic ${variation.category} cluster with ${clusterCount} naturally stacked rocks`);
+    console.log(`🏔️ Created fixed realistic ${variation.category} cluster with ${clusterCount} naturally stacked rocks`);
   }
   
-  // NEW: Create individual rock in cluster with realistic features
+  // UPDATED: Create individual rock in cluster with fixed geometry
   private createClusterRock(rockSize: number, variation: RockVariation, index: number, isMainRock: boolean): THREE.Object3D {
     const rockShape = this.rockShapes[index % this.rockShapes.length];
     
-    // Create more varied shapes for cluster rocks
-    let geometry = this.createOrganicBaseGeometry(rockShape, rockSize);
+    // Create improved base geometry
+    let geometry = this.createImprovedBaseGeometry(rockShape, rockSize);
     
-    // Apply enhanced deformation for cluster rocks
-    const deformationIntensity = isMainRock ? rockShape.deformationIntensity : rockShape.deformationIntensity * 1.2;
-    this.applyAdvancedDeformation(geometry, deformationIntensity, rockSize);
+    // Apply conservative deformation
+    const deformationIntensity = isMainRock ? rockShape.deformationIntensity * 0.8 : rockShape.deformationIntensity;
+    this.applyConservativeDeformation(geometry, deformationIntensity, rockSize);
+    
+    // Validate geometry
+    this.validateAndFixGeometry(geometry);
     
     const material = this.createEnhancedRockMaterial(variation.category, rockShape, index);
     const rock = new THREE.Mesh(geometry, material);
@@ -771,25 +752,25 @@ export class TerrainFeatureGenerator {
     return rock;
   }
   
-  // NEW: Calculate natural stacking position for rocks
-  private calculateStackingPosition(mainRockSize: number, rockSize: number, index: number, total: number): THREE.Vector3 {
-    const baseRadius = mainRockSize * 0.8;
+  // NEW: Improved stacking position calculation
+  private calculateImprovedStackingPosition(mainRockSize: number, rockSize: number, index: number, total: number): THREE.Vector3 {
+    const baseRadius = mainRockSize * 0.7; // Slightly closer stacking
     
     if (index === 1) {
-      // First secondary rock: lean against main rock
+      // First secondary rock: lean against main rock with better physics
       const angle = Math.random() * Math.PI * 2;
       return new THREE.Vector3(
         Math.cos(angle) * baseRadius,
-        rockSize * 0.3 + Math.random() * mainRockSize * 0.2,
+        rockSize * 0.4 + Math.random() * mainRockSize * 0.1, // More stable positioning
         Math.sin(angle) * baseRadius
       );
     } else {
-      // Additional rocks: scatter with natural physics
+      // Additional rocks: improved natural placement
       const angle = Math.random() * Math.PI * 2;
-      const distance = baseRadius * (0.8 + Math.random() * 0.4);
+      const distance = baseRadius * (0.9 + Math.random() * 0.2); // Tighter clustering
       return new THREE.Vector3(
         Math.cos(angle) * distance,
-        rockSize * 0.2,
+        rockSize * 0.25, // Better ground contact
         Math.sin(angle) * distance
       );
     }
