@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { TextureGenerator } from '../utils';
@@ -94,16 +95,38 @@ export class TerrainFeatureGenerator {
       
       // Different rock shapes
       switch (rockType) {
-        case 0: // Irregular boulder
-          rockGeometry = new THREE.DodecahedronGeometry(mainRockSize, 1);
-          // Deform the geometry for irregularity
+        case 0: // IMPROVED: Organic irregular boulder
+          rockGeometry = new THREE.SphereGeometry(mainRockSize, 10, 8); // Higher detail sphere
+          
+          // Apply organic deformation for natural boulder shape
           const positions = rockGeometry.attributes.position.array as Float32Array;
           for (let j = 0; j < positions.length; j += 3) {
-            const deformation = 0.2 + Math.random() * 0.3;
+            // Get current vertex position
+            const x = positions[j];
+            const y = positions[j + 1];
+            const z = positions[j + 2];
+            
+            // Create organic deformation using multiple noise factors
+            const noise1 = Math.sin(x * 3) * Math.cos(y * 3) * 0.1;
+            const noise2 = Math.sin(z * 4) * Math.cos(x * 2) * 0.08;
+            const noise3 = Math.sin(y * 5) * Math.cos(z * 3) * 0.06;
+            
+            // Combine noise for organic variation
+            const deformation = 0.85 + noise1 + noise2 + noise3 + (Math.random() * 0.2 - 0.1);
+            
+            // Apply deformation while maintaining boulder-like proportions
             positions[j] *= deformation;
-            positions[j + 1] *= deformation;
+            positions[j + 1] *= deformation * (0.8 + Math.random() * 0.3); // Slightly flatten Y
             positions[j + 2] *= deformation;
           }
+          
+          // Apply organic axis scaling for natural boulder proportions
+          rockGeometry.scale(
+            0.9 + Math.random() * 0.3,  // X: 0.9-1.2
+            0.7 + Math.random() * 0.4,  // Y: 0.7-1.1 (slightly flatter)
+            0.9 + Math.random() * 0.3   // Z: 0.9-1.2
+          );
+          
           rockGeometry.attributes.position.needsUpdate = true;
           rockGeometry.computeVertexNormals();
           break;
