@@ -259,44 +259,6 @@ export class RockShapeFactory {
     return points;
   }
   
-  private updateGenerationStats(category: string, shapeType: RockShapeType): void {
-    const key = `${category}_${shapeType}`;
-    const current = RockShapeFactory.generationStats.get(key) || 0;
-    RockShapeFactory.generationStats.set(key, current + 1);
-    
-    // Log stats every 50 rocks generated
-    const totalGenerated = Array.from(RockShapeFactory.generationStats.values())
-      .reduce((sum, count) => sum + count, 0);
-    
-    if (totalGenerated % 50 === 0) {
-      this.logGenerationStats();
-    }
-  }
-  
-  private logGenerationStats(): void {
-    console.log('🗿 Rock Generation Statistics:');
-    
-    // Group by category
-    const categoryStats = new Map<string, number>();
-    const shapeStats = new Map<string, number>();
-    
-    RockShapeFactory.generationStats.forEach((count, key) => {
-      const [category, shape] = key.split('_');
-      categoryStats.set(category, (categoryStats.get(category) || 0) + count);
-      shapeStats.set(shape, (shapeStats.get(shape) || 0) + count);
-    });
-    
-    console.log('  By Category:');
-    categoryStats.forEach((count, category) => {
-      console.log(`    ${category}: ${count}`);
-    });
-    
-    console.log('  By Shape:');
-    shapeStats.forEach((count, shape) => {
-      console.log(`    ${shape}: ${count}`);
-    });
-  }
-  
   public static getGenerationStats(): Map<string, number> {
     return new Map(RockShapeFactory.generationStats);
   }
