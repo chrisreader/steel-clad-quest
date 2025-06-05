@@ -240,25 +240,25 @@ export class TerrainFeatureGenerator {
     const rockType = index % 4; // 4 different base shapes per category
     
     switch (rockType) {
-      case 0: // Irregular boulder with heavy deformation
+      case 0: // Irregular boulder with light deformation
         rockGeometry = new THREE.DodecahedronGeometry(rockSize, 1);
-        this.deformGeometry(rockGeometry, 0.3 + Math.random() * 0.4);
+        this.deformGeometry(rockGeometry, 0.05 + Math.random() * 0.1);
         break;
         
       case 1: // Flattened sedimentary rock
         rockGeometry = new THREE.SphereGeometry(rockSize, 8, 6);
-        rockGeometry.scale(1, 0.3 + Math.random() * 0.5, 1);
-        this.deformGeometry(rockGeometry, 0.2 + Math.random() * 0.3);
+        rockGeometry.scale(1, 0.4 + Math.random() * 0.4, 1);
+        this.deformGeometry(rockGeometry, 0.03 + Math.random() * 0.05);
         break;
         
       case 2: // Angular volcanic rock
         rockGeometry = new THREE.OctahedronGeometry(rockSize, 1);
-        this.deformGeometry(rockGeometry, 0.4 + Math.random() * 0.3);
+        this.deformGeometry(rockGeometry, 0.06 + Math.random() * 0.08);
         break;
         
       default: // Rounded river rock
         rockGeometry = new THREE.SphereGeometry(rockSize, 12, 8);
-        this.deformGeometry(rockGeometry, 0.1 + Math.random() * 0.2);
+        this.deformGeometry(rockGeometry, 0.02 + Math.random() * 0.04);
         break;
     }
     
@@ -298,7 +298,7 @@ export class TerrainFeatureGenerator {
       
       // Create individual rock in cluster
       const rockGeometry = new THREE.DodecahedronGeometry(rockSize, 1);
-      this.deformGeometry(rockGeometry, 0.3 + Math.random() * 0.4);
+      this.deformGeometry(rockGeometry, 0.05 + Math.random() * 0.1);
       
       const rockMaterial = this.createRockMaterial(variation.category, i);
       const rock = new THREE.Mesh(rockGeometry, rockMaterial);
@@ -416,15 +416,24 @@ export class TerrainFeatureGenerator {
     return material;
   }
   
-  // NEW: Deform geometry for natural irregularity
+  // FIXED: Improved geometry deformation for more natural rocks
   private deformGeometry(geometry: THREE.BufferGeometry, intensity: number): void {
     const positions = geometry.attributes.position.array as Float32Array;
     
     for (let i = 0; i < positions.length; i += 3) {
-      const deformation = 1.0 + (Math.random() - 0.5) * intensity;
-      positions[i] *= deformation;
-      positions[i + 1] *= deformation;
-      positions[i + 2] *= deformation;
+      const x = positions[i];
+      const y = positions[i + 1];
+      const z = positions[i + 2];
+      
+      // Use vertex position to create consistent noise-based deformation
+      const noiseX = Math.sin(x * 10) * Math.cos(y * 10);
+      const noiseY = Math.sin(y * 10) * Math.cos(z * 10);
+      const noiseZ = Math.sin(z * 10) * Math.cos(x * 10);
+      
+      // Apply subtle deformation based on noise
+      positions[i] += noiseX * intensity;
+      positions[i + 1] += noiseY * intensity;
+      positions[i + 2] += noiseZ * intensity;
     }
     
     geometry.attributes.position.needsUpdate = true;
@@ -588,6 +597,28 @@ export class TerrainFeatureGenerator {
     this.spawnRandomFeatures(region, 'forest', 2, features);
     this.spawnEnhancedRocks(region, 60, features); // Maximum rock density
     this.spawnRandomFeatures(region, 'bushes', 3, features);
+  }
+  
+  // NEW: Get random cluster type with weighted selection
+  private getRandomClusterType(): 'forest' | 'rocks' | 'bushes' | 'mixed' {
+    const clusterTypes = [
+      { type: 'forest' as const, weight: 35 },
+      { type: 'rocks' as const, weight: 25 },
+      { type: 'bushes' as const, weight: 25 },
+      { type: 'mixed' as const, weight: 15 }
+    ];
+    
+    const totalWeight = clusterTypes.reduce((sum, cluster) => sum + cluster.weight, 0);
+    let random = Math.random() * totalWeight;
+    
+    for (const cluster of clusterTypes) {
+      if (random < cluster.weight) {
+        return cluster.type;
+      }
+      random -= cluster.weight;
+    }
+    
+    return 'mixed'; // Fallback
   }
   
   // NEW: Enhanced rock spawning with weighted size distribution
