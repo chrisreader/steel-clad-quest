@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { noise } from 'noisejs';
 
@@ -307,7 +308,7 @@ export class RockShapeFactory {
     const positions = geometry.attributes.position;
     const neighbors = this.buildNeighborMap(geometry);
     const vertex = new THREE.Vector3();
-    const smoothedPositions: number[] = [];
+    const smoothedPositions: THREE.Vector3[] = [];
     
     // Determine smoothing intensity based on rock type
     const smoothingIntensity = type === 'angular' ? 0.1 : 0.3;
@@ -327,14 +328,18 @@ export class RockShapeFactory {
         
         // Apply smoothing with intensity control
         const smoothed = vertex.clone().lerp(centroid, smoothingIntensity);
-        smoothedPositions.push(smoothed.x, smoothed.y, smoothed.z);
+        smoothedPositions.push(smoothed);
       } else {
-        smoothedPositions.push(vertex.x, vertex.y, vertex.z);
+        smoothedPositions.push(vertex.clone());
       }
     }
     
-    // Update geometry with smoothed positions
-    positions.array = new Float32Array(smoothedPositions);
+    // Update geometry with smoothed positions using proper method
+    for (let i = 0; i < smoothedPositions.length; i++) {
+      const pos = smoothedPositions[i];
+      positions.setXYZ(i, pos.x, pos.y, pos.z);
+    }
+    
     positions.needsUpdate = true;
     geometry.computeVertexNormals();
   }
