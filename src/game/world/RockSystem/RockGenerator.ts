@@ -8,7 +8,7 @@ export class RockGenerator {
   private materialPool: RockMaterialPool;
   private geometryPool: RockGeometryPool;
   private largeFormations: THREE.Vector3[] = [];
-  private minimumLargeRockDistance: number = 150;
+  private minimumLargeRockDistance: number = 75; // Reduced from 150
 
   constructor() {
     this.materialPool = RockMaterialPool.getInstance();
@@ -18,15 +18,20 @@ export class RockGenerator {
   public generateRock(position: THREE.Vector3, forceVariation?: RockVariation): THREE.Object3D | null {
     const variation = forceVariation || this.selectRockVariation();
     
+    console.log(`🪨 [RockGenerator] Generating ${variation.category} rock at position:`, position);
+    
     // Check distance for large formations
     if ((variation.category === 'large' || variation.category === 'massive') && 
         this.isTooCloseToLargeFormation(position)) {
+      console.log(`🚫 [RockGenerator] ${variation.category} rock rejected - too close to existing large formation`);
       return null;
     }
 
     if (variation.isCluster) {
+      console.log(`🏔️ [RockGenerator] Creating ${variation.category} cluster with ${variation.clusterSize?.[0]}-${variation.clusterSize?.[1]} rocks`);
       return this.createRockCluster(variation, position);
     } else {
+      console.log(`🪨 [RockGenerator] Creating single ${variation.category} rock`);
       return this.createSingleRock(variation, position);
     }
   }
@@ -37,6 +42,7 @@ export class RockGenerator {
     
     for (const variation of ROCK_VARIATIONS) {
       if (random < variation.weight) {
+        console.log(`🎲 [RockGenerator] Selected ${variation.category} rock (weight: ${variation.weight}/${totalWeight})`);
         return variation;
       }
       random -= variation.weight;
@@ -79,6 +85,8 @@ export class RockGenerator {
     const [minClusterSize, maxClusterSize] = variation.clusterSize || [3, 5];
     const clusterCount = minClusterSize + Math.floor(Math.random() * (maxClusterSize - minClusterSize + 1));
     
+    console.log(`🏔️ [RockGenerator] Creating cluster of ${clusterCount} rocks for ${variation.category}`);
+    
     // Create main rock (largest)
     const mainRock = this.createSingleRock(variation, new THREE.Vector3(0, 0, 0));
     group.add(mainRock);
@@ -108,15 +116,23 @@ export class RockGenerator {
     // Track large formations
     if (variation.category === 'large' || variation.category === 'massive') {
       this.largeFormations.push(position.clone());
+      console.log(`📍 [RockGenerator] Registered ${variation.category} formation at:`, position, `(total formations: ${this.largeFormations.length})`);
     }
     
     return group;
   }
 
   private isTooCloseToLargeFormation(position: THREE.Vector3): boolean {
-    return this.largeFormations.some(formation => 
-      formation.distanceTo(position) < this.minimumLargeRockDistance
-    );
+    const tooClose = this.largeFormations.some(formation => {
+      const distance = formation.distanceTo(position);
+      return distance < this.minimumLargeRockDistance;
+    });
+    
+    if (tooClose) {
+      console.log(`🚫 [RockGenerator] Position too close to existing large formation (min distance: ${this.minimumLargeRockDistance})`);
+    }
+    
+    return tooClose;
   }
 
   public clearLargeFormations(): void {
