@@ -57,7 +57,7 @@ export class TerrainFeatureGenerator {
       );
       
       const clusterSize = ['tiny', 'small', 'medium', 'large'][Math.floor(Math.random() * 4)] as 'tiny' | 'small' | 'medium' | 'large';
-      const clusterFeatures = TerrainFeatureGenerator.generateRockCluster(clusterPosition, clusterSize);
+      const clusterFeatures = this.generateRockCluster(clusterPosition, clusterSize);
       
       // Convert terrain features to 3D objects and add to scene
       for (const feature of clusterFeatures) {
@@ -135,29 +135,29 @@ export class TerrainFeatureGenerator {
     console.log("TerrainFeatureGenerator disposed");
   }
 
-  static generateRockCluster(
+  public generateRockCluster(
     centerPosition: THREE.Vector3,
     clusterSize: 'tiny' | 'small' | 'medium' | 'large' | 'massive' = 'medium'
   ): TerrainFeature[] {
-    const config = this.CLUSTER_CONFIGS[clusterSize];
+    const config = TerrainFeatureGenerator.CLUSTER_CONFIGS[clusterSize];
     const numRocks = Math.floor(Math.random() * (config.maxRocks - config.minRocks + 1)) + config.minRocks;
     const features: TerrainFeature[] = [];
     
     // Generate cluster shape variety - ensure good mix of types
-    const clusterShapes = this.generateClusterShapeVariety(numRocks);
+    const clusterShapes = TerrainFeatureGenerator.generateClusterShapeVariety(numRocks);
     
     for (let i = 0; i < numRocks; i++) {
-      const role = this.determineRockRole(i, numRocks);
-      const rockSize = this.calculateRockSize(role, config, i, numRocks);
-      const position = this.calculateRockPosition(centerPosition, config.spread, i, numRocks);
+      const role = TerrainFeatureGenerator.determineRockRole(i, numRocks);
+      const rockSize = TerrainFeatureGenerator.calculateRockSize(role, config, i, numRocks);
+      const position = TerrainFeatureGenerator.calculateRockPosition(centerPosition, config.spread, i, numRocks);
       
-      // Use pre-determined shape for variety
-      const shape = clusterShapes[i];
+      // Use pre-determined shape for variety with proper type casting
+      const shape = clusterShapes[i] as typeof TerrainFeatureGenerator.ROCK_TYPES[number];
       
       // Size-based deformation control instead of role-based
-      const deformationIntensity = this.calculateSizeBasedDeformation(rockSize);
-      const personality = this.selectPersonalityForSize(rockSize);
-      const modifier = this.selectModifierForSize(rockSize, shape);
+      const deformationIntensity = TerrainFeatureGenerator.calculateSizeBasedDeformation(rockSize);
+      const personality = TerrainFeatureGenerator.selectPersonalityForSize(rockSize);
+      const modifier = TerrainFeatureGenerator.selectModifierForSize(rockSize, shape);
       
       console.log(`Generating rock ${i}: shape=${shape}, size=${rockSize.toFixed(2)}, deformation=${deformationIntensity.toFixed(2)}, role=${role}`);
       
@@ -275,7 +275,7 @@ export class TerrainFeatureGenerator {
 
   private static calculateRockSize(
     role: 'foundation' | 'support' | 'accent',
-    config: typeof this.CLUSTER_CONFIGS[keyof typeof this.CLUSTER_CONFIGS],
+    config: typeof TerrainFeatureGenerator.CLUSTER_CONFIGS[keyof typeof TerrainFeatureGenerator.CLUSTER_CONFIGS],
     index: number,
     totalRocks: number
   ): number {
@@ -323,7 +323,7 @@ export class TerrainFeatureGenerator {
     );
   }
 
-  static generateSingleRock(position: THREE.Vector3, size: number = 1): TerrainFeature {
+  public static generateSingleRock(position: THREE.Vector3, size: number = 1): TerrainFeature {
     // Use size-based deformation for single rocks too
     const deformationIntensity = this.calculateSizeBasedDeformation(size);
     const personality = this.selectPersonalityForSize(size);
