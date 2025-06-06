@@ -96,7 +96,7 @@ export class SceneManager {
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
     
     // Initialize terrain feature generator
-    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem);
+    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
     // Initialize structure generator with PhysicsManager
     this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene, this.physicsManager);
@@ -109,7 +109,7 @@ export class SceneManager {
     
     // Initialize 3D grass system
     this.grassSystem = new GrassSystem(this.scene);
-    console.log("🌱 3D grass system initialized");
+    console.log("🌱 3D Grass system initialized");
     
     // Initialize skybox system
     this.skyboxSystem = new SkyboxSystem(this.scene);
