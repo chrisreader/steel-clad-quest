@@ -95,8 +95,8 @@ export class SceneManager {
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
     
-    // Initialize terrain feature generator
-    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
+    // Initialize terrain feature generator with scene parameter only
+    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.scene);
     
     // Initialize structure generator with PhysicsManager
     this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene, this.physicsManager);
@@ -752,12 +752,15 @@ export class SceneManager {
     };
     
     this.loadedRegions.set(regionKey, newRegion);
-    this.terrainFeatureGenerator.generateFeaturesForRegion(region);
+    
+    // Fix: Pass all 3 required arguments to generateFeaturesForRegion
+    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
+    const regionSize = region.ringIndex === 0 ? ringDef.outerRadius * 2 : 100;
+    this.terrainFeatureGenerator.generateFeaturesForRegion(centerPosition.x, centerPosition.z, regionSize);
+    
     this.structureGenerator.generateStructuresForRegion(region);
     
     // Generate 3D grass for this region
-    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
-    const regionSize = region.ringIndex === 0 ? ringDef.outerRadius * 2 : 100;
     this.grassSystem.generateGrassForRegion(region, centerPosition, regionSize, ringDef.terrainColor);
     console.log(`🌱 3D grass generated for region ${regionKey}`);
   }
@@ -771,7 +774,12 @@ export class SceneManager {
     console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
     this.structureGenerator.cleanupStructuresForRegion(region);
-    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
+    
+    // Fix: Pass all 3 required arguments to cleanupFeaturesForRegion
+    const centerPosition = loadedRegion.centerPosition;
+    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
+    const regionSize = region.ringIndex === 0 ? ringDef.outerRadius * 2 : 100;
+    this.terrainFeatureGenerator.cleanupFeaturesForRegion(centerPosition.x, centerPosition.z, regionSize);
     
     // Remove 3D grass for this region
     this.grassSystem.removeGrassForRegion(region);
@@ -794,7 +802,7 @@ export class SceneManager {
     
     this.loadedRegions.delete(regionKey);
   }
-  
+
   private createRegionTerrain(region: RegionCoordinates, centerPosition: THREE.Vector3): THREE.Mesh {
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     
