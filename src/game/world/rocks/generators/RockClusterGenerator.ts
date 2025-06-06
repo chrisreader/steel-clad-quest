@@ -19,9 +19,9 @@ export class RockClusterGenerator {
     const counts = this.calculateDynamicClusterCounts(variation.category, minClusterSize, maxClusterSize);
     const scatterRadius = this.calculateScatterRadius(variation.category, maxSize);
     
-    console.log(`🪨 Creating ${variation.category} cluster: ${counts.total} rocks with scatter radius ${scatterRadius.toFixed(1)}`);
+    console.log(`🪨 Creating ${variation.category} cluster: ${counts.total} rocks with scatter radius ${scatterRadius.toFixed(1)} (enhanced spire visibility)`);
     
-    // Generate cluster positions using new utility
+    // Generate cluster positions using enhanced utility
     const foundationPositions = RockGenerationUtils.generateRandomClusterLayout({
       count: counts.foundationCount,
       radiusRange: [0, scatterRadius * 0.6],
@@ -43,7 +43,7 @@ export class RockClusterGenerator {
       role: 'accent'
     });
 
-    // Create foundation rocks
+    // Create foundation rocks with enhanced spire selection
     foundationPositions.forEach((position, i) => {
       const rockSize = maxSize * (0.8 + Math.random() * 0.2);
       const rock = this.createStandardizedClusterRock(
@@ -59,7 +59,7 @@ export class RockClusterGenerator {
       rockGroup.add(rock);
     });
 
-    // Create support rocks
+    // Create support rocks with enhanced spire selection
     supportPositions.forEach((position, i) => {
       const rockSize = maxSize * (0.5 + Math.random() * 0.3);
       const rock = this.createStandardizedClusterRock(
@@ -75,7 +75,7 @@ export class RockClusterGenerator {
       rockGroup.add(rock);
     });
 
-    // Create accent rocks
+    // Create accent rocks with enhanced spire selection
     accentPositions.forEach((position, i) => {
       const rockSize = maxSize * (0.2 + Math.random() * 0.3);
       const rock = this.createStandardizedClusterRock(
@@ -91,11 +91,11 @@ export class RockClusterGenerator {
       rockGroup.add(rock);
     });
     
-    console.log(`🏔️ Created ${variation.category} cluster: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks`);
+    console.log(`🏔️ Created ${variation.category} cluster: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks (spire-enhanced)`);
   }
 
   /**
-   * Create cluster rock using standardized pipeline
+   * Create cluster rock using enhanced spire-friendly pipeline
    */
   private createStandardizedClusterRock(
     rockSize: number, 
@@ -104,16 +104,23 @@ export class RockClusterGenerator {
     role: ClusterRole,
     geometryProcessor: GeometryProcessor
   ): THREE.Object3D {
-    // Select shape based on role
+    // Use enhanced shape selection with spire visibility
     const rockShape = RockGenerationUtils.selectShapeByRole(this.rockShapes, role, index);
     
+    // For large/massive clusters with spires, ensure adequate size
+    let adjustedSize = rockSize;
+    if (rockShape.type === 'spire' && (variation.category === 'large' || variation.category === 'massive')) {
+      adjustedSize = Math.max(rockSize, variation.sizeRange[1] * 0.6); // Ensure spires are prominent
+      console.log(`🗿 Creating prominent ${variation.category} spire rock (size: ${adjustedSize.toFixed(1)})`);
+    }
+    
     // Create geometry using standardized processor
-    let geometry = geometryProcessor.createCharacterBaseGeometry(rockShape, rockSize);
-    geometryProcessor.applyShapeModifications(geometry, rockShape, rockSize);
+    let geometry = geometryProcessor.createCharacterBaseGeometry(rockShape, adjustedSize);
+    geometryProcessor.applyShapeModifications(geometry, rockShape, adjustedSize);
     
     const deformationIntensity = role === 'accent' ? 
       rockShape.deformationIntensity : rockShape.deformationIntensity * 0.7;
-    geometryProcessor.applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape);
+    geometryProcessor.applyCharacterDeformation(geometry, deformationIntensity, adjustedSize, rockShape);
     
     // Use standardized validation
     geometryProcessor.validateAndEnhanceGeometry(geometry);
@@ -122,7 +129,12 @@ export class RockClusterGenerator {
     const material = RockMaterialGenerator.createRoleBasedMaterial(variation.category, rockShape, index, role);
     const rock = new THREE.Mesh(geometry, material);
     
-    // Apply standardized properties
+    // Mark spire rocks for special handling
+    if (rockShape.type === 'spire') {
+      rock.userData.spireType = true;
+    }
+    
+    // Apply enhanced properties for spires
     RockGenerationUtils.applyStandardRockProperties(rock, variation.category, role);
     RockGenerationUtils.randomizeRotation(rock, role);
     
