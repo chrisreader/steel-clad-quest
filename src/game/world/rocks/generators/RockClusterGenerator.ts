@@ -3,6 +3,7 @@ import { RockVariation, RockShape, GeometryProcessor, ClusterRole } from '../typ
 import { ROCK_SHAPES } from '../config/RockShapeConfig';
 import { RockMaterialGenerator } from '../materials/RockMaterialGenerator';
 import { RockGenerationUtils } from '../utils/RockGenerationUtils';
+import { DramaticRockShapeGenerator } from './DramaticRockShapeGenerator';
 
 export class RockClusterGenerator {
   private rockShapes: RockShape[] = ROCK_SHAPES;
@@ -20,6 +21,13 @@ export class RockClusterGenerator {
     const scatterRadius = this.calculateScatterRadius(variation.category, maxSize);
     
     console.log(`🪨 Creating ${variation.category} cluster: ${counts.total} rocks with scatter radius ${scatterRadius.toFixed(1)}`);
+    
+    // Check if this is a large or massive cluster that should use dramatic shapes
+    const useDramaticShapes = variation.category === 'large' || variation.category === 'massive';
+    
+    if (useDramaticShapes) {
+      console.log(`🗿 Using dramatic shapes for ${variation.category} cluster`);
+    }
     
     // Generate cluster positions using new utility
     const foundationPositions = RockGenerationUtils.generateRandomClusterLayout({
@@ -46,52 +54,126 @@ export class RockClusterGenerator {
     // Create foundation rocks
     foundationPositions.forEach((position, i) => {
       const rockSize = maxSize * (0.8 + Math.random() * 0.2);
-      const rock = this.createStandardizedClusterRock(
-        rockSize, 
-        variation, 
-        i, 
-        'foundation',
-        geometryProcessor
-      );
+      
+      let rock: THREE.Object3D;
+      if (useDramaticShapes) {
+        rock = this.createDramaticClusterRock(rockSize, variation, i, 'foundation');
+      } else {
+        rock = this.createStandardizedClusterRock(rockSize, variation, i, 'foundation', geometryProcessor);
+      }
       
       rock.position.copy(position);
       rock.position.y = rockSize * 0.15;
       rockGroup.add(rock);
+      
+      // Add vertical stacking for dramatic shapes
+      if (useDramaticShapes && Math.random() < 0.3) {
+        const material = (rock as THREE.Mesh).material as THREE.Material;
+        DramaticRockShapeGenerator.createVerticalStack(rock, rockGroup, rockSize, material);
+      }
     });
 
     // Create support rocks
     supportPositions.forEach((position, i) => {
       const rockSize = maxSize * (0.5 + Math.random() * 0.3);
-      const rock = this.createStandardizedClusterRock(
-        rockSize, 
-        variation, 
-        i + counts.foundationCount, 
-        'support',
-        geometryProcessor
-      );
+      
+      let rock: THREE.Object3D;
+      if (useDramaticShapes) {
+        rock = this.createDramaticClusterRock(rockSize, variation, i + counts.foundationCount, 'support');
+      } else {
+        rock = this.createStandardizedClusterRock(rockSize, variation, i + counts.foundationCount, 'support', geometryProcessor);
+      }
       
       rock.position.copy(position);
       rock.position.y = rockSize * 0.1;
       rockGroup.add(rock);
+      
+      // Add vertical stacking for dramatic shapes
+      if (useDramaticShapes && Math.random() < 0.3) {
+        const material = (rock as THREE.Mesh).material as THREE.Material;
+        DramaticRockShapeGenerator.createVerticalStack(rock, rockGroup, rockSize, material);
+      }
     });
 
     // Create accent rocks
     accentPositions.forEach((position, i) => {
       const rockSize = maxSize * (0.2 + Math.random() * 0.3);
-      const rock = this.createStandardizedClusterRock(
-        rockSize, 
-        variation, 
-        i + counts.foundationCount + counts.supportCount, 
-        'accent',
-        geometryProcessor
-      );
+      
+      let rock: THREE.Object3D;
+      if (useDramaticShapes) {
+        rock = this.createDramaticClusterRock(rockSize, variation, i + counts.foundationCount + counts.supportCount, 'accent');
+      } else {
+        rock = this.createStandardizedClusterRock(rockSize, variation, i + counts.foundationCount + counts.supportCount, 'accent', geometryProcessor);
+      }
       
       rock.position.copy(position);
       rock.position.y = rockSize * 0.05;
       rockGroup.add(rock);
+      
+      // Add vertical stacking for dramatic shapes (lower chance for accent rocks)
+      if (useDramaticShapes && Math.random() < 0.15) {
+        const material = (rock as THREE.Mesh).material as THREE.Material;
+        DramaticRockShapeGenerator.createVerticalStack(rock, rockGroup, rockSize, material);
+      }
     });
     
-    console.log(`🏔️ Created ${variation.category} cluster: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks`);
+    if (useDramaticShapes) {
+      console.log(`🏔️ Created dramatic ${variation.category} cluster: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks with vertical stacking`);
+    } else {
+      console.log(`🏔️ Created ${variation.category} cluster: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks`);
+    }
+  }
+
+  /**
+   * Create dramatic cluster rock using new shape system
+   */
+  private createDramaticClusterRock(
+    rockSize: number, 
+    variation: RockVariation, 
+    index: number, 
+    role: ClusterRole
+  ): THREE.Object3D {
+    // Choose dramatic shape type using weighted selection
+    const shapeType = DramaticRockShapeGenerator.chooseWeightedShapeType();
+    
+    // Generate the dramatic geometry
+    const geometry = DramaticRockShapeGenerator.generateDramaticShapeGeometry(shapeType, rockSize);
+    
+    // Apply organic noise if not a pure cone
+    if (shapeType !== 'coneFracture') {
+      DramaticRockShapeGenerator.applyOrganicNoise(geometry, rockSize * 0.15);
+    }
+    
+    // Select appropriate rock shape for material generation
+    const rockShape = RockGenerationUtils.selectShapeByRole(this.rockShapes, role, index);
+    
+    // Create material
+    const material = RockMaterialGenerator.createRoleBasedMaterial(variation.category, rockShape, index, role);
+    
+    // Create mesh
+    const rock = new THREE.Mesh(geometry, material);
+    
+    // Apply standardized properties
+    RockGenerationUtils.applyStandardRockProperties(rock, variation.category, role);
+    RockGenerationUtils.randomizeRotation(rock, role);
+    
+    // Set shadow properties
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    
+    // Add metadata
+    rock.userData = {
+      type: 'rock',
+      category: variation.category,
+      role: role,
+      shapeType: shapeType,
+      originalSize: rockSize,
+      isDramatic: true
+    };
+    
+    console.log(`🗿 Created dramatic ${shapeType} rock (${role}) with size ${rockSize.toFixed(1)}`);
+    
+    return rock;
   }
 
   /**

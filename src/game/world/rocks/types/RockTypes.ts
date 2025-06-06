@@ -23,6 +23,9 @@ export type RockType = 'boulder' | 'spire' | 'slab' | 'cluster' | 'weathered' | 
 export type RockMaterial = 'granite' | 'sandstone' | 'limestone' | 'slate' | 'volcanic';
 export type ClusterRole = 'foundation' | 'support' | 'accent';
 
+// New dramatic shape types
+export type DramaticShapeType = 'tallObelisk' | 'stackedChunk' | 'boulder' | 'splitSlab' | 'coneFracture';
+
 export interface RockGenerationOptions {
   position?: THREE.Vector3;
   size?: number;
@@ -33,6 +36,7 @@ export interface RockGenerationOptions {
   forceCategory?: RockCategory;
   enableEnvironmentalDetails?: boolean;
   collisionCallback?: (object: THREE.Object3D) => void;
+  useDramaticShapes?: boolean;
 }
 
 export interface ClusterGenerationOptions extends RockGenerationOptions {
