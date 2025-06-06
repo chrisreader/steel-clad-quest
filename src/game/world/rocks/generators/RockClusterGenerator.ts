@@ -1,9 +1,8 @@
 import * as THREE from 'three';
-import { RockVariation, RockShape, GeometryProcessor, ClusterRole, RockCategory } from '../types/RockTypes';
+import { RockVariation, RockShape, GeometryProcessor, ClusterRole } from '../types/RockTypes';
 import { ROCK_SHAPES } from '../config/RockShapeConfig';
 import { RockMaterialGenerator } from '../materials/RockMaterialGenerator';
 import { RockGenerationUtils } from '../utils/RockGenerationUtils';
-import { StackingPhysics } from '../utils/StackingPhysics';
 
 export class RockClusterGenerator {
   private rockShapes: RockShape[] = ROCK_SHAPES;
@@ -17,26 +16,37 @@ export class RockClusterGenerator {
     const [minSize, maxSize] = variation.sizeRange;
     const [minClusterSize, maxClusterSize] = variation.clusterSize || [3, 5];
     
-    // Use proper 40/40/20 distribution
-    const counts = RockGenerationUtils.calculateClusterCounts(minClusterSize, maxClusterSize);
+    const counts = this.calculateDynamicClusterCounts(variation.category, minClusterSize, maxClusterSize);
     const scatterRadius = this.calculateScatterRadius(variation.category, maxSize);
     
-    console.log(`🪨 Creating ${variation.category} cluster: ${counts.total} rocks (${counts.foundationCount}F/${counts.supportCount}S/${counts.accentCount}A) with radius ${scatterRadius.toFixed(1)}`);
+    console.log(`🪨 Creating ${variation.category} cluster: ${counts.total} rocks with scatter radius ${scatterRadius.toFixed(1)}`);
     
-    // Store positions for collision avoidance
-    const existingPositions: Array<{ position: THREE.Vector3; size: number }> = [];
-    
-    // Generate foundation rocks first (largest, most stable)
-    const foundationPositions = RockGenerationUtils.generateClusterLayout({
+    // Generate cluster positions using new utility
+    const foundationPositions = RockGenerationUtils.generateRandomClusterLayout({
       count: counts.foundationCount,
       radiusRange: [0, scatterRadius * 0.6],
       centerPosition: new THREE.Vector3(0, 0, 0),
       role: 'foundation'
     });
 
+    const supportPositions = RockGenerationUtils.generateRandomClusterLayout({
+      count: counts.supportCount,
+      radiusRange: [scatterRadius * 0.3, scatterRadius],
+      centerPosition: new THREE.Vector3(0, 0, 0),
+      role: 'support'
+    });
+
+    const accentPositions = RockGenerationUtils.generateRandomClusterLayout({
+      count: counts.accentCount,
+      radiusRange: [0, scatterRadius * 0.8],
+      centerPosition: new THREE.Vector3(0, 0, 0),
+      role: 'accent'
+    });
+
+    // Create foundation rocks
     foundationPositions.forEach((position, i) => {
-      const rockSize = maxSize * (0.8 + Math.random() * 0.2); // 80-100% of max size
-      const rock = this.createEnhancedClusterRock(
+      const rockSize = maxSize * (0.8 + Math.random() * 0.2);
+      const rock = this.createStandardizedClusterRock(
         rockSize, 
         variation, 
         i, 
@@ -44,32 +54,15 @@ export class RockClusterGenerator {
         geometryProcessor
       );
       
-      // Apply stacking physics for foundation
-      const finalPosition = StackingPhysics.calculateRealisticStackingPosition({
-        basePosition: position,
-        rockSize,
-        baseSize: rockSize,
-        role: 'foundation',
-        category: variation.category
-      });
-      
-      rock.position.copy(finalPosition);
+      rock.position.copy(position);
+      rock.position.y = rockSize * 0.15;
       rockGroup.add(rock);
-      
-      existingPositions.push({ position: finalPosition, size: rockSize });
     });
 
-    // Generate support rocks (lean against foundation)
-    const supportPositions = RockGenerationUtils.generateClusterLayout({
-      count: counts.supportCount,
-      radiusRange: [scatterRadius * 0.3, scatterRadius],
-      centerPosition: new THREE.Vector3(0, 0, 0),
-      role: 'support'
-    });
-
+    // Create support rocks
     supportPositions.forEach((position, i) => {
-      const rockSize = maxSize * (0.5 + Math.random() * 0.3); // 50-80% of max size
-      const rock = this.createEnhancedClusterRock(
+      const rockSize = maxSize * (0.5 + Math.random() * 0.3);
+      const rock = this.createStandardizedClusterRock(
         rockSize, 
         variation, 
         i + counts.foundationCount, 
@@ -77,43 +70,15 @@ export class RockClusterGenerator {
         geometryProcessor
       );
       
-      // Find nearest foundation rock for leaning physics
-      const nearestFoundation = this.findNearestFoundationRock(position, existingPositions);
-      
-      let finalPosition: THREE.Vector3;
-      if (nearestFoundation) {
-        finalPosition = StackingPhysics.calculateRealisticStackingPosition({
-          basePosition: nearestFoundation.position,
-          rockSize,
-          baseSize: nearestFoundation.size,
-          role: 'support',
-          category: variation.category
-        });
-      } else {
-        finalPosition = position.clone();
-        finalPosition.y = rockSize * 0.1;
-      }
-      
-      // Avoid collision overlap
-      finalPosition = StackingPhysics.avoidCollisionOverlap(finalPosition, rockSize, existingPositions);
-      
-      rock.position.copy(finalPosition);
+      rock.position.copy(position);
+      rock.position.y = rockSize * 0.1;
       rockGroup.add(rock);
-      
-      existingPositions.push({ position: finalPosition, size: rockSize });
     });
 
-    // Generate accent rocks (top layer, gaps, dramatic spires)
-    const accentPositions = RockGenerationUtils.generateClusterLayout({
-      count: counts.accentCount,
-      radiusRange: [0, scatterRadius * 0.8],
-      centerPosition: new THREE.Vector3(0, 0, 0),
-      role: 'accent'
-    });
-
+    // Create accent rocks
     accentPositions.forEach((position, i) => {
-      const rockSize = maxSize * (0.2 + Math.random() * 0.3); // 20-50% of max size
-      const rock = this.createEnhancedClusterRock(
+      const rockSize = maxSize * (0.2 + Math.random() * 0.3);
+      const rock = this.createStandardizedClusterRock(
         rockSize, 
         variation, 
         i + counts.foundationCount + counts.supportCount, 
@@ -121,65 +86,45 @@ export class RockClusterGenerator {
         geometryProcessor
       );
       
-      // Accent rocks can stack on top or fill gaps
-      const nearestBase = this.findNearestBaseRock(position, existingPositions);
-      
-      let finalPosition: THREE.Vector3;
-      if (nearestBase && Math.random() < 0.4) {
-        // 40% chance to stack on top
-        finalPosition = StackingPhysics.calculateRealisticStackingPosition({
-          basePosition: nearestBase.position,
-          rockSize,
-          baseSize: nearestBase.size,
-          role: 'accent',
-          category: variation.category
-        });
-      } else {
-        // Fill gaps or scatter around
-        finalPosition = position.clone();
-        finalPosition.y = rockSize * 0.05;
-      }
-      
-      // Avoid collision overlap
-      finalPosition = StackingPhysics.avoidCollisionOverlap(finalPosition, rockSize, existingPositions);
-      
-      rock.position.copy(finalPosition);
+      rock.position.copy(position);
+      rock.position.y = rockSize * 0.05;
       rockGroup.add(rock);
     });
     
-    console.log(`🏔️ Created realistic ${variation.category} cluster with proper stacking physics and role distribution`);
+    console.log(`🏔️ Created ${variation.category} cluster: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks`);
   }
 
   /**
-   * Create enhanced cluster rock using all new systems
+   * Create cluster rock using standardized pipeline
    */
-  private createEnhancedClusterRock(
+  private createStandardizedClusterRock(
     rockSize: number, 
     variation: RockVariation, 
     index: number, 
     role: ClusterRole,
     geometryProcessor: GeometryProcessor
   ): THREE.Object3D {
-    // Select shape based on role with proper restrictions
+    // Select shape based on role
     const rockShape = RockGenerationUtils.selectShapeByRole(this.rockShapes, role, index);
     
-    // Create geometry using enhanced processor
+    // Create geometry using standardized processor
     let geometry = geometryProcessor.createCharacterBaseGeometry(rockShape, rockSize);
     geometryProcessor.applyShapeModifications(geometry, rockShape, rockSize);
     
-    // Apply enhanced character deformation with category awareness - fix: remove the extra parameter
-    geometryProcessor.applyCharacterDeformation(geometry, rockShape.deformationIntensity, rockSize, rockShape);
+    const deformationIntensity = role === 'accent' ? 
+      rockShape.deformationIntensity : rockShape.deformationIntensity * 0.7;
+    geometryProcessor.applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape);
     
-    // Enhanced validation
+    // Use standardized validation
     geometryProcessor.validateAndEnhanceGeometry(geometry);
     
-    // Create enhanced role-based material
+    // Create material and mesh
     const material = RockMaterialGenerator.createRoleBasedMaterial(variation.category, rockShape, index, role);
     const rock = new THREE.Mesh(geometry, material);
     
-    // Apply enhanced properties and rotation
+    // Apply standardized properties
     RockGenerationUtils.applyStandardRockProperties(rock, variation.category, role);
-    RockGenerationUtils.applyRoleBasedRotation(rock, role, rockShape, variation.category);
+    RockGenerationUtils.randomizeRotation(rock, role);
     
     return rock;
   }
@@ -231,47 +176,5 @@ export class RockClusterGenerator {
       default:
         return Math.random() * 2.5 + 1;
     }
-  }
-
-  /**
-   * Find nearest foundation rock for support stacking
-   */
-  private findNearestFoundationRock(
-    position: THREE.Vector3, 
-    existingPositions: Array<{ position: THREE.Vector3; size: number }>
-  ): { position: THREE.Vector3; size: number } | null {
-    let nearest = null;
-    let nearestDistance = Infinity;
-    
-    for (const existing of existingPositions) {
-      const distance = position.distanceTo(existing.position);
-      if (distance < nearestDistance && existing.size > 0.5) { // Assume foundation rocks are larger
-        nearestDistance = distance;
-        nearest = existing;
-      }
-    }
-    
-    return nearestDistance < 10 ? nearest : null; // Within reasonable stacking distance
-  }
-
-  /**
-   * Find nearest base rock for accent stacking
-   */
-  private findNearestBaseRock(
-    position: THREE.Vector3, 
-    existingPositions: Array<{ position: THREE.Vector3; size: number }>
-  ): { position: THREE.Vector3; size: number } | null {
-    let nearest = null;
-    let nearestDistance = Infinity;
-    
-    for (const existing of existingPositions) {
-      const distance = position.distanceTo(existing.position);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = existing;
-      }
-    }
-    
-    return nearestDistance < 5 ? nearest : null; // Within close stacking distance
   }
 }
