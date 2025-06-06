@@ -20,7 +20,6 @@ import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
 import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 import { GrassSystem } from '../vegetation/GrassSystem';
-import { RockLightingIntegration } from '../world/rocks/lighting/RockLightingIntegration';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -87,9 +86,6 @@ export class SceneManager {
   // Volumetric fog system
   private volumetricFogSystem: VolumetricFogSystem | null = null;
   
-  // Enhanced rock lighting system
-  private rockLightingIntegration: RockLightingIntegration;
-
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
@@ -566,16 +562,6 @@ export class SceneManager {
       this.updateSynchronizedDayNightLighting();
       this.updateStarVisibility();
       this.updateSynchronizedFogForTime();
-      
-      // Update enhanced rock lighting system
-      if (this.sun && this.moon && playerPosition) {
-        this.rockLightingIntegration.updateRockLighting(
-          this.timeOfDay,
-          this.sun.position,
-          this.moon.position,
-          playerPosition
-        );
-      }
       
       // Update skybox system with proper player position and moon elevation
       if (playerPosition) {
@@ -1169,12 +1155,7 @@ export class SceneManager {
     }
     this.loadedRegions.clear();
     
-    // Dispose enhanced rock lighting system
-    if (this.rockLightingIntegration) {
-      this.rockLightingIntegration.dispose();
-    }
-    
-    console.log("SceneManager with enhanced rock lighting system disposed");
+    console.log("SceneManager with 3D grass system disposed");
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {

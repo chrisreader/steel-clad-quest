@@ -1,8 +1,6 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../../../utils';
 import { RockShape } from '../types/RockTypes';
-import { EnhancedRockMaterialSystem, LightingConditions } from './EnhancedRockMaterialSystem';
 
 export interface RockType {
   color: number;
@@ -22,20 +20,42 @@ export const ROCK_TYPES: RockType[] = [
 ];
 
 export class RockMaterialGenerator {
-  private static enhancedSystem = new EnhancedRockMaterialSystem();
-
   public static createEnhancedRockMaterial(
     category: string, 
     rockShape: RockShape, 
     index: number
   ): THREE.MeshStandardMaterial {
-    const enhancedMaterial = this.enhancedSystem.createEnhancedRockMaterial(
-      category, 
-      rockShape, 
-      index, 
-      'support'
-    );
-    return enhancedMaterial.material;
+    const rockType = ROCK_TYPES[index % ROCK_TYPES.length];
+    const baseColor = new THREE.Color(rockType.color);
+    
+    // Enhanced weathering based on shape and category
+    if (rockShape.weatheringLevel > 0.5) {
+      const weatheringIntensity = rockShape.weatheringLevel * 0.4;
+      const weatheringColor = new THREE.Color(0x4A4A2A);
+      baseColor.lerp(weatheringColor, weatheringIntensity);
+    }
+    
+    // Age-based weathering for larger rocks
+    if (category === 'large' || category === 'massive') {
+      const ageColor = new THREE.Color(0x3A3A2A);
+      baseColor.lerp(ageColor, 0.15);
+    }
+    
+    // Position-based moss for bottom rocks (simulated)
+    if (rockShape.type === 'weathered' && Math.random() < 0.6) {
+      const mossColor = new THREE.Color(0x2F5F2F);
+      baseColor.lerp(mossColor, 0.25);
+    }
+    
+    const material = new THREE.MeshStandardMaterial({
+      color: baseColor,
+      map: TextureGenerator.createStoneTexture(),
+      roughness: rockType.roughness + (rockShape.weatheringLevel * 0.1),
+      metalness: rockType.metalness,
+      normalScale: new THREE.Vector2(1.0, 1.0)
+    });
+    
+    return material;
   }
 
   public static createRoleBasedMaterial(
@@ -44,20 +64,36 @@ export class RockMaterialGenerator {
     index: number, 
     role: 'foundation' | 'support' | 'accent'
   ): THREE.MeshStandardMaterial {
-    const enhancedMaterial = this.enhancedSystem.createEnhancedRockMaterial(
-      category, 
-      rockShape, 
-      index, 
-      role
-    );
-    return enhancedMaterial.material;
-  }
-
-  public static updateLightingConditions(conditions: LightingConditions): void {
-    this.enhancedSystem.updateAllMaterials(conditions);
-  }
-
-  public static dispose(): void {
-    this.enhancedSystem.dispose();
+    const material = this.createEnhancedRockMaterial(category, rockShape, index);
+    
+    // Role-specific weathering adjustments
+    switch (role) {
+      case 'foundation':
+        // Foundation rocks are more weathered (bottom of formation)
+        material.roughness = Math.min(1.0, material.roughness + 0.1);
+        if (Math.random() < 0.7) {
+          // Add moisture weathering tint
+          const currentColor = material.color;
+          const weatheringColor = new THREE.Color(0x2A2A1A);
+          currentColor.lerp(weatheringColor, 0.2);
+        }
+        break;
+        
+      case 'support':
+        // Support rocks have moderate weathering
+        if (Math.random() < 0.4) {
+          const currentColor = material.color;
+          const weatheringColor = new THREE.Color(0x3A3A2A);
+          currentColor.lerp(weatheringColor, 0.1);
+        }
+        break;
+        
+      case 'accent':
+        // Accent rocks can be fresher (less weathered)
+        material.roughness = Math.max(0.6, material.roughness - 0.1);
+        break;
+    }
+    
+    return material;
   }
 }

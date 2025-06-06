@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { SKY_COLOR_PALETTES } from '../config/DayNightConfig';
 
@@ -6,7 +5,7 @@ export class SkyboxSystem {
   private scene: THREE.Scene;
   private skyboxMesh: THREE.Mesh;
   public skyboxMaterial: THREE.ShaderMaterial;
-  private timeOfDay: number = 0.22; // Start 15% further into sunrise
+  private timeOfDay: number = 0.25;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -92,7 +91,7 @@ export class SkyboxSystem {
         vec3 getSkyColorForPhase(float time, float heightFactor) {
           vec3 zenithColor, horizonColor;
           
-          // Adjusted phase transitions for earlier brightening
+          // Much more realistic phase transitions with delayed brightening
           if (time >= 0.0 && time < 0.08) {
             // Deep night - stay dark longer
             zenithColor = nightZenith;
@@ -100,13 +99,13 @@ export class SkyboxSystem {
           } else if (time >= 0.08 && time < 0.12) {
             // Very gradual pre-dawn transition
             float factor = (time - 0.08) / 0.04;
-            factor = exponentialDecay(max(0.0, factor - 0.3) / 0.7, 3.0); // Reduced delay
+            factor = exponentialDecay(max(0.0, factor - 0.5) / 0.5, 4.0);
             zenithColor = lerpColor(nightZenith, dawnZenith, factor);
             horizonColor = lerpColor(nightHorizon, dawnHorizon, factor);
           } else if (time >= 0.12 && time < 0.25) {
-            // Dawn phase with earlier brightening
+            // Dawn phase with severe delay in brightening
             float factor = (time - 0.12) / 0.13;
-            factor = exponentialDecay(max(0.0, factor - 0.4) / 0.6, 2.0); // Much earlier transition
+            factor = exponentialDecay(max(0.0, factor - 0.7) / 0.3, 3.0);
             zenithColor = lerpColor(dawnZenith, dayZenith, factor);
             horizonColor = lerpColor(dawnHorizon, dayHorizon, factor);
           } else if (time >= 0.25 && time < 0.65) {

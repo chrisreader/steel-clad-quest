@@ -18,7 +18,7 @@ export const useGameState = () => {
     attackPower: 10
   });
   
-  const [gameTime, setGameTime] = useState(0.22); // Start 15% further into sunrise (22% through cycle)
+  const [gameTime, setGameTime] = useState(0);
   const [isGameOver, setIsGameOver] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [isInTavern, setIsInTavern] = useState(true);
