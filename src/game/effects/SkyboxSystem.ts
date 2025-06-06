@@ -5,7 +5,7 @@ export class SkyboxSystem {
   private scene: THREE.Scene;
   private skyboxMesh: THREE.Mesh;
   public skyboxMaterial: THREE.ShaderMaterial;
-  private timeOfDay: number = 0.28; // Start just after sunrise
+  private timeOfDay: number = 0.22; // Start 15% further into sunrise
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
