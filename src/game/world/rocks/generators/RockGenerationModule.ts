@@ -837,7 +837,7 @@ export class RockGenerationModule {
   }
   
   /**
-   * Add sediment accumulation system (was missing)
+   * Add sediment accumulation system - ENHANCED REALISM
    */
   private addSedimentAccumulation(rockGroup: THREE.Group, category: string, clusterSize: number): void {
     let sedimentCount: number;
@@ -856,35 +856,35 @@ export class RockGenerationModule {
         return;
     }
     
-    console.log(`🪨 Adding ${sedimentCount} sediment particles to ${category} cluster`);
+    console.log(`🪨 Adding ${sedimentCount} realistic sediment particles to ${category} cluster`);
     
-    const sedimentColors = [0xC4A484, 0xB8956A, 0xA0855B]; // beige colors
+    const sedimentColors = [0xC4A484, 0xB8956A, 0xA0855B]; // realistic dirt/sand colors
     
     for (let i = 0; i < sedimentCount; i++) {
-      // FIXED: Reduced sediment size from 15-40% to 5-12% of cluster size for realism
-      const sedimentSize = clusterSize * (0.05 + Math.random() * 0.07);
+      // ENHANCED: Ultra-realistic sediment size (2-6% of cluster size for actual dirt/sand particles)
+      const sedimentSize = clusterSize * (0.02 + Math.random() * 0.04);
       let geometry: THREE.BufferGeometry;
       
       const sedimentType = Math.floor(Math.random() * 3);
       
       switch (sedimentType) {
-        case 0: // Flat sediment patch
-          geometry = new THREE.PlaneGeometry(sedimentSize * 1.5, sedimentSize * 1.2);
+        case 0: // Flat sediment patch - more realistic proportions
+          geometry = new THREE.PlaneGeometry(sedimentSize * 2.0, sedimentSize * 1.5);
           geometry.rotateX(-Math.PI / 2); // Lay flat
-          this.applyOrganicNoise(geometry, 0.1);
+          this.applyOrganicNoise(geometry, 0.08);
           break;
-        case 1: // Flattened cylinder
-          geometry = new THREE.CylinderGeometry(sedimentSize, sedimentSize * 0.8, sedimentSize * 0.3, 8);
-          this.applyOrganicNoise(geometry, 0.15);
+        case 1: // Flattened cylinder - dirt accumulation
+          geometry = new THREE.CylinderGeometry(sedimentSize, sedimentSize * 0.9, sedimentSize * 0.2, 8);
+          this.applyOrganicNoise(geometry, 0.12);
           break;
-        case 2: // Flattened sphere
+        case 2: // Very flattened sphere - natural sediment mound
           geometry = new THREE.SphereGeometry(sedimentSize, 8, 6);
-          geometry.scale(1, 0.4, 1); // Flatten
-          this.applyOrganicNoise(geometry, 0.1);
+          geometry.scale(1.3, 0.3, 1.1); // More pronounced flattening
+          this.applyOrganicNoise(geometry, 0.08);
           break;
         default:
           geometry = new THREE.SphereGeometry(sedimentSize, 6, 4);
-          geometry.scale(1, 0.5, 1);
+          geometry.scale(1.2, 0.4, 1.0);
       }
       
       const material = new THREE.MeshStandardMaterial({
@@ -895,19 +895,24 @@ export class RockGenerationModule {
       
       const sediment = new THREE.Mesh(geometry, material);
       
-      // Position in natural low spots around cluster
-      const angle = Math.random() * Math.PI * 2;
-      const distance = clusterSize * (0.8 + Math.random() * 0.6);
+      // ENHANCED: Better "low spot" positioning around cluster base with variation
+      const baseAngle = Math.random() * Math.PI * 2;
+      const angleVariation = (Math.random() - 0.5) * 0.4; // Add slight randomness
+      const angle = baseAngle + angleVariation;
+      
+      // ENHANCED: Ensure sediment is clearly outside rocks at proper distance
+      const distance = clusterSize * (1.1 + Math.random() * 0.5); // Increased minimum distance
+      
       sediment.position.set(
         Math.cos(angle) * distance,
-        sedimentSize * 0.1,
+        sedimentSize * 0.05, // ENHANCED: Even lower to ground for realistic accumulation
         Math.sin(angle) * distance
       );
       
       sediment.rotation.set(
-        Math.random() * 0.2,
+        Math.random() * 0.15, // Reduced rotation for more natural settling
         Math.random() * Math.PI * 2,
-        Math.random() * 0.2
+        Math.random() * 0.15
       );
       
       sediment.castShadow = true;
@@ -918,7 +923,7 @@ export class RockGenerationModule {
   }
   
   /**
-   * Add comprehensive debris field around rock cluster - FIXED SIZING
+   * Add comprehensive debris field around rock cluster - ENHANCED REALISM
    */
   private addDebrisField(rockGroup: THREE.Group, category: string, clusterSize: number): void {
     let debrisCount: number;
@@ -937,70 +942,73 @@ export class RockGenerationModule {
         return;
     }
     
-    console.log(`🪨 Adding ${debrisCount} debris pieces to ${category} cluster`);
+    console.log(`🪨 Adding ${debrisCount} realistic debris pieces to ${category} cluster`);
     
-    const sedimentColors = [0xC4A484, 0xB8956A, 0xA0855B]; // tan colors
+    const rockColors = [0x696969, 0x708090, 0x778899]; // realistic rock fragment colors
     let previousDebrisPosition: { angle: number; distance: number } | null = null;
     
     for (let i = 0; i < debrisCount; i++) {
-      // FIXED: Reduced debris size from 25-60% to 8-18% of cluster size for realism
-      const debrisSize = clusterSize * (0.08 + Math.random() * 0.10);
+      // ENHANCED: More realistic debris size (4-12% of cluster size for natural rock fragments)
+      const debrisSize = clusterSize * (0.04 + Math.random() * 0.08);
       let geometry: THREE.BufferGeometry;
       let material: THREE.MeshStandardMaterial;
       
       const isPebble = Math.random() < 0.6; // 60% pebbles, 40% fragments
       
       if (isPebble) {
-        // Create organic pebble geometries
+        // Create organic pebble geometries - enhanced realism
         const pebbleType = Math.floor(Math.random() * 3);
         
         switch (pebbleType) {
           case 0: // Organic flattened sphere
             geometry = new THREE.SphereGeometry(debrisSize, 8, 6);
-            geometry.scale(1.2 + Math.random() * 0.4, 0.3 + Math.random() * 0.2, 0.8 + Math.random() * 0.4);
+            geometry.scale(1.1 + Math.random() * 0.3, 0.35 + Math.random() * 0.15, 0.9 + Math.random() * 0.3);
             break;
           case 1: // Flat disc pebble
-            const radius = debrisSize * 0.8;
-            geometry = new THREE.CylinderGeometry(radius, radius * 0.6, debrisSize * 0.2, 10);
+            const radius = debrisSize * 0.85;
+            geometry = new THREE.CylinderGeometry(radius, radius * 0.7, debrisSize * 0.15, 10);
             break;
-          case 2: // Pointed diamond form
+          case 2: // Elongated pebble
             geometry = new THREE.SphereGeometry(debrisSize, 8, 6);
-            geometry.scale(0.4 + Math.random() * 0.3, 0.3 + Math.random() * 0.2, 1.8 + Math.random() * 0.4);
+            geometry.scale(0.5 + Math.random() * 0.2, 0.35 + Math.random() * 0.15, 1.4 + Math.random() * 0.3);
             break;
           default:
             geometry = new THREE.SphereGeometry(debrisSize, 6, 4);
         }
         
         material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(sedimentColors[i % sedimentColors.length]),
-          roughness: 0.95,
-          metalness: 0.0
+          color: new THREE.Color(rockColors[i % rockColors.length]).multiplyScalar(0.8 + Math.random() * 0.4),
+          roughness: 0.90 + Math.random() * 0.10,
+          metalness: 0.05
         });
       } else {
-        // Create angular rock fragments
+        // Create angular rock fragments - enhanced realism
         const fragmentType = Math.floor(Math.random() * 4);
         
         switch (fragmentType) {
           case 0: // Angular slab
-            geometry = new THREE.BoxGeometry(debrisSize * 1.5, debrisSize * 0.3, debrisSize * 0.8);
+            geometry = new THREE.BoxGeometry(debrisSize * 1.3, debrisSize * 0.25, debrisSize * 0.7);
+            this.applyOrganicNoise(geometry, 0.1);
             break;
           case 1: // Rock chunk
             geometry = new THREE.DodecahedronGeometry(debrisSize, 0);
+            this.applyOrganicNoise(geometry, 0.08);
             break;
           case 2: // Rough polygon
             geometry = new THREE.IcosahedronGeometry(debrisSize, 0);
+            this.applyOrganicNoise(geometry, 0.12);
             break;
-          case 3: // Cracked sphere
+          case 3: // Cracked sphere fragment
             geometry = new THREE.SphereGeometry(debrisSize, 6, 4);
-            this.applyOrganicNoise(geometry, 0.15);
+            this.applyOrganicNoise(geometry, 0.18);
             break;
           default:
-            geometry = new THREE.BoxGeometry(debrisSize, debrisSize, debrisSize);
+            geometry = new THREE.BoxGeometry(debrisSize, debrisSize * 0.8, debrisSize);
         }
         
-        // Use weathered rock material
+        // ENHANCED: Better material matching with parent rock
         material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(0x696969).multiplyScalar(0.7 + Math.random() * 0.5),
+          color: new THREE.Color(rockColors[i % rockColors.length]).multiplyScalar(0.7 + Math.random() * 0.5),
           roughness: 0.85 + Math.random() * 0.15,
           metalness: 0.05
         });
@@ -1008,33 +1016,33 @@ export class RockGenerationModule {
       
       const debris = new THREE.Mesh(geometry, material);
       
-      // Position with clustering logic
+      // ENHANCED: Better clustering and positioning logic
       let angle: number, distance: number;
       
-      if (Math.random() < 0.6 && previousDebrisPosition) {
-        // Cluster near previous debris
-        angle = previousDebrisPosition.angle + (Math.random() - 0.5) * 0.8;
-        distance = previousDebrisPosition.distance + debrisSize * (1 + Math.random());
+      if (Math.random() < 0.65 && previousDebrisPosition) {
+        // Enhanced clustering near previous debris
+        angle = previousDebrisPosition.angle + (Math.random() - 0.5) * 0.6;
+        distance = previousDebrisPosition.distance + debrisSize * (1.5 + Math.random() * 0.8);
       } else {
-        // Scatter randomly
+        // Scatter randomly around cluster base
         angle = Math.random() * Math.PI * 2;
-        distance = clusterSize * (1.2 + Math.random() * 1.3);
+        distance = clusterSize * (1.3 + Math.random() * 1.0); // Ensured outside cluster
       }
       
       debris.position.set(
         Math.cos(angle) * distance,
-        debrisSize * (0.1 + Math.random() * 0.2),
+        debrisSize * (0.15 + Math.random() * 0.15), // Consistent base-level positioning
         Math.sin(angle) * distance
       );
       
       debris.rotation.set(
-        Math.random() * 0.3,
+        Math.random() * 0.25,
         Math.random() * Math.PI * 2,
-        Math.random() * 0.3
+        Math.random() * 0.25
       );
       
-      // FIXED: Reduced scaling to prevent oversized debris
-      debris.scale.setScalar(0.9 + Math.random() * 0.2); // Less reduction than before
+      // ENHANCED: Minimal scaling for natural size variation
+      debris.scale.setScalar(0.95 + Math.random() * 0.10);
       debris.castShadow = true;
       debris.receiveShadow = true;
       
@@ -1044,7 +1052,7 @@ export class RockGenerationModule {
   }
   
   /**
-   * Add clustered tiny pebbles for extra detail - FIXED SIZING
+   * Add clustered tiny pebbles for extra detail - ENHANCED MICRO-DETAIL
    */
   private addClusteredTinyPebbles(rockGroup: THREE.Group, category: string, clusterSize: number): void {
     let clusterCount: number;
@@ -1063,16 +1071,16 @@ export class RockGenerationModule {
         return;
     }
     
-    console.log(`🪨 Adding ${clusterCount} micro-pebble clusters to ${category} cluster`);
+    console.log(`🪨 Adding ${clusterCount} enhanced micro-pebble clusters to ${category} cluster`);
     
-    const sedimentColors = [0xC4A484, 0xB8956A, 0xA0855B];
+    const pebbleColors = [0xC4A484, 0xB8956A, 0xA0855B, 0x8B7355]; // expanded natural colors
     
     for (let c = 0; c < clusterCount; c++) {
       const pebbleCount = 6 + Math.floor(Math.random() * 7); // 6-12 per cluster
       
-      // Random cluster center
+      // ENHANCED: Better cluster center positioning
       const clusterAngle = Math.random() * Math.PI * 2;
-      const clusterDistance = clusterSize * (0.5 + Math.random() * 1.0);
+      const clusterDistance = clusterSize * (0.8 + Math.random() * 0.8); // Closer to main cluster
       const clusterCenter = new THREE.Vector3(
         Math.cos(clusterAngle) * clusterDistance,
         0,
@@ -1080,32 +1088,32 @@ export class RockGenerationModule {
       );
       
       for (let p = 0; p < pebbleCount; p++) {
-        // FIXED: Reduced tiny pebble size from 4-10% to 2-6% for realistic micro-detail
-        const pebbleSize = clusterSize * (0.02 + Math.random() * 0.04);
+        // ENHANCED: Ultra-fine pebble size for realistic micro-detail (1-4% of cluster size)
+        const pebbleSize = clusterSize * (0.01 + Math.random() * 0.03);
         const geometry = new THREE.SphereGeometry(pebbleSize, 6, 4);
         
-        // Scale to create natural pebble shapes
+        // ENHANCED: More natural pebble shape variation
         geometry.scale(
-          0.8 + Math.random() * 0.4,
-          0.4 + Math.random() * 0.2,
-          0.7 + Math.random() * 0.3
+          0.7 + Math.random() * 0.5,
+          0.3 + Math.random() * 0.3,
+          0.6 + Math.random() * 0.5
         );
         
         const material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(sedimentColors[p % sedimentColors.length]),
+          color: new THREE.Color(pebbleColors[p % pebbleColors.length]),
           roughness: 0.95,
           metalness: 0.0
         });
         
         const pebble = new THREE.Mesh(geometry, material);
         
-        // Position around cluster center
+        // ENHANCED: Tighter clustering around cluster center
         const pebbleAngle = Math.random() * Math.PI * 2;
-        const pebbleDistance = pebbleSize * (2 + Math.random() * 6);
+        const pebbleDistance = pebbleSize * (1.5 + Math.random() * 4); // Tighter clustering
         
         pebble.position.copy(clusterCenter).add(new THREE.Vector3(
           Math.cos(pebbleAngle) * pebbleDistance,
-          pebbleSize * 0.3,
+          pebbleSize * 0.2, // ENHANCED: Closer to ground level
           Math.sin(pebbleAngle) * pebbleDistance
         ));
         
