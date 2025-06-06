@@ -42,7 +42,10 @@ export class TerrainFeatureGenerator {
     // Initialize rock generation module
     this.rockModule = new RockGenerationModule(scene, ringSystem);
     
-    console.log('🔧 TerrainFeatureGenerator initialized with rock module');
+    // Set tavern position for rock exclusion
+    this.rockModule.setTavernPosition(this.tavernPosition);
+    
+    console.log('🔧 TerrainFeatureGenerator initialized with rock module and tavern exclusion');
   }
   
   // Collision registration callback setter
@@ -436,5 +439,14 @@ export class TerrainFeatureGenerator {
     
     // Clear collections
     this.spawnedFeatures.clear();
+  }
+  
+  /**
+   * Update tavern position and propagate to rock module
+   */
+  public setTavernPosition(position: THREE.Vector3): void {
+    this.tavernPosition = position.clone();
+    this.rockModule.setTavernPosition(position);
+    console.log(`🏰 TerrainFeatureGenerator tavern position updated: ${position.x.toFixed(1)}, ${position.z.toFixed(1)}`);
   }
 }
