@@ -89,7 +89,7 @@ export class RockGenerationUtils {
         return supportShapes[index % supportShapes.length];
         
       case 'accent':
-        // Implement fixed 15-20% spire rate for medium/large clusters
+        // Fixed 15-20% spire rate for medium/large clusters using cluster-based assignment
         if (category && (category === 'medium' || category === 'large' || category === 'massive') && totalAccentCount) {
           const clusterId = `${category}_${totalAccentCount}`;
           
