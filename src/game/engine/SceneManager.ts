@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator, GroundMaterialUtils } from '../utils';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
@@ -96,7 +95,7 @@ export class SceneManager {
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
     
-    // Initialize terrain feature generator with correct parameters
+    // Initialize terrain feature generator
     this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
     // Initialize structure generator with PhysicsManager
