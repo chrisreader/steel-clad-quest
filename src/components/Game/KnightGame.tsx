@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameHUD } from './UI/GameHUD';
 import { GameOverScreen } from './UI/GameOverScreen';
@@ -143,15 +144,28 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     isAnyUIOpen
   });
 
-  // CRITICAL: Enhanced weapon syncing - sync whenever weapons or active slot changes
+  // CRITICAL: Enhanced weapon syncing with proper null checks
   useEffect(() => {
-    if (!gameEngine || !gameStarted) return;
+    // Add comprehensive safety checks
+    if (!gameEngine || !gameStarted || !engineReady) {
+      console.log('[KnightGame] 🔄 WEAPON SYNC SKIPPED - Engine not ready:', {
+        gameEngine: !!gameEngine,
+        gameStarted,
+        engineReady
+      });
+      return;
+    }
+
+    // Additional check to ensure player exists
+    const player = gameEngine.getPlayer();
+    if (!player) {
+      console.log('[KnightGame] 🔄 WEAPON SYNC SKIPPED - Player not available');
+      return;
+    }
 
     console.log('[KnightGame] 🔄 WEAPON SYNC - Syncing equipped weapons with game engine');
     console.log('[KnightGame] 🔄 Active slot:', activeWeaponSlot);
     console.log('[KnightGame] 🔄 Equipped weapons:', equippedWeapons);
-    
-    const player = gameEngine.getPlayer();
     
     // Get the weapon for the currently active slot
     const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
@@ -160,18 +174,26 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     
     if (activeWeapon && activeWeapon.weaponId) {
       console.log(`[KnightGame] 🏹 EQUIPPING WEAPON: ${activeWeapon.name} (${activeWeapon.weaponId}) to Player entity`);
-      player.equipWeapon(activeWeapon.weaponId);
-      console.log(`[KnightGame] ✅ WEAPON EQUIPPED - Player should now have ${activeWeapon.name} equipped`);
-      
-      // Additional logging for bow weapons
-      if (activeWeapon.subtype === 'bow') {
-        console.log(`[KnightGame] 🏹 BOW EQUIPPED - Player should now be able to shoot arrows`);
-        console.log(`[KnightGame] 🏹 isBowEquipped should be: true`);
+      try {
+        player.equipWeapon(activeWeapon.weaponId);
+        console.log(`[KnightGame] ✅ WEAPON EQUIPPED - Player should now have ${activeWeapon.name} equipped`);
+        
+        // Additional logging for bow weapons
+        if (activeWeapon.subtype === 'bow') {
+          console.log(`[KnightGame] 🏹 BOW EQUIPPED - Player should now be able to shoot arrows`);
+          console.log(`[KnightGame] 🏹 isBowEquipped should be: true`);
+        }
+      } catch (error) {
+        console.error(`[KnightGame] ❌ WEAPON EQUIP FAILED:`, error);
       }
     } else {
       console.log(`[KnightGame] 🔄 UNEQUIPPING WEAPON - slot ${activeWeaponSlot} is empty`);
-      player.unequipWeapon();
-      console.log(`[KnightGame] ✅ WEAPON UNEQUIPPED - Player should now have no weapon equipped`);
+      try {
+        player.unequipWeapon();
+        console.log(`[KnightGame] ✅ WEAPON UNEQUIPPED - Player should now have no weapon equipped`);
+      } catch (error) {
+        console.error(`[KnightGame] ❌ WEAPON UNEQUIP FAILED:`, error);
+      }
     }
     
     // Log current player weapon state after syncing
@@ -180,7 +202,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       // Note: We can't directly access private properties, but the equip/unequip calls should have set them
     }, 100);
     
-  }, [gameEngine, gameStarted, equippedWeapons, activeWeaponSlot]);
+  }, [gameEngine, gameStarted, engineReady, equippedWeapons, activeWeaponSlot]);
 
   // Enhanced weapon slot selection with immediate syncing
   const handleEnhancedWeaponSlotSelect = useCallback((slot: 1 | 2 | 3) => {
