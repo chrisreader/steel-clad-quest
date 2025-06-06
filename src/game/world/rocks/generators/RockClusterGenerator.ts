@@ -19,24 +19,29 @@ export class RockClusterGenerator {
     
     const counts = this.calculateDynamicClusterCounts(variation.category, minClusterSize, maxClusterSize);
     
-    console.log(`🪨 Creating sequential geological ${variation.category} cluster: ${counts.total} rocks`);
+    console.log(`🪨 Creating geological ${variation.category} cluster: ${counts.total} rocks`);
     
-    const existingRocks: THREE.Object3D[] = [];
-    const centerPosition = new THREE.Vector3(0, 0, 0);
-    let rockIndex = 0;
+    // Use geological positioning instead of random scatter
+    const geologicalLayout = GeologicalStackingSystem.generateGeologicalClusterLayout(
+      counts.total,
+      variation.category,
+      new THREE.Vector3(0, 0, 0),
+      maxSize
+    );
 
-    // Create foundation rocks sequentially
-    console.log(`🏔️ Placing ${counts.foundationCount} foundation rocks`);
-    for (let i = 0; i < counts.foundationCount; i++) {
+    const existingRocks: THREE.Object3D[] = [];
+
+    // Create foundation rocks with tight clustering
+    geologicalLayout.foundationPositions.forEach((basePosition, i) => {
       const rockSize = maxSize * (0.8 + Math.random() * 0.2);
       
-      const stackingPos = GeologicalStackingSystem.calculateSequentialStackingPosition(
+      // Use geological stacking for realistic positioning
+      const stackingPos = GeologicalStackingSystem.calculateStableStackingPosition(
         existingRocks,
         rockSize,
         'foundation',
         variation.category,
-        centerPosition,
-        rockIndex
+        basePosition
       );
       
       const rock = this.createStandardizedClusterRock(
@@ -51,23 +56,21 @@ export class RockClusterGenerator {
       rock.position.copy(stackingPos.position);
       rockGroup.add(rock);
       existingRocks.push(rock);
-      rockIndex++;
       
       console.log(`🏔️ Foundation rock ${i + 1}: (${rock.position.x.toFixed(1)}, ${rock.position.y.toFixed(1)}, ${rock.position.z.toFixed(1)})`);
-    }
+    });
 
-    // Create support rocks sequentially with aggressive stacking
-    console.log(`🗻 Placing ${counts.supportCount} support rocks`);
-    for (let i = 0; i < counts.supportCount; i++) {
+    // Create support rocks with vertical stacking preference
+    geologicalLayout.supportPositions.forEach((basePosition, i) => {
       const rockSize = maxSize * (0.5 + Math.random() * 0.3);
       
-      const stackingPos = GeologicalStackingSystem.calculateSequentialStackingPosition(
+      // Use geological stacking for realistic positioning
+      const stackingPos = GeologicalStackingSystem.calculateStableStackingPosition(
         existingRocks,
         rockSize,
         'support',
         variation.category,
-        centerPosition,
-        rockIndex
+        basePosition
       );
       
       const rock = this.createStandardizedClusterRock(
@@ -82,26 +85,24 @@ export class RockClusterGenerator {
       rock.position.copy(stackingPos.position);
       rockGroup.add(rock);
       existingRocks.push(rock);
-      rockIndex++;
       
-      console.log(`🗻 Support rock ${i + 1}: (${rock.position.x.toFixed(1)}, ${rock.position.y.toFixed(1)}, ${rock.position.z.toFixed(1)})`);
-    }
+      console.log(`🏔️ Support rock ${i + 1}: (${rock.position.x.toFixed(1)}, ${rock.position.y.toFixed(1)}, ${rock.position.z.toFixed(1)})`);
+    });
 
-    // Create accent rocks sequentially with maximum stacking preference
-    console.log(`⛰️ Placing ${counts.accentCount} accent rocks`);
+    // Create accent rocks with enhanced stacking and spire pairing
     let spirePairPending = false;
     let spirePairPosition: THREE.Vector3 | null = null;
     
-    for (let i = 0; i < counts.accentCount; i++) {
+    geologicalLayout.accentPositions.forEach((basePosition, i) => {
       const rockSize = maxSize * (0.2 + Math.random() * 0.3);
       
-      const stackingPos = GeologicalStackingSystem.calculateSequentialStackingPosition(
+      // Use geological stacking for realistic positioning
+      const stackingPos = GeologicalStackingSystem.calculateStableStackingPosition(
         existingRocks,
         rockSize,
         'accent',
         variation.category,
-        centerPosition,
-        rockIndex
+        basePosition
       );
       
       const rock = this.createStandardizedClusterRock(
@@ -113,46 +114,38 @@ export class RockClusterGenerator {
         counts.accentCount
       );
       
-      // Handle spire pairing
+      // Enhanced spire pairing with geological positioning
       const isSpire = rock.userData.rockShape?.type === 'spire';
       if (isSpire && !spirePairPending && RockGenerationUtils.shouldCreateSpirePair()) {
-        console.log('🗻 Creating spire pair');
+        console.log('🗻 Creating geological spire pair');
         spirePairPending = true;
         spirePairPosition = stackingPos.position.clone();
         
+        // Geological spire pairing - place nearby with realistic spacing
         const pairOffset = new THREE.Vector3(
-          (Math.random() - 0.5) * rockSize * 1.2,
-          Math.random() * rockSize * 0.2,
-          (Math.random() - 0.5) * rockSize * 1.2
+          (Math.random() - 0.5) * rockSize * 1.5, // Closer spacing for realism
+          Math.random() * rockSize * 0.3,         // Slight height variation
+          (Math.random() - 0.5) * rockSize * 1.5
         );
         spirePairPosition.add(pairOffset);
       } else if (spirePairPending && spirePairPosition) {
+        // Place second spire of the geological pair
         rock.position.copy(spirePairPosition);
         spirePairPending = false;
         spirePairPosition = null;
-        console.log(`🗻 Spire pair completed at height ${rock.position.y.toFixed(1)}`);
+        console.log(`🗻 Geological spire pair completed at height ${rock.position.y.toFixed(1)}`);
       } else {
         rock.position.copy(stackingPos.position);
       }
       
       rockGroup.add(rock);
       existingRocks.push(rock);
-      rockIndex++;
       
-      console.log(`⛰️ Accent rock ${i + 1}: (${rock.position.x.toFixed(1)}, ${rock.position.y.toFixed(1)}, ${rock.position.z.toFixed(1)})`);
-    }
+      console.log(`🏔️ Accent rock ${i + 1}: (${rock.position.x.toFixed(1)}, ${rock.position.y.toFixed(1)}, ${rock.position.z.toFixed(1)})`);
+    });
     
-    console.log(`🏔️ Sequential cluster complete: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks`);
+    console.log(`🏔️ Geological cluster complete: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks`);
     console.log(`🏔️ Height range: ${Math.min(...existingRocks.map(r => r.position.y)).toFixed(1)} to ${Math.max(...existingRocks.map(r => r.position.y)).toFixed(1)}`);
-    
-    // Calculate final cluster footprint
-    const positions = existingRocks.map(r => r.position);
-    const minX = Math.min(...positions.map(p => p.x));
-    const maxX = Math.max(...positions.map(p => p.x));
-    const minZ = Math.min(...positions.map(p => p.z));
-    const maxZ = Math.max(...positions.map(p => p.z));
-    const footprint = Math.max(maxX - minX, maxZ - minZ);
-    console.log(`🏔️ Cluster footprint: ${footprint.toFixed(1)} units`);
   }
 
   /**
@@ -166,6 +159,7 @@ export class RockClusterGenerator {
     geometryProcessor: GeometryProcessor,
     totalRoleCount?: number
   ): THREE.Object3D {
+    // Select shape based on role with spire support and fixed percentage for accents
     const rockShape = RockGenerationUtils.selectShapeByRole(
       this.rockShapes, 
       role, 
@@ -174,6 +168,7 @@ export class RockClusterGenerator {
       role === 'accent' ? totalRoleCount : undefined
     );
     
+    // Create geometry using standardized processor
     let geometry = geometryProcessor.createCharacterBaseGeometry(rockShape, rockSize);
     geometryProcessor.applyShapeModifications(geometry, rockShape, rockSize);
     
@@ -181,14 +176,20 @@ export class RockClusterGenerator {
       rockShape.deformationIntensity : rockShape.deformationIntensity * 0.7;
     geometryProcessor.applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape);
     
+    // Use standardized validation
     geometryProcessor.validateAndEnhanceGeometry(geometry);
     
+    // Create material and mesh
     const material = RockMaterialGenerator.createRoleBasedMaterial(variation.category, rockShape, index, role);
     const rock = new THREE.Mesh(geometry, material);
     
+    // Apply standardized properties
     RockGenerationUtils.applyStandardRockProperties(rock, variation.category, role);
+    
+    // Apply spire-aware rotation
     RockGenerationUtils.randomizeRotation(rock, role, rockShape);
     
+    // Store rock shape in userData for pairing detection
     rock.userData.rockShape = rockShape;
     
     return rock;
