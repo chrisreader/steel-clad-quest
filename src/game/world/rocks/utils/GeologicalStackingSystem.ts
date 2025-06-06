@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { ClusterRole, RockCategory } from '../types/RockTypes';
 
@@ -20,9 +19,9 @@ export class GeologicalStackingSystem {
   private static readonly FORMATION_RULES: Record<RockCategory, GeologicalFormationRules> = {
     tiny: { maxStackHeight: 2, avalancheAngle: 35, tightnessFactor: 0.8, verticalPreference: 0.4 },
     small: { maxStackHeight: 3, avalancheAngle: 32, tightnessFactor: 0.7, verticalPreference: 0.5 },
-    medium: { maxStackHeight: 4, avalancheAngle: 30, tightnessFactor: 0.6, verticalPreference: 0.65 },
-    large: { maxStackHeight: 5, avalancheAngle: 28, tightnessFactor: 0.5, verticalPreference: 0.7 },
-    massive: { maxStackHeight: 6, avalancheAngle: 25, tightnessFactor: 0.4, verticalPreference: 0.75 }
+    medium: { maxStackHeight: 4, avalancheAngle: 30, tightnessFactor: 0.6, verticalPreference: 0.80 },
+    large: { maxStackHeight: 5, avalancheAngle: 28, tightnessFactor: 0.5, verticalPreference: 0.85 },
+    massive: { maxStackHeight: 6, avalancheAngle: 25, tightnessFactor: 0.4, verticalPreference: 0.90 }
   };
 
   public static calculateRealisticScatterRadius(category: RockCategory, maxSize: number): number {
@@ -52,14 +51,14 @@ export class GeologicalStackingSystem {
       return this.calculateFoundationPosition(centerPosition, rockSize, rules);
     }
 
-    // Try vertical stacking first (geological preference)
+    // Try vertical stacking first (geological preference) - enhanced success rate
     if (Math.random() < rules.verticalPreference) {
-      const stackingResult = this.tryVerticalStacking(existingRocks, rockSize, rules);
+      const stackingResult = this.tryVerticalStackingEnhanced(existingRocks, rockSize, rules);
       if (stackingResult) return stackingResult;
     }
 
-    // Fall back to tight horizontal clustering
-    return this.calculateTightHorizontalPosition(existingRocks, rockSize, rules, centerPosition);
+    // Fall back to enhanced tight horizontal clustering
+    return this.calculateEnhancedTightHorizontalPosition(existingRocks, rockSize, rules, centerPosition);
   }
 
   private static calculateFoundationPosition(
@@ -83,15 +82,15 @@ export class GeologicalStackingSystem {
     };
   }
 
-  private static tryVerticalStacking(
+  private static tryVerticalStackingEnhanced(
     existingRocks: THREE.Object3D[],
     rockSize: number,
     rules: GeologicalFormationRules
   ): StackingPosition | null {
-    // Find suitable foundation rocks to stack on
+    // Enhanced: Find more suitable foundation rocks to stack on (expanded candidate pool)
     const foundationCandidates = existingRocks.filter(rock => 
       rock.userData.role === 'foundation' || 
-      (rock.userData.role === 'support' && rock.position.y < rules.maxStackHeight * rockSize)
+      rock.userData.role === 'support' // Include all support rocks as potential parents
     );
 
     if (foundationCandidates.length === 0) return null;
@@ -99,9 +98,10 @@ export class GeologicalStackingSystem {
     // Sort by height preference (lower rocks first for stability)
     foundationCandidates.sort((a, b) => a.position.y - b.position.y);
 
+    // Enhanced: Try multiple candidates with retry logic
     for (const parentRock of foundationCandidates) {
       const stackingPos = this.calculateStackPosition(parentRock, rockSize, rules);
-      if (stackingPos && this.validateStability(stackingPos, existingRocks, rules)) {
+      if (stackingPos && this.validateEnhancedStability(stackingPos, existingRocks, rules)) {
         return stackingPos;
       }
     }
@@ -139,7 +139,7 @@ export class GeologicalStackingSystem {
     };
   }
 
-  private static calculateTightHorizontalPosition(
+  private static calculateEnhancedTightHorizontalPosition(
     existingRocks: THREE.Object3D[],
     rockSize: number,
     rules: GeologicalFormationRules,
@@ -157,26 +157,30 @@ export class GeologicalStackingSystem {
       }
     }
 
-    // Place new rock close to nearest rock (realistic clustering)
+    // Enhanced: Use actual bounding box for better contact calculation
     const nearestBox = new THREE.Box3().setFromObject(nearestRock);
     const nearestSize = nearestBox.getSize(new THREE.Vector3());
     
-    const clusteringDistance = (rockSize + Math.max(nearestSize.x, nearestSize.z)) * 0.6; // Tight spacing
+    // Enhanced: Reduced clustering distance for tighter contact (0.6 -> 0.4)
+    const clusteringDistance = (rockSize + Math.max(nearestSize.x, nearestSize.z)) * 0.4;
     const angle = Math.random() * Math.PI * 2;
 
+    // Enhanced: Calculate contact point on the surface of the parent rock
+    const contactPoint = new THREE.Vector3(
+      nearestRock.position.x + Math.cos(angle) * clusteringDistance,
+      centerPosition.y + rockSize * 0.1,
+      nearestRock.position.z + Math.sin(angle) * clusteringDistance
+    );
+
     return {
-      position: new THREE.Vector3(
-        nearestRock.position.x + Math.cos(angle) * clusteringDistance,
-        centerPosition.y + rockSize * 0.1,
-        nearestRock.position.z + Math.sin(angle) * clusteringDistance
-      ),
+      position: contactPoint,
       parentRock: nearestRock,
       contactSurface: new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)),
       isStable: true
     };
   }
 
-  private static validateStability(
+  private static validateEnhancedStability(
     stackingPos: StackingPosition,
     existingRocks: THREE.Object3D[],
     rules: GeologicalFormationRules
@@ -200,10 +204,10 @@ export class GeologicalStackingSystem {
       return false;
     }
 
-    // Check collision with existing rocks
+    // Enhanced: Reduced minimum spacing for better contact (0.5 -> 0.3)
     for (const existingRock of existingRocks) {
       const distance = existingRock.position.distanceTo(stackingPos.position);
-      if (distance < 0.5) { // Minimum spacing to prevent overlap
+      if (distance < 0.3) {
         return false;
       }
     }
@@ -222,25 +226,25 @@ export class GeologicalStackingSystem {
     
     console.log(`🏔️ Generating geological cluster: ${totalCount} rocks, radius: ${scatterRadius.toFixed(1)}, vertical preference: ${(rules.verticalPreference * 100).toFixed(0)}%`);
 
-    // Create tight concentric zones
-    const foundationZone = scatterRadius * 0.3; // Very tight foundation
-    const supportZone = scatterRadius * 0.6;   // Medium support zone
-    const accentZone = scatterRadius;           // Full accent zone
+    // Enhanced: Tighter foundation zone (0.3 -> 0.2)
+    const foundationZone = scatterRadius * 0.2;
+    const supportZone = scatterRadius * 0.6;
+    const accentZone = scatterRadius;
 
     return {
-      foundationPositions: this.generateZonePositions(
+      foundationPositions: this.generateEnhancedZonePositions(
         Math.max(1, Math.floor(totalCount * 0.35)), 
         centerPosition, 
         foundationZone,
         'foundation'
       ),
-      supportPositions: this.generateZonePositions(
+      supportPositions: this.generateEnhancedZonePositions(
         Math.floor(totalCount * 0.4), 
         centerPosition, 
         supportZone,
         'support'
       ),
-      accentPositions: this.generateZonePositions(
+      accentPositions: this.generateEnhancedZonePositions(
         totalCount - Math.max(1, Math.floor(totalCount * 0.35)) - Math.floor(totalCount * 0.4), 
         centerPosition, 
         accentZone,
@@ -249,7 +253,7 @@ export class GeologicalStackingSystem {
     };
   }
 
-  private static generateZonePositions(
+  private static generateEnhancedZonePositions(
     count: number,
     center: THREE.Vector3,
     maxRadius: number,
@@ -258,13 +262,17 @@ export class GeologicalStackingSystem {
     const positions: THREE.Vector3[] = [];
     
     for (let i = 0; i < count; i++) {
-      // Use geological clustering instead of pure random
-      const clusterAngle = (i / count) * Math.PI * 2; // Distribute around circle
-      const randomAngle = clusterAngle + (Math.random() - 0.5) * 0.5; // Add some randomness
+      // Keep geological clustering approach but enhance foundation tightness
+      const clusterAngle = (i / count) * Math.PI * 2;
+      const randomAngle = clusterAngle + (Math.random() - 0.5) * 0.5;
       
-      const distance = role === 'foundation' 
-        ? Math.random() * maxRadius * 0.7 // Foundation stays very close
-        : Math.random() * maxRadius;
+      let distance: number;
+      if (role === 'foundation') {
+        // Enhanced: Foundation rocks stay within 50% of zone radius (was 70%)
+        distance = Math.random() * maxRadius * 0.5;
+      } else {
+        distance = Math.random() * maxRadius;
+      }
       
       positions.push(new THREE.Vector3(
         center.x + Math.cos(randomAngle) * distance,
