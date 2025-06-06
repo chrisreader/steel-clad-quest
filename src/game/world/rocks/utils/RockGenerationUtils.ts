@@ -124,23 +124,53 @@ export class RockGenerationUtils {
     }
   }
 
-  public static randomizeRotation(rock: THREE.Object3D, role?: ClusterRole): void {
+  public static randomizeRotation(rock: THREE.Object3D, role?: ClusterRole, category?: RockCategory): void {
     const isSpire = (rock as THREE.Mesh).geometry && rock.userData.spireType;
     
     if (isSpire) {
-      // Original natural spire rotation (±4.5° tilt)
+      // Dramatic spire tilting restoration - original geological logic
       const r = () => Math.random();
-      rock.rotation.x = (r() - 0.5) * 0.08; // ±4.5° x tilt
-      rock.rotation.y = r() * Math.PI * 2;   // Full 360° y rotation
-      rock.rotation.z = (r() - 0.5) * 0.08; // ±4.5° z tilt
       
-      // Add positional staggering for natural look
-      if (rock.position) {
-        rock.position.x += (Math.random() - 0.5) * 0.4;
-        rock.position.z += (Math.random() - 0.5) * 0.4;
+      // Calculate tilt strength based on cluster category (original system)
+      let tiltStrength: number;
+      switch (category) {
+        case 'massive':
+          tiltStrength = 0.4 * Math.PI; // ±72° tilt range
+          break;
+        case 'large':
+          tiltStrength = 0.35 * Math.PI; // ±63° tilt range  
+          break;
+        case 'medium':
+          tiltStrength = 0.3 * Math.PI; // ±54° tilt range
+          break;
+        default:
+          tiltStrength = 0.25 * Math.PI; // ±45° tilt range
       }
+
+      // Apply dramatic tilt rotation (original system)
+      rock.rotation.set(
+        (r() - 0.5) * tiltStrength, // X tilt (up to ±72° diagonal)
+        r() * Math.PI * 2,          // Full Y rotation (0-360°)
+        (r() - 0.5) * tiltStrength  // Z tilt (up to ±72° diagonal)
+      );
+
+      // 20% chance for completely fallen/horizontal spires (toppled obelisk effect)
+      if (Math.random() < 0.2) {
+        rock.rotateX(Math.PI / 2); // 90° sprawl for fallen spire effect
+        console.log(`🗿 Created fallen spire with dramatic tilt in ${category || 'unknown'} cluster`);
+      }
+      
+      // Enhanced positional staggering for dramatic spires
+      if (rock.position) {
+        rock.position.x += (Math.random() - 0.5) * 0.8; // Increased staggering
+        rock.position.z += (Math.random() - 0.5) * 0.8;
+        // Add Z-offset variation to break symmetry (terrain integration)
+        rock.position.y += (Math.random() - 0.5) * 0.3;
+      }
+      
+      console.log(`🏔️ Applied dramatic spire tilt: ${(tiltStrength * 180 / Math.PI).toFixed(1)}° range for ${category || 'unknown'} cluster`);
     } else {
-      // Normal rotation for other rocks
+      // Normal rotation for other rocks (unchanged)
       rock.rotation.x = Math.random() * 0.3;
       rock.rotation.y = Math.random() * Math.PI * 2;
       rock.rotation.z = Math.random() * 0.3;

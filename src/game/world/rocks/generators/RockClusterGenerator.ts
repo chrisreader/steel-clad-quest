@@ -135,9 +135,9 @@ export class RockClusterGenerator {
       console.log(`🗿 Created realistic spire in ${variation.category} cluster`);
     }
     
-    // Apply realistic rock properties and rotation
+    // Apply realistic rock properties and rotation with dramatic spire tilting
     RockGenerationUtils.applyStandardRockProperties(rock, variation.category, role);
-    RockGenerationUtils.randomizeRotation(rock, role);
+    RockGenerationUtils.randomizeRotation(rock, role, variation.category);
     
     return rock;
   }
