@@ -351,7 +351,18 @@ export class RockGenerationModule {
    */
   private createSingleRock(size: number, shape: RockShape, category: string, index: number): THREE.Mesh {
     // Create geometry using RockShapeFactory
-    const geometry = RockShapeFactory.createRockGeometry(shape, size);
+    const geometry = RockShapeFactory.createCharacterBaseGeometry(shape, size);
+    
+    // Apply shape modifications if needed
+    RockShapeFactory.applyShapeModifications(geometry, shape, size);
+    
+    // Apply character deformation for realistic shapes
+    if (shape.shapePersonality === 'character') {
+      RockShapeFactory.applyCharacterDeformation(geometry, 0.3, size, shape);
+    }
+    
+    // Validate and enhance the geometry
+    RockShapeFactory.validateAndEnhanceGeometry(geometry);
     
     // Create material using RockMaterialGenerator
     const material = RockMaterialGenerator.createEnhancedRockMaterial(category, shape, index);
