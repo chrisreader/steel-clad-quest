@@ -295,8 +295,42 @@ export class TerrainFeatureGenerator {
             debrisGeometry.scale(ovalScale.x, ovalScale.y, ovalScale.z);
             break;
             
-          case 1: // Elongated pebbles (capsule-like)
-            debrisGeometry = new THREE.CapsuleGeometry(debrisSize * 0.3, debrisSize * 1.2, 4, 8);
+          case 1: // Organic diamond-like elongated pebbles (FIXED - no more perfect pills)
+            debrisGeometry = new THREE.SphereGeometry(debrisSize, 8, 6);
+            // Create organic diamond-like proportions
+            const diamondScale = new THREE.Vector3(
+              0.4 + Math.random() * 0.3,  // Narrow width
+              0.3 + Math.random() * 0.2,  // Squashed height
+              1.8 + Math.random() * 0.8   // Elongated depth for diamond shape
+            );
+            debrisGeometry.scale(diamondScale.x, diamondScale.y, diamondScale.z);
+            
+            // Apply organic deformation to break perfect shape
+            const positions = debrisGeometry.attributes.position.array as Float32Array;
+            for (let j = 0; j < positions.length; j += 3) {
+              const x = positions[j];
+              const y = positions[j + 1];
+              const z = positions[j + 2];
+              
+              // Create organic diamond-like deformation
+              const length = Math.sqrt(x * x + y * y + z * z);
+              if (length > 0) {
+                // Add gentle irregularity to create organic diamond shape
+                const organicNoise = Math.sin(x * 8) * Math.cos(z * 6) * 0.15;
+                const edgeVariation = Math.sin(y * 10) * Math.cos(x * 8) * 0.1;
+                
+                const totalDeformation = organicNoise + edgeVariation;
+                const normalX = x / length;
+                const normalY = y / length;
+                const normalZ = z / length;
+                
+                positions[j] += normalX * totalDeformation * debrisSize;
+                positions[j + 1] += normalY * totalDeformation * debrisSize;
+                positions[j + 2] += normalZ * totalDeformation * debrisSize;
+              }
+            }
+            debrisGeometry.attributes.position.needsUpdate = true;
+            debrisGeometry.computeVertexNormals();
             break;
             
           case 2: // Round flat pebbles
