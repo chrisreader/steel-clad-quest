@@ -1,36 +1,50 @@
-
 import * as THREE from 'three';
 import { RockShape, ClusterRole, RockCategory, ClusterLayoutOptions } from '../types/RockTypes';
 
 export class RockGenerationUtils {
+  // Track spires per cluster to limit oversaturation
+  private static clusterSpireCount: Map<string, number> = new Map();
+  
   /**
-   * Select shape by role with enhanced spire visibility
+   * Select shape by role with RESTORED realistic spire visibility (based on original code)
    */
-  public static selectShapeByRole(rockShapes: RockShape[], role: ClusterRole, index: number): RockShape {
-    // For large/massive clusters, use weighted selection to increase spire visibility
-    if (role === 'foundation' || role === 'support' || role === 'accent') {
-      // 30% chance for spire in large clusters (foundation/support)
-      // 25% chance for spire in accent positions
-      const spireChance = (role === 'accent') ? 0.25 : 0.30;
+  public static selectShapeByRole(
+    rockShapes: RockShape[], 
+    role: ClusterRole, 
+    index: number,
+    clusterId?: string
+  ): RockShape {
+    // RESTORED: Realistic spire frequency - tallObelisk represents ~25% of shape pool
+    // but with cluster limits to prevent oversaturation
+    const spireShape = rockShapes.find(shape => shape.type === 'spire');
+    
+    if (spireShape && clusterId) {
+      const currentSpireCount = this.clusterSpireCount.get(clusterId) || 0;
       
-      if (Math.random() < spireChance) {
-        const spireShape = rockShapes.find(shape => shape.type === 'spire');
-        if (spireShape) {
-          console.log(`🗿 Selected SPIRE rock for ${role} role (enhanced visibility)`);
+      // RESTORED: Maximum 2 spires per cluster (from original code)
+      if (currentSpireCount < 2) {
+        // RESTORED: 25% base chance for spires in weighted selection
+        const spireChance = 0.25;
+        
+        // RESTORED: Reduce chance if already have 1 spire (70% fallback chance)
+        const adjustedChance = currentSpireCount >= 1 ? spireChance * 0.3 : spireChance;
+        
+        if (Math.random() < adjustedChance) {
+          this.clusterSpireCount.set(clusterId, currentSpireCount + 1);
+          console.log(`🗿 Selected tallObelisk spire (${currentSpireCount + 1}/2 in cluster)`);
           return spireShape;
         }
       }
     }
     
-    // Fallback to existing random selection
+    // Fallback to existing role-based selection
     const roleFilteredShapes = rockShapes.filter(shape => {
-      // Removed spire exclusion - spires can now appear in all roles
       if (role === 'foundation') {
-        return ['boulder', 'slab', 'weathered', 'spire', 'angular'].includes(shape.type);
+        return ['boulder', 'slab', 'weathered', 'angular'].includes(shape.type);
       } else if (role === 'support') {
-        return ['boulder', 'angular', 'flattened', 'spire', 'weathered'].includes(shape.type);
+        return ['boulder', 'angular', 'flattened', 'weathered'].includes(shape.type);
       } else {
-        return ['jagged', 'angular', 'flattened', 'spire'].includes(shape.type);
+        return ['jagged', 'angular', 'flattened'].includes(shape.type);
       }
     });
     
@@ -39,6 +53,13 @@ export class RockGenerationUtils {
     }
     
     return roleFilteredShapes[index % roleFilteredShapes.length];
+  }
+
+  /**
+   * Reset spire count for a new cluster
+   */
+  public static resetClusterSpireCount(clusterId: string): void {
+    this.clusterSpireCount.delete(clusterId);
   }
 
   public static generateRandomClusterLayout(options: ClusterLayoutOptions): THREE.Vector3[] {
@@ -50,9 +71,8 @@ export class RockGenerationUtils {
       const [minRadius, maxRadius] = radiusRange;
       let distance = minRadius + Math.random() * (maxRadius - minRadius);
       
-      // For spire-favorable positioning in support/foundation roles
+      // RESTORED: Spire positioning variation (original: position.x += r()*0.4, z += r()*0.4)
       if (role === 'foundation' || role === 'support') {
-        // Slightly bias spires toward more prominent positions
         distance = distance * (0.7 + Math.random() * 0.6);
       }
       
@@ -62,6 +82,12 @@ export class RockGenerationUtils {
         centerPosition.z + Math.sin(angle) * distance
       );
       
+      // RESTORED: Add slight positional staggering for spires
+      if (Math.random() < 0.25) { // 25% chance for positional variation
+        position.x += (Math.random() - 0.5) * 0.8; // ±0.4 variation
+        position.z += (Math.random() - 0.5) * 0.8;
+      }
+      
       positions.push(position);
     }
     
@@ -69,6 +95,7 @@ export class RockGenerationUtils {
   }
 
   public static calculateClusterCounts(minClusterSize: number, maxClusterSize: number) {
+    // RESTORED: Original cluster sizes - Large: 2-3 rocks, Massive: 3-4 rocks
     const totalRocks = minClusterSize + Math.floor(Math.random() * (maxClusterSize - minClusterSize + 1));
     
     const foundationCount = Math.max(1, Math.floor(totalRocks * 0.3));
@@ -94,25 +121,68 @@ export class RockGenerationUtils {
     
     // Enhanced properties for spire rocks
     if (rock.userData.role && ['foundation', 'support'].includes(rock.userData.role)) {
-      rock.frustumCulled = false; // Ensure spires remain visible at distance
+      rock.frustumCulled = false;
     }
   }
 
   public static randomizeRotation(rock: THREE.Object3D, role?: ClusterRole): void {
-    // Spires get more controlled rotation to maintain their dramatic vertical effect
     const isSpire = (rock as THREE.Mesh).geometry && rock.userData.spireType;
     
     if (isSpire) {
-      // Limited rotation for spires to keep them upright and dramatic
-      rock.rotation.x = (Math.random() - 0.5) * 0.2; // Very slight tilt
-      rock.rotation.y = Math.random() * Math.PI * 2; // Full Y rotation is fine
-      rock.rotation.z = (Math.random() - 0.5) * 0.1; // Minimal Z rotation
+      // RESTORED: Original natural tilt - ±4.5° on X and Z axes (±0.08 radians)
+      rock.rotation.x = (Math.random() - 0.5) * 0.08; // ±4.5° natural tilt
+      rock.rotation.y = Math.random() * Math.PI * 2;   // Full 360° Y rotation
+      rock.rotation.z = (Math.random() - 0.5) * 0.08; // ±4.5° natural tilt
+      
+      console.log(`🗿 Applied realistic spire rotation: X=${(rock.rotation.x * 180/Math.PI).toFixed(1)}°, Z=${(rock.rotation.z * 180/Math.PI).toFixed(1)}°`);
     } else {
       // Normal rotation for other rocks
       rock.rotation.x = Math.random() * 0.3;
       rock.rotation.y = Math.random() * Math.PI * 2;
       rock.rotation.z = Math.random() * 0.3;
     }
+  }
+
+  /**
+   * RESTORED: Create realistic spire geometry (based on original tallObelisk)
+   */
+  public static createSpireGeometry(size: number): THREE.BufferGeometry {
+    const r = Math.random;
+    
+    // RESTORED: Original spire geometry parameters
+    const geometry = new THREE.CylinderGeometry(
+      (0.2 + r() * 0.2) * size,    // top radius
+      (0.05 + r() * 0.1) * size,  // bottom radius  
+      (2 + r() * 1.2) * size,     // height
+      8                            // segments
+    );
+    
+    // RESTORED: Organic wideness scaling
+    geometry.scale(1 + r() * 0.4, 1, 1 + r() * 0.4);
+    
+    return geometry;
+  }
+
+  /**
+   * RESTORED: Spire stacking logic - 30% chance to stack on boulder base
+   */
+  public static shouldStackSpire(): boolean {
+    return Math.random() < 0.3; // 30% chance for stacking
+  }
+
+  /**
+   * Create boulder base for spire stacking
+   */
+  public static createBoulderBase(spireSize: number): THREE.BufferGeometry {
+    const r = Math.random;
+    const baseSize = spireSize * (0.8 + r() * 0.4); // Base is 80-120% of spire size
+    
+    const geometry = new THREE.SphereGeometry(baseSize, 12, 8);
+    
+    // Flatten the boulder base slightly
+    geometry.scale(1.2, 0.6, 1.1);
+    
+    return geometry;
   }
 
   /**
