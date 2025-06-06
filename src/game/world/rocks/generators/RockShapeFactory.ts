@@ -1,346 +1,269 @@
 
 import * as THREE from 'three';
-import { noise } from 'noisejs';
-
-export interface RockShape {
-  geometry: THREE.BufferGeometry;
-  scale: number;
-  rotation: THREE.Euler;
-}
+import { 
+  RockShapeType, 
+  RockInstance, 
+  RockGenerationConfig, 
+  RockVariation,
+  RockShape,
+  RockVariationSelector,
+  ROCK_VARIATIONS,
+  ROCK_SHAPES
+} from '../types/RockTypes';
+import { RockMaterials } from '../materials/RockMaterials';
+import { BaseRockShape } from '../shapes/BaseRockShape';
+import { BoulderShape } from '../shapes/BoulderShape';
+import { SpireShape } from '../shapes/SpireShape';
+import { SlabShape } from '../shapes/SlabShape';
+import { AngularShape } from '../shapes/AngularShape';
+import { WeatheredShape } from '../shapes/WeatheredShape';
+import { FlattenedShape } from '../shapes/FlattenedShape';
+import { JaggedShape } from '../shapes/JaggedShape';
+import { SmoothingUtils } from '../utils/SmoothingUtils';
 
 export class RockShapeFactory {
-  private static noise = new noise.Noise(Math.random());
-
-  static generateRock(
-    type: 'boulder' | 'angular' | 'flat',
-    size: number = 1,
-    complexity: number = 0.5
-  ): RockShape {
-    let geometry: THREE.BufferGeometry;
+  private shapeGenerators: Map<RockShapeType, BaseRockShape>;
+  private static generationStats: Map<string, number> = new Map();
+  
+  constructor() {
+    this.shapeGenerators = new Map();
+    this.shapeGenerators.set('boulder', new BoulderShape());
+    this.shapeGenerators.set('spire', new SpireShape());
+    this.shapeGenerators.set('slab', new SlabShape());
+    this.shapeGenerators.set('angular', new AngularShape());
+    this.shapeGenerators.set('weathered', new WeatheredShape());
+    this.shapeGenerators.set('flattened', new FlattenedShape());
+    this.shapeGenerators.set('jagged', new JaggedShape());
     
-    switch (type) {
-      case 'boulder':
-        geometry = this.createBoulderGeometry(size, complexity);
-        break;
-      case 'angular':
-        geometry = this.createAngularGeometry(size, complexity);
-        break;
-      case 'flat':
-        geometry = this.createFlatGeometry(size, complexity);
-        break;
+    // Log variation probabilities on initialization
+    this.logVariationProbabilities();
+  }
+  
+  private logVariationProbabilities(): void {
+    console.log('🗿 Rock Variation Probabilities:');
+    const stats = RockVariationSelector.getVariationStats();
+    Object.entries(stats).forEach(([category, percentage]) => {
+      console.log(`  ${category}: ${percentage.toFixed(1)}%`);
+    });
+  }
+  
+  private createBaseGeometry(shape: RockShape): THREE.BufferGeometry {
+    switch (shape.baseGeometry) {
+      case 'icosahedron':
+        return new THREE.IcosahedronGeometry(1, 3); // Detail=3 for high resolution
+      case 'sphere':
+        return new THREE.SphereGeometry(1, 32, 32); // 32 segments for smooth curves
+      case 'dodecahedron':
+        return new THREE.DodecahedronGeometry(1, 2); // Detail=2 for good balance
       default:
-        geometry = this.createBoulderGeometry(size, complexity);
+        return new THREE.IcosahedronGeometry(1, 3);
     }
-
-    // Apply topology-aware smoothing and validation
-    this.validateAndRepairGeometry(geometry);
-    this.applyNeighborhoodAwareSmoothing(geometry, type);
-
+  }
+  
+  private applyDeformation(geometry: THREE.BufferGeometry, intensity: number): void {
+    // Cap deformation intensity at 0.4 and reduce noise amplitude by 50%
+    const cappedIntensity = Math.min(intensity, 0.4) * 0.5;
+    
+    const positions = geometry.attributes.position;
+    const positionArray = positions.array as Float32Array;
+    
+    for (let i = 0; i < positionArray.length; i += 3) {
+      const x = positionArray[i];
+      const y = positionArray[i + 1];
+      const z = positionArray[i + 2];
+      
+      // Apply controlled noise with reduced amplitude
+      const noise = this.generateSmoothNoise(x * 2, y * 2, z * 2) * cappedIntensity;
+      
+      const vertex = new THREE.Vector3(x, y, z);
+      const length = vertex.length();
+      if (length > 0) {
+        vertex.normalize();
+        vertex.multiplyScalar(length + noise);
+        
+        positionArray[i] = vertex.x;
+        positionArray[i + 1] = vertex.y;
+        positionArray[i + 2] = vertex.z;
+      }
+    }
+    
+    positions.needsUpdate = true;
+  }
+  
+  private generateSmoothNoise(x: number, y: number, z: number): number {
+    // Improved smooth noise using multiple octaves
+    const noise1 = Math.sin(x * 0.5) * Math.cos(y * 0.7) * Math.sin(z * 0.3);
+    const noise2 = Math.sin(x * 1.2) * Math.cos(y * 0.9) * Math.sin(z * 1.1) * 0.5;
+    const noise3 = Math.sin(x * 2.1) * Math.cos(y * 1.7) * Math.sin(z * 1.9) * 0.25;
+    
+    return (noise1 + noise2 + noise3) / 1.75;
+  }
+  
+  public createRock(shapeType: RockShapeType, config: RockGenerationConfig): RockInstance {
+    if (shapeType === 'cluster') {
+      throw new Error('Cluster rocks should be generated through ClusterGenerator');
+    }
+    
+    // Select variation and shape based on new system
+    const variation = config.variation || RockVariationSelector.selectRandomVariation();
+    const shape = config.shape || RockVariationSelector.getShapeForType(shapeType);
+    
+    // Update generation statistics
+    this.updateGenerationStats(variation.category, shapeType);
+    
+    // Use variation size range if no specific size range provided
+    const sizeRange = config.sizeRange || {
+      min: variation.sizeRange[0],
+      max: variation.sizeRange[1]
+    };
+    
+    const size = sizeRange.min + Math.random() * (sizeRange.max - sizeRange.min);
+    
+    // Create high-resolution base geometry
+    const geometry = this.createBaseGeometry(shape);
+    
+    // Scale to desired size
+    geometry.scale(size, size, size);
+    
+    // Apply controlled deformation
+    this.applyDeformation(geometry, shape.deformationIntensity);
+    
+    // Apply smoothing operations for organic appearance
+    SmoothingUtils.smoothGeometry(geometry, 2);
+    SmoothingUtils.weldVertices(geometry, 0.01);
+    
+    // Select material type based on shape and weathering
+    const materialType = this.selectMaterialType(shapeType);
+    const weatheringLevel = shape.weatheringLevel + 
+      (Math.random() - 0.5) * 0.2; // Add some variation to weathering
+    
+    const material = RockMaterials.getRockMaterial(materialType, Math.max(0, Math.min(1, weatheringLevel)));
+    
+    // Create mesh
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    
+    // Calculate bounding radius
+    geometry.computeBoundingSphere();
+    const boundingRadius = geometry.boundingSphere?.radius || 1;
+    
+    // Generate contact points for physics
+    const contactPoints = this.generateContactPoints(geometry, boundingRadius);
+    
+    // Create enhanced rock properties
+    const properties = {
+      shapeType,
+      sizeCategory: variation.category,
+      baseSize: boundingRadius,
+      material,
+      weatheringLevel: Math.max(0, Math.min(1, weatheringLevel)),
+      stability: this.calculateStability(shapeType, weatheringLevel, variation),
+      variation,
+      shape
+    };
+    
     return {
-      geometry,
-      scale: 0.8 + Math.random() * 0.4,
-      rotation: new THREE.Euler(
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2
-      )
+      mesh,
+      properties,
+      boundingRadius,
+      contactPoints
     };
   }
-
-  private static createBoulderGeometry(size: number, complexity: number): THREE.BufferGeometry {
-    // Use multiple overlapping spheres for organic shape
-    const baseGeometry = new THREE.SphereGeometry(size, 16, 12);
+  
+  private updateGenerationStats(category: string, shapeType: RockShapeType): void {
+    const key = `${category}_${shapeType}`;
+    const current = RockShapeFactory.generationStats.get(key) || 0;
+    RockShapeFactory.generationStats.set(key, current + 1);
     
-    // Create organic shape using multi-sphere approach
-    this.applyMultiSphereDeformation(baseGeometry, complexity);
-    this.applyConstrainedNoiseDeformation(baseGeometry, complexity * 0.3);
+    // Log stats every 50 rocks generated
+    const totalGenerated = Array.from(RockShapeFactory.generationStats.values())
+      .reduce((sum, count) => sum + count, 0);
     
-    return baseGeometry;
-  }
-
-  private static createAngularGeometry(size: number, complexity: number): THREE.BufferGeometry {
-    // Higher subdivision for better topology
-    const baseGeometry = new THREE.DodecahedronGeometry(size, 2);
-    
-    // Apply controlled angular deformation
-    this.applyConstrainedAngularDeformation(baseGeometry, complexity);
-    this.applyConstrainedNoiseDeformation(baseGeometry, complexity * 0.2);
-    
-    return baseGeometry;
-  }
-
-  private static createFlatGeometry(size: number, complexity: number): THREE.BufferGeometry {
-    // Start with a cylinder for flat base shape
-    const baseGeometry = new THREE.CylinderGeometry(size, size * 0.8, size * 0.4, 12, 2);
-    
-    // Apply controlled flattening with topology preservation
-    this.applyConstrainedFlatteningDeformation(baseGeometry, complexity);
-    this.applyConstrainedNoiseDeformation(baseGeometry, complexity * 0.25);
-    
-    return baseGeometry;
-  }
-
-  private static applyMultiSphereDeformation(geometry: THREE.BufferGeometry, intensity: number): void {
-    const positions = geometry.attributes.position;
-    const vertex = new THREE.Vector3();
-    
-    // Create influence spheres for organic shaping
-    const influenceSpheres = [
-      { center: new THREE.Vector3(0.3, 0.2, 0.1), radius: 0.8, strength: intensity },
-      { center: new THREE.Vector3(-0.2, 0.4, -0.3), radius: 0.6, strength: intensity * 0.7 },
-      { center: new THREE.Vector3(0.1, -0.3, 0.4), radius: 0.5, strength: intensity * 0.8 }
-    ];
-
-    for (let i = 0; i < positions.count; i++) {
-      vertex.fromBufferAttribute(positions, i);
-      const originalVertex = vertex.clone();
-      
-      // Apply influence from multiple spheres
-      for (const sphere of influenceSpheres) {
-        const distance = vertex.distanceTo(sphere.center);
-        const influence = Math.max(0, 1 - (distance / sphere.radius));
-        const deformation = influence * sphere.strength * 0.3;
-        
-        // Apply non-uniform scaling instead of displacement
-        const direction = vertex.clone().sub(sphere.center).normalize();
-        vertex.add(direction.multiplyScalar(deformation));
-      }
-      
-      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    if (totalGenerated % 50 === 0) {
+      this.logGenerationStats();
     }
-    
-    positions.needsUpdate = true;
-    geometry.computeVertexNormals();
   }
-
-  private static applyConstrainedNoiseDeformation(geometry: THREE.BufferGeometry, intensity: number): void {
-    const positions = geometry.attributes.position;
-    const vertex = new THREE.Vector3();
-    const neighbors = this.buildNeighborMap(geometry);
+  
+  private logGenerationStats(): void {
+    console.log('🗿 Rock Generation Statistics:');
     
-    for (let i = 0; i < positions.count; i++) {
-      vertex.fromBufferAttribute(positions, i);
-      
-      // Calculate neighborhood-aware displacement
-      const neighborPositions = neighbors[i].map(idx => {
-        const neighbor = new THREE.Vector3();
-        neighbor.fromBufferAttribute(positions, idx);
-        return neighbor;
-      });
-      
-      // Calculate centroid of neighbors
-      const centroid = new THREE.Vector3();
-      neighborPositions.forEach(pos => centroid.add(pos));
-      centroid.divideScalar(neighborPositions.length);
-      
-      // Limit displacement based on neighbor distance
-      const maxDisplacement = this.calculateMaxDisplacement(vertex, neighborPositions) * 0.5;
-      
-      const noiseValue = this.noise.perlin3(
-        vertex.x * 3,
-        vertex.y * 3,
-        vertex.z * 3
-      );
-      
-      const displacement = Math.min(
-        Math.abs(noiseValue * intensity * 0.3),
-        maxDisplacement
-      ) * Math.sign(noiseValue);
-      
-      vertex.normalize().multiplyScalar(vertex.length() + displacement);
-      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
-    }
+    // Group by category
+    const categoryStats = new Map<string, number>();
+    const shapeStats = new Map<string, number>();
     
-    positions.needsUpdate = true;
-    geometry.computeVertexNormals();
+    RockShapeFactory.generationStats.forEach((count, key) => {
+      const [category, shape] = key.split('_');
+      categoryStats.set(category, (categoryStats.get(category) || 0) + count);
+      shapeStats.set(shape, (shapeStats.get(shape) || 0) + count);
+    });
+    
+    console.log('  By Category:');
+    categoryStats.forEach((count, category) => {
+      console.log(`    ${category}: ${count}`);
+    });
+    
+    console.log('  By Shape:');
+    shapeStats.forEach((count, shape) => {
+      console.log(`    ${shape}: ${count}`);
+    });
   }
-
-  private static applyConstrainedAngularDeformation(geometry: THREE.BufferGeometry, intensity: number): void {
-    const positions = geometry.attributes.position;
-    const vertex = new THREE.Vector3();
-    const neighbors = this.buildNeighborMap(geometry);
+  
+  private selectMaterialType(shapeType: RockShapeType): 'granite' | 'sandstone' | 'limestone' | 'basalt' | 'weathered' {
+    const materialMappings = {
+      boulder: 'granite',
+      spire: 'basalt',
+      slab: 'sandstone',
+      angular: 'basalt',
+      weathered: 'weathered',
+      flattened: 'limestone',
+      jagged: 'granite',
+      cluster: 'granite'
+    };
     
-    for (let i = 0; i < positions.count; i++) {
-      vertex.fromBufferAttribute(positions, i);
-      
-      // Get neighbor constraints
-      const neighborPositions = neighbors[i].map(idx => {
-        const neighbor = new THREE.Vector3();
-        neighbor.fromBufferAttribute(positions, idx);
-        return neighbor;
-      });
-      
-      const maxDisplacement = this.calculateMaxDisplacement(vertex, neighborPositions) * 0.4;
-      
-      // Apply controlled angular modification
-      const facetDirection = this.calculateFacetDirection(vertex);
-      const displacement = Math.min(intensity * 0.4, maxDisplacement);
-      
-      vertex.add(facetDirection.multiplyScalar(displacement));
-      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
-    }
-    
-    positions.needsUpdate = true;
-    geometry.computeVertexNormals();
+    return materialMappings[shapeType] as any;
   }
-
-  private static applyConstrainedFlatteningDeformation(geometry: THREE.BufferGeometry, intensity: number): void {
-    const positions = geometry.attributes.position;
-    const vertex = new THREE.Vector3();
-    const neighbors = this.buildNeighborMap(geometry);
+  
+  private calculateStability(shapeType: RockShapeType, weatheringLevel: number, variation: RockVariation): number {
+    const baseStability = {
+      boulder: 0.9,
+      spire: 0.3,
+      slab: 0.8,
+      angular: 0.6,
+      weathered: 0.7,
+      flattened: 0.9,
+      jagged: 0.4,
+      cluster: 0.8
+    };
     
-    for (let i = 0; i < positions.count; i++) {
-      vertex.fromBufferAttribute(positions, i);
-      
-      // Get neighbor constraints
-      const neighborPositions = neighbors[i].map(idx => {
-        const neighbor = new THREE.Vector3();
-        neighbor.fromBufferAttribute(positions, idx);
-        return neighbor;
-      });
-      
-      const maxDisplacement = this.calculateMaxDisplacement(vertex, neighborPositions) * 0.3;
-      
-      // Apply controlled flattening
-      const flatteningFactor = Math.min(intensity * 0.5, maxDisplacement);
-      vertex.y *= (1 - flatteningFactor * 0.5);
-      
-      // Add controlled surface variation
-      const surfaceNoise = this.noise.perlin2(vertex.x * 2, vertex.z * 2) * flatteningFactor;
-      vertex.y += surfaceNoise;
-      
-      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
-    }
+    const base = baseStability[shapeType];
+    const weatheringPenalty = weatheringLevel * 0.3;
+    const sizePenalty = variation.category === 'massive' ? 0.1 : 0; // Massive rocks are slightly less stable
     
-    positions.needsUpdate = true;
-    geometry.computeVertexNormals();
+    return Math.max(0.1, base - weatheringPenalty - sizePenalty);
   }
-
-  private static buildNeighborMap(geometry: THREE.BufferGeometry): number[][] {
-    const positions = geometry.attributes.position;
-    const indices = geometry.index;
-    const neighbors: number[][] = Array.from({ length: positions.count }, () => []);
+  
+  private generateContactPoints(geometry: THREE.BufferGeometry, boundingRadius: number): THREE.Vector3[] {
+    // Generate contact points for physics calculations
+    const points: THREE.Vector3[] = [];
     
-    if (indices) {
-      for (let i = 0; i < indices.count; i += 3) {
-        const a = indices.getX(i);
-        const b = indices.getX(i + 1);
-        const c = indices.getX(i + 2);
-        
-        // Add neighbors for each vertex in the triangle
-        if (!neighbors[a].includes(b)) neighbors[a].push(b);
-        if (!neighbors[a].includes(c)) neighbors[a].push(c);
-        if (!neighbors[b].includes(a)) neighbors[b].push(a);
-        if (!neighbors[b].includes(c)) neighbors[b].push(c);
-        if (!neighbors[c].includes(a)) neighbors[c].push(a);
-        if (!neighbors[c].includes(b)) neighbors[c].push(b);
-      }
-    }
-    
-    return neighbors;
-  }
-
-  private static calculateMaxDisplacement(vertex: THREE.Vector3, neighbors: THREE.Vector3[]): number {
-    if (neighbors.length === 0) return 0.1;
-    
-    let minDistance = Infinity;
-    for (const neighbor of neighbors) {
-      const distance = vertex.distanceTo(neighbor);
-      minDistance = Math.min(minDistance, distance);
-    }
-    
-    // Limit displacement to 30% of minimum neighbor distance
-    return minDistance * 0.3;
-  }
-
-  private static calculateFacetDirection(vertex: THREE.Vector3): THREE.Vector3 {
-    // Create controlled angular direction without using Math.sign
-    const direction = vertex.clone().normalize();
-    
-    // Apply smooth directional modification
-    const modifier = new THREE.Vector3(
-      Math.sin(vertex.x * 2) * 0.5,
-      Math.cos(vertex.y * 2) * 0.5,
-      Math.sin(vertex.z * 2) * 0.5
+    // Add points at cardinal directions at ground level
+    const groundRadius = boundingRadius * 0.8;
+    points.push(
+      new THREE.Vector3(groundRadius, 0, 0),
+      new THREE.Vector3(-groundRadius, 0, 0),
+      new THREE.Vector3(0, 0, groundRadius),
+      new THREE.Vector3(0, 0, -groundRadius)
     );
     
-    return direction.add(modifier).normalize();
+    return points;
   }
-
-  private static validateAndRepairGeometry(geometry: THREE.BufferGeometry): void {
-    const positions = geometry.attributes.position;
-    const indices = geometry.index;
-    
-    if (!indices) return;
-    
-    // Check for degenerate triangles and remove them
-    const validTriangles: number[] = [];
-    const vertex1 = new THREE.Vector3();
-    const vertex2 = new THREE.Vector3();
-    const vertex3 = new THREE.Vector3();
-    
-    for (let i = 0; i < indices.count; i += 3) {
-      const a = indices.getX(i);
-      const b = indices.getX(i + 1);
-      const c = indices.getX(i + 2);
-      
-      vertex1.fromBufferAttribute(positions, a);
-      vertex2.fromBufferAttribute(positions, b);
-      vertex3.fromBufferAttribute(positions, c);
-      
-      // Calculate triangle area to detect degenerate triangles
-      const edge1 = vertex2.clone().sub(vertex1);
-      const edge2 = vertex3.clone().sub(vertex1);
-      const area = edge1.cross(edge2).length() * 0.5;
-      
-      // Only keep triangles with reasonable area
-      if (area > 0.001) {
-        validTriangles.push(a, b, c);
-      }
-    }
-    
-    // Update indices with valid triangles only
-    geometry.setIndex(validTriangles);
-    geometry.computeVertexNormals();
+  
+  public static getGenerationStats(): Map<string, number> {
+    return new Map(RockShapeFactory.generationStats);
   }
-
-  private static applyNeighborhoodAwareSmoothing(geometry: THREE.BufferGeometry, type: string): void {
-    const positions = geometry.attributes.position;
-    const neighbors = this.buildNeighborMap(geometry);
-    const vertex = new THREE.Vector3();
-    const smoothedPositions: THREE.Vector3[] = [];
-    
-    // Determine smoothing intensity based on rock type
-    const smoothingIntensity = type === 'angular' ? 0.1 : 0.3;
-    
-    for (let i = 0; i < positions.count; i++) {
-      vertex.fromBufferAttribute(positions, i);
-      
-      if (neighbors[i].length > 0) {
-        // Calculate Laplacian smoothing
-        const centroid = new THREE.Vector3();
-        for (const neighborIdx of neighbors[i]) {
-          const neighbor = new THREE.Vector3();
-          neighbor.fromBufferAttribute(positions, neighborIdx);
-          centroid.add(neighbor);
-        }
-        centroid.divideScalar(neighbors[i].length);
-        
-        // Apply smoothing with intensity control
-        const smoothed = vertex.clone().lerp(centroid, smoothingIntensity);
-        smoothedPositions.push(smoothed);
-      } else {
-        smoothedPositions.push(vertex.clone());
-      }
-    }
-    
-    // Update geometry with smoothed positions using proper method
-    for (let i = 0; i < smoothedPositions.length; i++) {
-      const pos = smoothedPositions[i];
-      positions.setXYZ(i, pos.x, pos.y, pos.z);
-    }
-    
-    positions.needsUpdate = true;
-    geometry.computeVertexNormals();
+  
+  public static resetGenerationStats(): void {
+    RockShapeFactory.generationStats.clear();
   }
 }
