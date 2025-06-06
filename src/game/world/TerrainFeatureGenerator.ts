@@ -16,6 +16,8 @@ export class TerrainFeatureGenerator {
   private rockGenerator: RockGenerationModule;
   private treeGenerator: TreeGenerator;
   private bushGenerator: BushGenerator;
+  private collisionRegistrationCallback: ((object: THREE.Object3D) => void) | null = null;
+  private regionGroups: Map<string, THREE.Group> = new Map();
 
   constructor(ringSystem: RingQuadrantSystem) {
     this.ringSystem = ringSystem;
@@ -29,14 +31,21 @@ export class TerrainFeatureGenerator {
     this.bushGenerator = new BushGenerator();
   }
 
-  public generateFeaturesForRegion(
-    regionGroup: THREE.Group,
-    coordinates: RegionCoordinates
-  ): void {
-    const regionSize = this.ringSystem.getRegionSize(coordinates.ring);
-    const centerPosition = this.ringSystem.getRegionCenter(coordinates);
+  public setCollisionRegistrationCallback(callback: (object: THREE.Object3D) => void): void {
+    this.collisionRegistrationCallback = callback;
+  }
 
-    console.log(`🌍 Generating features for region ${coordinates.ring}-${coordinates.quadrant}-${coordinates.regionIndex}`);
+  public generateFeaturesForRegion(coordinates: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(coordinates);
+    const centerPosition = this.ringSystem.getRegionCenter(coordinates);
+    const ringDef = this.ringSystem.getRingDefinition(coordinates.ringIndex);
+    const regionSize = coordinates.ringIndex === 0 ? ringDef.outerRadius * 2 : 100;
+
+    console.log(`🌍 Generating features for region ${coordinates.ringIndex}-${coordinates.quadrant}`);
+
+    // Create region group
+    const regionGroup = new THREE.Group();
+    this.regionGroups.set(regionKey, regionGroup);
 
     // Generate rocks using the specialized module
     this.rockGenerator.generateRocksInRegion(
@@ -47,20 +56,28 @@ export class TerrainFeatureGenerator {
     );
 
     // Generate vegetation
-    this.generateVegetation(regionGroup, regionSize, centerPosition.x, centerPosition.z);
+    this.generateVegetation(regionGroup, regionSize, centerPosition);
+
+    // Register collisions if callback is set
+    if (this.collisionRegistrationCallback) {
+      regionGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          this.collisionRegistrationCallback!(child);
+        }
+      });
+    }
   }
 
   private generateVegetation(
     regionGroup: THREE.Group,
     regionSize: number,
-    centerX: number,
-    centerZ: number
+    centerPosition: THREE.Vector3
   ): void {
     // Tree generation
     const treeCount = Math.floor(regionSize * regionSize * 0.1);
     for (let i = 0; i < treeCount; i++) {
-      const x = centerX + (Math.random() - 0.5) * regionSize;
-      const z = centerZ + (Math.random() - 0.5) * regionSize;
+      const x = centerPosition.x + (Math.random() - 0.5) * regionSize;
+      const z = centerPosition.z + (Math.random() - 0.5) * regionSize;
       
       const tree = this.treeGenerator.createTree(i);
       tree.position.set(x, 0, z);
@@ -70,12 +87,40 @@ export class TerrainFeatureGenerator {
     // Bush generation
     const bushCount = Math.floor(regionSize * regionSize * 0.2);
     for (let i = 0; i < bushCount; i++) {
-      const x = centerX + (Math.random() - 0.5) * regionSize;
-      const z = centerZ + (Math.random() - 0.5) * regionSize;
+      const x = centerPosition.x + (Math.random() - 0.5) * regionSize;
+      const z = centerPosition.z + (Math.random() - 0.5) * regionSize;
       
       const bush = this.bushGenerator.createBush(i);
       bush.position.set(x, 0, z);
       regionGroup.add(bush);
+    }
+  }
+
+  public cleanupFeaturesForRegion(coordinates: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(coordinates);
+    const regionGroup = this.regionGroups.get(regionKey);
+    
+    if (regionGroup) {
+      // Remove from scene if it has a parent
+      if (regionGroup.parent) {
+        regionGroup.parent.remove(regionGroup);
+      }
+      
+      // Dispose geometries and materials
+      regionGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+      
+      this.regionGroups.delete(regionKey);
     }
   }
 
@@ -85,5 +130,30 @@ export class TerrainFeatureGenerator {
 
   public getRockConfig() {
     return this.rockGenerator.getConfig();
+  }
+
+  public dispose(): void {
+    // Clean up all region groups
+    for (const [regionKey, regionGroup] of this.regionGroups) {
+      if (regionGroup.parent) {
+        regionGroup.parent.remove(regionGroup);
+      }
+      
+      regionGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+    }
+    
+    this.regionGroups.clear();
+    this.collisionRegistrationCallback = null;
   }
 }
