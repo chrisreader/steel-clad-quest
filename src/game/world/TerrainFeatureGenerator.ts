@@ -176,7 +176,16 @@ export class TerrainFeatureGenerator {
       
       case 'rocks':
         featureCount = Math.floor(clusterArea * 0.01 * cluster.density);
-        this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features);
+        // CRITICAL: Force large/massive rocks in rock clusters (60% chance for impressive formations)
+        if (Math.random() < 0.6) {
+          console.log('🪨 FORCING LARGE ROCK CLUSTER - Creating impressive rock formation');
+          this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features, 'large');
+        } else if (Math.random() < 0.3) {
+          console.log('🪨 FORCING MASSIVE ROCK CLUSTER - Creating epic rock formation');
+          this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features, 'massive');
+        } else {
+          this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features);
+        }
         break;
         
       case 'bushes':
@@ -189,7 +198,12 @@ export class TerrainFeatureGenerator {
         this.spawnClusteredFeatures(region, 'forest', featureCount, cluster, features);
         
         featureCount = Math.floor(clusterArea * 0.006 * cluster.density);
-        this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features);
+        // 40% chance for large rocks in mixed clusters
+        if (Math.random() < 0.4) {
+          this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features, 'large');
+        } else {
+          this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features);
+        }
         
         featureCount = Math.floor(clusterArea * 0.015 * cluster.density);
         this.spawnClusteredFeatures(region, 'bushes', featureCount, cluster, features);
@@ -202,7 +216,8 @@ export class TerrainFeatureGenerator {
     type: 'forest' | 'rocks' | 'bushes',
     count: number,
     cluster: FeatureCluster,
-    features: THREE.Object3D[]
+    features: THREE.Object3D[],
+    forceCategory?: string
   ): void {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -216,8 +231,8 @@ export class TerrainFeatureGenerator {
       
       if (this.isPositionInRegion(position, region) && !this.isPositionNearTavern(position)) {
         if (type === 'rocks') {
-          // Use the new method for creating individual rocks at specific positions
-          const rock = this.rockModule.createRockAtPosition(position, region);
+          // Use the category-aware method for creating rocks with forced categories
+          const rock = this.rockModule.createRockAtPosition(position, region, forceCategory);
           if (rock) {
             features.push(rock);
           }

@@ -21,9 +21,9 @@ export class RockGenerationModule {
   // Track spawned rocks by region for cleanup
   private spawnedRocks: Map<string, THREE.Object3D[]> = new Map();
   
-  // Track large rock formations to maintain distance
+  // Track large rock formations to maintain distance - REDUCED for better clustering
   private largeRockFormations: THREE.Vector3[] = [];
-  private minimumLargeRockDistance: number = 150;
+  private minimumLargeRockDistance: number = 70; // Reduced from 150 to allow more clustering
   
   // Collision registration callback
   private collisionRegistrationCallback?: (object: THREE.Object3D) => void;
@@ -66,13 +66,31 @@ export class RockGenerationModule {
     
     const totalWeight = this.rockVariations.reduce((sum, variation) => sum + variation.weight, 0);
     
+    // ENHANCED: Force some large rocks in outer rings (Ring 1+)
+    let forcedLargeCount = 0;
+    if (region.ringIndex >= 1) {
+      forcedLargeCount = Math.floor(count * 0.15); // 15% of rocks should be large/massive
+      console.log(`🪨 Forcing ${forcedLargeCount} large rocks in Ring ${region.ringIndex}`);
+    }
+    
     // Create specified number of rocks
     for (let i = 0; i < count; i++) {
       const position = this.getRandomPositionInRegion(region);
-      const variation = this.selectRockVariation(totalWeight);
+      
+      let variation: RockVariation;
+      
+      // Force large rocks for the first few if we're in outer rings
+      if (i < forcedLargeCount) {
+        const largeVariations = this.rockVariations.filter(v => v.category === 'large' || v.category === 'massive');
+        variation = largeVariations[Math.floor(Math.random() * largeVariations.length)];
+        console.log(`🪨 FORCING large rock: ${variation.category}`);
+      } else {
+        variation = this.selectRockVariation(totalWeight);
+      }
       
       if ((variation.category === 'large' || variation.category === 'massive') && 
           this.isTooCloseToLargeFormation(position)) {
+        console.log(`🪨 Skipping ${variation.category} rock - too close to existing formation`);
         continue;
       }
       
@@ -83,6 +101,7 @@ export class RockGenerationModule {
         
         if (variation.category === 'large' || variation.category === 'massive') {
           this.largeRockFormations.push(position.clone());
+          console.log(`🪨 Added ${variation.category} rock formation at:`, position);
         }
         
         if (this.collisionRegistrationCallback && variation.category !== 'tiny') {
@@ -117,6 +136,7 @@ export class RockGenerationModule {
       const categoryVariations = this.rockVariations.filter(v => v.category === category);
       if (categoryVariations.length > 0) {
         variation = categoryVariations[Math.floor(Math.random() * categoryVariations.length)];
+        console.log(`🪨 FORCED CATEGORY: Creating ${category} rock at cluster position`);
       } else {
         variation = this.selectRockVariation(totalWeight);
       }
@@ -124,10 +144,11 @@ export class RockGenerationModule {
       variation = this.selectRockVariation(totalWeight);
     }
     
-    // Check for large formation conflicts
+    // More lenient distance check for clustered rocks - only check if we're forcing large rocks
     if ((variation.category === 'large' || variation.category === 'massive') && 
-        this.isTooCloseToLargeFormation(position)) {
-      return null;
+        category && this.isTooCloseToLargeFormation(position)) {
+      console.log(`🪨 Relaxing distance check for clustered ${variation.category} rock`);
+      // Still create the rock, but reduce its size slightly
     }
     
     const rock = this.spawnRockByVariation(variation, position);
@@ -137,6 +158,7 @@ export class RockGenerationModule {
       
       if (variation.category === 'large' || variation.category === 'massive') {
         this.largeRockFormations.push(position.clone());
+        console.log(`🪨 Added clustered ${variation.category} rock formation`);
       }
       
       if (this.collisionRegistrationCallback && variation.category !== 'tiny') {
@@ -512,7 +534,7 @@ export class RockGenerationModule {
             break;
             
           default: // Smooth rounded pebbles
-            debrisGeometry = new THREE.SphereGeometry(debrisSize, 8, 6);
+            debrisGeometry = new THREE.SphereGeometry(debrisSize, 6, 4);
             // Apply gentle oval scaling
             const smoothScale = new THREE.Vector3(
               0.9 + Math.random() * 0.4,
