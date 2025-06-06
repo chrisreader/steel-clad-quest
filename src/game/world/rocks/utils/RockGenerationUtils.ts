@@ -59,21 +59,39 @@ export class RockGenerationUtils {
     return position;
   }
 
-  public static selectShapeByRole(rockShapes: RockShape[], role: ClusterRole, index: number): RockShape {
+  /**
+   * Select shape with spire formation logic for legacy accuracy
+   */
+  public static selectShapeByRole(rockShapes: RockShape[], role: ClusterRole, index: number, category?: RockCategory): RockShape {
     switch (role) {
       case 'foundation':
+        // Slabs prioritized for foundation (15-25% of total cluster)
+        if (this.shouldUseSlabForFoundation(index)) {
+          return rockShapes.find(s => s.type === 'slab') || rockShapes[0];
+        }
         const foundationShapes = rockShapes.filter(s => 
           s.type === 'boulder' || s.type === 'weathered' || s.type === 'slab'
         );
         return foundationShapes[index % foundationShapes.length];
         
       case 'support':
+        // Slabs can appear in support role, spires rarely
+        if (this.shouldUseSlabForSupport(index)) {
+          return rockShapes.find(s => s.type === 'slab') || rockShapes[0];
+        }
+        if (this.shouldUseSpireForSupport(index)) {
+          return rockShapes.find(s => s.type === 'spire') || rockShapes[0];
+        }
         const supportShapes = rockShapes.filter(s => 
-          s.type !== 'spire'
+          s.type !== 'spire' || Math.random() < 0.1 // rare spire in support
         );
         return supportShapes[index % supportShapes.length];
         
       case 'accent':
+        // 15-20% of accent rocks should be spires in medium/large clusters
+        if (this.shouldUseSpireForAccent(index, category)) {
+          return rockShapes.find(s => s.type === 'spire') || rockShapes[0];
+        }
         return rockShapes[index % rockShapes.length];
         
       default:
@@ -81,8 +99,77 @@ export class RockGenerationUtils {
     }
   }
 
-  public static applyRoleBasedRotation(rock: THREE.Object3D, role: ClusterRole): void {
-    if (role === 'foundation') {
+  /**
+   * Check if slab should be used for foundation (15-25% distribution)
+   */
+  private static shouldUseSlabForFoundation(index: number): boolean {
+    return (index % 5) === 0 || (index % 7) === 0; // ~20% chance
+  }
+
+  /**
+   * Check if slab should be used for support (part of 15-25% distribution)
+   */
+  private static shouldUseSlabForSupport(index: number): boolean {
+    return (index % 6) === 0; // ~17% chance
+  }
+
+  /**
+   * Check if spire should be used for support (rare occurrence)
+   */
+  private static shouldUseSpireForSupport(index: number): boolean {
+    return (index % 13) === 0; // ~8% chance (rare)
+  }
+
+  /**
+   * Legacy spire selection logic - 15-20% of accent rocks in medium/large clusters
+   */
+  private static shouldUseSpireForAccent(index: number, category?: RockCategory): boolean {
+    if (category !== 'medium' && category !== 'large' && category !== 'massive') {
+      return false; // No spires in tiny/small clusters
+    }
+    
+    // 15-20% chance for spires in accent role
+    const spireChance = 0.15 + Math.random() * 0.05; // 15-20%
+    const hashValue = (index * 31 + 17) % 100;
+    return hashValue < (spireChance * 100);
+  }
+
+  /**
+   * Check if accent spires should appear in pairs (30% chance)
+   */
+  public static shouldCreateSpirePair(index: number): boolean {
+    return (index % 10) < 3; // 30% chance
+  }
+
+  /**
+   * Apply role-based rotation with legacy spire tilting
+   */
+  public static applyRoleBasedRotation(rock: THREE.Object3D, role: ClusterRole, rockShape?: RockShape): void {
+    const r = Math.random;
+    
+    if (rockShape?.type === 'spire') {
+      // Legacy spire tilting - never upright, always dramatic
+      if (role === 'accent') {
+        rock.rotation.set(
+          Math.PI / 2 * (0.7 + r() * 0.3), // steep tilt
+          r() * Math.PI * 2,                // random rotation around Y
+          (r() - 0.5) * 0.2                 // subtle Z wobble
+        );
+      } else {
+        rock.rotation.set(
+          (r() - 0.5) * Math.PI * 0.35,     // diagonal lean
+          r() * Math.PI * 2,
+          (r() - 0.5) * Math.PI * 0.35
+        );
+      }
+    } else if (rockShape?.type === 'slab') {
+      // Legacy slab ground tilt
+      rock.rotation.set(
+        (r() - 0.5) * 0.05,  // slight ground tilt
+        r() * Math.PI * 2,
+        (r() - 0.5) * 0.05
+      );
+    } else if (role === 'foundation') {
       rock.rotation.set(
         Math.random() * 0.3,
         Math.random() * Math.PI * 2,
@@ -255,10 +342,12 @@ export class RockGenerationUtils {
   }
 
   /**
-   * Apply standardized rotation to mesh
+   * Apply standardized rotation to mesh with legacy spire/slab logic
    */
-  public static randomizeRotation(mesh: THREE.Object3D, role?: ClusterRole): void {
-    if (role) {
+  public static randomizeRotation(mesh: THREE.Object3D, role?: ClusterRole, rockShape?: RockShape): void {
+    if (role && rockShape) {
+      this.applyRoleBasedRotation(mesh, role, rockShape);
+    } else if (role) {
       this.applyRoleBasedRotation(mesh, role);
     } else {
       mesh.rotation.set(
