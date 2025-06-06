@@ -10,7 +10,6 @@ export { ROCK_SHAPES } from './config/RockShapeConfig';
 export { RockClusterGenerator } from './generators/RockClusterGenerator';
 export { RockShapeFactory } from './generators/RockShapeFactory';
 export { RockGenerationModule } from './generators/RockGenerationModule';
-export { DramaticRockShapeGenerator } from './generators/DramaticRockShapeGenerator';
 
 // Materials
 export { RockMaterialGenerator } from './materials/RockMaterialGenerator';
