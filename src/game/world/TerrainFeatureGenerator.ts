@@ -78,10 +78,12 @@ export class TerrainFeatureGenerator {
     for (let i = 0; i < treeCount; i++) {
       const x = centerPosition.x + (Math.random() - 0.5) * regionSize;
       const z = centerPosition.z + (Math.random() - 0.5) * regionSize;
+      const position = new THREE.Vector3(x, 0, z);
       
-      const tree = this.treeGenerator.createTree(i);
-      tree.position.set(x, 0, z);
-      regionGroup.add(tree);
+      const tree = this.treeGenerator.createTree(position);
+      if (tree) {
+        regionGroup.add(tree);
+      }
     }
 
     // Bush generation
@@ -89,10 +91,12 @@ export class TerrainFeatureGenerator {
     for (let i = 0; i < bushCount; i++) {
       const x = centerPosition.x + (Math.random() - 0.5) * regionSize;
       const z = centerPosition.z + (Math.random() - 0.5) * regionSize;
+      const position = new THREE.Vector3(x, 0, z);
       
-      const bush = this.bushGenerator.createBush(i);
-      bush.position.set(x, 0, z);
-      regionGroup.add(bush);
+      const bush = this.bushGenerator.createBush(position);
+      if (bush) {
+        regionGroup.add(bush);
+      }
     }
   }
 
