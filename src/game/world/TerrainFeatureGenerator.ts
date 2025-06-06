@@ -35,25 +35,25 @@ export class TerrainFeatureGenerator {
   private rockModels: THREE.Object3D[] = [];
   private bushModels: THREE.Object3D[] = [];
   
-  // UPDATED: Enhanced rock variations with shape personality system
+  // UPDATED: Fixed rock variations - tiny and small now use 'basic' personality for gentler deformation
   private rockVariations: RockVariation[] = [
-    { category: 'tiny', sizeRange: [0.05, 0.15], weight: 70, isCluster: false, shapePersonality: 'character' },
-    { category: 'small', sizeRange: [0.15, 0.4], weight: 20, isCluster: false, shapePersonality: 'character' },
+    { category: 'tiny', sizeRange: [0.05, 0.15], weight: 70, isCluster: false, shapePersonality: 'basic' },
+    { category: 'small', sizeRange: [0.15, 0.4], weight: 20, isCluster: false, shapePersonality: 'basic' },
     { category: 'medium', sizeRange: [0.4, 1.2], weight: 8, isCluster: false, shapePersonality: 'basic' },
     { category: 'large', sizeRange: [2.0, 4.0], weight: 0.8, isCluster: true, clusterSize: [3, 5], shapePersonality: 'character' },
     { category: 'massive', sizeRange: [4.0, 8.0], weight: 0.1, isCluster: true, clusterSize: [4, 7], shapePersonality: 'character' }
   ];
   
-  // UPDATED: Reduced deformation intensities to max 0.2
+  // UPDATED: Gentler rock shapes with size-appropriate modifiers
   private rockShapes: RockShape[] = [
-    { type: 'boulder', baseGeometry: 'icosahedron', deformationIntensity: 0.15, weatheringLevel: 0.6, shapeModifier: 'erode' },
-    { type: 'spire', baseGeometry: 'icosahedron', deformationIntensity: 0.2, weatheringLevel: 0.3, shapeModifier: 'stretch' },
-    { type: 'slab', baseGeometry: 'sphere', deformationIntensity: 0.1, weatheringLevel: 0.8, shapeModifier: 'flatten' },
-    { type: 'angular', baseGeometry: 'dodecahedron', deformationIntensity: 0.2, weatheringLevel: 0.4, shapeModifier: 'fracture' },
-    { type: 'weathered', baseGeometry: 'sphere', deformationIntensity: 0.2, weatheringLevel: 0.9, shapeModifier: 'erode' },
-    { type: 'flattened', baseGeometry: 'sphere', deformationIntensity: 0.15, weatheringLevel: 0.7, shapeModifier: 'flatten' },
-    { type: 'jagged', baseGeometry: 'icosahedron', deformationIntensity: 0.2, weatheringLevel: 0.5, shapeModifier: 'fracture' },
-    { type: 'cluster', baseGeometry: 'custom', deformationIntensity: 0.2, weatheringLevel: 0.6, shapeModifier: 'none' }
+    { type: 'boulder', baseGeometry: 'sphere', deformationIntensity: 0.08, weatheringLevel: 0.6, shapeModifier: 'erode' },
+    { type: 'weathered', baseGeometry: 'sphere', deformationIntensity: 0.06, weatheringLevel: 0.9, shapeModifier: 'erode' },
+    { type: 'slab', baseGeometry: 'sphere', deformationIntensity: 0.05, weatheringLevel: 0.8, shapeModifier: 'flatten' },
+    { type: 'flattened', baseGeometry: 'sphere', deformationIntensity: 0.07, weatheringLevel: 0.7, shapeModifier: 'flatten' },
+    { type: 'angular', baseGeometry: 'icosahedron', deformationIntensity: 0.12, weatheringLevel: 0.4, shapeModifier: 'none' },
+    { type: 'spire', baseGeometry: 'icosahedron', deformationIntensity: 0.15, weatheringLevel: 0.3, shapeModifier: 'stretch' },
+    { type: 'jagged', baseGeometry: 'dodecahedron', deformationIntensity: 0.18, weatheringLevel: 0.5, shapeModifier: 'fracture' },
+    { type: 'cluster', baseGeometry: 'custom', deformationIntensity: 0.1, weatheringLevel: 0.6, shapeModifier: 'none' }
   ];
   
   // Track spawned objects by region for cleanup
@@ -247,27 +247,34 @@ export class TerrainFeatureGenerator {
       }
     });
     
-    console.log(`🪨 Created ${this.rockModels.length} enhanced rock variations with restored character`);
+    console.log(`🪨 Created ${this.rockModels.length} enhanced rock variations with gentle small rocks`);
   }
   
-  // NEW: Create character rocks with aggressive shaping for small/individual rocks
+  // NEW: Create character rocks with size-appropriate shaping
   private createCharacterRock(rockGroup: THREE.Group, variation: RockVariation, index: number): void {
     const [minSize, maxSize] = variation.sizeRange;
     const rockSize = minSize + Math.random() * (maxSize - minSize);
     
-    // Select rock shape with more variety for character rocks
-    const rockShape = this.rockShapes[index % this.rockShapes.length];
+    // UPDATED: Select appropriate rock shapes based on size
+    let rockShape: RockShape;
+    if (variation.category === 'tiny' || variation.category === 'small') {
+      // Small rocks use only gentle shapes (first 4 in array)
+      const gentleShapes = this.rockShapes.slice(0, 4);
+      rockShape = gentleShapes[index % gentleShapes.length];
+    } else {
+      // Larger rocks can use all shapes
+      rockShape = this.rockShapes[index % this.rockShapes.length];
+    }
     
-    // Create base geometry with higher subdivision for character rocks
+    // Create base geometry with appropriate subdivision
     let rockGeometry = this.createCharacterBaseGeometry(rockShape, rockSize);
     
     // Apply shape-specific modifications
     this.applyShapeModifications(rockGeometry, rockShape, rockSize);
     
-    // Apply aggressive deformation for character rocks
-    const deformationIntensity = variation.shapePersonality === 'character' ? 
-      rockShape.deformationIntensity : rockShape.deformationIntensity * 0.3;
-    this.applyCharacterDeformation(rockGeometry, deformationIntensity, rockSize, rockShape);
+    // UPDATED: Apply size-appropriate deformation
+    const deformationIntensity = this.calculateSizeAdjustedDeformation(variation, rockShape, rockSize);
+    this.applyCharacterDeformation(rockGeometry, deformationIntensity, rockSize, rockShape, variation.category);
     
     // Validate and enhance geometry
     this.validateAndEnhanceGeometry(rockGeometry);
@@ -287,12 +294,40 @@ export class TerrainFeatureGenerator {
     
     rockGroup.add(mainRock);
     
-    // Add surface features for medium+ rocks
+    // Add surface features for medium+ rocks only
     if (variation.category === 'medium' || variation.category === 'large') {
       this.addSurfaceFeatures(rockGroup, rockSize, rockShape, rockMaterial);
     }
     
-    console.log(`🏔️ Created character ${variation.category} ${rockShape.type} rock with ${rockShape.shapeModifier} modifier`);
+    console.log(`🏔️ Created gentle ${variation.category} ${rockShape.type} rock with ${rockShape.shapeModifier} modifier`);
+  }
+  
+  // NEW: Calculate size-adjusted deformation intensity
+  private calculateSizeAdjustedDeformation(variation: RockVariation, rockShape: RockShape, rockSize: number): number {
+    let baseIntensity = rockShape.deformationIntensity;
+    
+    // UPDATED: Dramatically reduce deformation for small rocks
+    switch (variation.category) {
+      case 'tiny':
+        baseIntensity = Math.min(baseIntensity, 0.03); // Very gentle for tiny rocks
+        break;
+      case 'small':
+        baseIntensity = Math.min(baseIntensity, 0.05); // Gentle for small rocks
+        break;
+      case 'medium':
+        baseIntensity = Math.min(baseIntensity, 0.08); // Moderate for medium rocks
+        break;
+      default:
+        // Large and massive can use full intensity
+        break;
+    }
+    
+    // Further reduce based on personality
+    if (variation.shapePersonality === 'basic') {
+      baseIntensity *= 0.5; // Half intensity for basic personality
+    }
+    
+    return baseIntensity;
   }
   
   // NEW: Create enhanced base geometry for character rocks
@@ -301,16 +336,20 @@ export class TerrainFeatureGenerator {
     
     switch (rockShape.baseGeometry) {
       case 'icosahedron':
-        // Higher subdivision for character rocks
-        geometry = new THREE.IcosahedronGeometry(rockSize, 3);
+        // Lower subdivision for small rocks to prevent spikes
+        const subdivisions = rockSize < 0.4 ? 1 : 3;
+        geometry = new THREE.IcosahedronGeometry(rockSize, subdivisions);
         break;
         
       case 'sphere':
-        geometry = new THREE.SphereGeometry(rockSize, 24, 18);
+        // Lower detail for small rocks
+        const widthSegments = rockSize < 0.4 ? 12 : 24;
+        const heightSegments = rockSize < 0.4 ? 8 : 18;
+        geometry = new THREE.SphereGeometry(rockSize, widthSegments, heightSegments);
         break;
         
       case 'dodecahedron':
-        geometry = new THREE.DodecahedronGeometry(rockSize, 2);
+        geometry = new THREE.DodecahedronGeometry(rockSize, rockSize < 0.4 ? 1 : 2);
         break;
         
       case 'custom':
@@ -318,7 +357,7 @@ export class TerrainFeatureGenerator {
         break;
         
       default:
-        geometry = new THREE.IcosahedronGeometry(rockSize, 3);
+        geometry = new THREE.SphereGeometry(rockSize, 12, 8);
     }
     
     return geometry;
@@ -337,14 +376,13 @@ export class TerrainFeatureGenerator {
       
       const distance = Math.sqrt(x * x + y * y + z * z);
       
-      // Multiple noise octaves for character
+      // Gentler noise for organic variation
       const noise1 = Math.sin(x * 1.5) * Math.cos(y * 1.5) * Math.sin(z * 1.5);
-      const noise2 = Math.sin(x * 3) * Math.cos(z * 3) * 0.5;
-      const noise3 = Math.cos(y * 4) * Math.sin(x * 2) * 0.3;
-      const noise4 = Math.sin(x * 6) * Math.cos(y * 6) * Math.sin(z * 6) * 0.15;
+      const noise2 = Math.sin(x * 3) * Math.cos(z * 3) * 0.3; // Reduced intensity
+      const noise3 = Math.cos(y * 4) * Math.sin(x * 2) * 0.2; // Reduced intensity
       
-      // Combine noise layers for organic variation
-      const organicFactor = 1 + (noise1 * 0.25 + noise2 * 0.15 + noise3 * 0.1 + noise4 * 0.05);
+      // Combine noise layers for gentle organic variation
+      const organicFactor = 1 + (noise1 * 0.15 + noise2 * 0.1 + noise3 * 0.05); // Reduced overall
       
       if (distance > 0) {
         const normalizedX = x / distance;
@@ -378,7 +416,10 @@ export class TerrainFeatureGenerator {
         break;
         
       case 'fracture':
-        this.applyFractureModification(positions, rockSize);
+        // Only apply fracture to larger rocks
+        if (rockSize > 0.4) {
+          this.applyFractureModification(positions, rockSize);
+        }
         break;
         
       case 'erode':
@@ -395,15 +436,17 @@ export class TerrainFeatureGenerator {
   
   // NEW: Stretch modification for spires
   private applyStretchModification(positions: Float32Array, rockSize: number): void {
+    const intensity = rockSize < 0.4 ? 0.3 : 0.5; // Gentler for small rocks
+    
     for (let i = 0; i < positions.length; i += 3) {
       const y = positions[i + 1];
       
       // Vertical stretching with tapering
-      positions[i + 1] = y * (1.5 + Math.random() * 0.5);
+      positions[i + 1] = y * (1.2 + Math.random() * intensity);
       
       // Taper the sides
       const height = Math.abs(positions[i + 1]);
-      const taperFactor = Math.max(0.3, 1 - height / (rockSize * 2));
+      const taperFactor = Math.max(0.5, 1 - height / (rockSize * 2));
       positions[i] *= taperFactor;
       positions[i + 2] *= taperFactor;
     }
@@ -411,26 +454,30 @@ export class TerrainFeatureGenerator {
   
   // NEW: Flatten modification for slabs
   private applyFlattenModification(positions: Float32Array, rockSize: number): void {
+    const intensity = rockSize < 0.4 ? 0.4 : 0.3; // Gentler flattening for small rocks
+    
     for (let i = 0; i < positions.length; i += 3) {
       // Flatten vertically and widen horizontally
-      positions[i + 1] *= 0.3 + Math.random() * 0.2; // Very flat
-      positions[i] *= 1.3 + Math.random() * 0.4; // Wider
-      positions[i + 2] *= 1.3 + Math.random() * 0.4; // Wider
+      positions[i + 1] *= intensity + Math.random() * 0.1;
+      positions[i] *= 1.2 + Math.random() * 0.2;
+      positions[i + 2] *= 1.2 + Math.random() * 0.2;
     }
   }
   
-  // NEW: Fracture modification for angular rocks
+  // NEW: Fracture modification for angular rocks (only for larger rocks)
   private applyFractureModification(positions: Float32Array, rockSize: number): void {
+    const intensity = Math.min(0.1, rockSize * 0.05); // Size-based intensity
+    
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const y = positions[i + 1];
       const z = positions[i + 2];
       
-      // Create angular facets
-      const facetNoise = Math.floor(x * 3) + Math.floor(y * 3) + Math.floor(z * 3);
-      const facetIntensity = (facetNoise % 3) * 0.1;
+      // Create gentle angular facets
+      const facetNoise = Math.floor(x * 2) + Math.floor(y * 2) + Math.floor(z * 2);
+      const facetIntensity = (facetNoise % 3) * intensity;
       
-      // Sharp angular modifications
+      // Gentle angular modifications
       positions[i] += Math.sign(x) * facetIntensity;
       positions[i + 1] += Math.sign(y) * facetIntensity;
       positions[i + 2] += Math.sign(z) * facetIntensity;
@@ -439,14 +486,16 @@ export class TerrainFeatureGenerator {
   
   // NEW: Erosion modification for weathered rocks
   private applyErosionModification(positions: Float32Array, rockSize: number): void {
+    const intensity = Math.min(0.08, rockSize * 0.1); // Size-based intensity
+    
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const y = positions[i + 1];
       const z = positions[i + 2];
       
-      // Smooth erosion patterns
-      const erosion1 = Math.sin(x * 2) * Math.cos(y * 2) * 0.15;
-      const erosion2 = Math.sin(z * 3) * Math.cos(x * 1.5) * 0.1;
+      // Gentle erosion patterns
+      const erosion1 = Math.sin(x * 2) * Math.cos(y * 2) * intensity;
+      const erosion2 = Math.sin(z * 3) * Math.cos(x * 1.5) * intensity * 0.5;
       
       const totalErosion = erosion1 + erosion2;
       
@@ -464,24 +513,90 @@ export class TerrainFeatureGenerator {
     }
   }
   
-  // ENHANCED: Character deformation with personality-based intensity
+  // UPDATED: Character deformation with size-based intensity and smoothing
   private applyCharacterDeformation(
     geometry: THREE.BufferGeometry, 
     intensity: number, 
     rockSize: number, 
-    rockShape: RockShape
+    rockShape: RockShape,
+    category: string
   ): void {
-    // Apply multiple deformation passes for character
+    // Apply gentle organic noise deformation only
     this.applyOrganicNoiseDeformation(geometry, intensity, rockSize);
-    this.applyDetailDeformation(geometry, intensity * 0.5, rockSize * 0.4);
     
-    // Add surface roughness for weathered rocks
-    if (rockShape.weatheringLevel > 0.7) {
-      this.applySurfaceRoughness(geometry, intensity * 0.3, rockSize * 0.2);
+    // Skip detail deformation and surface roughness for small rocks
+    if (category !== 'tiny' && category !== 'small') {
+      this.applyDetailDeformation(geometry, intensity * 0.3, rockSize * 0.4);
+      
+      if (rockShape.weatheringLevel > 0.7) {
+        this.applySurfaceRoughness(geometry, intensity * 0.2, rockSize * 0.2);
+      }
+    }
+    
+    // Apply extra smoothing for small rocks
+    if (rockSize < 0.4) {
+      this.applyExtraSmoothing(geometry);
     }
     
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
+  }
+  
+  // NEW: Extra smoothing for small rocks to eliminate spikes
+  private applyExtraSmoothing(geometry: THREE.BufferGeometry): void {
+    const positions = geometry.attributes.position.array as Float32Array;
+    const smoothedPositions = new Float32Array(positions.length);
+    
+    // Copy original positions
+    for (let i = 0; i < positions.length; i++) {
+      smoothedPositions[i] = positions[i];
+    }
+    
+    // Apply multiple smoothing passes
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i];
+        const y = positions[i + 1];
+        const z = positions[i + 2];
+        
+        // Find nearby vertices and average their positions
+        let avgX = x, avgY = y, avgZ = z;
+        let count = 1;
+        
+        for (let j = 0; j < positions.length; j += 3) {
+          if (j !== i) {
+            const dx = positions[j] - x;
+            const dy = positions[j + 1] - y;
+            const dz = positions[j + 2] - z;
+            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            
+            if (distance < 0.2) { // Nearby vertices
+              avgX += positions[j];
+              avgY += positions[j + 1];
+              avgZ += positions[j + 2];
+              count++;
+            }
+          }
+        }
+        
+        if (count > 1) {
+          avgX /= count;
+          avgY /= count;
+          avgZ /= count;
+          
+          // Blend towards average (smoothing)
+          const smoothFactor = 0.3;
+          smoothedPositions[i] = x * (1 - smoothFactor) + avgX * smoothFactor;
+          smoothedPositions[i + 1] = y * (1 - smoothFactor) + avgY * smoothFactor;
+          smoothedPositions[i + 2] = z * (1 - smoothFactor) + avgZ * smoothFactor;
+        }
+      }
+      
+      // Apply smoothed positions for next pass
+      for (let i = 0; i < positions.length; i++) {
+        positions[i] = smoothedPositions[i];
+      }
+    }
   }
   
   // NEW: Organic noise deformation
@@ -493,10 +608,10 @@ export class TerrainFeatureGenerator {
       const y = positions[i + 1];
       const z = positions[i + 2];
       
-      // Multi-octave organic noise
+      // Gentle multi-octave organic noise
       const noise1 = Math.sin(x / scale) * Math.cos(y / scale) * Math.sin(z / scale);
-      const noise2 = Math.sin(x / scale * 2) * Math.cos(z / scale * 2) * 0.5;
-      const noise3 = Math.cos(y / scale * 3) * Math.sin(x / scale * 3) * 0.25;
+      const noise2 = Math.sin(x / scale * 2) * Math.cos(z / scale * 2) * 0.3; // Reduced
+      const noise3 = Math.cos(y / scale * 3) * Math.sin(x / scale * 3) * 0.15; // Reduced
       
       const combinedNoise = noise1 + noise2 + noise3;
       
@@ -525,7 +640,7 @@ export class TerrainFeatureGenerator {
       const z = positions[i + 2];
       
       // High-frequency detail noise
-      const detailNoise = Math.sin(x / scale * 8) * Math.cos(y / scale * 8) * Math.sin(z / scale * 8);
+      const detailNoise = Math.sin(x / scale * 6) * Math.cos(y / scale * 6) * Math.sin(z / scale * 6);
       
       const length = Math.sqrt(x * x + y * y + z * z);
       if (length > 0) {
@@ -551,7 +666,7 @@ export class TerrainFeatureGenerator {
       const z = positions[i + 2];
       
       // Very fine surface roughness
-      const roughness = Math.sin(x / scale * 12) * Math.cos(y / scale * 12) * Math.sin(z / scale * 12);
+      const roughness = Math.sin(x / scale * 8) * Math.cos(y / scale * 8) * Math.sin(z / scale * 8);
       
       const length = Math.sqrt(x * x + y * y + z * z);
       if (length > 0) {
@@ -964,7 +1079,7 @@ export class TerrainFeatureGenerator {
     // Apply deformation based on role
     const deformationIntensity = role === 'accent' ? 
       rockShape.deformationIntensity : rockShape.deformationIntensity * 0.7;
-    this.applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape);
+    this.applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape, variation.category);
     
     // Validate geometry
     this.validateAndEnhanceGeometry(geometry);
