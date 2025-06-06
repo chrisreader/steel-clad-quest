@@ -1,7 +1,7 @@
+
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
-import { ROCK_VARIATIONS, RockVariation } from './rocks/config/RockVariationConfig';
-import { ROCK_SHAPES, RockShape } from './rocks/config/RockShapeConfig';
+import { ROCK_VARIATIONS, ROCK_SHAPES, RockVariation, RockShape } from './rocks';
 import { RockMaterialGenerator } from './rocks/materials/RockMaterialGenerator';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
 import { TreeGenerator, BushGenerator } from './vegetation';
