@@ -261,13 +261,13 @@ export class TerrainFeatureGenerator {
     // Create base geometry with higher subdivision for character rocks
     let rockGeometry = this.createCharacterBaseGeometry(rockShape, rockSize);
     
-    // Apply shape-specific modifications
-    this.applyShapeModifications(rockGeometry, rockShape, rockSize);
+    // Apply topology-aware shape modifications
+    this.applyTopologyAwareShapeModifications(rockGeometry, rockShape, rockSize);
     
-    // Apply aggressive deformation for character rocks
+    // Apply topology-aware deformation for character rocks
     const deformationIntensity = variation.shapePersonality === 'character' ? 
       rockShape.deformationIntensity : rockShape.deformationIntensity * 0.3;
-    this.applyCharacterDeformation(rockGeometry, deformationIntensity, rockSize, rockShape);
+    this.applyTopologyAwareCharacterDeformation(rockGeometry, deformationIntensity, rockSize, rockShape);
     
     // Validate and enhance geometry
     this.validateAndEnhanceGeometry(rockGeometry);
@@ -327,62 +327,55 @@ export class TerrainFeatureGenerator {
   // ENHANCED: Organic boulder geometry with better character
   private createOrganicBoulderGeometry(rockSize: number): THREE.BufferGeometry {
     const geometry = new THREE.SphereGeometry(rockSize, 20, 16);
-    const positions = geometry.attributes.position.array as Float32Array;
+    const positions = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
     
     // Create organic variation with multiple noise layers
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
       
-      const distance = Math.sqrt(x * x + y * y + z * z);
+      const distance = vertex.length();
       
       // Multiple noise octaves for character
-      const noise1 = Math.sin(x * 1.5) * Math.cos(y * 1.5) * Math.sin(z * 1.5);
-      const noise2 = Math.sin(x * 3) * Math.cos(z * 3) * 0.5;
-      const noise3 = Math.cos(y * 4) * Math.sin(x * 2) * 0.3;
-      const noise4 = Math.sin(x * 6) * Math.cos(y * 6) * Math.sin(z * 6) * 0.15;
+      const noise1 = Math.sin(vertex.x * 1.5) * Math.cos(vertex.y * 1.5) * Math.sin(vertex.z * 1.5);
+      const noise2 = Math.sin(vertex.x * 3) * Math.cos(vertex.z * 3) * 0.5;
+      const noise3 = Math.cos(vertex.y * 4) * Math.sin(vertex.x * 2) * 0.3;
+      const noise4 = Math.sin(vertex.x * 6) * Math.cos(vertex.y * 6) * Math.sin(vertex.z * 6) * 0.15;
       
       // Combine noise layers for organic variation
       const organicFactor = 1 + (noise1 * 0.25 + noise2 * 0.15 + noise3 * 0.1 + noise4 * 0.05);
       
       if (distance > 0) {
-        const normalizedX = x / distance;
-        const normalizedY = y / distance;
-        const normalizedZ = z / distance;
-        
-        const newDistance = distance * organicFactor;
-        positions[i] = normalizedX * newDistance;
-        positions[i + 1] = normalizedY * newDistance;
-        positions[i + 2] = normalizedZ * newDistance;
+        vertex.normalize().multiplyScalar(distance * organicFactor);
+        positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
       }
     }
     
-    geometry.attributes.position.needsUpdate = true;
+    positions.needsUpdate = true;
     geometry.computeVertexNormals();
     
     return geometry;
   }
   
-  // NEW: Apply shape-specific modifications
-  private applyShapeModifications(geometry: THREE.BufferGeometry, rockShape: RockShape, rockSize: number): void {
-    const positions = geometry.attributes.position.array as Float32Array;
+  // NEW: Topology-aware shape modifications - FIXED VERSION
+  private applyTopologyAwareShapeModifications(geometry: THREE.BufferGeometry, rockShape: RockShape, rockSize: number): void {
+    const neighbors = this.buildTopologyNeighborMap(geometry);
     
     switch (rockShape.shapeModifier) {
       case 'stretch':
-        this.applyStretchModification(positions, rockSize);
+        this.applyTopologyAwareStretchModification(geometry, neighbors, rockSize);
         break;
         
       case 'flatten':
-        this.applyFlattenModification(positions, rockSize);
+        this.applyTopologyAwareFlattenModification(geometry, neighbors, rockSize);
         break;
         
       case 'fracture':
-        this.applyFractureModification(positions, rockSize);
+        this.applyTopologyAwareFractureModification(geometry, neighbors, rockSize);
         break;
         
       case 'erode':
-        this.applyErosionModification(positions, rockSize);
+        this.applyTopologyAwareErosionModification(geometry, neighbors, rockSize);
         break;
         
       default:
@@ -393,264 +386,356 @@ export class TerrainFeatureGenerator {
     geometry.computeVertexNormals();
   }
   
-  // NEW: Stretch modification for spires
-  private applyStretchModification(positions: Float32Array, rockSize: number): void {
-    for (let i = 0; i < positions.length; i += 3) {
-      const y = positions[i + 1];
-      
-      // Vertical stretching with tapering
-      positions[i + 1] = y * (1.5 + Math.random() * 0.5);
-      
-      // Taper the sides
-      const height = Math.abs(positions[i + 1]);
-      const taperFactor = Math.max(0.3, 1 - height / (rockSize * 2));
-      positions[i] *= taperFactor;
-      positions[i + 2] *= taperFactor;
-    }
-  }
-  
-  // NEW: Flatten modification for slabs
-  private applyFlattenModification(positions: Float32Array, rockSize: number): void {
-    for (let i = 0; i < positions.length; i += 3) {
-      // Flatten vertically and widen horizontally
-      positions[i + 1] *= 0.3 + Math.random() * 0.2; // Very flat
-      positions[i] *= 1.3 + Math.random() * 0.4; // Wider
-      positions[i + 2] *= 1.3 + Math.random() * 0.4; // Wider
-    }
-  }
-  
-  // NEW: Fracture modification for angular rocks
-  private applyFractureModification(positions: Float32Array, rockSize: number): void {
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-      
-      // Create angular facets
-      const facetNoise = Math.floor(x * 3) + Math.floor(y * 3) + Math.floor(z * 3);
-      const facetIntensity = (facetNoise % 3) * 0.1;
-      
-      // Sharp angular modifications
-      positions[i] += Math.sign(x) * facetIntensity;
-      positions[i + 1] += Math.sign(y) * facetIntensity;
-      positions[i + 2] += Math.sign(z) * facetIntensity;
-    }
-  }
-  
-  // NEW: Erosion modification for weathered rocks
-  private applyErosionModification(positions: Float32Array, rockSize: number): void {
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-      
-      // Smooth erosion patterns
-      const erosion1 = Math.sin(x * 2) * Math.cos(y * 2) * 0.15;
-      const erosion2 = Math.sin(z * 3) * Math.cos(x * 1.5) * 0.1;
-      
-      const totalErosion = erosion1 + erosion2;
-      
-      // Apply erosion along surface normal
-      const length = Math.sqrt(x * x + y * y + z * z);
-      if (length > 0) {
-        const normalX = x / length;
-        const normalY = y / length;
-        const normalZ = z / length;
+  // NEW: Build neighbor map for topology awareness
+  private buildTopologyNeighborMap(geometry: THREE.BufferGeometry): number[][] {
+    const positions = geometry.attributes.position;
+    const indices = geometry.index;
+    const neighbors: number[][] = Array.from({ length: positions.count }, () => []);
+    
+    if (indices) {
+      for (let i = 0; i < indices.count; i += 3) {
+        const a = indices.getX(i);
+        const b = indices.getX(i + 1);
+        const c = indices.getX(i + 2);
         
-        positions[i] += normalX * totalErosion;
-        positions[i + 1] += normalY * totalErosion;
-        positions[i + 2] += normalZ * totalErosion;
+        // Add neighbors for each vertex in the triangle
+        if (!neighbors[a].includes(b)) neighbors[a].push(b);
+        if (!neighbors[a].includes(c)) neighbors[a].push(c);
+        if (!neighbors[b].includes(a)) neighbors[b].push(a);
+        if (!neighbors[b].includes(c)) neighbors[b].push(c);
+        if (!neighbors[c].includes(a)) neighbors[c].push(a);
+        if (!neighbors[c].includes(b)) neighbors[c].push(b);
       }
     }
+    
+    return neighbors;
   }
   
-  // ENHANCED: Character deformation with personality-based intensity
-  private applyCharacterDeformation(
+  // NEW: Calculate maximum safe displacement based on neighbors
+  private calculateMaxSafeDisplacement(vertex: THREE.Vector3, neighbors: THREE.Vector3[]): number {
+    if (neighbors.length === 0) return 0.1;
+    
+    let minDistance = Infinity;
+    for (const neighbor of neighbors) {
+      const distance = vertex.distanceTo(neighbor);
+      minDistance = Math.min(minDistance, distance);
+    }
+    
+    // Limit displacement to 20% of minimum neighbor distance to prevent gaps
+    return minDistance * 0.2;
+  }
+  
+  // NEW: Topology-aware stretch modification
+  private applyTopologyAwareStretchModification(geometry: THREE.BufferGeometry, neighbors: number[][], rockSize: number): void {
+    const positions = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
+      
+      // Get neighbor positions for constraint checking
+      const neighborPositions = neighbors[i].map(idx => {
+        const neighbor = new THREE.Vector3();
+        neighbor.fromBufferAttribute(positions, idx);
+        return neighbor;
+      });
+      
+      const maxDisplacement = this.calculateMaxSafeDisplacement(vertex, neighborPositions);
+      
+      // Vertical stretching with constrained tapering
+      const originalY = vertex.y;
+      vertex.y = originalY * (1.5 + Math.random() * 0.5);
+      
+      // Constrained taper the sides
+      const height = Math.abs(vertex.y);
+      const taperFactor = Math.max(0.3, 1 - height / (rockSize * 2));
+      const taperDisplacement = Math.min((1 - taperFactor) * 0.3, maxDisplacement);
+      
+      vertex.x *= (taperFactor + taperDisplacement);
+      vertex.z *= (taperFactor + taperDisplacement);
+      
+      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    }
+  }
+  
+  // NEW: Topology-aware flatten modification
+  private applyTopologyAwareFlattenModification(geometry: THREE.BufferGeometry, neighbors: number[][], rockSize: number): void {
+    const positions = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
+      
+      // Get neighbor positions for constraint checking
+      const neighborPositions = neighbors[i].map(idx => {
+        const neighbor = new THREE.Vector3();
+        neighbor.fromBufferAttribute(positions, idx);
+        return neighbor;
+      });
+      
+      const maxDisplacement = this.calculateMaxSafeDisplacement(vertex, neighborPositions);
+      
+      // Constrained flatten vertically and widen horizontally
+      const flattenAmount = Math.min(0.7, maxDisplacement / rockSize);
+      const widenAmount = Math.min(0.4, maxDisplacement / rockSize);
+      
+      vertex.y *= (0.3 + flattenAmount * 0.2); // Very flat but constrained
+      vertex.x *= (1.3 + widenAmount); // Wider but constrained
+      vertex.z *= (1.3 + widenAmount); // Wider but constrained
+      
+      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    }
+  }
+  
+  // NEW: Topology-aware fracture modification - FIXED TO PREVENT GAPS
+  private applyTopologyAwareFractureModification(geometry: THREE.BufferGeometry, neighbors: number[][], rockSize: number): void {
+    const positions = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
+      
+      // Get neighbor positions for constraint checking
+      const neighborPositions = neighbors[i].map(idx => {
+        const neighbor = new THREE.Vector3();
+        neighbor.fromBufferAttribute(positions, idx);
+        return neighbor;
+      });
+      
+      const maxDisplacement = this.calculateMaxSafeDisplacement(vertex, neighborPositions);
+      
+      // Create constrained angular facets
+      const facetNoise = Math.floor(vertex.x * 3) + Math.floor(vertex.y * 3) + Math.floor(vertex.z * 3);
+      const facetIntensity = Math.min((facetNoise % 3) * 0.1, maxDisplacement);
+      
+      // Apply controlled angular modifications along surface normal
+      const length = vertex.length();
+      if (length > 0) {
+        const normal = vertex.clone().normalize();
+        const displacement = normal.multiplyScalar(facetIntensity);
+        vertex.add(displacement);
+      }
+      
+      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    }
+  }
+  
+  // NEW: Topology-aware erosion modification
+  private applyTopologyAwareErosionModification(geometry: THREE.BufferGeometry, neighbors: number[][], rockSize: number): void {
+    const positions = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
+      
+      // Get neighbor positions for constraint checking
+      const neighborPositions = neighbors[i].map(idx => {
+        const neighbor = new THREE.Vector3();
+        neighbor.fromBufferAttribute(positions, idx);
+        return neighbor;
+      });
+      
+      const maxDisplacement = this.calculateMaxSafeDisplacement(vertex, neighborPositions);
+      
+      // Constrained smooth erosion patterns
+      const erosion1 = Math.sin(vertex.x * 2) * Math.cos(vertex.y * 2) * 0.15;
+      const erosion2 = Math.sin(vertex.z * 3) * Math.cos(vertex.x * 1.5) * 0.1;
+      
+      const totalErosion = Math.min(Math.abs(erosion1 + erosion2), maxDisplacement) * Math.sign(erosion1 + erosion2);
+      
+      // Apply erosion along surface normal
+      const length = vertex.length();
+      if (length > 0) {
+        const normal = vertex.clone().normalize();
+        vertex.add(normal.multiplyScalar(totalErosion));
+      }
+      
+      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    }
+  }
+  
+  // ENHANCED: Topology-aware character deformation
+  private applyTopologyAwareCharacterDeformation(
     geometry: THREE.BufferGeometry, 
     intensity: number, 
     rockSize: number, 
     rockShape: RockShape
   ): void {
-    // Apply multiple deformation passes for character
-    this.applyOrganicNoiseDeformation(geometry, intensity, rockSize);
-    this.applyDetailDeformation(geometry, intensity * 0.5, rockSize * 0.4);
+    const neighbors = this.buildTopologyNeighborMap(geometry);
+    
+    // Apply multiple deformation passes for character with topology awareness
+    this.applyTopologyAwareOrganicNoiseDeformation(geometry, neighbors, intensity, rockSize);
+    this.applyTopologyAwareDetailDeformation(geometry, neighbors, intensity * 0.5, rockSize * 0.4);
     
     // Add surface roughness for weathered rocks
     if (rockShape.weatheringLevel > 0.7) {
-      this.applySurfaceRoughness(geometry, intensity * 0.3, rockSize * 0.2);
+      this.applyTopologyAwareSurfaceRoughness(geometry, neighbors, intensity * 0.3, rockSize * 0.2);
     }
     
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
   }
   
-  // NEW: Organic noise deformation
-  private applyOrganicNoiseDeformation(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
-    const positions = geometry.attributes.position.array as Float32Array;
+  // NEW: Topology-aware organic noise deformation
+  private applyTopologyAwareOrganicNoiseDeformation(geometry: THREE.BufferGeometry, neighbors: number[][], intensity: number, scale: number): void {
+    const positions = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
     
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
+      
+      // Get neighbor positions for constraint checking
+      const neighborPositions = neighbors[i].map(idx => {
+        const neighbor = new THREE.Vector3();
+        neighbor.fromBufferAttribute(positions, idx);
+        return neighbor;
+      });
+      
+      const maxDisplacement = this.calculateMaxSafeDisplacement(vertex, neighborPositions);
       
       // Multi-octave organic noise
-      const noise1 = Math.sin(x / scale) * Math.cos(y / scale) * Math.sin(z / scale);
-      const noise2 = Math.sin(x / scale * 2) * Math.cos(z / scale * 2) * 0.5;
-      const noise3 = Math.cos(y / scale * 3) * Math.sin(x / scale * 3) * 0.25;
+      const noise1 = Math.sin(vertex.x / scale) * Math.cos(vertex.y / scale) * Math.sin(vertex.z / scale);
+      const noise2 = Math.sin(vertex.x / scale * 2) * Math.cos(vertex.z / scale * 2) * 0.5;
+      const noise3 = Math.cos(vertex.y / scale * 3) * Math.sin(vertex.x / scale * 3) * 0.25;
       
       const combinedNoise = noise1 + noise2 + noise3;
+      const constrainedDisplacement = Math.min(Math.abs(combinedNoise * intensity), maxDisplacement) * Math.sign(combinedNoise);
       
       // Apply along surface normal
-      const length = Math.sqrt(x * x + y * y + z * z);
+      const length = vertex.length();
       if (length > 0) {
-        const normalX = x / length;
-        const normalY = y / length;
-        const normalZ = z / length;
-        
-        const displacement = combinedNoise * intensity;
-        positions[i] += normalX * displacement;
-        positions[i + 1] += normalY * displacement;
-        positions[i + 2] += normalZ * displacement;
+        const normal = vertex.clone().normalize();
+        vertex.add(normal.multiplyScalar(constrainedDisplacement));
       }
+      
+      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
   }
   
-  // NEW: Detail deformation for surface texture
-  private applyDetailDeformation(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
-    const positions = geometry.attributes.position.array as Float32Array;
+  // NEW: Topology-aware detail deformation
+  private applyTopologyAwareDetailDeformation(geometry: THREE.BufferGeometry, neighbors: number[][], intensity: number, scale: number): void {
+    const positions = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
     
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
+      
+      // Get neighbor positions for constraint checking
+      const neighborPositions = neighbors[i].map(idx => {
+        const neighbor = new THREE.Vector3();
+        neighbor.fromBufferAttribute(positions, idx);
+        return neighbor;
+      });
+      
+      const maxDisplacement = this.calculateMaxSafeDisplacement(vertex, neighborPositions);
       
       // High-frequency detail noise
-      const detailNoise = Math.sin(x / scale * 8) * Math.cos(y / scale * 8) * Math.sin(z / scale * 8);
+      const detailNoise = Math.sin(vertex.x / scale * 8) * Math.cos(vertex.y / scale * 8) * Math.sin(vertex.z / scale * 8);
+      const constrainedDisplacement = Math.min(Math.abs(detailNoise * intensity), maxDisplacement) * Math.sign(detailNoise);
       
-      const length = Math.sqrt(x * x + y * y + z * z);
+      const length = vertex.length();
       if (length > 0) {
-        const normalX = x / length;
-        const normalY = y / length;
-        const normalZ = z / length;
-        
-        const displacement = detailNoise * intensity;
-        positions[i] += normalX * displacement;
-        positions[i + 1] += normalY * displacement;
-        positions[i + 2] += normalZ * displacement;
+        const normal = vertex.clone().normalize();
+        vertex.add(normal.multiplyScalar(constrainedDisplacement));
       }
+      
+      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
   }
   
-  // NEW: Surface roughness for weathered rocks
-  private applySurfaceRoughness(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
-    const positions = geometry.attributes.position.array as Float32Array;
+  // NEW: Topology-aware surface roughness
+  private applyTopologyAwareSurfaceRoughness(geometry: THREE.BufferGeometry, neighbors: number[][], intensity: number, scale: number): void {
+    const positions = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
     
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
+      
+      // Get neighbor positions for constraint checking
+      const neighborPositions = neighbors[i].map(idx => {
+        const neighbor = new THREE.Vector3();
+        neighbor.fromBufferAttribute(positions, idx);
+        return neighbor;
+      });
+      
+      const maxDisplacement = this.calculateMaxSafeDisplacement(vertex, neighborPositions);
       
       // Very fine surface roughness
-      const roughness = Math.sin(x / scale * 12) * Math.cos(y / scale * 12) * Math.sin(z / scale * 12);
+      const roughness = Math.sin(vertex.x / scale * 12) * Math.cos(vertex.y / scale * 12) * Math.sin(vertex.z / scale * 12);
+      const constrainedDisplacement = Math.min(Math.abs(roughness * intensity), maxDisplacement) * Math.sign(roughness);
       
-      const length = Math.sqrt(x * x + y * y + z * z);
+      const length = vertex.length();
       if (length > 0) {
-        const normalX = x / length;
-        const normalY = y / length;
-        const normalZ = z / length;
-        
-        const displacement = roughness * intensity;
-        positions[i] += normalX * displacement;
-        positions[i + 1] += normalY * displacement;
-        positions[i + 2] += normalZ * displacement;
+        const normal = vertex.clone().normalize();
+        vertex.add(normal.multiplyScalar(constrainedDisplacement));
       }
+      
+      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
   }
   
   // ENHANCED: Geometry validation with repair capabilities
   private validateAndEnhanceGeometry(geometry: THREE.BufferGeometry): void {
-    const positions = geometry.attributes.position.array as Float32Array;
+    const positions = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
     
     // Fix invalid values
-    for (let i = 0; i < positions.length; i++) {
-      if (!isFinite(positions[i])) {
-        positions[i] = 0;
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
+      if (!isFinite(vertex.x) || !isFinite(vertex.y) || !isFinite(vertex.z)) {
+        positions.setXYZ(i, 0, 0, 0);
         console.warn('🔧 Fixed invalid vertex position');
       }
     }
     
-    // Smooth any extreme vertices that might cause visual artifacts
-    this.smoothExtremeVertices(geometry);
+    // Apply topology-aware smoothing to eliminate any remaining issues
+    this.applyTopologyAwareSmoothing(geometry);
     
-    geometry.attributes.position.needsUpdate = true;
+    positions.needsUpdate = true;
     geometry.computeVertexNormals();
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
   }
   
-  // NEW: Smooth extreme vertices
-  private smoothExtremeVertices(geometry: THREE.BufferGeometry): void {
-    const positions = geometry.attributes.position.array as Float32Array;
-    const tempPositions = new Float32Array(positions.length);
+  // NEW: Topology-aware smoothing to fix any remaining mesh issues
+  private applyTopologyAwareSmoothing(geometry: THREE.BufferGeometry): void {
+    const positions = geometry.attributes.position;
+    const neighbors = this.buildTopologyNeighborMap(geometry);
+    const vertex = new THREE.Vector3();
+    const smoothedPositions: THREE.Vector3[] = [];
     
-    // Copy original positions
-    for (let i = 0; i < positions.length; i++) {
-      tempPositions[i] = positions[i];
-    }
+    // Light smoothing to maintain character while fixing topology issues
+    const smoothingIntensity = 0.15;
     
-    // Smooth vertices that are too far from their neighbors
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
       
-      const currentLength = Math.sqrt(x * x + y * y + z * z);
-      
-      // Find average distance of nearby vertices
-      let avgLength = 0;
-      let count = 0;
-      
-      for (let j = 0; j < positions.length; j += 3) {
-        if (j !== i) {
-          const dx = positions[j] - x;
-          const dy = positions[j + 1] - y;
-          const dz = positions[j + 2] - z;
-          const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-          
-          if (distance < currentLength * 0.5) { // Nearby vertices
-            const neighborLength = Math.sqrt(
-              positions[j] * positions[j] + 
-              positions[j + 1] * positions[j + 1] + 
-              positions[j + 2] * positions[j + 2]
-            );
-            avgLength += neighborLength;
-            count++;
-          }
+      if (neighbors[i].length > 0) {
+        // Calculate neighbor centroid
+        const centroid = new THREE.Vector3();
+        for (const neighborIdx of neighbors[i]) {
+          const neighbor = new THREE.Vector3();
+          neighbor.fromBufferAttribute(positions, neighborIdx);
+          centroid.add(neighbor);
         }
-      }
-      
-      if (count > 0) {
-        avgLength /= count;
+        centroid.divideScalar(neighbors[i].length);
         
-        // If current vertex is too far from average, smooth it
-        if (Math.abs(currentLength - avgLength) > avgLength * 0.3) {
-          const smoothFactor = 0.7; // Blend towards average
-          const targetLength = currentLength * (1 - smoothFactor) + avgLength * smoothFactor;
-          
-          if (currentLength > 0) {
-            const scale = targetLength / currentLength;
-            tempPositions[i] = x * scale;
-            tempPositions[i + 1] = y * scale;
-            tempPositions[i + 2] = z * scale;
-          }
-        }
+        // Apply light smoothing
+        const smoothed = vertex.clone().lerp(centroid, smoothingIntensity);
+        smoothedPositions.push(smoothed);
+      } else {
+        smoothedPositions.push(vertex.clone());
       }
     }
     
-    // Apply smoothed positions
-    for (let i = 0; i < positions.length; i++) {
-      positions[i] = tempPositions[i];
+    // Update geometry with smoothed positions
+    for (let i = 0; i < smoothedPositions.length; i++) {
+      const pos = smoothedPositions[i];
+      positions.setXYZ(i, pos.x, pos.y, pos.z);
     }
+    
+    positions.needsUpdate = true;
+    geometry.computeVertexNormals();
   }
   
   // ENHANCED: Rock material with better weathering and variety
@@ -697,8 +782,6 @@ export class TerrainFeatureGenerator {
     
     return material;
   }
-  
-  // ... keep existing code (all remaining methods - addSurfaceFeatures through dispose - remain exactly the same)
   
   private addSurfaceFeatures(
     rockGroup: THREE.Group, 
@@ -841,8 +924,6 @@ export class TerrainFeatureGenerator {
     }
   }
   
-  // ... keep existing code (all remaining methods through dispose remain exactly the same)
-  
   // COMPLETELY REWRITTEN: Enhanced cluster generation with varied shapes and realistic stacking
   private createVariedRockCluster(rockGroup: THREE.Group, variation: RockVariation, index: number): void {
     const [minSize, maxSize] = variation.sizeRange;
@@ -958,13 +1039,13 @@ export class TerrainFeatureGenerator {
     // Create base geometry
     let geometry = this.createCharacterBaseGeometry(rockShape, rockSize);
     
-    // Apply role-specific modifications
-    this.applyShapeModifications(geometry, rockShape, rockSize);
+    // Apply topology-aware role-specific modifications
+    this.applyTopologyAwareShapeModifications(geometry, rockShape, rockSize);
     
-    // Apply deformation based on role
+    // Apply deformation based on role with topology awareness
     const deformationIntensity = role === 'accent' ? 
       rockShape.deformationIntensity : rockShape.deformationIntensity * 0.7;
-    this.applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape);
+    this.applyTopologyAwareCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape);
     
     // Validate geometry
     this.validateAndEnhanceGeometry(geometry);
