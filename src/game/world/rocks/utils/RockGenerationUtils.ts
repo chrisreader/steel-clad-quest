@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { RockShape, ClusterRole, RockCategory, ClusterLayoutOptions } from '../types/RockTypes';
 
@@ -5,38 +6,76 @@ export class RockGenerationUtils {
   private static spireCountPerCluster = new Map<string, number>();
 
   /**
-   * Choose weighted shape type with spire limiting
+   * Select shape by role with proper cluster composition (40% foundation, 40% support, 20% accent)
+   */
+  public static selectShapeByRole(rockShapes: RockShape[], role: ClusterRole, index: number, clusterId?: string): RockShape {
+    let roleFilteredShapes: RockShape[];
+
+    switch (role) {
+      case 'foundation':
+        // Foundation: boulder, weathered, slab (stable base shapes)
+        roleFilteredShapes = rockShapes.filter(shape => 
+          ['boulder', 'weathered', 'slab'].includes(shape.type)
+        );
+        break;
+        
+      case 'support':
+        // Support: All except spire (spires reserved for accent role)
+        roleFilteredShapes = rockShapes.filter(shape => 
+          shape.type !== 'spire'
+        );
+        break;
+        
+      case 'accent':
+        // Accent: Any shape including spires and slabs for top layer
+        roleFilteredShapes = rockShapes;
+        break;
+        
+      default:
+        roleFilteredShapes = rockShapes;
+    }
+
+    if (roleFilteredShapes.length === 0) {
+      return rockShapes[index % rockShapes.length];
+    }
+
+    // For accent role, use clusterId-based spire limiting
+    if (role === 'accent' && clusterId) {
+      return this.chooseWeighted(roleFilteredShapes, clusterId);
+    }
+
+    return roleFilteredShapes[index % roleFilteredShapes.length];
+  }
+
+  /**
+   * Choose weighted shape type with spire limiting for accent rocks
    */
   public static chooseWeighted(shapes: RockShape[], clusterId: string): RockShape {
-    // Initialize spire count for new clusters
     if (!this.spireCountPerCluster.has(clusterId)) {
       this.spireCountPerCluster.set(clusterId, 0);
     }
 
     const currentSpireCount = this.spireCountPerCluster.get(clusterId) || 0;
     
-    // Weighted shape selection pool (spire = ~25% chance)
+    // Weighted shape selection pool for accent rocks (spire = ~30% chance in accent role)
     const weightedPool = [
-      'boulder', 'boulder', 'boulder',  // 3/12 = 25%
-      'angular', 'angular', 'weathered', // 3/12 = 25% 
-      'slab', 'flattened', 'jagged',    // 3/12 = 25%
-      'spire', 'spire', 'spire'         // 3/12 = 25%
+      'boulder', 'angular', 'weathered', 'slab',    // 4/12 = 33%
+      'angular', 'jagged', 'flattened', 'weathered', // 4/12 = 33%
+      'spire', 'spire', 'spire', 'spire'              // 4/12 = 33% (spires in accent)
     ];
 
     let selectedType = weightedPool[Math.floor(Math.random() * weightedPool.length)];
 
-    // Limit spires per cluster (max 2)
+    // Limit spires per cluster (max 2 for realism)
     if (selectedType === 'spire') {
       if (currentSpireCount >= 2 && Math.random() < 0.7) {
-        // 70% chance to fallback to other shapes when limit exceeded
-        const fallbackPool = ['boulder', 'angular', 'slab', 'weathered'];
+        const fallbackPool = ['boulder', 'angular', 'slab', 'weathered', 'jagged'];
         selectedType = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
       } else {
         this.spireCountPerCluster.set(clusterId, currentSpireCount + 1);
       }
     }
 
-    // Find matching shape or fallback
     const matchingShape = shapes.find(shape => shape.type === selectedType);
     return matchingShape || shapes[Math.floor(Math.random() * shapes.length)];
   }
@@ -118,8 +157,8 @@ export class RockGenerationUtils {
       role: role || 'standalone'
     };
     
-    // Add stacking logic for spires (30% chance)
-    if ((rock as THREE.Mesh).geometry && rock.userData.spireType && Math.random() < 0.3) {
+    // Mark spire rocks for special handling
+    if ((rock as THREE.Mesh).geometry && rock.userData.spireType) {
       rock.userData.hasStacking = true;
     }
   }
@@ -128,47 +167,44 @@ export class RockGenerationUtils {
     const isSpire = (rock as THREE.Mesh).geometry && rock.userData.spireType;
     
     if (isSpire) {
-      // Dramatic spire tilting restoration - original geological logic
+      // Enhanced spire rotation with role-specific logic
       const r = () => Math.random();
       
-      // Calculate tilt strength based on cluster category (original system)
-      let tiltStrength: number;
-      switch (category) {
-        case 'massive':
-          tiltStrength = 0.4 * Math.PI; // ±72° tilt range
-          break;
-        case 'large':
-          tiltStrength = 0.35 * Math.PI; // ±63° tilt range  
-          break;
-        case 'medium':
-          tiltStrength = 0.3 * Math.PI; // ±54° tilt range
-          break;
-        default:
-          tiltStrength = 0.25 * Math.PI; // ±45° tilt range
+      if (role === 'accent') {
+        // ~30% of accent spires should tilt dramatically (for top layer drama)
+        if (Math.random() < 0.3) {
+          rock.rotation.set(
+            Math.PI / 2 * (0.7 + r() * 0.3),  // Near horizontal
+            r() * Math.PI * 2,                // Random facing
+            (r() - 0.5) * 0.2                 // Slight Z tilt
+          );
+          console.log(`🗿 Created dramatically tilted accent spire in ${category || 'unknown'} cluster`);
+        } else {
+          // Standard dramatic tilt for other accent spires
+          const tiltStrength = 0.35 * Math.PI; // ±63° range
+          rock.rotation.set(
+            (r() - 0.5) * tiltStrength,
+            r() * Math.PI * 2,
+            (r() - 0.5) * tiltStrength
+          );
+        }
+      } else {
+        // Support spires get moderate tilt
+        const tiltStrength = 0.25 * Math.PI; // ±45° range
+        rock.rotation.set(
+          (r() - 0.5) * tiltStrength,
+          r() * Math.PI * 2,
+          (r() - 0.5) * tiltStrength
+        );
       }
 
-      // Apply dramatic tilt rotation (original system)
-      rock.rotation.set(
-        (r() - 0.5) * tiltStrength, // X tilt (up to ±72° diagonal)
-        r() * Math.PI * 2,          // Full Y rotation (0-360°)
-        (r() - 0.5) * tiltStrength  // Z tilt (up to ±72° diagonal)
-      );
-
-      // 20% chance for completely fallen/horizontal spires (toppled obelisk effect)
-      if (Math.random() < 0.2) {
-        rock.rotateX(Math.PI / 2); // 90° sprawl for fallen spire effect
-        console.log(`🗿 Created fallen spire with dramatic tilt in ${category || 'unknown'} cluster`);
-      }
-      
       // Enhanced positional staggering for dramatic spires
       if (rock.position) {
-        rock.position.x += (Math.random() - 0.5) * 0.8; // Increased staggering
+        rock.position.x += (Math.random() - 0.5) * 0.8;
         rock.position.z += (Math.random() - 0.5) * 0.8;
-        // Add Z-offset variation to break symmetry (terrain integration)
         rock.position.y += (Math.random() - 0.5) * 0.3;
       }
       
-      console.log(`🏔️ Applied dramatic spire tilt: ${(tiltStrength * 180 / Math.PI).toFixed(1)}° range for ${category || 'unknown'} cluster`);
     } else {
       // Normal rotation for other rocks (unchanged)
       rock.rotation.x = Math.random() * 0.3;
