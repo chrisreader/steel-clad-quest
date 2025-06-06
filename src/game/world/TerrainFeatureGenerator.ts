@@ -703,7 +703,12 @@ export class TerrainFeatureGenerator {
     
     switch (rockShape.shapeModifier) {
       case 'stretch':
-        this.applyStretchModification(positions, rockSize);
+        // NEW: Detect spire rock type and apply controlled stretching
+        if (rockShape.type === 'spire') {
+          this.applySpireSpecificStretching(geometry, rockSize, rockShape);
+        } else {
+          this.applyStretchModification(positions, rockSize);
+        }
         break;
         
       case 'flatten':
@@ -724,6 +729,110 @@ export class TerrainFeatureGenerator {
     
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
+  }
+  
+  // NEW: Spire-specific controlled stretching to prevent wireframe distortion
+  private applySpireSpecificStretching(geometry: THREE.BufferGeometry, rockSize: number, rockShape: RockShape): void {
+    const positions = geometry.attributes.position.array as Float32Array;
+    const vertex = new THREE.Vector3();
+    
+    console.log(`🏔️ Applying spire-specific stretching for rock size ${rockSize}`);
+    
+    // Calculate maximum safe displacement to prevent mesh gaps
+    const maxVerticalStretch = rockSize * 2.0; // More conservative than original
+    const maxRadialTaper = 0.4; // Limit radial scaling to prevent extreme thinning
+    
+    for (let i = 0; i < positions.length; i += 3) {
+      vertex.set(positions[i], positions[i + 1], positions[i + 2]);
+      const originalY = vertex.y;
+      const originalRadius = Math.sqrt(vertex.x * vertex.x + vertex.z * vertex.z);
+      
+      // Apply controlled vertical stretching with limits
+      const stretchFactor = Math.min(1.8, 1.0 + Math.abs(originalY) / rockSize);
+      vertex.y = Math.sign(originalY) * Math.min(Math.abs(originalY * stretchFactor), maxVerticalStretch);
+      
+      // Apply gradual tapering based on height to create cone effect
+      const heightRatio = Math.abs(vertex.y) / maxVerticalStretch;
+      const taperFactor = Math.max(maxRadialTaper, 1.0 - heightRatio * 0.6);
+      
+      // Ensure we don't taper too aggressively near the tip
+      const safeTaperFactor = Math.max(0.3, taperFactor);
+      
+      if (originalRadius > 0) {
+        vertex.x *= safeTaperFactor;
+        vertex.z *= safeTaperFactor;
+      }
+      
+      positions[i] = vertex.x;
+      positions[i + 1] = vertex.y;
+      positions[i + 2] = vertex.z;
+    }
+    
+    // Apply spire-specific geometry validation
+    this.validateSpireGeometry(geometry, rockSize);
+    
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    
+    console.log(`🏔️ Spire-specific stretching complete with controlled deformation`);
+  }
+  
+  // NEW: Validation specifically for spire geometry to detect and fix mesh issues
+  private validateSpireGeometry(geometry: THREE.BufferGeometry, rockSize: number): void {
+    const positions = geometry.attributes.position.array as Float32Array;
+    const indices = geometry.index;
+    
+    if (!indices) return;
+    
+    let repairedVertices = 0;
+    const vertex1 = new THREE.Vector3();
+    const vertex2 = new THREE.Vector3();
+    const vertex3 = new THREE.Vector3();
+    
+    // Check each triangle for degenerate cases
+    for (let i = 0; i < indices.count; i += 3) {
+      const a = indices.getX(i) * 3;
+      const b = indices.getX(i + 1) * 3;
+      const c = indices.getX(i + 2) * 3;
+      
+      vertex1.set(positions[a], positions[a + 1], positions[a + 2]);
+      vertex2.set(positions[b], positions[b + 1], positions[b + 2]);
+      vertex3.set(positions[c], positions[c + 1], positions[c + 2]);
+      
+      // Calculate triangle area
+      const edge1 = vertex2.clone().sub(vertex1);
+      const edge2 = vertex3.clone().sub(vertex1);
+      const area = edge1.cross(edge2).length() * 0.5;
+      
+      // If triangle is too small (degenerate), repair vertices
+      if (area < 0.001) {
+        // Move vertices slightly apart to create valid triangle
+        const center = vertex1.clone().add(vertex2).add(vertex3).divideScalar(3);
+        const offset = rockSize * 0.01;
+        
+        vertex1.lerp(center, 0.1).add(new THREE.Vector3(offset, 0, 0));
+        vertex2.lerp(center, 0.1).add(new THREE.Vector3(0, offset, 0));
+        vertex3.lerp(center, 0.1).add(new THREE.Vector3(0, 0, offset));
+        
+        positions[a] = vertex1.x;
+        positions[a + 1] = vertex1.y;
+        positions[a + 2] = vertex1.z;
+        
+        positions[b] = vertex2.x;
+        positions[b + 1] = vertex2.y;
+        positions[b + 2] = vertex2.z;
+        
+        positions[c] = vertex3.x;
+        positions[c + 1] = vertex3.y;
+        positions[c + 2] = vertex3.z;
+        
+        repairedVertices += 3;
+      }
+    }
+    
+    if (repairedVertices > 0) {
+      console.log(`🔧 Repaired ${repairedVertices} vertices in spire geometry to prevent wireframe distortion`);
+    }
   }
   
   private applyStretchModification(positions: Float32Array, rockSize: number): void {
@@ -956,7 +1065,7 @@ export class TerrainFeatureGenerator {
     }
   }
   
-  // ... keep existing code (all remaining methods - addSurfaceFeatures through dispose remain unchanged)
+  // ... keep existing code (addSurfaceFeatures through dispose) the same ...
   
   private addSurfaceFeatures(
     rockGroup: THREE.Group, 
@@ -1097,7 +1206,7 @@ export class TerrainFeatureGenerator {
     }
   }
   
-  // ... keep existing code (all feature generation methods remain unchanged)
+  // ... keep existing code (all feature generation methods) the same ...
   
   public generateFeaturesForRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
