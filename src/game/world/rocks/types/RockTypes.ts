@@ -1,4 +1,6 @@
 
+import * as THREE from 'three';
+
 export interface RockShape {
   type: 'boulder' | 'spire' | 'slab' | 'cluster' | 'weathered' | 'angular' | 'flattened' | 'jagged';
   baseGeometry: 'icosahedron' | 'sphere' | 'dodecahedron' | 'custom';

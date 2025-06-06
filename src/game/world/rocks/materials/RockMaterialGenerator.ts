@@ -1,7 +1,6 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../../../utils';
-import { RockShape } from '../config/RockShapeConfig';
+import { RockShape } from '../types/RockTypes';
 
 export interface RockType {
   color: number;
