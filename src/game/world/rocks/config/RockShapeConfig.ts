@@ -1,11 +1,5 @@
 
-export interface RockShape {
-  type: 'boulder' | 'spire' | 'slab' | 'cluster' | 'weathered' | 'angular' | 'flattened' | 'jagged';
-  baseGeometry: 'icosahedron' | 'sphere' | 'dodecahedron' | 'custom';
-  deformationIntensity: number;
-  weatheringLevel: number;
-  shapeModifier: 'none' | 'stretch' | 'flatten' | 'fracture' | 'erode';
-}
+import { RockShape } from '../types/RockTypes';
 
 export const ROCK_SHAPES: RockShape[] = [
   { type: 'boulder', baseGeometry: 'icosahedron', deformationIntensity: 0.15, weatheringLevel: 0.6, shapeModifier: 'erode' },

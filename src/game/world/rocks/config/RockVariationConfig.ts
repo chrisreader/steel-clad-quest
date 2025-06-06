@@ -1,12 +1,5 @@
 
-export interface RockVariation {
-  category: 'tiny' | 'small' | 'medium' | 'large' | 'massive';
-  sizeRange: [number, number];
-  weight: number;
-  isCluster: boolean;
-  clusterSize?: [number, number];
-  shapePersonality: 'character' | 'basic';
-}
+import { RockVariation } from '../types/RockTypes';
 
 export const ROCK_VARIATIONS: RockVariation[] = [
   { category: 'tiny', sizeRange: [0.05, 0.15], weight: 70, isCluster: false, shapePersonality: 'character' },
