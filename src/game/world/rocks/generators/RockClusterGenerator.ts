@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { RockVariation, RockShape, GeometryProcessor, ClusterRole } from '../types/RockTypes';
 import { ROCK_SHAPES } from '../config/RockShapeConfig';
@@ -75,7 +76,10 @@ export class RockClusterGenerator {
       rockGroup.add(rock);
     });
 
-    // Create accent rocks
+    // Create accent rocks with spire pairing support
+    let spirePairPending = false;
+    let spirePairPosition: THREE.Vector3 | null = null;
+    
     accentPositions.forEach((position, i) => {
       const rockSize = maxSize * (0.2 + Math.random() * 0.3);
       const rock = this.createStandardizedClusterRock(
@@ -86,7 +90,33 @@ export class RockClusterGenerator {
         geometryProcessor
       );
       
-      rock.position.copy(position);
+      // Check for spire pairing
+      const isSpire = rock.userData.rockShape?.type === 'spire';
+      if (isSpire && !spirePairPending && RockGenerationUtils.shouldCreateSpirePair()) {
+        console.log('🗻 Creating spire pair');
+        spirePairPending = true;
+        spirePairPosition = position.clone();
+        
+        // Slightly offset the second spire position
+        const pairOffset = new THREE.Vector3(
+          (Math.random() - 0.5) * rockSize * 2,
+          0,
+          (Math.random() - 0.5) * rockSize * 2
+        );
+        spirePairPosition.add(pairOffset);
+      } else if (spirePairPending && spirePairPosition) {
+        // Place second spire of the pair
+        rock.position.copy(spirePairPosition);
+        spirePairPending = false;
+        spirePairPosition = null;
+      } else {
+        rock.position.copy(position);
+      }
+      
+      if (!spirePairPending || !spirePairPosition) {
+        rock.position.copy(position);
+      }
+      
       rock.position.y = rockSize * 0.05;
       rockGroup.add(rock);
     });
@@ -104,8 +134,8 @@ export class RockClusterGenerator {
     role: ClusterRole,
     geometryProcessor: GeometryProcessor
   ): THREE.Object3D {
-    // Select shape based on role
-    const rockShape = RockGenerationUtils.selectShapeByRole(this.rockShapes, role, index);
+    // Select shape based on role with spire support
+    const rockShape = RockGenerationUtils.selectShapeByRole(this.rockShapes, role, index, variation.category);
     
     // Create geometry using standardized processor
     let geometry = geometryProcessor.createCharacterBaseGeometry(rockShape, rockSize);
@@ -124,7 +154,12 @@ export class RockClusterGenerator {
     
     // Apply standardized properties
     RockGenerationUtils.applyStandardRockProperties(rock, variation.category, role);
-    RockGenerationUtils.randomizeRotation(rock, role);
+    
+    // Apply spire-aware rotation
+    RockGenerationUtils.randomizeRotation(rock, role, rockShape);
+    
+    // Store rock shape in userData for pairing detection
+    rock.userData.rockShape = rockShape;
     
     return rock;
   }

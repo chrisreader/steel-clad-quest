@@ -59,7 +59,7 @@ export class RockGenerationUtils {
     return position;
   }
 
-  public static selectShapeByRole(rockShapes: RockShape[], role: ClusterRole, index: number): RockShape {
+  public static selectShapeByRole(rockShapes: RockShape[], role: ClusterRole, index: number, category?: RockCategory): RockShape {
     switch (role) {
       case 'foundation':
         const foundationShapes = rockShapes.filter(s => 
@@ -68,17 +68,40 @@ export class RockGenerationUtils {
         return foundationShapes[index % foundationShapes.length];
         
       case 'support':
+        // Allow spires in support roles with ~8% chance
+        if (Math.random() < 0.08) {
+          const spireShape = rockShapes.find(s => s.type === 'spire');
+          if (spireShape) {
+            console.log('🏔️ Spawning rare support spire');
+            return spireShape;
+          }
+        }
         const supportShapes = rockShapes.filter(s => 
           s.type !== 'spire'
         );
         return supportShapes[index % supportShapes.length];
         
       case 'accent':
+        // Implement 15-20% spire spawn rate for medium/large clusters
+        if (category && (category === 'medium' || category === 'large' || category === 'massive')) {
+          const spireChance = 0.15 + Math.random() * 0.05; // 15-20%
+          if (Math.random() < spireChance) {
+            const spireShape = rockShapes.find(s => s.type === 'spire');
+            if (spireShape) {
+              console.log(`🗻 Spawning accent spire in ${category} cluster`);
+              return spireShape;
+            }
+          }
+        }
         return rockShapes[index % rockShapes.length];
         
       default:
         return rockShapes[index % rockShapes.length];
     }
+  }
+
+  public static shouldCreateSpirePair(): boolean {
+    return Math.random() < 0.3; // 30% chance for spire pairing
   }
 
   public static applyRoleBasedRotation(rock: THREE.Object3D, role: ClusterRole): void {
@@ -255,10 +278,31 @@ export class RockGenerationUtils {
   }
 
   /**
-   * Apply standardized rotation to mesh
+   * Apply standardized rotation to mesh with spire-specific dramatic tilting
    */
-  public static randomizeRotation(mesh: THREE.Object3D, role?: ClusterRole): void {
-    if (role) {
+  public static randomizeRotation(mesh: THREE.Object3D, role?: ClusterRole, rockShape?: RockShape): void {
+    const r = () => Math.random();
+    
+    // Check if this is a spire rock
+    if (rockShape?.type === 'spire') {
+      console.log(`🗻 Applying dramatic spire tilting for ${role} role`);
+      
+      if (role === 'accent') {
+        // Accent spires: steep tilt, never upright
+        mesh.rotation.set(
+          Math.PI / 2 * (0.7 + r() * 0.3), // steep tilt (0.7-1.0 * π/2)
+          r() * Math.PI * 2,               // random rotation around Y
+          (r() - 0.5) * 0.2                // subtle Z wobble
+        );
+      } else {
+        // Support spires: diagonal lean
+        mesh.rotation.set(
+          (r() - 0.5) * Math.PI * 0.35,    // diagonal lean
+          r() * Math.PI * 2,
+          (r() - 0.5) * Math.PI * 0.35
+        );
+      }
+    } else if (role) {
       this.applyRoleBasedRotation(mesh, role);
     } else {
       mesh.rotation.set(
