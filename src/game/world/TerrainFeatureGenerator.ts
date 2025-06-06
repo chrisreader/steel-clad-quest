@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RockShapeFactory } from './rocks/generators/RockShapeFactory';
+import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 
 export interface TerrainFeature {
   type: 'rock' | 'tree' | 'bush';
@@ -22,6 +23,117 @@ export class TerrainFeatureGenerator {
     large: { minRocks: 6, maxRocks: 12, baseSize: 0.6, sizeVariation: 0.4, spread: 6.0 },
     massive: { minRocks: 8, maxRocks: 15, baseSize: 0.8, sizeVariation: 0.6, spread: 8.0 }
   };
+
+  private ringSystem: RingQuadrantSystem;
+  private scene: THREE.Scene;
+  private collisionRegistrationCallback?: (object: THREE.Object3D) => void;
+  private generatedFeatures: Map<string, THREE.Object3D[]> = new Map();
+
+  constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
+    this.ringSystem = ringSystem;
+    this.scene = scene;
+  }
+
+  public setCollisionRegistrationCallback(callback: (object: THREE.Object3D) => void): void {
+    this.collisionRegistrationCallback = callback;
+  }
+
+  public generateFeaturesForRegion(region: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(region);
+    
+    if (this.generatedFeatures.has(regionKey)) return;
+    
+    const centerPosition = this.ringSystem.getRegionCenter(region);
+    const features: THREE.Object3D[] = [];
+    
+    // Generate some rock clusters for this region
+    const numClusters = Math.floor(Math.random() * 3) + 1;
+    
+    for (let i = 0; i < numClusters; i++) {
+      const clusterPosition = new THREE.Vector3(
+        centerPosition.x + (Math.random() - 0.5) * 50,
+        centerPosition.y,
+        centerPosition.z + (Math.random() - 0.5) * 50
+      );
+      
+      const clusterSize = ['tiny', 'small', 'medium', 'large'][Math.floor(Math.random() * 4)] as 'tiny' | 'small' | 'medium' | 'large';
+      const clusterFeatures = TerrainFeatureGenerator.generateRockCluster(clusterPosition, clusterSize);
+      
+      // Convert terrain features to 3D objects and add to scene
+      for (const feature of clusterFeatures) {
+        if (feature.geometry) {
+          const rockMesh = new THREE.Mesh(
+            feature.geometry,
+            new THREE.MeshStandardMaterial({ color: 0x8B7355 })
+          );
+          
+          rockMesh.position.copy(feature.position);
+          rockMesh.rotation.copy(feature.rotation);
+          rockMesh.scale.setScalar(feature.scale);
+          rockMesh.castShadow = true;
+          rockMesh.receiveShadow = true;
+          
+          this.scene.add(rockMesh);
+          features.push(rockMesh);
+          
+          // Register for collision if callback is set
+          if (this.collisionRegistrationCallback) {
+            this.collisionRegistrationCallback(rockMesh);
+          }
+        }
+      }
+    }
+    
+    this.generatedFeatures.set(regionKey, features);
+    console.log(`Generated ${features.length} terrain features for region ${regionKey}`);
+  }
+
+  public cleanupFeaturesForRegion(region: RegionCoordinates): void {
+    const regionKey = this.ringSystem.getRegionKey(region);
+    const features = this.generatedFeatures.get(regionKey);
+    
+    if (features) {
+      for (const feature of features) {
+        this.scene.remove(feature);
+        
+        if (feature instanceof THREE.Mesh) {
+          if (feature.geometry) feature.geometry.dispose();
+          if (feature.material) {
+            if (Array.isArray(feature.material)) {
+              feature.material.forEach(m => m.dispose());
+            } else {
+              feature.material.dispose();
+            }
+          }
+        }
+      }
+      
+      this.generatedFeatures.delete(regionKey);
+      console.log(`Cleaned up terrain features for region ${regionKey}`);
+    }
+  }
+
+  public dispose(): void {
+    for (const [regionKey, features] of this.generatedFeatures.entries()) {
+      for (const feature of features) {
+        this.scene.remove(feature);
+        
+        if (feature instanceof THREE.Mesh) {
+          if (feature.geometry) feature.geometry.dispose();
+          if (feature.material) {
+            if (Array.isArray(feature.material)) {
+              feature.material.forEach(m => m.dispose());
+            } else {
+              feature.material.dispose();
+            }
+          }
+        }
+      }
+    }
+    
+    this.generatedFeatures.clear();
+    console.log("TerrainFeatureGenerator disposed");
+  }
 
   static generateRockCluster(
     centerPosition: THREE.Vector3,
