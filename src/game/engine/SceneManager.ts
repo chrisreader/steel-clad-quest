@@ -95,7 +95,7 @@ export class SceneManager {
     // Initialize ring-quadrant system
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
     
-    // Initialize terrain feature generator with correct parameters
+    // Initialize terrain feature generator
     this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
     // Initialize structure generator with PhysicsManager
@@ -106,9 +106,6 @@ export class SceneManager {
     
     // Connect StructureGenerator with BuildingManager
     this.structureGenerator.setBuildingManager(this.buildingManager);
-    
-    // Connect TerrainFeatureGenerator with BuildingManager
-    this.terrainFeatureGenerator.setBuildingManager(this.buildingManager);
     
     // Initialize 3D grass system
     this.grassSystem = new GrassSystem(this.scene);

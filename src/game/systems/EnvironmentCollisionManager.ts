@@ -87,45 +87,6 @@ export class EnvironmentCollisionManager {
     console.log(`🔧 Total collision objects: ${finalCount.size}`);
   }
 
-  // NEW: Check if an object is a rock based on geometry and material
-  private isRockObject(object: THREE.Object3D): boolean {
-    if (object instanceof THREE.Mesh) {
-      // Check for rock-like geometry (spheres, irregular shapes)
-      const geometry = object.geometry;
-      if (geometry instanceof THREE.SphereGeometry) return true;
-      
-      // Check for rock materials (stone-like colors)
-      const material = Array.isArray(object.material) ? object.material[0] : object.material;
-      if (material instanceof THREE.MeshLambertMaterial) {
-        const color = material.color;
-        // Gray, brown, or earth-tone colors suggest rocks
-        const isGrayish = Math.abs(color.r - color.g) < 0.2 && Math.abs(color.g - color.b) < 0.2;
-        const isBrownish = color.r > 0.3 && color.g > 0.2 && color.b < 0.3 && color.r > color.b;
-        return isGrayish || isBrownish;
-      }
-    }
-    
-    if (object instanceof THREE.Group) {
-      // Check if group contains rock-like meshes
-      return object.children.some(child => 
-        child instanceof THREE.Mesh && this.isRockObject(child)
-      );
-    }
-    
-    return false;
-  }
-
-  // NEW: Get rock size category for collision rules
-  private getRockSizeCategory(object: THREE.Object3D): 'small' | 'medium' | 'large' {
-    const boundingBox = new THREE.Box3().setFromObject(object);
-    const size = boundingBox.getSize(new THREE.Vector3());
-    const maxDimension = Math.max(size.x, size.y, size.z);
-    
-    if (maxDimension < 0.8) return 'small';
-    if (maxDimension < 2.0) return 'medium';
-    return 'large';
-  }
-
   // NEW: Check if an object is a bush (should not have collision)
   private isBushObject(object: THREE.Object3D): boolean {
     if (object instanceof THREE.Group) {
@@ -225,32 +186,6 @@ export class EnvironmentCollisionManager {
         console.log(`🏔️ ✅ Test hill already registered by StructureGenerator - preserving existing registration`);
       }
       return;
-    }
-
-    // NEW: Enhanced rock collision handling with size-based rules
-    if (this.isRockObject(object)) {
-      const rockSize = this.getRockSizeCategory(object);
-      
-      switch (rockSize) {
-        case 'small':
-          // Small rocks: No collision - player can walk through
-          console.log(`🪨 Skipping collision for small rock (walkable) at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
-          return;
-          
-        case 'medium':
-          // Medium rocks: Reduced collision - can step over
-          const id = this.physicsManager.addCollisionObject(object, 'environment', 'stone', object.uuid);
-          this.registeredObjects.add(id);
-          console.log(`🪨 Registered MEDIUM rock collision (step-over) at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
-          return;
-          
-        case 'large':
-          // Large rocks: Full collision - solid barriers
-          const largeId = this.physicsManager.addCollisionObject(object, 'environment', 'stone', object.uuid);
-          this.registeredObjects.add(largeId);
-          console.log(`🪨 Registered LARGE rock collision (solid barrier) at position: ${object.position.x.toFixed(2)}, ${object.position.y.toFixed(2)}, ${object.position.z.toFixed(2)}`);
-          return;
-      }
     }
 
     // Enhanced handling for staircases
@@ -356,14 +291,6 @@ export class EnvironmentCollisionManager {
     if (this.isBushObject(object)) {
       console.log(`🌿 Skipping bush collision registration`);
       return false;
-    }
-
-    // NEW: Skip small rocks (handled separately in registerObjectCollision)
-    if (this.isRockObject(object)) {
-      const rockSize = this.getRockSizeCategory(object);
-      if (rockSize === 'small') {
-        return false;
-      }
     }
 
     // Skip very small objects (likely decorative)
