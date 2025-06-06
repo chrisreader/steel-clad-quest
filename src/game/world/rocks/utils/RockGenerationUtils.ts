@@ -1,36 +1,62 @@
-
 import * as THREE from 'three';
 import { RockShape, ClusterRole, RockCategory, ClusterLayoutOptions } from '../types/RockTypes';
 
 export class RockGenerationUtils {
+  private static spireCountPerCluster = new Map<string, number>();
+
   /**
-   * Select shape by role with enhanced spire visibility
+   * Choose weighted shape type with spire limiting
    */
-  public static selectShapeByRole(rockShapes: RockShape[], role: ClusterRole, index: number): RockShape {
-    // For large/massive clusters, use weighted selection to increase spire visibility
-    if (role === 'foundation' || role === 'support' || role === 'accent') {
-      // 30% chance for spire in large clusters (foundation/support)
-      // 25% chance for spire in accent positions
-      const spireChance = (role === 'accent') ? 0.25 : 0.30;
-      
-      if (Math.random() < spireChance) {
-        const spireShape = rockShapes.find(shape => shape.type === 'spire');
-        if (spireShape) {
-          console.log(`🗿 Selected SPIRE rock for ${role} role (enhanced visibility)`);
-          return spireShape;
-        }
+  public static chooseWeighted(shapes: RockShape[], clusterId: string): RockShape {
+    // Initialize spire count for new clusters
+    if (!this.spireCountPerCluster.has(clusterId)) {
+      this.spireCountPerCluster.set(clusterId, 0);
+    }
+
+    const currentSpireCount = this.spireCountPerCluster.get(clusterId) || 0;
+    
+    // Weighted shape selection pool (spire = ~25% chance)
+    const weightedPool = [
+      'boulder', 'boulder', 'boulder',  // 3/12 = 25%
+      'angular', 'angular', 'weathered', // 3/12 = 25% 
+      'slab', 'flattened', 'jagged',    // 3/12 = 25%
+      'spire', 'spire', 'spire'         // 3/12 = 25%
+    ];
+
+    let selectedType = weightedPool[Math.floor(Math.random() * weightedPool.length)];
+
+    // Limit spires per cluster (max 2)
+    if (selectedType === 'spire') {
+      if (currentSpireCount >= 2 && Math.random() < 0.7) {
+        // 70% chance to fallback to other shapes when limit exceeded
+        const fallbackPool = ['boulder', 'angular', 'slab', 'weathered'];
+        selectedType = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
+      } else {
+        this.spireCountPerCluster.set(clusterId, currentSpireCount + 1);
       }
     }
-    
-    // Fallback to existing random selection
+
+    // Find matching shape or fallback
+    const matchingShape = shapes.find(shape => shape.type === selectedType);
+    return matchingShape || shapes[Math.floor(Math.random() * shapes.length)];
+  }
+
+  /**
+   * Select shape by role with realistic spire frequency
+   */
+  public static selectShapeByRole(rockShapes: RockShape[], role: ClusterRole, index: number, clusterId?: string): RockShape {
+    if (clusterId) {
+      return this.chooseWeighted(rockShapes, clusterId);
+    }
+
+    // Fallback to role-based selection for non-cluster rocks
     const roleFilteredShapes = rockShapes.filter(shape => {
-      // Removed spire exclusion - spires can now appear in all roles
       if (role === 'foundation') {
-        return ['boulder', 'slab', 'weathered', 'spire', 'angular'].includes(shape.type);
+        return ['boulder', 'slab', 'weathered', 'angular'].includes(shape.type);
       } else if (role === 'support') {
-        return ['boulder', 'angular', 'flattened', 'spire', 'weathered'].includes(shape.type);
+        return ['boulder', 'angular', 'flattened', 'weathered'].includes(shape.type);
       } else {
-        return ['jagged', 'angular', 'flattened', 'spire'].includes(shape.type);
+        return ['jagged', 'angular', 'flattened'].includes(shape.type);
       }
     });
     
@@ -92,21 +118,27 @@ export class RockGenerationUtils {
       role: role || 'standalone'
     };
     
-    // Enhanced properties for spire rocks
-    if (rock.userData.role && ['foundation', 'support'].includes(rock.userData.role)) {
-      rock.frustumCulled = false; // Ensure spires remain visible at distance
+    // Add stacking logic for spires (30% chance)
+    if ((rock as THREE.Mesh).geometry && rock.userData.spireType && Math.random() < 0.3) {
+      rock.userData.hasStacking = true;
     }
   }
 
   public static randomizeRotation(rock: THREE.Object3D, role?: ClusterRole): void {
-    // Spires get more controlled rotation to maintain their dramatic vertical effect
     const isSpire = (rock as THREE.Mesh).geometry && rock.userData.spireType;
     
     if (isSpire) {
-      // Limited rotation for spires to keep them upright and dramatic
-      rock.rotation.x = (Math.random() - 0.5) * 0.2; // Very slight tilt
-      rock.rotation.y = Math.random() * Math.PI * 2; // Full Y rotation is fine
-      rock.rotation.z = (Math.random() - 0.5) * 0.1; // Minimal Z rotation
+      // Original natural spire rotation (±4.5° tilt)
+      const r = () => Math.random();
+      rock.rotation.x = (r() - 0.5) * 0.08; // ±4.5° x tilt
+      rock.rotation.y = r() * Math.PI * 2;   // Full 360° y rotation
+      rock.rotation.z = (r() - 0.5) * 0.08; // ±4.5° z tilt
+      
+      // Add positional staggering for natural look
+      if (rock.position) {
+        rock.position.x += (Math.random() - 0.5) * 0.4;
+        rock.position.z += (Math.random() - 0.5) * 0.4;
+      }
     } else {
       // Normal rotation for other rocks
       rock.rotation.x = Math.random() * 0.3;
@@ -220,5 +252,12 @@ export class RockGenerationUtils {
     
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
+  }
+
+  /**
+   * Reset spire count for new cluster generation
+   */
+  public static resetClusterSpireCount(clusterId: string): void {
+    this.spireCountPerCluster.delete(clusterId);
   }
 }
