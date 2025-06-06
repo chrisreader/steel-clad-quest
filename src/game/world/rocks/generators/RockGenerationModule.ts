@@ -861,8 +861,8 @@ export class RockGenerationModule {
     const sedimentColors = [0xC4A484, 0xB8956A, 0xA0855B]; // beige colors
     
     for (let i = 0; i < sedimentCount; i++) {
-      // FIXED: Proper sediment size (15-40% of cluster size instead of microscopic)
-      const sedimentSize = clusterSize * (0.15 + Math.random() * 0.25);
+      // FIXED: Reduced sediment size from 15-40% to 5-12% of cluster size for realism
+      const sedimentSize = clusterSize * (0.05 + Math.random() * 0.07);
       let geometry: THREE.BufferGeometry;
       
       const sedimentType = Math.floor(Math.random() * 3);
@@ -943,8 +943,8 @@ export class RockGenerationModule {
     let previousDebrisPosition: { angle: number; distance: number } | null = null;
     
     for (let i = 0; i < debrisCount; i++) {
-      // FIXED: Proper debris size (25-60% of cluster size instead of 8-23%)
-      const debrisSize = clusterSize * (0.25 + Math.random() * 0.35);
+      // FIXED: Reduced debris size from 25-60% to 8-18% of cluster size for realism
+      const debrisSize = clusterSize * (0.08 + Math.random() * 0.10);
       let geometry: THREE.BufferGeometry;
       let material: THREE.MeshStandardMaterial;
       
@@ -1033,8 +1033,8 @@ export class RockGenerationModule {
         Math.random() * 0.3
       );
       
-      // FIXED: Removed excessive scaling that made debris too small
-      debris.scale.setScalar(0.8 + Math.random() * 0.4); // Less reduction than before
+      // FIXED: Reduced scaling to prevent oversized debris
+      debris.scale.setScalar(0.9 + Math.random() * 0.2); // Less reduction than before
       debris.castShadow = true;
       debris.receiveShadow = true;
       
@@ -1080,8 +1080,8 @@ export class RockGenerationModule {
       );
       
       for (let p = 0; p < pebbleCount; p++) {
-        // FIXED: Proper tiny pebble size (4-10% instead of 0.8-1.5%)
-        const pebbleSize = clusterSize * (0.04 + Math.random() * 0.06);
+        // FIXED: Reduced tiny pebble size from 4-10% to 2-6% for realistic micro-detail
+        const pebbleSize = clusterSize * (0.02 + Math.random() * 0.04);
         const geometry = new THREE.SphereGeometry(pebbleSize, 6, 4);
         
         // Scale to create natural pebble shapes
