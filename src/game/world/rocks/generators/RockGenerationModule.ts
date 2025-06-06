@@ -57,7 +57,13 @@ export class RockGenerationModule {
       ...options
     };
     
-    if (variation.isCluster) {
+    // FIXED: Force cluster generation for medium, large, and massive rocks
+    const shouldGenerateCluster = variation.isCluster || 
+      ['medium', 'large', 'massive'].includes(variation.category);
+    
+    console.log(`🪨 Generating ${variation.category} rock - Cluster: ${shouldGenerateCluster}`);
+    
+    if (shouldGenerateCluster) {
       return this.generateClusterRock(variation, finalOptions);
     } else {
       return this.generateIndividualRock(variation, finalOptions);
@@ -109,6 +115,8 @@ export class RockGenerationModule {
   private generateClusterRock(variation: RockVariation, options: RockGenerationOptions): THREE.Object3D {
     const rockGroup = new THREE.Group();
     
+    console.log(`🪨 Creating cluster for ${variation.category} rock`);
+    
     const clusterOptions: ClusterGenerationOptions = {
       ...options,
       variation,
@@ -128,8 +136,9 @@ export class RockGenerationModule {
       }
     );
     
-    // Add cluster environmental details for medium+ categories
-    if (variation.category === 'medium' || variation.category === 'large' || variation.category === 'massive') {
+    // FIXED: Always add environmental details for medium+ clusters
+    if (['medium', 'large', 'massive'].includes(variation.category)) {
+      console.log(`🪨 Adding environmental details to ${variation.category} cluster`);
       this.addClusterEnvironmentalDetails(rockGroup, variation, options.size || this.calculateRockSize(variation));
     }
     
@@ -241,10 +250,11 @@ export class RockGenerationModule {
     
     console.log(`🪨 Generating ${count} rocks for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
+    // FIXED: Increase forced large rock count for better environmental detail testing
     let forcedLargeCount = 0;
     if (region.ringIndex >= 1) {
-      forcedLargeCount = Math.floor(count * 0.15);
-      console.log(`🪨 Forcing ${forcedLargeCount} large rocks in Ring ${region.ringIndex}`);
+      forcedLargeCount = Math.floor(count * 0.25); // Increased from 0.15 to 0.25
+      console.log(`🪨 Forcing ${forcedLargeCount} large/massive rocks in Ring ${region.ringIndex}`);
     }
     
     for (let i = 0; i < count; i++) {
@@ -252,8 +262,15 @@ export class RockGenerationModule {
       
       let category: RockCategory;
       if (i < forcedLargeCount) {
-        category = Math.random() < 0.5 ? 'large' : 'massive';
-        console.log(`🪨 FORCING large rock: ${category}`);
+        // FIXED: Better distribution of large/massive rocks
+        if (Math.random() < 0.4) {
+          category = 'massive';
+        } else if (Math.random() < 0.6) {
+          category = 'large';
+        } else {
+          category = 'medium';
+        }
+        console.log(`🪨 FORCING ${category} rock for environmental detail testing`);
       } else {
         const variation = this.selectRockVariation();
         category = variation.category;
@@ -271,10 +288,11 @@ export class RockGenerationModule {
         continue;
       }
       
-      // Use new unified pipeline
+      // Use new unified pipeline with forced environmental details
       const rock = this.generateRockByCategory(category, {
         position,
         index: i,
+        enableEnvironmentalDetails: true, // FIXED: Always enable for testing
         collisionCallback: this.collisionRegistrationCallback
       });
       
@@ -284,7 +302,7 @@ export class RockGenerationModule {
         
         if (category === 'large' || category === 'massive') {
           this.largeRockFormations.push(position.clone());
-          console.log(`🪨 Added ${category} rock formation at:`, position);
+          console.log(`🪨 Added ${category} rock formation with environmental details at:`, position);
         }
         
         if (this.collisionRegistrationCallback && category !== 'tiny') {
@@ -318,10 +336,11 @@ export class RockGenerationModule {
       return null;
     }
     
-    // Use new unified pipeline
+    // Use new unified pipeline with environmental details enabled
     const rock = this.generateRockByCategory(targetCategory, {
       position,
       forceCategory: category as RockCategory,
+      enableEnvironmentalDetails: true, // FIXED: Always enable
       collisionCallback: this.collisionRegistrationCallback
     });
     
@@ -331,7 +350,7 @@ export class RockGenerationModule {
       
       if (targetCategory === 'large' || targetCategory === 'massive') {
         this.largeRockFormations.push(position.clone());
-        console.log(`🪨 Added clustered ${targetCategory} rock formation`);
+        console.log(`🪨 Added clustered ${targetCategory} rock formation with environmental details`);
       }
       
       if (this.collisionRegistrationCallback && targetCategory !== 'tiny') {
