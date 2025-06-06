@@ -161,28 +161,25 @@ export class TerrainFeatureGenerator {
                          category === 'large' ? 8 + Math.floor(Math.random() * 4) :     // 8-11 particles  
                          6 + Math.floor(Math.random() * 3);                            // 6-8 particles for medium
     
-    // Create realistic sediment materials (beige/tan weathered colors)
+    // Create realistic sediment materials (beige/tan weathered colors) - FULLY OPAQUE
     const sedimentMaterials = [
       new THREE.MeshStandardMaterial({
         color: new THREE.Color('#C4A484'), // Light beige
         roughness: 0.95,
-        metalness: 0.0,
-        transparent: true,
-        opacity: 0.8
+        metalness: 0.0
+        // Removed transparent and opacity for full opacity
       }),
       new THREE.MeshStandardMaterial({
         color: new THREE.Color('#B8956A'), // Medium tan
         roughness: 0.95,
-        metalness: 0.0,
-        transparent: true,
-        opacity: 0.8
+        metalness: 0.0
+        // Removed transparent and opacity for full opacity
       }),
       new THREE.MeshStandardMaterial({
         color: new THREE.Color('#A0855B'), // Dark tan
         roughness: 0.95,
-        metalness: 0.0,
-        transparent: true,
-        opacity: 0.8
+        metalness: 0.0
+        // Removed transparent and opacity for full opacity
       })
     ];
     
@@ -249,28 +246,25 @@ export class TerrainFeatureGenerator {
                        category === 'large' ? 12 + Math.floor(Math.random() * 5) :     // 12-16 fragments
                        8 + Math.floor(Math.random() * 5);                             // 8-12 fragments for medium
     
-    // Create realistic beige sediment materials
+    // Create realistic beige sediment materials - FULLY OPAQUE
     const sedimentMaterials = [
       new THREE.MeshStandardMaterial({
         color: new THREE.Color('#C4A484'), // Light beige
         roughness: 0.95,
-        metalness: 0.0,
-        transparent: true,
-        opacity: 0.8
+        metalness: 0.0
+        // Removed transparent and opacity for full opacity
       }),
       new THREE.MeshStandardMaterial({
         color: new THREE.Color('#B8956A'), // Medium tan
         roughness: 0.95,
-        metalness: 0.0,
-        transparent: true,
-        opacity: 0.8
+        metalness: 0.0
+        // Removed transparent and opacity for full opacity
       }),
       new THREE.MeshStandardMaterial({
         color: new THREE.Color('#A0855B'), // Dark tan
         roughness: 0.95,
-        metalness: 0.0,
-        transparent: true,
-        opacity: 0.8
+        metalness: 0.0
+        // Removed transparent and opacity for full opacity
       })
     ];
 
