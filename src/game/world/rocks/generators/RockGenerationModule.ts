@@ -21,9 +21,9 @@ export class RockGenerationModule {
   // Track spawned rocks by region for cleanup
   private spawnedRocks: Map<string, THREE.Object3D[]> = new Map();
   
-  // Track large rock formations to maintain distance
+  // Track large rock formations to maintain distance (reduced from 150)
   private largeRockFormations: THREE.Vector3[] = [];
-  private minimumLargeRockDistance: number = 150;
+  private minimumLargeRockDistance: number = 70;
   
   // Collision registration callback
   private collisionRegistrationCallback?: (object: THREE.Object3D) => void;
@@ -97,9 +97,9 @@ export class RockGenerationModule {
   }
   
   /**
-   * Create a single rock at a specific position (for clusters and individual placement)
+   * Create a single rock at a specific position with forced category selection for clusters
    */
-  public createRockAtPosition(position: THREE.Vector3, region: RegionCoordinates, category?: string): THREE.Object3D | null {
+  public createRockAtPosition(position: THREE.Vector3, region: RegionCoordinates, forcedCategory?: string): THREE.Object3D | null {
     const regionKey = this.ringSystem.getRegionKey(region);
     
     // Get or create rocks array for this region
@@ -109,25 +109,30 @@ export class RockGenerationModule {
       this.spawnedRocks.set(regionKey, rocks);
     }
     
-    const totalWeight = this.rockVariations.reduce((sum, variation) => sum + variation.weight, 0);
-    
-    // Select variation based on category if specified, otherwise random
     let variation: RockVariation;
-    if (category) {
-      const categoryVariations = this.rockVariations.filter(v => v.category === category);
+    
+    // Force category selection for clusters (prioritize large formations)
+    if (forcedCategory) {
+      const categoryVariations = this.rockVariations.filter(v => v.category === forcedCategory);
       if (categoryVariations.length > 0) {
         variation = categoryVariations[Math.floor(Math.random() * categoryVariations.length)];
       } else {
-        variation = this.selectRockVariation(totalWeight);
+        variation = this.selectLargeRockVariation(); // Fallback to large rocks
       }
     } else {
-      variation = this.selectRockVariation(totalWeight);
+      variation = this.selectLargeRockVariation(); // Default to large for clusters
     }
     
-    // Check for large formation conflicts
+    // Check for large formation conflicts (with reduced distance)
     if ((variation.category === 'large' || variation.category === 'massive') && 
         this.isTooCloseToLargeFormation(position)) {
-      return null;
+      // Try with medium rock instead
+      const mediumVariations = this.rockVariations.filter(v => v.category === 'medium');
+      if (mediumVariations.length > 0) {
+        variation = mediumVariations[0];
+      } else {
+        return null;
+      }
     }
     
     const rock = this.spawnComplexRockByVariation(variation, position);
@@ -145,6 +150,28 @@ export class RockGenerationModule {
     }
     
     return rock;
+  }
+  
+  /**
+   * Select large rock variation for clusters (prioritizes large/massive)
+   */
+  private selectLargeRockVariation(): RockVariation {
+    const largeVariations = this.rockVariations.filter(v => 
+      v.category === 'large' || v.category === 'massive'
+    );
+    
+    if (largeVariations.length > 0 && Math.random() < 0.7) {
+      return largeVariations[Math.floor(Math.random() * largeVariations.length)];
+    }
+    
+    // Fallback to medium
+    const mediumVariations = this.rockVariations.filter(v => v.category === 'medium');
+    if (mediumVariations.length > 0) {
+      return mediumVariations[0];
+    }
+    
+    // Final fallback
+    return this.rockVariations[2];
   }
   
   /**
@@ -175,7 +202,7 @@ export class RockGenerationModule {
   }
   
   /**
-   * Create a complex cluster with full environmental details
+   * Create a complex cluster with full environmental details and original clustering logic
    */
   private createComplexCluster(rockGroup: THREE.Group, variation: RockVariation, position: THREE.Vector3): void {
     const [minSize, maxSize] = variation.sizeRange;
@@ -184,16 +211,16 @@ export class RockGenerationModule {
     
     console.log(`🪨 Creating complex ${variation.category} cluster with ${numberOfRocks} rocks`);
     
-    // Create main rocks in cluster
+    // Create main rocks in cluster with original circular/organic positioning
     for (let i = 0; i < numberOfRocks; i++) {
       const rockSize = minSize + Math.random() * (maxSize - minSize);
       const rockShape = this.rockShapes[i % this.rockShapes.length];
       
       const rock = this.createSingleRock(rockSize, rockShape, variation.category, i);
       
-      // Position rocks in cluster formation
-      const angle = (i / numberOfRocks) * Math.PI * 2 + Math.random() * 0.5;
-      const distance = Math.random() * rockSize * 1.5;
+      // Original positioning logic with Gaussian variation
+      const angle = (i / numberOfRocks) * Math.PI * 2 + Math.random() * 0.8 - 0.4;
+      const distance = this.gaussianRandom() * rockSize * 1.8;
       rock.position.set(
         Math.cos(angle) * distance,
         0,
@@ -213,139 +240,70 @@ export class RockGenerationModule {
     if (variation.category === 'large' || variation.category === 'massive') {
       this.addSedimentAccumulation(rockGroup, variation.category, maxSize);
       this.addDebrisField(rockGroup, variation.category, maxSize);
+      this.addClusteredTinyPebbles(rockGroup, variation.category, maxSize);
     }
   }
   
   /**
-   * Create a medium rock formation with some clustering
+   * Add clustered tiny pebbles around large formations (restored original function)
    */
-  private createMediumRockFormation(rockGroup: THREE.Group, variation: RockVariation, position: THREE.Vector3): void {
-    const [minSize, maxSize] = variation.sizeRange;
-    const rockSize = minSize + Math.random() * (maxSize - minSize);
-    const rockShape = this.rockShapes[Math.floor(Math.random() * this.rockShapes.length)];
+  private addClusteredTinyPebbles(rockGroup: THREE.Group, category: string, clusterSize: number): void {
+    const pebbleClusterCount = category === 'massive' ? 4 + Math.floor(Math.random() * 2) :
+                              category === 'large' ? 2 + Math.floor(Math.random() * 3) : 1;
     
-    // Main rock
-    const mainRock = this.createSingleRock(rockSize, rockShape, variation.category, 0);
-    rockGroup.add(mainRock);
-    
-    // Add 1-2 smaller supporting rocks
-    const supportRocks = 1 + Math.floor(Math.random() * 2);
-    for (let i = 0; i < supportRocks; i++) {
-      const supportSize = rockSize * (0.3 + Math.random() * 0.4);
-      const supportRock = this.createSingleRock(supportSize, rockShape, 'small', i + 1);
+    for (let cluster = 0; cluster < pebbleClusterCount; cluster++) {
+      const pebbleCount = 6 + Math.floor(Math.random() * 7);
+      const clusterAngle = Math.random() * Math.PI * 2;
+      const clusterDistance = clusterSize * (0.8 + Math.random() * 0.6);
       
-      const angle = Math.random() * Math.PI * 2;
-      const distance = rockSize * (0.8 + Math.random() * 0.6);
-      supportRock.position.set(
-        Math.cos(angle) * distance,
+      const clusterCenter = new THREE.Vector3(
+        Math.cos(clusterAngle) * clusterDistance,
         0,
-        Math.sin(angle) * distance
+        Math.sin(clusterAngle) * clusterDistance
       );
       
-      supportRock.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-      );
-      
-      rockGroup.add(supportRock);
-    }
-    
-    // Add some debris
-    this.addLimitedDebris(rockGroup, rockSize);
-  }
-  
-  /**
-   * Create a small rock formation with minimal clustering
-   */
-  private createSmallRockFormation(rockGroup: THREE.Group, variation: RockVariation, position: THREE.Vector3): void {
-    const [minSize, maxSize] = variation.sizeRange;
-    const rockSize = minSize + Math.random() * (maxSize - minSize);
-    const rockShape = this.rockShapes[Math.floor(Math.random() * this.rockShapes.length)];
-    
-    // Main rock
-    const mainRock = this.createSingleRock(rockSize, rockShape, variation.category, 0);
-    rockGroup.add(mainRock);
-    
-    // 30% chance for a companion rock
-    if (Math.random() < 0.3) {
-      const companionSize = rockSize * (0.4 + Math.random() * 0.3);
-      const companionRock = this.createSingleRock(companionSize, rockShape, 'tiny', 1);
-      
-      const angle = Math.random() * Math.PI * 2;
-      const distance = rockSize * (1.0 + Math.random() * 0.5);
-      companionRock.position.set(
-        Math.cos(angle) * distance,
-        0,
-        Math.sin(angle) * distance
-      );
-      
-      companionRock.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-      );
-      
-      rockGroup.add(companionRock);
+      for (let i = 0; i < pebbleCount; i++) {
+        const pebbleSize = clusterSize * (0.015 + Math.random() * 0.025);
+        const pebbleGeometry = new THREE.SphereGeometry(pebbleSize, 4, 3);
+        
+        const pebbleMaterial = new THREE.MeshStandardMaterial({
+          color: new THREE.Color('#A0855B'),
+          roughness: 0.9,
+          metalness: 0.0
+        });
+        
+        const pebble = new THREE.Mesh(pebbleGeometry, pebbleMaterial);
+        
+        // Cluster pebbles around cluster center
+        const pebbleAngle = Math.random() * Math.PI * 2;
+        const pebbleDistance = this.gaussianRandom() * pebbleSize * 8;
+        
+        pebble.position.set(
+          clusterCenter.x + Math.cos(pebbleAngle) * pebbleDistance,
+          pebbleSize * 0.2,
+          clusterCenter.z + Math.sin(pebbleAngle) * pebbleDistance
+        );
+        
+        pebble.scale.set(
+          0.8 + Math.random() * 0.4,
+          0.3 + Math.random() * 0.4,
+          0.8 + Math.random() * 0.4
+        );
+        
+        pebble.castShadow = true;
+        pebble.receiveShadow = true;
+        rockGroup.add(pebble);
+      }
     }
   }
   
   /**
-   * Create a simple single rock
-   */
-  private createSimpleRock(rockGroup: THREE.Group, variation: RockVariation, position: THREE.Vector3): void {
-    const [minSize, maxSize] = variation.sizeRange;
-    const rockSize = minSize + Math.random() * (maxSize - minSize);
-    const rockShape = this.rockShapes[Math.floor(Math.random() * this.rockShapes.length)];
-    
-    const rock = this.createSingleRock(rockSize, rockShape, variation.category, 0);
-    rockGroup.add(rock);
-  }
-  
-  /**
-   * Create a single rock mesh
-   */
-  private createSingleRock(rockSize: number, rockShape: RockShape, category: string, index: number): THREE.Mesh {
-    // Create base geometry
-    let rockGeometry = RockShapeFactory.createCharacterBaseGeometry(rockShape, rockSize);
-    RockShapeFactory.applyShapeModifications(rockGeometry, rockShape, rockSize);
-    
-    // Apply deformation based on category
-    const deformationIntensity = this.calculateCategoryDeformation(rockShape.deformationIntensity, category);
-    RockShapeFactory.applyCharacterDeformation(rockGeometry, deformationIntensity, rockSize, rockShape);
-    RockShapeFactory.validateAndEnhanceGeometry(rockGeometry);
-    
-    const rockMaterial = RockMaterialGenerator.createEnhancedRockMaterial(category, rockShape, index);
-    
-    const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-    rock.castShadow = true;
-    rock.receiveShadow = true;
-    
-    return rock;
-  }
-  
-  /**
-   * Calculate deformation intensity based on category
-   */
-  private calculateCategoryDeformation(baseIntensity: number, category: string): number {
-    switch (category) {
-      case 'tiny':
-        return baseIntensity * 0.2;
-      case 'small':
-        return baseIntensity * 0.4;
-      case 'medium':
-        return baseIntensity * 0.8;
-      default:
-        return baseIntensity;
-    }
-  }
-  
-  /**
-   * Add sediment accumulation around rock formations
+   * Add sediment accumulation with original counts and logic
    */
   private addSedimentAccumulation(rockGroup: THREE.Group, category: string, clusterSize: number): void {
-    const sedimentCount = category === 'massive' ? 12 + Math.floor(Math.random() * 3) : 
-                         category === 'large' ? 8 + Math.floor(Math.random() * 4) :     
+    // Original counts: 6-14 based on size
+    const sedimentCount = category === 'massive' ? 11 + Math.floor(Math.random() * 4) : 
+                         category === 'large' ? 8 + Math.floor(Math.random() * 5) :     
                          6 + Math.floor(Math.random() * 3);
     
     // Create realistic sediment materials (beige/tan weathered colors)
@@ -402,6 +360,7 @@ export class RockGenerationModule {
       const distance = clusterSize * (0.9 + Math.random() * 0.8);
       const heightVariation = -sediment.scale.y * 0.3;
       
+      // Original clustering logic
       const clusterOffset = (Math.random() < 0.4) ? {
         x: (Math.random() - 0.5) * clusterSize * 0.2,
         z: (Math.random() - 0.5) * clusterSize * 0.2
@@ -421,11 +380,12 @@ export class RockGenerationModule {
   }
   
   /**
-   * Add debris field around cluster base
+   * Add debris field with original 60% clustering logic
    */
   private addDebrisField(rockGroup: THREE.Group, category: string, clusterSize: number): void {
-    const debrisCount = category === 'massive' ? 16 + Math.floor(Math.random() * 5) :
-                       category === 'large' ? 12 + Math.floor(Math.random() * 5) :
+    // Original counts: 8-20 based on size
+    const debrisCount = category === 'massive' ? 15 + Math.floor(Math.random() * 6) :
+                       category === 'large' ? 11 + Math.floor(Math.random() * 6) :
                        8 + Math.floor(Math.random() * 5);
     
     const sedimentMaterials = [
@@ -533,11 +493,14 @@ export class RockGenerationModule {
 
       const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
       
+      // Original 60% clustering logic for debris placement
       const isInCluster = Math.random() < 0.6;
       let angle, distance;
       
       if (isInCluster && i > 0) {
-        const previousDebris = rockGroup.children[rockGroup.children.length - 1];
+        // Find previous debris for clustering
+        const rockChildren = rockGroup.children.filter(child => child instanceof THREE.Mesh);
+        const previousDebris = rockChildren[rockChildren.length - 1];
         if (previousDebris instanceof THREE.Mesh) {
           angle = Math.atan2(previousDebris.position.z, previousDebris.position.x) + (Math.random() - 0.5) * 0.8;
           distance = previousDebris.position.length() + debrisSize * (1 + Math.random() * 2);
@@ -607,6 +570,19 @@ export class RockGenerationModule {
       debris.receiveShadow = true;
       rockGroup.add(debris);
     }
+  }
+  
+  /**
+   * Gaussian random for realistic clustering distribution
+   */
+  private gaussianRandom(): number {
+    let u = 0, v = 0;
+    while(u === 0) u = Math.random();
+    while(v === 0) v = Math.random();
+    
+    const num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    
+    return Math.min(Math.max((num + 3) / 6, 0), 1);
   }
   
   /**

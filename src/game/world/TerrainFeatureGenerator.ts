@@ -176,7 +176,8 @@ export class TerrainFeatureGenerator {
       
       case 'rocks':
         featureCount = Math.floor(clusterArea * 0.01 * cluster.density);
-        this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features);
+        // Force large rock generation for rock clusters
+        this.spawnClusteredRocks(region, featureCount, cluster, features);
         break;
         
       case 'bushes':
@@ -189,11 +190,44 @@ export class TerrainFeatureGenerator {
         this.spawnClusteredFeatures(region, 'forest', featureCount, cluster, features);
         
         featureCount = Math.floor(clusterArea * 0.006 * cluster.density);
-        this.spawnClusteredFeatures(region, 'rocks', featureCount, cluster, features);
+        // Force large rocks in mixed clusters too
+        this.spawnClusteredRocks(region, featureCount, cluster, features);
         
         featureCount = Math.floor(clusterArea * 0.015 * cluster.density);
         this.spawnClusteredFeatures(region, 'bushes', featureCount, cluster, features);
         break;
+    }
+  }
+  
+  /**
+   * Spawn clustered rocks with forced large/massive category selection
+   */
+  private spawnClusteredRocks(
+    region: RegionCoordinates,
+    count: number,
+    cluster: FeatureCluster,
+    features: THREE.Object3D[]
+  ): void {
+    console.log(`🪨 Spawning ${count} clustered rocks with forced large categories`);
+    
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = this.gaussianRandom() * cluster.radius;
+      
+      const position = new THREE.Vector3(
+        cluster.position.x + Math.cos(angle) * distance,
+        0,
+        cluster.position.z + Math.sin(angle) * distance
+      );
+      
+      if (this.isPositionInRegion(position, region) && !this.isPositionNearTavern(position)) {
+        // Force large or massive category for clustered rocks
+        const forcedCategory = Math.random() < 0.6 ? 'large' : 'massive';
+        const rock = this.rockModule.createRockAtPosition(position, region, forcedCategory);
+        if (rock) {
+          features.push(rock);
+        }
+      }
     }
   }
   
