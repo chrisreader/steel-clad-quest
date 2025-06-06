@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
 import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
@@ -183,7 +182,8 @@ export class TerrainFeatureGenerator {
     });
 
     if (building && collisionCallback) {
-      building.traverse((object) => {
+      const buildingGroup = building.getBuildingGroup();
+      buildingGroup.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           collisionCallback(object);
         }
