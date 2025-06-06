@@ -245,6 +245,125 @@ export class RockGenerationModule {
   }
   
   /**
+   * Create a medium rock formation with limited clustering
+   */
+  private createMediumRockFormation(rockGroup: THREE.Group, variation: RockVariation, position: THREE.Vector3): void {
+    const [minSize, maxSize] = variation.sizeRange;
+    const rockSize = minSize + Math.random() * (maxSize - minSize);
+    const rockShape = this.rockShapes[Math.floor(Math.random() * this.rockShapes.length)];
+    
+    // Create main rock
+    const mainRock = this.createSingleRock(rockSize, rockShape, variation.category, 0);
+    mainRock.rotation.set(
+      Math.random() * Math.PI,
+      Math.random() * Math.PI,
+      Math.random() * Math.PI
+    );
+    rockGroup.add(mainRock);
+    
+    // Add 1-2 smaller companion rocks
+    const companionCount = 1 + Math.floor(Math.random() * 2);
+    for (let i = 0; i < companionCount; i++) {
+      const companionSize = rockSize * (0.3 + Math.random() * 0.4);
+      const companionRock = this.createSingleRock(companionSize, rockShape, 'small', i + 1);
+      
+      const angle = Math.random() * Math.PI * 2;
+      const distance = rockSize * (1.2 + Math.random() * 0.8);
+      companionRock.position.set(
+        Math.cos(angle) * distance,
+        0,
+        Math.sin(angle) * distance
+      );
+      
+      companionRock.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      
+      rockGroup.add(companionRock);
+    }
+    
+    // Add limited debris
+    this.addLimitedDebris(rockGroup, rockSize);
+  }
+  
+  /**
+   * Create a small rock formation with minimal clustering
+   */
+  private createSmallRockFormation(rockGroup: THREE.Group, variation: RockVariation, position: THREE.Vector3): void {
+    const [minSize, maxSize] = variation.sizeRange;
+    const rockSize = minSize + Math.random() * (maxSize - minSize);
+    const rockShape = this.rockShapes[Math.floor(Math.random() * this.rockShapes.length)];
+    
+    // Create main rock
+    const mainRock = this.createSingleRock(rockSize, rockShape, variation.category, 0);
+    mainRock.rotation.set(
+      Math.random() * Math.PI,
+      Math.random() * Math.PI,
+      Math.random() * Math.PI
+    );
+    rockGroup.add(mainRock);
+    
+    // Occasionally add a companion rock
+    if (Math.random() < 0.3) {
+      const companionSize = rockSize * (0.4 + Math.random() * 0.3);
+      const companionRock = this.createSingleRock(companionSize, rockShape, 'tiny', 1);
+      
+      const angle = Math.random() * Math.PI * 2;
+      const distance = rockSize * (1.0 + Math.random() * 0.5);
+      companionRock.position.set(
+        Math.cos(angle) * distance,
+        0,
+        Math.sin(angle) * distance
+      );
+      
+      companionRock.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      
+      rockGroup.add(companionRock);
+    }
+  }
+  
+  /**
+   * Create a simple single rock
+   */
+  private createSimpleRock(rockGroup: THREE.Group, variation: RockVariation, position: THREE.Vector3): void {
+    const [minSize, maxSize] = variation.sizeRange;
+    const rockSize = minSize + Math.random() * (maxSize - minSize);
+    const rockShape = this.rockShapes[Math.floor(Math.random() * this.rockShapes.length)];
+    
+    const rock = this.createSingleRock(rockSize, rockShape, variation.category, 0);
+    rock.rotation.set(
+      Math.random() * Math.PI,
+      Math.random() * Math.PI,
+      Math.random() * Math.PI
+    );
+    
+    rockGroup.add(rock);
+  }
+  
+  /**
+   * Create a single rock with proper geometry and material
+   */
+  private createSingleRock(size: number, shape: RockShape, category: string, index: number): THREE.Mesh {
+    // Create geometry using RockShapeFactory
+    const geometry = RockShapeFactory.createRockGeometry(shape, size);
+    
+    // Create material using RockMaterialGenerator
+    const material = RockMaterialGenerator.createEnhancedRockMaterial(category, shape, index);
+    
+    const rock = new THREE.Mesh(geometry, material);
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    
+    return rock;
+  }
+  
+  /**
    * Add clustered tiny pebbles around large formations (restored original function)
    */
   private addClusteredTinyPebbles(rockGroup: THREE.Group, category: string, clusterSize: number): void {
