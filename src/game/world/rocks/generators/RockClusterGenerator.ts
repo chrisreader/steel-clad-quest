@@ -75,89 +75,27 @@ export class RockClusterGenerator {
       rockGroup.add(rock);
     });
 
-    // Create accent rocks with spire pairing logic
-    let spireGroupIndex = 0;
+    // Create accent rocks
     accentPositions.forEach((position, i) => {
       const rockSize = maxSize * (0.2 + Math.random() * 0.3);
-      const globalIndex = i + counts.foundationCount + counts.supportCount;
-      
       const rock = this.createStandardizedClusterRock(
         rockSize, 
         variation, 
-        globalIndex, 
+        i + counts.foundationCount + counts.supportCount, 
         'accent',
         geometryProcessor
       );
       
-      // Check for spire pairing (30% chance for pairs)
-      const rockShape = RockGenerationUtils.selectShapeByRole(this.rockShapes, 'accent', globalIndex, variation.category);
-      if (rockShape.type === 'spire' && RockGenerationUtils.shouldCreateSpirePair(spireGroupIndex)) {
-        // Create a pair of spires close together
-        this.createSpirePair(rockGroup, position, rockSize, variation, globalIndex, geometryProcessor);
-        spireGroupIndex++;
-      } else {
-        rock.position.copy(position);
-        rock.position.y = rockSize * 0.05;
-        rockGroup.add(rock);
-        
-        if (rockShape.type === 'spire') {
-          spireGroupIndex++;
-        }
-      }
+      rock.position.copy(position);
+      rock.position.y = rockSize * 0.05;
+      rockGroup.add(rock);
     });
     
     console.log(`🏔️ Created ${variation.category} cluster: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks`);
   }
 
   /**
-   * Create a pair of spires with legacy pairing behavior
-   */
-  private createSpirePair(
-    rockGroup: THREE.Group,
-    basePosition: THREE.Vector3,
-    rockSize: number,
-    variation: RockVariation,
-    index: number,
-    geometryProcessor: GeometryProcessor
-  ): void {
-    // First spire
-    const spire1 = this.createStandardizedClusterRock(
-      rockSize, 
-      variation, 
-      index, 
-      'accent',
-      geometryProcessor
-    );
-    
-    spire1.position.copy(basePosition);
-    spire1.position.y = rockSize * 0.05;
-    rockGroup.add(spire1);
-    
-    // Second spire offset slightly
-    const spire2 = this.createStandardizedClusterRock(
-      rockSize * (0.8 + Math.random() * 0.4), 
-      variation, 
-      index + 1, 
-      'accent',
-      geometryProcessor
-    );
-    
-    const pairOffset = rockSize * (0.5 + Math.random() * 0.3);
-    const angle = Math.random() * Math.PI * 2;
-    
-    spire2.position.set(
-      basePosition.x + Math.cos(angle) * pairOffset,
-      rockSize * 0.05,
-      basePosition.z + Math.sin(angle) * pairOffset
-    );
-    
-    rockGroup.add(spire2);
-    
-    console.log(`🗿 Created spire pair at (${basePosition.x.toFixed(1)}, ${basePosition.z.toFixed(1)})`);
-  }
-
-  /**
-   * Create cluster rock using standardized pipeline with legacy shape selection
+   * Create cluster rock using standardized pipeline
    */
   private createStandardizedClusterRock(
     rockSize: number, 
@@ -166,8 +104,8 @@ export class RockClusterGenerator {
     role: ClusterRole,
     geometryProcessor: GeometryProcessor
   ): THREE.Object3D {
-    // Select shape based on role with legacy logic
-    const rockShape = RockGenerationUtils.selectShapeByRole(this.rockShapes, role, index, variation.category);
+    // Select shape based on role
+    const rockShape = RockGenerationUtils.selectShapeByRole(this.rockShapes, role, index);
     
     // Create geometry using standardized processor
     let geometry = geometryProcessor.createCharacterBaseGeometry(rockShape, rockSize);
@@ -186,7 +124,7 @@ export class RockClusterGenerator {
     
     // Apply standardized properties
     RockGenerationUtils.applyStandardRockProperties(rock, variation.category, role);
-    RockGenerationUtils.randomizeRotation(rock, role, rockShape);
+    RockGenerationUtils.randomizeRotation(rock, role);
     
     return rock;
   }
