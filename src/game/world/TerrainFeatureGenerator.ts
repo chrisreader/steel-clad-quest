@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { TreeGenerator, BushGenerator } from './vegetation';
@@ -87,7 +86,7 @@ export class TerrainFeatureGenerator {
   private generateEvenlyDistributedFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
     this.spawnRandomFeatures(region, 'forest', 12, features);
     
-    // Generate rocks through rock module
+    // Generate rocks through rock module (bulk generation)
     const rocks = this.rockModule.generateRocksForRegion(region, 20);
     features.push(...rocks);
     
@@ -112,7 +111,7 @@ export class TerrainFeatureGenerator {
     
     this.spawnRandomFeatures(region, 'forest', 5, features);
     
-    // Generate rocks through rock module
+    // Generate rocks through rock module (bulk generation)
     const rocks = this.rockModule.generateRocksForRegion(region, 25);
     features.push(...rocks);
     
@@ -122,7 +121,7 @@ export class TerrainFeatureGenerator {
   private generateSparseFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
     this.spawnRandomFeatures(region, 'forest', 8, features);
     
-    // Generate rocks through rock module
+    // Generate rocks through rock module (bulk generation)
     const rocks = this.rockModule.generateRocksForRegion(region, 30);
     features.push(...rocks);
     
@@ -132,7 +131,7 @@ export class TerrainFeatureGenerator {
   private generateWastelandFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
     this.spawnRandomFeatures(region, 'forest', 2, features);
     
-    // Generate rocks through rock module
+    // Generate rocks through rock module (bulk generation)
     const rocks = this.rockModule.generateRocksForRegion(region, 35);
     features.push(...rocks);
     
@@ -217,10 +216,9 @@ export class TerrainFeatureGenerator {
       
       if (this.isPositionInRegion(position, region) && !this.isPositionNearTavern(position)) {
         if (type === 'rocks') {
-          // Handle rock clusters through the rock module
-          const rock = this.rockModule.generateRocksForRegion(region, 1)[0];
+          // Use the new method for creating individual rocks at specific positions
+          const rock = this.rockModule.createRockAtPosition(position, region);
           if (rock) {
-            rock.position.copy(position);
             features.push(rock);
           }
         } else {
@@ -249,10 +247,9 @@ export class TerrainFeatureGenerator {
       
       if (!this.isPositionNearTavern(position)) {
         if (type === 'rocks') {
-          // Handle rocks through the rock module
-          const rock = this.rockModule.generateRocksForRegion(region, 1)[0];
+          // Use the new method for creating individual rocks at specific positions
+          const rock = this.rockModule.createRockAtPosition(position, region);
           if (rock) {
-            rock.position.copy(position);
             features.push(rock);
           }
         } else {

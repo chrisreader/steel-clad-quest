@@ -51,7 +51,7 @@ export class RockGenerationModule {
   }
   
   /**
-   * Generate rocks for a specific region
+   * Generate rocks for a specific region (bulk generation)
    */
   public generateRocksForRegion(region: RegionCoordinates, count: number): THREE.Object3D[] {
     const regionKey = this.ringSystem.getRegionKey(region);
@@ -69,8 +69,6 @@ export class RockGenerationModule {
     // Create specified number of rocks
     for (let i = 0; i < count; i++) {
       const position = this.getRandomPositionInRegion(region);
-      
-      // Skip if too close to large formations
       const variation = this.selectRockVariation(totalWeight);
       
       if ((variation.category === 'large' || variation.category === 'massive') && 
@@ -96,6 +94,57 @@ export class RockGenerationModule {
     // Store rocks for this region
     this.spawnedRocks.set(regionKey, rocks);
     return rocks;
+  }
+  
+  /**
+   * Create a single rock at a specific position (for clusters and individual placement)
+   */
+  public createRockAtPosition(position: THREE.Vector3, region: RegionCoordinates, category?: string): THREE.Object3D | null {
+    const regionKey = this.ringSystem.getRegionKey(region);
+    
+    // Get or create rocks array for this region
+    let rocks = this.spawnedRocks.get(regionKey);
+    if (!rocks) {
+      rocks = [];
+      this.spawnedRocks.set(regionKey, rocks);
+    }
+    
+    const totalWeight = this.rockVariations.reduce((sum, variation) => sum + variation.weight, 0);
+    
+    // Select variation based on category if specified, otherwise random
+    let variation: RockVariation;
+    if (category) {
+      const categoryVariations = this.rockVariations.filter(v => v.category === category);
+      if (categoryVariations.length > 0) {
+        variation = categoryVariations[Math.floor(Math.random() * categoryVariations.length)];
+      } else {
+        variation = this.selectRockVariation(totalWeight);
+      }
+    } else {
+      variation = this.selectRockVariation(totalWeight);
+    }
+    
+    // Check for large formation conflicts
+    if ((variation.category === 'large' || variation.category === 'massive') && 
+        this.isTooCloseToLargeFormation(position)) {
+      return null;
+    }
+    
+    const rock = this.spawnRockByVariation(variation, position);
+    if (rock) {
+      rocks.push(rock);
+      this.scene.add(rock);
+      
+      if (variation.category === 'large' || variation.category === 'massive') {
+        this.largeRockFormations.push(position.clone());
+      }
+      
+      if (this.collisionRegistrationCallback && variation.category !== 'tiny') {
+        this.collisionRegistrationCallback(rock);
+      }
+    }
+    
+    return rock;
   }
   
   /**
