@@ -266,6 +266,138 @@ export class TerrainFeatureGenerator {
       
       rockGroup.add(rock);
     }
+    
+    // NEW: Add environmental details for medium and large clusters
+    if (variation.category === 'medium' || variation.category === 'large' || variation.category === 'massive') {
+      this.addClusterEnvironmentalDetails(rockGroup, variation, maxSize);
+    }
+  }
+  
+  // NEW: Add environmental details specifically for larger rock clusters
+  private addClusterEnvironmentalDetails(rockGroup: THREE.Group, variation: RockVariation, clusterSize: number): void {
+    // Add sediment accumulation in low spots
+    this.addSedimentAccumulation(rockGroup, variation.category, clusterSize);
+    
+    // Add debris field around cluster base
+    this.addDebrisField(rockGroup, variation.category, clusterSize);
+    
+    console.log(`🌫️ Added environmental details to ${variation.category} rock cluster (sediment + debris)`);
+  }
+  
+  // NEW: Add sediment accumulation around larger formations
+  private addSedimentAccumulation(rockGroup: THREE.Group, category: string, clusterSize: number): void {
+    const sedimentCount = category === 'massive' ? 12 + Math.floor(Math.random() * 3) : // 12-14 particles
+                         category === 'large' ? 8 + Math.floor(Math.random() * 4) :     // 8-11 particles  
+                         6 + Math.floor(Math.random() * 3);                            // 6-8 particles for medium
+    
+    // Create sediment material (darker, finer particles)
+    const sedimentMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(0.1, 0.2, 0.25), // Dark brown sediment
+      roughness: 0.95,
+      metalness: 0.0,
+      transparent: true,
+      opacity: 0.8
+    });
+    
+    for (let i = 0; i < sedimentCount; i++) {
+      const sedimentSize = clusterSize * (0.02 + Math.random() * 0.03); // Very small particles
+      const sediment = new THREE.Mesh(
+        new THREE.SphereGeometry(sedimentSize, 4, 3), // Low-poly for performance
+        sedimentMaterial.clone()
+      );
+      
+      // Position sediment in "low spots" around the cluster
+      const angle = Math.random() * Math.PI * 2;
+      const distance = clusterSize * (1.2 + Math.random() * 0.8); // Around cluster base
+      const heightVariation = -sedimentSize * 0.5; // Slightly sunken for realism
+      
+      sediment.position.set(
+        Math.cos(angle) * distance,
+        heightVariation,
+        Math.sin(angle) * distance
+      );
+      
+      // Slightly flatten sediment particles
+      sediment.scale.set(
+        1 + Math.random() * 0.3,
+        0.4 + Math.random() * 0.2, // Flattened Y
+        1 + Math.random() * 0.3
+      );
+      
+      sediment.rotation.set(
+        Math.random() * 0.2,
+        Math.random() * Math.PI * 2,
+        Math.random() * 0.2
+      );
+      
+      sediment.castShadow = true;
+      sediment.receiveShadow = true;
+      rockGroup.add(sediment);
+    }
+  }
+  
+  // NEW: Add debris field around cluster base
+  private addDebrisField(rockGroup: THREE.Group, category: string, clusterSize: number): void {
+    const debrisCount = category === 'massive' ? 16 + Math.floor(Math.random() * 5) : // 16-20 fragments
+                       category === 'large' ? 12 + Math.floor(Math.random() * 5) :     // 12-16 fragments
+                       8 + Math.floor(Math.random() * 5);                             // 8-12 fragments for medium
+    
+    // Create base debris material (similar to main rock but varied)
+    const baseRockMaterial = RockMaterialGenerator.createEnhancedRockMaterial(category, this.rockShapes[0], 0);
+    
+    for (let i = 0; i < debrisCount; i++) {
+      const debrisSize = clusterSize * (0.05 + Math.random() * 0.1); // Small fragments
+      
+      // Use various small geometries for debris variety
+      let debrisGeometry: THREE.BufferGeometry;
+      const geometryType = Math.floor(Math.random() * 3);
+      
+      switch (geometryType) {
+        case 0:
+          debrisGeometry = new THREE.DodecahedronGeometry(debrisSize, 0);
+          break;
+        case 1:
+          debrisGeometry = new THREE.IcosahedronGeometry(debrisSize, 0);
+          break;
+        default:
+          debrisGeometry = new THREE.SphereGeometry(debrisSize, 6, 4);
+          break;
+      }
+      
+      // Apply slight organic deformation to debris
+      this.applyGentleOrganicDeformation(debrisGeometry, 0.1, debrisSize);
+      
+      const debrisMaterial = baseRockMaterial.clone();
+      // Vary debris color slightly
+      debrisMaterial.color.multiplyScalar(0.8 + Math.random() * 0.4);
+      
+      const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+      
+      // Scatter debris around cluster base in realistic pattern
+      const angle = Math.random() * Math.PI * 2;
+      const distance = clusterSize * (1.5 + Math.random() * 1.0); // Spread around cluster
+      
+      debris.position.set(
+        Math.cos(angle) * distance,
+        debrisSize * 0.3, // Slightly embedded
+        Math.sin(angle) * distance
+      );
+      
+      // Random orientation for natural look
+      debris.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      
+      // Slight size variation
+      const scaleVariation = 0.7 + Math.random() * 0.6;
+      debris.scale.set(scaleVariation, scaleVariation, scaleVariation);
+      
+      debris.castShadow = true;
+      debris.receiveShadow = true;
+      rockGroup.add(debris);
+    }
   }
   
   // NEW: Size-aware rock creation with enhanced quality for small/tiny rocks
@@ -632,8 +764,6 @@ export class TerrainFeatureGenerator {
       rockGroup.add(clusterRock);
     }
   }
-  
-  // ... keep existing code (createCharacterBaseGeometry, applyShapeModifications, applyStretchModification, etc. - all the original methods for medium+ rocks remain unchanged)
   
   private createCharacterBaseGeometry(rockShape: RockShape, rockSize: number): THREE.BufferGeometry {
     let geometry: THREE.BufferGeometry;
@@ -1065,8 +1195,6 @@ export class TerrainFeatureGenerator {
     }
   }
   
-  // ... keep existing code (addSurfaceFeatures through dispose) the same ...
-  
   private addSurfaceFeatures(
     rockGroup: THREE.Group, 
     rockSize: number, 
@@ -1205,8 +1333,6 @@ export class TerrainFeatureGenerator {
       rockGroup.add(lichen);
     }
   }
-  
-  // ... keep existing code (all feature generation methods) the same ...
   
   public generateFeaturesForRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
