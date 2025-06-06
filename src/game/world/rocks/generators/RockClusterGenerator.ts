@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RockVariation, RockShape, GeometryProcessor, ClusterRole, RockCategory } from '../types/RockTypes';
 import { ROCK_SHAPES } from '../config/RockShapeConfig';
@@ -168,10 +167,8 @@ export class RockClusterGenerator {
     let geometry = geometryProcessor.createCharacterBaseGeometry(rockShape, rockSize);
     geometryProcessor.applyShapeModifications(geometry, rockShape, rockSize);
     
-    // Apply enhanced character deformation with category awareness
-    const deformationIntensity = role === 'accent' ? 
-      rockShape.deformationIntensity : rockShape.deformationIntensity * 0.7;
-    geometryProcessor.applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape, variation.category);
+    // Apply enhanced character deformation with category awareness - fix: remove the extra parameter
+    geometryProcessor.applyCharacterDeformation(geometry, rockShape.deformationIntensity, rockSize, rockShape);
     
     // Enhanced validation
     geometryProcessor.validateAndEnhanceGeometry(geometry);
