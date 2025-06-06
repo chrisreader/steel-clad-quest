@@ -215,7 +215,7 @@ export class TerrainFeatureGenerator {
             i,
             this.createCharacterBaseGeometry.bind(this),
             this.applyShapeModifications.bind(this),
-            this.applyCharacterDeformation.bind(this),
+            this.applySizeAwareCharacterDeformation.bind(this),
             this.validateAndEnhanceGeometry.bind(this)
           );
         } else {
