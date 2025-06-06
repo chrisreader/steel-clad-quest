@@ -1,51 +1,92 @@
+
 import * as THREE from 'three';
-import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise';
+import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js';
 import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionManager';
-import { StructureGenerator } from '../structures/StructureGenerator';
+import { StructureGenerator } from './StructureGenerator';
 import { BuildingManager } from '../buildings/BuildingManager';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
-import { RockShapeFactory } from './rocks/RockShapeFactory';
+import { RockShapeFactory } from './rocks/generators/RockShapeFactory';
 import { ROCK_VARIATIONS } from './rocks/config/RockVariationConfig';
+import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 
 export class TerrainFeatureGenerator {
+  private ringSystem: RingQuadrantSystem;
   private scene: THREE.Scene;
-  private terrainSize: number;
-  private heightData: number[][];
   private noise: SimplexNoise;
-  private structureGenerator: StructureGenerator;
-  private buildingManager: BuildingManager;
+  private buildingManager: BuildingManager | null = null;
   private rockClusterGenerator: RockClusterGenerator;
   private rockShapeFactory: RockShapeFactory;
+  private collisionRegistrationCallback: ((object: THREE.Object3D) => void) | null = null;
 
-  constructor(
-    scene: THREE.Scene,
-    terrainSize: number,
-    heightData: number[][],
-    structureGenerator: StructureGenerator,
-    buildingManager: BuildingManager
-  ) {
+  constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
+    this.ringSystem = ringSystem;
     this.scene = scene;
-    this.terrainSize = terrainSize;
-    this.heightData = heightData;
     this.noise = new SimplexNoise();
-    this.structureGenerator = structureGenerator;
-    this.buildingManager = buildingManager;
     this.rockClusterGenerator = new RockClusterGenerator();
     this.rockShapeFactory = new RockShapeFactory();
   }
 
+  public setBuildingManager(buildingManager: BuildingManager): void {
+    this.buildingManager = buildingManager;
+  }
+
+  public setCollisionRegistrationCallback(callback: (object: THREE.Object3D) => void): void {
+    this.collisionRegistrationCallback = callback;
+  }
+
   private getTerrainHeightAtPosition(x: number, z: number): number {
-    const xRatio = (x + this.terrainSize / 2) / this.terrainSize;
-    const zRatio = (z + this.terrainSize / 2) / this.terrainSize;
+    // Simple height calculation based on ring system
+    const distance = Math.sqrt(x * x + z * z);
+    return Math.sin(distance * 0.1) * 2;
+  }
 
-    if (xRatio < 0 || xRatio > 1 || zRatio < 0 || zRatio > 1) {
-      return 0;
-    }
+  public generateFeaturesForRegion(region: RegionCoordinates): void {
+    console.log(`🌱 Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
 
-    const xIndex = Math.floor(xRatio * (this.heightData.length - 1));
-    const zIndex = Math.floor(zRatio * (this.heightData[0].length - 1));
+    const centerPosition = this.ringSystem.getRegionCenter(region);
+    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
+    
+    // Generate ring-based features with intensity based on ring characteristics
+    const rings = [
+      { 
+        radius: ringDef.outerRadius * 0.8, 
+        intensity: Math.max(0.3, 1.0 - region.ringIndex * 0.2) 
+      }
+    ];
 
-    return this.heightData[xIndex][zIndex];
+    rings.forEach((ring, index) => {
+      const featureCount = Math.floor(ring.intensity * 4);
+
+      for (let i = 0; i < featureCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = ring.radius * Math.sqrt(Math.random());
+
+        const x = centerPosition.x + Math.cos(angle) * radius;
+        const z = centerPosition.z + Math.sin(angle) * radius;
+
+        // Weighted random choice for feature type
+        const choice = Math.random();
+
+        if (choice < 0.25 * ring.intensity) {
+          this.addTree(x, z, ring.intensity, index);
+        } else if (choice < 0.4 * ring.intensity) {
+          this.addRockFormations(x, z, ring.intensity, index);
+        } else if (choice < 0.7 * ring.intensity) {
+          this.addDebrisField(x, z, ring.intensity, index);
+        } else if (choice < 0.9 && ring.intensity > 0.6 && this.buildingManager) {
+          this.addBuilding(x, z, ring.intensity, index);
+        } else {
+          this.addBush(x, z, ring.intensity, index);
+        }
+      }
+    });
+
+    console.log(`Features generated for region ${region.ringIndex}-${region.quadrant}`);
+  }
+
+  public cleanupFeaturesForRegion(region: RegionCoordinates): void {
+    console.log(`🧹 Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    // Implementation for cleanup if needed
   }
 
   public generateFeatures(rings: { radius: number; intensity: number }[], collisionCallback?: (object: THREE.Object3D) => void): void {
@@ -71,7 +112,6 @@ export class TerrainFeatureGenerator {
         } else if (choice < 0.7 * ring.intensity) {
           this.addDebrisField(x, z, ring.intensity, index, collisionCallback);
         } else if (choice < 0.9 && ring.intensity > 0.6) {
-          // Ensure building placement only in higher intensity rings
           this.addBuilding(x, z, ring.intensity, index, collisionCallback);
         } else {
           this.addBush(x, z, ring.intensity, index, collisionCallback);
@@ -105,6 +145,10 @@ export class TerrainFeatureGenerator {
     if (collisionCallback) {
       collisionCallback(tree);
     }
+
+    if (this.collisionRegistrationCallback) {
+      this.collisionRegistrationCallback(tree);
+    }
   }
 
   private addBush(x: number, z: number, intensity: number, ringIndex: number, collisionCallback?: (object: THREE.Object3D) => void): void {
@@ -123,11 +167,20 @@ export class TerrainFeatureGenerator {
     if (collisionCallback) {
       collisionCallback(bush);
     }
+
+    if (this.collisionRegistrationCallback) {
+      this.collisionRegistrationCallback(bush);
+    }
   }
 
   private addBuilding(x: number, z: number, intensity: number, ringIndex: number, collisionCallback?: (object: THREE.Object3D) => void): void {
+    if (!this.buildingManager) return;
+
     const terrainHeight = this.getTerrainHeightAtPosition(x, z);
-    const building = this.buildingManager.createBuilding('tavern', x, terrainHeight, z);
+    const building = this.buildingManager.createBuilding({
+      type: 'tavern',
+      position: new THREE.Vector3(x, terrainHeight, z)
+    });
 
     if (building && collisionCallback) {
       building.traverse((object) => {
@@ -246,6 +299,10 @@ export class TerrainFeatureGenerator {
       if (collisionCallback) {
         collisionCallback(debris);
       }
+
+      if (this.collisionRegistrationCallback) {
+        this.collisionRegistrationCallback(debris);
+      }
     }
   }
 
@@ -261,7 +318,7 @@ export class TerrainFeatureGenerator {
       // Get the terrain height at this position
       const terrainHeight = this.getTerrainHeightAtPosition(offsetX, offsetZ);
       
-      // Create clustered rock formation using RockClusterGenerator
+      // Create clustered rock formation using simple geometry for now
       const variation = ROCK_VARIATIONS[Math.floor(Math.random() * ROCK_VARIATIONS.length)];
       const rockGroup = new THREE.Group();
       
@@ -270,15 +327,27 @@ export class TerrainFeatureGenerator {
       rockGroup.userData.rockType = 'formation';
       rockGroup.userData.variation = variation.category;
       
-      this.rockClusterGenerator.createVariedRockCluster(
-        rockGroup,
-        variation,
-        i,
-        this.rockShapeFactory.createCharacterBaseGeometry.bind(this.rockShapeFactory),
-        this.rockShapeFactory.applyShapeModifications.bind(this.rockShapeFactory),
-        this.rockShapeFactory.applyCharacterDeformation.bind(this.rockShapeFactory),
-        this.rockShapeFactory.validateAndEnhanceGeometry.bind(this.rockShapeFactory)
-      );
+      // Create simple rock cluster
+      const rockCount = 3 + Math.floor(Math.random() * 4);
+      for (let r = 0; r < rockCount; r++) {
+        const rockSize = 0.5 + Math.random() * 1.5;
+        const rockGeometry = new THREE.SphereGeometry(rockSize, 8, 6);
+        const rockMaterial = new THREE.MeshLambertMaterial({
+          color: new THREE.Color(0.6, 0.55, 0.5)
+        });
+        
+        const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+        rock.position.set(
+          (Math.random() - 0.5) * 4,
+          rockSize * 0.5,
+          (Math.random() - 0.5) * 4
+        );
+        rock.userData.isRock = true;
+        rock.userData.rockType = 'cluster_member';
+        rock.userData.size = rockSize;
+        
+        rockGroup.add(rock);
+      }
       
       rockGroup.position.set(offsetX, terrainHeight, offsetZ);
       this.scene.add(rockGroup);
@@ -297,6 +366,24 @@ export class TerrainFeatureGenerator {
           }
         });
       }
+
+      if (this.collisionRegistrationCallback) {
+        this.collisionRegistrationCallback(rockGroup);
+        
+        // Also register collision for individual rocks in the cluster
+        rockGroup.children.forEach(rock => {
+          if (rock instanceof THREE.Mesh) {
+            rock.userData.isRock = true;
+            rock.userData.rockType = 'cluster_member';
+            rock.userData.parentFormation = rockGroup.uuid;
+            this.collisionRegistrationCallback!(rock);
+          }
+        });
+      }
     }
+  }
+
+  public dispose(): void {
+    console.log('TerrainFeatureGenerator disposed');
   }
 }
