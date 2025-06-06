@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { noise } from 'noisejs';
 
@@ -11,7 +12,7 @@ export class RockShapeFactory {
   private static noise = new noise.Noise(Math.random());
 
   static generateRock(
-    type: 'boulder' | 'weathered' | 'slab' | 'angular' | 'flattened' | 'spire' | 'jagged',
+    type: 'boulder' | 'angular' | 'flat',
     size: number = 1,
     complexity: number = 0.5
   ): RockShape {
@@ -21,23 +22,11 @@ export class RockShapeFactory {
       case 'boulder':
         geometry = this.createBoulderGeometry(size, complexity);
         break;
-      case 'weathered':
-        geometry = this.createWeatheredGeometry(size, complexity);
-        break;
-      case 'slab':
-        geometry = this.createSlabGeometry(size, complexity);
-        break;
       case 'angular':
         geometry = this.createAngularGeometry(size, complexity);
         break;
-      case 'flattened':
-        geometry = this.createFlattenedGeometry(size, complexity);
-        break;
-      case 'spire':
-        geometry = this.createSpireGeometry(size, complexity);
-        break;
-      case 'jagged':
-        geometry = this.createJaggedGeometry(size, complexity);
+      case 'flat':
+        geometry = this.createFlatGeometry(size, complexity);
         break;
       default:
         geometry = this.createBoulderGeometry(size, complexity);
@@ -69,26 +58,6 @@ export class RockShapeFactory {
     return baseGeometry;
   }
 
-  private static createWeatheredGeometry(size: number, complexity: number): THREE.BufferGeometry {
-    // Similar to boulder but with more erosion-like features
-    const baseGeometry = new THREE.SphereGeometry(size, 16, 12);
-    
-    this.applyMultiSphereDeformation(baseGeometry, complexity * 0.8);
-    this.applyConstrainedNoiseDeformation(baseGeometry, complexity * 0.4);
-    
-    return baseGeometry;
-  }
-
-  private static createSlabGeometry(size: number, complexity: number): THREE.BufferGeometry {
-    // Flattened cylinder shape
-    const baseGeometry = new THREE.CylinderGeometry(size, size * 0.9, size * 0.3, 12, 2);
-    
-    this.applyConstrainedFlatteningDeformation(baseGeometry, complexity);
-    this.applyConstrainedNoiseDeformation(baseGeometry, complexity * 0.25);
-    
-    return baseGeometry;
-  }
-
   private static createAngularGeometry(size: number, complexity: number): THREE.BufferGeometry {
     // Higher subdivision for better topology
     const baseGeometry = new THREE.DodecahedronGeometry(size, 2);
@@ -100,32 +69,13 @@ export class RockShapeFactory {
     return baseGeometry;
   }
 
-  private static createFlattenedGeometry(size: number, complexity: number): THREE.BufferGeometry {
+  private static createFlatGeometry(size: number, complexity: number): THREE.BufferGeometry {
     // Start with a cylinder for flat base shape
     const baseGeometry = new THREE.CylinderGeometry(size, size * 0.8, size * 0.4, 12, 2);
     
     // Apply controlled flattening with topology preservation
     this.applyConstrainedFlatteningDeformation(baseGeometry, complexity);
     this.applyConstrainedNoiseDeformation(baseGeometry, complexity * 0.25);
-    
-    return baseGeometry;
-  }
-
-  private static createSpireGeometry(size: number, complexity: number): THREE.BufferGeometry {
-    // Tall, narrow rock
-    const baseGeometry = new THREE.ConeGeometry(size * 0.6, size * 1.8, 8, 3);
-    
-    this.applyConstrainedNoiseDeformation(baseGeometry, complexity * 0.3);
-    
-    return baseGeometry;
-  }
-
-  private static createJaggedGeometry(size: number, complexity: number): THREE.BufferGeometry {
-    // More aggressive angular shape
-    const baseGeometry = new THREE.OctahedronGeometry(size, 2);
-    
-    this.applyConstrainedAngularDeformation(baseGeometry, complexity * 1.2);
-    this.applyConstrainedNoiseDeformation(baseGeometry, complexity * 0.4);
     
     return baseGeometry;
   }
