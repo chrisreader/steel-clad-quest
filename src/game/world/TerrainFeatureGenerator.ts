@@ -191,30 +191,78 @@ export class TerrainFeatureGenerator {
       let sedimentGeometry: THREE.BufferGeometry;
       let sediment: THREE.Mesh;
       
-      // Create varied sediment geometries
+      // Create varied sediment geometries with organic shapes
       switch (sedimentType) {
-        case 0: // Flat sediment patches
+        case 0: // Organic flat sediment patches (was rectangular slabs)
           const patchSize = clusterSize * (0.08 + Math.random() * 0.06);
-          sedimentGeometry = new THREE.PlaneGeometry(patchSize, patchSize * (0.6 + Math.random() * 0.8));
+          // Start with plane and make it organic
+          sedimentGeometry = new THREE.PlaneGeometry(patchSize, patchSize * (0.6 + Math.random() * 0.8), 8, 6);
+          
+          // Apply organic vertex displacement to create irregular flat stone shapes
+          const positions = sedimentGeometry.attributes.position.array as Float32Array;
+          for (let j = 0; j < positions.length; j += 3) {
+            const x = positions[j];
+            const z = positions[j + 2];
+            
+            // Add edge irregularity and organic variation
+            const edgeNoise = Math.sin(x * 8) * Math.cos(z * 8) * 0.15;
+            const organicNoise = Math.sin(x * 12) * Math.cos(z * 10) * 0.1;
+            
+            positions[j] += edgeNoise + organicNoise; // X displacement
+            positions[j + 2] += edgeNoise * 0.8 + organicNoise; // Z displacement
+          }
+          sedimentGeometry.attributes.position.needsUpdate = true;
+          sedimentGeometry.computeVertexNormals();
+          
           sediment = new THREE.Mesh(sedimentGeometry, sedimentMaterials[Math.floor(Math.random() * 3)].clone());
           sediment.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.3; // Mostly flat with slight variation
           break;
           
-        case 1: // Flattened cylinder sediment
-          const cylinderRadius = clusterSize * (0.03 + Math.random() * 0.04);
-          sedimentGeometry = new THREE.CylinderGeometry(cylinderRadius, cylinderRadius, cylinderRadius * 0.2, 8);
+        case 1: // Flattened oval sediment (keep existing - already organic enough)
+          const ovalRadius = clusterSize * (0.03 + Math.random() * 0.04);
+          sedimentGeometry = new THREE.SphereGeometry(ovalRadius, 8, 6);
+          // Apply oval flattening
+          const ovalPositions = sedimentGeometry.attributes.position.array as Float32Array;
+          for (let j = 1; j < ovalPositions.length; j += 3) {
+            ovalPositions[j] *= 0.2; // Flatten Y-axis
+          }
+          sedimentGeometry.attributes.position.needsUpdate = true;
+          sedimentGeometry.computeVertexNormals();
+          
           sediment = new THREE.Mesh(sedimentGeometry, sedimentMaterials[Math.floor(Math.random() * 3)].clone());
           break;
           
-        default: // Small spherical particles
-          const sphereSize = clusterSize * (0.02 + Math.random() * 0.03);
-          sedimentGeometry = new THREE.SphereGeometry(sphereSize, 6, 4);
+        default: // Organic irregular mounds (was cylindrical pieces)
+          const moundSize = clusterSize * (0.02 + Math.random() * 0.03);
+          // Start with sphere and create organic kidney/mound shapes
+          sedimentGeometry = new THREE.SphereGeometry(moundSize, 8, 6);
+          
+          // Apply organic deformation to create natural mound/depression shapes
+          const moundPositions = sedimentGeometry.attributes.position.array as Float32Array;
+          for (let j = 0; j < moundPositions.length; j += 3) {
+            const x = moundPositions[j];
+            const y = moundPositions[j + 1];
+            const z = moundPositions[j + 2];
+            
+            // Create kidney/irregular mound shape
+            const organicFactor1 = Math.sin(x * 6) * Math.cos(z * 4) * 0.3;
+            const organicFactor2 = Math.cos(y * 8) * Math.sin(x * 5) * 0.2;
+            const flatteningFactor = Math.abs(y) < moundSize * 0.5 ? 1.2 : 0.7; // Create natural depression
+            
+            moundPositions[j] += organicFactor1; // X variation
+            moundPositions[j + 1] *= flatteningFactor + organicFactor2; // Y flattening with variation
+            moundPositions[j + 2] += organicFactor1 * 0.8; // Z variation
+          }
+          sedimentGeometry.attributes.position.needsUpdate = true;
+          sedimentGeometry.computeVertexNormals();
+          
           sediment = new THREE.Mesh(sedimentGeometry, sedimentMaterials[Math.floor(Math.random() * 3)].clone());
-          // Flatten spheres to simulate accumulated sediment
+          
+          // Apply additional asymmetric scaling for more natural look
           sediment.scale.set(
-            1 + Math.random() * 0.3,
-            0.3 + Math.random() * 0.2, // Flattened Y
-            1 + Math.random() * 0.3
+            1 + Math.random() * 0.4,
+            0.3 + Math.random() * 0.3, // Keep flattened
+            0.8 + Math.random() * 0.5
           );
           break;
       }
