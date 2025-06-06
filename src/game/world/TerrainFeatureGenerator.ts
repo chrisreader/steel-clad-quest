@@ -1,5 +1,7 @@
+
 import * as THREE from 'three';
 import { Noise } from 'noisejs';
+import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 
 interface TerrainFeature {
   type: 'rock' | 'cluster' | 'structure';
@@ -9,19 +11,26 @@ interface TerrainFeature {
 }
 
 export class TerrainFeatureGenerator {
+  private ringSystem: RingQuadrantSystem;
   private scene: THREE.Scene;
   private noise: Noise;
   private features: TerrainFeature[] = [];
+  private collisionRegistrationCallback: ((object: THREE.Object3D) => void) | null = null;
   private materials: {
     rock: THREE.MeshLambertMaterial[];
     sediment: THREE.MeshLambertMaterial[];
     debris: THREE.MeshLambertMaterial[];
   };
 
-  constructor(scene: THREE.Scene) {
+  constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
+    this.ringSystem = ringSystem;
     this.scene = scene;
     this.noise = new Noise(Math.random());
     this.materials = this.createMaterials();
+  }
+
+  public setCollisionRegistrationCallback(callback: (object: THREE.Object3D) => void): void {
+    this.collisionRegistrationCallback = callback;
   }
 
   private createMaterials() {
@@ -59,12 +68,16 @@ export class TerrainFeatureGenerator {
     };
   }
 
-  public generateFeaturesForRegion(centerX: number, centerZ: number, size: number): void {
+  public generateFeaturesForRegion(region: RegionCoordinates, centerPosition?: THREE.Vector3, size?: number): void {
+    // Get region center if not provided
+    const regionCenter = centerPosition || this.ringSystem.getRegionCenter(region);
+    const regionSize = size || 100; // Default size
+    
     const featureCount = Math.floor(Math.random() * 5) + 3;
     
     for (let i = 0; i < featureCount; i++) {
-      const x = centerX + (Math.random() - 0.5) * size * 0.8;
-      const z = centerZ + (Math.random() - 0.5) * size * 0.8;
+      const x = regionCenter.x + (Math.random() - 0.5) * regionSize * 0.8;
+      const z = regionCenter.z + (Math.random() - 0.5) * regionSize * 0.8;
       
       const featureSize = 1 + Math.random() * 5;
       const rockCount = Math.floor(3 + Math.random() * 7);
@@ -74,12 +87,16 @@ export class TerrainFeatureGenerator {
     }
   }
 
-  public cleanupFeaturesForRegion(centerX: number, centerZ: number, size: number): void {
-    const halfSize = size / 2;
-    const minX = centerX - halfSize;
-    const maxX = centerX + halfSize;
-    const minZ = centerZ - halfSize;
-    const maxZ = centerZ + halfSize;
+  public cleanupFeaturesForRegion(region: RegionCoordinates, centerPosition?: THREE.Vector3, size?: number): void {
+    // Get region center if not provided
+    const regionCenter = centerPosition || this.ringSystem.getRegionCenter(region);
+    const regionSize = size || 100; // Default size
+    
+    const halfSize = regionSize / 2;
+    const minX = regionCenter.x - halfSize;
+    const maxX = regionCenter.x + halfSize;
+    const minZ = regionCenter.z - halfSize;
+    const maxZ = regionCenter.z + halfSize;
     
     const featuresToRemove: TerrainFeature[] = [];
     
@@ -119,7 +136,14 @@ export class TerrainFeatureGenerator {
     geometry.computeVertexNormals();
     
     const material = this.materials.rock[Math.floor(Math.random() * this.materials.rock.length)];
-    return new THREE.Mesh(geometry, material);
+    const rock = new THREE.Mesh(geometry, material);
+    
+    // Register collision if callback is available
+    if (this.collisionRegistrationCallback) {
+      this.collisionRegistrationCallback(rock);
+    }
+    
+    return rock;
   }
 
   private createRockCluster(
@@ -412,10 +436,19 @@ export class TerrainFeatureGenerator {
     }
   }
 
-  public cleanup(): void {
+  public dispose(): void {
     for (const feature of this.features) {
       this.removeFeature(feature);
     }
     this.features = [];
+    
+    // Dispose of materials
+    Object.values(this.materials).forEach(materialArray => {
+      materialArray.forEach(material => material.dispose());
+    });
+  }
+
+  public cleanup(): void {
+    this.dispose();
   }
 }
