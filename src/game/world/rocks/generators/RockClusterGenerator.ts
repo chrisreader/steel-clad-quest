@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RockVariation, RockShape, GeometryProcessor, ClusterRole } from '../types/RockTypes';
 import { ROCK_SHAPES } from '../config/RockShapeConfig';
@@ -52,7 +51,8 @@ export class RockClusterGenerator {
         variation, 
         i, 
         'foundation',
-        geometryProcessor
+        geometryProcessor,
+        counts.foundationCount // Pass total count
       );
       
       rock.position.copy(position);
@@ -68,7 +68,8 @@ export class RockClusterGenerator {
         variation, 
         i + counts.foundationCount, 
         'support',
-        geometryProcessor
+        geometryProcessor,
+        counts.supportCount // Pass total count
       );
       
       rock.position.copy(position);
@@ -85,9 +86,10 @@ export class RockClusterGenerator {
       const rock = this.createStandardizedClusterRock(
         rockSize, 
         variation, 
-        i + counts.foundationCount + counts.supportCount, 
+        i, // Use accent-specific index
         'accent',
-        geometryProcessor
+        geometryProcessor,
+        counts.accentCount // Pass total accent count for fixed percentage
       );
       
       // Check for spire pairing
@@ -132,10 +134,17 @@ export class RockClusterGenerator {
     variation: RockVariation, 
     index: number, 
     role: ClusterRole,
-    geometryProcessor: GeometryProcessor
+    geometryProcessor: GeometryProcessor,
+    totalRoleCount?: number
   ): THREE.Object3D {
-    // Select shape based on role with spire support
-    const rockShape = RockGenerationUtils.selectShapeByRole(this.rockShapes, role, index, variation.category);
+    // Select shape based on role with spire support and fixed percentage for accents
+    const rockShape = RockGenerationUtils.selectShapeByRole(
+      this.rockShapes, 
+      role, 
+      index, 
+      variation.category,
+      role === 'accent' ? totalRoleCount : undefined
+    );
     
     // Create geometry using standardized processor
     let geometry = geometryProcessor.createCharacterBaseGeometry(rockShape, rockSize);

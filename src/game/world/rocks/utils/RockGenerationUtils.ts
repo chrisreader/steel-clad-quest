@@ -3,6 +3,7 @@ import { RockShape, ClusterRole, RockCategory, DeformationOptions, ClusterLayout
 
 export class RockGenerationUtils {
   private static noiseSeed = Math.random();
+  private static spireAssignments: Map<string, boolean[]> = new Map();
 
   public static calculateRealisticStackingPosition(
     basePosition: THREE.Vector3,
@@ -59,7 +60,13 @@ export class RockGenerationUtils {
     return position;
   }
 
-  public static selectShapeByRole(rockShapes: RockShape[], role: ClusterRole, index: number, category?: RockCategory): RockShape {
+  public static selectShapeByRole(
+    rockShapes: RockShape[], 
+    role: ClusterRole, 
+    index: number, 
+    category?: RockCategory,
+    totalAccentCount?: number
+  ): RockShape {
     switch (role) {
       case 'foundation':
         const foundationShapes = rockShapes.filter(s => 
@@ -82,18 +89,44 @@ export class RockGenerationUtils {
         return supportShapes[index % supportShapes.length];
         
       case 'accent':
-        // Implement 15-20% spire spawn rate for medium/large clusters
-        if (category && (category === 'medium' || category === 'large' || category === 'massive')) {
-          const spireChance = 0.15 + Math.random() * 0.05; // 15-20%
-          if (Math.random() < spireChance) {
+        // Implement fixed 15-20% spire rate for medium/large clusters
+        if (category && (category === 'medium' || category === 'large' || category === 'massive') && totalAccentCount) {
+          const clusterId = `${category}_${totalAccentCount}`;
+          
+          // Generate spire assignments for this cluster if not exists
+          if (!this.spireAssignments.has(clusterId)) {
+            const spireRate = 0.15 + Math.random() * 0.05; // 15-20%
+            const spireCount = Math.max(1, Math.floor(totalAccentCount * spireRate));
+            
+            // Create assignment array
+            const assignments = new Array(totalAccentCount).fill(false);
+            
+            // Randomly assign spire positions
+            const spirePositions = new Set<number>();
+            while (spirePositions.size < spireCount) {
+              spirePositions.add(Math.floor(Math.random() * totalAccentCount));
+            }
+            
+            spirePositions.forEach(pos => assignments[pos] = true);
+            this.spireAssignments.set(clusterId, assignments);
+            
+            console.log(`🗻 Assigned ${spireCount}/${totalAccentCount} (${(spireRate * 100).toFixed(1)}%) accent spires for ${category} cluster`);
+          }
+          
+          // Check if this index should be a spire
+          const assignments = this.spireAssignments.get(clusterId)!;
+          if (assignments[index]) {
             const spireShape = rockShapes.find(s => s.type === 'spire');
             if (spireShape) {
-              console.log(`🗻 Spawning accent spire in ${category} cluster`);
+              console.log(`🗻 Spawning assigned accent spire ${index + 1}/${totalAccentCount} in ${category} cluster`);
               return spireShape;
             }
           }
         }
-        return rockShapes[index % rockShapes.length];
+        
+        // Return non-spire shape for non-assigned accent rocks
+        const nonSpireShapes = rockShapes.filter(s => s.type !== 'spire');
+        return nonSpireShapes[index % nonSpireShapes.length];
         
       default:
         return rockShapes[index % rockShapes.length];
@@ -414,5 +447,12 @@ export class RockGenerationUtils {
     
     // Set name for debugging
     rock.name = `rock_${category}_${role || 'standalone'}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Clear spire assignments cache (useful for testing or cleanup)
+   */
+  public static clearSpireAssignments(): void {
+    this.spireAssignments.clear();
   }
 }
