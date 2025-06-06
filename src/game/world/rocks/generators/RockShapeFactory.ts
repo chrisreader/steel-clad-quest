@@ -1,6 +1,6 @@
-
 import * as THREE from 'three';
-import { RockShape } from '../types/RockTypes';
+import { RockShape, RockCategory } from '../types/RockTypes';
+import { DeformationSystem } from '../utils/DeformationSystem';
 import { Noise } from 'noisejs';
 
 export class RockShapeFactory {
@@ -80,7 +80,7 @@ export class RockShapeFactory {
   }
   
   /**
-   * Applies shape modifications to the rock geometry
+   * Applies enhanced shape modifications with proper intensity
    */
   static applyShapeModifications(geometry: THREE.BufferGeometry, rockShape: RockShape, rockSize: number): void {
     const positions = geometry.attributes.position.array as Float32Array;
@@ -88,22 +88,22 @@ export class RockShapeFactory {
     switch (rockShape.shapeModifier) {
       case 'stretch':
         if (rockShape.type === 'spire') {
-          this.applySpireSpecificStretching(geometry, rockSize, rockShape);
+          this.applyEnhancedSpireStretching(geometry, rockSize, rockShape);
         } else {
-          this.applyStretchModification(positions, rockSize);
+          this.applyStretchModification(positions, rockSize, rockShape.deformationIntensity);
         }
         break;
         
       case 'flatten':
-        this.applyFlattenModification(positions, rockSize);
+        this.applyEnhancedFlattenModification(positions, rockSize, rockShape.deformationIntensity);
         break;
         
       case 'fracture':
-        this.applyFractureModification(positions, rockSize);
+        this.applyEnhancedFractureModification(positions, rockSize, rockShape.deformationIntensity);
         break;
         
       case 'erode':
-        this.applyErosionModification(positions, rockSize);
+        this.applyEnhancedErosionModification(positions, rockSize, rockShape.weatheringLevel);
         break;
         
       default:
@@ -115,35 +115,33 @@ export class RockShapeFactory {
   }
   
   /**
-   * Applies spire-specific stretching
+   * Enhanced spire stretching with proper intensity control
    */
-  static applySpireSpecificStretching(geometry: THREE.BufferGeometry, rockSize: number, rockShape: RockShape): void {
+  static applyEnhancedSpireStretching(geometry: THREE.BufferGeometry, rockSize: number, rockShape: RockShape): void {
     const positions = geometry.attributes.position.array as Float32Array;
     const vertex = new THREE.Vector3();
     
-    // Calculate maximum safe displacement to prevent mesh gaps
-    const maxVerticalStretch = rockSize * 2.0;
-    const maxRadialTaper = 0.4;
+    // Use deformation intensity for stretching control
+    const stretchIntensity = 1.0 + rockShape.deformationIntensity * 2.0; // 1.0 to 2.4
+    const maxVerticalStretch = rockSize * stretchIntensity;
+    const maxRadialTaper = 0.2 + rockShape.deformationIntensity * 0.3; // 0.2 to 0.5
     
     for (let i = 0; i < positions.length; i += 3) {
       vertex.set(positions[i], positions[i + 1], positions[i + 2]);
       const originalY = vertex.y;
       const originalRadius = Math.sqrt(vertex.x * vertex.x + vertex.z * vertex.z);
       
-      // Apply controlled vertical stretching with limits
-      const stretchFactor = Math.min(1.8, 1.0 + Math.abs(originalY) / rockSize);
+      // Apply controlled vertical stretching
+      const stretchFactor = Math.min(stretchIntensity, 1.0 + Math.abs(originalY) / rockSize);
       vertex.y = Math.sign(originalY) * Math.min(Math.abs(originalY * stretchFactor), maxVerticalStretch);
       
-      // Apply gradual tapering based on height to create cone effect
+      // Apply gradual tapering based on height
       const heightRatio = Math.abs(vertex.y) / maxVerticalStretch;
-      const taperFactor = Math.max(maxRadialTaper, 1.0 - heightRatio * 0.6);
-      
-      // Ensure we don't taper too aggressively near the tip
-      const safeTaperFactor = Math.max(0.3, taperFactor);
+      const taperFactor = Math.max(maxRadialTaper, 1.0 - heightRatio * 0.8);
       
       if (originalRadius > 0) {
-        vertex.x *= safeTaperFactor;
-        vertex.z *= safeTaperFactor;
+        vertex.x *= taperFactor;
+        vertex.z *= taperFactor;
       }
       
       positions[i] = vertex.x;
@@ -151,125 +149,75 @@ export class RockShapeFactory {
       positions[i + 2] = vertex.z;
     }
     
-    // Apply spire-specific geometry validation
-    this.validateSpireGeometry(geometry, rockSize);
-    
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
   }
   
   /**
-   * Validates and fixes spire geometry
+   * Enhanced stretch modification with intensity control
    */
-  static validateSpireGeometry(geometry: THREE.BufferGeometry, rockSize: number): void {
-    const positions = geometry.attributes.position.array as Float32Array;
-    const indices = geometry.index;
+  static applyStretchModification(positions: Float32Array, rockSize: number, intensity: number): void {
+    const stretchFactor = 1.0 + intensity; // Use intensity directly
     
-    if (!indices) return;
-    
-    let repairedVertices = 0;
-    const vertex1 = new THREE.Vector3();
-    const vertex2 = new THREE.Vector3();
-    const vertex3 = new THREE.Vector3();
-    
-    // Check each triangle for degenerate cases
-    for (let i = 0; i < indices.count; i += 3) {
-      const a = indices.getX(i) * 3;
-      const b = indices.getX(i + 1) * 3;
-      const c = indices.getX(i + 2) * 3;
-      
-      vertex1.set(positions[a], positions[a + 1], positions[a + 2]);
-      vertex2.set(positions[b], positions[b + 1], positions[b + 2]);
-      vertex3.set(positions[c], positions[c + 1], positions[c + 2]);
-      
-      // Calculate triangle area
-      const edge1 = vertex2.clone().sub(vertex1);
-      const edge2 = vertex3.clone().sub(vertex1);
-      const area = edge1.cross(edge2).length() * 0.5;
-      
-      // If triangle is too small (degenerate), repair vertices
-      if (area < 0.001) {
-        // Move vertices slightly apart to create valid triangle
-        const center = vertex1.clone().add(vertex2).add(vertex3).divideScalar(3);
-        const offset = rockSize * 0.01;
-        
-        vertex1.lerp(center, 0.1).add(new THREE.Vector3(offset, 0, 0));
-        vertex2.lerp(center, 0.1).add(new THREE.Vector3(0, offset, 0));
-        vertex3.lerp(center, 0.1).add(new THREE.Vector3(0, 0, offset));
-        
-        positions[a] = vertex1.x;
-        positions[a + 1] = vertex1.y;
-        positions[a + 2] = vertex1.z;
-        
-        positions[b] = vertex2.x;
-        positions[b + 1] = vertex2.y;
-        positions[b + 2] = vertex2.z;
-        
-        positions[c] = vertex3.x;
-        positions[c + 1] = vertex3.y;
-        positions[c + 2] = vertex3.z;
-        
-        repairedVertices += 3;
-      }
-    }
-  }
-  
-  /**
-   * Applies stretch modification to rock vertices
-   */
-  static applyStretchModification(positions: Float32Array, rockSize: number): void {
     for (let i = 0; i < positions.length; i += 3) {
       const y = positions[i + 1];
       
-      positions[i + 1] = y * (1.5 + Math.random() * 0.5);
+      positions[i + 1] = y * stretchFactor;
       
       const height = Math.abs(positions[i + 1]);
-      const taperFactor = Math.max(0.3, 1 - height / (rockSize * 2));
+      const taperFactor = Math.max(0.3, 1 - height / (rockSize * stretchFactor));
       positions[i] *= taperFactor;
       positions[i + 2] *= taperFactor;
     }
   }
   
   /**
-   * Applies flatten modification to rock vertices
+   * Enhanced flatten modification with intensity control
    */
-  static applyFlattenModification(positions: Float32Array, rockSize: number): void {
+  static applyEnhancedFlattenModification(positions: Float32Array, rockSize: number, intensity: number): void {
+    const flattenFactor = 0.1 + intensity * 0.3; // 0.1 to 0.4
+    const expandFactor = 1.0 + intensity * 0.8; // 1.0 to 1.8
+    
     for (let i = 0; i < positions.length; i += 3) {
-      positions[i + 1] *= 0.3 + Math.random() * 0.2;
-      positions[i] *= 1.3 + Math.random() * 0.4;
-      positions[i + 2] *= 1.3 + Math.random() * 0.4;
+      positions[i + 1] *= flattenFactor;
+      positions[i] *= expandFactor;
+      positions[i + 2] *= expandFactor;
     }
   }
   
   /**
-   * Applies fracture modification to rock vertices
+   * Enhanced fracture modification with intensity control
    */
-  static applyFractureModification(positions: Float32Array, rockSize: number): void {
+  static applyEnhancedFractureModification(positions: Float32Array, rockSize: number, intensity: number): void {
+    const fractureIntensity = intensity * 0.2; // Scale intensity appropriately
+    
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const y = positions[i + 1];
       const z = positions[i + 2];
       
       const facetNoise = Math.floor(x * 3) + Math.floor(y * 3) + Math.floor(z * 3);
-      const facetIntensity = (facetNoise % 3) * 0.1;
+      const facetDisplacement = (facetNoise % 3) * fractureIntensity;
       
-      positions[i] += Math.sign(x) * facetIntensity;
-      positions[i + 1] += Math.sign(y) * facetIntensity;
-      positions[i + 2] += Math.sign(z) * facetIntensity;
+      positions[i] += Math.sign(x) * facetDisplacement;
+      positions[i + 1] += Math.sign(y) * facetDisplacement;
+      positions[i + 2] += Math.sign(z) * facetDisplacement;
     }
   }
   
   /**
-   * Applies erosion modification to rock vertices
+   * Enhanced erosion modification with weathering control
    */
-  static applyErosionModification(positions: Float32Array, rockSize: number): void {
+  static applyEnhancedErosionModification(positions: Float32Array, rockSize: number, weatheringLevel: number): void {
+    const erosionIntensity = weatheringLevel * 0.15; // Use weathering level for erosion
+    
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const y = positions[i + 1];
       const z = positions[i + 2];
       
-      const erosion1 = Math.sin(x * 2) * Math.cos(y * 2) * 0.15;
-      const erosion2 = Math.sin(z * 3) * Math.cos(x * 1.5) * 0.1;
+      const erosion1 = Math.sin(x * 2) * Math.cos(y * 2) * erosionIntensity;
+      const erosion2 = Math.sin(z * 3) * Math.cos(x * 1.5) * erosionIntensity * 0.7;
       
       const totalErosion = erosion1 + erosion2;
       
@@ -287,114 +235,20 @@ export class RockShapeFactory {
   }
   
   /**
-   * Applies character deformation to rock geometry
+   * Apply complete character deformation using the new DeformationSystem
    */
   static applyCharacterDeformation(
     geometry: THREE.BufferGeometry, 
     intensity: number, 
     rockSize: number, 
-    rockShape: RockShape
+    rockShape: RockShape,
+    category: RockCategory = 'medium'
   ): void {
-    this.applyOrganicNoiseDeformation(geometry, intensity, rockSize);
-    this.applyDetailDeformation(geometry, intensity * 0.5, rockSize * 0.4);
-    
-    if (rockShape.weatheringLevel > 0.7) {
-      this.applySurfaceRoughness(geometry, intensity * 0.3, rockSize * 0.2);
-    }
+    // Use the new multi-pass deformation system
+    DeformationSystem.applyCompleteDeformation(geometry, rockShape, rockSize, category);
     
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
-  }
-  
-  /**
-   * Applies organic noise deformation to rock geometry
-   */
-  static applyOrganicNoiseDeformation(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
-    const positions = geometry.attributes.position.array as Float32Array;
-    
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-      
-      const noise1 = Math.sin(x / scale) * Math.cos(y / scale) * Math.sin(z / scale);
-      const noise2 = Math.sin(x / scale * 2) * Math.cos(z / scale * 2) * 0.5;
-      const noise3 = Math.cos(y / scale * 3) * Math.sin(x / scale * 3) * 0.25;
-      
-      const combinedNoise = noise1 + noise2 + noise3;
-      
-      const length = Math.sqrt(x * x + y * y + z * z);
-      if (length > 0) {
-        const normalX = x / length;
-        const normalY = y / length;
-        const normalZ = z / length;
-        
-        const displacement = combinedNoise * intensity;
-        positions[i] += normalX * displacement;
-        positions[i + 1] += normalY * displacement;
-        positions[i + 2] += normalZ * displacement;
-      }
-    }
-    
-    geometry.attributes.position.needsUpdate = true;
-  }
-  
-  /**
-   * Applies detail deformation to rock geometry
-   */
-  static applyDetailDeformation(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
-    const positions = geometry.attributes.position.array as Float32Array;
-    
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-      
-      const detailNoise = Math.sin(x / scale * 8) * Math.cos(y / scale * 8) * Math.sin(z / scale * 8);
-      
-      const length = Math.sqrt(x * x + y * y + z * z);
-      if (length > 0) {
-        const normalX = x / length;
-        const normalY = y / length;
-        const normalZ = z / length;
-        
-        const displacement = detailNoise * intensity;
-        positions[i] += normalX * displacement;
-        positions[i + 1] += normalY * displacement;
-        positions[i + 2] += normalZ * displacement;
-      }
-    }
-    
-    geometry.attributes.position.needsUpdate = true;
-  }
-  
-  /**
-   * Applies surface roughness to rock geometry
-   */
-  static applySurfaceRoughness(geometry: THREE.BufferGeometry, intensity: number, scale: number): void {
-    const positions = geometry.attributes.position.array as Float32Array;
-    
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-      
-      const roughness = Math.sin(x / scale * 12) * Math.cos(y / scale * 12) * Math.sin(z / scale * 12);
-      
-      const length = Math.sqrt(x * x + y * y + z * z);
-      if (length > 0) {
-        const normalX = x / length;
-        const normalY = y / length;
-        const normalZ = z / length;
-        
-        const displacement = roughness * intensity;
-        positions[i] += normalX * displacement;
-        positions[i + 1] += normalY * displacement;
-        positions[i + 2] += normalZ * displacement;
-      }
-    }
-    
-    geometry.attributes.position.needsUpdate = true;
   }
   
   /**

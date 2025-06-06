@@ -1,6 +1,7 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../../../utils';
-import { RockShape } from '../types/RockTypes';
+import { RockShape, ClusterRole, RockCategory } from '../types/RockTypes';
 
 export interface RockType {
   color: number;
@@ -20,13 +21,19 @@ export const ROCK_TYPES: RockType[] = [
 ];
 
 export class RockMaterialGenerator {
+  private static materialCache: Map<string, THREE.MeshStandardMaterial> = new Map();
+
   public static createEnhancedRockMaterial(
-    category: string, 
+    category: RockCategory, 
     rockShape: RockShape, 
     index: number
   ): THREE.MeshStandardMaterial {
     const rockType = ROCK_TYPES[index % ROCK_TYPES.length];
     const baseColor = new THREE.Color(rockType.color);
+    
+    // Apply noise-driven tint shifts
+    const tintShift = this.generateNoiseTint(index);
+    baseColor.lerp(tintShift, 0.15);
     
     // Enhanced weathering based on shape and category
     if (rockShape.weatheringLevel > 0.5) {
@@ -41,7 +48,7 @@ export class RockMaterialGenerator {
       baseColor.lerp(ageColor, 0.15);
     }
     
-    // Position-based moss for bottom rocks (simulated)
+    // Position-based moss for bottom rocks
     if (rockShape.type === 'weathered' && Math.random() < 0.6) {
       const mossColor = new THREE.Color(0x2F5F2F);
       baseColor.lerp(mossColor, 0.25);
@@ -59,41 +66,146 @@ export class RockMaterialGenerator {
   }
 
   public static createRoleBasedMaterial(
-    category: string, 
+    category: RockCategory, 
     rockShape: RockShape, 
     index: number, 
-    role: 'foundation' | 'support' | 'accent'
+    role: ClusterRole
   ): THREE.MeshStandardMaterial {
+    const cacheKey = `${category}_${rockShape.type}_${index}_${role}`;
+    
+    if (this.materialCache.has(cacheKey)) {
+      return this.materialCache.get(cacheKey)!.clone();
+    }
+    
     const material = this.createEnhancedRockMaterial(category, rockShape, index);
     
-    // Role-specific weathering adjustments
+    // Role-specific material adjustments
     switch (role) {
       case 'foundation':
-        // Foundation rocks are more weathered (bottom of formation)
-        material.roughness = Math.min(1.0, material.roughness + 0.1);
-        if (Math.random() < 0.7) {
-          // Add moisture weathering tint
-          const currentColor = material.color;
-          const weatheringColor = new THREE.Color(0x2A2A1A);
-          currentColor.lerp(weatheringColor, 0.2);
-        }
+        this.applyFoundationMaterialEffects(material, rockShape);
         break;
         
       case 'support':
-        // Support rocks have moderate weathering
-        if (Math.random() < 0.4) {
-          const currentColor = material.color;
-          const weatheringColor = new THREE.Color(0x3A3A2A);
-          currentColor.lerp(weatheringColor, 0.1);
-        }
+        this.applySupportMaterialEffects(material, rockShape);
         break;
         
       case 'accent':
-        // Accent rocks can be fresher (less weathered)
-        material.roughness = Math.max(0.6, material.roughness - 0.1);
+        this.applyAccentMaterialEffects(material, rockShape);
         break;
     }
     
+    this.materialCache.set(cacheKey, material.clone());
     return material;
+  }
+
+  /**
+   * Apply foundation-specific material effects (darker, more moss)
+   */
+  private static applyFoundationMaterialEffects(material: THREE.MeshStandardMaterial, rockShape: RockShape): void {
+    // Foundation rocks are more weathered (bottom of formation)
+    material.roughness = Math.min(1.0, material.roughness + 0.1);
+    
+    if (Math.random() < 0.7) {
+      // Add moisture weathering tint
+      const currentColor = material.color;
+      const weatheringColor = new THREE.Color(0x2A2A1A);
+      currentColor.lerp(weatheringColor, 0.2);
+    }
+    
+    // Add moss if highly weathered
+    if (rockShape.weatheringLevel > 0.7 && Math.random() < 0.8) {
+      const currentColor = material.color;
+      const mossColor = new THREE.Color(0x2F5F2F);
+      currentColor.lerp(mossColor, 0.3);
+    }
+  }
+
+  /**
+   * Apply support-specific material effects (moderate weathering)
+   */
+  private static applySupportMaterialEffects(material: THREE.MeshStandardMaterial, rockShape: RockShape): void {
+    // Support rocks have moderate weathering
+    if (Math.random() < 0.4) {
+      const currentColor = material.color;
+      const weatheringColor = new THREE.Color(0x3A3A2A);
+      currentColor.lerp(weatheringColor, 0.1);
+    }
+  }
+
+  /**
+   * Apply accent-specific material effects (brighter, less rough)
+   */
+  private static applyAccentMaterialEffects(material: THREE.MeshStandardMaterial, rockShape: RockShape): void {
+    // Accent rocks can be fresher (less weathered)
+    material.roughness = Math.max(0.6, material.roughness - 0.1);
+    
+    // Brighter tint for accent rocks
+    const currentColor = material.color;
+    const brighterColor = currentColor.clone().multiplyScalar(1.1);
+    currentColor.lerp(brighterColor, 0.15);
+  }
+
+  /**
+   * Generate noise-driven tint variation
+   */
+  private static generateNoiseTint(index: number): THREE.Color {
+    const seed = index * 12345 + 67890;
+    const r = ((seed * 9301 + 49297) % 233280) / 233280;
+    const g = ((seed * 9301 + 49297 + 12345) % 233280) / 233280;
+    const b = ((seed * 9301 + 49297 + 24690) % 233280) / 233280;
+    
+    // Create subtle color variations
+    return new THREE.Color(
+      0.8 + r * 0.4,
+      0.8 + g * 0.4,
+      0.8 + b * 0.4
+    );
+  }
+
+  /**
+   * Apply weathering blending based on material type and weathering level
+   */
+  public static applyWeatheringBlending(
+    material: THREE.MeshStandardMaterial, 
+    weatheringLevel: number, 
+    materialType: string
+  ): void {
+    if (weatheringLevel > 0.6) {
+      const currentColor = material.color;
+      
+      switch (materialType) {
+        case 'granite':
+          const graniteWeathering = new THREE.Color(0x6B6B47);
+          currentColor.lerp(graniteWeathering, weatheringLevel * 0.3);
+          break;
+          
+        case 'sandstone':
+          const sandstoneWeathering = new THREE.Color(0x7B6D5B);
+          currentColor.lerp(sandstoneWeathering, weatheringLevel * 0.4);
+          break;
+          
+        case 'limestone':
+          const limestoneWeathering = new THREE.Color(0x909090);
+          currentColor.lerp(limestoneWeathering, weatheringLevel * 0.2);
+          break;
+          
+        default:
+          const defaultWeathering = new THREE.Color(0x5A5A3A);
+          currentColor.lerp(defaultWeathering, weatheringLevel * 0.25);
+      }
+      
+      // Increase roughness with weathering
+      material.roughness = Math.min(1.0, material.roughness + weatheringLevel * 0.15);
+    }
+  }
+
+  /**
+   * Clear material cache to prevent memory leaks
+   */
+  public static clearCache(): void {
+    for (const material of this.materialCache.values()) {
+      material.dispose();
+    }
+    this.materialCache.clear();
   }
 }
