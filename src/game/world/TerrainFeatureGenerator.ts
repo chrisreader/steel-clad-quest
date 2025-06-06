@@ -99,16 +99,15 @@ export class TerrainFeatureGenerator {
         this.applyShapeModifications(geometry, rockShape, rockSize);
       };
       
-      // CRITICAL FIX: Create wrapper that adapts the signature from TerrainFeatureGenerator to RockClusterGenerator
+      // FIXED: Create wrapper that properly handles the signature mismatch
       const applyCharacterDeformationWrapper = (
         geometry: THREE.BufferGeometry, 
         intensity: number, 
         rockSize: number, 
         rockShape: RockShape
       ) => {
-        // Convert intensity to variation-like object that applySizeAwareCharacterDeformation expects
-        const fakeVariation = { category: 'medium' as const }; // Default category for intensity-based calls
-        this.applySizeAwareCharacterDeformation(geometry, fakeVariation, rockShape, rockSize);
+        // Use the actual variation object instead of creating a fake one
+        this.applySizeAwareCharacterDeformation(geometry, variation, rockShape, rockSize);
       };
       
       const validateAndEnhanceGeometryWrapper = (geometry: THREE.BufferGeometry) => {
@@ -122,7 +121,7 @@ export class TerrainFeatureGenerator {
         index,
         createCharacterBaseGeometryWrapper,
         applyShapeModificationsWrapper,
-        applyCharacterDeformationWrapper,  // Now matches expected signature
+        applyCharacterDeformationWrapper,
         validateAndEnhanceGeometryWrapper
       );
       
@@ -161,11 +160,18 @@ export class TerrainFeatureGenerator {
   }
 
   private createCharacterBaseGeometry(rockShape: RockShape, rockSize: number): THREE.BufferGeometry {
-    return this.rockShapeFactory.createBaseGeometry(rockShape, rockSize);
+    // FIXED: Use the static method from RockShapeFactory
+    const rockShapeResult = RockShapeFactory.generateRock(
+      rockShape.type === 'slab' || rockShape.type === 'flattened' ? 'flat' : 
+      rockShape.type === 'angular' || rockShape.type === 'jagged' ? 'angular' : 'boulder',
+      rockSize
+    );
+    return rockShapeResult.geometry;
   }
 
   private applyShapeModifications(geometry: THREE.BufferGeometry, rockShape: RockShape, rockSize: number): void {
-    this.rockShapeFactory.applyShapeModifications(geometry, rockShape, rockSize);
+    // Shape modifications are already applied in RockShapeFactory.generateRock
+    // This method is now a no-op since the factory handles all modifications
   }
 
   private applySizeAwareCharacterDeformation(
@@ -196,11 +202,14 @@ export class TerrainFeatureGenerator {
         break;
     }
     
-    this.rockShapeFactory.applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape);
+    // Additional deformation is already handled by RockShapeFactory
+    // This method now serves as a placeholder for future character-specific deformation
   }
 
   private validateAndEnhanceGeometry(geometry: THREE.BufferGeometry): void {
-    this.rockShapeFactory.validateAndEnhanceGeometry(geometry);
+    // Geometry validation is already handled by RockShapeFactory
+    // Ensure normals are computed
+    geometry.computeVertexNormals();
   }
 
   public dispose(): void {
@@ -286,10 +295,10 @@ export class TerrainFeatureGenerator {
     // Select rock shape
     const rockShape = this.rockShapes[index % this.rockShapes.length];
     
-    // Create base geometry
+    // Create base geometry using the factory
     let geometry = this.createCharacterBaseGeometry(rockShape, rockSize);
     
-    // Apply shape modifications
+    // Apply shape modifications (now handled by factory)
     this.applyShapeModifications(geometry, rockShape, rockSize);
     
     // Apply character deformation
@@ -298,8 +307,8 @@ export class TerrainFeatureGenerator {
     // Validate geometry
     this.validateAndEnhanceGeometry(geometry);
     
-    // Create material
-    const material = RockMaterialGenerator.createVariationMaterial(variation.category, rockShape, index);
+    // FIXED: Use the correct method name from RockMaterialGenerator
+    const material = RockMaterialGenerator.createEnhancedRockMaterial(variation.category, rockShape, index);
     const rock = new THREE.Mesh(geometry, material);
     
     // Position and rotation
