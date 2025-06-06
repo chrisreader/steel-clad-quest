@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
-import { TextureGenerator } from '../utils';
 import { ROCK_VARIATIONS, RockVariation } from './rocks/config/RockVariationConfig';
 import { ROCK_SHAPES, RockShape } from './rocks/config/RockShapeConfig';
 import { RockMaterialGenerator } from './rocks/materials/RockMaterialGenerator';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
+import { TreeGenerator, BushGenerator } from './vegetation';
 
 export interface FeatureCluster {
   position: THREE.Vector3;
@@ -16,9 +16,12 @@ export interface FeatureCluster {
 export class TerrainFeatureGenerator {
   private ringSystem: RingQuadrantSystem;
   private scene: THREE.Scene;
-  private treeModels: THREE.Object3D[] = [];
+  
+  // Vegetation generators
+  private treeGenerator: TreeGenerator;
+  private bushGenerator: BushGenerator;
+  
   private rockModels: THREE.Object3D[] = [];
-  private bushModels: THREE.Object3D[] = [];
   
   // Use imported configurations
   private rockVariations: RockVariation[] = ROCK_VARIATIONS;
@@ -44,7 +47,12 @@ export class TerrainFeatureGenerator {
   constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
-    this.loadModels();
+    
+    // Initialize vegetation generators
+    this.treeGenerator = new TreeGenerator();
+    this.bushGenerator = new BushGenerator();
+    
+    this.loadRockModels();
   }
   
   // NEW: Set collision registration callback
@@ -58,146 +66,9 @@ export class TerrainFeatureGenerator {
     return this.spawnedFeatures.get(regionKey);
   }
   
-  private loadModels(): void {
-    // Tree models (3 variations) - Keep existing tree graphics
-    for (let i = 0; i < 3; i++) {
-      const treeHeight = 8; // Fixed height for consistency
-      const treeWidth = 0.3 + Math.random() * 0.3; // 0.3-0.6 radius
-      
-      // Tree trunk (larger than before)
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(treeWidth, treeWidth * 1.2, treeHeight, 12),
-        new THREE.MeshLambertMaterial({ 
-          color: 0x8B7355,
-          map: TextureGenerator.createWoodTexture()
-        })
-      );
-      trunk.position.y = treeHeight/2;
-      trunk.castShadow = true;
-      trunk.receiveShadow = true;
-      
-      const tree = new THREE.Group();
-      tree.add(trunk);
-      
-      // Tree leaves (3 layers like original)
-      for (let layer = 0; layer < 3; layer++) {
-        const leavesGeometry = new THREE.ConeGeometry(2.5 - layer * 0.3, 4, 8);
-        const leavesColor = new THREE.Color().setHSL(0.3, 0.7, 0.5 + Math.random() * 0.3);
-        const leavesMaterial = new THREE.MeshLambertMaterial({ 
-          color: leavesColor,
-          transparent: true,
-          opacity: 0.9
-        });
-        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-        leaves.position.y = 7 + layer * 1.5; // Heights: 7, 8.5, 10
-        leaves.castShadow = true;
-        leaves.receiveShadow = true;
-        tree.add(leaves);
-      }
-      
-      this.treeModels.push(tree);
-    }
-    
-    // ENHANCED: Rock generation with size-aware quality control
+  private loadRockModels(): void {
+    // ENHANCED: Create rock variations with size-aware quality control
     this.createEnhancedRockVariations();
-    
-    // IMPROVED Bush models (4 variations with organic shapes and better materials)
-    for (let i = 0; i < 4; i++) {
-      const bushGroup = new THREE.Group();
-      const bushType = i % 2;
-      
-      // Create bush with multiple organic clusters
-      const mainBushSize = 0.5 + Math.random() * 0.4; // 0.5-0.9 range
-      const clusterCount = 3 + Math.floor(Math.random() * 4); // 3-6 clusters
-      
-      // Different bush color variations
-      const bushColors = [
-        new THREE.Color().setHSL(0.25, 0.6, 0.4), // Dark green
-        new THREE.Color().setHSL(0.3, 0.7, 0.5),  // Bright green
-        new THREE.Color().setHSL(0.2, 0.5, 0.45), // Olive green
-        new THREE.Color().setHSL(0.28, 0.8, 0.4)  // Forest green
-      ];
-      
-      const bushMaterial = new THREE.MeshStandardMaterial({
-        color: bushColors[i % bushColors.length],
-        roughness: 0.9,
-        metalness: 0.0,
-        transparent: true,
-        opacity: 0.95
-      });
-      
-      // Create organic bush shape with multiple spheres
-      for (let j = 0; j < clusterCount; j++) {
-        const clusterSize = mainBushSize * (0.6 + Math.random() * 0.6);
-        const cluster = new THREE.Mesh(
-          new THREE.SphereGeometry(clusterSize, 8, 6),
-          bushMaterial.clone()
-        );
-        
-        // Position clusters organically
-        const angle = (j / clusterCount) * Math.PI * 2 + Math.random() * 0.5;
-        const distance = mainBushSize * (0.2 + Math.random() * 0.3);
-        cluster.position.set(
-          Math.cos(angle) * distance,
-          0.3 + Math.random() * 0.2,
-          Math.sin(angle) * distance
-        );
-        
-        // Deform clusters for organic look
-        cluster.scale.set(
-          0.8 + Math.random() * 0.4,
-          0.6 + Math.random() * 0.3,
-          0.8 + Math.random() * 0.4
-        );
-        
-        cluster.castShadow = true;
-        cluster.receiveShadow = true;
-        bushGroup.add(cluster);
-      }
-      
-      // Add simple stem/branch structure (30% chance)
-      if (Math.random() < 0.3) {
-        const stemHeight = mainBushSize * 0.8;
-        const stem = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.02, 0.04, stemHeight, 6),
-          new THREE.MeshStandardMaterial({
-            color: 0x4A4A2A,
-            roughness: 0.9,
-            metalness: 0.0
-          })
-        );
-        stem.position.y = stemHeight / 2;
-        stem.castShadow = true;
-        stem.receiveShadow = true;
-        bushGroup.add(stem);
-      }
-      
-      // Add berries or flowers (15% chance)
-      if (Math.random() < 0.15) {
-        const berryCount = 3 + Math.floor(Math.random() * 5);
-        for (let k = 0; k < berryCount; k++) {
-          const berry = new THREE.Mesh(
-            new THREE.SphereGeometry(0.03 + Math.random() * 0.02, 4, 3),
-            new THREE.MeshStandardMaterial({
-              color: Math.random() < 0.5 ? 0xFF6B6B : 0x4ECDC4, // Red berries or blue flowers
-              roughness: 0.3,
-              metalness: 0.0
-            })
-          );
-          
-          const angle = Math.random() * Math.PI * 2;
-          const distance = mainBushSize * (0.7 + Math.random() * 0.3);
-          berry.position.set(
-            Math.cos(angle) * distance,
-            0.5 + Math.random() * 0.3,
-            Math.sin(angle) * distance
-          );
-          bushGroup.add(berry);
-        }
-      }
-      
-      this.bushModels.push(bushGroup);
-    }
   }
   
   // ENHANCED: Create rock variations with size-aware quality control
@@ -1623,32 +1494,23 @@ export class TerrainFeatureGenerator {
     type: 'forest' | 'rocks' | 'bushes',
     position: THREE.Vector3
   ): THREE.Object3D | null {
-    let modelArray: THREE.Object3D[];
-    
     switch(type) {
       case 'forest':
-        modelArray = this.treeModels;
-        break;
+        return this.treeGenerator.createTree(position);
       case 'rocks':
-        modelArray = this.rockModels;
-        break;
+        if (this.rockModels.length === 0) return null;
+        const modelIndex = Math.floor(Math.random() * this.rockModels.length);
+        const model = this.rockModels[modelIndex].clone();
+        model.rotation.y = Math.random() * Math.PI * 2;
+        const scale = 0.8 + Math.random() * 0.4;
+        model.scale.set(scale, scale, scale);
+        model.position.copy(position);
+        return model;
       case 'bushes':
-        modelArray = this.bushModels;
-        break;
+        return this.bushGenerator.createBush(position);
       default:
         return null;
     }
-    
-    const modelIndex = Math.floor(Math.random() * modelArray.length);
-    const model = modelArray[modelIndex].clone();
-    
-    model.rotation.y = Math.random() * Math.PI * 2;
-    const scale = 0.8 + Math.random() * 0.4;
-    model.scale.set(scale, scale, scale);
-    
-    model.position.copy(position);
-    
-    return model;
   }
   
   private getRandomPositionInRegion(region: RegionCoordinates): THREE.Vector3 {
@@ -1766,5 +1628,9 @@ export class TerrainFeatureGenerator {
     
     this.spawnedFeatures.clear();
     this.largeRockFormations.length = 0;
+    
+    // Dispose vegetation generators
+    this.treeGenerator.dispose();
+    this.bushGenerator.dispose();
   }
 }
