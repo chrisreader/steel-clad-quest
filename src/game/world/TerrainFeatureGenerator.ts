@@ -161,46 +161,82 @@ export class TerrainFeatureGenerator {
                          category === 'large' ? 8 + Math.floor(Math.random() * 4) :     // 8-11 particles  
                          6 + Math.floor(Math.random() * 3);                            // 6-8 particles for medium
     
-    // Create sediment material (darker, finer particles)
-    const sedimentMaterial = new THREE.MeshStandardMaterial({
-      color: new THREE.Color().setHSL(0.1, 0.2, 0.25), // Dark brown sediment
-      roughness: 0.95,
-      metalness: 0.0,
-      transparent: true,
-      opacity: 0.8
-    });
+    // Create realistic sediment materials (beige/tan weathered colors)
+    const sedimentMaterials = [
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color('#C4A484'), // Light beige
+        roughness: 0.95,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 0.8
+      }),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color('#B8956A'), // Medium tan
+        roughness: 0.95,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 0.8
+      }),
+      new THREE.MeshStandardMaterial({
+        color: new THREE.Color('#A0855B'), // Dark tan
+        roughness: 0.95,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 0.8
+      })
+    ];
     
     for (let i = 0; i < sedimentCount; i++) {
-      const sedimentSize = clusterSize * (0.02 + Math.random() * 0.03); // Very small particles
-      const sediment = new THREE.Mesh(
-        new THREE.SphereGeometry(sedimentSize, 4, 3), // Low-poly for performance
-        sedimentMaterial.clone()
-      );
+      const sedimentType = Math.floor(Math.random() * 3);
+      let sedimentGeometry: THREE.BufferGeometry;
+      let sediment: THREE.Mesh;
       
-      // Position sediment in "low spots" around the cluster
+      // Create varied sediment geometries
+      switch (sedimentType) {
+        case 0: // Flat sediment patches
+          const patchSize = clusterSize * (0.08 + Math.random() * 0.06);
+          sedimentGeometry = new THREE.PlaneGeometry(patchSize, patchSize * (0.6 + Math.random() * 0.8));
+          sediment = new THREE.Mesh(sedimentGeometry, sedimentMaterials[Math.floor(Math.random() * 3)].clone());
+          sediment.rotation.x = -Math.PI / 2 + (Math.random() - 0.5) * 0.3; // Mostly flat with slight variation
+          break;
+          
+        case 1: // Flattened cylinder sediment
+          const cylinderRadius = clusterSize * (0.03 + Math.random() * 0.04);
+          sedimentGeometry = new THREE.CylinderGeometry(cylinderRadius, cylinderRadius, cylinderRadius * 0.2, 8);
+          sediment = new THREE.Mesh(sedimentGeometry, sedimentMaterials[Math.floor(Math.random() * 3)].clone());
+          break;
+          
+        default: // Small spherical particles
+          const sphereSize = clusterSize * (0.02 + Math.random() * 0.03);
+          sedimentGeometry = new THREE.SphereGeometry(sphereSize, 6, 4);
+          sediment = new THREE.Mesh(sedimentGeometry, sedimentMaterials[Math.floor(Math.random() * 3)].clone());
+          // Flatten spheres to simulate accumulated sediment
+          sediment.scale.set(
+            1 + Math.random() * 0.3,
+            0.3 + Math.random() * 0.2, // Flattened Y
+            1 + Math.random() * 0.3
+          );
+          break;
+      }
+      
+      // Position sediment in "low spots" with clustering
       const angle = Math.random() * Math.PI * 2;
-      const distance = clusterSize * (1.2 + Math.random() * 0.8); // Around cluster base
-      const heightVariation = -sedimentSize * 0.5; // Slightly sunken for realism
+      const distance = clusterSize * (0.9 + Math.random() * 0.8); // Closer to cluster base
+      const heightVariation = -sediment.scale.y * 0.3; // Slightly sunken for realism
+      
+      // Add clustering effect - group some sediment together
+      const clusterOffset = (Math.random() < 0.4) ? {
+        x: (Math.random() - 0.5) * clusterSize * 0.2,
+        z: (Math.random() - 0.5) * clusterSize * 0.2
+      } : { x: 0, z: 0 };
       
       sediment.position.set(
-        Math.cos(angle) * distance,
+        Math.cos(angle) * distance + clusterOffset.x,
         heightVariation,
-        Math.sin(angle) * distance
+        Math.sin(angle) * distance + clusterOffset.z
       );
       
-      // Slightly flatten sediment particles
-      sediment.scale.set(
-        1 + Math.random() * 0.3,
-        0.4 + Math.random() * 0.2, // Flattened Y
-        1 + Math.random() * 0.3
-      );
-      
-      sediment.rotation.set(
-        Math.random() * 0.2,
-        Math.random() * Math.PI * 2,
-        Math.random() * 0.2
-      );
-      
+      sediment.rotation.y = Math.random() * Math.PI * 2;
       sediment.castShadow = true;
       sediment.receiveShadow = true;
       rockGroup.add(sediment);
@@ -213,61 +249,170 @@ export class TerrainFeatureGenerator {
                        category === 'large' ? 12 + Math.floor(Math.random() * 5) :     // 12-16 fragments
                        8 + Math.floor(Math.random() * 5);                             // 8-12 fragments for medium
     
-    // Create base debris material (similar to main rock but varied)
+    // Create base debris material (similar to main rock but weathered)
     const baseRockMaterial = RockMaterialGenerator.createEnhancedRockMaterial(category, this.rockShapes[0], 0);
     
     for (let i = 0; i < debrisCount; i++) {
-      const debrisSize = clusterSize * (0.05 + Math.random() * 0.1); // Small fragments
-      
-      // Use various small geometries for debris variety
+      const debrisSize = clusterSize * (0.04 + Math.random() * 0.08); // Small to medium fragments
       let debrisGeometry: THREE.BufferGeometry;
-      const geometryType = Math.floor(Math.random() * 3);
+      
+      // Create varied debris geometries for realism
+      const geometryType = Math.floor(Math.random() * 5);
       
       switch (geometryType) {
-        case 0:
+        case 0: // Flat rock slabs
+          debrisGeometry = new THREE.BoxGeometry(
+            debrisSize * (1.5 + Math.random() * 1.0),
+            debrisSize * (0.2 + Math.random() * 0.3), // Very flat
+            debrisSize * (0.8 + Math.random() * 0.6)
+          );
+          break;
+          
+        case 1: // Flat cylindrical pieces
+          debrisGeometry = new THREE.CylinderGeometry(
+            debrisSize * (0.8 + Math.random() * 0.4),
+            debrisSize * (0.6 + Math.random() * 0.4),
+            debrisSize * (0.3 + Math.random() * 0.2), // Flat
+            8
+          );
+          break;
+          
+        case 2: // Angular fragments
           debrisGeometry = new THREE.DodecahedronGeometry(debrisSize, 0);
           break;
-        case 1:
+          
+        case 3: // Irregular chunks
           debrisGeometry = new THREE.IcosahedronGeometry(debrisSize, 0);
           break;
-        default:
+          
+        default: // Small spherical chunks
           debrisGeometry = new THREE.SphereGeometry(debrisSize, 6, 4);
           break;
       }
       
-      // Apply slight organic deformation to debris
-      this.applyGentleOrganicDeformation(debrisGeometry, 0.1, debrisSize);
+      // Apply slight organic deformation to debris for realism
+      this.applyGentleOrganicDeformation(debrisGeometry, 0.08, debrisSize);
       
       const debrisMaterial = baseRockMaterial.clone();
-      // Vary debris color slightly
-      debrisMaterial.color.multiplyScalar(0.8 + Math.random() * 0.4);
+      // Add weathering variation to debris
+      debrisMaterial.color.multiplyScalar(0.7 + Math.random() * 0.5); // Darker, weathered look
+      debrisMaterial.roughness = Math.min(1.0, debrisMaterial.roughness + 0.1 + Math.random() * 0.2);
       
       const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
       
-      // Scatter debris around cluster base in realistic pattern
-      const angle = Math.random() * Math.PI * 2;
-      const distance = clusterSize * (1.5 + Math.random() * 1.0); // Spread around cluster
+      // Create clustered distribution pattern
+      const isInCluster = Math.random() < 0.6; // 60% chance of being in a cluster
+      let angle, distance;
+      
+      if (isInCluster && i > 0) {
+        // Position near previous debris for clustering effect
+        const previousDebris = rockGroup.children[rockGroup.children.length - 1];
+        if (previousDebris instanceof THREE.Mesh) {
+          angle = Math.atan2(previousDebris.position.z, previousDebris.position.x) + (Math.random() - 0.5) * 0.8;
+          distance = previousDebris.position.length() + debrisSize * (1 + Math.random() * 2);
+        } else {
+          angle = Math.random() * Math.PI * 2;
+          distance = clusterSize * (1.3 + Math.random() * 1.2);
+        }
+      } else {
+        // Scatter debris around cluster base in realistic pattern
+        angle = Math.random() * Math.PI * 2;
+        distance = clusterSize * (1.2 + Math.random() * 1.3); // Spread around cluster
+      }
       
       debris.position.set(
         Math.cos(angle) * distance,
-        debrisSize * 0.3, // Slightly embedded
+        debrisSize * (0.1 + Math.random() * 0.2), // Slightly embedded/resting
         Math.sin(angle) * distance
       );
       
-      // Random orientation for natural look
+      // Random but realistic orientation
       debris.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
+        Math.random() * Math.PI * 0.3, // Limit extreme rotations
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 0.3
       );
       
-      // Slight size variation
-      const scaleVariation = 0.7 + Math.random() * 0.6;
+      // Size variation for natural look
+      const scaleVariation = 0.6 + Math.random() * 0.8;
       debris.scale.set(scaleVariation, scaleVariation, scaleVariation);
       
       debris.castShadow = true;
       debris.receiveShadow = true;
       rockGroup.add(debris);
+    }
+    
+    // Add clustered tiny rocks for micro-detail
+    this.addClusteredTinyRocks(rockGroup, category, clusterSize, baseRockMaterial);
+  }
+  
+  // NEW: Add clustered tiny rocks for enhanced realism
+  private addClusteredTinyRocks(rockGroup: THREE.Group, category: string, clusterSize: number, baseMaterial: THREE.MeshStandardMaterial): void {
+    const clusterCount = category === 'massive' ? 3 + Math.floor(Math.random() * 3) : // 3-5 clusters
+                        category === 'large' ? 2 + Math.floor(Math.random() * 3) :     // 2-4 clusters
+                        1 + Math.floor(Math.random() * 2);                            // 1-2 clusters for medium
+    
+    for (let cluster = 0; cluster < clusterCount; cluster++) {
+      // Position cluster randomly around formation
+      const clusterAngle = Math.random() * Math.PI * 2;
+      const clusterDistance = clusterSize * (1.4 + Math.random() * 0.8);
+      const clusterCenter = new THREE.Vector3(
+        Math.cos(clusterAngle) * clusterDistance,
+        0,
+        Math.sin(clusterAngle) * clusterDistance
+      );
+      
+      // Create 4-9 tiny rocks per cluster
+      const rocksInCluster = 4 + Math.floor(Math.random() * 6);
+      
+      for (let i = 0; i < rocksInCluster; i++) {
+        const tinySize = clusterSize * (0.01 + Math.random() * 0.02); // Very small
+        
+        // Use simple geometries for performance
+        const geometryType = Math.floor(Math.random() * 3);
+        let tinyGeometry: THREE.BufferGeometry;
+        
+        switch (geometryType) {
+          case 0:
+            tinyGeometry = new THREE.DodecahedronGeometry(tinySize, 0);
+            break;
+          case 1:
+            tinyGeometry = new THREE.IcosahedronGeometry(tinySize, 0);
+            break;
+          default:
+            tinyGeometry = new THREE.SphereGeometry(tinySize, 4, 3); // Very low poly
+            break;
+        }
+        
+        const tinyMaterial = baseMaterial.clone();
+        tinyMaterial.color.multiplyScalar(0.6 + Math.random() * 0.6); // Varied coloring
+        
+        const tinyRock = new THREE.Mesh(tinyGeometry, tinyMaterial);
+        
+        // Position within cluster with natural spacing
+        const localAngle = Math.random() * Math.PI * 2;
+        const localDistance = tinySize * (2 + Math.random() * 8); // Natural spacing
+        
+        tinyRock.position.set(
+          clusterCenter.x + Math.cos(localAngle) * localDistance,
+          tinySize * 0.3, // Slightly embedded
+          clusterCenter.z + Math.sin(localAngle) * localDistance
+        );
+        
+        tinyRock.rotation.set(
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        );
+        
+        // Slight size variation
+        const scale = 0.7 + Math.random() * 0.6;
+        tinyRock.scale.set(scale, scale, scale);
+        
+        tinyRock.castShadow = true;
+        tinyRock.receiveShadow = true;
+        rockGroup.add(tinyRock);
+      }
     }
   }
   
