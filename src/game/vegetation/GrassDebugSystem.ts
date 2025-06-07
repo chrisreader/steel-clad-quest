@@ -64,6 +64,19 @@ export class GrassDebugSystem {
     }
   }
 
+  private getBiomeBorderColor(biomeType: BiomeType): THREE.Color {
+    switch (biomeType) {
+      case 'normal':
+        return new THREE.Color(0x00BFFF); // Bright blue
+      case 'meadow':
+        return new THREE.Color(0xFF8C00); // Bright orange
+      case 'prairie':
+        return new THREE.Color(0xFFD700); // Bright yellow
+      default:
+        return new THREE.Color(0xFFFFFF); // White fallback
+    }
+  }
+
   private generateBiomeVisualization(): void {
     this.clearBiomeVisualization();
 
@@ -91,19 +104,33 @@ export class GrassDebugSystem {
         mesh.position.copy(position);
         mesh.rotation.x = -Math.PI / 2;
         
-        // Add border for transition zones
+        // Add bright colored border for each biome type
+        const borderColor = this.getBiomeBorderColor(biomeInfo.type);
+        const borderGeometry = new THREE.RingGeometry(resolution * 0.42, resolution * 0.45, 8);
+        const borderMaterial = new THREE.MeshBasicMaterial({
+          color: borderColor,
+          transparent: true,
+          opacity: 0.8 + biomeInfo.strength * 0.2 // More opacity for stronger biome presence
+        });
+        const border = new THREE.Mesh(borderGeometry, borderMaterial);
+        border.position.copy(position);
+        border.rotation.x = -Math.PI / 2;
+        this.biomeOverlay.add(border);
+        this.debugMeshes.push(border);
+        
+        // Add additional border for transition zones (white)
         if (biomeInfo.transitionZone) {
-          const borderGeometry = new THREE.RingGeometry(resolution * 0.4, resolution * 0.45, 8);
-          const borderMaterial = new THREE.MeshBasicMaterial({
+          const transitionBorderGeometry = new THREE.RingGeometry(resolution * 0.35, resolution * 0.38, 8);
+          const transitionBorderMaterial = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
-            opacity: 0.6
+            opacity: 0.4
           });
-          const border = new THREE.Mesh(borderGeometry, borderMaterial);
-          border.position.copy(position);
-          border.rotation.x = -Math.PI / 2;
-          this.biomeOverlay.add(border);
-          this.debugMeshes.push(border);
+          const transitionBorder = new THREE.Mesh(transitionBorderGeometry, transitionBorderMaterial);
+          transitionBorder.position.copy(position);
+          transitionBorder.rotation.x = -Math.PI / 2;
+          this.biomeOverlay.add(transitionBorder);
+          this.debugMeshes.push(transitionBorder);
         }
 
         this.biomeOverlay.add(mesh);
@@ -111,7 +138,7 @@ export class GrassDebugSystem {
       }
     }
 
-    // Create legend
+    // Create legend with border colors
     this.createBiomeLegend();
   }
 
@@ -121,8 +148,9 @@ export class GrassDebugSystem {
 
     biomeTypes.forEach((biomeType, index) => {
       const config = GrassBiomeManager.getBiomeConfiguration(biomeType);
+      const borderColor = this.getBiomeBorderColor(biomeType);
       
-      // Create legend marker
+      // Create legend marker with biome color
       const markerGeometry = new THREE.PlaneGeometry(5, 2);
       const markerMaterial = new THREE.MeshBasicMaterial({
         color: config.color,
@@ -134,8 +162,22 @@ export class GrassDebugSystem {
       marker.position.set(-140, 0.2, -100 + legendY);
       marker.rotation.x = -Math.PI / 2;
       
+      // Create border around legend marker
+      const borderGeometry = new THREE.RingGeometry(1.2, 1.5, 8);
+      const borderMaterial = new THREE.MeshBasicMaterial({
+        color: borderColor,
+        transparent: true,
+        opacity: 0.9
+      });
+      
+      const border = new THREE.Mesh(borderGeometry, borderMaterial);
+      border.position.set(-140, 0.3, -100 + legendY);
+      border.rotation.x = -Math.PI / 2;
+      
       this.biomeOverlay.add(marker);
+      this.biomeOverlay.add(border);
       this.debugMeshes.push(marker);
+      this.debugMeshes.push(border);
       
       legendY += 8;
     });
@@ -159,17 +201,38 @@ export class GrassDebugSystem {
 
     const biomeInfo = GrassBiomeManager.getBiomeAtPosition(playerPosition);
     const config = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
+    const borderColor = this.getBiomeBorderColor(biomeInfo.type);
+
+    // Get biome description
+    let biomeDescription = '';
+    switch (biomeInfo.type) {
+      case 'normal':
+        biomeDescription = 'Reduced prairie grass height to 0.5m, increased clumping grass density by 40%';
+        break;
+      case 'meadow':
+        biomeDescription = 'Dense areas with 60% meadow grass, 1.5x density, 10% taller';
+        break;
+      case 'prairie':
+        biomeDescription = '70% prairie grass, 30% taller, more wind exposure, lower density';
+        break;
+    }
 
     this.debugInfoElement.innerHTML = `
       <div><strong>Grass Biome Debug</strong></div>
-      <div>Current Biome: ${config.name}</div>
+      <div>Current Biome: <span style="color: #${borderColor.getHexString()}">${config.name}</span></div>
       <div>Type: ${biomeInfo.type}</div>
       <div>Strength: ${(biomeInfo.strength * 100).toFixed(1)}%</div>
       <div>Transition Zone: ${biomeInfo.transitionZone ? 'Yes' : 'No'}</div>
+      <div style="margin: 5px 0; font-size: 10px; color: #ccc;">${biomeDescription}</div>
       <div>Density Multiplier: ${config.densityMultiplier}x</div>
       <div>Height Multiplier: ${config.heightMultiplier}x</div>
       <div>Wind Exposure: ${config.windExposureMultiplier}x</div>
       <div>Position: (${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)})</div>
+      <div style="margin-top: 5px; font-size: 10px;">
+        <div style="color: #00BFFF">■ Normal Biome (Blue)</div>
+        <div style="color: #FF8C00">■ Meadow Biome (Orange)</div>
+        <div style="color: #FFD700">■ Prairie Biome (Yellow)</div>
+      </div>
       <div style="margin-top: 5px; font-size: 10px;">Ctrl+B to toggle visualization</div>
     `;
   }
