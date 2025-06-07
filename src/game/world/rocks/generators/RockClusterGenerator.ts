@@ -1,9 +1,8 @@
+
 import * as THREE from 'three';
-import { RockVariation, RockShape, GeometryProcessor, ClusterRole } from '../types/RockTypes';
-import { ROCK_SHAPES } from '../config/RockShapeConfig';
+import { RockVariation } from '../config/RockVariationConfig';
+import { RockShape, ROCK_SHAPES } from '../config/RockShapeConfig';
 import { RockMaterialGenerator } from '../materials/RockMaterialGenerator';
-import { RockGenerationUtils } from '../utils/RockGenerationUtils';
-import { GeologicalStackingSystem } from '../utils/GeologicalStackingSystem';
 
 export class RockClusterGenerator {
   private rockShapes: RockShape[] = ROCK_SHAPES;
@@ -12,222 +11,227 @@ export class RockClusterGenerator {
     rockGroup: THREE.Group, 
     variation: RockVariation, 
     index: number,
-    geometryProcessor: GeometryProcessor
+    createCharacterBaseGeometry: (rockShape: RockShape, rockSize: number) => THREE.BufferGeometry,
+    applyShapeModifications: (geometry: THREE.BufferGeometry, rockShape: RockShape, rockSize: number) => void,
+    applyCharacterDeformation: (geometry: THREE.BufferGeometry, intensity: number, rockSize: number, rockShape: RockShape) => void,
+    validateAndEnhanceGeometry: (geometry: THREE.BufferGeometry) => void
   ): void {
     const [minSize, maxSize] = variation.sizeRange;
     const [minClusterSize, maxClusterSize] = variation.clusterSize || [3, 5];
+    const clusterCount = minClusterSize + Math.floor(Math.random() * (maxClusterSize - minClusterSize + 1));
     
-    const counts = this.calculateDynamicClusterCounts(variation.category, minClusterSize, maxClusterSize);
+    // Create foundation rocks (largest, most stable)
+    const foundationCount = Math.min(2, Math.floor(clusterCount * 0.4));
+    const foundationRocks: THREE.Object3D[] = [];
     
-    console.log(`🪨 Creating geological ${variation.category} cluster: ${counts.total} rocks`);
-    
-    // Use geological positioning instead of random scatter
-    const geologicalLayout = GeologicalStackingSystem.generateGeologicalClusterLayout(
-      counts.total,
-      variation.category,
-      new THREE.Vector3(0, 0, 0),
-      maxSize
-    );
-
-    const existingRocks: THREE.Object3D[] = [];
-
-    // Create foundation rocks with tight clustering
-    geologicalLayout.foundationPositions.forEach((basePosition, i) => {
+    for (let i = 0; i < foundationCount; i++) {
       const rockSize = maxSize * (0.8 + Math.random() * 0.2);
-      
-      // Use geological stacking for realistic positioning
-      const stackingPos = GeologicalStackingSystem.calculateStableStackingPosition(
-        existingRocks,
-        rockSize,
-        'foundation',
-        variation.category,
-        basePosition
-      );
-      
-      const rock = this.createStandardizedClusterRock(
+      const rock = this.createClusterRock(
         rockSize, 
         variation, 
         i, 
         'foundation',
-        geometryProcessor,
-        counts.foundationCount
+        createCharacterBaseGeometry,
+        applyShapeModifications,
+        applyCharacterDeformation,
+        validateAndEnhanceGeometry
       );
       
-      rock.position.copy(stackingPos.position);
-      rockGroup.add(rock);
-      existingRocks.push(rock);
+      // Position foundation rocks
+      const angle = (i / foundationCount) * Math.PI * 2 + Math.random() * 0.5;
+      const distance = rockSize * 0.3;
+      rock.position.set(
+        Math.cos(angle) * distance,
+        rockSize * 0.15,
+        Math.sin(angle) * distance
+      );
       
-      console.log(`🏔️ Foundation rock ${i + 1}: (${rock.position.x.toFixed(1)}, ${rock.position.y.toFixed(1)}, ${rock.position.z.toFixed(1)})`);
-    });
-
-    // Create support rocks with vertical stacking preference
-    geologicalLayout.supportPositions.forEach((basePosition, i) => {
+      foundationRocks.push(rock);
+      rockGroup.add(rock);
+    }
+    
+    // Create supporting rocks (medium size)
+    const supportCount = Math.floor(clusterCount * 0.4);
+    const supportRocks: THREE.Object3D[] = [];
+    
+    for (let i = 0; i < supportCount; i++) {
       const rockSize = maxSize * (0.5 + Math.random() * 0.3);
-      
-      // Use geological stacking for realistic positioning
-      const stackingPos = GeologicalStackingSystem.calculateStableStackingPosition(
-        existingRocks,
-        rockSize,
-        'support',
-        variation.category,
-        basePosition
-      );
-      
-      const rock = this.createStandardizedClusterRock(
+      const rock = this.createClusterRock(
         rockSize, 
         variation, 
-        i + counts.foundationCount, 
+        i + foundationCount, 
         'support',
-        geometryProcessor,
-        counts.supportCount
+        createCharacterBaseGeometry,
+        applyShapeModifications,
+        applyCharacterDeformation,
+        validateAndEnhanceGeometry
       );
       
-      rock.position.copy(stackingPos.position);
-      rockGroup.add(rock);
-      existingRocks.push(rock);
+      // Position against foundation rocks with realistic stacking
+      const foundationRock = foundationRocks[i % foundationRocks.length];
+      const stackPosition = this.calculateRealisticStackingPosition(
+        foundationRock.position, 
+        rockSize, 
+        maxSize * 0.9,
+        'support'
+      );
+      rock.position.copy(stackPosition);
       
-      console.log(`🏔️ Support rock ${i + 1}: (${rock.position.x.toFixed(1)}, ${rock.position.y.toFixed(1)}, ${rock.position.z.toFixed(1)})`);
-    });
-
-    // Create accent rocks with enhanced stacking and spire pairing
-    let spirePairPending = false;
-    let spirePairPosition: THREE.Vector3 | null = null;
+      supportRocks.push(rock);
+      rockGroup.add(rock);
+    }
     
-    geologicalLayout.accentPositions.forEach((basePosition, i) => {
+    // Create accent rocks (smallest, most varied shapes)
+    const accentCount = clusterCount - foundationCount - supportCount;
+    
+    for (let i = 0; i < accentCount; i++) {
       const rockSize = maxSize * (0.2 + Math.random() * 0.3);
-      
-      // Use geological stacking for realistic positioning
-      const stackingPos = GeologicalStackingSystem.calculateStableStackingPosition(
-        existingRocks,
-        rockSize,
-        'accent',
-        variation.category,
-        basePosition
-      );
-      
-      const rock = this.createStandardizedClusterRock(
+      const rock = this.createClusterRock(
         rockSize, 
         variation, 
-        i,
+        i + foundationCount + supportCount, 
         'accent',
-        geometryProcessor,
-        counts.accentCount
+        createCharacterBaseGeometry,
+        applyShapeModifications,
+        applyCharacterDeformation,
+        validateAndEnhanceGeometry
       );
       
-      // Enhanced spire pairing with geological positioning
-      const isSpire = rock.userData.rockShape?.type === 'spire';
-      if (isSpire && !spirePairPending && RockGenerationUtils.shouldCreateSpirePair()) {
-        console.log('🗻 Creating geological spire pair');
-        spirePairPending = true;
-        spirePairPosition = stackingPos.position.clone();
-        
-        // Geological spire pairing - place nearby with realistic spacing
-        const pairOffset = new THREE.Vector3(
-          (Math.random() - 0.5) * rockSize * 1.5, // Closer spacing for realism
-          Math.random() * rockSize * 0.3,         // Slight height variation
-          (Math.random() - 0.5) * rockSize * 1.5
-        );
-        spirePairPosition.add(pairOffset);
-      } else if (spirePairPending && spirePairPosition) {
-        // Place second spire of the geological pair
-        rock.position.copy(spirePairPosition);
-        spirePairPending = false;
-        spirePairPosition = null;
-        console.log(`🗻 Geological spire pair completed at height ${rock.position.y.toFixed(1)}`);
-      } else {
-        rock.position.copy(stackingPos.position);
-      }
+      // Position accent rocks in gaps or on top
+      const baseRocks = [...foundationRocks, ...supportRocks];
+      const baseRock = baseRocks[Math.floor(Math.random() * baseRocks.length)];
+      const stackPosition = this.calculateRealisticStackingPosition(
+        baseRock.position,
+        rockSize,
+        maxSize * 0.6,
+        'accent'
+      );
+      rock.position.copy(stackPosition);
       
       rockGroup.add(rock);
-      existingRocks.push(rock);
-      
-      console.log(`🏔️ Accent rock ${i + 1}: (${rock.position.x.toFixed(1)}, ${rock.position.y.toFixed(1)}, ${rock.position.z.toFixed(1)})`);
-    });
+    }
     
-    console.log(`🏔️ Geological cluster complete: ${counts.foundationCount} foundation, ${counts.supportCount} support, ${counts.accentCount} accent rocks`);
-    console.log(`🏔️ Height range: ${Math.min(...existingRocks.map(r => r.position.y)).toFixed(1)} to ${Math.max(...existingRocks.map(r => r.position.y)).toFixed(1)}`);
+    console.log(`🏔️ Created varied cluster with ${clusterCount} rocks: ${foundationCount} foundation, ${supportCount} support, ${accentCount} accent`);
   }
 
-  /**
-   * Create cluster rock using standardized pipeline
-   */
-  private createStandardizedClusterRock(
+  private createClusterRock(
     rockSize: number, 
     variation: RockVariation, 
     index: number, 
-    role: ClusterRole,
-    geometryProcessor: GeometryProcessor,
-    totalRoleCount?: number
+    role: 'foundation' | 'support' | 'accent',
+    createCharacterBaseGeometry: (rockShape: RockShape, rockSize: number) => THREE.BufferGeometry,
+    applyShapeModifications: (geometry: THREE.BufferGeometry, rockShape: RockShape, rockSize: number) => void,
+    applyCharacterDeformation: (geometry: THREE.BufferGeometry, intensity: number, rockSize: number, rockShape: RockShape) => void,
+    validateAndEnhanceGeometry: (geometry: THREE.BufferGeometry) => void
   ): THREE.Object3D {
-    // Select shape based on role with spire support and fixed percentage for accents
-    const rockShape = RockGenerationUtils.selectShapeByRole(
-      this.rockShapes, 
-      role, 
-      index, 
-      variation.category,
-      role === 'accent' ? totalRoleCount : undefined
-    );
+    // Select shape based on role
+    let rockShape: RockShape;
     
-    // Create geometry using standardized processor
-    let geometry = geometryProcessor.createCharacterBaseGeometry(rockShape, rockSize);
-    geometryProcessor.applyShapeModifications(geometry, rockShape, rockSize);
+    switch (role) {
+      case 'foundation':
+        const foundationShapes = this.rockShapes.filter(s => 
+          s.type === 'boulder' || s.type === 'weathered' || s.type === 'slab'
+        );
+        rockShape = foundationShapes[index % foundationShapes.length];
+        break;
+        
+      case 'support':
+        const supportShapes = this.rockShapes.filter(s => 
+          s.type !== 'spire'
+        );
+        rockShape = supportShapes[index % supportShapes.length];
+        break;
+        
+      case 'accent':
+        rockShape = this.rockShapes[index % this.rockShapes.length];
+        break;
+        
+      default:
+        rockShape = this.rockShapes[index % this.rockShapes.length];
+    }
     
+    // Create base geometry
+    let geometry = createCharacterBaseGeometry(rockShape, rockSize);
+    
+    // Apply role-specific modifications
+    applyShapeModifications(geometry, rockShape, rockSize);
+    
+    // Apply deformation based on role
     const deformationIntensity = role === 'accent' ? 
       rockShape.deformationIntensity : rockShape.deformationIntensity * 0.7;
-    geometryProcessor.applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape);
+    applyCharacterDeformation(geometry, deformationIntensity, rockSize, rockShape);
     
-    // Use standardized validation
-    geometryProcessor.validateAndEnhanceGeometry(geometry);
+    // Validate geometry
+    validateAndEnhanceGeometry(geometry);
     
-    // Create material and mesh
+    // Create material with role-based weathering
     const material = RockMaterialGenerator.createRoleBasedMaterial(variation.category, rockShape, index, role);
     const rock = new THREE.Mesh(geometry, material);
     
-    // Apply standardized properties
-    RockGenerationUtils.applyStandardRockProperties(rock, variation.category, role);
+    // Apply role-specific rotation
+    if (role === 'foundation') {
+      rock.rotation.set(
+        Math.random() * 0.3,
+        Math.random() * Math.PI * 2,
+        Math.random() * 0.3
+      );
+    } else {
+      rock.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI
+      );
+    }
     
-    // Apply spire-aware rotation
-    RockGenerationUtils.randomizeRotation(rock, role, rockShape);
-    
-    // Store rock shape in userData for pairing detection
-    rock.userData.rockShape = rockShape;
+    rock.castShadow = true;
+    rock.receiveShadow = true;
     
     return rock;
   }
 
-  private calculateDynamicClusterCounts(category: string, minClusterSize: number, maxClusterSize: number) {
-    const totalRocks = minClusterSize + Math.floor(Math.random() * (maxClusterSize - minClusterSize + 1));
+  private calculateRealisticStackingPosition(
+    basePosition: THREE.Vector3,
+    rockSize: number,
+    baseSize: number,
+    role: 'support' | 'accent'
+  ): THREE.Vector3 {
+    const position = new THREE.Vector3();
     
-    let foundationCount, supportCount, accentCount;
-    
-    switch (category) {
-      case 'massive':
-        foundationCount = Math.max(2, Math.floor(totalRocks * 0.4));
-        supportCount = Math.floor(totalRocks * 0.4);
-        accentCount = totalRocks - foundationCount - supportCount;
-        break;
+    if (role === 'support') {
+      // Support rocks lean against base rocks
+      const angle = Math.random() * Math.PI * 2;
+      const distance = (baseSize + rockSize) * 0.4;
+      
+      position.set(
+        basePosition.x + Math.cos(angle) * distance,
+        basePosition.y + rockSize * 0.3 + Math.random() * baseSize * 0.2,
+        basePosition.z + Math.sin(angle) * distance
+      );
+    } else {
+      // Accent rocks can be on top or in gaps
+      if (Math.random() < 0.6) {
+        // On top
+        const offsetX = (Math.random() - 0.5) * baseSize * 0.3;
+        const offsetZ = (Math.random() - 0.5) * baseSize * 0.3;
         
-      case 'large':
-        foundationCount = Math.max(1, Math.floor(totalRocks * 0.35));
-        supportCount = Math.floor(totalRocks * 0.45);
-        accentCount = totalRocks - foundationCount - supportCount;
-        break;
+        position.set(
+          basePosition.x + offsetX,
+          basePosition.y + baseSize * 0.6 + rockSize * 0.3,
+          basePosition.z + offsetZ
+        );
+      } else {
+        // In gaps around base
+        const angle = Math.random() * Math.PI * 2;
+        const distance = baseSize * (0.8 + Math.random() * 0.4);
         
-      case 'medium':
-        foundationCount = Math.max(1, Math.floor(totalRocks * 0.3));
-        supportCount = Math.floor(totalRocks * 0.4);
-        accentCount = totalRocks - foundationCount - supportCount;
-        break;
-        
-      default:
-        return RockGenerationUtils.calculateClusterCounts(minClusterSize, maxClusterSize);
+        position.set(
+          basePosition.x + Math.cos(angle) * distance,
+          basePosition.y + rockSize * 0.2,
+          basePosition.z + Math.sin(angle) * distance
+        );
+      }
     }
     
-    return {
-      foundationCount,
-      supportCount, 
-      accentCount,
-      total: totalRocks
-    };
+    return position;
   }
 }
