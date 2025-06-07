@@ -18,8 +18,13 @@ export class GrassSystem {
   private grassInstances: Map<string, THREE.InstancedMesh> = new Map();
   private grassMaterials: Map<number, THREE.ShaderMaterial> = new Map();
   private grassGeometries: THREE.BufferGeometry[] = [];
-  private renderDistance: number = 200;
+  private renderDistance: number = 150; // Reduced from 200 to 150
   private time: number = 0;
+  
+  // Player position tracking for distance-based culling
+  private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
+  private grassCullingUpdateCounter: number = 0;
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 10; // Update every 10 frames
   
   // Performance optimization variables
   private updateCounter: number = 0;
@@ -32,8 +37,8 @@ export class GrassSystem {
     baseDensity: 0.8, // Slightly reduced for performance
     patchDensity: 2.5, // Reduced from 3
     patchCount: 5, // Reduced from 6
-    maxDistance: 180, // Reduced from 200
-    lodLevels: [1.0, 0.5, 0.25, 0.1] // More aggressive LOD
+    maxDistance: 150, // Reduced from 180 to match render distance
+    lodLevels: [1.0, 0.5, 0.25, 0.0] // Cut off completely at max distance
   };
   
   constructor(scene: THREE.Scene) {
@@ -62,7 +67,14 @@ export class GrassSystem {
     
     if (this.grassInstances.has(regionKey)) return;
     
-    console.log(`🌱 Generating optimized grass for region ${region.ringIndex}-${region.quadrant}`);
+    // Early distance check - don't generate grass beyond 150 units
+    const distanceFromSpawn = centerPosition.length();
+    if (distanceFromSpawn > this.renderDistance) {
+      console.log(`🌱 Skipping grass generation for region ${regionKey} - beyond render distance (${distanceFromSpawn.toFixed(1)} > ${this.renderDistance})`);
+      return;
+    }
+    
+    console.log(`🌱 Generating optimized grass for region ${region.ringIndex}-${region.quadrant} at distance ${distanceFromSpawn.toFixed(1)}`);
     
     // Create or get material for this ring
     let material = this.grassMaterials.get(region.ringIndex);
@@ -73,8 +85,12 @@ export class GrassSystem {
     }
     
     // Generate grass with distance-based LOD
-    const playerDistance = centerPosition.length();
-    const lodLevel = this.getLODLevel(playerDistance);
+    const lodLevel = this.getLODLevel(distanceFromSpawn);
+    if (lodLevel === 0) {
+      console.log(`🌱 No grass generated for region ${regionKey} - beyond LOD cutoff`);
+      return;
+    }
+    
     const grassData = this.generateOptimizedGrassDistribution(centerPosition, size, region, lodLevel);
     
     if (grassData.positions.length === 0) return;
@@ -101,17 +117,50 @@ export class GrassSystem {
     instancedMesh.castShadow = true;
     instancedMesh.receiveShadow = true;
     
+    // Store region data for distance culling
+    instancedMesh.userData = {
+      regionKey,
+      centerPosition: centerPosition.clone(),
+      ringIndex: region.ringIndex
+    };
+    
     this.scene.add(instancedMesh);
     this.grassInstances.set(regionKey, instancedMesh);
     
-    console.log(`✅ Generated ${grassData.positions.length} grass blades for region ${regionKey} (LOD: ${lodLevel})`);
+    console.log(`✅ Generated ${grassData.positions.length} grass blades for region ${regionKey} (LOD: ${lodLevel}, Distance: ${distanceFromSpawn.toFixed(1)})`);
   }
   
   private getLODLevel(distance: number): number {
-    if (distance < 50) return this.config.lodLevels[0];
-    if (distance < 100) return this.config.lodLevels[1];
-    if (distance < 150) return this.config.lodLevels[2];
-    return this.config.lodLevels[3];
+    if (distance < 50) return this.config.lodLevels[0];   // Ring 0: Full density
+    if (distance < 100) return this.config.lodLevels[1];  // Ring 1 inner: 50% density
+    if (distance < 150) return this.config.lodLevels[2];  // Ring 1 outer: 25% density
+    return this.config.lodLevels[3]; // Beyond 150: No grass (0.0)
+  }
+  
+  private updateGrassVisibility(playerPosition: THREE.Vector3): void {
+    let hiddenCount = 0;
+    let visibleCount = 0;
+    
+    for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
+      const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
+      const distanceToPlayer = playerPosition.distanceTo(regionCenter);
+      
+      // Hide grass beyond render distance
+      const shouldBeVisible = distanceToPlayer <= this.renderDistance;
+      
+      if (instancedMesh.visible !== shouldBeVisible) {
+        instancedMesh.visible = shouldBeVisible;
+        if (shouldBeVisible) {
+          visibleCount++;
+        } else {
+          hiddenCount++;
+        }
+      }
+    }
+    
+    if (hiddenCount > 0 || visibleCount > 0) {
+      console.log(`🌱 Grass visibility updated: ${visibleCount} shown, ${hiddenCount} hidden`);
+    }
   }
   
   private generateOptimizedGrassDistribution(
@@ -247,6 +296,18 @@ export class GrassSystem {
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
     this.time += deltaTime;
     this.updateCounter++;
+    this.grassCullingUpdateCounter++;
+    
+    // Update grass visibility based on player position (every 10 frames for performance)
+    if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
+      // Only update if player has moved significantly
+      const playerMovedDistance = this.lastPlayerPosition.distanceTo(playerPosition);
+      if (playerMovedDistance > 5.0) { // Update when player moves 5+ units
+        this.updateGrassVisibility(playerPosition);
+        this.lastPlayerPosition.copy(playerPosition);
+      }
+      this.grassCullingUpdateCounter = 0;
+    }
     
     // Only update materials every few frames for performance
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
