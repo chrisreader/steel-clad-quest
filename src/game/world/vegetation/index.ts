@@ -4,6 +4,8 @@ export { BushGenerator } from './BushGenerator';
 export { OrganicShapeGenerator } from './OrganicShapeGenerator';
 export { RealisticMaterialGenerator } from './RealisticMaterialGenerator';
 export { AdvancedMaterialGenerator } from './AdvancedMaterialGenerator';
+export { OptimizedMaterialGenerator } from './OptimizedMaterialGenerator';
+export { LeafTextureGenerator } from './LeafTextureGenerator';
 export { NaturalGrowthSimulator } from './NaturalGrowthSimulator';
 export { 
   BushSpeciesType, 
