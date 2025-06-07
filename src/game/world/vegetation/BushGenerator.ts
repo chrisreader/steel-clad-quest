@@ -51,7 +51,7 @@ export class BushGenerator {
       const models: THREE.Object3D[] = [];
       
       for (let i = 0; i < this.MODELS_PER_SPECIES; i++) {
-        const bush = this.createSmallBush(species, i);
+        const bush = this.createSmallBushFromConfig(species, i);
         models.push(bush);
       }
       
@@ -59,6 +59,27 @@ export class BushGenerator {
     });
     
     console.log(`🌿 Created ${allSmallSpecies.length} small bush species with ${this.MODELS_PER_SPECIES} variations each`);
+  }
+
+  private createSmallBushFromConfig(species: SmallBushSpeciesConfig, variationIndex: number): THREE.Group {
+    const bushGroup = new THREE.Group();
+    bushGroup.userData = { species: species.type, variation: variationIndex };
+    
+    // Calculate bush dimensions with more realistic variation
+    const baseRadius = species.sizeRange[0] + 
+      Math.random() * (species.sizeRange[1] - species.sizeRange[0]);
+    
+    const height = species.heightRange[0] + 
+      Math.random() * (species.heightRange[1] - species.heightRange[0]);
+    
+    // Create more layers for denser, more realistic bushes
+    const layerCount = species.layerCountRange[0] + 
+      Math.floor(Math.random() * (species.layerCountRange[1] - species.layerCountRange[0] + 1));
+
+    // Create enhanced foliage layers only
+    this.createEnhancedFoliageLayers(bushGroup, species as any, layerCount, baseRadius, height, variationIndex);
+
+    return bushGroup;
   }
 
   private createEnhancedBush(species: BushSpeciesConfig, variationIndex: number): THREE.Group {
