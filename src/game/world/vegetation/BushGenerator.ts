@@ -86,14 +86,14 @@ export class BushGenerator {
     const bushGroup = new THREE.Group();
     bushGroup.userData = { species: species.type, variation: variationIndex };
     
-    // Calculate bush dimensions with more realistic variation
+    // Calculate bush dimensions with smaller, more realistic variation
     const baseRadius = species.sizeRange[0] + 
       Math.random() * (species.sizeRange[1] - species.sizeRange[0]);
     
     const height = species.heightRange[0] + 
       Math.random() * (species.heightRange[1] - species.heightRange[0]);
     
-    // Create more layers for denser, more realistic bushes
+    // Reduce layer count for smaller bushes
     const layerCount = species.layerCountRange[0] + 
       Math.floor(Math.random() * (species.layerCountRange[1] - species.layerCountRange[0] + 1));
 
@@ -288,9 +288,9 @@ export class BushGenerator {
     const modelIndex = Math.floor(Math.random() * models.length);
     const model = models[modelIndex].clone();
     
-    // Balanced scaling - midpoint between 0.8-1.4 and 0.9-1.1
+    // Smaller scaling range for more realistic bushes
     model.rotation.y = Math.random() * Math.PI * 2;
-    const scale = 0.85 + Math.random() * 0.3; // 0.85-1.15 range for better balance
+    const scale = 0.7 + Math.random() * 0.4; // Reduced from 0.85-1.15 to 0.7-1.1
     model.scale.setScalar(scale);
     
     model.position.copy(position);
@@ -308,7 +308,7 @@ export class BushGenerator {
     const model = models[modelIndex].clone();
     
     model.rotation.y = Math.random() * Math.PI * 2;
-    const scale = 0.8 + Math.random() * 0.4; // 0.8-1.2 range
+    const scale = 0.6 + Math.random() * 0.5; // Reduced from 0.8-1.2 to 0.6-1.1
     model.scale.setScalar(scale);
     
     model.position.copy(position);
