@@ -23,28 +23,28 @@ export class FireplaceRocks {
 
     // Create darker rock material for better contrast with fire
     const rockMaterial = new THREE.MeshPhongMaterial({
-      color: 0x333333,
+      color: 0x444444,
       shininess: 10
     });
 
     for (let i = 0; i < rockCount; i++) {
       const angle = (i / rockCount) * Math.PI * 2;
-      const rockRadius = radius + (Math.random() - 0.5) * 0.1; // Smaller radius variation
+      const rockRadius = radius + (Math.random() - 0.5) * 0.1;
       
       const x = Math.cos(angle) * rockRadius;
       const z = Math.sin(angle) * rockRadius;
 
-      // Generate simple organic rock shape
+      // Generate simple organic rock shape with larger base size
       const rockType = Math.random() < 0.4 ? 'flat' : Math.random() < 0.7 ? 'boulder' : 'angular';
-      const rockShape = SimpleRockGenerator.generateSimpleRock(rockType, 0.05 + Math.random() * 0.03);
+      const rockShape = SimpleRockGenerator.generateSimpleRock(rockType, 0.08 + Math.random() * 0.04);
 
-      // Use simple, small scale
+      // Create rock with more visible scale
       const rock = new THREE.Mesh(rockShape.geometry, rockMaterial.clone());
-      rock.scale.setScalar(0.4);
+      rock.scale.setScalar(0.6); // Larger scale to make rocks more visible
       rock.rotation.copy(rockShape.rotation);
       
-      // Position rock on ground level
-      rock.position.set(x, 0.02, z); // Very small y-offset to sit on ground
+      // Position rock on ground level with better visibility
+      rock.position.set(x, 0.05, z); // Slightly higher y-offset
       
       // Add minimal random tilt for natural look
       rock.rotation.x += (Math.random() - 0.5) * 0.2;
@@ -57,10 +57,10 @@ export class FireplaceRocks {
       this.rocks.push(rock);
       this.rockGroup.add(rock);
 
-      console.log(`🪨 Created ${rockType} rock ${i + 1} at (${x.toFixed(2)}, ${z.toFixed(2)}) with scale 0.4`);
+      console.log(`🪨 Created visible ${rockType} rock ${i + 1} at (${x.toFixed(2)}, ${z.toFixed(2)}) with scale 0.6`);
     }
 
-    // Add fewer smaller rocks between the main ones for detail
+    // Add fewer but more visible smaller rocks between the main ones
     for (let i = 0; i < 3; i++) {
       const angle = Math.random() * Math.PI * 2;
       const smallRadius = radius * 0.8 + Math.random() * 0.2;
@@ -68,12 +68,12 @@ export class FireplaceRocks {
       const x = Math.cos(angle) * smallRadius;
       const z = Math.sin(angle) * smallRadius;
 
-      const smallRockShape = SimpleRockGenerator.generateSimpleRock('flat', 0.03 + Math.random() * 0.02);
+      const smallRockShape = SimpleRockGenerator.generateSimpleRock('flat', 0.06);
       const smallRock = new THREE.Mesh(smallRockShape.geometry, rockMaterial.clone());
       
-      smallRock.scale.setScalar(0.25); // Very small scale for detail rocks
+      smallRock.scale.setScalar(0.4); // Larger scale for detail rocks
       smallRock.rotation.copy(smallRockShape.rotation);
-      smallRock.position.set(x, 0.01, z);
+      smallRock.position.set(x, 0.03, z);
       
       smallRock.castShadow = true;
       smallRock.receiveShadow = true;
@@ -83,7 +83,7 @@ export class FireplaceRocks {
     }
 
     this.scene.add(this.rockGroup);
-    console.log(`🪨 Fireplace rock circle created with ${this.rocks.length} total small rocks`);
+    console.log(`🪨 Fireplace rock circle created with ${this.rocks.length} visible rocks`);
     
     return this.rockGroup;
   }
