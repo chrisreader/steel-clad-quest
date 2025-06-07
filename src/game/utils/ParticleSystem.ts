@@ -31,6 +31,9 @@ interface Particle {
   rotation: number;
   rotationSpeed: number;
   active: boolean;
+  life?: number;
+  maxLife?: number;
+  gravity?: number;
 }
 
 export class ParticleSystem {

@@ -23,9 +23,7 @@ export class FireplaceRocks {
 
     // Create rock material
     const rockMaterial = new THREE.MeshLambertMaterial({
-      color: 0x555555,
-      roughness: 0.9,
-      metalness: 0.1
+      color: 0x555555
     });
 
     for (let i = 0; i < rockCount; i++) {

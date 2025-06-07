@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BaseBuilding } from './BaseBuilding';
 import { TavernBuilding } from './TavernBuilding';
@@ -23,7 +24,13 @@ export class BuildingManager {
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
-    this.safeZoneManager = new SafeZoneManager(scene);
+    // Create default safe zone config for tavern area
+    this.safeZoneManager = new SafeZoneManager({
+      minX: -20,
+      maxX: 20,
+      minZ: -20,
+      maxZ: 20
+    });
     console.log('BuildingManager initialized');
   }
 
@@ -56,7 +63,7 @@ export class BuildingManager {
       const buildingGroup = building.create();
       this.buildings.set(config.id || this.generateBuildingId(config.type), building);
       
-      console.log(`🏗️ Building created successfully: ${building.getBuildingName()}`);
+      console.log(`🏗️ Building created successfully: ${config.type}`);
       return building;
     }
 
@@ -76,7 +83,7 @@ export class BuildingManager {
     if (building) {
       building.dispose();
       this.buildings.delete(id);
-      console.log(`🔥 Building destroyed: ${building.getBuildingName()}`);
+      console.log(`🔥 Building destroyed: ${id}`);
     } else {
       console.warn(`🔥 No building found with ID: ${id}`);
     }
@@ -104,7 +111,7 @@ export class BuildingManager {
       building.dispose();
     }
     this.buildings.clear();
-    this.safeZoneManager.dispose();
+    // SafeZoneManager doesn't have dispose method, so we just reset the reference
     console.log('BuildingManager disposed');
   }
 }

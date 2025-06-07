@@ -270,23 +270,19 @@ export class StructureGenerator {
         const castle = this.buildingManager.createBuilding({
           type: 'castle',
           position: position,
-          options: {
-            wallLength: 36,
-            wallHeight: 8,
-            towerHeight: 12,
-            keepWidth: 15,
-            keepHeight: 15
-          }
+          id: `castle_${region.ringIndex}_${region.quadrant}`
         });
         
-        structures.push({
-          type: 'castle',
-          position: position,
-          rotation: Math.random() * Math.PI * 2,
-          model: castle.getBuildingGroup()
-        });
-        
-        console.log(`🏰 Placed ruined castle using BuildingManager at ${position.x.toFixed(2)}, ${position.z.toFixed(2)} in Ring 1, Quadrant 2`);
+        if (castle) {
+          structures.push({
+            type: 'castle',
+            position: position,
+            rotation: Math.random() * Math.PI * 2,
+            model: castle.getBuildingGroup()
+          });
+          
+          console.log(`🏰 Placed ruined castle using BuildingManager at ${position.x.toFixed(2)}, ${position.z.toFixed(2)} in Ring 1, Quadrant 2`);
+        }
       } else {
         console.warn('🏰 BuildingManager not available, skipping castle creation');
       }

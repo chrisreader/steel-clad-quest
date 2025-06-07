@@ -36,9 +36,7 @@ export class FireplaceGeometry {
   private createFireplaceBase(): void {
     const baseMaterial = new THREE.MeshLambertMaterial({
       color: 0x696969,
-      map: TextureGenerator.createStoneTexture(),
-      roughness: 0.8,
-      metalness: 0.1
+      map: TextureGenerator.createStoneTexture()
     });
 
     const base = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.1), baseMaterial);
@@ -55,9 +53,7 @@ export class FireplaceGeometry {
   private createCharredLogs(): void {
     const logMaterial = new THREE.MeshLambertMaterial({
       color: 0x2F1B14, // Dark charred brown
-      map: TextureGenerator.createWoodTexture(),
-      roughness: 0.9,
-      metalness: 0.0
+      map: TextureGenerator.createWoodTexture()
     });
 
     // Create 3-4 logs arranged naturally
@@ -88,8 +84,6 @@ export class FireplaceGeometry {
   private createAshBed(): void {
     const ashMaterial = new THREE.MeshLambertMaterial({
       color: 0x808080, // Light gray ash
-      roughness: 1.0,
-      metalness: 0.0,
       transparent: true,
       opacity: 0.8
     });
