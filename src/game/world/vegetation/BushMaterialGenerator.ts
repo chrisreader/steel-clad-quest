@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class BushMaterialGenerator {
@@ -12,17 +11,19 @@ export class BushMaterialGenerator {
     
     const material = new THREE.MeshStandardMaterial({
       color: colorVariation,
-      roughness: 0.8 + Math.random() * 0.1,
+      roughness: 0.85 + Math.random() * 0.1,
       metalness: 0.0,
-      transparent: false, // Remove transparency to prevent see-through gaps
-      opacity: 1.0, // Full opacity
-      flatShading: false, // Ensure smooth shading
-      vertexColors: true, // Use vertex colors for natural variation
-      side: THREE.DoubleSide, // Render both sides for dense foliage effect
+      transparent: false, // Keep solid
+      opacity: 1.0,
+      flatShading: false,
+      vertexColors: true,
+      side: THREE.DoubleSide, // Render both sides to hide any remaining gaps
+      depthWrite: true, // Ensure proper depth writing
+      depthTest: true,
     });
 
-    // Add detailed surface textures
-    this.addFoliageTextures(material, bushType);
+    // Add enhanced surface textures for gap hiding
+    this.addDenseFoliageTextures(material, bushType);
     
     return material;
   }
@@ -33,50 +34,48 @@ export class BushMaterialGenerator {
     // Apply type-specific color adjustments
     switch (bushType) {
       case 'low_shrub':
-        // More muted, earthy tones
-        color.offsetHSL(0.01, -0.2, -0.1);
+        color.offsetHSL(0.01, -0.15, -0.08);
         break;
       case 'medium_bush':
-        // Standard vibrant green
         color.offsetHSL(0, 0.1, 0);
         break;
       case 'tall_bush':
-        // Darker, more mature foliage
-        color.offsetHSL(-0.01, 0.15, -0.15);
+        color.offsetHSL(-0.01, 0.12, -0.12);
         break;
     }
 
-    // Add natural variation
-    const variationAmount = 0.2 * variation;
+    // Add natural variation with reduced intensity
+    const variationAmount = 0.15 * variation; // Reduced for more consistent appearance
     color.offsetHSL(
-      (Math.random() - 0.5) * variationAmount * 0.3, // Subtle hue variation
-      (Math.random() - 0.5) * variationAmount * 0.5, // Saturation variation
-      (Math.random() - 0.5) * variationAmount * 0.4  // Lightness variation
+      (Math.random() - 0.5) * variationAmount * 0.2,
+      (Math.random() - 0.5) * variationAmount * 0.3,
+      (Math.random() - 0.5) * variationAmount * 0.3
     );
 
     return color;
   }
 
-  private static addFoliageTextures(material: THREE.MeshStandardMaterial, bushType: string): void {
-    // Create high-resolution foliage normal map
+  private static addDenseFoliageTextures(material: THREE.MeshStandardMaterial, bushType: string): void {
+    // Create high-resolution foliage normal map with gap-hiding properties
     const canvas = document.createElement('canvas');
-    canvas.width = 128; // Higher resolution for dense foliage
-    canvas.height = 128;
+    canvas.width = 256; // Higher resolution for better detail
+    canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
     
-    const imageData = ctx.createImageData(128, 128);
+    const imageData = ctx.createImageData(256, 256);
     
-    for (let y = 0; y < 128; y++) {
-      for (let x = 0; x < 128; x++) {
-        const index = (y * 128 + x) * 4;
+    for (let y = 0; y < 256; y++) {
+      for (let x = 0; x < 256; x++) {
+        const index = (y * 256 + x) * 4;
         
-        // Create leaf-like surface variation
-        const leafPattern1 = Math.sin(x * 0.3) * Math.cos(y * 0.25) * 0.4;
-        const leafPattern2 = Math.sin(x * 0.15 + y * 0.15) * 0.3;
-        const microDetail = Math.sin(x * 0.8) * Math.sin(y * 0.6) * 0.2;
+        // Create dense leaf pattern that helps hide gaps
+        const leafPattern1 = Math.sin(x * 0.2) * Math.cos(y * 0.18) * 0.4;
+        const leafPattern2 = Math.sin(x * 0.12 + y * 0.12) * 0.3;
+        const microDetail = Math.sin(x * 0.6) * Math.sin(y * 0.5) * 0.2;
+        const gapFiller = Math.sin(x * 0.8 + y * 0.8) * 0.15; // Additional detail to mask gaps
         
-        const combinedPattern = leafPattern1 + leafPattern2 + microDetail;
-        const normalValue = 128 + combinedPattern * 30; // Enhanced detail
+        const combinedPattern = leafPattern1 + leafPattern2 + microDetail + gapFiller;
+        const normalValue = 128 + combinedPattern * 25;
         
         imageData.data[index] = normalValue;     // R
         imageData.data[index + 1] = normalValue; // G  
@@ -90,27 +89,30 @@ export class BushMaterialGenerator {
     const normalTexture = new THREE.CanvasTexture(canvas);
     normalTexture.wrapS = THREE.RepeatWrapping;
     normalTexture.wrapT = THREE.RepeatWrapping;
-    normalTexture.repeat.set(4, 4); // Dense tiling for foliage detail
+    normalTexture.repeat.set(6, 6); // Denser tiling for better coverage
     
     material.normalMap = normalTexture;
-    material.normalScale = new THREE.Vector2(0.6, 0.6); // Enhanced normal effect
+    material.normalScale = new THREE.Vector2(0.8, 0.8); // Enhanced for visual density
     
-    // Add dense roughness variation
-    this.addDenseRoughnessMap(material, bushType);
+    // Add enhanced roughness variation
+    this.addEnhancedRoughnessMap(material, bushType);
+    
+    // Add ambient occlusion effect to simulate depth
+    this.addAmbientOcclusionMap(material);
   }
 
-  private static addDenseRoughnessMap(material: THREE.MeshStandardMaterial, bushType: string): void {
+  private static addEnhancedRoughnessMap(material: THREE.MeshStandardMaterial, bushType: string): void {
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
+    canvas.width = 128;
+    canvas.height = 128;
     const ctx = canvas.getContext('2d')!;
     
-    const imageData = ctx.createImageData(64, 64);
+    const imageData = ctx.createImageData(128, 128);
     
     for (let i = 0; i < imageData.data.length; i += 4) {
-      // Dense foliage roughness pattern
-      const foliageRoughness = 0.7 + Math.sin(i * 0.02) * Math.cos(i * 0.015) * 0.2;
-      const roughnessValue = Math.floor(foliageRoughness * 255);
+      // Enhanced foliage roughness with variation
+      const foliageRoughness = 0.75 + Math.sin(i * 0.015) * Math.cos(i * 0.012) * 0.2;
+      const roughnessValue = Math.floor(Math.max(0, Math.min(1, foliageRoughness)) * 255);
       
       imageData.data[i] = roughnessValue;     // R
       imageData.data[i + 1] = roughnessValue; // G
@@ -123,9 +125,39 @@ export class BushMaterialGenerator {
     const roughnessTexture = new THREE.CanvasTexture(canvas);
     roughnessTexture.wrapS = THREE.RepeatWrapping;
     roughnessTexture.wrapT = THREE.RepeatWrapping;
-    roughnessTexture.repeat.set(3, 3);
+    roughnessTexture.repeat.set(4, 4);
     
     material.roughnessMap = roughnessTexture;
+  }
+
+  private static addAmbientOcclusionMap(material: THREE.MeshStandardMaterial): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    
+    const imageData = ctx.createImageData(64, 64);
+    
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      // Simulate ambient occlusion for depth perception
+      const aoValue = 0.3 + Math.sin(i * 0.02) * Math.cos(i * 0.025) * 0.4;
+      const aoIntensity = Math.floor(Math.max(0, Math.min(1, aoValue)) * 255);
+      
+      imageData.data[i] = aoIntensity;     // R
+      imageData.data[i + 1] = aoIntensity; // G
+      imageData.data[i + 2] = aoIntensity; // B
+      imageData.data[i + 3] = 255;         // A
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    
+    const aoTexture = new THREE.CanvasTexture(canvas);
+    aoTexture.wrapS = THREE.RepeatWrapping;
+    aoTexture.wrapT = THREE.RepeatWrapping;
+    aoTexture.repeat.set(2, 2);
+    
+    material.aoMap = aoTexture;
+    material.aoMapIntensity = 0.5; // Moderate AO effect
   }
 
   public static createStemMaterial(): THREE.MeshStandardMaterial {
