@@ -8,7 +8,6 @@ import { RegionCoordinates } from '../world/RingQuadrantSystem';
 import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES } from '../config/DayNightConfig';
 import { GrassBiomeManager, BiomeType } from './GrassBiomeManager';
-import { GrassDebugSystem } from './GrassDebugSystem';
 
 export interface GrassConfig {
   baseDensity: number;
@@ -21,16 +20,15 @@ export interface GrassConfig {
 export class GrassSystem {
   private scene: THREE.Scene;
   private grassInstances: Map<string, THREE.InstancedMesh> = new Map();
-  private groundGrassInstances: Map<string, THREE.InstancedMesh> = new Map(); // New ground layer
+  private groundGrassInstances: Map<string, THREE.InstancedMesh> = new Map();
   private grassMaterials: Map<string, THREE.ShaderMaterial> = new Map();
-  private groundGrassMaterials: Map<string, THREE.ShaderMaterial> = new Map(); // Ground materials
+  private groundGrassMaterials: Map<string, THREE.ShaderMaterial> = new Map();
   private grassGeometries: Map<string, THREE.BufferGeometry> = new Map();
-  private groundGrassGeometries: Map<string, THREE.BufferGeometry> = new Map(); // Ground geometries
+  private groundGrassGeometries: Map<string, THREE.BufferGeometry> = new Map();
   private enhancedGrassSpecies: EnhancedGrassBladeConfig[] = [];
   private renderDistance: number = 150;
   private time: number = 0;
   private currentSeason: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer';
-  private debugSystem: GrassDebugSystem;
   
   // Player position tracking for distance-based culling
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -54,7 +52,6 @@ export class GrassSystem {
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
-    this.debugSystem = new GrassDebugSystem(scene);
     this.initializeEnhancedGrassSystem();
   }
   
@@ -475,9 +472,6 @@ export class GrassSystem {
     this.updateCounter++;
     this.grassCullingUpdateCounter++;
     
-    // Update debug system
-    this.debugSystem.updateDebugInfo(playerPosition);
-    
     // Update grass visibility
     if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
       const playerMovedDistance = this.lastPlayerPosition.distanceTo(playerPosition);
@@ -515,7 +509,7 @@ export class GrassSystem {
         RealisticGrassShader.updateSeasonalVariation(material, this.currentSeason);
       }
       
-      // Update ground grass materials with improved wind (80% instead of 30%)
+      // Update ground grass materials with improved wind
       for (const material of this.groundGrassMaterials.values()) {
         RealisticGrassShader.updateRealisticWindAnimation(
           material, 
@@ -642,9 +636,6 @@ export class GrassSystem {
       geometry.dispose();
     }
     this.groundGrassGeometries.clear();
-    
-    // Clean up debug system
-    this.debugSystem.dispose();
     
     console.log('🌱 Enhanced GrassSystem with ground coverage disposed');
   }
