@@ -145,13 +145,21 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // CRITICAL: Enhanced weapon syncing - sync whenever weapons or active slot changes
   useEffect(() => {
-    if (!gameEngine || !gameStarted) return;
+    // Add null checks to prevent runtime errors
+    if (!gameEngine || !gameStarted) {
+      console.log('[KnightGame] 🔄 WEAPON SYNC SKIPPED - gameEngine or gameStarted not ready');
+      return;
+    }
+
+    const player = gameEngine.getPlayer();
+    if (!player) {
+      console.log('[KnightGame] 🔄 WEAPON SYNC SKIPPED - player not ready');
+      return;
+    }
 
     console.log('[KnightGame] 🔄 WEAPON SYNC - Syncing equipped weapons with game engine');
     console.log('[KnightGame] 🔄 Active slot:', activeWeaponSlot);
     console.log('[KnightGame] 🔄 Equipped weapons:', equippedWeapons);
-    
-    const player = gameEngine.getPlayer();
     
     // Get the weapon for the currently active slot
     const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
