@@ -147,6 +147,11 @@ export class SceneManager {
     console.log("📹 [SceneManager] Camera reference set for sun glow calculations");
   }
 
+  public initializeWithAudioManager(audioManager: AudioManager): void {
+    this.buildingManager.setAudioManager(audioManager);
+    console.log('🔊 SceneManager: AudioManager connected to BuildingManager for enhanced fire effects');
+  }
+
   private setupEnhancedFog(): void {
     const fogColor = ColorUtils.getSynchronizedFogColorForTime(
       this.timeOfDay, 

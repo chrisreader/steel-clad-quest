@@ -1,9 +1,17 @@
-
 import * as THREE from 'three';
 import { BaseBuilding } from './BaseBuilding';
 import { TextureGenerator } from '../utils';
+import { FireplaceComponent } from './components/FireplaceComponent';
+import { AudioManager } from '../engine/AudioManager';
 
 export class TavernBuilding extends BaseBuilding {
+  private fireplaceComponent: FireplaceComponent | null = null;
+  private audioManager: AudioManager | null = null;
+
+  public setAudioManager(audioManager: AudioManager): void {
+    this.audioManager = audioManager;
+  }
+
   protected createStructure(): void {
     // Tavern floor
     const tavernFloorGeometry = new THREE.PlaneGeometry(12, 12);
@@ -60,72 +68,37 @@ export class TavernBuilding extends BaseBuilding {
     roof.rotation.y = Math.PI / 8;
     this.addComponent(roof, 'roof', 'stone');
     
-    // Central fireplace
-    this.createFireplace();
+    // Enhanced fireplace system
+    this.createEnhancedFireplace();
     
     // Furniture (moved to sides to make room for fireplace)
     this.createFurniture();
   }
   
-  private createFireplace(): void {
-    // Fireplace base (stone platform)
-    const fireplaceBaseMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x696969,
-      map: TextureGenerator.createStoneTexture()
-    });
-    const fireplaceBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.1), fireplaceBaseMaterial);
-    fireplaceBase.position.set(0, 0.05, 0);
-    this.addComponent(fireplaceBase, 'fireplace_base', 'stone');
-    
-    // Small rocks around the fireplace
-    const rockMaterial = new THREE.MeshLambertMaterial({ 
-      color: 0x555555,
-      map: TextureGenerator.createStoneTexture()
-    });
-    
-    // Create 8 rocks in a circle
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const radius = 1.2;
-      const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius;
-      
-      // Vary rock sizes and shapes slightly
-      const rockWidth = 0.15 + Math.random() * 0.1;
-      const rockHeight = 0.2 + Math.random() * 0.15;
-      const rockDepth = 0.15 + Math.random() * 0.1;
-      
-      const rock = new THREE.Mesh(
-        new THREE.BoxGeometry(rockWidth, rockHeight, rockDepth), 
-        rockMaterial.clone()
-      );
-      rock.position.set(x, rockHeight / 2 + 0.1, z);
-      
-      // Add slight random rotation for natural look
-      rock.rotation.y = Math.random() * Math.PI * 2;
-      rock.rotation.x = (Math.random() - 0.5) * 0.2;
-      rock.rotation.z = (Math.random() - 0.5) * 0.2;
-      
-      this.addComponent(rock, `fireplace_rock_${i}`, 'stone');
+  private createEnhancedFireplace(): void {
+    if (!this.audioManager) {
+      console.warn('🔥 AudioManager not set for TavernBuilding. Creating fireplace without audio.');
+      // Create a mock audio manager for now
+      this.audioManager = {} as AudioManager;
     }
+
+    console.log('🔥 Creating enhanced fireplace system for tavern');
     
-    // Fire effect (simple glowing material)
-    const fireMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xFF4500,
-      transparent: true,
-      opacity: 0.8
-    });
-    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 6), fireMaterial);
-    fire.position.set(0, 0.4, 0);
-    this.addComponent(fire, 'fire', 'fabric');
+    this.fireplaceComponent = new FireplaceComponent(
+      this.scene,
+      this.physicsManager,
+      this.audioManager,
+      new THREE.Vector3(0, 0, 0), // Center of tavern
+      'tavern_fireplace'
+    );
     
-    // Add warm fireplace light
-    const fireplaceLight = new THREE.PointLight(0xFF6600, 1.5, 8);
-    fireplaceLight.position.set(0, 1, 0);
-    fireplaceLight.castShadow = true;
-    this.buildingGroup.add(fireplaceLight);
+    const fireplaceGroup = this.fireplaceComponent.create();
+    this.buildingGroup.add(fireplaceGroup);
     
-    console.log('🔥 Fireplace with rocks created in tavern center');
+    // Register fireplace collisions
+    this.fireplaceComponent.registerCollisions('tavern');
+    
+    console.log('🔥 Enhanced fireplace system created with realistic fire, organic rocks, and dynamic lighting');
   }
   
   private createFurniture(): void {
@@ -170,6 +143,20 @@ export class TavernBuilding extends BaseBuilding {
     const chair2 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), chairMaterial.clone());
     chair2.position.set(-4, 0.5, -2);
     this.addComponent(chair2, 'chair_2', 'wood');
+  }
+  
+  public update(deltaTime: number): void {
+    if (this.fireplaceComponent) {
+      this.fireplaceComponent.update(deltaTime);
+    }
+  }
+  
+  public dispose(): void {
+    if (this.fireplaceComponent) {
+      this.fireplaceComponent.dispose();
+      this.fireplaceComponent = null;
+    }
+    super.dispose();
   }
   
   protected getBuildingName(): string {
