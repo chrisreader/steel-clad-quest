@@ -150,7 +150,7 @@ export class GrassSystem {
       rotations: THREE.Quaternion[];
     },
     region: RegionCoordinates,
-    biomeInfo: { type: BiomeType; strength: number }
+    biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean }
   ): void {
     // Get biome-specific geometry
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
@@ -224,7 +224,7 @@ export class GrassSystem {
     size: number,
     environmentalFactors: EnvironmentalFactors,
     lodMultiplier: number,
-    biomeInfo: { type: BiomeType; strength: number }
+    biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean }
   ) {
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     const adjustedDensity = this.config.baseDensity * lodMultiplier * biomeConfig.densityMultiplier;
