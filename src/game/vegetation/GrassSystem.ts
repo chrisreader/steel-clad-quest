@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { EnhancedGrassGeometry, EnhancedGrassBladeConfig } from './EnhancedGrassGeometry';
+import { GroundGrassGeometry } from './GroundGrassGeometry';
+import { GroundGrassBiomeConfig } from './GroundGrassBiomeConfig';
 import { RealisticGrassShader } from './RealisticGrassShader';
 import { EnvironmentalGrassDistribution, EnvironmentalFactors } from './EnvironmentalGrassDistribution';
 import { RegionCoordinates } from '../world/RingQuadrantSystem';
@@ -19,8 +21,11 @@ export interface GrassConfig {
 export class GrassSystem {
   private scene: THREE.Scene;
   private grassInstances: Map<string, THREE.InstancedMesh> = new Map();
+  private groundGrassInstances: Map<string, THREE.InstancedMesh> = new Map(); // New ground layer
   private grassMaterials: Map<string, THREE.ShaderMaterial> = new Map();
+  private groundGrassMaterials: Map<string, THREE.ShaderMaterial> = new Map(); // Ground materials
   private grassGeometries: Map<string, THREE.BufferGeometry> = new Map();
+  private groundGrassGeometries: Map<string, THREE.BufferGeometry> = new Map(); // Ground geometries
   private enhancedGrassSpecies: EnhancedGrassBladeConfig[] = [];
   private renderDistance: number = 150;
   private time: number = 0;
@@ -56,7 +61,7 @@ export class GrassSystem {
   private initializeEnhancedGrassSystem(): void {
     this.enhancedGrassSpecies = EnhancedGrassGeometry.getEnhancedGrassSpecies();
     
-    // Create geometries for each species
+    // Create geometries for each species (tall grass)
     for (const species of this.enhancedGrassSpecies) {
       const geometry = species.clustered 
         ? EnhancedGrassGeometry.createGrassCluster(species, 3)
@@ -64,16 +69,37 @@ export class GrassSystem {
       
       this.grassGeometries.set(species.species, geometry);
       
-      // Create realistic material for each species
+      // Create ground grass geometries
+      const groundGeometry = species.clustered
+        ? GroundGrassGeometry.createGroundGrassCluster(species, 5)
+        : GroundGrassGeometry.createGroundGrassBladeGeometry(species);
+      
+      this.groundGrassGeometries.set(species.species, groundGeometry);
+      
+      // Create materials for tall grass
       const material = RealisticGrassShader.createRealisticGrassMaterial(
         species.color, 
         0, 
         species.species
       );
       this.grassMaterials.set(species.species, material);
+      
+      // Create materials for ground grass with reduced wind
+      const groundMaterial = RealisticGrassShader.createRealisticGrassMaterial(
+        species.color.clone().multiplyScalar(0.9), // Slightly darker for ground
+        0, 
+        `ground_${species.species}`
+      );
+      
+      // Reduce wind strength for ground grass
+      if (groundMaterial.uniforms.windStrength) {
+        groundMaterial.uniforms.windStrength.value *= 0.3;
+      }
+      
+      this.groundGrassMaterials.set(species.species, groundMaterial);
     }
     
-    console.log('🌱 Enhanced grass system initialized with', this.enhancedGrassSpecies.length, 'species');
+    console.log('🌱 Enhanced grass system with ground coverage initialized with', this.enhancedGrassSpecies.length, 'species');
   }
   
   public generateGrassForRegion(
@@ -96,7 +122,7 @@ export class GrassSystem {
     const biomeInfo = GrassBiomeManager.getBiomeAtPosition(centerPosition);
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     
-    console.log(`🌱 Generating ${biomeConfig.name} grass for region ${region.ringIndex}-${region.quadrant}`);
+    console.log(`🌱 Generating ${biomeConfig.name} grass with ground coverage for region ${region.ringIndex}-${region.quadrant}`);
     
     // Create environmental factors adjusted for biome
     const baseEnvironmentalFactors = this.createRegionEnvironmentalFactors(
@@ -114,7 +140,8 @@ export class GrassSystem {
     const lodLevel = this.getLODLevel(distanceFromSpawn);
     if (lodLevel === 0) return;
     
-    const grassData = this.generateBiomeAwareGrassDistribution(
+    // Generate tall grass (existing system)
+    const tallGrassData = this.generateBiomeAwareGrassDistribution(
       centerPosition, 
       size, 
       environmentalFactors, 
@@ -122,23 +149,79 @@ export class GrassSystem {
       biomeInfo
     );
     
-    if (grassData.positions.length === 0) return;
+    // Generate ground grass (new dense layer)
+    const groundGrassData = this.generateGroundGrassDistribution(
+      centerPosition,
+      size,
+      environmentalFactors,
+      lodLevel,
+      biomeInfo
+    );
+    
+    if (tallGrassData.positions.length === 0 && groundGrassData.positions.length === 0) return;
     
     // Group by species for efficient rendering
-    const speciesGroups = this.groupGrassBySpecies(grassData);
+    const tallGrassGroups = this.groupGrassBySpecies(tallGrassData);
+    const groundGrassGroups = this.groupGrassBySpecies(groundGrassData);
     
-    // Create instanced meshes for each species present
-    for (const [speciesName, speciesData] of Object.entries(speciesGroups)) {
+    // Create instanced meshes for tall grass
+    for (const [speciesName, speciesData] of Object.entries(tallGrassGroups)) {
       this.createBiomeAwareSpeciesInstancedMesh(
         regionKey, 
         speciesName, 
         speciesData, 
         region,
-        biomeInfo
+        biomeInfo,
+        false // tall grass
       );
     }
     
-    console.log(`✅ Generated ${biomeConfig.name} grass for region ${regionKey} with ${grassData.positions.length} blades`);
+    // Create instanced meshes for ground grass
+    for (const [speciesName, speciesData] of Object.entries(groundGrassGroups)) {
+      this.createBiomeAwareSpeciesInstancedMesh(
+        regionKey, 
+        speciesName, 
+        speciesData, 
+        region,
+        biomeInfo,
+        true // ground grass
+      );
+    }
+    
+    console.log(`✅ Generated ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
+  }
+  
+  private generateGroundGrassDistribution(
+    centerPosition: THREE.Vector3,
+    size: number,
+    environmentalFactors: EnvironmentalFactors,
+    lodMultiplier: number,
+    biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean }
+  ) {
+    const groundConfig = GroundGrassBiomeConfig.getGroundConfiguration(biomeInfo.type);
+    const adjustedDensity = this.config.baseDensity * lodMultiplier * groundConfig.densityMultiplier;
+    const baseSpacing = 1 / Math.sqrt(adjustedDensity);
+    
+    const grassData = EnvironmentalGrassDistribution.calculateGrassDistribution(
+      centerPosition,
+      size,
+      environmentalFactors,
+      baseSpacing
+    );
+    
+    // Apply ground-specific species distribution
+    grassData.species = GroundGrassBiomeConfig.adjustGroundSpeciesForBiome(
+      grassData.species, 
+      biomeInfo.type
+    );
+    
+    // Apply ground grass height reductions
+    for (let i = 0; i < grassData.scales.length; i++) {
+      const heightVariation = 0.8 + Math.random() * 0.4; // Less height variation for ground
+      grassData.scales[i].y *= groundConfig.heightReduction * heightVariation;
+    }
+    
+    return grassData;
   }
   
   private createBiomeAwareSpeciesInstancedMesh(
@@ -150,35 +233,24 @@ export class GrassSystem {
       rotations: THREE.Quaternion[];
     },
     region: RegionCoordinates,
-    biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean }
+    biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean },
+    isGroundGrass: boolean = false
   ): void {
-    // Get biome-specific geometry
-    const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
-    const biomeSpecies = EnhancedGrassGeometry.getEnhancedGrassSpeciesForBiome(biomeInfo.type);
-    const speciesConfig = biomeSpecies.find(s => s.species === speciesName);
+    const suffix = isGroundGrass ? '_ground' : '';
+    const geometryMap = isGroundGrass ? this.groundGrassGeometries : this.grassGeometries;
+    const materialMap = isGroundGrass ? this.groundGrassMaterials : this.grassMaterials;
+    const instanceMap = isGroundGrass ? this.groundGrassInstances : this.grassInstances;
     
-    if (!speciesConfig) return;
+    // Get appropriate geometry and material
+    const geometry = geometryMap.get(speciesName);
+    let material = materialMap.get(speciesName);
     
-    // Create geometry with biome-specific height variation
-    const heightVariation = biomeConfig.heightMultiplier;
-    const geometry = speciesConfig.clustered 
-      ? EnhancedGrassGeometry.createGrassCluster(speciesConfig, 3, heightVariation)
-      : EnhancedGrassGeometry.createRealisticGrassBladeGeometry(speciesConfig, heightVariation);
+    if (!geometry || !material) return;
     
-    // Use existing material or create new one
-    let material = this.grassMaterials.get(speciesName);
-    if (!material) {
-      material = RealisticGrassShader.createRealisticGrassMaterial(
-        speciesConfig.color, 
-        0, 
-        speciesConfig.species
-      );
-      this.grassMaterials.set(speciesName, material);
-    }
-    
-    // Apply biome-specific wind exposure
-    if (material.uniforms.windStrength) {
-      material.uniforms.windStrength.value *= biomeConfig.windExposureMultiplier;
+    // Apply biome-specific wind exposure for ground grass
+    if (isGroundGrass && material.uniforms.windStrength) {
+      const groundConfig = GroundGrassBiomeConfig.getGroundConfiguration(biomeInfo.type);
+      material.uniforms.windStrength.value *= groundConfig.windReduction;
     }
     
     const instancedMesh = new THREE.InstancedMesh(
@@ -191,7 +263,13 @@ export class GrassSystem {
     for (let i = 0; i < speciesData.positions.length; i++) {
       const matrix = new THREE.Matrix4();
       const adjustedPosition = speciesData.positions[i].clone();
-      adjustedPosition.y = Math.max(0.1, adjustedPosition.y);
+      
+      // Ensure ground grass is at ground level
+      if (isGroundGrass) {
+        adjustedPosition.y = Math.max(0.01, adjustedPosition.y);
+      } else {
+        adjustedPosition.y = Math.max(0.1, adjustedPosition.y);
+      }
       
       matrix.compose(
         adjustedPosition,
@@ -202,21 +280,22 @@ export class GrassSystem {
     }
     
     instancedMesh.instanceMatrix.needsUpdate = true;
-    instancedMesh.castShadow = true;
+    instancedMesh.castShadow = !isGroundGrass; // Ground grass doesn't cast shadows for performance
     instancedMesh.receiveShadow = true;
     
-    // Store biome data
+    // Store metadata
     instancedMesh.userData = {
-      regionKey: `${regionKey}_${speciesName}`,
+      regionKey: `${regionKey}_${speciesName}${suffix}`,
       centerPosition: speciesData.positions[0] || new THREE.Vector3(),
       ringIndex: region.ringIndex,
       species: speciesName,
       biomeType: biomeInfo.type,
-      biomeStrength: biomeInfo.strength
+      biomeStrength: biomeInfo.strength,
+      isGroundGrass
     };
     
     this.scene.add(instancedMesh);
-    this.grassInstances.set(`${regionKey}_${speciesName}`, instancedMesh);
+    instanceMap.set(`${regionKey}_${speciesName}`, instancedMesh);
   }
   
   private generateBiomeAwareGrassDistribution(
@@ -237,15 +316,13 @@ export class GrassSystem {
       baseSpacing
     );
     
-    // Apply biome species distribution
     grassData.species = GrassBiomeManager.adjustSpeciesForBiome(
       grassData.species, 
       biomeInfo
     );
     
-    // Apply biome height variations
     for (let i = 0; i < grassData.scales.length; i++) {
-      const heightVariation = 0.7 + Math.random() * 0.6; // ±30% height variation
+      const heightVariation = 0.7 + Math.random() * 0.6;
       grassData.scales[i].y *= biomeConfig.heightMultiplier * heightVariation;
     }
     
@@ -257,20 +334,19 @@ export class GrassSystem {
     region: RegionCoordinates,
     terrainColor: number
   ): EnvironmentalFactors {
-    // Simulate environmental conditions based on region
     const distanceFromCenter = centerPosition.length();
-    const moisture = 0.6 - (distanceFromCenter * 0.001); // Drier further from center
-    const slope = Math.random() * 0.4; // Random slope variation
-    const lightExposure = 0.8 - (region.ringIndex * 0.1); // Less light in outer rings
+    const moisture = 0.6 - (distanceFromCenter * 0.001);
+    const slope = Math.random() * 0.4;
+    const lightExposure = 0.8 - (region.ringIndex * 0.1);
     
     return EnvironmentalGrassDistribution.createEnvironmentalFactorsForTerrain(
       centerPosition,
-      0, // Simplified terrain height
+      0,
       {
         hasWater: Math.random() < 0.1,
         hasTrees: Math.random() < 0.3,
         hasRocks: Math.random() < 0.2,
-        playerTraffic: 0 // No trampling for now
+        playerTraffic: 0
       }
     );
   }
@@ -329,6 +405,7 @@ export class GrassSystem {
     let hiddenCount = 0;
     let visibleCount = 0;
     
+    // Update tall grass visibility
     for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -342,6 +419,19 @@ export class GrassSystem {
         } else {
           hiddenCount++;
         }
+      }
+    }
+    
+    // Update ground grass visibility with shorter render distance for performance
+    const groundRenderDistance = this.renderDistance * 0.7;
+    for (const [regionKey, instancedMesh] of this.groundGrassInstances.entries()) {
+      const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
+      const distanceToPlayer = playerPosition.distanceTo(regionCenter);
+      
+      const shouldBeVisible = distanceToPlayer <= groundRenderDistance;
+      
+      if (instancedMesh.visible !== shouldBeVisible) {
+        instancedMesh.visible = shouldBeVisible;
       }
     }
   }
@@ -404,6 +494,7 @@ export class GrassSystem {
       const baseWindStrength = 0.2 + Math.sin(this.time * 0.3) * 0.1;
       const gustIntensity = 0.1 + Math.sin(this.time * 0.8) * 0.08;
       
+      // Update tall grass materials
       for (const material of this.grassMaterials.values()) {
         RealisticGrassShader.updateRealisticWindAnimation(
           material, 
@@ -415,9 +506,35 @@ export class GrassSystem {
         RealisticGrassShader.updateSeasonalVariation(material, this.currentSeason);
       }
       
+      // Update ground grass materials with reduced wind
+      for (const material of this.groundGrassMaterials.values()) {
+        RealisticGrassShader.updateRealisticWindAnimation(
+          material, 
+          this.time, 
+          baseWindStrength * 0.3, // Reduced wind for ground grass
+          gustIntensity * 0.2    // Reduced gusts for ground grass
+        );
+        RealisticGrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
+        RealisticGrassShader.updateSeasonalVariation(material, this.currentSeason);
+      }
+      
       // Update fog uniforms
       if (this.checkFogChanges() && this.cachedFogValues) {
+        // Update fog for tall grass materials
         for (const material of this.grassMaterials.values()) {
+          if (material.uniforms.fogColor) {
+            material.uniforms.fogColor.value.copy(this.cachedFogValues.color);
+          }
+          if (material.uniforms.fogNear) {
+            material.uniforms.fogNear.value = this.cachedFogValues.near;
+          }
+          if (material.uniforms.fogFar) {
+            material.uniforms.fogFar.value = this.cachedFogValues.far;
+          }
+        }
+        
+        // Update fog for ground grass materials
+        for (const material of this.groundGrassMaterials.values()) {
           if (material.uniforms.fogColor) {
             material.uniforms.fogColor.value.copy(this.cachedFogValues.color);
           }
@@ -434,7 +551,14 @@ export class GrassSystem {
   
   public setSeason(season: 'spring' | 'summer' | 'autumn' | 'winter'): void {
     this.currentSeason = season;
+    
+    // Update season for tall grass
     for (const material of this.grassMaterials.values()) {
+      RealisticGrassShader.updateSeasonalVariation(material, season);
+    }
+    
+    // Update season for ground grass
+    for (const material of this.groundGrassMaterials.values()) {
       RealisticGrassShader.updateSeasonalVariation(material, season);
     }
   }
@@ -442,7 +566,7 @@ export class GrassSystem {
   public removeGrassForRegion(region: RegionCoordinates): void {
     const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
     
-    // Remove all species instances for this region
+    // Remove tall grass instances
     const keysToRemove = Array.from(this.grassInstances.keys()).filter(
       key => key.startsWith(regionKey)
     );
@@ -456,16 +580,37 @@ export class GrassSystem {
       }
     }
     
-    console.log(`🌱 Removed enhanced grass for region ${regionKey}`);
+    // Remove ground grass instances
+    const groundKeysToRemove = Array.from(this.groundGrassInstances.keys()).filter(
+      key => key.startsWith(regionKey)
+    );
+    
+    for (const key of groundKeysToRemove) {
+      const instancedMesh = this.groundGrassInstances.get(key);
+      if (instancedMesh) {
+        this.scene.remove(instancedMesh);
+        instancedMesh.geometry.dispose();
+        this.groundGrassInstances.delete(key);
+      }
+    }
+    
+    console.log(`🌱 Removed enhanced grass and ground coverage for region ${regionKey}`);
   }
   
   public dispose(): void {
-    // Clean up all grass instances
+    // Clean up all tall grass instances
     for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
       this.scene.remove(instancedMesh);
       instancedMesh.geometry.dispose();
     }
     this.grassInstances.clear();
+    
+    // Clean up all ground grass instances
+    for (const [regionKey, instancedMesh] of this.groundGrassInstances.entries()) {
+      this.scene.remove(instancedMesh);
+      instancedMesh.geometry.dispose();
+    }
+    this.groundGrassInstances.clear();
     
     // Clean up materials
     for (const material of this.grassMaterials.values()) {
@@ -473,15 +618,25 @@ export class GrassSystem {
     }
     this.grassMaterials.clear();
     
+    for (const material of this.groundGrassMaterials.values()) {
+      material.dispose();
+    }
+    this.groundGrassMaterials.clear();
+    
     // Clean up geometries
     for (const geometry of this.grassGeometries.values()) {
       geometry.dispose();
     }
     this.grassGeometries.clear();
     
+    for (const geometry of this.groundGrassGeometries.values()) {
+      geometry.dispose();
+    }
+    this.groundGrassGeometries.clear();
+    
     // Clean up debug system
     this.debugSystem.dispose();
     
-    console.log('🌱 Enhanced GrassSystem disposed');
+    console.log('🌱 Enhanced GrassSystem with ground coverage disposed');
   }
 }
