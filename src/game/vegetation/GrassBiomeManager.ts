@@ -36,7 +36,7 @@ export class GrassBiomeManager {
         fine: 0.15
       },
       densityMultiplier: 1.0,
-      heightMultiplier: 0.85, // Slightly shorter overall
+      heightMultiplier: 0.68, // Reduced from 0.85 to 0.68 (20% reduction)
       windExposureMultiplier: 1.0,
       preferredMoisture: 0.5,
       color: new THREE.Color(0x90EE90) // Light green
@@ -50,7 +50,7 @@ export class GrassBiomeManager {
         fine: 0.3
       },
       densityMultiplier: 1.5,
-      heightMultiplier: 1.1,
+      heightMultiplier: 1.1, // Keep meadow unchanged
       windExposureMultiplier: 0.7,
       preferredMoisture: 0.8,
       color: new THREE.Color(0x32CD32) // Lime green
@@ -64,7 +64,7 @@ export class GrassBiomeManager {
         fine: 0.15
       },
       densityMultiplier: 0.8,
-      heightMultiplier: 1.3,
+      heightMultiplier: 1.04, // Reduced from 1.3 to 1.04 (20% reduction)
       windExposureMultiplier: 1.4,
       preferredMoisture: 0.4,
       color: new THREE.Color(0xFFD700) // Golden

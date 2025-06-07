@@ -17,7 +17,7 @@ export class GroundGrassBiomeConfig {
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
       densityMultiplier: 6.0, // Increased from 4.0 for proper carpet coverage
-      heightReduction: 0.85, // 15% shorter instead of 25%
+      heightReduction: 0.68, // Apply 20% reduction to ground grass too (0.85 * 0.8)
       speciesDistribution: {
         meadow: 0.3,
         prairie: 0.15,
@@ -28,7 +28,7 @@ export class GroundGrassBiomeConfig {
     },
     meadow: {
       densityMultiplier: 7.0, // Densest coverage in meadow
-      heightReduction: 0.85,
+      heightReduction: 0.85, // Keep meadow ground grass unchanged
       speciesDistribution: {
         meadow: 0.6,
         prairie: 0.05,
@@ -39,7 +39,7 @@ export class GroundGrassBiomeConfig {
     },
     prairie: {
       densityMultiplier: 6.0, // Dense but allowing for wind exposure
-      heightReduction: 0.85,
+      heightReduction: 0.68, // Apply 20% reduction (0.85 * 0.8)
       speciesDistribution: {
         meadow: 0.1,
         prairie: 0.7,
