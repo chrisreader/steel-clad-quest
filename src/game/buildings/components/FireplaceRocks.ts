@@ -35,19 +35,19 @@ export class FireplaceRocks {
       const x = Math.cos(angle) * rockRadius;
       const z = Math.sin(angle) * rockRadius;
 
-      // Generate larger rocks for 20-30cm diameter (0.20-0.30 units base size)
+      // Generate rocks for 15-26cm diameter (0.15-0.26 units base size)
       const rockType = Math.random() < 0.6 ? 'boulder' : Math.random() < 0.8 ? 'flat' : 'angular';
-      const rockShape = SimpleRockGenerator.generateSimpleRock(rockType, 0.20 + Math.random() * 0.10);
+      const rockShape = SimpleRockGenerator.generateSimpleRock(rockType, 0.15 + Math.random() * 0.11);
 
-      // Create rock with larger scale for 20-30cm diameter
+      // Create rock with scale for 15-26cm diameter
       const rock = new THREE.Mesh(rockShape.geometry, rockMaterial.clone());
-      const scaleValue = 1.0 + Math.random() * 0.5; // 1.0 to 1.5 scale for larger rocks
+      const scaleValue = 0.9 + Math.random() * 0.4; // 0.9 to 1.3 scale for 15-26cm rocks
       rock.scale.setScalar(scaleValue);
       rock.rotation.copy(rockShape.rotation);
       
       // Position rock properly on ground level with slight height variation
       const heightVariation = Math.random() * 0.04; // Small random height for natural placement
-      rock.position.set(x, 0.10 + heightVariation, z); // Slightly higher for larger rocks
+      rock.position.set(x, 0.09 + heightVariation, z); // Adjusted height for smaller rocks
       
       // Add natural tilt for organic look
       rock.rotation.x += (Math.random() - 0.5) * 0.3;
@@ -63,7 +63,7 @@ export class FireplaceRocks {
       console.log(`🪨 Created realistic ${rockType} rock ${i + 1} at (${x.toFixed(2)}, ${z.toFixed(2)}) with scale ${scaleValue.toFixed(2)}`);
     }
 
-    // Add smaller accent rocks for natural variation (15-20cm)
+    // Add smaller accent rocks for natural variation (12-18cm)
     for (let i = 0; i < 3; i++) {
       const angle = Math.random() * Math.PI * 2;
       const smallRadius = radius * 0.7 + Math.random() * 0.2;
@@ -71,12 +71,12 @@ export class FireplaceRocks {
       const x = Math.cos(angle) * smallRadius;
       const z = Math.sin(angle) * smallRadius;
 
-      const smallRockShape = SimpleRockGenerator.generateSimpleRock('flat', 0.15);
+      const smallRockShape = SimpleRockGenerator.generateSimpleRock('flat', 0.12);
       const smallRock = new THREE.Mesh(smallRockShape.geometry, rockMaterial.clone());
       
-      smallRock.scale.setScalar(0.8 + Math.random() * 0.4); // 15-20cm accent rocks
+      smallRock.scale.setScalar(0.7 + Math.random() * 0.3); // 12-18cm accent rocks
       smallRock.rotation.copy(smallRockShape.rotation);
-      smallRock.position.set(x, 0.08, z);
+      smallRock.position.set(x, 0.07, z);
       
       // Flatten small rocks more (lying flat orientation)
       smallRock.rotation.x += Math.PI * 0.4;
@@ -90,7 +90,7 @@ export class FireplaceRocks {
     }
 
     this.scene.add(this.rockGroup);
-    console.log(`🪨 Realistic fireplace rock circle created with ${this.rocks.length} properly sized rocks (20-30cm diameter)`);
+    console.log(`🪨 Realistic fireplace rock circle created with ${this.rocks.length} properly sized rocks (15-26cm diameter)`);
     
     return this.rockGroup;
   }
