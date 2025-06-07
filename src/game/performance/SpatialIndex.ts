@@ -23,7 +23,8 @@ export class SpatialIndex {
   }
 
   public insert(object: THREE.Object3D): void {
-    if (!object.geometry || !(object as THREE.Mesh).geometry) return;
+    // Type check: only process Mesh objects with geometry
+    if (!(object instanceof THREE.Mesh) || !object.geometry) return;
 
     const mesh = object as THREE.Mesh;
     if (!mesh.geometry.boundingBox) {
@@ -86,8 +87,9 @@ export class SpatialIndex {
 
     // Redistribute objects to children
     for (const object of node.objects) {
-      const mesh = object as THREE.Mesh;
-      if (mesh.geometry?.boundingBox) {
+      // Type check before accessing geometry
+      if (object instanceof THREE.Mesh && object.geometry?.boundingBox) {
+        const mesh = object as THREE.Mesh;
         const worldBox = mesh.geometry.boundingBox.clone();
         worldBox.applyMatrix4(object.matrixWorld);
 

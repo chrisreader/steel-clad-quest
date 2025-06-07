@@ -39,9 +39,10 @@ export class PerformanceMonitor {
       this.frameCount = 0;
       this.frameTimeAccumulator = 0;
       
-      // Update memory usage if available
-      if (performance.memory) {
-        this.metrics.memoryUsage = performance.memory.usedJSHeapSize / 1048576; // MB
+      // Update memory usage if available (with proper type checking)
+      const performanceAny = performance as any;
+      if (performanceAny.memory && performanceAny.memory.usedJSHeapSize) {
+        this.metrics.memoryUsage = performanceAny.memory.usedJSHeapSize / 1048576; // MB
       }
     }
 
