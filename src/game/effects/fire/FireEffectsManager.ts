@@ -1,6 +1,6 @@
 
 import * as THREE from 'three';
-import { FireParticleGenerator } from './components/FireParticleGenerator';
+import { OrganicFireParticleGenerator } from './components/OrganicFireParticleGenerator';
 import { FireLightingSystem } from './components/FireLightingSystem';
 import { FireSoundManager } from './components/FireSoundManager';
 import { FireConfig, FireLightConfig, FireSoundConfig, FIREPLACE_PARTICLE_CONFIGS } from './types/FireTypes';
@@ -12,7 +12,7 @@ export class FireEffectsManager {
   private position: THREE.Vector3;
   private config: FireConfig;
   
-  private particleGenerator: FireParticleGenerator | null = null;
+  private particleGenerator: OrganicFireParticleGenerator | null = null;
   private lightingSystem: FireLightingSystem | null = null;
   private soundManager: FireSoundManager | null = null;
   
@@ -28,19 +28,19 @@ export class FireEffectsManager {
   public start(): void {
     if (this.isActive) return;
 
-    console.log('🔥 Starting fire effects at position:', this.position);
+    console.log('🔥 Starting enhanced organic fire effects at position:', this.position);
 
-    // Initialize particle generator
-    this.particleGenerator = new FireParticleGenerator(this.scene, this.position);
+    // Initialize organic particle generator
+    this.particleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
     
     // Add different particle types based on config
     const flameConfig = { ...FIREPLACE_PARTICLE_CONFIGS.flames };
-    flameConfig.count = Math.floor(this.config.particleCount * 0.55); // 55% flames
+    flameConfig.count = Math.floor(this.config.particleCount * 0.55);
     this.particleGenerator.addParticleType('flames', flameConfig);
 
     if (this.config.smokeEnabled) {
       const smokeConfig = { ...FIREPLACE_PARTICLE_CONFIGS.smoke };
-      smokeConfig.count = Math.floor(this.config.particleCount * 0.33); // 33% smoke
+      smokeConfig.count = Math.floor(this.config.particleCount * 0.33);
       this.particleGenerator.addParticleType('smoke', smokeConfig);
     }
 
@@ -71,7 +71,7 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    console.log('🔥 Fire effects system fully initialized');
+    console.log('🔥 Enhanced organic fire effects system fully initialized');
   }
 
   public update(deltaTime: number): void {
@@ -88,6 +88,10 @@ export class FireEffectsManager {
 
   public setIntensity(intensity: number): void {
     this.config.intensity = intensity;
+    
+    if (this.particleGenerator) {
+      this.particleGenerator.setIntensity(intensity);
+    }
     
     if (this.lightingSystem) {
       this.lightingSystem.setIntensity(intensity);
