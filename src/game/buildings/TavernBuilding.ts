@@ -60,18 +60,82 @@ export class TavernBuilding extends BaseBuilding {
     roof.rotation.y = Math.PI / 8;
     this.addComponent(roof, 'roof', 'stone');
     
-    // Furniture
+    // Central fireplace
+    this.createFireplace();
+    
+    // Furniture (moved to sides to make room for fireplace)
     this.createFurniture();
   }
   
+  private createFireplace(): void {
+    // Fireplace base (stone platform)
+    const fireplaceBaseMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x696969,
+      map: TextureGenerator.createStoneTexture()
+    });
+    const fireplaceBase = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.1), fireplaceBaseMaterial);
+    fireplaceBase.position.set(0, 0.05, 0);
+    this.addComponent(fireplaceBase, 'fireplace_base', 'stone');
+    
+    // Small rocks around the fireplace
+    const rockMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x555555,
+      map: TextureGenerator.createStoneTexture()
+    });
+    
+    // Create 8 rocks in a circle
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const radius = 1.2;
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      
+      // Vary rock sizes and shapes slightly
+      const rockWidth = 0.15 + Math.random() * 0.1;
+      const rockHeight = 0.2 + Math.random() * 0.15;
+      const rockDepth = 0.15 + Math.random() * 0.1;
+      
+      const rock = new THREE.Mesh(
+        new THREE.BoxGeometry(rockWidth, rockHeight, rockDepth), 
+        rockMaterial.clone()
+      );
+      rock.position.set(x, rockHeight / 2 + 0.1, z);
+      
+      // Add slight random rotation for natural look
+      rock.rotation.y = Math.random() * Math.PI * 2;
+      rock.rotation.x = (Math.random() - 0.5) * 0.2;
+      rock.rotation.z = (Math.random() - 0.5) * 0.2;
+      
+      this.addComponent(rock, `fireplace_rock_${i}`, 'stone');
+    }
+    
+    // Fire effect (simple glowing material)
+    const fireMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xFF4500,
+      transparent: true,
+      opacity: 0.8
+    });
+    const fire = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.6, 6), fireMaterial);
+    fire.position.set(0, 0.4, 0);
+    this.addComponent(fire, 'fire', 'fabric');
+    
+    // Add warm fireplace light
+    const fireplaceLight = new THREE.PointLight(0xFF6600, 1.5, 8);
+    fireplaceLight.position.set(0, 1, 0);
+    fireplaceLight.castShadow = true;
+    this.buildingGroup.add(fireplaceLight);
+    
+    console.log('🔥 Fireplace with rocks created in tavern center');
+  }
+  
   private createFurniture(): void {
-    // Table
+    // Table (moved to the side)
     const tableMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xDEB887,
       map: TextureGenerator.createWoodTexture()
     });
-    const table = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 1.5), tableMaterial);
-    table.position.set(-2, 1, -2);
+    const table = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 1), tableMaterial);
+    table.position.set(-3, 1, -2);
     this.addComponent(table, 'table', 'wood');
     
     // Table legs
@@ -82,14 +146,30 @@ export class TavernBuilding extends BaseBuilding {
     const legGeometry = new THREE.CylinderGeometry(0.05, 0.08, 0.8, 8);
     
     const legPositions = [
-      [-1, 0.5, -0.5], [1, 0.5, -0.5], [-1, 0.5, 0.5], [1, 0.5, 0.5]
+      [-1, 0.5, -0.3], [1, 0.5, -0.3], [-1, 0.5, 0.3], [1, 0.5, 0.3]
     ];
     
     legPositions.forEach((pos, index) => {
       const leg = new THREE.Mesh(legGeometry, legMaterial.clone());
-      leg.position.set(-2 + pos[0], pos[1], -2 + pos[2]);
+      leg.position.set(-3 + pos[0], pos[1], -2 + pos[2]);
       this.addComponent(leg, `table_leg_${index + 1}`, 'wood');
     });
+    
+    // Add a couple of chairs around the table
+    const chairMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0x8B4513,
+      map: TextureGenerator.createWoodTexture()
+    });
+    
+    // Chair 1
+    const chair1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), chairMaterial);
+    chair1.position.set(-2, 0.5, -2);
+    this.addComponent(chair1, 'chair_1', 'wood');
+    
+    // Chair 2
+    const chair2 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), chairMaterial.clone());
+    chair2.position.set(-4, 0.5, -2);
+    this.addComponent(chair2, 'chair_2', 'wood');
   }
   
   protected getBuildingName(): string {
