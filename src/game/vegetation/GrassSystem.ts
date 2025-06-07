@@ -35,8 +35,8 @@ export class GrassSystem {
   private grassCullingUpdateCounter: number = 0;
   private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // More frequent updates
   
-  // Dynamic LOD system
-  private lodDistances: number[] = [50, 100, 150, 200]; // LOD distance thresholds
+  // Dynamic LOD system - more forgiving distances
+  private lodDistances: number[] = [75, 150, 225, 300]; // Increased distances
   private grassRegionQueue: Set<string> = new Set(); // Regions pending generation
   
   // Performance optimization variables
@@ -50,8 +50,8 @@ export class GrassSystem {
     baseDensity: 1.2, // Increased base density
     patchDensity: 2.5,
     patchCount: 5,
-    maxDistance: 200, // Increased render distance
-    lodLevels: [1.0, 0.8, 0.6, 0.4] // More gradual LOD reduction
+    maxDistance: 300, // Increased render distance
+    lodLevels: [1.0, 0.7, 0.4, 0.2] // Never go to 0, always have some grass
   };
   
   constructor(scene: THREE.Scene) {
@@ -113,13 +113,17 @@ export class GrassSystem {
     
     if (this.grassInstances.has(regionKey)) return;
     
-    // Calculate distance and LOD level
-    const distanceFromPlayer = this.lastPlayerPosition.distanceTo(centerPosition);
+    // Calculate distance and LOD level using center position (current data)
+    const distanceFromPlayer = centerPosition.distanceTo(this.lastPlayerPosition);
     const lodLevel = this.getDynamicLODLevel(distanceFromPlayer);
     
-    // Always generate grass within extended render distance
+    // Add debug logging for LOD assignment
+    console.log(`🌱 Region ${region.ringIndex}-${region.quadrant}: distance=${distanceFromPlayer.toFixed(1)}, LOD=${lodLevel.toFixed(2)}`);
+    
+    // Always generate grass within extended render distance, but queue very distant regions
     if (distanceFromPlayer > this.config.maxDistance) {
       this.grassRegionQueue.add(regionKey);
+      console.log(`📦 Queued distant region ${regionKey} (distance: ${distanceFromPlayer.toFixed(1)})`);
       return;
     }
     
@@ -141,17 +145,15 @@ export class GrassSystem {
       biomeInfo
     );
     
-    // Generate grass distribution with guaranteed minimum coverage
-    if (lodLevel === 0) return;
-    
+    // NEVER skip grass generation - always generate minimum coverage
     // Generate tall grass (existing system) with minimum coverage guarantee
     const tallGrassData = this.generateBiomeAwareGrassDistribution(
       centerPosition, 
       size, 
       environmentalFactors, 
-      lodLevel,
+      Math.max(lodLevel, 0.1), // Ensure minimum LOD of 0.1
       biomeInfo,
-      0.2 // Guarantee 20% coverage for tall grass
+      lodLevel < 0.3 ? 0.1 : 0.2 // Lower minimum for very distant regions
     );
     
     // Generate ground grass (new dense layer) with higher minimum coverage
@@ -159,15 +161,15 @@ export class GrassSystem {
       centerPosition,
       size,
       environmentalFactors,
-      lodLevel,
+      Math.max(lodLevel, 0.15), // Ensure minimum LOD of 0.15 for ground grass
       biomeInfo,
-      0.6 // Guarantee 60% coverage for ground grass
+      lodLevel < 0.3 ? 0.3 : 0.6 // Lower minimum for very distant regions
     );
     
-    // Always ensure some grass is generated
+    // Emergency grass generation if both failed
     if (tallGrassData.positions.length === 0 && groundGrassData.positions.length === 0) {
-      console.warn(`⚠️ No grass generated for region ${regionKey}, forcing minimum grass`);
-      this.forceMinimumGrass(tallGrassData, groundGrassData, centerPosition, size, environmentalFactors);
+      console.warn(`⚠️ EMERGENCY: No grass generated for region ${regionKey}, forcing emergency grass`);
+      this.forceEmergencyGrass(tallGrassData, groundGrassData, centerPosition, size, environmentalFactors);
     }
     
     // Group by species for efficient rendering
@@ -203,15 +205,15 @@ export class GrassSystem {
     console.log(`✅ Generated ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
   }
   
-  private forceMinimumGrass(
+  private forceEmergencyGrass(
     tallGrassData: any,
     groundGrassData: any,
     centerPosition: THREE.Vector3,
     size: number,
     environmentalFactors: EnvironmentalFactors
   ): void {
-    // Add minimum grass blades if none were generated
-    const minBlades = 50; // Minimum number of grass blades per region
+    // Emergency minimum grass blades - always generate something
+    const minBlades = 20; // Reduced emergency minimum
     const halfSize = size * 0.5;
     
     for (let i = 0; i < minBlades; i++) {
@@ -219,20 +221,20 @@ export class GrassSystem {
       const randomZ = centerPosition.z - halfSize + Math.random() * size;
       const worldPos = new THREE.Vector3(randomX, 0, randomZ);
       
-      if (i < minBlades * 0.3) { // 30% tall grass
+      if (i < minBlades * 0.2) { // 20% tall grass
         tallGrassData.positions.push(worldPos.clone());
-        tallGrassData.scales.push(new THREE.Vector3(0.8 + Math.random() * 0.4, 1.0, 0.8 + Math.random() * 0.4));
+        tallGrassData.scales.push(new THREE.Vector3(0.6 + Math.random() * 0.3, 0.8, 0.6 + Math.random() * 0.3));
         tallGrassData.rotations.push(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2));
         tallGrassData.species.push('meadow');
-      } else { // 70% ground grass
+      } else { // 80% ground grass
         groundGrassData.positions.push(worldPos.clone());
-        groundGrassData.scales.push(new THREE.Vector3(0.8 + Math.random() * 0.4, 0.7, 0.8 + Math.random() * 0.4));
+        groundGrassData.scales.push(new THREE.Vector3(0.5 + Math.random() * 0.3, 0.5, 0.5 + Math.random() * 0.3));
         groundGrassData.rotations.push(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2));
         groundGrassData.species.push('clumping');
       }
     }
     
-    console.log(`🌱 Forced minimum ${minBlades} grass blades for coverage`);
+    console.log(`🚨 EMERGENCY: Forced ${minBlades} grass blades for coverage`);
   }
   
   private createImprovedEnvironmentalFactors(
@@ -264,7 +266,7 @@ export class GrassSystem {
     if (distance < this.lodDistances[1]) return this.config.lodLevels[1]; // High detail
     if (distance < this.lodDistances[2]) return this.config.lodLevels[2]; // Medium detail
     if (distance < this.lodDistances[3]) return this.config.lodLevels[3]; // Low detail
-    return 0; // No grass
+    return this.config.lodLevels[3]; // Never return 0 - always minimum grass
   }
   
   private generateGroundGrassDistribution(
