@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BushSpeciesType, BushSpeciesConfig } from './BushSpecies';
 
@@ -45,6 +44,18 @@ export class AdvancedMaterialGenerator {
       new THREE.Color(0x5a8d31), // Fresh green
       new THREE.Color(0x6a9e3a), // Bright green
       new THREE.Color(0x7aaf43)  // Spring green
+    ],
+    [BushSpeciesType.TINY_SHRUB]: [
+      new THREE.Color(0x3a5c2a), // Small bush green
+      new THREE.Color(0x4a6b32), // Natural small green
+      new THREE.Color(0x5a7c3a), // Light shrub green
+      new THREE.Color(0x6a8d42)  // Bright small green
+    ],
+    [BushSpeciesType.LOW_GROUND_COVER]: [
+      new THREE.Color(0x2d4520), // Dark ground cover
+      new THREE.Color(0x3d5530), // Forest floor green
+      new THREE.Color(0x4d6540), // Medium ground green
+      new THREE.Color(0x5d7550)  // Light ground cover
     ]
   };
 
@@ -154,7 +165,9 @@ export class AdvancedMaterialGenerator {
         new THREE.Color(0x6699ff), // Blue
         new THREE.Color(0xffcc33), // Yellow
         new THREE.Color(0xff9933)  // Orange
-      ]
+      ],
+      [BushSpeciesType.TINY_SHRUB]: [new THREE.Color(0xffdddd)], // Light pink
+      [BushSpeciesType.LOW_GROUND_COVER]: [new THREE.Color(0xffffcc)] // Pale cream
     };
     
     const colors = flowerColors[species.type];
@@ -182,7 +195,9 @@ export class AdvancedMaterialGenerator {
         new THREE.Color(0x8B0000), // Dark red
         new THREE.Color(0x4B0082)  // Indigo
       ],
-      [BushSpeciesType.FLOWERING_ORNAMENTAL]: [new THREE.Color(0xFF6347)] // Orange
+      [BushSpeciesType.FLOWERING_ORNAMENTAL]: [new THREE.Color(0xFF6347)], // Orange
+      [BushSpeciesType.TINY_SHRUB]: [new THREE.Color(0x8B4513)], // Saddle brown
+      [BushSpeciesType.LOW_GROUND_COVER]: [new THREE.Color(0x228B22)] // Forest green
     };
     
     const colors = berryColors[species.type];
