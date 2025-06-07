@@ -1,14 +1,19 @@
-
 import * as THREE from 'three';
 import { BUSH_CONFIG, BUSH_SPECIES, BushSpecies, BushType, GrowthPattern } from './VegetationConfig';
+import { OrganicBushGeometry } from './OrganicBushGeometry';
+import { OrganicBushMaterials } from './OrganicBushMaterials';
 import { logger } from '../../core/Logger';
 import { LOGGING_CONSTANTS } from '../../core/GameConstants';
 
 export class BushGenerator {
   private bushModels: Map<BushType, THREE.Object3D[]> = new Map();
   private speciesWeights: Map<BushType, number> = new Map();
+  private geometryGenerator: OrganicBushGeometry;
+  private materialGenerator: OrganicBushMaterials;
 
   constructor() {
+    this.geometryGenerator = new OrganicBushGeometry();
+    this.materialGenerator = new OrganicBushMaterials();
     this.initializeSpeciesWeights();
     this.loadBushModels();
   }
@@ -30,315 +35,358 @@ export class BushGenerator {
     for (const species of BUSH_SPECIES) {
       const variations: THREE.Object3D[] = [];
       
-      // Create 3-4 variations per species
-      for (let i = 0; i < 4; i++) {
-        const bushGroup = this.createBushVariation(species, i);
+      // Create 4-5 variations per species for diversity
+      for (let i = 0; i < 5; i++) {
+        const bushGroup = this.createOrganicBushVariation(species, i);
         variations.push(bushGroup);
       }
       
       this.bushModels.set(species.type, variations);
-      logger.debug(LOGGING_CONSTANTS.MODULES.BUILDING, `Created ${variations.length} variations for ${species.type}`);
+      logger.debug(LOGGING_CONSTANTS.MODULES.BUILDING, `Created ${variations.length} organic variations for ${species.type}`);
     }
     
-    logger.info(LOGGING_CONSTANTS.MODULES.BUILDING, `🌿 Enhanced bush system initialized with ${BUSH_SPECIES.length} species`);
+    logger.info(LOGGING_CONSTANTS.MODULES.BUILDING, `🌿 Organic bush system initialized with ${BUSH_SPECIES.length} species`);
   }
 
-  private createBushVariation(species: BushSpecies, variationIndex: number): THREE.Group {
+  private createOrganicBushVariation(species: BushSpecies, variationIndex: number): THREE.Group {
     const bushGroup = new THREE.Group();
     
     // Generate realistic size based on species
     const height = species.heightRange[0] + Math.random() * (species.heightRange[1] - species.heightRange[0]);
     const width = species.widthRange[0] + Math.random() * (species.widthRange[1] - species.widthRange[0]);
     
-    // Adjust cluster count based on bush size and species
-    const baseClusterCount = species.clusterCountRange[0] + 
-      Math.floor(Math.random() * (species.clusterCountRange[1] - species.clusterCountRange[0] + 1));
+    // Create base material
+    const baseMaterial = this.materialGenerator.createFoliageMaterial(species, variationIndex);
     
-    // Create material with species-appropriate properties
-    const bushMaterial = this.createSpeciesMaterial(species, variationIndex);
+    // Generate organic foliage clusters
+    this.createOrganicFoliageClusters(bushGroup, species, height, width, baseMaterial);
     
-    // Generate clusters based on growth pattern
-    this.createClustersForPattern(bushGroup, species, height, width, baseClusterCount, bushMaterial);
-    
-    // Add stems based on species characteristics
+    // Add organic stems and branches
     if (Math.random() < species.stemChance) {
-      this.addRealisticStem(bushGroup, species, height);
+      this.addOrganicBranches(bushGroup, species, height, width);
     }
     
-    // Add berries with higher probability for berry bushes
+    // Add berries with organic placement
     if (Math.random() < species.berryChance) {
-      this.addBerries(bushGroup, species, width);
+      this.addOrganicBerries(bushGroup, species, width);
     }
     
-    // Add flowers for flowering species
+    // Add flowers with natural distribution
     if (Math.random() < species.flowerChance) {
-      this.addFlowers(bushGroup, species, width);
+      this.addOrganicFlowers(bushGroup, species, width, height);
     }
     
     return bushGroup;
   }
 
-  private createSpeciesMaterial(species: BushSpecies, variationIndex: number): THREE.MeshStandardMaterial {
-    const colorIndex = variationIndex % species.colors.length;
-    const baseColor = species.colors[colorIndex].clone();
+  private createOrganicFoliageClusters(
+    bushGroup: THREE.Group,
+    species: BushSpecies,
+    height: number,
+    width: number,
+    baseMaterial: THREE.MeshStandardMaterial
+  ): void {
+    const clusterCount = species.clusterCountRange[0] + 
+      Math.floor(Math.random() * (species.clusterCountRange[1] - species.clusterCountRange[0] + 1));
     
-    // Add slight color variation
-    const hsl = { h: 0, s: 0, l: 0 };
-    baseColor.getHSL(hsl);
-    hsl.h += (Math.random() - 0.5) * 0.02; // Slight hue variation
-    hsl.s += (Math.random() - 0.5) * 0.1;  // Saturation variation
-    hsl.l += (Math.random() - 0.5) * 0.1;  // Lightness variation
-    baseColor.setHSL(hsl.h, hsl.s, hsl.l);
+    // Create main foliage mass with organic distribution
+    for (let i = 0; i < clusterCount; i++) {
+      const clusterSize = this.calculateOrganicClusterSize(species, height, width, i, clusterCount);
+      const position = this.calculateOrganicClusterPosition(species.growthPattern, height, width, i, clusterCount);
+      
+      // Create organic foliage geometry
+      const geometry = this.geometryGenerator.createFoliageCluster(
+        clusterSize,
+        0.2 + Math.random() * 0.4, // asymmetry
+        0.1 + Math.random() * 0.3   // bumpiness
+      );
+      
+      // Create material variation for this cluster
+      const material = this.materialGenerator.createVariationMaterial(baseMaterial, Math.random());
+      
+      const cluster = new THREE.Mesh(geometry, material);
+      cluster.position.copy(position);
+      
+      // Add organic rotation and scaling
+      cluster.rotation.set(
+        (Math.random() - 0.5) * 0.4,
+        Math.random() * Math.PI * 2,
+        (Math.random() - 0.5) * 0.4
+      );
+      
+      const scale = this.calculateOrganicScale(species.growthPattern, i, clusterCount);
+      cluster.scale.copy(scale);
+      
+      cluster.castShadow = true;
+      cluster.receiveShadow = true;
+      
+      bushGroup.add(cluster);
+    }
     
-    return new THREE.MeshStandardMaterial({
-      color: baseColor,
-      roughness: 0.9 - (species.foliageDensity * 0.1),
-      metalness: 0.0,
-      transparent: true,
-      opacity: 0.92 + (species.foliageDensity * 0.08)
-    });
+    // Add transitional clusters for smooth blending
+    this.addTransitionalClusters(bushGroup, species, height, width, baseMaterial, clusterCount);
   }
 
-  private createClustersForPattern(
-    bushGroup: THREE.Group, 
-    species: BushSpecies, 
-    height: number, 
-    width: number, 
-    clusterCount: number, 
-    material: THREE.MeshStandardMaterial
+  private addTransitionalClusters(
+    bushGroup: THREE.Group,
+    species: BushSpecies,
+    height: number,
+    width: number,
+    baseMaterial: THREE.MeshStandardMaterial,
+    mainClusterCount: number
   ): void {
-    for (let i = 0; i < clusterCount; i++) {
-      const cluster = this.createCluster(species, height, width, i, clusterCount, material);
+    const transitionCount = Math.floor(mainClusterCount * 0.6);
+    
+    for (let i = 0; i < transitionCount; i++) {
+      const smallSize = (height + width) / 8 * (0.3 + Math.random() * 0.4);
+      
+      // Position between existing clusters for smooth transitions
+      const angle = Math.random() * Math.PI * 2;
+      const distance = width * (0.4 + Math.random() * 0.3);
+      const position = new THREE.Vector3(
+        Math.cos(angle) * distance,
+        0.1 + Math.random() * height * 0.7,
+        Math.sin(angle) * distance
+      );
+      
+      const geometry = this.geometryGenerator.createFoliageCluster(smallSize, 0.6, 0.4);
+      const material = this.materialGenerator.createVariationMaterial(baseMaterial, Math.random());
+      material.opacity *= 0.7; // Make transitional clusters more transparent
+      
+      const cluster = new THREE.Mesh(geometry, material);
+      cluster.position.copy(position);
+      cluster.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI
+      );
+      
+      cluster.scale.setScalar(0.6 + Math.random() * 0.4);
+      cluster.castShadow = true;
+      cluster.receiveShadow = true;
+      
       bushGroup.add(cluster);
     }
   }
 
-  private createCluster(
-    species: BushSpecies, 
-    height: number, 
-    width: number, 
-    index: number, 
-    totalClusters: number, 
-    material: THREE.MeshStandardMaterial
-  ): THREE.Mesh {
-    // Calculate cluster size based on species foliage density
-    const baseClusterSize = (height + width) / 4 * species.foliageDensity;
-    const clusterSize = baseClusterSize * (0.6 + Math.random() * 0.6);
+  private calculateOrganicClusterSize(
+    species: BushSpecies,
+    height: number,
+    width: number,
+    index: number,
+    totalClusters: number
+  ): number {
+    const baseSize = (height + width) / 6 * species.foliageDensity;
+    const sizeVariation = 0.5 + Math.random() * 0.8;
     
-    // Create cluster geometry with appropriate complexity
-    const geometry = new THREE.SphereGeometry(
-      clusterSize, 
-      Math.max(6, Math.min(12, Math.floor(species.foliageDensity * 10))), 
-      Math.max(4, Math.min(8, Math.floor(species.foliageDensity * 8)))
-    );
+    // Make some clusters larger for natural variation
+    const majorCluster = index < totalClusters * 0.4 ? 1.2 : 0.8;
     
-    const cluster = new THREE.Mesh(geometry, material.clone());
-    
-    // Position clusters according to growth pattern
-    const position = this.calculateClusterPosition(species.growthPattern, height, width, index, totalClusters);
-    cluster.position.copy(position);
-    
-    // Deform clusters for organic look based on growth pattern
-    const scale = this.calculateClusterScale(species.growthPattern, height, width);
-    cluster.scale.copy(scale);
-    
-    cluster.castShadow = true;
-    cluster.receiveShadow = true;
-    
-    return cluster;
+    return baseSize * sizeVariation * majorCluster;
   }
 
-  private calculateClusterPosition(
-    pattern: GrowthPattern, 
-    height: number, 
-    width: number, 
-    index: number, 
+  private calculateOrganicClusterPosition(
+    pattern: GrowthPattern,
+    height: number,
+    width: number,
+    index: number,
     totalClusters: number
   ): THREE.Vector3 {
-    const angle = (index / totalClusters) * Math.PI * 2 + Math.random() * 0.5;
+    const angle = (index / totalClusters) * Math.PI * 2 + (Math.random() - 0.5) * 1.0;
+    const randomOffset = new THREE.Vector3(
+      (Math.random() - 0.5) * width * 0.3,
+      (Math.random() - 0.5) * height * 0.2,
+      (Math.random() - 0.5) * width * 0.3
+    );
+    
+    let basePosition: THREE.Vector3;
     
     switch (pattern) {
       case GrowthPattern.COMPACT_ROUND:
-        const compactDistance = width * (0.1 + Math.random() * 0.3);
-        return new THREE.Vector3(
+        const compactDistance = width * (0.05 + Math.random() * 0.25);
+        basePosition = new THREE.Vector3(
           Math.cos(angle) * compactDistance,
-          0.2 + Math.random() * height * 0.8,
+          0.2 + Math.random() * height * 0.6,
           Math.sin(angle) * compactDistance
         );
+        break;
         
       case GrowthPattern.SPRAWLING_WIDE:
         const sprawlDistance = width * (0.3 + Math.random() * 0.4);
-        return new THREE.Vector3(
+        basePosition = new THREE.Vector3(
           Math.cos(angle) * sprawlDistance,
-          0.1 + Math.random() * height * 0.4,
+          0.1 + Math.random() * height * 0.3,
           Math.sin(angle) * sprawlDistance
         );
+        break;
         
       case GrowthPattern.UPRIGHT_OVAL:
-        const uprightDistance = width * (0.1 + Math.random() * 0.2);
-        return new THREE.Vector3(
+        const uprightDistance = width * (0.1 + Math.random() * 0.15);
+        basePosition = new THREE.Vector3(
           Math.cos(angle) * uprightDistance,
-          0.3 + (index / totalClusters) * height * 0.7 + Math.random() * 0.2,
+          0.3 + (index / totalClusters) * height * 0.6 + Math.random() * 0.3,
           Math.sin(angle) * uprightDistance
         );
+        break;
         
       case GrowthPattern.IRREGULAR_CLUMPING:
       default:
-        const irregularDistance = width * (0.2 + Math.random() * 0.3);
-        return new THREE.Vector3(
-          Math.cos(angle) * irregularDistance + (Math.random() - 0.5) * width * 0.2,
-          0.2 + Math.random() * height * 0.6,
-          Math.sin(angle) * irregularDistance + (Math.random() - 0.5) * width * 0.2
+        const irregularDistance = width * (0.1 + Math.random() * 0.35);
+        basePosition = new THREE.Vector3(
+          Math.cos(angle) * irregularDistance,
+          0.2 + Math.random() * height * 0.5,
+          Math.sin(angle) * irregularDistance
         );
+        break;
     }
+    
+    return basePosition.add(randomOffset);
   }
 
-  private calculateClusterScale(pattern: GrowthPattern, height: number, width: number): THREE.Vector3 {
+  private calculateOrganicScale(pattern: GrowthPattern, index: number, totalClusters: number): THREE.Vector3 {
     const baseScale = new THREE.Vector3(
-      0.8 + Math.random() * 0.4,
-      0.6 + Math.random() * 0.3,
-      0.8 + Math.random() * 0.4
+      0.7 + Math.random() * 0.6,
+      0.6 + Math.random() * 0.5,
+      0.7 + Math.random() * 0.6
     );
+    
+    // Add natural asymmetry
+    const asymmetry = 0.8 + Math.random() * 0.4;
     
     switch (pattern) {
       case GrowthPattern.COMPACT_ROUND:
-        return baseScale;
+        return baseScale.multiplyScalar(asymmetry);
         
       case GrowthPattern.SPRAWLING_WIDE:
         return new THREE.Vector3(
-          baseScale.x * 1.3,
-          baseScale.y * 0.7,
-          baseScale.z * 1.3
+          baseScale.x * 1.4 * asymmetry,
+          baseScale.y * 0.6,
+          baseScale.z * 1.4 * asymmetry
         );
         
       case GrowthPattern.UPRIGHT_OVAL:
         return new THREE.Vector3(
-          baseScale.x * 0.8,
-          baseScale.y * 1.4,
-          baseScale.z * 0.8
+          baseScale.x * 0.7,
+          baseScale.y * 1.5 * asymmetry,
+          baseScale.z * 0.7
         );
         
       case GrowthPattern.IRREGULAR_CLUMPING:
       default:
         return new THREE.Vector3(
-          baseScale.x * (0.6 + Math.random() * 0.8),
-          baseScale.y * (0.7 + Math.random() * 0.6),
-          baseScale.z * (0.6 + Math.random() * 0.8)
+          baseScale.x * (0.5 + Math.random() * 1.0),
+          baseScale.y * (0.6 + Math.random() * 0.8),
+          baseScale.z * (0.5 + Math.random() * 1.0)
         );
     }
   }
 
-  private addRealisticStem(bushGroup: THREE.Group, species: BushSpecies, height: number): void {
-    const stemHeight = height * (0.6 + Math.random() * 0.3);
-    const stemRadius = Math.max(0.02, height * 0.025);
-    
-    const stem = new THREE.Mesh(
-      new THREE.CylinderGeometry(stemRadius * 0.7, stemRadius, stemHeight, 6),
-      new THREE.MeshStandardMaterial({
-        color: species.type === BushType.EVERGREEN_SHRUB ? 0x3A2A1A : 0x4A4A2A,
-        roughness: 0.95,
-        metalness: 0.0
-      })
-    );
-    
-    stem.position.y = stemHeight / 2;
-    stem.castShadow = true;
-    stem.receiveShadow = true;
-    bushGroup.add(stem);
-    
-    // Add multiple smaller branches for larger bushes
-    if (height > 1.5 && Math.random() < 0.7) {
-      this.addBranches(bushGroup, species, height, stemRadius);
-    }
-  }
-
-  private addBranches(bushGroup: THREE.Group, species: BushSpecies, height: number, baseRadius: number): void {
-    const branchCount = 2 + Math.floor(Math.random() * 3);
+  private addOrganicBranches(bushGroup: THREE.Group, species: BushSpecies, height: number, width: number): void {
+    const branchCount = 1 + Math.floor(Math.random() * 3);
+    const branchMaterial = this.materialGenerator.createBranchMaterial(species);
     
     for (let i = 0; i < branchCount; i++) {
-      const branchHeight = height * (0.3 + Math.random() * 0.4);
-      const branchRadius = baseRadius * (0.5 + Math.random() * 0.3);
+      const branchHeight = height * (0.4 + Math.random() * 0.5);
+      const startRadius = Math.max(0.02, height * 0.015);
+      const endRadius = startRadius * (0.3 + Math.random() * 0.4);
       
-      const branch = new THREE.Mesh(
-        new THREE.CylinderGeometry(branchRadius * 0.5, branchRadius, branchHeight, 4),
-        new THREE.MeshStandardMaterial({
-          color: 0x4A4A2A,
-          roughness: 0.95,
-          metalness: 0.0
-        })
+      const geometry = this.geometryGenerator.createBranchGeometry(
+        startRadius,
+        endRadius,
+        branchHeight
       );
       
-      const angle = (i / branchCount) * Math.PI * 2 + Math.random() * 0.5;
-      const distance = height * 0.1;
+      const branch = new THREE.Mesh(geometry, branchMaterial.clone());
+      
+      const angle = (i / branchCount) * Math.PI * 2 + Math.random() * 0.8;
+      const distance = width * (0.1 + Math.random() * 0.2);
       
       branch.position.set(
         Math.cos(angle) * distance,
-        height * (0.4 + Math.random() * 0.3),
+        branchHeight / 2,
         Math.sin(angle) * distance
       );
       
-      branch.rotation.z = (Math.random() - 0.5) * 0.4;
+      // Add natural curvature
+      branch.rotation.set(
+        (Math.random() - 0.5) * 0.3,
+        angle,
+        (Math.random() - 0.5) * 0.4
+      );
+      
       branch.castShadow = true;
       branch.receiveShadow = true;
       bushGroup.add(branch);
     }
   }
 
-  private addBerries(bushGroup: THREE.Group, species: BushSpecies, width: number): void {
+  private addOrganicBerries(bushGroup: THREE.Group, species: BushSpecies, width: number): void {
     const berryCount = species.type === BushType.BERRY_BUSH ? 
-      6 + Math.floor(Math.random() * 8) : 
-      3 + Math.floor(Math.random() * 5);
+      4 + Math.floor(Math.random() * 6) : 
+      2 + Math.floor(Math.random() * 4);
     
     for (let k = 0; k < berryCount; k++) {
       const berrySize = species.type === BushType.BERRY_BUSH ? 
-        0.04 + Math.random() * 0.03 : 
-        0.02 + Math.random() * 0.02;
+        0.03 + Math.random() * 0.02 : 
+        0.015 + Math.random() * 0.015;
+      
+      // Create slightly organic berry shape
+      const geometry = this.geometryGenerator.createFoliageCluster(berrySize, 0.1, 0.2);
       
       const berry = new THREE.Mesh(
-        new THREE.SphereGeometry(berrySize, 4, 3),
+        geometry,
         new THREE.MeshStandardMaterial({
           color: this.getBerryColor(species.type),
-          roughness: 0.3,
-          metalness: 0.0
+          roughness: 0.2,
+          metalness: 0.0,
+          emissive: this.getBerryColor(species.type),
+          emissiveIntensity: 0.05
         })
       );
       
+      // Natural berry placement
       const angle = Math.random() * Math.PI * 2;
-      const distance = width * (0.6 + Math.random() * 0.3);
+      const distance = width * (0.5 + Math.random() * 0.3);
       berry.position.set(
-        Math.cos(angle) * distance,
-        0.3 + Math.random() * 0.4,
-        Math.sin(angle) * distance
+        Math.cos(angle) * distance + (Math.random() - 0.5) * 0.1,
+        0.2 + Math.random() * 0.4,
+        Math.sin(angle) * distance + (Math.random() - 0.5) * 0.1
       );
       
       bushGroup.add(berry);
     }
   }
 
-  private addFlowers(bushGroup: THREE.Group, species: BushSpecies, width: number): void {
+  private addOrganicFlowers(bushGroup: THREE.Group, species: BushSpecies, width: number, height: number): void {
     const flowerCount = species.type === BushType.FLOWERING_BUSH ? 
-      8 + Math.floor(Math.random() * 12) : 
-      3 + Math.floor(Math.random() * 6);
+      6 + Math.floor(Math.random() * 8) : 
+      2 + Math.floor(Math.random() * 4);
     
     for (let k = 0; k < flowerCount; k++) {
-      const flowerSize = 0.03 + Math.random() * 0.02;
+      const flowerSize = 0.02 + Math.random() * 0.015;
+      
+      // Create small organic flower clusters
+      const geometry = this.geometryGenerator.createFoliageCluster(flowerSize, 0.3, 0.4);
       
       const flower = new THREE.Mesh(
-        new THREE.SphereGeometry(flowerSize, 5, 4),
+        geometry,
         new THREE.MeshStandardMaterial({
           color: this.getFlowerColor(species.type),
-          roughness: 0.2,
+          roughness: 0.1,
           metalness: 0.0,
           emissive: this.getFlowerColor(species.type),
-          emissiveIntensity: 0.1
+          emissiveIntensity: 0.15,
+          transparent: true,
+          opacity: 0.9
         })
       );
       
+      // Natural flower distribution
       const angle = Math.random() * Math.PI * 2;
-      const distance = width * (0.7 + Math.random() * 0.2);
+      const distance = width * (0.6 + Math.random() * 0.2);
       flower.position.set(
         Math.cos(angle) * distance,
-        0.4 + Math.random() * 0.5,
+        height * (0.3 + Math.random() * 0.5),
         Math.sin(angle) * distance
       );
       
@@ -349,11 +397,11 @@ export class BushGenerator {
   private getBerryColor(bushType: BushType): number {
     switch (bushType) {
       case BushType.BERRY_BUSH:
-        return Math.random() < 0.6 ? 0xFF4444 : 0x4444FF; // Red or blue berries
+        return Math.random() < 0.6 ? 0xFF4444 : 0x4444FF;
       case BushType.WILD_BRAMBLE:
-        return Math.random() < 0.8 ? 0x330033 : 0xFF6B6B; // Dark purple or red
+        return Math.random() < 0.8 ? 0x330033 : 0xFF6B6B;
       default:
-        return Math.random() < 0.5 ? 0xFF6B6B : 0x4ECDC4; // Red or teal
+        return Math.random() < 0.5 ? 0xFF6B6B : 0x4ECDC4;
     }
   }
 
@@ -363,9 +411,9 @@ export class BushGenerator {
         const colors = [0xFF69B4, 0xFFD700, 0xFF6347, 0x9370DB, 0xFF1493];
         return colors[Math.floor(Math.random() * colors.length)];
       case BushType.WILD_BRAMBLE:
-        return Math.random() < 0.7 ? 0xFFFFFF : 0xFFF8DC; // White or cream
+        return Math.random() < 0.7 ? 0xFFFFFF : 0xFFF8DC;
       default:
-        return Math.random() < 0.5 ? 0xFFFFFF : 0xFFD700; // White or yellow
+        return Math.random() < 0.5 ? 0xFFFFFF : 0xFFD700;
     }
   }
 
@@ -380,7 +428,7 @@ export class BushGenerator {
       }
     }
     
-    return BUSH_SPECIES[0]; // Fallback
+    return BUSH_SPECIES[0];
   }
 
   public getBushModels(): THREE.Object3D[] {
@@ -400,18 +448,16 @@ export class BushGenerator {
     const modelIndex = Math.floor(Math.random() * variations.length);
     const model = variations[modelIndex].clone();
     
-    // Add realistic rotation and scale variation
     model.rotation.y = Math.random() * Math.PI * 2;
     
-    // Species-appropriate scale variation
     const scaleVariation = species.type === BushType.TALL_SHRUB ? 
-      0.9 + Math.random() * 0.2 :   // Less variation for tall shrubs
-      0.8 + Math.random() * 0.4;    // More variation for smaller bushes
+      0.9 + Math.random() * 0.2 :
+      0.8 + Math.random() * 0.4;
     
     model.scale.set(scaleVariation, scaleVariation, scaleVariation);
     model.position.copy(position);
     
-    logger.debug(LOGGING_CONSTANTS.MODULES.BUILDING, `Created ${species.type} bush at height ${species.heightRange[1] * scaleVariation}m`);
+    logger.debug(LOGGING_CONSTANTS.MODULES.BUILDING, `Created organic ${species.type} bush`);
     
     return model;
   }
@@ -436,6 +482,6 @@ export class BushGenerator {
     this.bushModels.clear();
     this.speciesWeights.clear();
     
-    logger.info(LOGGING_CONSTANTS.MODULES.BUILDING, '🌿 Enhanced bush system disposed');
+    logger.info(LOGGING_CONSTANTS.MODULES.BUILDING, '🌿 Organic bush system disposed');
   }
 }
