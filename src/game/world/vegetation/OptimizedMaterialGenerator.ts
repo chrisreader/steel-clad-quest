@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BushSpeciesType, BushSpeciesConfig } from './BushSpecies';
 
@@ -15,73 +14,72 @@ export class OptimizedMaterialGenerator {
       return this.materialCache.get(cacheKey)!;
     }
 
-    const baseColors = this.getEnhancedSpeciesColors(species.type);
+    const baseColors = this.getVibrantSpeciesColors(species.type);
     const color = baseColors[layerIndex % baseColors.length].clone();
     
-    // Apply natural color variation
-    this.applyNaturalColorVariation(color, layerIndex, species);
+    // Apply vibrant color variation
+    this.applyVibrantColorVariation(color, layerIndex, species);
 
     const material = new THREE.MeshStandardMaterial({
       color,
-      roughness: 0.75 + Math.random() * 0.2, // 0.75-0.95 for natural variation
+      roughness: 0.6 + Math.random() * 0.2, // 0.6-0.8 for more realistic sheen
       metalness: 0.0,
-      transparent: true,
-      opacity: 0.9 + Math.random() * 0.08, // 0.9-0.98
-      side: THREE.DoubleSide,
+      transparent: false, // Remove transparency for better performance
+      side: THREE.FrontSide, // Use front side only for better performance
     });
 
     this.materialCache.set(cacheKey, material);
     return material;
   }
 
-  private static getEnhancedSpeciesColors(species: BushSpeciesType): THREE.Color[] {
+  private static getVibrantSpeciesColors(species: BushSpeciesType): THREE.Color[] {
     switch (species) {
       case BushSpeciesType.DENSE_ROUND:
         return [
-          new THREE.Color(0x3d5e2d), // Rich forest green
-          new THREE.Color(0x4a7c34), // Vibrant green
-          new THREE.Color(0x5a8d3e), // Bright spring green
-          new THREE.Color(0x476b32), // Natural green
-          new THREE.Color(0x3c5a2c)  // Deep shade green
+          new THREE.Color(0x6b9d4a), // Vibrant spring green
+          new THREE.Color(0x7fb055), // Bright forest green
+          new THREE.Color(0x8fc460), // Fresh lime green
+          new THREE.Color(0x5d8f3f), // Rich grass green
+          new THREE.Color(0x77a64b)  // Lush meadow green
         ];
       case BushSpeciesType.SPRAWLING_GROUND:
         return [
-          new THREE.Color(0x5c7d44), // Sage green
-          new THREE.Color(0x6e8f56), // Light olive
-          new THREE.Color(0x7ea062), // Warm green
-          new THREE.Color(0x6a8450), // Earthy green
-          new THREE.Color(0x54733e)  // Muted green
+          new THREE.Color(0x8fa862), // Light sage green
+          new THREE.Color(0xa3bd70), // Warm olive green
+          new THREE.Color(0xb6d27e), // Bright olive
+          new THREE.Color(0x94af66), // Fresh herb green
+          new THREE.Color(0x7f9958)  // Natural green
         ];
       case BushSpeciesType.TALL_UPRIGHT:
         return [
-          new THREE.Color(0x2e5b1e), // Deep forest green
-          new THREE.Color(0x3d6c2d), // Pine green
-          new THREE.Color(0x4c7d3c), // Natural woodland
-          new THREE.Color(0x426a36), // Dark leaf green
-          new THREE.Color(0x385f2a)  // Shadow green
+          new THREE.Color(0x4a7f32), // Deep vibrant green
+          new THREE.Color(0x5a9542), // Pine needle green
+          new THREE.Color(0x6aab52), // Woodland green
+          new THREE.Color(0x548540), // Forest canopy green
+          new THREE.Color(0x4d8838)  // Emerald green
         ];
       case BushSpeciesType.WILD_BERRY:
         return [
-          new THREE.Color(0x4a6b32), // Berry bush green
-          new THREE.Color(0x547a3a), // Fresh green
-          new THREE.Color(0x5e8444), // Vibrant leaf green
-          new THREE.Color(0x3e5a2e), // Deep berry leaf
-          new THREE.Color(0x4d7035)  // Mixed green
+          new THREE.Color(0x6a8f48), // Berry bush green
+          new THREE.Color(0x7ba354), // Fresh berry leaf
+          new THREE.Color(0x8cb760), // Vibrant leaf green
+          new THREE.Color(0x5c7f3e), // Deep berry green
+          new THREE.Color(0x71944c)  // Natural berry foliage
         ];
       case BushSpeciesType.FLOWERING_ORNAMENTAL:
         return [
-          new THREE.Color(0x5a8d31), // Bright ornamental green
-          new THREE.Color(0x6a9e3a), // Spring bloom green
-          new THREE.Color(0x7aaf43), // Fresh flower green
-          new THREE.Color(0x4f7e2d), // Rich garden green
-          new THREE.Color(0x659240)  // Lush green
+          new THREE.Color(0x7db045), // Bright ornamental green
+          new THREE.Color(0x8ec955), // Spring bloom green
+          new THREE.Color(0x9fe265), // Fresh flower green
+          new THREE.Color(0x6f9f3f), // Rich garden green
+          new THREE.Color(0x85b54a)  // Lush ornamental green
         ];
       default:
-        return [new THREE.Color(0x4a7c28)];
+        return [new THREE.Color(0x7fb055)];
     }
   }
 
-  private static applyNaturalColorVariation(
+  private static applyVibrantColorVariation(
     color: THREE.Color, 
     layerIndex: number, 
     species: BushSpeciesConfig
@@ -89,18 +87,21 @@ export class OptimizedMaterialGenerator {
     const hsl = { h: 0, s: 0, l: 0 };
     color.getHSL(hsl);
     
-    // Outer layers are brighter, inner layers darker
-    const lightnessMod = layerIndex === 0 ? 0.05 : -layerIndex * 0.03;
-    hsl.l = Math.max(0.1, Math.min(0.8, hsl.l + lightnessMod));
+    // Make outer layers brighter, inner layers slightly darker but still vibrant
+    const lightnessMod = layerIndex === 0 ? 0.08 : -layerIndex * 0.02;
+    hsl.l = Math.max(0.3, Math.min(0.75, hsl.l + lightnessMod)); // Keep it bright
     
-    // Add slight random variation
-    hsl.h += (Math.random() - 0.5) * 0.02; // ±1% hue variation
-    hsl.s += (Math.random() - 0.5) * 0.1;  // ±5% saturation variation
-    hsl.l += (Math.random() - 0.5) * 0.05; // ±2.5% lightness variation
+    // Increase saturation for more vibrant colors
+    hsl.s = Math.min(1.0, hsl.s + 0.1);
     
-    // Clamp values
-    hsl.s = Math.max(0.1, Math.min(1.0, hsl.s));
-    hsl.l = Math.max(0.1, Math.min(0.8, hsl.l));
+    // Add slight random variation while keeping it vibrant
+    hsl.h += (Math.random() - 0.5) * 0.015; // ±0.75% hue variation
+    hsl.s += (Math.random() - 0.5) * 0.08;  // ±4% saturation variation
+    hsl.l += (Math.random() - 0.5) * 0.04;  // ±2% lightness variation
+    
+    // Clamp values to keep them vibrant
+    hsl.s = Math.max(0.4, Math.min(1.0, hsl.s)); // Keep saturation high
+    hsl.l = Math.max(0.3, Math.min(0.75, hsl.l)); // Keep lightness in vibrant range
     
     color.setHSL(hsl.h, hsl.s, hsl.l);
   }

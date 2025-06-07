@@ -3,30 +3,31 @@ import * as THREE from 'three';
 
 export class OrganicShapeGenerator {
   /**
-   * Creates an organic geometry by applying noise deformation to a sphere
+   * Creates an extremely organic geometry by applying enhanced noise deformation to a sphere
    */
   static createOrganicSphere(
     radius: number,
     segments: number = 16,
-    noiseIntensity: number = 0.15,
-    noiseFrequency: number = 4.0
+    noiseIntensity: number = 0.25,
+    noiseFrequency: number = 3.0
   ): THREE.BufferGeometry {
     const geometry = new THREE.SphereGeometry(radius, segments, segments);
     
-    this.applyEnhancedBushNoise(geometry, noiseIntensity, noiseFrequency);
-    this.applyAsymmetricDeformation(geometry, radius);
-    this.applyNaturalBulges(geometry, radius);
+    this.applyIntenseBushNoise(geometry, noiseIntensity, noiseFrequency);
+    this.applyStrongAsymmetricDeformation(geometry, radius);
+    this.applyDramaticBulges(geometry, radius);
+    this.applyNaturalIrregularities(geometry, radius);
     
     return geometry;
   }
 
   /**
-   * Applies enhanced multi-layer noise deformation for natural organic shapes
+   * Applies intense multi-layer noise deformation for highly organic shapes
    */
-  static applyEnhancedBushNoise(
+  static applyIntenseBushNoise(
     geometry: THREE.BufferGeometry, 
-    intensity: number = 0.15,
-    frequency: number = 4.0
+    intensity: number = 0.25,
+    frequency: number = 3.0
   ): void {
     const position = geometry.attributes.position;
     const vertex = new THREE.Vector3();
@@ -34,26 +35,29 @@ export class OrganicShapeGenerator {
     for (let i = 0; i < position.count; i++) {
       vertex.fromBufferAttribute(position, i);
       
-      // Primary large-scale noise for overall organic shape
-      const noise1 = Math.sin(vertex.x * frequency + vertex.y * 3.3) * 
-                     Math.cos(vertex.z * frequency * 1.2);
+      // Primary large-scale noise for overall organic shape - much more intense
+      const noise1 = Math.sin(vertex.x * frequency + vertex.y * 2.8) * 
+                     Math.cos(vertex.z * frequency * 1.4) * 1.2;
       
-      // Secondary medium-scale noise for surface detail
-      const noise2 = Math.sin(vertex.x * frequency * 2.5 + vertex.y * 4.1) * 
-                     Math.cos(vertex.z * frequency * 1.8) * 0.6;
+      // Secondary medium-scale noise for surface detail - enhanced
+      const noise2 = Math.sin(vertex.x * frequency * 3.2 + vertex.y * 5.1) * 
+                     Math.cos(vertex.z * frequency * 2.3) * 0.8;
       
-      // Fine detail noise for texture
-      const noise3 = Math.sin(vertex.x * frequency * 5.0) * 
-                     Math.cos(vertex.y * frequency * 4.5) * 
-                     Math.sin(vertex.z * frequency * 6.0) * 0.3;
+      // Fine detail noise for texture - more pronounced
+      const noise3 = Math.sin(vertex.x * frequency * 6.0) * 
+                     Math.cos(vertex.y * frequency * 5.5) * 
+                     Math.sin(vertex.z * frequency * 7.0) * 0.5;
       
-      // Combine all noise layers
-      const totalNoise = (noise1 + noise2 + noise3) * intensity;
+      // Additional chaotic noise for natural irregularity
+      const noise4 = Math.sin(vertex.x * frequency * 8.0 + vertex.z * 3.0) * 
+                     Math.cos(vertex.y * frequency * 6.5) * 0.4;
       
-      // Apply noise along the normal direction with variation
+      // Combine all noise layers with enhanced intensity
+      const totalNoise = (noise1 + noise2 + noise3 + noise4) * intensity * 1.5;
+      
+      // Apply noise along the normal direction with more variation
       const normal = vertex.clone().normalize();
-      const radiusFromCenter = vertex.length();
-      const noiseMultiplier = 1.0 + (Math.random() - 0.5) * 0.3; // ±15% variation
+      const noiseMultiplier = 1.0 + (Math.random() - 0.5) * 0.6; // ±30% variation
       
       vertex.addScaledVector(normal, totalNoise * noiseMultiplier);
       
@@ -65,16 +69,19 @@ export class OrganicShapeGenerator {
   }
 
   /**
-   * Applies asymmetric deformation for natural growth patterns
+   * Applies strong asymmetric deformation for natural growth patterns
    */
-  static applyAsymmetricDeformation(geometry: THREE.BufferGeometry, baseRadius: number): void {
+  static applyStrongAsymmetricDeformation(geometry: THREE.BufferGeometry, baseRadius: number): void {
     const position = geometry.attributes.position;
     const vertex = new THREE.Vector3();
     
-    // Create random asymmetric scaling factors
-    const scaleX = 0.85 + Math.random() * 0.3; // 0.85-1.15
-    const scaleY = 0.7 + Math.random() * 0.4;  // 0.7-1.1 (bushes tend to be shorter)
-    const scaleZ = 0.85 + Math.random() * 0.3; // 0.85-1.15
+    // Create more dramatic asymmetric scaling factors
+    const scaleX = 0.7 + Math.random() * 0.6; // 0.7-1.3
+    const scaleY = 0.6 + Math.random() * 0.5;  // 0.6-1.1 (bushes tend to be shorter)
+    const scaleZ = 0.7 + Math.random() * 0.6; // 0.7-1.3
+
+    // Add twist effect
+    const twistIntensity = (Math.random() - 0.5) * 0.3;
 
     for (let i = 0; i < position.count; i++) {
       vertex.fromBufferAttribute(position, i);
@@ -84,9 +91,17 @@ export class OrganicShapeGenerator {
       vertex.y *= scaleY;
       vertex.z *= scaleZ;
       
-      // Add slight droop effect based on position
-      const droopFactor = Math.max(0, vertex.y / baseRadius) * 0.2;
-      vertex.y -= droopFactor * (Math.abs(vertex.x) + Math.abs(vertex.z)) * 0.1;
+      // Add twist deformation
+      const heightRatio = (vertex.y + baseRadius) / (baseRadius * 2);
+      const twistAngle = heightRatio * twistIntensity;
+      const newX = vertex.x * Math.cos(twistAngle) - vertex.z * Math.sin(twistAngle);
+      const newZ = vertex.x * Math.sin(twistAngle) + vertex.z * Math.cos(twistAngle);
+      vertex.x = newX;
+      vertex.z = newZ;
+      
+      // Enhanced droop effect
+      const droopFactor = Math.max(0, vertex.y / baseRadius) * 0.3;
+      vertex.y -= droopFactor * (Math.abs(vertex.x) + Math.abs(vertex.z)) * 0.15;
       
       position.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
@@ -96,25 +111,25 @@ export class OrganicShapeGenerator {
   }
 
   /**
-   * Adds natural bulges and indentations to break up sphere shape
+   * Adds dramatic bulges and indentations for highly irregular shapes
    */
-  static applyNaturalBulges(geometry: THREE.BufferGeometry, baseRadius: number): void {
+  static applyDramaticBulges(geometry: THREE.BufferGeometry, baseRadius: number): void {
     const position = geometry.attributes.position;
     const vertex = new THREE.Vector3();
     
-    // Create 2-4 random bulge points
-    const bulgeCount = 2 + Math.floor(Math.random() * 3);
+    // Create 3-6 random bulge points for more variation
+    const bulgeCount = 3 + Math.floor(Math.random() * 4);
     const bulges: Array<{center: THREE.Vector3, intensity: number, radius: number}> = [];
     
     for (let b = 0; b < bulgeCount; b++) {
       bulges.push({
         center: new THREE.Vector3(
-          (Math.random() - 0.5) * baseRadius * 2,
-          (Math.random() - 0.5) * baseRadius * 1.5,
-          (Math.random() - 0.5) * baseRadius * 2
+          (Math.random() - 0.5) * baseRadius * 2.5,
+          (Math.random() - 0.5) * baseRadius * 2.0,
+          (Math.random() - 0.5) * baseRadius * 2.5
         ),
-        intensity: (Math.random() - 0.5) * 0.3, // Can be positive (bulge) or negative (indent)
-        radius: baseRadius * (0.6 + Math.random() * 0.4)
+        intensity: (Math.random() - 0.5) * 0.5, // Stronger bulges/indents
+        radius: baseRadius * (0.5 + Math.random() * 0.6)
       });
     }
 
@@ -126,8 +141,9 @@ export class OrganicShapeGenerator {
         const distance = vertex.distanceTo(bulge.center);
         if (distance < bulge.radius) {
           const influence = 1.0 - (distance / bulge.radius);
+          const smoothInfluence = influence * influence * (3.0 - 2.0 * influence); // Smooth curve
           const bulgeDirection = vertex.clone().sub(bulge.center).normalize();
-          vertex.addScaledVector(bulgeDirection, bulge.intensity * influence);
+          vertex.addScaledVector(bulgeDirection, bulge.intensity * smoothInfluence);
         }
       });
       
@@ -139,29 +155,27 @@ export class OrganicShapeGenerator {
   }
 
   /**
-   * Creates asymmetric scaling for natural growth patterns
+   * Adds natural irregularities and surface variations
    */
-  static createAsymmetricScale(): THREE.Vector3 {
-    return new THREE.Vector3(
-      0.8 + Math.random() * 0.4,  // 0.8 - 1.2
-      0.7 + Math.random() * 0.3,  // 0.7 - 1.0 (bushes are generally shorter)
-      0.8 + Math.random() * 0.4   // 0.8 - 1.2
-    );
-  }
-
-  /**
-   * Applies droop effect to simulate natural settling
-   */
-  static applyDroopEffect(geometry: THREE.BufferGeometry, intensity: number = 0.1): void {
+  static applyNaturalIrregularities(geometry: THREE.BufferGeometry, baseRadius: number): void {
     const position = geometry.attributes.position;
     const vertex = new THREE.Vector3();
 
     for (let i = 0; i < position.count; i++) {
       vertex.fromBufferAttribute(position, i);
       
-      // Apply droop based on vertical position
-      const droopFactor = Math.max(0, vertex.y) * intensity;
-      vertex.y -= droopFactor * Math.abs(vertex.x + vertex.z) * 0.1;
+      // Add random surface variations
+      const surfaceNoise = (Math.random() - 0.5) * 0.1;
+      const normal = vertex.clone().normalize();
+      vertex.addScaledVector(normal, surfaceNoise);
+      
+      // Add directional growth bias (bushes often lean slightly)
+      const growthBias = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.05,
+        Math.random() * 0.03, // Slight upward bias
+        (Math.random() - 0.5) * 0.05
+      );
+      vertex.add(growthBias);
       
       position.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
