@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BUSH_CONFIG, BushType } from './VegetationConfig';
 import { OrganicShapeGenerator } from './OrganicShapeGenerator';
@@ -15,191 +16,165 @@ export class BushGenerator {
     for (const bushType of BUSH_CONFIG.types) {
       const variations: THREE.Object3D[] = [];
       
-      // Create 6 variations per bush type for better diversity
-      for (let i = 0; i < 6; i++) {
-        const bushGroup = this.createSolidBush(bushType, i);
+      // Create 4 variations per bush type
+      for (let i = 0; i < 4; i++) {
+        const bushGroup = this.createRealisticBush(bushType, i);
         variations.push(bushGroup);
       }
       
       this.bushModels.set(bushType.name, variations);
     }
     
-    console.log(`🌿 Created solid bush variations:`, 
+    console.log(`🌿 Created realistic bush variations:`, 
       Array.from(this.bushModels.keys()).map(type => 
         `${type}: ${this.bushModels.get(type)?.length || 0} variations`
       ).join(', ')
     );
   }
 
-  private createSolidBush(bushType: BushType, variation: number): THREE.Group {
+  private createRealisticBush(bushType: BushType, variation: number): THREE.Group {
     const bushGroup = new THREE.Group();
     
+    // Determine bush dimensions
     const height = bushType.heightRange[0] + Math.random() * (bushType.heightRange[1] - bushType.heightRange[0]);
     const baseSize = bushType.baseSize[0] + Math.random() * (bushType.baseSize[1] - bushType.baseSize[0]);
+    const clusterCount = bushType.clusterCount[0] + Math.floor(Math.random() * (bushType.clusterCount[1] - bushType.clusterCount[0] + 1));
     
-    // Create dual-layer bush system: solid core + detailed foliage
-    this.createDualLayerBush(bushGroup, bushType, baseSize, height, variation);
+    // Create main clusters with organic merging
+    this.createMainClusters(bushGroup, bushType, baseSize, height, clusterCount, variation);
     
-    // Add stems for structure (less frequently to maintain solid appearance)
-    if (bushType.name !== 'low_shrub' && Math.random() < BUSH_CONFIG.stemChance * 0.6) {
-      this.addStructuralStem(bushGroup, bushType, height, baseSize);
+    // Add filler clusters for natural merging
+    if (BUSH_CONFIG.naturalMerging.fillerClusters) {
+      this.addFillerClusters(bushGroup, bushType, baseSize, clusterCount, variation);
     }
     
-    // Add berries or flowers (reduced frequency)
-    if (Math.random() < BUSH_CONFIG.berryChance * 0.8) {
-      this.addSurfaceBerries(bushGroup, baseSize);
+    // Add stem structure
+    if (Math.random() < BUSH_CONFIG.stemChance) {
+      this.addRealisticStem(bushGroup, bushType, height, baseSize);
+    }
+    
+    // Add berries or flowers
+    if (Math.random() < BUSH_CONFIG.berryChance) {
+      this.addBerries(bushGroup, baseSize, clusterCount);
     }
     
     return bushGroup;
   }
 
-  private createDualLayerBush(
+  private createMainClusters(
     bushGroup: THREE.Group, 
     bushType: BushType, 
     baseSize: number, 
     height: number,
+    clusterCount: number,
     variation: number
   ): void {
     const baseColor = BUSH_CONFIG.colors[variation % BUSH_CONFIG.colors.length];
     
-    // 1. Create solid core sphere (fills all gaps)
-    this.createSolidCore(bushGroup, bushType, baseSize, height, baseColor, variation);
-    
-    // 2. Create detailed foliage mesh (adds visual detail)
-    this.createDetailedFoliage(bushGroup, bushType, baseSize, height, baseColor, variation);
+    for (let i = 0; i < clusterCount; i++) {
+      // Create organic geometry
+      const clusterRadius = baseSize * (0.5 + Math.random() * 0.5) * bushType.density;
+      const geometry = OrganicShapeGenerator.createOrganicGeometry(
+        clusterRadius,
+        BUSH_CONFIG.organicDeformation.intensity,
+        BUSH_CONFIG.organicDeformation.scale
+      );
+      
+      // Create realistic material
+      const material = BushMaterialGenerator.createRealisticBushMaterial(
+        baseColor,
+        bushType.name,
+        variation / 3
+      );
+      
+      const cluster = new THREE.Mesh(geometry, material);
+      
+      // Position clusters for natural merging
+      const angle = (i / clusterCount) * Math.PI * 2 + Math.random() * 1.0; // More random positioning
+      const distance = baseSize * (0.1 + Math.random() * BUSH_CONFIG.naturalMerging.overlapFactor);
+      
+      let position = new THREE.Vector3(
+        Math.cos(angle) * distance,
+        0.2 + (Math.random() * height * 0.6), // Varied height positioning
+        Math.sin(angle) * distance
+      );
+      
+      // Apply droop effect for realism
+      position = OrganicShapeGenerator.applyDroopEffect(position, bushType.droopFactor, i);
+      cluster.position.copy(position);
+      
+      // Apply asymmetric scaling
+      const scale = OrganicShapeGenerator.createAsymmetricScale(bushType.asymmetryFactor);
+      cluster.scale.copy(scale);
+      
+      // Random rotation for natural look
+      cluster.rotation.set(
+        Math.random() * 0.3,
+        Math.random() * Math.PI * 2,
+        Math.random() * 0.3
+      );
+      
+      cluster.castShadow = true;
+      cluster.receiveShadow = true;
+      bushGroup.add(cluster);
+    }
   }
 
-  private createSolidCore(
+  private addFillerClusters(
     bushGroup: THREE.Group,
     bushType: BushType,
     baseSize: number,
-    height: number,
-    baseColor: THREE.Color,
+    mainClusterCount: number,
     variation: number
   ): void {
-    // Create smooth, high-resolution sphere for the core
-    const coreRadius = baseSize * 0.88; // Slightly smaller than foliage to avoid z-fighting
-    const coreGeometry = new THREE.SphereGeometry(coreRadius, 64, 32); // High resolution for smoothness
+    const fillerCount = Math.floor(mainClusterCount * 0.5); // Half as many fillers
+    const baseColor = BUSH_CONFIG.colors[variation % BUSH_CONFIG.colors.length];
     
-    // Apply same transformations as foliage mesh
-    const positions = coreGeometry.attributes.position;
-    const vertex = new THREE.Vector3();
-    
-    // Apply vertical stretching to match foliage
-    let verticalStretch = 1.0;
-    switch (bushType.name) {
-      case 'low_shrub':
-        verticalStretch = 0.6;
-        break;
-      case 'medium_bush':
-        verticalStretch = 1.0;
-        break;
-      case 'tall_bush':
-        verticalStretch = 1.4;
-        break;
+    for (let i = 0; i < fillerCount; i++) {
+      const fillerRadius = baseSize * (0.2 + Math.random() * 0.3); // Smaller filler clusters
+      const geometry = OrganicShapeGenerator.createOrganicGeometry(
+        fillerRadius,
+        BUSH_CONFIG.organicDeformation.intensity * 0.8,
+        BUSH_CONFIG.organicDeformation.scale
+      );
+      
+      const material = BushMaterialGenerator.createRealisticBushMaterial(
+        baseColor,
+        bushType.name,
+        variation / 3
+      );
+      
+      const filler = new THREE.Mesh(geometry, material);
+      
+      // Position fillers between main clusters
+      const angle = Math.random() * Math.PI * 2;
+      const distance = baseSize * (0.3 + Math.random() * 0.4);
+      
+      filler.position.set(
+        Math.cos(angle) * distance,
+        0.1 + Math.random() * 0.3,
+        Math.sin(angle) * distance
+      );
+      
+      // Smaller, more varied scaling for fillers
+      const scale = OrganicShapeGenerator.createAsymmetricScale(bushType.asymmetryFactor * 1.2);
+      scale.multiplyScalar(0.6 + Math.random() * 0.4); // Make fillers smaller
+      filler.scale.copy(scale);
+      
+      filler.castShadow = true;
+      filler.receiveShadow = true;
+      bushGroup.add(filler);
     }
-    
-    for (let i = 0; i < positions.count; i++) {
-      vertex.fromBufferAttribute(positions, i);
-      vertex.y *= verticalStretch;
-      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
-    }
-    
-    coreGeometry.computeVertexNormals();
-    
-    // Create core material
-    const coreMaterial = BushMaterialGenerator.createSolidCoreMaterial(
-      baseColor,
-      bushType.name,
-      variation / 5
-    );
-    
-    const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
-    
-    // Apply same positioning and scaling as foliage
-    let position = new THREE.Vector3(0, height * 0.35, 0);
-    position = OrganicShapeGenerator.applyGroundHugging(position, bushType.name);
-    coreMesh.position.copy(position);
-    
-    const scale = OrganicShapeGenerator.createAsymmetricScale(
-      bushType.asymmetryFactor * 0.8,
-      bushType.name
-    );
-    coreMesh.scale.copy(scale);
-    
-    coreMesh.rotation.set(
-      Math.random() * 0.15,
-      Math.random() * Math.PI * 2,
-      Math.random() * 0.15
-    );
-    
-    // Set render order to render first (fills gaps)
-    coreMesh.renderOrder = 0;
-    coreMesh.castShadow = true;
-    coreMesh.receiveShadow = true;
-    
-    bushGroup.add(coreMesh);
   }
 
-  private createDetailedFoliage(
-    bushGroup: THREE.Group,
-    bushType: BushType,
-    baseSize: number,
-    height: number,
-    baseColor: THREE.Color,
-    variation: number
-  ): void {
-    // Create detailed foliage geometry
-    const geometry = OrganicShapeGenerator.createDenseBushGeometry(
-      baseSize,
-      height,
-      bushType.name,
-      variation
-    );
+  private addRealisticStem(bushGroup: THREE.Group, bushType: BushType, height: number, baseSize: number): void {
+    const stemHeight = height * 0.6; // Stems don't go full height
+    const stemRadius = Math.max(0.02, baseSize * 0.05);
     
-    // Create enhanced material for foliage detail
-    const material = BushMaterialGenerator.createDenseFoliageMaterial(
-      baseColor,
-      bushType.name,
-      variation / 5
-    );
-    
-    const foliageMesh = new THREE.Mesh(geometry, material);
-    
-    // Apply natural positioning with constraints
-    let position = new THREE.Vector3(0, height * 0.35, 0);
-    position = OrganicShapeGenerator.applyGroundHugging(position, bushType.name);
-    foliageMesh.position.copy(position);
-    
-    // Apply controlled asymmetric scaling
-    const scale = OrganicShapeGenerator.createAsymmetricScale(
-      bushType.asymmetryFactor * 0.8,
-      bushType.name
-    );
-    foliageMesh.scale.copy(scale);
-    
-    // Controlled rotation for natural variation
-    foliageMesh.rotation.set(
-      Math.random() * 0.15,
-      Math.random() * Math.PI * 2,
-      Math.random() * 0.15
-    );
-    
-    // Set render order to render after core (adds detail)
-    foliageMesh.renderOrder = 1;
-    foliageMesh.castShadow = true;
-    foliageMesh.receiveShadow = true;
-    
-    bushGroup.add(foliageMesh);
-  }
-
-  private addStructuralStem(bushGroup: THREE.Group, bushType: BushType, height: number, baseSize: number): void {
-    const stemHeight = height * 0.3;
-    const stemRadius = Math.max(0.015, baseSize * 0.03);
-    
+    // Create slightly curved stem
     const stemGeometry = new THREE.CylinderGeometry(
-      stemRadius * 0.7,
-      stemRadius * 1.0,
+      stemRadius * 0.7, // Thinner at top
+      stemRadius * 1.2, // Thicker at bottom
       stemHeight,
       8
     );
@@ -207,31 +182,32 @@ export class BushGenerator {
     const stemMaterial = BushMaterialGenerator.createStemMaterial();
     const stem = new THREE.Mesh(stemGeometry, stemMaterial);
     
+    // Position stem with slight random offset
     stem.position.set(
       (Math.random() - 0.5) * baseSize * 0.2,
       stemHeight / 2,
       (Math.random() - 0.5) * baseSize * 0.2
     );
     
+    // Add slight rotation for natural look
     stem.rotation.set(
-      (Math.random() - 0.5) * 0.1,
+      (Math.random() - 0.5) * 0.2,
       Math.random() * Math.PI * 2,
-      (Math.random() - 0.5) * 0.1
+      (Math.random() - 0.5) * 0.2
     );
     
     stem.castShadow = true;
     stem.receiveShadow = true;
-    stem.renderOrder = 0;
     bushGroup.add(stem);
   }
 
-  private addSurfaceBerries(bushGroup: THREE.Group, baseSize: number): void {
-    const berryCount = Math.floor(1 + Math.random() * 3);
+  private addBerries(bushGroup: THREE.Group, baseSize: number, clusterCount: number): void {
+    const berryCount = Math.floor(2 + Math.random() * Math.min(6, clusterCount * 1.5));
     const berryType: 'red' | 'blue' = Math.random() < 0.6 ? 'red' : 'blue';
     
     for (let k = 0; k < berryCount; k++) {
       const berryGeometry = new THREE.SphereGeometry(
-        0.015 + Math.random() * 0.01,
+        0.025 + Math.random() * 0.02, // Slightly varied berry sizes
         6,
         4
       );
@@ -239,9 +215,10 @@ export class BushGenerator {
       const berryMaterial = BushMaterialGenerator.createBerryMaterial(berryType);
       const berry = new THREE.Mesh(berryGeometry, berryMaterial);
       
+      // Position berries naturally on the bush
       const angle = Math.random() * Math.PI * 2;
-      const distance = baseSize * (0.8 + Math.random() * 0.15);
-      const heightPos = 0.3 + Math.random() * 0.3;
+      const distance = baseSize * (0.5 + Math.random() * 0.4);
+      const heightPos = 0.3 + Math.random() * 0.5;
       
       berry.position.set(
         Math.cos(angle) * distance,
@@ -249,8 +226,6 @@ export class BushGenerator {
         Math.sin(angle) * distance
       );
       
-      berry.castShadow = true;
-      berry.renderOrder = 2;
       bushGroup.add(berry);
     }
   }
@@ -264,6 +239,7 @@ export class BushGenerator {
   }
 
   public createBush(position: THREE.Vector3): THREE.Object3D | null {
+    // Select bush type based on spawn weights
     const selectedType = this.selectBushTypeByWeight();
     const variations = this.bushModels.get(selectedType.name);
     
@@ -272,8 +248,9 @@ export class BushGenerator {
     const modelIndex = Math.floor(Math.random() * variations.length);
     const model = variations[modelIndex].clone();
     
+    // Apply final transformations
     model.rotation.y = Math.random() * Math.PI * 2;
-    const globalScale = 0.95 + Math.random() * 0.1;
+    const globalScale = 0.8 + Math.random() * 0.4;
     model.scale.setScalar(globalScale);
     
     model.position.copy(position);
@@ -292,6 +269,7 @@ export class BushGenerator {
       }
     }
     
+    // Fallback to first type
     return BUSH_CONFIG.types[0];
   }
 
