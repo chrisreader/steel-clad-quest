@@ -18,68 +18,36 @@ export class RealisticMaterialGenerator {
   };
 
   /**
-   * Creates realistic foliage material with MeshPhysicalMaterial and subsurface scattering
+   * Creates realistic foliage material with natural variations
    */
   static createFoliageMaterial(
     bushIndex: number = 0,
     layerIndex: number = 0,
     season: keyof typeof RealisticMaterialGenerator.SEASONAL_VARIATIONS = 'summer'
-  ): THREE.MeshPhysicalMaterial {
+  ): THREE.MeshStandardMaterial {
     const baseColor = this.FOLIAGE_COLORS[bushIndex % this.FOLIAGE_COLORS.length];
     const color = new THREE.Color(baseColor);
     
-    // Apply seasonal variation with HSL
+    // Apply seasonal variation
     const seasonal = this.SEASONAL_VARIATIONS[season];
     const hsl = { h: 0, s: 0, l: 0 };
     color.getHSL(hsl);
     
-    // Vary color slightly for each layer and add organic variation
+    // Vary color slightly for each layer
     const layerVariation = (layerIndex * 0.02) - 0.01;
-    const organicVariation = (Math.random() - 0.5) * 0.03;
-    
-    hsl.h = seasonal.hue + layerVariation + organicVariation;
+    hsl.h = seasonal.hue + layerVariation;
     hsl.s = seasonal.saturation + (Math.random() - 0.5) * 0.1;
     hsl.l = seasonal.lightness + (Math.random() - 0.5) * 0.05;
     
     color.setHSL(hsl.h, hsl.s, hsl.l);
 
-    return new THREE.MeshPhysicalMaterial({
+    return new THREE.MeshStandardMaterial({
       color: color,
-      roughness: 0.8 + Math.random() * 0.15, // 0.8 - 0.95
+      roughness: 0.85 + Math.random() * 0.1, // 0.85 - 0.95
       metalness: 0.05 + Math.random() * 0.05, // 0.05 - 0.1
       transparent: true,
-      opacity: 0.9 + Math.random() * 0.08, // 0.9 - 0.98
-      side: THREE.DoubleSide,
-      // Subsurface scattering for realistic plant lighting
-      transmission: 0.2 + Math.random() * 0.2, // 0.2 - 0.4
-      thickness: 0.3 + Math.random() * 0.3, // 0.3 - 0.6
-    });
-  }
-
-  /**
-   * Creates leaf material with alpha testing and natural transparency
-   */
-  static createLeafMaterial(
-    bushIndex: number = 0,
-    leafTexture: THREE.Texture
-  ): THREE.MeshStandardMaterial {
-    const baseColor = this.FOLIAGE_COLORS[bushIndex % this.FOLIAGE_COLORS.length];
-    const color = new THREE.Color(baseColor);
-    
-    // Slightly brighter for individual leaves
-    const hsl = { h: 0, s: 0, l: 0 };
-    color.getHSL(hsl);
-    hsl.l = Math.min(0.6, hsl.l + 0.1);
-    color.setHSL(hsl.h, hsl.s, hsl.l);
-
-    return new THREE.MeshStandardMaterial({
-      map: leafTexture,
-      color: color,
-      transparent: true,
-      alphaTest: 0.3,
-      side: THREE.DoubleSide,
-      roughness: 0.7,
-      metalness: 0.0,
+      opacity: 0.92 + Math.random() * 0.06, // 0.92 - 0.98
+      side: THREE.DoubleSide, // For better light interaction
     });
   }
 
