@@ -1,6 +1,6 @@
 
 import * as THREE from 'three';
-import { FireParticleGenerator } from './components/FireParticleGenerator';
+import { OrganicFireParticleGenerator } from './components/OrganicFireParticleGenerator';
 import { FireLightingSystem } from './components/FireLightingSystem';
 import { FireSoundManager } from './components/FireSoundManager';
 import { FireConfig, FireLightConfig, FireSoundConfig, FIREPLACE_PARTICLE_CONFIGS } from './types/FireTypes';
@@ -12,7 +12,7 @@ export class FireEffectsManager {
   private position: THREE.Vector3;
   private config: FireConfig;
   
-  private particleGenerator: FireParticleGenerator | null = null;
+  private organicParticleGenerator: OrganicFireParticleGenerator | null = null;
   private lightingSystem: FireLightingSystem | null = null;
   private soundManager: FireSoundManager | null = null;
   
@@ -28,25 +28,25 @@ export class FireEffectsManager {
   public start(): void {
     if (this.isActive) return;
 
-    console.log('🔥 Starting fire effects at position:', this.position);
+    console.log('🔥 Starting enhanced organic fire effects at position:', this.position);
 
-    // Initialize particle generator
-    this.particleGenerator = new FireParticleGenerator(this.scene, this.position);
+    // Initialize organic particle generator with realistic dancing flames
+    this.organicParticleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
     
-    // Add different particle types based on config
+    // Add different particle types with enhanced organic motion
     const flameConfig = { ...FIREPLACE_PARTICLE_CONFIGS.flames };
     flameConfig.count = Math.floor(this.config.particleCount * 0.55); // 55% flames
-    this.particleGenerator.addParticleType('flames', flameConfig);
+    this.organicParticleGenerator.addOrganicParticleType('flames', flameConfig);
 
     if (this.config.smokeEnabled) {
       const smokeConfig = { ...FIREPLACE_PARTICLE_CONFIGS.smoke };
       smokeConfig.count = Math.floor(this.config.particleCount * 0.33); // 33% smoke
-      this.particleGenerator.addParticleType('smoke', smokeConfig);
+      this.organicParticleGenerator.addOrganicParticleType('smoke', smokeConfig);
     }
 
     const emberConfig = { ...FIREPLACE_PARTICLE_CONFIGS.embers };
     emberConfig.count = this.config.emberCount;
-    this.particleGenerator.addParticleType('embers', emberConfig);
+    this.organicParticleGenerator.addOrganicParticleType('embers', emberConfig);
 
     // Initialize lighting system
     const lightConfig: FireLightConfig = {
@@ -71,14 +71,14 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    console.log('🔥 Fire effects system fully initialized');
+    console.log('🔥 Enhanced organic fire effects system fully initialized with dancing flames');
   }
 
   public update(deltaTime: number): void {
     if (!this.isActive) return;
 
-    if (this.particleGenerator) {
-      this.particleGenerator.update(deltaTime);
+    if (this.organicParticleGenerator) {
+      this.organicParticleGenerator.update(deltaTime);
     }
 
     if (this.lightingSystem) {
@@ -88,6 +88,10 @@ export class FireEffectsManager {
 
   public setIntensity(intensity: number): void {
     this.config.intensity = intensity;
+    
+    if (this.organicParticleGenerator) {
+      this.organicParticleGenerator.setIntensity(intensity);
+    }
     
     if (this.lightingSystem) {
       this.lightingSystem.setIntensity(intensity);
@@ -101,9 +105,9 @@ export class FireEffectsManager {
   public stop(): void {
     if (!this.isActive) return;
 
-    if (this.particleGenerator) {
-      this.particleGenerator.dispose();
-      this.particleGenerator = null;
+    if (this.organicParticleGenerator) {
+      this.organicParticleGenerator.dispose();
+      this.organicParticleGenerator = null;
     }
 
     if (this.lightingSystem) {
@@ -117,7 +121,7 @@ export class FireEffectsManager {
     }
 
     this.isActive = false;
-    console.log('🔥 Fire effects stopped');
+    console.log('🔥 Enhanced organic fire effects stopped');
   }
 
   public dispose(): void {
