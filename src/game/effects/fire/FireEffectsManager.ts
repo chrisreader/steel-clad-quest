@@ -1,5 +1,6 @@
+
 import * as THREE from 'three';
-import { OrganicFireParticleGenerator } from './components/OrganicFireParticleGenerator';
+import { FireParticleGenerator } from './components/FireParticleGenerator';
 import { FireLightingSystem } from './components/FireLightingSystem';
 import { FireSoundManager } from './components/FireSoundManager';
 import { FireConfig, FireLightConfig, FireSoundConfig, FIREPLACE_PARTICLE_CONFIGS } from './types/FireTypes';
@@ -11,7 +12,7 @@ export class FireEffectsManager {
   private position: THREE.Vector3;
   private config: FireConfig;
   
-  private organicParticleGenerator: OrganicFireParticleGenerator | null = null;
+  private particleGenerator: FireParticleGenerator | null = null;
   private lightingSystem: FireLightingSystem | null = null;
   private soundManager: FireSoundManager | null = null;
   
@@ -27,28 +28,25 @@ export class FireEffectsManager {
   public start(): void {
     if (this.isActive) return;
 
-    console.log('🔥 Starting fire effects with improved visibility at position:', this.position);
+    console.log('🔥 Starting fire effects at position:', this.position);
 
-    // Initialize organic particle generator
-    this.organicParticleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
+    // Initialize particle generator
+    this.particleGenerator = new FireParticleGenerator(this.scene, this.position);
     
-    // Add flame particles with increased count for visibility
+    // Add different particle types based on config
     const flameConfig = { ...FIREPLACE_PARTICLE_CONFIGS.flames };
-    flameConfig.count = Math.max(60, Math.floor(this.config.particleCount * 0.8));
-    console.log(`🔥 Adding ${flameConfig.count} flame particles`);
-    this.organicParticleGenerator.addOrganicParticleType('flames', flameConfig);
+    flameConfig.count = Math.floor(this.config.particleCount * 0.55); // 55% flames
+    this.particleGenerator.addParticleType('flames', flameConfig);
 
     if (this.config.smokeEnabled) {
       const smokeConfig = { ...FIREPLACE_PARTICLE_CONFIGS.smoke };
-      smokeConfig.count = Math.max(30, Math.floor(this.config.particleCount * 0.4));
-      console.log(`🔥 Adding ${smokeConfig.count} smoke particles`);
-      this.organicParticleGenerator.addOrganicParticleType('smoke', smokeConfig);
+      smokeConfig.count = Math.floor(this.config.particleCount * 0.33); // 33% smoke
+      this.particleGenerator.addParticleType('smoke', smokeConfig);
     }
 
     const emberConfig = { ...FIREPLACE_PARTICLE_CONFIGS.embers };
-    emberConfig.count = Math.max(20, this.config.emberCount);
-    console.log(`🔥 Adding ${emberConfig.count} ember particles`);
-    this.organicParticleGenerator.addOrganicParticleType('embers', emberConfig);
+    emberConfig.count = this.config.emberCount;
+    this.particleGenerator.addParticleType('embers', emberConfig);
 
     // Initialize lighting system
     const lightConfig: FireLightConfig = {
@@ -73,14 +71,14 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    console.log('🔥 Fire effects system active with enhanced visibility');
+    console.log('🔥 Fire effects system fully initialized');
   }
 
   public update(deltaTime: number): void {
     if (!this.isActive) return;
 
-    if (this.organicParticleGenerator) {
-      this.organicParticleGenerator.update(deltaTime);
+    if (this.particleGenerator) {
+      this.particleGenerator.update(deltaTime);
     }
 
     if (this.lightingSystem) {
@@ -90,10 +88,6 @@ export class FireEffectsManager {
 
   public setIntensity(intensity: number): void {
     this.config.intensity = intensity;
-    
-    if (this.organicParticleGenerator) {
-      this.organicParticleGenerator.setIntensity(intensity);
-    }
     
     if (this.lightingSystem) {
       this.lightingSystem.setIntensity(intensity);
@@ -107,9 +101,9 @@ export class FireEffectsManager {
   public stop(): void {
     if (!this.isActive) return;
 
-    if (this.organicParticleGenerator) {
-      this.organicParticleGenerator.dispose();
-      this.organicParticleGenerator = null;
+    if (this.particleGenerator) {
+      this.particleGenerator.dispose();
+      this.particleGenerator = null;
     }
 
     if (this.lightingSystem) {
