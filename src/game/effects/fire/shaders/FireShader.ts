@@ -9,25 +9,30 @@ export class FireShader {
       uniform vec2 windDirection;
       uniform float turbulenceSpeed;
       
+      attribute float lifetime;
+      attribute float age;
+      
       varying vec2 vUv;
       varying float vHeight;
       varying float vFlicker;
       varying vec3 vWorldPosition;
+      varying float vAlpha;
       
       void main() {
         vUv = uv;
-        vHeight = position.y;
         
         vec3 transformed = position;
         
-        // Organic flame dancing motion (inspired by grass system)
-        // Height-based movement - flame tips move more than base
-        float heightFactor = pow(vHeight + 0.5, 2.0);
+        // Calculate relative height from fire base (normalize to 0-1 range)
+        vHeight = clamp(transformed.y / 3.0, 0.0, 1.0);
+        
+        // Organic flame dancing motion
+        float heightFactor = pow(vHeight + 0.1, 1.5);
         
         // Multi-layered turbulence for organic motion
-        float turbulence1 = sin(time * turbulenceSpeed + position.x * 2.0 + position.z * 1.5) * heightFactor;
-        float turbulence2 = cos(time * turbulenceSpeed * 1.3 + position.x * 1.2) * heightFactor * 0.6;
-        float turbulence3 = sin(time * turbulenceSpeed * 0.8 + position.z * 2.1) * heightFactor * 0.4;
+        float turbulence1 = sin(time * turbulenceSpeed + transformed.x * 2.0 + transformed.z * 1.5) * heightFactor;
+        float turbulence2 = cos(time * turbulenceSpeed * 1.3 + transformed.x * 1.2) * heightFactor * 0.6;
+        float turbulence3 = sin(time * turbulenceSpeed * 0.8 + transformed.z * 2.1) * heightFactor * 0.4;
         
         // Combine turbulence layers for complex organic motion
         float totalTurbulence = (turbulence1 + turbulence2 + turbulence3) * windStrength;
@@ -37,16 +42,24 @@ export class FireShader {
         transformed.z += totalTurbulence * windDirection.y * 0.3;
         
         // Add upward stretching motion for flame licking effect
-        float stretchMotion = sin(time * turbulenceSpeed * 2.0 + position.x) * heightFactor * 0.1;
+        float stretchMotion = sin(time * turbulenceSpeed * 2.0 + transformed.x) * heightFactor * 0.1;
         transformed.y += stretchMotion;
         
         // Calculate flicker intensity for fragment shader
-        vFlicker = 0.8 + 0.2 * sin(time * turbulenceSpeed * 3.0 + position.x * 5.0);
+        vFlicker = 0.8 + 0.2 * sin(time * turbulenceSpeed * 3.0 + transformed.x * 5.0);
+        
+        // Calculate age-based alpha for particle lifecycle
+        vAlpha = 1.0 - smoothstep(0.7, 1.0, age / lifetime);
         
         vWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;
         
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed, 1.0);
-        gl_PointSize = 50.0 * (1.0 + heightFactor * 0.5); // Larger points for flame effect
+        vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        
+        // Distance-based point size to prevent growing with distance
+        float distanceFromCamera = -mvPosition.z;
+        float baseSize = 20.0 + heightFactor * 15.0;
+        gl_PointSize = baseSize / (1.0 + distanceFromCamera * 0.1);
       }
     `;
     
@@ -59,9 +72,10 @@ export class FireShader {
       varying float vHeight;
       varying float vFlicker;
       varying vec3 vWorldPosition;
+      varying float vAlpha;
       
       void main() {
-        // Create circular/oval flame shape using distance field
+        // Use gl_PointCoord for point sprites
         vec2 center = gl_PointCoord - vec2(0.5);
         
         // Make flames more oval (taller than wide)
@@ -69,10 +83,9 @@ export class FireShader {
         float distance = length(center);
         
         // Smooth circular edge with soft falloff
-        float alpha = 1.0 - smoothstep(0.3, 0.5, distance);
+        float alpha = 1.0 - smoothstep(0.2, 0.5, distance);
         
         // Create realistic flame colors
-        // White-hot center to orange edges with height variation
         float coreIntensity = 1.0 - distance * 2.0;
         coreIntensity = max(0.0, coreIntensity);
         
@@ -104,8 +117,9 @@ export class FireShader {
         // Apply intensity
         color *= intensity;
         
-        // Soft edges for realistic flame appearance
-        alpha *= smoothstep(0.0, 0.2, coreIntensity);
+        // Combine alphas from distance and particle age
+        alpha *= vAlpha;
+        alpha *= smoothstep(0.0, 0.3, coreIntensity);
         
         if (alpha < 0.01) discard;
         
@@ -127,6 +141,8 @@ export class FireShader {
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
+      depthTest: true,
+      sizeAttenuation: true,
       vertexColors: false
     });
   }

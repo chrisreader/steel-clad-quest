@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { FireShader } from '../shaders/FireShader';
 import { FireParticleConfig } from '../types/FireTypes';
@@ -55,16 +54,16 @@ export class OrganicFireParticleGenerator {
     for (let i = 0; i < config.count; i++) {
       // Organic circular distribution for more natural flame base
       const angle = (i / config.count) * Math.PI * 2 + Math.random() * 0.5;
-      const radius = Math.sqrt(Math.random()) * config.spread * 0.3; // Sqrt for even distribution
+      const radius = Math.sqrt(Math.random()) * config.spread * 0.3;
       
       positions[i * 3] = this.position.x + Math.cos(angle) * radius;
-      positions[i * 3 + 1] = this.position.y + Math.random() * 0.2; // Start at different heights
+      positions[i * 3 + 1] = this.position.y + Math.random() * 0.2;
       positions[i * 3 + 2] = this.position.z + Math.sin(angle) * radius;
 
       // Organic velocity patterns
       if (name === 'flames') {
         velocities[i * 3] = (Math.random() - 0.5) * 0.3;
-        velocities[i * 3 + 1] = Math.random() * config.speed + 0.8; // Strong upward motion
+        velocities[i * 3 + 1] = Math.random() * config.speed + 0.8;
         velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
       } else if (name === 'smoke') {
         velocities[i * 3] = (Math.random() - 0.5) * 0.6;
@@ -78,8 +77,8 @@ export class OrganicFireParticleGenerator {
         velocities[i * 3 + 2] = Math.sin(emberAngle) * emberForce;
       }
 
-      lifetimes[i] = config.lifetime * (0.8 + Math.random() * 0.4); // Varied lifetimes
-      ages[i] = Math.random() * lifetimes[i]; // Start at different ages
+      lifetimes[i] = config.lifetime * (0.8 + Math.random() * 0.4);
+      ages[i] = Math.random() * lifetimes[i];
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -99,6 +98,8 @@ export class OrganicFireParticleGenerator {
   public update(deltaTime: number): void {
     this.time += deltaTime;
     
+    console.log(`🔥 Updating fire particles, deltaTime: ${deltaTime}, time: ${this.time}`);
+    
     // Update all shader materials with time
     for (const material of this.materials.values()) {
       FireShader.updateShaderTime(material, deltaTime);
@@ -112,6 +113,8 @@ export class OrganicFireParticleGenerator {
       const lifetimes = particleSystem.geometry.attributes.lifetime as THREE.BufferAttribute;
       const ages = particleSystem.geometry.attributes.age as THREE.BufferAttribute;
 
+      let particlesUpdated = 0;
+
       for (let i = 0; i < config.count; i++) {
         // Update age
         ages.array[i] += deltaTime;
@@ -119,6 +122,7 @@ export class OrganicFireParticleGenerator {
         // Reset particle if expired
         if (ages.array[i] >= lifetimes.array[i]) {
           this.resetParticle(i, name, config, positions, velocities, lifetimes, ages);
+          particlesUpdated++;
         } else {
           // Update position with organic turbulence
           const turbulence = Math.sin(this.time * 2.0 + i * 0.5) * 0.1;
@@ -137,12 +141,17 @@ export class OrganicFireParticleGenerator {
           // Slow down velocity over time for natural deceleration
           velocities.array[i * 3] *= 0.98;
           velocities.array[i * 3 + 2] *= 0.98;
+          
+          particlesUpdated++;
         }
       }
 
+      // Mark attributes as needing update
       positions.needsUpdate = true;
       velocities.needsUpdate = true;
       ages.needsUpdate = true;
+      
+      console.log(`🔥 Updated ${particlesUpdated} ${name} particles`);
     }
   }
 
