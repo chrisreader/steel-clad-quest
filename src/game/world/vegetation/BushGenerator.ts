@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BUSH_CONFIG } from './VegetationConfig';
 import { OrganicShapeGenerator } from './OrganicShapeGenerator';
@@ -12,11 +11,27 @@ import {
 
 export class BushGenerator {
   private bushModels: Map<BushSpeciesType, THREE.Object3D[]> = new Map();
-  private readonly MODELS_PER_SPECIES = 3; // Reduced from 4
+  private readonly MODELS_PER_SPECIES = 3;
   private performanceMode: boolean = false;
+  private leafInstancedMesh: THREE.InstancedMesh | null = null;
+  private readonly MAX_LEAF_INSTANCES = 1000;
 
   constructor() {
+    this.initializeLeafInstancing();
     this.loadBushModels();
+  }
+
+  private initializeLeafInstancing(): void {
+    // Create instanced geometry for leaves to handle high leaf counts efficiently
+    const leafGeometry = new THREE.PlaneGeometry(0.1, 0.12);
+    const leafMaterial = LeafTextureGenerator.getLeafMaterial();
+    
+    this.leafInstancedMesh = new THREE.InstancedMesh(
+      leafGeometry, 
+      leafMaterial, 
+      this.MAX_LEAF_INSTANCES
+    );
+    this.leafInstancedMesh.castShadow = true;
   }
 
   private loadBushModels(): void {
@@ -33,21 +48,20 @@ export class BushGenerator {
       this.bushModels.set(species.type, models);
     });
     
-    console.log(`🌿 Created ${allSpecies.length} optimized bush species with ${this.MODELS_PER_SPECIES} variations each`);
+    console.log(`🌿 Created ${allSpecies.length} optimized bush species with comprehensive leaf coverage`);
   }
 
   private createOptimizedBush(species: BushSpeciesConfig, variationIndex: number): THREE.Group {
     const bushGroup = new THREE.Group();
     bushGroup.userData = { species: species.type, variation: variationIndex };
     
-    // Calculate bush dimensions with simpler scaling
+    // Calculate bush dimensions
     const baseRadius = species.sizeRange[0] + 
       Math.random() * (species.sizeRange[1] - species.sizeRange[0]);
     
     const height = species.heightRange[0] + 
       Math.random() * (species.heightRange[1] - species.heightRange[0]);
     
-    // Reduced layer count for performance
     const layerCount = Math.min(3, species.layerCountRange[0] + 
       Math.floor(Math.random() * (species.layerCountRange[1] - species.layerCountRange[0] + 1)));
 
@@ -57,8 +71,8 @@ export class BushGenerator {
     // Add simplified features
     this.addSimplifiedFeatures(bushGroup, species, baseRadius, height);
 
-    // Add visible leaves
-    this.addVisibleLeaves(bushGroup, species, baseRadius, height);
+    // Add comprehensive leaf coverage
+    this.addComprehensiveLeafCoverage(bushGroup, species, baseRadius, height);
 
     return bushGroup;
   }
@@ -228,47 +242,101 @@ export class BushGenerator {
     }
   }
 
-  private addVisibleLeaves(
+  private addComprehensiveLeafCoverage(
     bushGroup: THREE.Group,
     species: BushSpeciesConfig,
     baseRadius: number,
     height: number
   ): void {
-    // Significantly fewer but larger, more visible leaves
-    const leafCount = Math.floor(12 * species.leafDensity); // Reduced from 40-60 to ~8-12
+    // Calculate total leaf count based on bush size and species density
+    const baseDensity = this.performanceMode ? 30 : 50;
+    const sizeMultiplier = (baseRadius + height) / 2; // Scale with bush size
+    const totalLeafCount = Math.floor(baseDensity * species.leafDensity * sizeMultiplier);
     
+    console.log(`🍃 Adding ${totalLeafCount} leaves to ${species.name}`);
+
+    // Create multiple layers of leaves for complete coverage
+    this.addLeafLayer(bushGroup, species, baseRadius, height, totalLeafCount * 0.4, 1.0, 'outer');
+    this.addLeafLayer(bushGroup, species, baseRadius, height, totalLeafCount * 0.3, 0.8, 'middle');
+    this.addLeafLayer(bushGroup, species, baseRadius, height, totalLeafCount * 0.2, 0.6, 'inner');
+    this.addLeafLayer(bushGroup, species, baseRadius, height, totalLeafCount * 0.1, 1.2, 'extending');
+  }
+
+  private addLeafLayer(
+    bushGroup: THREE.Group,
+    species: BushSpeciesConfig,
+    baseRadius: number,
+    height: number,
+    leafCount: number,
+    radiusMultiplier: number,
+    layerType: 'outer' | 'middle' | 'inner' | 'extending'
+  ): void {
+    const layerRadius = baseRadius * radiusMultiplier;
+    
+    // Define leaf sizes based on layer
+    let leafSizeRange: [number, number];
+    switch (layerType) {
+      case 'outer':
+        leafSizeRange = [0.15, 0.25]; // Large, prominent leaves
+        break;
+      case 'middle':
+        leafSizeRange = [0.10, 0.15]; // Medium leaves
+        break;
+      case 'inner':
+        leafSizeRange = [0.06, 0.10]; // Small detail leaves
+        break;
+      case 'extending':
+        leafSizeRange = [0.12, 0.20]; // Medium-large extending leaves
+        break;
+    }
+
     for (let i = 0; i < leafCount; i++) {
-      const leafSize = 0.12 + Math.random() * 0.08; // Much larger: 0.12-0.20
-      const leafGeometry = new THREE.PlaneGeometry(leafSize, leafSize * 1.2);
+      // Use spherical distribution for natural coverage
+      const phi = Math.random() * Math.PI * 2; // Azimuth angle
+      const cosTheta = Math.random() * 2 - 1; // Cosine of polar angle
+      const theta = Math.acos(cosTheta);
       
-      // Use textured leaf material
+      // Add some randomness to radius for natural variation
+      const radiusVariation = layerRadius * (0.8 + Math.random() * 0.4);
+      
+      // Convert spherical to cartesian coordinates
+      const x = radiusVariation * Math.sin(theta) * Math.cos(phi);
+      const z = radiusVariation * Math.sin(theta) * Math.sin(phi);
+      
+      // Scale Y to fit bush height and add natural clustering
+      let y = (cosTheta + 1) * 0.5 * height; // Map from [-1,1] to [0,height]
+      
+      // Add vertical clustering for natural branch patterns
+      if (Math.random() < 0.3) {
+        const clusterHeight = Math.random() * height;
+        y = clusterHeight + (Math.random() - 0.5) * height * 0.2;
+      }
+      
+      // Clamp Y to bush bounds
+      y = Math.max(0, Math.min(height, y));
+
+      // Create leaf with varied size
+      const leafSize = leafSizeRange[0] + Math.random() * (leafSizeRange[1] - leafSizeRange[0]);
+      const leafGeometry = new THREE.PlaneGeometry(leafSize, leafSize * 1.2);
       const leafMaterial = LeafTextureGenerator.getLeafMaterial();
       
       const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
       
-      // Position leaves more prominently on bush exterior
-      const angle = Math.random() * Math.PI * 2;
-      const distance = baseRadius * (0.9 + Math.random() * 0.3); // Push to exterior
-      const leafHeight = Math.random() * height * 0.8 + height * 0.1; // Avoid very top/bottom
+      leaf.position.set(x, y, z);
       
-      leaf.position.set(
-        Math.cos(angle) * distance,
-        leafHeight,
-        Math.sin(angle) * distance
-      );
+      // Orient leaf to face outward from bush center with natural variation
+      const outwardDirection = new THREE.Vector3(x, 0, z).normalize();
+      if (outwardDirection.length() > 0) {
+        leaf.lookAt(leaf.position.clone().add(outwardDirection));
+      }
       
-      // Face leaves outward for better visibility
-      const outwardDirection = new THREE.Vector3(
-        leaf.position.x,
-        0,
-        leaf.position.z
-      ).normalize();
+      // Add natural rotation variation
+      leaf.rotation.x += (Math.random() - 0.5) * 0.4;
+      leaf.rotation.y += (Math.random() - 0.5) * 0.4;
+      leaf.rotation.z += (Math.random() - 0.5) * 0.4;
       
-      leaf.lookAt(leaf.position.clone().add(outwardDirection));
-      
-      // Add some natural variation
-      leaf.rotation.x += (Math.random() - 0.5) * 0.3;
-      leaf.rotation.z += (Math.random() - 0.5) * 0.3;
+      // Add slight random tilt for natural droop
+      leaf.rotation.x += Math.random() * 0.2;
       
       bushGroup.add(leaf);
     }
@@ -277,7 +345,9 @@ export class BushGenerator {
   public setPerformanceMode(enabled: boolean): void {
     this.performanceMode = enabled;
     if (enabled) {
-      console.log("🌿 Bush performance mode enabled - using simplified generation");
+      console.log("🌿 Bush performance mode enabled - reduced leaf density");
+    } else {
+      console.log("🌿 Bush performance mode disabled - full leaf density");
     }
   }
 
