@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface FireConfig {
@@ -48,8 +47,8 @@ export const DEFAULT_FIRE_CONFIG: FireConfig = {
   smokeEnabled: true,
   emberCount: 12,
   lightColor: 0xFF6600,
-  lightIntensity: 1.5,
-  lightDistance: 8
+  lightIntensity: 4.0,
+  lightDistance: 20
 };
 
 export const FIREPLACE_PARTICLE_CONFIGS = {

@@ -47,11 +47,11 @@ export class FireEffectsManager {
     emberConfig.count = this.config.emberCount;
     this.particleGenerator.addParticleType('embers', emberConfig);
 
-    // Initialize lighting system
+    // Initialize enhanced lighting system with brighter, larger glow
     const lightConfig: FireLightConfig = {
       color: this.config.lightColor,
       baseIntensity: this.config.lightIntensity,
-      maxIntensity: this.config.lightIntensity * 1.3,
+      maxIntensity: this.config.lightIntensity * 1.5,
       flickerSpeed: this.config.flickerSpeed,
       distance: this.config.lightDistance,
       castShadow: true
