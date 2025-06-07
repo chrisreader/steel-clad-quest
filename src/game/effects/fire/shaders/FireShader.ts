@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class FireShader {
@@ -56,10 +55,10 @@ export class FireShader {
         vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
         gl_Position = projectionMatrix * mvPosition;
         
-        // Distance-based point size to prevent growing with distance
-        float distanceFromCamera = -mvPosition.z;
+        // Distance-based point size with proper attenuation
+        float distanceFromCamera = length(mvPosition.xyz);
         float baseSize = 20.0 + heightFactor * 15.0;
-        gl_PointSize = baseSize / (1.0 + distanceFromCamera * 0.1);
+        gl_PointSize = baseSize / (1.0 + distanceFromCamera * 0.05);
       }
     `;
     
@@ -142,7 +141,6 @@ export class FireShader {
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       depthTest: true,
-      sizeAttenuation: true,
       vertexColors: false
     });
   }
