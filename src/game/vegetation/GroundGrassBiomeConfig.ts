@@ -2,33 +2,33 @@
 import { BiomeType } from './GrassBiomeManager';
 
 export interface GroundGrassConfiguration {
-  densityMultiplier: number; // How much denser than tall grass
-  heightReduction: number; // Height factor (0.25 = 25% of tall grass height)
+  densityMultiplier: number; // 6-7x denser than tall grass
+  heightReduction: number; // Height factor (0.85 = 15% shorter than tall grass)
   speciesDistribution: {
     meadow: number;
     prairie: number;
     clumping: number;
     fine: number;
   };
-  windReduction: number; // How much to reduce wind animation
+  windReduction: number; // How much to reduce wind animation (0.2 = 80% of regular wind)
 }
 
 export class GroundGrassBiomeConfig {
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
-      densityMultiplier: 4.0,
-      heightReduction: 0.25,
+      densityMultiplier: 6.0, // Increased from 4.0 for proper carpet coverage
+      heightReduction: 0.85, // 15% shorter instead of 25%
       speciesDistribution: {
         meadow: 0.3,
-        prairie: 0.15, // Reduced prairie for ground coverage
-        clumping: 0.45, // Increased clumping for fuller coverage
+        prairie: 0.15,
+        clumping: 0.45, // Good for ground coverage
         fine: 0.1
       },
-      windReduction: 0.3 // Much less wind animation
+      windReduction: 0.2 // 80% of regular wind strength
     },
     meadow: {
-      densityMultiplier: 5.0, // Even denser in meadow
-      heightReduction: 0.28,
+      densityMultiplier: 7.0, // Densest coverage in meadow
+      heightReduction: 0.85,
       speciesDistribution: {
         meadow: 0.6,
         prairie: 0.05,
@@ -38,15 +38,15 @@ export class GroundGrassBiomeConfig {
       windReduction: 0.2
     },
     prairie: {
-      densityMultiplier: 3.5, // Slightly less dense in prairie
-      heightReduction: 0.3,
+      densityMultiplier: 6.0, // Dense but allowing for wind exposure
+      heightReduction: 0.85,
       speciesDistribution: {
         meadow: 0.1,
         prairie: 0.7,
         clumping: 0.05,
         fine: 0.15
       },
-      windReduction: 0.4 // More wind exposure even for ground grass
+      windReduction: 0.25 // Slightly more wind exposure in prairie
     }
   };
 

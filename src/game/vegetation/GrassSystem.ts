@@ -69,10 +69,10 @@ export class GrassSystem {
       
       this.grassGeometries.set(species.species, geometry);
       
-      // Create ground grass geometries
+      // Create ground grass geometries using realistic geometry
       const groundGeometry = species.clustered
-        ? GroundGrassGeometry.createGroundGrassCluster(species, 5)
-        : GroundGrassGeometry.createGroundGrassBladeGeometry(species);
+        ? GroundGrassGeometry.createGroundGrassCluster(species, 7) // Increased cluster size
+        : GroundGrassGeometry.createGroundGrassBladeGeometry(species, 0.85); // 15% shorter
       
       this.groundGrassGeometries.set(species.species, groundGeometry);
       
@@ -84,22 +84,22 @@ export class GrassSystem {
       );
       this.grassMaterials.set(species.species, material);
       
-      // Create materials for ground grass with reduced wind
+      // Create materials for ground grass with improved wind
       const groundMaterial = RealisticGrassShader.createRealisticGrassMaterial(
-        species.color.clone().multiplyScalar(0.9), // Slightly darker for ground
+        species.color.clone().multiplyScalar(0.9), // 10% darker for ground shadow effect
         0, 
         `ground_${species.species}`
       );
       
-      // Reduce wind strength for ground grass
+      // Reduce wind strength for ground grass but keep it natural (80% instead of 30%)
       if (groundMaterial.uniforms.windStrength) {
-        groundMaterial.uniforms.windStrength.value *= 0.3;
+        groundMaterial.uniforms.windStrength.value *= 0.8;
       }
       
       this.groundGrassMaterials.set(species.species, groundMaterial);
     }
     
-    console.log('🌱 Enhanced grass system with ground coverage initialized with', this.enhancedGrassSpecies.length, 'species');
+    console.log('🌱 Enhanced grass system with realistic ground coverage initialized with', this.enhancedGrassSpecies.length, 'species');
   }
   
   public generateGrassForRegion(
@@ -247,10 +247,10 @@ export class GrassSystem {
     
     if (!geometry || !material) return;
     
-    // Apply biome-specific wind exposure for ground grass
+    // Apply biome-specific wind exposure for ground grass with improved values
     if (isGroundGrass && material.uniforms.windStrength) {
       const groundConfig = GroundGrassBiomeConfig.getGroundConfiguration(biomeInfo.type);
-      material.uniforms.windStrength.value *= groundConfig.windReduction;
+      material.uniforms.windStrength.value *= (1 - groundConfig.windReduction); // Use 1 - reduction for proper calculation
     }
     
     const instancedMesh = new THREE.InstancedMesh(
@@ -264,9 +264,9 @@ export class GrassSystem {
       const matrix = new THREE.Matrix4();
       const adjustedPosition = speciesData.positions[i].clone();
       
-      // Ensure ground grass is at ground level
+      // Position ground grass properly to stand upright
       if (isGroundGrass) {
-        adjustedPosition.y = Math.max(0.01, adjustedPosition.y);
+        adjustedPosition.y = Math.max(0.05, adjustedPosition.y); // Raised from 0.01 to 0.05
       } else {
         adjustedPosition.y = Math.max(0.1, adjustedPosition.y);
       }
@@ -506,13 +506,13 @@ export class GrassSystem {
         RealisticGrassShader.updateSeasonalVariation(material, this.currentSeason);
       }
       
-      // Update ground grass materials with reduced wind
+      // Update ground grass materials with improved wind (80% instead of 30%)
       for (const material of this.groundGrassMaterials.values()) {
         RealisticGrassShader.updateRealisticWindAnimation(
           material, 
           this.time, 
-          baseWindStrength * 0.3, // Reduced wind for ground grass
-          gustIntensity * 0.2    // Reduced gusts for ground grass
+          baseWindStrength * 0.8, // Improved from 0.3 to 0.8
+          gustIntensity * 0.6    // Improved from 0.2 to 0.6
         );
         RealisticGrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
         RealisticGrassShader.updateSeasonalVariation(material, this.currentSeason);
