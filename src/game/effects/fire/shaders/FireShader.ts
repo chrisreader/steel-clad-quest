@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { ParticleTextureGenerator } from '../utils/ParticleTextureGenerator';
 
@@ -7,122 +8,83 @@ export class FireShader {
       uniform float time;
       uniform float windStrength;
       uniform vec2 windDirection;
-      uniform float turbulenceSpeed;
       uniform float particleSize;
       
       attribute float lifetime;
       attribute float age;
+      attribute vec3 velocity;
       
       varying vec2 vUv;
-      varying float vHeight;
-      varying float vFlicker;
-      varying vec3 vWorldPosition;
       varying float vAlpha;
-      varying float vPointSize;
+      varying float vHeight;
+      varying vec3 vColor;
       
       void main() {
         vUv = uv;
         
         vec3 transformed = position;
         
-        // Calculate relative height from fire base (normalize to 0-1 range)
-        float baseY = 0.0; // Fire base position
-        vHeight = clamp((transformed.y - baseY) / 2.0, 0.0, 1.0);
+        // Calculate normalized age (0 = new, 1 = dying)
+        float normalizedAge = age / lifetime;
         
-        // Enhanced organic flame dancing motion with multiple frequency layers
-        float heightFactor = pow(vHeight + 0.1, 1.8);
+        // Calculate height factor for color variation
+        vHeight = clamp(transformed.y / 3.0, 0.0, 1.0);
         
-        // Multi-layered turbulence for grass-like wind motion
-        float baseTime = time * turbulenceSpeed;
-        float turbulence1 = sin(baseTime + transformed.x * 3.0 + transformed.z * 2.0) * heightFactor;
-        float turbulence2 = cos(baseTime * 1.7 + transformed.x * 1.8 + transformed.z * 1.3) * heightFactor * 0.7;
-        float turbulence3 = sin(baseTime * 0.9 + transformed.z * 2.5 + transformed.x * 0.8) * heightFactor * 0.5;
+        // Apply wind motion - simple sine wave
+        float windEffect = sin(time * 2.0 + transformed.x * 3.0 + transformed.z * 2.0) * windStrength * vHeight;
+        transformed.x += windEffect * windDirection.x * 0.5;
+        transformed.z += windEffect * windDirection.y * 0.5;
         
-        // Combine turbulence layers for complex organic motion
-        float totalTurbulence = (turbulence1 + turbulence2 + turbulence3) * windStrength;
+        // Add some vertical sway
+        transformed.y += sin(time * 1.5 + transformed.x * 2.0) * vHeight * 0.2;
         
-        // Apply enhanced dancing motion with wind direction
-        transformed.x += totalTurbulence * windDirection.x * 0.3;
-        transformed.z += totalTurbulence * windDirection.y * 0.3;
+        // Calculate alpha based on age
+        vAlpha = 1.0 - smoothstep(0.6, 1.0, normalizedAge);
         
-        // Add vertical stretching and swaying motion
-        float verticalSway = sin(baseTime * 1.8 + transformed.x * 2.0) * heightFactor * 0.1;
-        transformed.y += verticalSway;
-        
-        // Calculate enhanced flicker intensity
-        vFlicker = 0.8 + 0.4 * sin(baseTime * 6.0 + transformed.x * 10.0 + transformed.z * 8.0);
-        
-        // Calculate age-based alpha for particle lifecycle
-        vAlpha = 1.0 - smoothstep(0.7, 1.0, age / lifetime);
-        
-        vWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        // Set colors based on height and age
+        if (vHeight > 0.7) {
+          vColor = mix(vec3(1.0, 0.8, 0.3), vec3(1.0, 1.0, 0.9), (vHeight - 0.7) / 0.3);
+        } else if (vHeight > 0.4) {
+          vColor = mix(vec3(1.0, 0.4, 0.1), vec3(1.0, 0.8, 0.3), (vHeight - 0.4) / 0.3);
+        } else {
+          vColor = mix(vec3(0.8, 0.2, 0.05), vec3(1.0, 0.4, 0.1), vHeight / 0.4);
+        }
         
         vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
         gl_Position = projectionMatrix * mvPosition;
         
-        // Enhanced point size with distance scaling
-        float distanceFromCamera = length(mvPosition.xyz);
-        float baseSize = particleSize * (1.0 + heightFactor * 0.5);
-        vPointSize = baseSize / (1.0 + distanceFromCamera * 0.01);
-        gl_PointSize = vPointSize;
+        // Set point size
+        float distance = length(mvPosition.xyz);
+        gl_PointSize = particleSize * (300.0 / distance);
       }
     `;
     
     const fragmentShader = `
-      uniform float time;
       uniform float intensity;
       uniform float opacity;
       uniform sampler2D particleTexture;
       
       varying vec2 vUv;
-      varying float vHeight;
-      varying float vFlicker;
-      varying vec3 vWorldPosition;
       varying float vAlpha;
-      varying float vPointSize;
+      varying float vHeight;
+      varying vec3 vColor;
       
       void main() {
-        // Use point coordinates for circular particles
-        vec2 pointCoord = gl_PointCoord;
-        vec4 textureColor = texture2D(particleTexture, pointCoord);
+        // Use gl_PointCoord for point sprites
+        vec4 textureColor = texture2D(particleTexture, gl_PointCoord);
         
-        // Calculate distance from center for circular falloff
-        vec2 center = pointCoord - vec2(0.5);
-        float distance = length(center);
+        // Apply color and intensity
+        vec3 finalColor = vColor * intensity;
         
-        // Create soft circular edge
-        float alpha = textureColor.a * (1.0 - smoothstep(0.3, 0.5, distance));
+        // Apply texture alpha and particle alpha
+        float finalAlpha = textureColor.a * vAlpha * opacity;
         
-        // Create flame colors based on height
-        vec3 whiteHot = vec3(1.0, 1.0, 0.9);
-        vec3 yellowFlame = vec3(1.0, 0.8, 0.3);
-        vec3 orangeFlame = vec3(1.0, 0.4, 0.1);
-        vec3 redFlame = vec3(0.8, 0.2, 0.05);
+        if (finalAlpha < 0.01) discard;
         
-        // Height-based color mixing
-        vec3 color;
-        if (vHeight > 0.7) {
-          color = mix(yellowFlame, whiteHot, (vHeight - 0.7) / 0.3);
-        } else if (vHeight > 0.4) {
-          color = mix(orangeFlame, yellowFlame, (vHeight - 0.4) / 0.3);
-        } else {
-          color = mix(redFlame, orangeFlame, vHeight / 0.4);
-        }
-        
-        // Apply flicker and intensity
-        color *= vFlicker * intensity;
-        
-        // Apply alpha effects
-        alpha *= vAlpha;
-        alpha = clamp(alpha, 0.0, 1.0);
-        
-        if (alpha < 0.01) discard;
-        
-        gl_FragColor = vec4(color, alpha * opacity);
+        gl_FragColor = vec4(finalColor, finalAlpha);
       }
     `;
     
-    // Create particle texture
     const particleTexture = ParticleTextureGenerator.createCircularParticleTexture();
     
     return new THREE.ShaderMaterial({
@@ -132,10 +94,9 @@ export class FireShader {
         time: { value: 0 },
         windStrength: { value: 1.0 },
         windDirection: { value: new THREE.Vector2(1, 0.3) },
-        turbulenceSpeed: { value: 2.0 },
         intensity: { value: 1.0 },
         opacity: { value: 0.8 },
-        particleSize: { value: 32.0 },
+        particleSize: { value: 50.0 },
         particleTexture: { value: particleTexture }
       },
       transparent: true,
@@ -143,6 +104,35 @@ export class FireShader {
       depthWrite: false,
       depthTest: true,
       vertexColors: false
+    });
+  }
+
+  public static createBasicFireMaterial(name: string): THREE.PointsMaterial {
+    const texture = ParticleTextureGenerator.createBasicParticleTexture();
+    
+    let color = 0xFF6600;
+    let size = 50;
+    let opacity = 0.8;
+    
+    if (name === 'smoke') {
+      color = 0x888888;
+      size = 80;
+      opacity = 0.4;
+    } else if (name === 'embers') {
+      color = 0xFF4400;
+      size = 30;
+      opacity = 1.0;
+    }
+    
+    return new THREE.PointsMaterial({
+      color: color,
+      size: size,
+      map: texture,
+      transparent: true,
+      opacity: opacity,
+      blending: name === 'smoke' ? THREE.NormalBlending : THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true
     });
   }
   
@@ -155,15 +145,6 @@ export class FireShader {
   public static setShaderIntensity(material: THREE.ShaderMaterial, intensity: number): void {
     if (material.uniforms.intensity) {
       material.uniforms.intensity.value = intensity;
-    }
-  }
-  
-  public static setWindEffect(material: THREE.ShaderMaterial, strength: number, direction: THREE.Vector2): void {
-    if (material.uniforms.windStrength) {
-      material.uniforms.windStrength.value = strength;
-    }
-    if (material.uniforms.windDirection) {
-      material.uniforms.windDirection.value.copy(direction);
     }
   }
 }

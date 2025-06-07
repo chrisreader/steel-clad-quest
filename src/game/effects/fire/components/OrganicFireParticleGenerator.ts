@@ -7,8 +7,9 @@ export class OrganicFireParticleGenerator {
   private scene: THREE.Scene;
   private position: THREE.Vector3;
   private particleSystems: Map<string, THREE.Points> = new Map();
-  private materials: Map<string, THREE.ShaderMaterial> = new Map();
+  private materials: Map<string, THREE.Material> = new Map();
   private totalTime: number = 0;
+  private useShaderMaterial: boolean = true;
 
   constructor(scene: THREE.Scene, position: THREE.Vector3) {
     this.scene = scene;
@@ -17,56 +18,53 @@ export class OrganicFireParticleGenerator {
   }
 
   public addOrganicParticleType(name: string, config: FireParticleConfig): void {
-    console.log(`🔥 Creating organic ${name} particle system with ${config.count} particles`);
+    console.log(`🔥 Creating ${name} particle system with ${config.count} particles`);
     
-    // Create shader material for this particle type
-    const material = FireShader.createFireMaterial();
+    let material: THREE.Material;
     
-    // Configure material based on particle type
-    if (name === 'flames') {
-      material.uniforms.particleSize.value = 40.0;
-      material.uniforms.intensity.value = 1.2;
-      material.uniforms.windStrength.value = 1.0;
-      material.uniforms.opacity.value = 0.9;
-    } else if (name === 'smoke') {
-      material.uniforms.particleSize.value = 60.0;
-      material.uniforms.intensity.value = 0.4;
-      material.uniforms.windStrength.value = 1.5;
-      material.uniforms.opacity.value = 0.3;
-      material.blending = THREE.NormalBlending;
-    } else if (name === 'embers') {
-      material.uniforms.particleSize.value = 20.0;
-      material.uniforms.intensity.value = 1.5;
-      material.uniforms.windStrength.value = 0.6;
-      material.uniforms.opacity.value = 1.0;
+    try {
+      if (this.useShaderMaterial && name === 'flames') {
+        // Use shader material for flames
+        material = FireShader.createFireMaterial();
+        this.configureShaderMaterial(material as THREE.ShaderMaterial, name);
+      } else {
+        // Use basic material for all others or as fallback
+        material = FireShader.createBasicFireMaterial(name);
+      }
+    } catch (error) {
+      console.warn(`🔥 Shader material failed for ${name}, using basic material:`, error);
+      material = FireShader.createBasicFireMaterial(name);
     }
     
     this.materials.set(name, material);
-    this.createOrganicParticleSystem(name, config, material);
+    this.createParticleSystem(name, config, material);
   }
 
-  private createOrganicParticleSystem(name: string, config: FireParticleConfig, material: THREE.ShaderMaterial): void {
+  private configureShaderMaterial(material: THREE.ShaderMaterial, name: string): void {
+    if (name === 'flames') {
+      material.uniforms.particleSize.value = 60.0;
+      material.uniforms.intensity.value = 1.2;
+      material.uniforms.windStrength.value = 1.0;
+      material.uniforms.opacity.value = 0.9;
+    }
+  }
+
+  private createParticleSystem(name: string, config: FireParticleConfig, material: THREE.Material): void {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(config.count * 3);
     const velocities = new Float32Array(config.count * 3);
     const lifetimes = new Float32Array(config.count);
     const ages = new Float32Array(config.count);
-    const uvs = new Float32Array(config.count * 2);
 
     // Initialize particles
     for (let i = 0; i < config.count; i++) {
-      this.resetParticleData(i, name, config, positions, velocities, lifetimes, ages);
-      
-      // Set UV coordinates
-      uvs[i * 2] = 0.5;
-      uvs[i * 2 + 1] = 0.5;
+      this.resetParticle(i, name, config, positions, velocities, lifetimes, ages);
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
     geometry.setAttribute('lifetime', new THREE.BufferAttribute(lifetimes, 1));
     geometry.setAttribute('age', new THREE.BufferAttribute(ages, 1));
-    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
     const particleSystem = new THREE.Points(geometry, material);
     particleSystem.userData = { name, config };
@@ -74,20 +72,56 @@ export class OrganicFireParticleGenerator {
     this.particleSystems.set(name, particleSystem);
     this.scene.add(particleSystem);
     
-    console.log(`🔥 Created ${name} particle system with ${config.count} particles, added to scene`);
+    console.log(`🔥 Created ${name} particle system, added to scene`);
+  }
+
+  private resetParticle(
+    index: number, 
+    name: string, 
+    config: FireParticleConfig,
+    positions: Float32Array,
+    velocities: Float32Array,
+    lifetimes: Float32Array,
+    ages: Float32Array
+  ): void {
+    // Reset to base position with variation
+    const angle = Math.random() * Math.PI * 2;
+    const radius = Math.pow(Math.random(), 0.5) * config.spread * 0.5;
+    
+    positions[index * 3] = this.position.x + Math.cos(angle) * radius;
+    positions[index * 3 + 1] = this.position.y + Math.random() * 0.2;
+    positions[index * 3 + 2] = this.position.z + Math.sin(angle) * radius;
+
+    // Set velocity based on particle type
+    if (name === 'flames') {
+      velocities[index * 3] = (Math.random() - 0.5) * 0.5;
+      velocities[index * 3 + 1] = Math.random() * config.speed + 1.0;
+      velocities[index * 3 + 2] = (Math.random() - 0.5) * 0.5;
+    } else if (name === 'smoke') {
+      velocities[index * 3] = (Math.random() - 0.5) * 0.8;
+      velocities[index * 3 + 1] = Math.random() * config.speed + 0.6;
+      velocities[index * 3 + 2] = (Math.random() - 0.5) * 0.8;
+    } else if (name === 'embers') {
+      const emberAngle = Math.random() * Math.PI * 2;
+      const emberForce = Math.random() * 1.0 + 0.3;
+      velocities[index * 3] = Math.cos(emberAngle) * emberForce;
+      velocities[index * 3 + 1] = Math.random() * config.speed + 0.3;
+      velocities[index * 3 + 2] = Math.sin(emberAngle) * emberForce;
+    }
+
+    ages[index] = 0;
+    lifetimes[index] = config.lifetime * (0.7 + Math.random() * 0.6);
   }
 
   public update(deltaTime: number): void {
     this.totalTime += deltaTime;
     
-    console.log(`🔥 Updating fire particles, deltaTime: ${deltaTime.toFixed(4)}, totalTime: ${this.totalTime.toFixed(2)}, systems: ${this.particleSystems.size}`);
-    
-    // Update all shader materials with accumulated time
+    // Update shader materials
     for (const [name, material] of this.materials.entries()) {
-      FireShader.updateShaderTime(material, this.totalTime);
+      if (material instanceof THREE.ShaderMaterial) {
+        FireShader.updateShaderTime(material, this.totalTime);
+      }
     }
-
-    let totalParticlesUpdated = 0;
 
     // Update particle physics
     for (const [name, particleSystem] of this.particleSystems.entries()) {
@@ -97,30 +131,28 @@ export class OrganicFireParticleGenerator {
       const lifetimes = particleSystem.geometry.attributes.lifetime as THREE.BufferAttribute;
       const ages = particleSystem.geometry.attributes.age as THREE.BufferAttribute;
 
-      let particlesUpdated = 0;
-
       for (let i = 0; i < config.count; i++) {
         // Update age
         ages.array[i] += deltaTime;
 
         // Reset particle if expired
         if (ages.array[i] >= lifetimes.array[i]) {
-          this.resetParticleData(i, name, config, positions.array as Float32Array, velocities.array as Float32Array, lifetimes.array as Float32Array, ages.array as Float32Array);
-          particlesUpdated++;
+          this.resetParticle(
+            i, name, config,
+            positions.array as Float32Array,
+            velocities.array as Float32Array,
+            lifetimes.array as Float32Array,
+            ages.array as Float32Array
+          );
         } else {
-          // Update position with enhanced organic motion
-          const turbulenceX = Math.sin(this.totalTime * 2.0 + i * 0.5) * 0.1;
-          const turbulenceZ = Math.cos(this.totalTime * 1.8 + i * 0.3) * 0.08;
-          
-          positions.array[i * 3] += (velocities.array[i * 3] + turbulenceX) * deltaTime;
+          // Update position - simple physics only (shader handles visual motion)
+          positions.array[i * 3] += velocities.array[i * 3] * deltaTime;
           positions.array[i * 3 + 1] += velocities.array[i * 3 + 1] * deltaTime;
-          positions.array[i * 3 + 2] += (velocities.array[i * 3 + 2] + turbulenceZ) * deltaTime;
+          positions.array[i * 3 + 2] += velocities.array[i * 3 + 2] * deltaTime;
 
-          // Apply velocity damping
-          velocities.array[i * 3] *= 0.98;
-          velocities.array[i * 3 + 2] *= 0.98;
-          
-          particlesUpdated++;
+          // Apply slight damping
+          velocities.array[i * 3] *= 0.99;
+          velocities.array[i * 3 + 2] *= 0.99;
         }
       }
 
@@ -129,56 +161,14 @@ export class OrganicFireParticleGenerator {
       velocities.needsUpdate = true;
       ages.needsUpdate = true;
       lifetimes.needsUpdate = true;
-      
-      totalParticlesUpdated += particlesUpdated;
     }
-    
-    if (totalParticlesUpdated > 0) {
-      console.log(`🔥 Updated ${totalParticlesUpdated} total particles across all systems`);
-    }
-  }
-
-  private resetParticleData(
-    index: number, 
-    name: string, 
-    config: FireParticleConfig,
-    positions: Float32Array,
-    velocities: Float32Array,
-    lifetimes: Float32Array,
-    ages: Float32Array
-  ): void {
-    // Reset to base position with organic variation
-    const angle = Math.random() * Math.PI * 2;
-    const radius = Math.pow(Math.random(), 0.8) * config.spread * 0.3;
-    
-    positions[index * 3] = this.position.x + Math.cos(angle) * radius;
-    positions[index * 3 + 1] = this.position.y + Math.random() * 0.1;
-    positions[index * 3 + 2] = this.position.z + Math.sin(angle) * radius;
-
-    // Reset velocity with enhanced patterns
-    if (name === 'flames') {
-      velocities[index * 3] = (Math.random() - 0.5) * 0.3;
-      velocities[index * 3 + 1] = Math.random() * config.speed + 0.8;
-      velocities[index * 3 + 2] = (Math.random() - 0.5) * 0.3;
-    } else if (name === 'smoke') {
-      velocities[index * 3] = (Math.random() - 0.5) * 0.6;
-      velocities[index * 3 + 1] = Math.random() * config.speed + 0.4;
-      velocities[index * 3 + 2] = (Math.random() - 0.5) * 0.6;
-    } else if (name === 'embers') {
-      const emberAngle = Math.random() * Math.PI * 2;
-      const emberForce = Math.random() * 0.8 + 0.2;
-      velocities[index * 3] = Math.cos(emberAngle) * emberForce;
-      velocities[index * 3 + 1] = Math.random() * config.speed + 0.2;
-      velocities[index * 3 + 2] = Math.sin(emberAngle) * emberForce;
-    }
-
-    ages[index] = 0;
-    lifetimes[index] = config.lifetime * (0.8 + Math.random() * 0.4);
   }
 
   public setIntensity(intensity: number): void {
     for (const material of this.materials.values()) {
-      FireShader.setShaderIntensity(material, intensity);
+      if (material instanceof THREE.ShaderMaterial) {
+        FireShader.setShaderIntensity(material, intensity);
+      }
     }
   }
 
@@ -197,6 +187,6 @@ export class OrganicFireParticleGenerator {
     
     this.particleSystems.clear();
     this.materials.clear();
-    console.log('🔥 Enhanced organic fire particle systems disposed');
+    console.log('🔥 Fire particle systems disposed');
   }
 }

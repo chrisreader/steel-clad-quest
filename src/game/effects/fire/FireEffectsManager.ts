@@ -27,26 +27,26 @@ export class FireEffectsManager {
   public start(): void {
     if (this.isActive) return;
 
-    console.log('🔥 Starting enhanced fire effects with improved particle rendering at position:', this.position);
+    console.log('🔥 Starting fire effects with improved visibility at position:', this.position);
 
     // Initialize organic particle generator
     this.organicParticleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
     
-    // Add particle types with enhanced configurations
+    // Add flame particles with increased count for visibility
     const flameConfig = { ...FIREPLACE_PARTICLE_CONFIGS.flames };
-    flameConfig.count = Math.floor(this.config.particleCount * 0.6);
+    flameConfig.count = Math.max(60, Math.floor(this.config.particleCount * 0.8));
     console.log(`🔥 Adding ${flameConfig.count} flame particles`);
     this.organicParticleGenerator.addOrganicParticleType('flames', flameConfig);
 
     if (this.config.smokeEnabled) {
       const smokeConfig = { ...FIREPLACE_PARTICLE_CONFIGS.smoke };
-      smokeConfig.count = Math.floor(this.config.particleCount * 0.25);
+      smokeConfig.count = Math.max(30, Math.floor(this.config.particleCount * 0.4));
       console.log(`🔥 Adding ${smokeConfig.count} smoke particles`);
       this.organicParticleGenerator.addOrganicParticleType('smoke', smokeConfig);
     }
 
     const emberConfig = { ...FIREPLACE_PARTICLE_CONFIGS.embers };
-    emberConfig.count = this.config.emberCount;
+    emberConfig.count = Math.max(20, this.config.emberCount);
     console.log(`🔥 Adding ${emberConfig.count} ember particles`);
     this.organicParticleGenerator.addOrganicParticleType('embers', emberConfig);
 
@@ -73,7 +73,7 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    console.log('🔥 Fire effects system fully initialized and active');
+    console.log('🔥 Fire effects system active with enhanced visibility');
   }
 
   public update(deltaTime: number): void {
@@ -123,7 +123,7 @@ export class FireEffectsManager {
     }
 
     this.isActive = false;
-    console.log('🔥 Enhanced fire effects stopped');
+    console.log('🔥 Fire effects stopped');
   }
 
   public dispose(): void {

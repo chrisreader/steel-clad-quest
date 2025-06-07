@@ -54,32 +54,32 @@ export const DEFAULT_FIRE_CONFIG: FireConfig = {
 
 export const FIREPLACE_PARTICLE_CONFIGS = {
   flames: {
-    count: 40,
-    size: 0.5,
-    speed: 2.0,
+    count: 60,
+    size: 0.8,
+    speed: 2.5,
     color: new THREE.Color(0xFF6600),
     opacity: 0.9,
-    lifetime: 2.5,
-    spread: 0.8
-  } as FireParticleConfig,
-  
-  smoke: {
-    count: 20,
-    size: 0.8,
-    speed: 1.2,
-    color: new THREE.Color(0x888888),
-    opacity: 0.4,
-    lifetime: 4.0,
+    lifetime: 3.0,
     spread: 1.2
   } as FireParticleConfig,
   
+  smoke: {
+    count: 30,
+    size: 1.2,
+    speed: 1.8,
+    color: new THREE.Color(0x888888),
+    opacity: 0.5,
+    lifetime: 5.0,
+    spread: 1.8
+  } as FireParticleConfig,
+  
   embers: {
-    count: 15,
-    size: 0.2,
-    speed: 0.6,
+    count: 20,
+    size: 0.4,
+    speed: 1.0,
     color: new THREE.Color(0xFF4400),
     opacity: 1.0,
-    lifetime: 3.0,
-    spread: 1.0
+    lifetime: 4.0,
+    spread: 1.5
   } as FireParticleConfig
 };
