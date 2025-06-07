@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EnhancedGrassBladeConfig } from './EnhancedGrassGeometry';
 
@@ -6,7 +5,7 @@ export class GroundGrassGeometry {
   // Create realistic ground grass geometry using the same sophisticated geometry as regular grass
   public static createGroundGrassBladeGeometry(
     config: EnhancedGrassBladeConfig,
-    heightReduction: number = 0.85 // 15% shorter (85% of original height)
+    heightReduction: number = 0.3 // 30% of original height (70% reduction)
   ): THREE.BufferGeometry {
     const { width, segments, curve, taper, species } = config;
     const height = config.height * heightReduction;
@@ -69,8 +68,8 @@ export class GroundGrassGeometry {
   // Create dense ground grass cluster for carpet effect
   public static createGroundGrassCluster(
     config: EnhancedGrassBladeConfig, 
-    clusterSize: number = 7, // Increased from 5 for denser coverage
-    heightReduction: number = 0.85
+    clusterSize: number = 8, // Increased from 7 for even denser coverage
+    heightReduction: number = 0.3 // 30% of original height
   ): THREE.BufferGeometry {
     const clusterGeometry = new THREE.BufferGeometry();
     const clusterVertices: number[] = [];
@@ -165,11 +164,11 @@ export class GroundGrassGeometry {
     }
   }
   
-  // Get ground grass species configurations for each biome with realistic heights
+  // Get ground grass species configurations for each biome with 30% heights
   public static getGroundGrassSpeciesForBiome(biomeType: string): EnhancedGrassBladeConfig[] {
     const baseSpecies = [
       {
-        height: 0.34, // 15% shorter than regular fine grass (0.4 * 0.85)
+        height: 0.12, // 30% of regular fine grass (0.4 * 0.3)
         width: 0.06,
         segments: 4, // Same as regular grass for realistic geometry
         curve: 0.2,
@@ -179,7 +178,7 @@ export class GroundGrassGeometry {
         clustered: true
       },
       {
-        height: 0.51, // 15% shorter than regular meadow grass (0.6 * 0.85)
+        height: 0.18, // 30% of regular meadow grass (0.6 * 0.3)
         width: 0.08,
         segments: 5,
         curve: 0.3,
@@ -189,7 +188,7 @@ export class GroundGrassGeometry {
         clustered: true
       },
       {
-        height: 0.68, // 15% shorter than regular prairie grass (0.8 * 0.85)
+        height: 0.24, // 30% of regular prairie grass (0.8 * 0.3)
         width: 0.10,
         segments: 6,
         curve: 0.4,
@@ -199,7 +198,7 @@ export class GroundGrassGeometry {
         clustered: true
       },
       {
-        height: 0.30, // 15% shorter than regular clumping grass (0.35 * 0.85)
+        height: 0.105, // 30% of regular clumping grass (0.35 * 0.3)
         width: 0.07,
         segments: 4,
         curve: 0.15,

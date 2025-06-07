@@ -69,10 +69,10 @@ export class GrassSystem {
       
       this.grassGeometries.set(species.species, geometry);
       
-      // Create ground grass geometries using realistic geometry
+      // Create ground grass geometries using realistic geometry with 30% height
       const groundGeometry = species.clustered
-        ? GroundGrassGeometry.createGroundGrassCluster(species, 7) // Increased cluster size
-        : GroundGrassGeometry.createGroundGrassBladeGeometry(species, 0.85); // 15% shorter
+        ? GroundGrassGeometry.createGroundGrassCluster(species, 8) // Increased cluster size for density
+        : GroundGrassGeometry.createGroundGrassBladeGeometry(species, 0.3); // 30% of original height
       
       this.groundGrassGeometries.set(species.species, groundGeometry);
       
@@ -215,7 +215,7 @@ export class GrassSystem {
       biomeInfo.type
     );
     
-    // Apply ground grass height reductions
+    // Apply ground grass height reductions (30% of original)
     for (let i = 0; i < grassData.scales.length; i++) {
       const heightVariation = 0.8 + Math.random() * 0.4; // Less height variation for ground
       grassData.scales[i].y *= groundConfig.heightReduction * heightVariation;
