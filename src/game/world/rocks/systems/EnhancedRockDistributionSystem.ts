@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RegionCoordinates } from '../../RingQuadrantSystem';
 import { NoiseBasedDistributionSystem, GeologicalVariation } from './NoiseBasedDistributionSystem';
@@ -32,7 +31,7 @@ export class EnhancedRockDistributionSystem {
   }
   
   private initializeRingConfigurations(): void {
-    // Ring 0: Settlement area (85% tiny/small, 12% medium, 3% large)
+    // Ring 0: Settlement area - increased spawn rates
     this.ringConfigs.set(0, {
       ringIndex: 0,
       sizeDistribution: {
@@ -42,11 +41,11 @@ export class EnhancedRockDistributionSystem {
         large: 0.03,
         massive: 0.0
       },
-      baseSpawnChance: 0.15,
+      baseSpawnChance: 0.35, // Increased from 0.15
       clusteringFactor: 0.3
     });
     
-    // Ring 1: Balanced natural (45% tiny/small, 35% medium, 15% large, 5% massive)
+    // Ring 1: Balanced natural - increased spawn rates
     this.ringConfigs.set(1, {
       ringIndex: 1,
       sizeDistribution: {
@@ -56,11 +55,11 @@ export class EnhancedRockDistributionSystem {
         large: 0.15,
         massive: 0.05
       },
-      baseSpawnChance: 0.25,
+      baseSpawnChance: 0.45, // Increased from 0.25
       clusteringFactor: 0.6
     });
     
-    // Ring 2: Wild geology (25% tiny/small, 35% medium, 25% large, 15% massive)
+    // Ring 2: Wild geology - increased spawn rates
     this.ringConfigs.set(2, {
       ringIndex: 2,
       sizeDistribution: {
@@ -70,11 +69,11 @@ export class EnhancedRockDistributionSystem {
         large: 0.25,
         massive: 0.15
       },
-      baseSpawnChance: 0.35,
+      baseSpawnChance: 0.55, // Increased from 0.35
       clusteringFactor: 0.8
     });
     
-    // Ring 3: Chaotic formations (15% tiny/small, 25% medium, 35% large, 25% massive)
+    // Ring 3: Chaotic formations - increased spawn rates
     this.ringConfigs.set(3, {
       ringIndex: 3,
       sizeDistribution: {
@@ -84,18 +83,25 @@ export class EnhancedRockDistributionSystem {
         large: 0.35,
         massive: 0.25
       },
-      baseSpawnChance: 0.45,
+      baseSpawnChance: 0.65, // Increased from 0.45
       clusteringFactor: 1.0
     });
     
-    console.log("🌍 Ring-based size distribution configurations initialized");
+    console.log("🌍 Ring-based size distribution configurations initialized with increased spawn rates");
   }
   
   public shouldSpawnRock(position: THREE.Vector3, regionCoords: RegionCoordinates): boolean {
     const config = this.ringConfigs.get(regionCoords.ringIndex);
     if (!config) return false;
     
-    return this.noiseSystem.shouldSpawnRock(position, regionCoords.ringIndex, config.baseSpawnChance);
+    const shouldSpawn = this.noiseSystem.shouldSpawnRock(position, regionCoords.ringIndex, config.baseSpawnChance);
+    
+    // Add some debug logging
+    if (Math.random() < 0.001) { // Log occasionally
+      console.log(`🪨 Spawn check at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}): ${shouldSpawn}, base chance: ${config.baseSpawnChance}`);
+    }
+    
+    return shouldSpawn;
   }
   
   public selectRockVariation(position: THREE.Vector3, regionCoords: RegionCoordinates): RockVariation | null {

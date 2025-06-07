@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
+import { RockShapeFactory } from './rocks/generators/RockShapeFactory';
 import { TreeGenerator } from './vegetation/TreeGenerator';
 import { BushGenerator } from './vegetation/BushGenerator';
 import { EnhancedRockDistributionSystem } from './rocks/systems/EnhancedRockDistributionSystem';
+import { RockMaterialGenerator } from './rocks/materials/RockMaterialGenerator';
+import { ROCK_SHAPES } from './rocks/config/RockShapeConfig';
 
 export class TerrainFeatureGenerator {
   private scene: THREE.Scene;
@@ -71,7 +74,9 @@ export class TerrainFeatureGenerator {
     features: THREE.Object3D[]
   ): void {
     const searchRadius = region.ringIndex === 0 ? ringDef.outerRadius : 50;
-    const gridSize = 8; // Denser sampling for better distribution
+    const gridSize = 6; // Smaller grid for better coverage
+    
+    console.log(`🪨 Generating rocks for region ${region.ringIndex}_${region.quadrant} with radius ${searchRadius}`);
     
     for (let x = -searchRadius; x <= searchRadius; x += gridSize) {
       for (let z = -searchRadius; z <= searchRadius; z += gridSize) {
@@ -89,7 +94,7 @@ export class TerrainFeatureGenerator {
           continue;
         }
         
-        // Use enhanced rock distribution system
+        // Use enhanced rock distribution system with higher spawn rate
         if (this.enhancedRockSystem.shouldSpawnRock(testPosition, region)) {
           const rockVariation = this.enhancedRockSystem.selectRockVariation(testPosition, region);
           if (!rockVariation) continue;
@@ -99,29 +104,8 @@ export class TerrainFeatureGenerator {
           
           // Check if we should create a cluster
           if (this.enhancedRockSystem.shouldCreateCluster(organicPosition, rockVariation, region)) {
-            const clusterSize = rockVariation.clusterSize 
-              ? Math.floor(Math.random() * (rockVariation.clusterSize[1] - rockVariation.clusterSize[0] + 1)) + rockVariation.clusterSize[0]
-              : 1;
-            
-            // Create cluster using existing RockClusterGenerator methods
-            const cluster = new THREE.Group();
-            cluster.position.copy(organicPosition);
-            
-            // Use the createVariedRockCluster method that exists in RockClusterGenerator
-            if (this.rockClusterGenerator.createVariedRockCluster) {
-              this.rockClusterGenerator.createVariedRockCluster(
-                cluster,
-                rockVariation,
-                0,
-                // Placeholder functions - these would need to be properly implemented
-                (rockShape, rockSize) => new THREE.BoxGeometry(rockSize, rockSize, rockSize),
-                (geometry, rockShape, rockSize) => {},
-                (geometry, intensity, rockSize, rockShape) => {},
-                (geometry) => {}
-              );
-            }
-            
-            if (cluster.children.length > 0) {
+            const cluster = this.createOrganicRockCluster(organicPosition, rockVariation, region);
+            if (cluster && cluster.children.length > 0) {
               this.scene.add(cluster);
               features.push(cluster);
               
@@ -134,30 +118,97 @@ export class TerrainFeatureGenerator {
               this.enhancedRockSystem.registerRockFormation(region, organicPosition, rockVariation.sizeRange[1]);
             }
           } else {
-            // Single rock - create a simple rock geometry
-            const rockSize = rockVariation.sizeRange[0] + Math.random() * (rockVariation.sizeRange[1] - rockVariation.sizeRange[0]);
-            const geometry = new THREE.BoxGeometry(rockSize, rockSize, rockSize);
-            const material = new THREE.MeshStandardMaterial({ color: 0x666666 });
-            const rock = new THREE.Mesh(geometry, material);
-            
-            rock.position.copy(organicPosition);
-            rock.castShadow = true;
-            rock.receiveShadow = true;
-            
-            this.scene.add(rock);
-            features.push(rock);
-            
-            // Register with collision system
-            if (this.collisionRegistrationCallback) {
-              this.collisionRegistrationCallback(rock);
+            // Single organic rock
+            const rock = this.createOrganicSingleRock(organicPosition, rockVariation);
+            if (rock) {
+              this.scene.add(rock);
+              features.push(rock);
+              
+              // Register with collision system
+              if (this.collisionRegistrationCallback) {
+                this.collisionRegistrationCallback(rock);
+              }
+              
+              // Register with discovery zone manager  
+              this.enhancedRockSystem.registerRockFormation(region, organicPosition, rockVariation.sizeRange[1]);
             }
-            
-            // Register with discovery zone manager  
-            this.enhancedRockSystem.registerRockFormation(region, organicPosition, rockVariation.sizeRange[1]);
           }
         }
       }
     }
+    
+    console.log(`🪨 Generated ${features.length} rock features so far`);
+  }
+
+  private createOrganicRockCluster(
+    position: THREE.Vector3, 
+    rockVariation: any, 
+    region: RegionCoordinates
+  ): THREE.Group {
+    const cluster = new THREE.Group();
+    cluster.position.copy(position);
+    
+    const clusterSize = rockVariation.clusterSize 
+      ? Math.floor(Math.random() * (rockVariation.clusterSize[1] - rockVariation.clusterSize[0] + 1)) + rockVariation.clusterSize[0]
+      : 3;
+    
+    for (let i = 0; i < clusterSize; i++) {
+      const rockSize = rockVariation.sizeRange[0] + Math.random() * (rockVariation.sizeRange[1] - rockVariation.sizeRange[0]);
+      const rock = this.createOrganicSingleRock(new THREE.Vector3(0, 0, 0), rockVariation, rockSize);
+      
+      if (rock) {
+        // Position rocks in cluster
+        const angle = (i / clusterSize) * Math.PI * 2 + Math.random() * 0.5;
+        const distance = rockSize * (0.5 + Math.random() * 1.5);
+        rock.position.set(
+          Math.cos(angle) * distance,
+          rockSize * 0.1,
+          Math.sin(angle) * distance
+        );
+        
+        cluster.add(rock);
+      }
+    }
+    
+    return cluster;
+  }
+
+  private createOrganicSingleRock(
+    position: THREE.Vector3, 
+    rockVariation: any, 
+    customSize?: number
+  ): THREE.Object3D | null {
+    const rockSize = customSize || (rockVariation.sizeRange[0] + Math.random() * (rockVariation.sizeRange[1] - rockVariation.sizeRange[0]));
+    
+    // Select rock type based on size
+    let rockType: 'boulder' | 'angular' | 'flat';
+    if (rockSize < 0.3) {
+      rockType = Math.random() < 0.7 ? 'angular' : 'boulder';
+    } else if (rockSize < 1.0) {
+      rockType = Math.random() < 0.5 ? 'boulder' : 'angular';
+    } else {
+      rockType = Math.random() < 0.6 ? 'boulder' : (Math.random() < 0.7 ? 'angular' : 'flat');
+    }
+    
+    // Generate organic rock shape
+    const rockShape = RockShapeFactory.generateRock(rockType, rockSize, 0.6);
+    
+    // Create material
+    const material = RockMaterialGenerator.createRoleBasedMaterial(
+      rockVariation.category, 
+      ROCK_SHAPES[0], // Use first rock shape as default
+      0, 
+      'foundation'
+    );
+    
+    const rock = new THREE.Mesh(rockShape.geometry, material);
+    rock.position.copy(position);
+    rock.scale.copy(new THREE.Vector3(rockShape.scale, rockShape.scale, rockShape.scale));
+    rock.rotation.copy(rockShape.rotation);
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    
+    return rock;
   }
 
   private generateVegetation(
@@ -166,17 +217,19 @@ export class TerrainFeatureGenerator {
     ringDef: any, 
     features: THREE.Object3D[]
   ): void {
-    // Keep existing vegetation generation logic unchanged
+    // Improved vegetation generation with better coverage
     const vegetationDensity = this.getVegetationDensity(region.ringIndex);
     const searchRadius = region.ringIndex === 0 ? ringDef.outerRadius : 50;
-    const gridSize = 12;
+    const gridSize = 8; // Smaller grid for better bush coverage
+    
+    console.log(`🌿 Generating vegetation for region ${region.ringIndex}_${region.quadrant} with density ${vegetationDensity}`);
     
     for (let x = -searchRadius; x <= searchRadius; x += gridSize) {
       for (let z = -searchRadius; z <= searchRadius; z += gridSize) {
         const testPosition = new THREE.Vector3(
-          centerPosition.x + x + (Math.random() - 0.5) * 8,
+          centerPosition.x + x + (Math.random() - 0.5) * 6,
           0,
-          centerPosition.z + z + (Math.random() - 0.5) * 8
+          centerPosition.z + z + (Math.random() - 0.5) * 6
         );
         
         // Check if position is within the ring bounds using correct method
@@ -188,7 +241,7 @@ export class TerrainFeatureGenerator {
         }
         
         if (Math.random() < vegetationDensity) {
-          const vegetationType = Math.random() < 0.7 ? 'tree' : 'bush';
+          const vegetationType = Math.random() < 0.6 ? 'tree' : 'bush';
           let vegetation: THREE.Object3D | null = null;
           
           if (vegetationType === 'tree') {
@@ -208,16 +261,18 @@ export class TerrainFeatureGenerator {
         }
       }
     }
+    
+    console.log(`🌿 Generated vegetation, total features now: ${features.length}`);
   }
 
   private getVegetationDensity(ringIndex: number): number {
-    // Keep existing vegetation density logic
+    // Increased vegetation density for better coverage
     switch (ringIndex) {
-      case 0: return 0.15;
-      case 1: return 0.25;
-      case 2: return 0.35;
-      case 3: return 0.45;
-      default: return 0.20;
+      case 0: return 0.25;
+      case 1: return 0.35;
+      case 2: return 0.45;
+      case 3: return 0.55;
+      default: return 0.30;
     }
   }
 
