@@ -46,9 +46,9 @@ export class FireplaceComponent {
     const structureGroup = this.fireplaceGeometry.createFireplaceStructure();
     this.fireplaceGroup.add(structureGroup);
 
-    // Create surrounding rocks
+    // Create surrounding rocks with realistic campfire sizing
     this.fireplaceRocks = new FireplaceRocks(this.scene, this.physicsManager, new THREE.Vector3(0, 0, 0));
-    const rocksGroup = this.fireplaceRocks.createRockCircle(1.2, 10);
+    const rocksGroup = this.fireplaceRocks.createRockCircle(0.8, 8);
     this.fireplaceGroup.add(rocksGroup);
 
     // Create fire effects
