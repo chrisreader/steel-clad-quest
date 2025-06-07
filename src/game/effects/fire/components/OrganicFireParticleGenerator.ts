@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { FireShader } from '../shaders/FireShader';
 import { FireParticleConfig } from '../types/FireTypes';
@@ -104,7 +105,7 @@ export class OrganicFireParticleGenerator {
 
         // Reset particle if expired
         if (ages.array[i] >= lifetimes.array[i]) {
-          this.resetParticleData(i, name, config, positions, velocities, lifetimes, ages);
+          this.resetParticleData(i, name, config, positions.array as Float32Array, velocities.array as Float32Array, lifetimes.array as Float32Array, ages.array as Float32Array);
           particlesUpdated++;
         } else {
           // Update position with enhanced organic motion
