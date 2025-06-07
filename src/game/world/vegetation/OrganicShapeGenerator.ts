@@ -1,14 +1,97 @@
-
 import * as THREE from 'three';
 
 export class OrganicShapeGenerator {
-  private static noise3D(x: number, y: number, z: number): number {
-    // Simple 3D noise function using sine waves
-    return (
-      Math.sin(x * 2.5 + y * 1.7 + z * 3.1) * 0.3 +
-      Math.sin(x * 5.2 + y * 3.4 + z * 2.8) * 0.2 +
-      Math.sin(x * 8.1 + y * 6.3 + z * 4.7) * 0.1
-    ) * 0.5;
+  private static multiOctaveNoise3D(x: number, y: number, z: number): number {
+    // Multi-octave noise for smoother, more natural displacement
+    let value = 0;
+    let amplitude = 1;
+    let frequency = 1;
+    let maxValue = 0;
+    
+    // Use 4 octaves for smooth organic variation
+    for (let i = 0; i < 4; i++) {
+      const noise = (
+        Math.sin(x * frequency * 2.5 + y * frequency * 1.7 + z * frequency * 3.1) * 0.3 +
+        Math.sin(x * frequency * 5.2 + y * frequency * 3.4 + z * frequency * 2.8) * 0.2 +
+        Math.sin(x * frequency * 8.1 + y * frequency * 6.3 + z * frequency * 4.7) * 0.1
+      ) * 0.5;
+      
+      value += noise * amplitude;
+      maxValue += amplitude;
+      
+      amplitude *= 0.5;
+      frequency *= 2;
+    }
+    
+    return value / maxValue;
+  }
+
+  private static smoothInterpolation(t: number): number {
+    // Smooth step function for gentler transitions
+    return t * t * (3 - 2 * t);
+  }
+
+  private static applyLaplacianSmoothing(geometry: THREE.BufferGeometry, iterations: number = 2): void {
+    const positions = geometry.attributes.position;
+    const positionArray = positions.array as Float32Array;
+    const vertexCount = positions.count;
+    
+    // Build adjacency list for smoothing
+    const adjacency: number[][] = Array.from({ length: vertexCount }, () => []);
+    
+    if (geometry.index) {
+      const indices = geometry.index.array;
+      for (let i = 0; i < indices.length; i += 3) {
+        const a = indices[i];
+        const b = indices[i + 1];
+        const c = indices[i + 2];
+        
+        adjacency[a].push(b, c);
+        adjacency[b].push(a, c);
+        adjacency[c].push(a, b);
+      }
+    }
+    
+    // Apply Laplacian smoothing
+    for (let iter = 0; iter < iterations; iter++) {
+      const newPositions = new Float32Array(positionArray.length);
+      
+      for (let i = 0; i < vertexCount; i++) {
+        const neighbors = [...new Set(adjacency[i])]; // Remove duplicates
+        
+        if (neighbors.length > 0) {
+          let avgX = 0, avgY = 0, avgZ = 0;
+          
+          for (const neighborIndex of neighbors) {
+            avgX += positionArray[neighborIndex * 3];
+            avgY += positionArray[neighborIndex * 3 + 1];
+            avgZ += positionArray[neighborIndex * 3 + 2];
+          }
+          
+          avgX /= neighbors.length;
+          avgY /= neighbors.length;
+          avgZ /= neighbors.length;
+          
+          // Blend with original position (smoothing factor)
+          const smoothingFactor = 0.3;
+          newPositions[i * 3] = positionArray[i * 3] * (1 - smoothingFactor) + avgX * smoothingFactor;
+          newPositions[i * 3 + 1] = positionArray[i * 3 + 1] * (1 - smoothingFactor) + avgY * smoothingFactor;
+          newPositions[i * 3 + 2] = positionArray[i * 3 + 2] * (1 - smoothingFactor) + avgZ * smoothingFactor;
+        } else {
+          // Keep original position if no neighbors
+          newPositions[i * 3] = positionArray[i * 3];
+          newPositions[i * 3 + 1] = positionArray[i * 3 + 1];
+          newPositions[i * 3 + 2] = positionArray[i * 3 + 2];
+        }
+      }
+      
+      // Update positions
+      for (let i = 0; i < positionArray.length; i++) {
+        positionArray[i] = newPositions[i];
+      }
+    }
+    
+    positions.needsUpdate = true;
   }
 
   public static createOrganicGeometry(
@@ -16,43 +99,51 @@ export class OrganicShapeGenerator {
     deformationIntensity: number = 0.3,
     deformationScale: number = 2.0
   ): THREE.BufferGeometry {
-    // Start with icosahedron for more organic base than sphere
-    const geometry = new THREE.IcosahedronGeometry(baseRadius, 2);
+    // Increase subdivision to 4 for much smoother geometry (1,280 triangles)
+    // Larger bushes get even more subdivision for ultra-smooth surfaces
+    const subdivisionLevel = baseRadius > 1.0 ? 5 : 4;
+    const geometry = new THREE.IcosahedronGeometry(baseRadius, subdivisionLevel);
     
     if (deformationIntensity === 0) return geometry;
 
     const positions = geometry.attributes.position;
     const vertex = new THREE.Vector3();
 
-    // Apply organic deformation to each vertex
+    // Apply smooth organic deformation to each vertex
     for (let i = 0; i < positions.count; i++) {
       vertex.fromBufferAttribute(positions, i);
       
-      // Calculate noise-based displacement
-      const noise = this.noise3D(
+      // Calculate multi-octave noise-based displacement
+      const noise = this.multiOctaveNoise3D(
         vertex.x * deformationScale,
         vertex.y * deformationScale,
         vertex.z * deformationScale
       );
       
-      // Apply deformation along the vertex normal
+      // Apply smooth interpolation to the noise
+      const smoothNoise = this.smoothInterpolation(Math.abs(noise)) * Math.sign(noise);
+      
+      // Apply gentler deformation along the vertex normal
       const normalizedVertex = vertex.clone().normalize();
-      const displacement = normalizedVertex.multiplyScalar(noise * deformationIntensity * baseRadius);
+      const displacement = normalizedVertex.multiplyScalar(smoothNoise * deformationIntensity * baseRadius * 0.8);
       
       vertex.add(displacement);
       
-      // Add some random variation for more organic feel
+      // Add subtle random variation for organic feel (reduced intensity)
       const randomVariation = new THREE.Vector3(
-        (Math.random() - 0.5) * deformationIntensity * 0.3,
-        (Math.random() - 0.5) * deformationIntensity * 0.3,
-        (Math.random() - 0.5) * deformationIntensity * 0.3
+        (Math.random() - 0.5) * deformationIntensity * 0.15,
+        (Math.random() - 0.5) * deformationIntensity * 0.15,
+        (Math.random() - 0.5) * deformationIntensity * 0.15
       );
       
       vertex.add(randomVariation);
       positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
 
-    // Recalculate normals for proper lighting
+    // Apply Laplacian smoothing to eliminate sharp edges
+    this.applyLaplacianSmoothing(geometry, 2);
+
+    // Recalculate normals for smooth lighting
     geometry.computeVertexNormals();
     
     return geometry;

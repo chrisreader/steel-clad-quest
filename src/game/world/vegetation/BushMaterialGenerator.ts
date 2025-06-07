@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class BushMaterialGenerator {
@@ -16,10 +15,11 @@ export class BushMaterialGenerator {
       metalness: 0.0,
       transparent: true,
       opacity: 0.92 + Math.random() * 0.06, // Slight opacity variation
+      flatShading: false, // Explicitly ensure smooth shading
     });
 
-    // Add subtle normal map variation for surface detail
-    this.addSurfaceDetail(material, bushType);
+    // Add enhanced surface detail for smooth organic appearance
+    this.addEnhancedSurfaceDetail(material, bushType);
     
     return material;
   }
@@ -53,23 +53,32 @@ export class BushMaterialGenerator {
     return color;
   }
 
-  private static addSurfaceDetail(material: THREE.MeshStandardMaterial, bushType: string): void {
-    // Create subtle normal variation to simulate leaf texture
+  private static addEnhancedSurfaceDetail(material: THREE.MeshStandardMaterial, bushType: string): void {
+    // Create enhanced normal variation for smooth organic leaf texture
     const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
+    canvas.width = 64; // Higher resolution for smoother detail
+    canvas.height = 64;
     const ctx = canvas.getContext('2d')!;
     
-    // Generate noise pattern for normal map
-    const imageData = ctx.createImageData(32, 32);
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      const noise = Math.random();
-      const value = 128 + (noise - 0.5) * 50; // Subtle normal variation
-      
-      imageData.data[i] = value;     // R
-      imageData.data[i + 1] = value; // G  
-      imageData.data[i + 2] = 255;   // B (Z component)
-      imageData.data[i + 3] = 255;   // A
+    // Generate smooth noise pattern for normal map
+    const imageData = ctx.createImageData(64, 64);
+    for (let y = 0; y < 64; y++) {
+      for (let x = 0; x < 64; x++) {
+        const index = (y * 64 + x) * 4;
+        
+        // Create smooth organic surface variation
+        const noise1 = Math.sin(x * 0.2) * Math.cos(y * 0.15) * 0.3;
+        const noise2 = Math.sin(x * 0.1 + y * 0.1) * 0.2;
+        const noise3 = Math.sin(x * 0.05) * Math.sin(y * 0.08) * 0.1;
+        
+        const combinedNoise = noise1 + noise2 + noise3;
+        const normalValue = 128 + combinedNoise * 25; // Subtle normal variation
+        
+        imageData.data[index] = normalValue;     // R
+        imageData.data[index + 1] = normalValue; // G  
+        imageData.data[index + 2] = 255;         // B (Z component)
+        imageData.data[index + 3] = 255;         // A
+      }
     }
     
     ctx.putImageData(imageData, 0, 0);
@@ -77,17 +86,50 @@ export class BushMaterialGenerator {
     const normalTexture = new THREE.CanvasTexture(canvas);
     normalTexture.wrapS = THREE.RepeatWrapping;
     normalTexture.wrapT = THREE.RepeatWrapping;
-    normalTexture.repeat.set(2, 2);
+    normalTexture.repeat.set(3, 3); // More detailed tiling
     
     material.normalMap = normalTexture;
-    material.normalScale = new THREE.Vector2(0.3, 0.3); // Subtle normal effect
+    material.normalScale = new THREE.Vector2(0.4, 0.4); // Enhanced but subtle normal effect
+    
+    // Add roughness map for organic surface variation
+    this.addRoughnessMap(material);
+  }
+
+  private static addRoughnessMap(material: THREE.MeshStandardMaterial): void {
+    // Create organic roughness variation
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d')!;
+    
+    const imageData = ctx.createImageData(32, 32);
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      // Organic roughness variation for leaf-like surfaces
+      const noise = Math.sin(i * 0.01) * Math.cos(i * 0.008) * 0.3 + 0.7;
+      const roughnessValue = Math.floor(noise * 255);
+      
+      imageData.data[i] = roughnessValue;     // R
+      imageData.data[i + 1] = roughnessValue; // G
+      imageData.data[i + 2] = roughnessValue; // B
+      imageData.data[i + 3] = 255;           // A
+    }
+    
+    ctx.putImageData(imageData, 0, 0);
+    
+    const roughnessTexture = new THREE.CanvasTexture(canvas);
+    roughnessTexture.wrapS = THREE.RepeatWrapping;
+    roughnessTexture.wrapT = THREE.RepeatWrapping;
+    roughnessTexture.repeat.set(2, 2);
+    
+    material.roughnessMap = roughnessTexture;
   }
 
   public static createStemMaterial(): THREE.MeshStandardMaterial {
     return new THREE.MeshStandardMaterial({
       color: new THREE.Color().setHSL(0.08, 0.4, 0.25), // Brown stem
       roughness: 0.95,
-      metalness: 0.0
+      metalness: 0.0,
+      flatShading: false // Ensure smooth stem shading
     });
   }
 
@@ -101,7 +143,8 @@ export class BushMaterialGenerator {
       roughness: 0.2,
       metalness: 0.0,
       transparent: true,
-      opacity: 0.9
+      opacity: 0.9,
+      flatShading: false // Smooth berry surfaces
     });
   }
 }
