@@ -45,7 +45,7 @@ export const BUSH_SPECIES_CONFIGS: Record<BushSpeciesType, BushSpeciesConfig> = 
   [BushSpeciesType.SPRAWLING_GROUND]: {
     name: 'Sprawling Ground Cover',
     type: BushSpeciesType.SPRAWLING_GROUND,
-    sizeRange: [1.0, 2.0],
+    sizeRange: [0.8, 1.4], // Reduced from 1.0-2.0 to 0.8-1.4 for more realistic size
     heightRange: [0.2, 0.4],
     layerCountRange: [3, 5],
     growthPattern: 'spreading',

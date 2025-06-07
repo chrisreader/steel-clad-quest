@@ -39,7 +39,7 @@ export class BushGenerator {
     const bushGroup = new THREE.Group();
     bushGroup.userData = { species: species.type, variation: variationIndex };
     
-    // Calculate bush dimensions with enhanced variation
+    // Calculate bush dimensions with more realistic variation
     const baseRadius = species.sizeRange[0] + 
       Math.random() * (species.sizeRange[1] - species.sizeRange[0]);
     
@@ -93,32 +93,32 @@ export class BushGenerator {
     
     switch (species.growthPattern) {
       case 'compact':
-        layerRadius = baseRadius * (1.4 - layerProgress * 0.6); // More pronounced size variation
+        layerRadius = baseRadius * (1.3 - layerProgress * 0.5); // Reduced from 1.4-0.6 to 1.3-0.5
         layerHeight = layerProgress * maxHeight;
         break;
       case 'spreading':
-        layerRadius = baseRadius * (1.0 + layerProgress * 0.6); // Wider spreading
+        layerRadius = baseRadius * (1.0 + layerProgress * 0.4); // Reduced from 0.6 to 0.4
         layerHeight = maxHeight * 0.3 + layerProgress * 0.4;
         break;
       case 'upright':
-        layerRadius = baseRadius * (1.3 - layerProgress * 0.5);
-        layerHeight = layerProgress * maxHeight * 1.3; // Taller growth
+        layerRadius = baseRadius * (1.2 - layerProgress * 0.4); // Reduced from 1.3-0.5 to 1.2-0.4
+        layerHeight = layerProgress * maxHeight * 1.2; // Reduced from 1.3 to 1.2
         break;
       case 'cascading':
-        layerRadius = baseRadius * (1.2 + Math.sin(layerProgress * Math.PI) * 0.4);
+        layerRadius = baseRadius * (1.1 + Math.sin(layerProgress * Math.PI) * 0.3); // Reduced from 1.2 and 0.4 to 1.1 and 0.3
         layerHeight = layerProgress * maxHeight * 0.9;
         break;
       default:
-        layerRadius = baseRadius * (1.3 - layerProgress * 0.5);
+        layerRadius = baseRadius * (1.2 - layerProgress * 0.4); // Reduced from 1.3-0.5 to 1.2-0.4
         layerHeight = layerProgress * maxHeight;
     }
 
-    // Much more enhanced organic deformation
-    const segments = 16 + layerIndex * 2; // 16-22 segments for excellent detail
-    const noiseIntensity = 0.25 + (species.leafDensity * 0.15); // Much higher noise intensity
-    const noiseFrequency = 2.5 + layerIndex * 0.8;
+    // Much more subtle organic deformation
+    const segments = 14 + layerIndex * 1; // Reduced from 16+2 to 14+1 for better performance
+    const noiseIntensity = 0.08 + (species.leafDensity * 0.05); // Reduced from 0.25+0.15 to 0.08+0.05
+    const noiseFrequency = 2.0 + layerIndex * 0.5; // Reduced from 2.5+0.8 to 2.0+0.5
 
-    // Create highly organic geometry
+    // Create subtly organic geometry
     const geometry = OrganicShapeGenerator.createOrganicSphere(
       layerRadius,
       segments,
@@ -131,17 +131,17 @@ export class BushGenerator {
 
     const mesh = new THREE.Mesh(geometry, material);
 
-    // Enhanced natural positioning with more variation
-    const horizontalOffset = (Math.random() - 0.5) * baseRadius * 0.3;
-    const depthOffset = (Math.random() - 0.5) * baseRadius * 0.3;
-    const heightVariation = (Math.random() - 0.5) * maxHeight * 0.15;
+    // More subtle natural positioning
+    const horizontalOffset = (Math.random() - 0.5) * baseRadius * 0.2; // Reduced from 0.3 to 0.2
+    const depthOffset = (Math.random() - 0.5) * baseRadius * 0.2; // Reduced from 0.3 to 0.2
+    const heightVariation = (Math.random() - 0.5) * maxHeight * 0.1; // Reduced from 0.15 to 0.1
     
     mesh.position.set(horizontalOffset, layerHeight + heightVariation, depthOffset);
 
-    // Enhanced natural rotation and tilt
+    // More subtle natural rotation and tilt
     mesh.rotation.y = Math.random() * Math.PI * 2;
-    mesh.rotation.x = (Math.random() - 0.5) * 0.15;
-    mesh.rotation.z = (Math.random() - 0.5) * 0.15;
+    mesh.rotation.x = (Math.random() - 0.5) * 0.1; // Reduced from 0.15 to 0.1
+    mesh.rotation.z = (Math.random() - 0.5) * 0.1; // Reduced from 0.15 to 0.1
 
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -171,9 +171,9 @@ export class BushGenerator {
     const modelIndex = Math.floor(Math.random() * models.length);
     const model = models[modelIndex].clone();
     
-    // Natural scaling and rotation
+    // More realistic scaling and rotation
     model.rotation.y = Math.random() * Math.PI * 2;
-    const scale = 0.8 + Math.random() * 0.6; // 0.8-1.4 scale range
+    const scale = 0.9 + Math.random() * 0.2; // Reduced from 0.8-1.4 to 0.9-1.1 range
     model.scale.setScalar(scale);
     
     model.position.copy(position);
