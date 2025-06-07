@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { OrganicFireParticleGenerator } from './components/OrganicFireParticleGenerator';
 import { FireLightingSystem } from './components/FireLightingSystem';
@@ -30,7 +29,7 @@ export class FireEffectsManager {
 
     console.log('🔥 Starting enhanced organic fire effects at position:', this.position);
 
-    // Initialize organic particle generator
+    // Initialize ONLY organic particle generator - no static fire system
     this.particleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
     
     // Add different particle types based on config
@@ -71,7 +70,7 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    console.log('🔥 Enhanced organic fire effects system fully initialized');
+    console.log('🔥 Enhanced organic fire effects system fully initialized (static fire system removed)');
   }
 
   public update(deltaTime: number): void {
