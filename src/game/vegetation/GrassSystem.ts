@@ -215,10 +215,14 @@ export class GrassSystem {
       biomeInfo.type
     );
     
-    // Apply ground grass height reductions
+    // Apply ground grass height reductions with terrain variation
     for (let i = 0; i < grassData.scales.length; i++) {
-      const heightVariation = 0.8 + Math.random() * 0.4; // Less height variation for ground
-      grassData.scales[i].y *= groundConfig.heightReduction * heightVariation;
+      // The scale.y already contains terrain height variation from EnvironmentalGrassDistribution
+      const terrainHeightVariation = grassData.scales[i].y;
+      const additionalHeightVariation = 0.8 + Math.random() * 0.4; // Less variation for ground grass
+      
+      // Apply ground height reduction while preserving terrain variation
+      grassData.scales[i].y = terrainHeightVariation * groundConfig.heightReduction * additionalHeightVariation;
     }
     
     return grassData;
@@ -321,9 +325,14 @@ export class GrassSystem {
       biomeInfo
     );
     
+    // Apply biome height multiplier with existing terrain height variation
     for (let i = 0; i < grassData.scales.length; i++) {
-      const heightVariation = 0.7 + Math.random() * 0.6;
-      grassData.scales[i].y *= biomeConfig.heightMultiplier * heightVariation;
+      // The scale.y already contains terrain height variation from EnvironmentalGrassDistribution
+      const terrainHeightVariation = grassData.scales[i].y;
+      const additionalHeightVariation = 0.7 + Math.random() * 0.6;
+      
+      // Combine terrain variation with biome configuration and random variation
+      grassData.scales[i].y = terrainHeightVariation * biomeConfig.heightMultiplier * additionalHeightVariation;
     }
     
     return grassData;
