@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { FireplaceGeometry } from './FireplaceGeometry';
 import { FireplaceRocks } from './FireplaceRocks';
@@ -46,9 +45,9 @@ export class FireplaceComponent {
     const structureGroup = this.fireplaceGeometry.createFireplaceStructure();
     this.fireplaceGroup.add(structureGroup);
 
-    // Create surrounding rocks with realistic campfire sizing
+    // Create surrounding rocks with realistic campfire sizing - doubled rock count
     this.fireplaceRocks = new FireplaceRocks(this.scene, this.physicsManager, new THREE.Vector3(0, 0, 0));
-    const rocksGroup = this.fireplaceRocks.createRockCircle(0.8, 8);
+    const rocksGroup = this.fireplaceRocks.createRockCircle(0.8, 16);
     this.fireplaceGroup.add(rocksGroup);
 
     // Create fire effects
