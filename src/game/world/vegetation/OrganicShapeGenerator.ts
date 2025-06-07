@@ -7,19 +7,23 @@ export class OrganicShapeGenerator {
    */
   static createOrganicSphere(
     radius: number,
-    segments: number = 16,
+    segments: number = 20, // Increased default for finer detail
     noiseIntensity: number = 0.05,
     noiseFrequency: number = 4.0
   ): THREE.BufferGeometry {
-    const geometry = new THREE.SphereGeometry(radius, segments, segments);
+    // Ensure segments are within the fine-detail range
+    const clampedSegments = Math.max(16, Math.min(24, segments));
+    const geometry = new THREE.SphereGeometry(radius, clampedSegments, clampedSegments);
     
+    // Apply 2-pass noise for primary + secondary deformation
     this.applyBushNoise(geometry, noiseIntensity, noiseFrequency);
+    this.applySecondaryNoise(geometry, noiseIntensity * 0.5, noiseFrequency * 2);
     
     return geometry;
   }
 
   /**
-   * Applies natural noise deformation to geometry vertices
+   * Applies natural noise deformation to geometry vertices (primary pass)
    */
   static applyBushNoise(
     geometry: THREE.BufferGeometry, 
@@ -46,6 +50,35 @@ export class OrganicShapeGenerator {
       // Apply noise along the normal direction
       const normal = vertex.clone().normalize();
       vertex.addScaledVector(normal, totalNoise);
+      
+      position.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    }
+
+    position.needsUpdate = true;
+    geometry.computeVertexNormals();
+  }
+
+  /**
+   * Applies secondary fine-detail noise deformation
+   */
+  static applySecondaryNoise(
+    geometry: THREE.BufferGeometry,
+    intensity: number = 0.025,
+    frequency: number = 8.0
+  ): void {
+    const position = geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+
+    for (let i = 0; i < position.count; i++) {
+      vertex.fromBufferAttribute(position, i);
+      
+      // High-frequency detail noise
+      const detailNoise = Math.sin(vertex.x * frequency + vertex.z * frequency * 0.7) * 
+                         Math.cos(vertex.y * frequency * 1.1) * 0.3;
+      
+      // Apply detail noise
+      const normal = vertex.clone().normalize();
+      vertex.addScaledVector(normal, detailNoise * intensity);
       
       position.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
@@ -84,5 +117,50 @@ export class OrganicShapeGenerator {
 
     position.needsUpdate = true;
     geometry.computeVertexNormals();
+  }
+
+  /**
+   * Creates an alpha-textured leaf plane with natural-looking silhouette
+   */
+  static createLeafGeometry(size: number = 0.1): THREE.PlaneGeometry {
+    const geometry = new THREE.PlaneGeometry(size, size * 1.2);
+    return geometry;
+  }
+
+  /**
+   * Generates a procedural leaf texture with natural edge fade
+   */
+  static createLeafTexture(): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Clear with transparent background
+    ctx.clearRect(0, 0, 64, 64);
+    
+    // Create radial gradient for natural leaf shape
+    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, 'rgba(60, 120, 40, 1)');
+    gradient.addColorStop(0.6, 'rgba(40, 100, 30, 0.8)');
+    gradient.addColorStop(0.85, 'rgba(30, 80, 20, 0.4)');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    
+    // Draw leaf shape
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.ellipse(32, 32, 28, 30, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add leaf vein detail
+    ctx.strokeStyle = 'rgba(20, 60, 10, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(32, 10);
+    ctx.lineTo(32, 54);
+    ctx.stroke();
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+    return texture;
   }
 }

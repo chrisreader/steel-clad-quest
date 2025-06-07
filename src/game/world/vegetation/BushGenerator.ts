@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BUSH_CONFIG } from './VegetationConfig';
 import { OrganicShapeGenerator } from './OrganicShapeGenerator';
@@ -6,8 +5,10 @@ import { RealisticMaterialGenerator } from './RealisticMaterialGenerator';
 
 export class BushGenerator {
   private bushModels: THREE.Object3D[] = [];
+  private leafTexture: THREE.Texture;
 
   constructor() {
+    this.leafTexture = OrganicShapeGenerator.createLeafTexture();
     this.loadBushModels();
   }
 
@@ -18,7 +19,7 @@ export class BushGenerator {
       this.bushModels.push(bush);
     }
     
-    console.log(`🌿 Created ${this.bushModels.length} realistic bush variations`);
+    console.log(`🌿 Created ${this.bushModels.length} realistic bush variations with fine detail`);
   }
 
   private createOrganicBush(bushIndex: number): THREE.Group {
@@ -31,14 +32,17 @@ export class BushGenerator {
     const height = BUSH_CONFIG.heightRange[0] + 
       Math.random() * (BUSH_CONFIG.heightRange[1] - BUSH_CONFIG.heightRange[0]);
     
-    const layerCount = BUSH_CONFIG.layerCountRange[0] + 
-      Math.floor(Math.random() * (BUSH_CONFIG.layerCountRange[1] - BUSH_CONFIG.layerCountRange[0] + 1));
+    // Create 3-5 layered blob structure
+    const layerCount = 3 + Math.floor(Math.random() * 3); // 3-5 layers
 
-    // Create organic layers
+    // Create organic blob layers (lower = larger)
     for (let layerIndex = 0; layerIndex < layerCount; layerIndex++) {
       const layer = this.createBushLayer(bushIndex, layerIndex, layerCount, baseRadius, height);
       bushGroup.add(layer);
     }
+
+    // Add leaf overlay for fine detail
+    this.addLeafOverlay(bushGroup, baseRadius, height, bushIndex);
 
     // Add stems with natural branching
     if (Math.random() < BUSH_CONFIG.stemChance) {
@@ -63,19 +67,18 @@ export class BushGenerator {
     baseRadius: number, 
     maxHeight: number
   ): THREE.Mesh {
-    // Layer size decreases toward top
+    // Layer size decreases toward top (lower = larger)
     const layerProgress = layerIndex / (totalLayers - 1);
-    const layerRadius = baseRadius * (1.2 - layerProgress * 0.5); // 1.2 to 0.7 of base
+    const layerRadius = baseRadius * (1.3 - layerProgress * 0.6); // 1.3 to 0.7 of base
     
-    // Determine segments for this layer
-    const segments = BUSH_CONFIG.segmentRange[0] + 
-      Math.floor(Math.random() * (BUSH_CONFIG.segmentRange[1] - BUSH_CONFIG.segmentRange[0] + 1));
+    // Use 16-24 segments for fine detail
+    const segments = 16 + Math.floor(Math.random() * 9); // 16-24
     
     // Noise intensity varies by layer
     const noiseIntensity = BUSH_CONFIG.noiseIntensityRange[0] + 
       Math.random() * (BUSH_CONFIG.noiseIntensityRange[1] - BUSH_CONFIG.noiseIntensityRange[0]);
     
-    // Create organic geometry
+    // Create organic geometry with 2-pass noise
     const geometry = OrganicShapeGenerator.createOrganicSphere(
       layerRadius, 
       segments, 
@@ -87,7 +90,7 @@ export class BushGenerator {
     const droopIntensity = BUSH_CONFIG.droopIntensity * (1 - layerProgress * 0.5);
     OrganicShapeGenerator.applyDroopEffect(geometry, droopIntensity);
 
-    // Create realistic material
+    // Create realistic material with MeshPhysicalMaterial
     const material = RealisticMaterialGenerator.createFoliageMaterial(bushIndex, layerIndex);
 
     const mesh = new THREE.Mesh(geometry, material);
@@ -102,8 +105,10 @@ export class BushGenerator {
       (Math.random() - 0.5) * baseRadius * 0.2
     );
 
-    // Apply asymmetric scaling
+    // Apply slight scale and material variance
+    const scaleVariance = 0.9 + Math.random() * 0.2; // 0.9 - 1.1
     const scale = OrganicShapeGenerator.createAsymmetricScale();
+    scale.multiplyScalar(scaleVariance);
     mesh.scale.copy(scale);
 
     // Natural rotation
@@ -117,6 +122,52 @@ export class BushGenerator {
     mesh.receiveShadow = true;
 
     return mesh;
+  }
+
+  /**
+   * Adds scattered leaf overlay for fine surface detail
+   */
+  private addLeafOverlay(
+    bushGroup: THREE.Group, 
+    baseRadius: number, 
+    height: number, 
+    bushIndex: number
+  ): void {
+    const leafCount = 40 + Math.floor(Math.random() * 21); // 40-60 leaves
+    const leafMaterial = RealisticMaterialGenerator.createLeafMaterial(bushIndex, this.leafTexture);
+    
+    for (let i = 0; i < leafCount; i++) {
+      const leafSize = 0.08 + Math.random() * 0.04; // 0.08 - 0.12
+      const leafGeometry = OrganicShapeGenerator.createLeafGeometry(leafSize);
+      const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+      
+      // Random position around bush surface
+      const angle = Math.random() * Math.PI * 2;
+      const radius = baseRadius * (0.7 + Math.random() * 0.4); // 0.7 - 1.1 of bush radius
+      const leafHeight = height * Math.random();
+      
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      
+      leaf.position.set(x, leafHeight, z);
+      
+      // Align leaf roughly outward from bush center
+      const direction = new THREE.Vector3(x, 0, z).normalize();
+      leaf.lookAt(leaf.position.clone().add(direction));
+      
+      // Add random rotation variation
+      leaf.rotation.x += (Math.random() - 0.5) * 0.5;
+      leaf.rotation.y += (Math.random() - 0.5) * 0.3;
+      leaf.rotation.z += (Math.random() - 0.5) * 0.4;
+      
+      // Random scale
+      const leafScale = 0.8 + Math.random() * 0.4;
+      leaf.scale.set(leafScale, leafScale, leafScale);
+      
+      leaf.castShadow = true;
+      leaf.receiveShadow = true;
+      bushGroup.add(leaf);
+    }
   }
 
   private addRealisticStems(bushGroup: THREE.Group, baseRadius: number, height: number): void {
@@ -224,5 +275,9 @@ export class BushGenerator {
       });
     });
     this.bushModels.length = 0;
+    
+    if (this.leafTexture) {
+      this.leafTexture.dispose();
+    }
   }
 }
