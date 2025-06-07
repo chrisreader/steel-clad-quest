@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { FireLightConfig } from '../types/FireTypes';
 import { TimeAwareFireIntensity } from './TimeAwareFireIntensity';
@@ -18,7 +17,7 @@ export class FireLightingSystem {
     this.position = position.clone();
     this.config = config;
     this.timeAwareIntensity = new TimeAwareFireIntensity(config.baseIntensity);
-    this.createLights();
+    this.createMassiveLightingSystem();
   }
 
   public setGameTime(gameTime: number, timePhases: any): void {
@@ -26,67 +25,113 @@ export class FireLightingSystem {
     this.gameTimePhases = timePhases;
   }
 
-  private createLights(): void {
-    // Primary fire light with massive range to cover entire tavern (40 units)
+  private createMassiveLightingSystem(): void {
+    // 1. Primary ULTRA-BRIGHT fire light (10.0 intensity, 50 units)
     const primaryLight = new THREE.PointLight(
       this.config.color,
-      this.config.baseIntensity,
-      40 // Covers entire tavern + 15 units outside
+      10.0, // Massively increased from 5.0
+      50
     );
     primaryLight.position.copy(this.position);
     primaryLight.position.y += 0.5;
     primaryLight.castShadow = this.config.castShadow;
     
     if (primaryLight.castShadow) {
-      primaryLight.shadow.mapSize.width = 2048;
-      primaryLight.shadow.mapSize.height = 2048;
+      primaryLight.shadow.mapSize.width = 4096; // Increased shadow quality
+      primaryLight.shadow.mapSize.height = 4096;
       primaryLight.shadow.bias = -0.0005;
       primaryLight.shadow.camera.near = 0.1;
-      primaryLight.shadow.camera.far = 40; // Match light distance
+      primaryLight.shadow.camera.far = 50;
     }
 
     this.lights.push(primaryLight);
     this.scene.add(primaryLight);
 
-    // Large ambient glow light for tavern-wide soft illumination (35 units)
-    const ambientLight = new THREE.PointLight(
+    // 2. MASSIVE doorway spillover light positioned at tavern entrance
+    const doorwayLight = new THREE.PointLight(
       this.config.color,
-      this.config.baseIntensity * 0.6,
-      35 // 40 * 0.875 for softer coverage
+      8.0, // Very bright for dramatic spillover
+      80 // Huge range for landscape coverage
     );
-    ambientLight.position.copy(this.position);
-    ambientLight.position.y += 0.3;
-    ambientLight.castShadow = true;
+    doorwayLight.position.set(this.position.x, this.position.y + 2, this.position.z + 6); // At doorway
+    doorwayLight.castShadow = true;
     
-    if (ambientLight.castShadow) {
-      ambientLight.shadow.mapSize.width = 1024;
-      ambientLight.shadow.mapSize.height = 1024;
-      ambientLight.shadow.bias = -0.0003;
-      ambientLight.shadow.camera.near = 0.1;
-      ambientLight.shadow.camera.far = 35; // Match light distance
+    if (doorwayLight.castShadow) {
+      doorwayLight.shadow.mapSize.width = 2048;
+      doorwayLight.shadow.mapSize.height = 2048;
+      doorwayLight.shadow.bias = -0.0003;
+      doorwayLight.shadow.camera.near = 0.1;
+      doorwayLight.shadow.camera.far = 80;
     }
 
-    this.lights.push(ambientLight);
-    this.scene.add(ambientLight);
+    this.lights.push(doorwayLight);
+    this.scene.add(doorwayLight);
 
-    // Massive volumetric atmospheric light for exterior glow (50 units)
+    // 3. ULTRA-MASSIVE atmospheric beacon light (100+ unit range)
+    const atmosphericBeacon = new THREE.PointLight(
+      this.config.color,
+      6.0, // Strong atmospheric presence
+      120 // Extreme range for distant visibility
+    );
+    atmosphericBeacon.position.copy(this.position);
+    atmosphericBeacon.position.y += 4.0; // High elevation for beacon effect
+    atmosphericBeacon.castShadow = false; // Pure atmosphere
+
+    this.lights.push(atmosphericBeacon);
+    this.scene.add(atmosphericBeacon);
+
+    // 4. Ground-level landscape spillover light
+    const groundSpillover = new THREE.PointLight(
+      this.config.color,
+      7.0, // Very bright for ground illumination
+      75 // Wide ground coverage
+    );
+    groundSpillover.position.copy(this.position);
+    groundSpillover.position.y = 0.2; // Just above ground
+    groundSpillover.castShadow = true;
+
+    if (groundSpillover.castShadow) {
+      groundSpillover.shadow.mapSize.width = 1024;
+      groundSpillover.shadow.mapSize.height = 1024;
+      groundSpillover.shadow.bias = -0.0002;
+      groundSpillover.shadow.camera.near = 0.1;
+      groundSpillover.shadow.camera.far = 75;
+    }
+
+    this.lights.push(groundSpillover);
+    this.scene.add(groundSpillover);
+
+    // 5. Enhanced volumetric atmospheric light (massive range)
     const volumetricLight = new THREE.PointLight(
       this.config.color,
-      this.config.baseIntensity * 0.8,
-      50 // 40 * 1.25 for maximum atmospheric reach
+      5.0, // Strong volumetric presence
+      100 // Extreme atmospheric reach
     );
     volumetricLight.position.copy(this.position);
     volumetricLight.position.y += 0.8;
-    volumetricLight.castShadow = false; // For atmosphere only
+    volumetricLight.castShadow = false;
 
     this.lights.push(volumetricLight);
     this.scene.add(volumetricLight);
 
-    // Enhanced ember sparkle light with extended range (30 units)
+    // 6. Elevated chimney glow effect
+    const chimneyGlow = new THREE.PointLight(
+      0xFF7700, // Slightly more orange for chimney effect
+      4.0,
+      90 // Wide chimney glow coverage
+    );
+    chimneyGlow.position.copy(this.position);
+    chimneyGlow.position.y += 8.0; // High above tavern roof
+    chimneyGlow.castShadow = false;
+
+    this.lights.push(chimneyGlow);
+    this.scene.add(chimneyGlow);
+
+    // 7. Enhanced ember sparkle light with extended range
     const emberLight = new THREE.PointLight(
       0xFF4400,
-      this.config.baseIntensity * 0.4,
-      30 // 40 * 0.75 for good sparkle coverage
+      3.0, // Reduced to not compete with main lights
+      40
     );
     emberLight.position.copy(this.position);
     emberLight.position.y += 1.0;
@@ -95,11 +140,11 @@ export class FireLightingSystem {
     this.lights.push(emberLight);
     this.scene.add(emberLight);
 
-    // Rim lighting for tavern-wide object definition (25 units)
+    // 8. Rim lighting for object definition
     const rimLight = new THREE.PointLight(
       0xFFAA33,
-      this.config.baseIntensity * 0.3,
-      25 // 40 * 0.625 for object definition
+      2.5, // Balanced for object definition
+      35
     );
     rimLight.position.copy(this.position);
     rimLight.position.y += 0.2;
@@ -108,7 +153,7 @@ export class FireLightingSystem {
     this.lights.push(rimLight);
     this.scene.add(rimLight);
 
-    console.log('🔥 Massive fire lighting system created - covers entire tavern + exterior (50 unit range)');
+    console.log('🔥 MASSIVE fire lighting system created - extreme landscape coverage (120+ unit range with 10.0 intensity)');
   }
 
   public update(deltaTime: number): void {
@@ -120,48 +165,85 @@ export class FireLightingSystem {
       adjustedBaseIntensity = this.timeAwareIntensity.getAdjustedIntensity(this.currentGameTime, this.gameTimePhases);
     }
 
-    // Primary light enhanced flickering with realistic pattern
+    // Primary ultra-bright light with enhanced flickering
     const primaryLight = this.lights[0];
     if (primaryLight) {
-      const flicker1 = Math.sin(this.time * 2.5) * 0.15;
-      const flicker2 = Math.sin(this.time * 4.1) * 0.08;
-      const flicker3 = Math.sin(this.time * 6.3) * 0.05;
+      const flicker1 = Math.sin(this.time * 2.5) * 0.2;
+      const flicker2 = Math.sin(this.time * 4.1) * 0.1;
+      const flicker3 = Math.sin(this.time * 6.3) * 0.08;
       
       const intensityVariation = flicker1 + flicker2 + flicker3;
       primaryLight.intensity = Math.max(
-        adjustedBaseIntensity * 0.8,
+        8.0, // Minimum very bright
         Math.min(
-          this.config.maxIntensity * (adjustedBaseIntensity / this.config.baseIntensity),
-          adjustedBaseIntensity + intensityVariation
+          12.0, // Maximum extremely bright
+          10.0 + intensityVariation * (adjustedBaseIntensity / this.config.baseIntensity)
         )
       );
 
-      // Enhanced position flickering for more realism
-      primaryLight.position.x = this.position.x + Math.sin(this.time * 3) * 0.03;
-      primaryLight.position.z = this.position.z + Math.cos(this.time * 2.7) * 0.03;
+      primaryLight.position.x = this.position.x + Math.sin(this.time * 3) * 0.04;
+      primaryLight.position.z = this.position.z + Math.cos(this.time * 2.7) * 0.04;
     }
 
-    // Ambient light synchronized variation
-    const ambientLight = this.lights[1];
-    if (ambientLight) {
-      const ambientFlicker = Math.sin(this.time * 1.8) * 0.04;
-      ambientLight.intensity = adjustedBaseIntensity * 0.6 + ambientFlicker;
+    // Doorway spillover light with dramatic flickering
+    const doorwayLight = this.lights[1];
+    if (doorwayLight) {
+      const doorwayFlicker = Math.sin(this.time * 2.2) * 0.15;
+      doorwayLight.intensity = Math.max(
+        6.0, // Minimum bright spillover
+        8.0 + doorwayFlicker * (adjustedBaseIntensity / this.config.baseIntensity)
+      );
+      
+      // Subtle position variation for realism
+      doorwayLight.position.x = this.position.x + Math.sin(this.time * 1.8) * 0.02;
     }
 
-    // Volumetric light slow atmospheric breathing
-    const volumetricLight = this.lights[2];
+    // Atmospheric beacon with slow breathing
+    const atmosphericBeacon = this.lights[2];
+    if (atmosphericBeacon) {
+      const beaconFlicker = Math.sin(this.time * 1.5) * 0.1;
+      atmosphericBeacon.intensity = Math.max(
+        4.0,
+        6.0 + beaconFlicker * (adjustedBaseIntensity / this.config.baseIntensity)
+      );
+    }
+
+    // Ground spillover with synchronized variation
+    const groundSpillover = this.lights[3];
+    if (groundSpillover) {
+      const groundFlicker = Math.sin(this.time * 2.0) * 0.12;
+      groundSpillover.intensity = Math.max(
+        5.0,
+        7.0 + groundFlicker * (adjustedBaseIntensity / this.config.baseIntensity)
+      );
+    }
+
+    // Update remaining lights with enhanced effects
+    const volumetricLight = this.lights[4];
     if (volumetricLight) {
-      const volumetricFlicker = Math.sin(this.time * 1.2) * 0.06;
-      volumetricLight.intensity = adjustedBaseIntensity * 0.8 + volumetricFlicker;
+      const volumetricFlicker = Math.sin(this.time * 1.2) * 0.08;
+      volumetricLight.intensity = Math.max(
+        3.0,
+        5.0 + volumetricFlicker * (adjustedBaseIntensity / this.config.baseIntensity)
+      );
+    }
+
+    // Chimney glow with gentle variation
+    const chimneyGlow = this.lights[5];
+    if (chimneyGlow) {
+      const chimneyFlicker = Math.sin(this.time * 0.8) * 0.06;
+      chimneyGlow.intensity = Math.max(
+        2.5,
+        4.0 + chimneyFlicker * (adjustedBaseIntensity / this.config.baseIntensity)
+      );
     }
 
     // Enhanced ember light dramatic sparkles
-    const emberLight = this.lights[3];
+    const emberLight = this.lights[6];
     if (emberLight) {
-      const emberFlicker = Math.sin(this.time * 8.7) * Math.sin(this.time * 3.2) * 0.08;
-      emberLight.intensity = Math.max(0, adjustedBaseIntensity * 0.4 + emberFlicker);
+      const emberFlicker = Math.sin(this.time * 8.7) * Math.sin(this.time * 3.2) * 0.1;
+      emberLight.intensity = Math.max(0, 3.0 + emberFlicker * (adjustedBaseIntensity / this.config.baseIntensity));
       
-      // More dynamic ember position changes
       if (Math.random() < 0.15) {
         emberLight.position.x = this.position.x + (Math.random() - 0.5) * 0.6;
         emberLight.position.z = this.position.z + (Math.random() - 0.5) * 0.6;
@@ -169,17 +251,27 @@ export class FireLightingSystem {
     }
 
     // Rim light subtle movement
-    const rimLight = this.lights[4];
+    const rimLight = this.lights[7];
     if (rimLight) {
-      const rimFlicker = Math.sin(this.time * 2.1) * 0.02;
-      rimLight.intensity = adjustedBaseIntensity * 0.3 + rimFlicker;
+      const rimFlicker = Math.sin(this.time * 2.1) * 0.03;
+      rimLight.intensity = Math.max(
+        1.5,
+        2.5 + rimFlicker * (adjustedBaseIntensity / this.config.baseIntensity)
+      );
     }
   }
 
   public setIntensity(multiplier: number): void {
-    this.config.baseIntensity *= multiplier;
-    this.config.maxIntensity *= multiplier;
-    this.timeAwareIntensity = new TimeAwareFireIntensity(this.config.baseIntensity);
+    // Apply multiplier to base intensities but keep them very high
+    for (let i = 0; i < this.lights.length; i++) {
+      const light = this.lights[i];
+      if (i === 0) light.intensity = Math.max(8.0, 10.0 * multiplier); // Primary
+      if (i === 1) light.intensity = Math.max(6.0, 8.0 * multiplier);  // Doorway
+      if (i === 2) light.intensity = Math.max(4.0, 6.0 * multiplier);  // Beacon
+      if (i === 3) light.intensity = Math.max(5.0, 7.0 * multiplier);  // Ground
+    }
+    
+    this.timeAwareIntensity = new TimeAwareFireIntensity(this.config.baseIntensity * multiplier);
   }
 
   public dispose(): void {
@@ -187,6 +279,6 @@ export class FireLightingSystem {
       this.scene.remove(light);
     }
     this.lights = [];
-    console.log('🔥 Massive fire lighting system disposed');
+    console.log('🔥 MASSIVE fire lighting system disposed');
   }
 }

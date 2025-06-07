@@ -3,10 +3,10 @@ import { TimeUtils } from '../../../utils/TimeUtils';
 
 export class TimeAwareFireIntensity {
   private baseIntensity: number;
-  private nightMultiplier: number = 2.5;
-  private twilightMultiplier: number = 2.0;
-  private dawnMultiplier: number = 1.5;
-  private dayMultiplier: number = 1.0;
+  private nightMultiplier: number = 3.5; // Increased for dramatic night effect
+  private twilightMultiplier: number = 3.0; // Increased for strong twilight presence
+  private dawnMultiplier: number = 2.0; // Increased for enhanced dawn lighting
+  private dayMultiplier: number = 1.2; // Slightly increased even for day
 
   constructor(baseIntensity: number) {
     this.baseIntensity = baseIntensity;
@@ -19,19 +19,19 @@ export class TimeAwareFireIntensity {
     
     switch (phase) {
       case 'night':
-        multiplier = this.nightMultiplier;
+        multiplier = this.nightMultiplier; // 3.5x for dramatic night lighting
         break;
       case 'dawn':
-        multiplier = this.dawnMultiplier;
+        multiplier = this.dawnMultiplier; // 2.0x for strong dawn presence
         break;
       case 'day':
-        multiplier = this.dayMultiplier;
+        multiplier = this.dayMultiplier; // 1.2x even during day for visibility
         break;
       case 'sunset':
       case 'civilTwilight':
       case 'nauticalTwilight':
       case 'astronomicalTwilight':
-        multiplier = this.twilightMultiplier;
+        multiplier = this.twilightMultiplier; // 3.0x for strong twilight effect
         break;
     }
     

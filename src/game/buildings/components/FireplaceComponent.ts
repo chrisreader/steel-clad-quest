@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { FireplaceGeometry } from './FireplaceGeometry';
 import { FireplaceRocks } from './FireplaceRocks';
@@ -51,9 +50,9 @@ export class FireplaceComponent {
     const rocksGroup = this.fireplaceRocks.createRockCircle(0.8, 16);
     this.fireplaceGroup.add(rocksGroup);
 
-    // Create fire effects with enhanced night-time lighting
+    // Create fire effects with MASSIVE landscape-reaching lighting
     const firePosition = this.position.clone();
-    firePosition.y += 0.2; // Slightly above the base
+    firePosition.y += 0.2;
     
     this.fireSystem.createFire(this.fireplaceId, firePosition, {
       intensity: 1.0,
@@ -61,12 +60,12 @@ export class FireplaceComponent {
       particleCount: 45,
       smokeEnabled: true,
       emberCount: 12,
-      lightIntensity: 5.0, // Enhanced for night visibility
-      lightDistance: 40 // Extended range for full tavern coverage
+      lightIntensity: 10.0, // MASSIVE intensity for landscape visibility
+      lightDistance: 120    // EXTREME range for doorway spillover effect
     });
 
     this.scene.add(this.fireplaceGroup);
-    console.log(`🔥 Fireplace component '${this.fireplaceId}' created with time-aware lighting`);
+    console.log(`🔥 Fireplace component '${this.fireplaceId}' created with MASSIVE landscape-reaching lighting`);
     
     return this.fireplaceGroup;
   }
@@ -100,11 +99,11 @@ export class FireplaceComponent {
       particleCount: 45,
       smokeEnabled: true,
       emberCount: 12,
-      lightIntensity: 5.0, // Enhanced for night visibility
-      lightDistance: 40 // Extended range for full tavern coverage
+      lightIntensity: 10.0, // MASSIVE intensity for landscape visibility  
+      lightDistance: 120    // EXTREME range for doorway spillover effect
     });
     
-    console.log(`🔥 Fire '${this.fireplaceId}' lit with time-aware lighting`);
+    console.log(`🔥 Fire '${this.fireplaceId}' lit with MASSIVE landscape-reaching lighting`);
   }
 
   public setFireIntensity(intensity: number): void {
