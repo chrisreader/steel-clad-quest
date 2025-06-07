@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { GrassGeometry, GrassBladeConfig } from './GrassGeometry';
-import { GrassShader } from './GrassShader';
+import { EnhancedGrassGeometry, EnhancedGrassBladeConfig } from './EnhancedGrassGeometry';
+import { RealisticGrassShader } from './RealisticGrassShader';
+import { EnvironmentalGrassDistribution, EnvironmentalFactors } from './EnvironmentalGrassDistribution';
 import { RegionCoordinates } from '../world/RingQuadrantSystem';
 import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES } from '../config/DayNightConfig';
@@ -16,45 +17,59 @@ export interface GrassConfig {
 export class GrassSystem {
   private scene: THREE.Scene;
   private grassInstances: Map<string, THREE.InstancedMesh> = new Map();
-  private grassMaterials: Map<number, THREE.ShaderMaterial> = new Map();
-  private grassGeometries: THREE.BufferGeometry[] = [];
-  private renderDistance: number = 150; // Reduced from 200 to 150
+  private grassMaterials: Map<string, THREE.ShaderMaterial> = new Map();
+  private grassGeometries: Map<string, THREE.BufferGeometry> = new Map();
+  private enhancedGrassSpecies: EnhancedGrassBladeConfig[] = [];
+  private renderDistance: number = 150;
   private time: number = 0;
+  private currentSeason: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer';
   
   // Player position tracking for distance-based culling
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 10; // Update every 10 frames
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 10;
   
   // Performance optimization variables
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 3; // Update materials every 3rd frame
-  private readonly FOG_CHECK_INTERVAL: number = 100; // Check fog changes every 100ms
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 3;
+  private readonly FOG_CHECK_INTERVAL: number = 100;
   
   private config: GrassConfig = {
-    baseDensity: 0.8, // Slightly reduced for performance
-    patchDensity: 2.5, // Reduced from 3
-    patchCount: 5, // Reduced from 6
-    maxDistance: 150, // Reduced from 180 to match render distance
-    lodLevels: [1.0, 0.5, 0.25, 0.0] // Cut off completely at max distance
+    baseDensity: 0.8,
+    patchDensity: 2.5,
+    patchCount: 5,
+    maxDistance: 150,
+    lodLevels: [1.0, 0.5, 0.25, 0.0]
   };
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
-    this.initializeGrassGeometries();
+    this.initializeEnhancedGrassSystem();
   }
   
-  private initializeGrassGeometries(): void {
-    const grassTypes = GrassGeometry.getGrassTypes();
+  private initializeEnhancedGrassSystem(): void {
+    this.enhancedGrassSpecies = EnhancedGrassGeometry.getEnhancedGrassSpecies();
     
-    for (const grassType of grassTypes) {
-      const geometry = GrassGeometry.createGrassBladeGeometry(grassType);
-      this.grassGeometries.push(geometry);
+    // Create geometries for each species
+    for (const species of this.enhancedGrassSpecies) {
+      const geometry = species.clustered 
+        ? EnhancedGrassGeometry.createGrassCluster(species, 3)
+        : EnhancedGrassGeometry.createRealisticGrassBladeGeometry(species);
+      
+      this.grassGeometries.set(species.species, geometry);
+      
+      // Create realistic material for each species
+      const material = RealisticGrassShader.createRealisticGrassMaterial(
+        species.color, 
+        0, 
+        species.species
+      );
+      this.grassMaterials.set(species.species, material);
     }
     
-    console.log('🌱 Grass geometries initialized:', this.grassGeometries.length, 'types');
+    console.log('🌱 Enhanced grass system initialized with', this.enhancedGrassSpecies.length, 'species');
   }
   
   public generateGrassForRegion(
@@ -67,48 +82,147 @@ export class GrassSystem {
     
     if (this.grassInstances.has(regionKey)) return;
     
-    // Early distance check - don't generate grass beyond 150 units
+    // Early distance check
     const distanceFromSpawn = centerPosition.length();
     if (distanceFromSpawn > this.renderDistance) {
-      console.log(`🌱 Skipping grass generation for region ${regionKey} - beyond render distance (${distanceFromSpawn.toFixed(1)} > ${this.renderDistance})`);
       return;
     }
     
-    console.log(`🌱 Generating optimized grass for region ${region.ringIndex}-${region.quadrant} at distance ${distanceFromSpawn.toFixed(1)}`);
+    console.log(`🌱 Generating enhanced grass for region ${region.ringIndex}-${region.quadrant}`);
     
-    // Create or get material for this ring
-    let material = this.grassMaterials.get(region.ringIndex);
-    if (!material) {
-      const grassColor = this.getGrassColorForRing(terrainColor, region.ringIndex);
-      material = GrassShader.createGrassMaterial(grassColor, region.ringIndex);
-      this.grassMaterials.set(region.ringIndex, material);
-    }
+    // Create environmental factors for this region
+    const environmentalFactors = this.createRegionEnvironmentalFactors(
+      centerPosition, 
+      region, 
+      terrainColor
+    );
     
-    // Generate grass with distance-based LOD
+    // Generate grass distribution based on environmental factors
     const lodLevel = this.getLODLevel(distanceFromSpawn);
-    if (lodLevel === 0) {
-      console.log(`🌱 No grass generated for region ${regionKey} - beyond LOD cutoff`);
-      return;
-    }
+    if (lodLevel === 0) return;
     
-    const grassData = this.generateOptimizedGrassDistribution(centerPosition, size, region, lodLevel);
+    const grassData = this.generateEnvironmentalGrassDistribution(
+      centerPosition, 
+      size, 
+      environmentalFactors, 
+      lodLevel
+    );
     
     if (grassData.positions.length === 0) return;
     
-    // Create instanced mesh
-    const geometry = this.grassGeometries[region.ringIndex % this.grassGeometries.length];
-    const instancedMesh = new THREE.InstancedMesh(geometry, material, grassData.positions.length);
+    // Group by species for efficient rendering
+    const speciesGroups = this.groupGrassBySpecies(grassData);
+    
+    // Create instanced meshes for each species present
+    for (const [speciesName, speciesData] of Object.entries(speciesGroups)) {
+      this.createSpeciesInstancedMesh(
+        regionKey, 
+        speciesName, 
+        speciesData, 
+        region
+      );
+    }
+    
+    console.log(`✅ Generated enhanced grass for region ${regionKey} with ${grassData.positions.length} blades`);
+  }
+  
+  private createRegionEnvironmentalFactors(
+    centerPosition: THREE.Vector3,
+    region: RegionCoordinates,
+    terrainColor: number
+  ): EnvironmentalFactors {
+    // Simulate environmental conditions based on region
+    const distanceFromCenter = centerPosition.length();
+    const moisture = 0.6 - (distanceFromCenter * 0.001); // Drier further from center
+    const slope = Math.random() * 0.4; // Random slope variation
+    const lightExposure = 0.8 - (region.ringIndex * 0.1); // Less light in outer rings
+    
+    return EnvironmentalGrassDistribution.createEnvironmentalFactorsForTerrain(
+      centerPosition,
+      0, // Simplified terrain height
+      {
+        hasWater: Math.random() < 0.1,
+        hasTrees: Math.random() < 0.3,
+        hasRocks: Math.random() < 0.2,
+        playerTraffic: 0 // No trampling for now
+      }
+    );
+  }
+  
+  private generateEnvironmentalGrassDistribution(
+    centerPosition: THREE.Vector3,
+    size: number,
+    environmentalFactors: EnvironmentalFactors,
+    lodMultiplier: number
+  ) {
+    const adjustedDensity = this.config.baseDensity * lodMultiplier;
+    const baseSpacing = 1 / Math.sqrt(adjustedDensity);
+    
+    return EnvironmentalGrassDistribution.calculateGrassDistribution(
+      centerPosition,
+      size,
+      environmentalFactors,
+      baseSpacing
+    );
+  }
+  
+  private groupGrassBySpecies(grassData: {
+    positions: THREE.Vector3[];
+    scales: THREE.Vector3[];
+    rotations: THREE.Quaternion[];
+    species: string[];
+  }) {
+    const groups: { [species: string]: {
+      positions: THREE.Vector3[];
+      scales: THREE.Vector3[];
+      rotations: THREE.Quaternion[];
+    }} = {};
+    
+    for (let i = 0; i < grassData.positions.length; i++) {
+      const species = grassData.species[i];
+      if (!groups[species]) {
+        groups[species] = { positions: [], scales: [], rotations: [] };
+      }
+      
+      groups[species].positions.push(grassData.positions[i]);
+      groups[species].scales.push(grassData.scales[i]);
+      groups[species].rotations.push(grassData.rotations[i]);
+    }
+    
+    return groups;
+  }
+  
+  private createSpeciesInstancedMesh(
+    regionKey: string,
+    speciesName: string,
+    speciesData: {
+      positions: THREE.Vector3[];
+      scales: THREE.Vector3[];
+      rotations: THREE.Quaternion[];
+    },
+    region: RegionCoordinates
+  ): void {
+    const geometry = this.grassGeometries.get(speciesName);
+    const material = this.grassMaterials.get(speciesName);
+    
+    if (!geometry || !material) return;
+    
+    const instancedMesh = new THREE.InstancedMesh(
+      geometry, 
+      material, 
+      speciesData.positions.length
+    );
     
     // Set instance data
-    for (let i = 0; i < grassData.positions.length; i++) {
+    for (let i = 0; i < speciesData.positions.length; i++) {
       const matrix = new THREE.Matrix4();
-      const adjustedPosition = grassData.positions[i].clone();
+      const adjustedPosition = speciesData.positions[i].clone();
       adjustedPosition.y = Math.max(0.1, adjustedPosition.y);
       
       matrix.compose(
         adjustedPosition,
-        grassData.rotations[i],
-        grassData.scales[i]
+        speciesData.rotations[i],
+        speciesData.scales[i]
       );
       instancedMesh.setMatrixAt(i, matrix);
     }
@@ -117,24 +231,23 @@ export class GrassSystem {
     instancedMesh.castShadow = true;
     instancedMesh.receiveShadow = true;
     
-    // Store region data for distance culling
+    // Store region data
     instancedMesh.userData = {
-      regionKey,
-      centerPosition: centerPosition.clone(),
-      ringIndex: region.ringIndex
+      regionKey: `${regionKey}_${speciesName}`,
+      centerPosition: speciesData.positions[0] || new THREE.Vector3(),
+      ringIndex: region.ringIndex,
+      species: speciesName
     };
     
     this.scene.add(instancedMesh);
-    this.grassInstances.set(regionKey, instancedMesh);
-    
-    console.log(`✅ Generated ${grassData.positions.length} grass blades for region ${regionKey} (LOD: ${lodLevel}, Distance: ${distanceFromSpawn.toFixed(1)})`);
+    this.grassInstances.set(`${regionKey}_${speciesName}`, instancedMesh);
   }
   
   private getLODLevel(distance: number): number {
-    if (distance < 50) return this.config.lodLevels[0];   // Ring 0: Full density
-    if (distance < 100) return this.config.lodLevels[1];  // Ring 1 inner: 50% density
-    if (distance < 150) return this.config.lodLevels[2];  // Ring 1 outer: 25% density
-    return this.config.lodLevels[3]; // Beyond 150: No grass (0.0)
+    if (distance < 50) return this.config.lodLevels[0];
+    if (distance < 100) return this.config.lodLevels[1];
+    if (distance < 150) return this.config.lodLevels[2];
+    return this.config.lodLevels[3];
   }
   
   private updateGrassVisibility(playerPosition: THREE.Vector3): void {
@@ -145,7 +258,6 @@ export class GrassSystem {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
       
-      // Hide grass beyond render distance
       const shouldBeVisible = distanceToPlayer <= this.renderDistance;
       
       if (instancedMesh.visible !== shouldBeVisible) {
@@ -157,103 +269,6 @@ export class GrassSystem {
         }
       }
     }
-    
-    if (hiddenCount > 0 || visibleCount > 0) {
-      console.log(`🌱 Grass visibility updated: ${visibleCount} shown, ${hiddenCount} hidden`);
-    }
-  }
-  
-  private generateOptimizedGrassDistribution(
-    centerPosition: THREE.Vector3, 
-    size: number, 
-    region: RegionCoordinates,
-    lodMultiplier: number
-  ) {
-    const positions: THREE.Vector3[] = [];
-    const rotations: THREE.Quaternion[] = [];
-    const scales: THREE.Vector3[] = [];
-    
-    const halfSize = size / 2;
-    const adjustedDensity = this.config.baseDensity * lodMultiplier;
-    const baseSpacing = 1 / Math.sqrt(adjustedDensity);
-    
-    // Generate base grass with LOD
-    for (let x = -halfSize; x < halfSize; x += baseSpacing) {
-      for (let z = -halfSize; z < halfSize; z += baseSpacing) {
-        if (Math.random() < 0.6 * lodMultiplier) { // Adjusted probability with LOD
-          const pos = new THREE.Vector3(
-            centerPosition.x + x + (Math.random() - 0.5) * baseSpacing * 0.8,
-            0.15 + region.ringIndex * 0.01,
-            centerPosition.z + z + (Math.random() - 0.5) * baseSpacing * 0.8
-          );
-          
-          positions.push(pos);
-          rotations.push(new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0),
-            Math.random() * Math.PI * 2
-          ));
-          
-          scales.push(new THREE.Vector3(
-            1.2 + Math.random() * 0.4,
-            0.8 + Math.random() * 0.4, // Reduced height for performance
-            1.2 + Math.random() * 0.4
-          ));
-        }
-      }
-    }
-    
-    // Generate patches with LOD
-    const adjustedPatchCount = Math.floor(this.config.patchCount * lodMultiplier);
-    for (let p = 0; p < adjustedPatchCount; p++) {
-      const patchCenter = new THREE.Vector3(
-        centerPosition.x + (Math.random() - 0.5) * size * 0.7,
-        0.15 + region.ringIndex * 0.01,
-        centerPosition.z + (Math.random() - 0.5) * size * 0.7
-      );
-      
-      const patchRadius = 3 + Math.random() * 2;
-      const patchDensity = adjustedDensity * this.config.patchDensity;
-      const patchSpacing = 1 / Math.sqrt(patchDensity);
-      
-      for (let x = -patchRadius; x < patchRadius; x += patchSpacing) {
-        for (let z = -patchRadius; z < patchRadius; z += patchSpacing) {
-          const distance = Math.sqrt(x * x + z * z);
-          if (distance < patchRadius && Math.random() < 0.8 * lodMultiplier) {
-            const pos = new THREE.Vector3(
-              patchCenter.x + x + (Math.random() - 0.5) * patchSpacing * 0.5,
-              patchCenter.y,
-              patchCenter.z + z + (Math.random() - 0.5) * patchSpacing * 0.5
-            );
-            
-            positions.push(pos);
-            rotations.push(new THREE.Quaternion().setFromAxisAngle(
-              new THREE.Vector3(0, 1, 0),
-              Math.random() * Math.PI * 2
-            ));
-            
-            scales.push(new THREE.Vector3(
-              1.6 + Math.random() * 0.4,
-              1.0 + Math.random() * 0.6,
-              1.6 + Math.random() * 0.4
-            ));
-          }
-        }
-      }
-    }
-    
-    return { positions, rotations, scales };
-  }
-  
-  private getGrassColorForRing(terrainColor: number, ringIndex: number): THREE.Color {
-    const r = (terrainColor >> 16) & 255;
-    const g = (terrainColor >> 8) & 255;
-    const b = terrainColor & 255;
-    
-    const grassR = Math.max(0, Math.min(255, r - 20)) / 255;
-    const grassG = Math.max(0, Math.min(255, g + 15)) / 255;
-    const grassB = Math.max(0, Math.min(255, b - 35)) / 255;
-    
-    return new THREE.Color(grassR, grassG, grassB);
   }
   
   private checkFogChanges(): boolean {
@@ -281,35 +296,22 @@ export class GrassSystem {
     return false;
   }
   
-  public removeGrassForRegion(region: RegionCoordinates): void {
-    const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
-    const instancedMesh = this.grassInstances.get(regionKey);
-    
-    if (instancedMesh) {
-      this.scene.remove(instancedMesh);
-      instancedMesh.geometry.dispose();
-      this.grassInstances.delete(regionKey);
-      console.log(`🌱 Removed grass for region ${regionKey}`);
-    }
-  }
-  
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
     this.time += deltaTime;
     this.updateCounter++;
     this.grassCullingUpdateCounter++;
     
-    // Update grass visibility based on player position (every 10 frames for performance)
+    // Update grass visibility
     if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
-      // Only update if player has moved significantly
       const playerMovedDistance = this.lastPlayerPosition.distanceTo(playerPosition);
-      if (playerMovedDistance > 5.0) { // Update when player moves 5+ units
+      if (playerMovedDistance > 5.0) {
         this.updateGrassVisibility(playerPosition);
         this.lastPlayerPosition.copy(playerPosition);
       }
       this.grassCullingUpdateCounter = 0;
     }
     
-    // Only update materials every few frames for performance
+    // Update materials
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
       // Calculate day/night factors
       let nightFactor = 0;
@@ -320,15 +322,22 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // Update wind animation and day/night cycle
-      const windStrength = 0.15 + Math.sin(this.time * 0.4) * 0.08; // Reduced for performance
+      // Enhanced wind with gusts
+      const baseWindStrength = 0.2 + Math.sin(this.time * 0.3) * 0.1;
+      const gustIntensity = 0.1 + Math.sin(this.time * 0.8) * 0.08;
       
       for (const material of this.grassMaterials.values()) {
-        GrassShader.updateWindAnimation(material, this.time, windStrength);
-        GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
+        RealisticGrassShader.updateRealisticWindAnimation(
+          material, 
+          this.time, 
+          baseWindStrength,
+          gustIntensity
+        );
+        RealisticGrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
+        RealisticGrassShader.updateSeasonalVariation(material, this.currentSeason);
       }
       
-      // Update fog uniforms only when fog actually changes
+      // Update fog uniforms
       if (this.checkFogChanges() && this.cachedFogValues) {
         for (const material of this.grassMaterials.values()) {
           if (material.uniforms.fogColor) {
@@ -343,6 +352,33 @@ export class GrassSystem {
         }
       }
     }
+  }
+  
+  public setSeason(season: 'spring' | 'summer' | 'autumn' | 'winter'): void {
+    this.currentSeason = season;
+    for (const material of this.grassMaterials.values()) {
+      RealisticGrassShader.updateSeasonalVariation(material, season);
+    }
+  }
+  
+  public removeGrassForRegion(region: RegionCoordinates): void {
+    const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
+    
+    // Remove all species instances for this region
+    const keysToRemove = Array.from(this.grassInstances.keys()).filter(
+      key => key.startsWith(regionKey)
+    );
+    
+    for (const key of keysToRemove) {
+      const instancedMesh = this.grassInstances.get(key);
+      if (instancedMesh) {
+        this.scene.remove(instancedMesh);
+        instancedMesh.geometry.dispose();
+        this.grassInstances.delete(key);
+      }
+    }
+    
+    console.log(`🌱 Removed enhanced grass for region ${regionKey}`);
   }
   
   public dispose(): void {
@@ -360,11 +396,11 @@ export class GrassSystem {
     this.grassMaterials.clear();
     
     // Clean up geometries
-    for (const geometry of this.grassGeometries) {
+    for (const geometry of this.grassGeometries.values()) {
       geometry.dispose();
     }
-    this.grassGeometries.length = 0;
+    this.grassGeometries.clear();
     
-    console.log('🌱 GrassSystem disposed');
+    console.log('🌱 Enhanced GrassSystem disposed');
   }
 }
