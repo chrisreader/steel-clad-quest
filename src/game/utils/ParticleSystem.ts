@@ -353,26 +353,8 @@ export class ParticleSystem {
     const pathLength = swordPath.length;
     const particleCount = Math.max(15, Math.min(30, pathLength * 2)); // Scale with path detail
     
-    // Create particles positioned along the sword path from top-right to bottom-left
-    const particles: THREE.Vector3[] = [];
-    for (let i = 0; i < particleCount; i++) {
-      const t = i / (particleCount - 1); // 0 to 1
-      const pathIndex = Math.floor(t * (pathLength - 1));
-      const nextIndex = Math.min(pathIndex + 1, pathLength - 1);
-      
-      // Interpolate between path points for smooth distribution
-      const localT = (t * (pathLength - 1)) - pathIndex;
-      const position = swordPath[pathIndex].clone().lerp(swordPath[nextIndex], localT);
-      
-      // Add slight random offset perpendicular to swing direction
-      const perpendicular = new THREE.Vector3(-swingDirection.z, 0, swingDirection.x).normalize();
-      position.add(perpendicular.multiplyScalar((Math.random() - 0.5) * 0.1));
-      
-      particles.push(position);
-    }
-    
     // Use the middle of the path as the spawn point
-    const avgPosition = particles.reduce((sum, pos) => sum.add(pos), new THREE.Vector3()).divideScalar(particles.length);
+    const avgPosition = swordPath.reduce((sum, pos) => sum.add(pos.clone()), new THREE.Vector3()).divideScalar(swordPath.length);
     
     return new ParticleSystem(scene, {
       position: avgPosition,
@@ -396,22 +378,12 @@ export class ParticleSystem {
   
   // UPDATED: Air streaks that follow the sword blade more precisely
   static createAirStreaks(scene: THREE.Scene, swordPath: THREE.Vector3[], swingDirection: THREE.Vector3): ParticleSystem {
-    // Create particles at key points along the sword path
-    const streakCount = Math.min(10, swordPath.length);
-    const streakPositions: THREE.Vector3[] = [];
-    
-    for (let i = 0; i < streakCount; i++) {
-      const t = i / (streakCount - 1);
-      const pathIndex = Math.floor(t * (swordPath.length - 1));
-      streakPositions.push(swordPath[pathIndex].clone());
-    }
-    
     // Use the starting position of the sword path
     const startPosition = swordPath[0] || new THREE.Vector3();
     
     return new ParticleSystem(scene, {
       position: startPosition,
-      count: streakCount,
+      count: Math.min(10, swordPath.length),
       duration: 300,
       size: 0.03,
       sizeVariation: 0.015,
@@ -594,94 +566,48 @@ export class ParticleSystem {
     console.log('🔥 Creating campfire particle system at position:', position);
     
     const particleCount = Math.floor(40 * intensity);
-    const particles: Particle[] = [];
     
-    // Create flame particles
-    for (let i = 0; i < particleCount * 0.6; i++) {
-      particles.push({
-        position: position.clone().add(new THREE.Vector3(
-          (Math.random() - 0.5) * 0.8,
-          0,
-          (Math.random() - 0.5) * 0.8
-        )),
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.5,
-          Math.random() * 2.0 + 0.5,
-          (Math.random() - 0.5) * 0.5
-        ),
-        color: new THREE.Color().setHSL(
-          0.08 + Math.random() * 0.05, // Orange to red hue
-          0.9,
-          0.5 + Math.random() * 0.3
-        ),
-        size: 0.2 + Math.random() * 0.3,
-        life: 1.0 + Math.random() * 0.8,
-        maxLife: 1.0 + Math.random() * 0.8,
-        gravity: -0.2
-      });
-    }
-    
-    // Create smoke particles
-    for (let i = 0; i < particleCount * 0.4; i++) {
-      particles.push({
-        position: position.clone().add(new THREE.Vector3(
-          (Math.random() - 0.5) * 0.6,
-          Math.random() * 0.5,
-          (Math.random() - 0.5) * 0.6
-        )),
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.3,
-          Math.random() * 1.5 + 0.5,
-          (Math.random() - 0.5) * 0.3
-        ),
-        color: new THREE.Color(0x888888),
-        size: 0.4 + Math.random() * 0.4,
-        life: 2.0 + Math.random() * 1.5,
-        maxLife: 2.0 + Math.random() * 1.5,
-        gravity: -0.05
-      });
-    }
-    
-    const system = new ParticleSystem(scene, particles);
-    system.setBlending(THREE.AdditiveBlending);
-    
-    console.log(`🔥 Campfire particle system created with ${particles.length} particles`);
-    return system;
+    // Create flame particles using standard ParticleOptions
+    return new ParticleSystem(scene, {
+      position: position,
+      count: particleCount,
+      duration: 5000, // Long duration for continuous fire
+      size: 0.3,
+      sizeVariation: 0.2,
+      speed: 1.0,
+      speedVariation: 0.5,
+      color: 0xFF6600, // Orange flame color
+      colorVariation: 0.3,
+      gravity: -0.2, // Negative gravity for upward movement
+      direction: new THREE.Vector3(0, 1, 0),
+      spread: 0.8,
+      opacity: 0.8,
+      fadeIn: 0.1,
+      fadeOut: 0.4,
+      rotationSpeed: 2
+    });
   }
   
   public static createFireEmbers(scene: THREE.Scene, position: THREE.Vector3, count: number = 15): ParticleSystem {
     console.log(`🔥 Creating fire embers system with ${count} embers`);
     
-    const particles: Particle[] = [];
-    
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        position: position.clone().add(new THREE.Vector3(
-          (Math.random() - 0.5) * 1.0,
-          Math.random() * 0.3,
-          (Math.random() - 0.5) * 1.0
-        )),
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.8,
-          Math.random() * 1.0 + 0.2,
-          (Math.random() - 0.5) * 0.8
-        ),
-        color: new THREE.Color().setHSL(
-          0.05 + Math.random() * 0.03, // Orange ember color
-          1.0,
-          0.6 + Math.random() * 0.2
-        ),
-        size: 0.05 + Math.random() * 0.08,
-        life: 1.5 + Math.random() * 1.0,
-        maxLife: 1.5 + Math.random() * 1.0,
-        gravity: -0.1
-      });
-    }
-    
-    const system = new ParticleSystem(scene, particles);
-    system.setBlending(THREE.AdditiveBlending);
-    
-    console.log(`🔥 Fire embers system created with ${particles.length} ember particles`);
-    return system;
+    return new ParticleSystem(scene, {
+      position: position,
+      count: count,
+      duration: 3000,
+      size: 0.08,
+      sizeVariation: 0.04,
+      speed: 0.8,
+      speedVariation: 0.4,
+      color: 0xFF4400, // Bright orange ember
+      colorVariation: 0.2,
+      gravity: -0.1,
+      direction: new THREE.Vector3(0, 1, 0),
+      spread: 1.0,
+      opacity: 0.9,
+      fadeIn: 0.05,
+      fadeOut: 0.6,
+      rotationSpeed: 1
+    });
   }
 }
