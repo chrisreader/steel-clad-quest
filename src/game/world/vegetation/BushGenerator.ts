@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BUSH_CONFIG } from './VegetationConfig';
 import { OrganicShapeGenerator } from './OrganicShapeGenerator';
@@ -8,14 +7,24 @@ import {
   BushSpeciesConfig, 
   BushSpeciesManager 
 } from './BushSpecies';
+import { 
+  SmallBushSpeciesConfig, 
+  SmallBushSpeciesManager 
+} from './SmallBushSpecies';
+import { 
+  BushClusterGenerator, 
+  BushCluster 
+} from './BushClusterGenerator';
 
 export class BushGenerator {
   private bushModels: Map<BushSpeciesType, THREE.Object3D[]> = new Map();
+  private smallBushModels: Map<string, THREE.Object3D[]> = new Map();
   private readonly MODELS_PER_SPECIES = 3;
   private performanceMode: boolean = false;
 
   constructor() {
     this.loadBushModels();
+    this.loadSmallBushModels();
   }
 
   private loadBushModels(): void {
@@ -33,6 +42,23 @@ export class BushGenerator {
     });
     
     console.log(`🌿 Created ${allSpecies.length} enhanced bush species with ${this.MODELS_PER_SPECIES} variations each`);
+  }
+
+  private loadSmallBushModels(): void {
+    const allSmallSpecies = SmallBushSpeciesManager.getAllSmallSpecies();
+    
+    allSmallSpecies.forEach(species => {
+      const models: THREE.Object3D[] = [];
+      
+      for (let i = 0; i < this.MODELS_PER_SPECIES; i++) {
+        const bush = this.createSmallBush(species, i);
+        models.push(bush);
+      }
+      
+      this.smallBushModels.set(species.type as string, models);
+    });
+    
+    console.log(`🌿 Created ${allSmallSpecies.length} small bush species with ${this.MODELS_PER_SPECIES} variations each`);
   }
 
   private createEnhancedBush(species: BushSpeciesConfig, variationIndex: number): THREE.Group {
@@ -162,6 +188,76 @@ export class BushGenerator {
     return allModels;
   }
 
+  /**
+   * Creates a cluster of bushes around a center position
+   */
+  public createBushCluster(
+    centerPosition: THREE.Vector3,
+    clusterType: 'family' | 'mixed' | 'tree_base' | 'rock_side' = 'mixed',
+    maxRadius: number = 3.0
+  ): THREE.Group {
+    const clusterGroup = new THREE.Group();
+    const cluster = BushClusterGenerator.createBushCluster(centerPosition, clusterType, maxRadius);
+    
+    // Apply environmental effects
+    BushClusterGenerator.applyEnvironmentalEffects(cluster);
+    
+    cluster.bushes.forEach((bushData, index) => {
+      const bush = bushData.isSmall ? 
+        this.createSmallBushFromSpecies(bushData.species as SmallBushSpeciesConfig) :
+        this.createBushFromSpecies(bushData.species as BushSpeciesConfig);
+      
+      if (bush) {
+        bush.position.copy(bushData.position);
+        bush.scale.setScalar(bushData.scale);
+        bush.rotation.y = Math.random() * Math.PI * 2;
+        clusterGroup.add(bush);
+      }
+    });
+    
+    clusterGroup.userData = { isCluster: true, clusterType };
+    return clusterGroup;
+  }
+
+  /**
+   * Creates small bushes specifically for tree bases
+   */
+  public createTreeBaseBushes(treePosition: THREE.Vector3, treeRadius: number = 2.5): THREE.Group[] {
+    const bushGroups: THREE.Group[] = [];
+    
+    // 70% chance to spawn bushes around tree base
+    if (Math.random() < 0.7) {
+      const cluster = this.createBushCluster(treePosition, 'tree_base', treeRadius);
+      if (cluster.children.length > 0) {
+        bushGroups.push(cluster);
+      }
+    }
+    
+    return bushGroups;
+  }
+
+  /**
+   * Creates a single bush from a specific species config
+   */
+  private createBushFromSpecies(species: BushSpeciesConfig): THREE.Object3D | null {
+    const models = this.bushModels.get(species.type);
+    if (!models || models.length === 0) return null;
+    
+    const modelIndex = Math.floor(Math.random() * models.length);
+    return models[modelIndex].clone();
+  }
+
+  /**
+   * Creates a single small bush from a specific species config
+   */
+  private createSmallBushFromSpecies(species: SmallBushSpeciesConfig): THREE.Object3D | null {
+    const models = this.smallBushModels.get(species.type as string);
+    if (!models || models.length === 0) return null;
+    
+    const modelIndex = Math.floor(Math.random() * models.length);
+    return models[modelIndex].clone();
+  }
+
   public createBush(position: THREE.Vector3): THREE.Object3D | null {
     const species = BushSpeciesManager.getRandomSpecies();
     const models = this.bushModels.get(species.type);
@@ -181,6 +277,24 @@ export class BushGenerator {
     return model;
   }
 
+  public createSmallBush(position: THREE.Vector3, preferredLocation?: string): THREE.Object3D | null {
+    const species = SmallBushSpeciesManager.getRandomSmallSpecies(preferredLocation);
+    const models = this.smallBushModels.get(species.type as string);
+    
+    if (!models || models.length === 0) return null;
+    
+    const modelIndex = Math.floor(Math.random() * models.length);
+    const model = models[modelIndex].clone();
+    
+    model.rotation.y = Math.random() * Math.PI * 2;
+    const scale = 0.8 + Math.random() * 0.4; // 0.8-1.2 range
+    model.scale.setScalar(scale);
+    
+    model.position.copy(position);
+    
+    return model;
+  }
+
   public dispose(): void {
     this.bushModels.forEach(models => {
       models.forEach(bush => {
@@ -192,6 +306,17 @@ export class BushGenerator {
       });
     });
     this.bushModels.clear();
+    
+    this.smallBushModels.forEach(models => {
+      models.forEach(bush => {
+        bush.traverse(child => {
+          if (child instanceof THREE.Mesh) {
+            if (child.geometry) child.geometry.dispose();
+          }
+        });
+      });
+    });
+    this.smallBushModels.clear();
     
     OptimizedMaterialGenerator.dispose();
   }
