@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export interface GlowUniforms {
@@ -11,6 +12,10 @@ export interface GlowUniforms {
 }
 
 export class CelestialGlowShader {
+  private static lastUpdateTime: number = 0;
+  private static readonly UPDATE_INTERVAL: number = 50; // Update every 50ms for performance
+  private static cachedCalculations: Map<string, number> = new Map();
+  
   public static vertexShader = `
     varying vec2 vUv;
     varying vec3 vWorldPosition;
@@ -35,33 +40,26 @@ export class CelestialGlowShader {
     varying vec3 vWorldPosition;
     
     void main() {
-      // Calculate distance from center for circular appearance
       vec2 center = vec2(0.5, 0.5);
       float distance = length(vUv - center);
       
-      // Create circular falloff instead of square
+      // Optimized circular falloff
       float circularFalloff = 1.0 - smoothstep(0.0, glowSize * 0.7, distance);
       
-      // Apply atmospheric scattering with multiple layers
-      float innerGlow = pow(circularFalloff, falloffPower * 0.5);
-      float middleGlow = pow(circularFalloff, falloffPower * 1.5);
-      float outerGlow = pow(circularFalloff, falloffPower * 3.0);
+      // Simplified atmospheric scattering (reduced complexity for performance)
+      float innerGlow = pow(circularFalloff, falloffPower * 0.6);
+      float outerGlow = pow(circularFalloff, falloffPower * 2.5);
       
-      // Combine layers with different intensities
-      float combinedGlow = innerGlow * 0.6 + middleGlow * 0.3 + outerGlow * 0.1;
+      float combinedGlow = innerGlow * 0.7 + outerGlow * 0.3;
       
-      // Add atmospheric density variation
-      float atmospheric = 1.0 + sin(time * 0.5 + distance * 10.0) * 0.1 * atmosphericDensity;
+      // Reduced atmospheric variation for performance
+      float atmospheric = 1.0 + sin(time * 0.3 + distance * 8.0) * 0.08 * atmosphericDensity;
       combinedGlow *= atmospheric;
       
-      // Additional circular edge smoothing to ensure perfect circular appearance
       float edgeSmoothing = 1.0 - smoothstep(0.4, 0.5, distance);
       combinedGlow *= edgeSmoothing;
       
-      // Apply intensity and color
       vec3 finalColor = glowColor * glowIntensity * combinedGlow;
-      
-      // Smooth alpha falloff for seamless circular blending
       float alpha = combinedGlow * glowIntensity;
       
       gl_FragColor = vec4(finalColor, alpha);
@@ -72,7 +70,7 @@ export class CelestialGlowShader {
     size: number = 0.8,
     intensity: number = 0.3,
     color: THREE.Color = new THREE.Color(0xFFD700),
-    atmosphericDensity: number = 0.2,
+    atmosphericDensity: number = 0.15, // Reduced from 0.2 for performance
     falloffPower: number = 2.0
   ): THREE.ShaderMaterial {
     const uniforms: GlowUniforms = {
@@ -102,17 +100,31 @@ export class CelestialGlowShader {
     size: number,
     intensity: number,
     color: THREE.Color,
-    atmosphericDensity: number = 0.2,
+    atmosphericDensity: number = 0.15,
     falloffPower: number = 2.0,
     time: number = 0.0
   ): void {
+    const now = performance.now();
+    
+    // Only update time-sensitive uniforms at reduced frequency for performance
+    if (now - this.lastUpdateTime >= this.UPDATE_INTERVAL) {
+      if (material.uniforms) {
+        material.uniforms.time.value = time;
+        this.lastUpdateTime = now;
+      }
+    }
+    
+    // Always update non-time-sensitive uniforms
     if (material.uniforms) {
       material.uniforms.glowSize.value = size;
       material.uniforms.glowIntensity.value = intensity;
       material.uniforms.glowColor.value.copy(color);
       material.uniforms.atmosphericDensity.value = atmosphericDensity;
       material.uniforms.falloffPower.value = falloffPower;
-      material.uniforms.time.value = time;
     }
+  }
+  
+  public static clearCache(): void {
+    this.cachedCalculations.clear();
   }
 }

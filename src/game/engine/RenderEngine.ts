@@ -21,9 +21,13 @@ export class RenderEngine {
   // FIXED: Consistent camera height
   private readonly CAMERA_HEIGHT_OFFSET: number = 1.6; // Standard eye height
   
-  // Debug state
+  // Performance optimizations
   private renderCount: number = 0;
   private lastRenderTime: number = 0;
+  private frustum: THREE.Frustum = new THREE.Frustum();
+  private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
+  private lastCullingUpdate: number = 0;
+  private readonly CULLING_UPDATE_INTERVAL: number = 100; // Update culling every 100ms
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -31,11 +35,10 @@ export class RenderEngine {
   }
   
   public initialize(): void {
-    console.log("🎨 [RenderEngine] Initializing with enhanced shadow support...");
+    console.log("🎨 [RenderEngine] Initializing with performance optimizations...");
     
     // Create scene
     this.scene = new THREE.Scene();
-    // Background will be set by SceneManager's fog system for proper atmospheric effect
     this.scene.background = null;
     
     // Create camera
@@ -46,20 +49,18 @@ export class RenderEngine {
       1000
     );
     
-    // Set up camera layers - ignore layer 1 (invisible to player)
-    this.camera.layers.enable(0); // Default layer - visible
-    this.camera.layers.disable(1); // Layer 1 - invisible to player (torso)
+    // Set up camera layers
+    this.camera.layers.enable(0);
+    this.camera.layers.disable(1);
     
-    // Create renderer with enhanced settings for shadows and fog rendering
+    // Create renderer with optimized settings
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Enhanced soft shadows
-    
-    // Enhanced renderer settings for better shadow quality
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace; // Better color accuracy
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     
     // Attach to DOM
     this.mountElement.appendChild(this.renderer.domElement);
@@ -71,7 +72,7 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    console.log("🎨 [RenderEngine] Initialized with enhanced shadow and fog rendering support");
+    console.log("🎨 [RenderEngine] Initialized with performance optimizations");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
@@ -125,21 +126,52 @@ export class RenderEngine {
     );
   }
   
+  private updateFrustumCulling(): void {
+    const now = performance.now();
+    if (now - this.lastCullingUpdate < this.CULLING_UPDATE_INTERVAL) return;
+    
+    this.cameraMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(this.cameraMatrix);
+    this.lastCullingUpdate = now;
+  }
+  
+  private isObjectInFrustum(object: THREE.Object3D): boolean {
+    // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
+    if (object instanceof THREE.InstancedMesh) return true;
+    
+    // Simple sphere-based frustum culling
+    if (object.geometry) {
+      const sphere = object.geometry.boundingSphere;
+      if (sphere) {
+        const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
+        return this.frustum.intersectsSphere(worldSphere);
+      }
+    }
+    
+    return true; // Default to visible if no bounding info
+  }
+  
   public render(): void {
     this.renderCount++;
     const now = performance.now();
     
-    // Log every 60 frames (roughly 1 second)
-    if (this.renderCount % 60 === 0) {
-      const fps = this.renderCount / ((now - this.lastRenderTime) / 1000) * 60;
-      console.log("🎨 [RenderEngine] Rendering with enhanced shadows and smooth camera controls:", {
+    // Update frustum culling less frequently for performance
+    this.updateFrustumCulling();
+    
+    // Apply frustum culling to scene objects
+    this.scene.traverse((object) => {
+      if (object.type === 'Mesh' || object.type === 'Group') {
+        object.visible = this.isObjectInFrustum(object);
+      }
+    });
+    
+    // Reduced logging frequency for better performance (every 300 frames instead of 60)
+    if (this.renderCount % 300 === 0) {
+      const fps = 300 / ((now - this.lastRenderTime) / 1000);
+      console.log("🎨 [RenderEngine] Performance:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
-        cameraPos: this.camera.position,
-        sceneChildren: this.scene.children.length,
-        cameraLayers: this.camera.layers.mask,
-        shadowMapEnabled: this.renderer.shadowMap.enabled,
-        shadowMapType: this.renderer.shadowMap.type
+        objects: this.scene.children.length
       });
       this.lastRenderTime = now;
     }
