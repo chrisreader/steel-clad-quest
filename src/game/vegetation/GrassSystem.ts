@@ -117,11 +117,8 @@ export class GrassSystem {
     
     console.log(`🌱 Generating ${biomeConfig.name} grass (LOD: ${lodLevel.toFixed(3)}) for region ${region.ringIndex}-${region.quadrant}`);
     
-    const baseEnvironmentalFactors = this.createImprovedEnvironmentalFactors(
-      centerPosition, 
-      region, 
-      terrainColor
-    );
+    // Create neutral environmental factors - no penalty zones
+    const baseEnvironmentalFactors = this.createNeutralEnvironmentalFactors(centerPosition);
     
     const environmentalFactors = GrassBiomeManager.adjustEnvironmentalFactors(
       baseEnvironmentalFactors,
@@ -226,25 +223,17 @@ export class GrassSystem {
     console.log(`🚨 EMERGENCY: Forced ${minBlades} grass blades for coverage`);
   }
   
-  private createImprovedEnvironmentalFactors(
-    centerPosition: THREE.Vector3,
-    region: RegionCoordinates,
-    terrainColor: number
-  ): EnvironmentalFactors {
-    const distanceFromCenter = centerPosition.length();
-    
-    const waterInfluence = Math.sin(centerPosition.x * 0.02) * Math.cos(centerPosition.z * 0.02);
-    const treeInfluence = Math.sin(centerPosition.x * 0.03 + 1) * Math.cos(centerPosition.z * 0.03 + 1);
-    const rockInfluence = Math.sin(centerPosition.x * 0.025 + 2) * Math.cos(centerPosition.z * 0.025 + 2);
-    
+  // Replace the deterministic environmental pattern generation with neutral factors
+  private createNeutralEnvironmentalFactors(centerPosition: THREE.Vector3): EnvironmentalFactors {
+    // Create neutral, grass-friendly environmental factors with no penalty zones
     return EnvironmentalGrassDistribution.createEnvironmentalFactorsForTerrain(
       centerPosition,
       0,
       {
-        hasWater: waterInfluence > 0.3,
-        hasTrees: treeInfluence > 0.2,
-        hasRocks: rockInfluence > 0.4,
-        playerTraffic: 0
+        hasWater: false,    // Remove water penalty zones
+        hasTrees: false,    // Remove tree penalty zones  
+        hasRocks: false,    // Remove rock penalty zones
+        playerTraffic: 0    // No player traffic penalties
       }
     );
   }

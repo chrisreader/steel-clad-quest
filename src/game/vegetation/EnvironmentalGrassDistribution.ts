@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { MathUtils } from '../utils/math/MathUtils';
 
@@ -40,22 +39,21 @@ export class EnvironmentalGrassDistribution {
   private static shouldSpawnGrass(position: THREE.Vector3, environmentalFactors: EnvironmentalFactors): boolean {
     const { moisture, slope, lightExposure, terrainDetails } = environmentalFactors;
     
-    // Start with higher base probability to ensure coverage
-    let spawnProbability = 0.7;
+    // High base probability with minimal environmental penalties
+    let spawnProbability = 0.85;
     
-    spawnProbability += moisture * 0.3;
-    spawnProbability -= slope * 0.15; // Reduced from 0.2
-    spawnProbability += lightExposure * 0.2;
+    // Small positive modifiers only - no harsh penalties
+    spawnProbability += moisture * 0.1;
+    spawnProbability += lightExposure * 0.1;
     
-    // Reduced environmental penalties to prevent barren areas
-    if (terrainDetails.hasWater) spawnProbability -= 0.15; // Reduced from 0.4
-    if (terrainDetails.hasTrees) spawnProbability += 0.1;
-    if (terrainDetails.hasRocks) spawnProbability -= 0.1; // Reduced from 0.2
+    // Minimal slope penalty only
+    spawnProbability -= slope * 0.05;
     
-    spawnProbability -= terrainDetails.playerTraffic * 0.2; // Reduced from 0.3
+    // Remove all harsh environmental penalties - grass can grow almost anywhere
+    spawnProbability -= terrainDetails.playerTraffic * 0.1;
     
-    // Ensure minimum spawn probability to prevent completely empty areas
-    return Math.random() < MathUtils.clamp(spawnProbability, 0.4, 0.95); // Increased from 0.1 to 0.4
+    // Ensure very high minimum spawn probability to prevent empty areas
+    return Math.random() < MathUtils.clamp(spawnProbability, 0.75, 0.95);
   }
   
   private static selectSpeciesBasedOnEnvironment(environmentalFactors: EnvironmentalFactors): string {
