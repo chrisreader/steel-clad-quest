@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { FireLightConfig } from '../types/FireTypes';
 
@@ -17,11 +16,11 @@ export class FireLightingSystem {
   }
 
   private createLights(): void {
-    // Primary fire light with high intensity and quality shadows
+    // Primary fire light with massive range to cover entire tavern (40 units)
     const primaryLight = new THREE.PointLight(
       this.config.color,
       this.config.baseIntensity,
-      this.config.distance
+      40 // Covers entire tavern + 15 units outside
     );
     primaryLight.position.copy(this.position);
     primaryLight.position.y += 0.5;
@@ -32,17 +31,17 @@ export class FireLightingSystem {
       primaryLight.shadow.mapSize.height = 2048;
       primaryLight.shadow.bias = -0.0005;
       primaryLight.shadow.camera.near = 0.1;
-      primaryLight.shadow.camera.far = this.config.distance;
+      primaryLight.shadow.camera.far = 40; // Match light distance
     }
 
     this.lights.push(primaryLight);
     this.scene.add(primaryLight);
 
-    // Large ambient glow light with soft shadows
+    // Large ambient glow light for tavern-wide soft illumination (35 units)
     const ambientLight = new THREE.PointLight(
       this.config.color,
       this.config.baseIntensity * 0.6,
-      this.config.distance * 0.75
+      35 // 40 * 0.875 for softer coverage
     );
     ambientLight.position.copy(this.position);
     ambientLight.position.y += 0.3;
@@ -53,17 +52,17 @@ export class FireLightingSystem {
       ambientLight.shadow.mapSize.height = 1024;
       ambientLight.shadow.bias = -0.0003;
       ambientLight.shadow.camera.near = 0.1;
-      ambientLight.shadow.camera.far = this.config.distance * 0.75;
+      ambientLight.shadow.camera.far = 35; // Match light distance
     }
 
     this.lights.push(ambientLight);
     this.scene.add(ambientLight);
 
-    // Volumetric atmospheric light for large glow
+    // Massive volumetric atmospheric light for exterior glow (50 units)
     const volumetricLight = new THREE.PointLight(
       this.config.color,
       this.config.baseIntensity * 0.8,
-      this.config.distance * 1.25
+      50 // 40 * 1.25 for maximum atmospheric reach
     );
     volumetricLight.position.copy(this.position);
     volumetricLight.position.y += 0.8;
@@ -72,11 +71,11 @@ export class FireLightingSystem {
     this.lights.push(volumetricLight);
     this.scene.add(volumetricLight);
 
-    // Enhanced ember sparkle light with better range
+    // Enhanced ember sparkle light with extended range (30 units)
     const emberLight = new THREE.PointLight(
       0xFF4400,
       this.config.baseIntensity * 0.4,
-      this.config.distance * 0.6
+      30 // 40 * 0.75 for good sparkle coverage
     );
     emberLight.position.copy(this.position);
     emberLight.position.y += 1.0;
@@ -85,11 +84,11 @@ export class FireLightingSystem {
     this.lights.push(emberLight);
     this.scene.add(emberLight);
 
-    // Rim lighting for better object definition
+    // Rim lighting for tavern-wide object definition (25 units)
     const rimLight = new THREE.PointLight(
       0xFFAA33,
       this.config.baseIntensity * 0.3,
-      this.config.distance * 0.5
+      25 // 40 * 0.625 for object definition
     );
     rimLight.position.copy(this.position);
     rimLight.position.y += 0.2;
@@ -98,7 +97,7 @@ export class FireLightingSystem {
     this.lights.push(rimLight);
     this.scene.add(rimLight);
 
-    console.log('🔥 Enhanced fire lighting system created with 5 high-intensity lights');
+    console.log('🔥 Massive fire lighting system created - covers entire tavern + exterior (50 unit range)');
   }
 
   public update(deltaTime: number): void {
@@ -170,6 +169,6 @@ export class FireLightingSystem {
       this.scene.remove(light);
     }
     this.lights = [];
-    console.log('🔥 Enhanced fire lighting system disposed');
+    console.log('🔥 Massive fire lighting system disposed');
   }
 }

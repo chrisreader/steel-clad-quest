@@ -47,8 +47,8 @@ export const DEFAULT_FIRE_CONFIG: FireConfig = {
   smokeEnabled: true,
   emberCount: 12,
   lightColor: 0xFF6600,
-  lightIntensity: 4.0,
-  lightDistance: 20
+  lightIntensity: 5.0,
+  lightDistance: 40
 };
 
 export const FIREPLACE_PARTICLE_CONFIGS = {

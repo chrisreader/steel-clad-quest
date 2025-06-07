@@ -47,13 +47,13 @@ export class FireEffectsManager {
     emberConfig.count = this.config.emberCount;
     this.particleGenerator.addParticleType('embers', emberConfig);
 
-    // Initialize enhanced lighting system with brighter, larger glow
+    // Initialize massive lighting system with tavern-wide coverage
     const lightConfig: FireLightConfig = {
       color: this.config.lightColor,
-      baseIntensity: this.config.lightIntensity,
-      maxIntensity: this.config.lightIntensity * 1.5,
+      baseIntensity: this.config.lightIntensity, // Now 5.0 from config
+      maxIntensity: this.config.lightIntensity * 1.5, // 7.5 max intensity
       flickerSpeed: this.config.flickerSpeed,
-      distance: this.config.lightDistance,
+      distance: this.config.lightDistance, // Now 40 from config
       castShadow: true
     };
     this.lightingSystem = new FireLightingSystem(this.scene, this.position, lightConfig);
@@ -70,7 +70,7 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    console.log('🔥 Enhanced organic fire effects system fully initialized (static fire system removed)');
+    console.log('🔥 Massive fire effects system fully initialized - lights entire tavern + exterior');
   }
 
   public update(deltaTime: number): void {
