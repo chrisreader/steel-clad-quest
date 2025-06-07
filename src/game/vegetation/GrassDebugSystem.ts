@@ -104,30 +104,30 @@ export class GrassDebugSystem {
         mesh.position.copy(position);
         mesh.rotation.x = -Math.PI / 2;
         
-        // Add bright colored border for each biome type
+        // Add thick bright colored border for each biome type (5cm thick, at y=2)
         const borderColor = this.getBiomeBorderColor(biomeInfo.type);
-        const borderGeometry = new THREE.RingGeometry(resolution * 0.42, resolution * 0.45, 8);
+        const borderGeometry = new THREE.RingGeometry(resolution * 0.2, resolution * 0.7, 8); // Much thicker border
         const borderMaterial = new THREE.MeshBasicMaterial({
           color: borderColor,
           transparent: true,
-          opacity: 0.8 + biomeInfo.strength * 0.2 // More opacity for stronger biome presence
+          opacity: 0.9 + biomeInfo.strength * 0.1 // Very visible
         });
         const border = new THREE.Mesh(borderGeometry, borderMaterial);
-        border.position.copy(position);
+        border.position.set(x, 2, z); // Position at y=2 for visibility
         border.rotation.x = -Math.PI / 2;
         this.biomeOverlay.add(border);
         this.debugMeshes.push(border);
         
-        // Add additional border for transition zones (white)
+        // Add additional border for transition zones (white, also thick)
         if (biomeInfo.transitionZone) {
-          const transitionBorderGeometry = new THREE.RingGeometry(resolution * 0.35, resolution * 0.38, 8);
+          const transitionBorderGeometry = new THREE.RingGeometry(resolution * 0.1, resolution * 0.3, 8); // Thick transition border
           const transitionBorderMaterial = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
-            opacity: 0.4
+            opacity: 0.7
           });
           const transitionBorder = new THREE.Mesh(transitionBorderGeometry, transitionBorderMaterial);
-          transitionBorder.position.copy(position);
+          transitionBorder.position.set(x, 2.1, z); // Slightly higher than main border
           transitionBorder.rotation.x = -Math.PI / 2;
           this.biomeOverlay.add(transitionBorder);
           this.debugMeshes.push(transitionBorder);
@@ -159,11 +159,11 @@ export class GrassDebugSystem {
       });
       
       const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-      marker.position.set(-140, 0.2, -100 + legendY);
+      marker.position.set(-140, 2.2, -100 + legendY); // At y=2.2 for visibility
       marker.rotation.x = -Math.PI / 2;
       
-      // Create border around legend marker
-      const borderGeometry = new THREE.RingGeometry(1.2, 1.5, 8);
+      // Create thick border around legend marker
+      const borderGeometry = new THREE.RingGeometry(0.8, 2.0, 8); // Much thicker legend border
       const borderMaterial = new THREE.MeshBasicMaterial({
         color: borderColor,
         transparent: true,
@@ -171,7 +171,7 @@ export class GrassDebugSystem {
       });
       
       const border = new THREE.Mesh(borderGeometry, borderMaterial);
-      border.position.set(-140, 0.3, -100 + legendY);
+      border.position.set(-140, 2.3, -100 + legendY); // Slightly higher
       border.rotation.x = -Math.PI / 2;
       
       this.biomeOverlay.add(marker);
