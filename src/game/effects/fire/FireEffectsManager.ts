@@ -27,35 +27,35 @@ export class FireEffectsManager {
   public start(): void {
     if (this.isActive) return;
 
-    console.log('🔥 Starting enhanced organic fire effects with dancing animation at position:', this.position);
+    console.log('🔥 Starting enhanced fire effects with improved particle rendering at position:', this.position);
 
-    // Initialize organic particle generator with enhanced realistic dancing flames
+    // Initialize organic particle generator
     this.organicParticleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
     
-    // Add different particle types with enhanced organic motion and increased counts
+    // Add particle types with enhanced configurations
     const flameConfig = { ...FIREPLACE_PARTICLE_CONFIGS.flames };
-    flameConfig.count = Math.floor(this.config.particleCount * 0.6); // 60% flames for better visibility
-    flameConfig.speed = 2.5; // Increased speed for more dynamic movement
+    flameConfig.count = Math.floor(this.config.particleCount * 0.6);
+    console.log(`🔥 Adding ${flameConfig.count} flame particles`);
     this.organicParticleGenerator.addOrganicParticleType('flames', flameConfig);
 
     if (this.config.smokeEnabled) {
       const smokeConfig = { ...FIREPLACE_PARTICLE_CONFIGS.smoke };
-      smokeConfig.count = Math.floor(this.config.particleCount * 0.25); // 25% smoke
-      smokeConfig.speed = 1.5; // Enhanced smoke movement
+      smokeConfig.count = Math.floor(this.config.particleCount * 0.25);
+      console.log(`🔥 Adding ${smokeConfig.count} smoke particles`);
       this.organicParticleGenerator.addOrganicParticleType('smoke', smokeConfig);
     }
 
     const emberConfig = { ...FIREPLACE_PARTICLE_CONFIGS.embers };
-    emberConfig.count = this.config.emberCount + 5; // More embers for effect
-    emberConfig.speed = 0.8; // Slightly faster embers
+    emberConfig.count = this.config.emberCount;
+    console.log(`🔥 Adding ${emberConfig.count} ember particles`);
     this.organicParticleGenerator.addOrganicParticleType('embers', emberConfig);
 
-    // Initialize lighting system with enhanced flickering
+    // Initialize lighting system
     const lightConfig: FireLightConfig = {
       color: this.config.lightColor,
       baseIntensity: this.config.lightIntensity,
-      maxIntensity: this.config.lightIntensity * 1.4, // More dramatic flickering
-      flickerSpeed: this.config.flickerSpeed * 1.2, // Faster flicker
+      maxIntensity: this.config.lightIntensity * 1.3,
+      flickerSpeed: this.config.flickerSpeed,
       distance: this.config.lightDistance,
       castShadow: true
     };
@@ -73,7 +73,7 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    console.log('🔥 Enhanced organic fire effects system fully initialized with grass-like dancing flames');
+    console.log('🔥 Fire effects system fully initialized and active');
   }
 
   public update(deltaTime: number): void {
@@ -123,7 +123,7 @@ export class FireEffectsManager {
     }
 
     this.isActive = false;
-    console.log('🔥 Enhanced organic fire effects stopped');
+    console.log('🔥 Enhanced fire effects stopped');
   }
 
   public dispose(): void {

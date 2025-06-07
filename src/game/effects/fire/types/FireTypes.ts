@@ -54,32 +54,32 @@ export const DEFAULT_FIRE_CONFIG: FireConfig = {
 
 export const FIREPLACE_PARTICLE_CONFIGS = {
   flames: {
-    count: 35, // Increased from 25 for better visibility
-    size: 0.4, // Increased size
-    speed: 2.5, // Increased speed for more dynamic movement
+    count: 40,
+    size: 0.5,
+    speed: 2.0,
     color: new THREE.Color(0xFF6600),
-    opacity: 0.9, // Higher opacity for better visibility
-    lifetime: 2.0, // Longer lifetime for more stable flames
-    spread: 1.0 // Slightly larger spread
+    opacity: 0.9,
+    lifetime: 2.5,
+    spread: 0.8
   } as FireParticleConfig,
   
   smoke: {
-    count: 20, // Increased from 15
-    size: 0.6, // Larger smoke particles
-    speed: 1.5, // Faster smoke movement
+    count: 20,
+    size: 0.8,
+    speed: 1.2,
     color: new THREE.Color(0x888888),
-    opacity: 0.5, // Slightly higher opacity
-    lifetime: 3.5, // Longer lifetime
-    spread: 1.4 // Larger spread for smoke
+    opacity: 0.4,
+    lifetime: 4.0,
+    spread: 1.2
   } as FireParticleConfig,
   
   embers: {
-    count: 15, // Increased from 12
-    size: 0.15, // Slightly larger embers
-    speed: 0.8, // Faster ember movement
+    count: 15,
+    size: 0.2,
+    speed: 0.6,
     color: new THREE.Color(0xFF4400),
-    opacity: 1.0, // Full opacity for bright embers
-    lifetime: 2.5, // Longer lifetime
-    spread: 1.2 // Larger spread
+    opacity: 1.0,
+    lifetime: 3.0,
+    spread: 1.0
   } as FireParticleConfig
 };
