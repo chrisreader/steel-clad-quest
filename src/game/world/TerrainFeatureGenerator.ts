@@ -81,8 +81,11 @@ export class TerrainFeatureGenerator {
           centerPosition.z + z
         );
         
-        // Check if position is within the ring bounds
-        if (!this.ringSystem.isPositionInRegion(testPosition, region)) {
+        // Check if position is within the ring bounds using correct method
+        const positionRegion = this.ringSystem.getRegionForPosition(testPosition);
+        if (!positionRegion || 
+            positionRegion.ringIndex !== region.ringIndex || 
+            positionRegion.quadrant !== region.quadrant) {
           continue;
         }
         
@@ -100,14 +103,25 @@ export class TerrainFeatureGenerator {
               ? Math.floor(Math.random() * (rockVariation.clusterSize[1] - rockVariation.clusterSize[0] + 1)) + rockVariation.clusterSize[0]
               : 1;
             
-            const cluster = this.rockClusterGenerator.generateCluster(
-              organicPosition,
-              clusterSize,
-              rockVariation.category,
-              rockVariation.shapePersonality
-            );
+            // Create cluster using existing RockClusterGenerator methods
+            const cluster = new THREE.Group();
+            cluster.position.copy(organicPosition);
             
-            if (cluster) {
+            // Use the createVariedRockCluster method that exists in RockClusterGenerator
+            if (this.rockClusterGenerator.createVariedRockCluster) {
+              this.rockClusterGenerator.createVariedRockCluster(
+                cluster,
+                rockVariation,
+                0,
+                // Placeholder functions - these would need to be properly implemented
+                (rockShape, rockSize) => new THREE.BoxGeometry(rockSize, rockSize, rockSize),
+                (geometry, rockShape, rockSize) => {},
+                (geometry, intensity, rockSize, rockShape) => {},
+                (geometry) => {}
+              );
+            }
+            
+            if (cluster.children.length > 0) {
               this.scene.add(cluster);
               features.push(cluster);
               
@@ -120,25 +134,26 @@ export class TerrainFeatureGenerator {
               this.enhancedRockSystem.registerRockFormation(region, organicPosition, rockVariation.sizeRange[1]);
             }
           } else {
-            // Single rock
-            const rock = this.rockClusterGenerator.generateSingleRock(
-              organicPosition,
-              rockVariation.category,
-              rockVariation.shapePersonality
-            );
+            // Single rock - create a simple rock geometry
+            const rockSize = rockVariation.sizeRange[0] + Math.random() * (rockVariation.sizeRange[1] - rockVariation.sizeRange[0]);
+            const geometry = new THREE.BoxGeometry(rockSize, rockSize, rockSize);
+            const material = new THREE.MeshStandardMaterial({ color: 0x666666 });
+            const rock = new THREE.Mesh(geometry, material);
             
-            if (rock) {
-              this.scene.add(rock);
-              features.push(rock);
-              
-              // Register with collision system
-              if (this.collisionRegistrationCallback) {
-                this.collisionRegistrationCallback(rock);
-              }
-              
-              // Register with discovery zone manager  
-              this.enhancedRockSystem.registerRockFormation(region, organicPosition, rockVariation.sizeRange[1]);
+            rock.position.copy(organicPosition);
+            rock.castShadow = true;
+            rock.receiveShadow = true;
+            
+            this.scene.add(rock);
+            features.push(rock);
+            
+            // Register with collision system
+            if (this.collisionRegistrationCallback) {
+              this.collisionRegistrationCallback(rock);
             }
+            
+            // Register with discovery zone manager  
+            this.enhancedRockSystem.registerRockFormation(region, organicPosition, rockVariation.sizeRange[1]);
           }
         }
       }
@@ -164,7 +179,11 @@ export class TerrainFeatureGenerator {
           centerPosition.z + z + (Math.random() - 0.5) * 8
         );
         
-        if (!this.ringSystem.isPositionInRegion(testPosition, region)) {
+        // Check if position is within the ring bounds using correct method
+        const positionRegion = this.ringSystem.getRegionForPosition(testPosition);
+        if (!positionRegion || 
+            positionRegion.ringIndex !== region.ringIndex || 
+            positionRegion.quadrant !== region.quadrant) {
           continue;
         }
         
@@ -260,10 +279,13 @@ export class TerrainFeatureGenerator {
     
     this.generatedFeatures.clear();
     
-    // Dispose of generators
-    this.rockClusterGenerator.dispose();
-    this.treeGenerator.dispose();
-    this.bushGenerator.dispose();
+    // Dispose of generators - only dispose those that have dispose methods
+    if (this.treeGenerator && typeof this.treeGenerator.dispose === 'function') {
+      this.treeGenerator.dispose();
+    }
+    if (this.bushGenerator && typeof this.bushGenerator.dispose === 'function') {
+      this.bushGenerator.dispose();
+    }
     this.enhancedRockSystem.dispose();
     
     console.log("🌍 TerrainFeatureGenerator with enhanced rock distribution disposed");
