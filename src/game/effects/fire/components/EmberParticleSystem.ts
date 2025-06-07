@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 interface EmberParticle {
@@ -40,13 +39,13 @@ export class EmberParticleSystem {
       const particle: EmberParticle = {
         position: this.position.clone(),
         velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.5,
-          Math.random() * 1.0 + 0.5,
-          (Math.random() - 0.5) * 0.5
+          (Math.random() - 0.5) * 0.3,
+          Math.random() * 0.8 + 0.3,
+          (Math.random() - 0.5) * 0.3
         ),
         age: Math.random() * 5,
         maxAge: 3 + Math.random() * 4,
-        size: this.particleType === 'smoke' ? 0.3 + Math.random() * 0.4 : 0.02 + Math.random() * 0.04,
+        size: this.particleType === 'smoke' ? 0.08 + Math.random() * 0.12 : 0.015 + Math.random() * 0.025, // Much smaller sizes
         color: this.getParticleColor(),
         active: true,
         rotationSpeed: (Math.random() - 0.5) * 0.2
@@ -58,10 +57,11 @@ export class EmberParticleSystem {
 
   private getParticleColor(): THREE.Color {
     if (this.particleType === 'smoke') {
-      return new THREE.Color().setHSL(0, 0, 0.3 + Math.random() * 0.4);
+      // Lighter, more transparent smoke colors
+      return new THREE.Color().setHSL(0, 0, 0.5 + Math.random() * 0.3);
     } else {
-      // Embers - orange to red
-      return new THREE.Color().setHSL(0.08 + Math.random() * 0.1, 1, 0.5 + Math.random() * 0.3);
+      // Bright orange/red embers
+      return new THREE.Color().setHSL(0.08 + Math.random() * 0.08, 0.95, 0.6 + Math.random() * 0.3);
     }
   }
 
@@ -83,7 +83,7 @@ export class EmberParticleSystem {
     this.material = new THREE.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
-        uOpacity: { value: this.particleType === 'smoke' ? 0.4 : 0.8 }
+        uOpacity: { value: this.particleType === 'smoke' ? 0.2 : 0.7 } // Reduced smoke opacity
       },
       vertexShader: `
         attribute float size;
@@ -97,7 +97,7 @@ export class EmberParticleSystem {
           vRotation = rotation + uTime * 0.5;
           
           vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = size * (300.0 / -mvPosition.z);
+          gl_PointSize = size * (250.0 / -mvPosition.z); // Reduced scale factor
           gl_Position = projectionMatrix * mvPosition;
         }
       `,
@@ -111,17 +111,17 @@ export class EmberParticleSystem {
           
           // Create organic circular shape with soft edges
           float dist = length(center);
-          float alpha = 1.0 - smoothstep(0.3, 0.5, dist);
+          float alpha = 1.0 - smoothstep(0.2, 0.5, dist); // Tighter falloff for smaller appearance
           
           // Add subtle rotation effect for organic feel
           float angle = atan(center.y, center.x) + vRotation;
-          float organicVariation = sin(angle * 6.0) * 0.1 + 0.9;
+          float organicVariation = sin(angle * 8.0) * 0.08 + 0.92; // Reduced variation
           alpha *= organicVariation;
           
-          // Add inner glow for embers
-          if (vColor.r > 0.8) { // Ember particles
-            float innerGlow = 1.0 - smoothstep(0.0, 0.2, dist);
-            alpha += innerGlow * 0.5;
+          // Add inner glow for embers only
+          if (vColor.r > 0.7) { // Ember particles
+            float innerGlow = 1.0 - smoothstep(0.0, 0.15, dist);
+            alpha += innerGlow * 0.3;
           }
           
           alpha *= uOpacity;
@@ -164,22 +164,22 @@ export class EmberParticleSystem {
       if (particle.age >= particle.maxAge) {
         particle.position.copy(this.position);
         particle.position.add(new THREE.Vector3(
-          (Math.random() - 0.5) * 0.8,
+          (Math.random() - 0.5) * 0.6,
           0,
-          (Math.random() - 0.5) * 0.8
+          (Math.random() - 0.5) * 0.6
         ));
         
         if (this.particleType === 'smoke') {
           particle.velocity.set(
-            (Math.random() - 0.5) * 0.3,
-            Math.random() * 0.8 + 0.4,
-            (Math.random() - 0.5) * 0.3
+            (Math.random() - 0.5) * 0.2,
+            Math.random() * 0.6 + 0.3,
+            (Math.random() - 0.5) * 0.2
           );
         } else {
           particle.velocity.set(
-            (Math.random() - 0.5) * 0.5,
-            Math.random() * 1.0 + 0.5,
-            (Math.random() - 0.5) * 0.5
+            (Math.random() - 0.5) * 0.3,
+            Math.random() * 0.8 + 0.4,
+            (Math.random() - 0.5) * 0.3
           );
         }
         
@@ -188,19 +188,19 @@ export class EmberParticleSystem {
         particle.color = this.getParticleColor();
       }
       
-      // Apply physics
+      // Apply physics with more realistic movement
       if (this.particleType === 'smoke') {
-        particle.velocity.y += 0.1 * deltaTime; // Smoke rises
-        particle.velocity.multiplyScalar(0.99); // Less air resistance for smoke
+        particle.velocity.y += 0.08 * deltaTime; // Smoke rises slower
+        particle.velocity.multiplyScalar(0.995); // Less air resistance for smoke
       } else {
-        particle.velocity.y -= 0.15 * deltaTime; // Slight gravity for embers
-        particle.velocity.multiplyScalar(0.98); // Air resistance
+        particle.velocity.y -= 0.1 * deltaTime; // Slight gravity for embers
+        particle.velocity.multiplyScalar(0.99); // Air resistance
       }
       
-      // Add organic wind effect
-      const windStrength = this.particleType === 'smoke' ? 0.2 : 0.1;
-      particle.velocity.x += Math.sin(this.time * 2 + i) * windStrength * deltaTime;
-      particle.velocity.z += Math.cos(this.time * 1.5 + i) * windStrength * deltaTime;
+      // Add subtle wind effect
+      const windStrength = this.particleType === 'smoke' ? 0.15 : 0.08;
+      particle.velocity.x += Math.sin(this.time * 1.8 + i) * windStrength * deltaTime;
+      particle.velocity.z += Math.cos(this.time * 1.3 + i) * windStrength * deltaTime;
       
       // Update position
       particle.position.add(particle.velocity.clone().multiplyScalar(deltaTime));
@@ -213,19 +213,19 @@ export class EmberParticleSystem {
       
       // Fade out over time with organic variation
       const ageRatio = particle.age / particle.maxAge;
-      const fadeVariation = Math.sin(this.time * 3 + i) * 0.1 + 0.9;
+      const fadeVariation = Math.sin(this.time * 2.5 + i) * 0.08 + 0.92;
       const alpha = Math.max(0, (1 - ageRatio) * fadeVariation);
       
       colors[i3] = particle.color.r * alpha;
       colors[i3 + 1] = particle.color.g * alpha;
       colors[i3 + 2] = particle.color.b * alpha;
       
-      // Size variation over lifetime
+      // Size variation over lifetime - more realistic scaling
       const sizeMultiplier = this.particleType === 'smoke' ? 
-        (0.5 + ageRatio * 1.5) : // Smoke grows over time
-        (1.0 - ageRatio * 0.5);   // Embers shrink over time
+        (0.3 + ageRatio * 1.2) : // Smoke grows modestly over time
+        (1.0 - ageRatio * 0.3);   // Embers shrink slightly over time
       
-      sizes[i] = particle.size * alpha * sizeMultiplier * 100; // Scale for shader
+      sizes[i] = particle.size * alpha * sizeMultiplier * 60; // Reduced scale for shader
       
       // Update rotation
       rotations[i] += particle.rotationSpeed * deltaTime;
