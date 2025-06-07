@@ -1,5 +1,6 @@
+
 import * as THREE from 'three';
-import { Noise } from 'noisejs';
+import { noise } from 'noisejs';
 
 export interface RockShape {
   geometry: THREE.BufferGeometry;
@@ -8,7 +9,7 @@ export interface RockShape {
 }
 
 export class RockShapeFactory {
-  private static noise = new Noise(Math.random());
+  private static noise = new noise.Noise(Math.random());
 
   static generateRock(
     type: 'boulder' | 'angular' | 'flat',
