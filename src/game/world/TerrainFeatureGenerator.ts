@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
@@ -13,7 +12,6 @@ export class TerrainFeatureGenerator {
   private scene: THREE.Scene;
   private ringSystem: RingQuadrantSystem;
   private rockClusterGenerator: RockClusterGenerator;
-  private rockShapeFactory: RockShapeFactory;
   private biomeRockSpawner: BiomeRockSpawner;
   private geologicalPlacement: GeologicalPlacementSystem;
   private treeGenerator: TreeGenerator;
@@ -27,7 +25,6 @@ export class TerrainFeatureGenerator {
     this.scene = scene;
     this.ringSystem = ringSystem;
     this.rockClusterGenerator = new RockClusterGenerator();
-    this.rockShapeFactory = new RockShapeFactory();
     this.biomeRockSpawner = new BiomeRockSpawner();
     this.geologicalPlacement = new GeologicalPlacementSystem();
     this.treeGenerator = new TreeGenerator();
@@ -103,25 +100,30 @@ export class TerrainFeatureGenerator {
     
     // Use cluster generation for larger rocks, individual rocks for smaller ones
     if (placement.variation.isCluster) {
+      // Create cluster using the existing cluster generator
+      const mockCallbacks = {
+        createCharacterBaseGeometry: (rockShape: any, rockSize: number) => {
+          const rockShapeObj = RockShapeFactory.generateRock('boulder', rockSize, 0.5);
+          return rockShapeObj.geometry;
+        },
+        applyShapeModifications: () => {}, // No-op, modifications are in generateRock
+        applyCharacterDeformation: () => {}, // No-op, deformation is in generateRock  
+        validateAndEnhanceGeometry: () => {} // No-op, validation is in generateRock
+      };
+
       this.rockClusterGenerator.createVariedRockCluster(
         rockGroup,
         placement.variation,
-        0, // index
-        (rockShape, rockSize) => this.rockShapeFactory.createCharacterBaseGeometry(rockShape, rockSize),
-        (geometry, rockShape, rockSize) => this.rockShapeFactory.applyShapeModifications(geometry, rockShape, rockSize),
-        (geometry, intensity, rockSize, rockShape) => this.rockShapeFactory.applyCharacterDeformation(geometry, intensity, rockSize, rockShape),
-        (geometry) => this.rockShapeFactory.validateAndEnhanceGeometry(geometry)
+        0,
+        mockCallbacks.createCharacterBaseGeometry,
+        mockCallbacks.applyShapeModifications,
+        mockCallbacks.applyCharacterDeformation,
+        mockCallbacks.validateAndEnhanceGeometry
       );
     } else {
-      // Create individual rock
-      const geometry = this.rockShapeFactory.createCharacterBaseGeometry(
-        this.rockShapeFactory.getRandomRockShape(),
-        placement.scale
-      );
-      
-      this.rockShapeFactory.applyShapeModifications(geometry, this.rockShapeFactory.getRandomRockShape(), placement.scale);
-      this.rockShapeFactory.applyCharacterDeformation(geometry, 0.15, placement.scale, this.rockShapeFactory.getRandomRockShape());
-      this.rockShapeFactory.validateAndEnhanceGeometry(geometry);
+      // Create individual rock using RockShapeFactory
+      const rockType = Math.random() < 0.33 ? 'boulder' : Math.random() < 0.5 ? 'angular' : 'flat';
+      const rockShapeObj = RockShapeFactory.generateRock(rockType, placement.scale, 0.5);
       
       const material = new THREE.MeshStandardMaterial({
         color: 0x8B7355,
@@ -129,7 +131,7 @@ export class TerrainFeatureGenerator {
         metalness: 0.1
       });
       
-      const rock = new THREE.Mesh(geometry, material);
+      const rock = new THREE.Mesh(rockShapeObj.geometry, material);
       rock.castShadow = true;
       rock.receiveShadow = true;
       rockGroup.add(rock);
@@ -160,12 +162,14 @@ export class TerrainFeatureGenerator {
     for (let i = 0; i < treeCount; i++) {
       const treePosition = this.findVegetationPosition(centerPosition, regionSize, regionFeatures);
       if (treePosition) {
-        const tree = this.treeGenerator.createRandomTree(treePosition);
-        this.scene.add(tree);
-        regionFeatures.push(tree);
-        
-        if (this.collisionRegistrationCallback) {
-          this.collisionRegistrationCallback(tree);
+        const tree = this.treeGenerator.createTree(treePosition);
+        if (tree) {
+          this.scene.add(tree);
+          regionFeatures.push(tree);
+          
+          if (this.collisionRegistrationCallback) {
+            this.collisionRegistrationCallback(tree);
+          }
         }
       }
     }
@@ -175,12 +179,14 @@ export class TerrainFeatureGenerator {
     for (let i = 0; i < bushCount; i++) {
       const bushPosition = this.findVegetationPosition(centerPosition, regionSize, regionFeatures);
       if (bushPosition) {
-        const bush = this.bushGenerator.createRandomBush(bushPosition);
-        this.scene.add(bush);
-        regionFeatures.push(bush);
-        
-        if (this.collisionRegistrationCallback) {
-          this.collisionRegistrationCallback(bush);
+        const bush = this.bushGenerator.createBush(bushPosition);
+        if (bush) {
+          this.scene.add(bush);
+          regionFeatures.push(bush);
+          
+          if (this.collisionRegistrationCallback) {
+            this.collisionRegistrationCallback(bush);
+          }
         }
       }
     }
