@@ -107,10 +107,10 @@ export class OrganicFireParticleGenerator {
     // Update particle physics with organic motion
     for (const [name, particleSystem] of this.particleSystems.entries()) {
       const { config } = particleSystem.userData;
-      const positions = particleSystem.geometry.attributes.position;
-      const velocities = particleSystem.geometry.attributes.velocity;
-      const lifetimes = particleSystem.geometry.attributes.lifetime;
-      const ages = particleSystem.geometry.attributes.age;
+      const positions = particleSystem.geometry.attributes.position as THREE.BufferAttribute;
+      const velocities = particleSystem.geometry.attributes.velocity as THREE.BufferAttribute;
+      const lifetimes = particleSystem.geometry.attributes.lifetime as THREE.BufferAttribute;
+      const ages = particleSystem.geometry.attributes.age as THREE.BufferAttribute;
 
       for (let i = 0; i < config.count; i++) {
         // Update age
