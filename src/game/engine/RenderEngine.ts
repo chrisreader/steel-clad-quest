@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class RenderEngine {
@@ -139,8 +140,8 @@ export class RenderEngine {
     // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
     if (object instanceof THREE.InstancedMesh) return true;
     
-    // Simple sphere-based frustum culling
-    if (object.geometry) {
+    // Simple sphere-based frustum culling with proper type checking
+    if (object instanceof THREE.Mesh && object.geometry) {
       const sphere = object.geometry.boundingSphere;
       if (sphere) {
         const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
@@ -148,7 +149,7 @@ export class RenderEngine {
       }
     }
     
-    return true; // Default to visible if no bounding info
+    return true; // Default to visible if no bounding info or not a mesh
   }
   
   public render(): void {
@@ -160,7 +161,7 @@ export class RenderEngine {
     
     // Apply frustum culling to scene objects
     this.scene.traverse((object) => {
-      if (object.type === 'Mesh' || object.type === 'Group') {
+      if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
         object.visible = this.isObjectInFrustum(object);
       }
     });
