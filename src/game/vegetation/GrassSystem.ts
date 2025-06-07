@@ -13,7 +13,8 @@ export interface GrassConfig {
   baseDensity: number;
   patchDensity: number;
   patchCount: number;
-  maxDistance: number;
+  guaranteedCoverageDistance: number; // Distance within which grass must always be visible
+  softTransitionDistance: number; // Distance where soft transition begins
   lodLevels: number[];
 }
 
@@ -26,17 +27,17 @@ export class GrassSystem {
   private grassGeometries: Map<string, THREE.BufferGeometry> = new Map();
   private groundGrassGeometries: Map<string, THREE.BufferGeometry> = new Map();
   private enhancedGrassSpecies: EnhancedGrassBladeConfig[] = [];
-  private renderDistance: number = 150;
   private time: number = 0;
   private currentSeason: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer';
   
   // Enhanced player position tracking for dynamic LOD
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
+  private currentPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
   private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5;
   
-  // Dynamic LOD system - continuous scaling
-  private lodDistances: number[] = [75, 150, 225, 300];
+  // Dynamic LOD system - continuous scaling with extended range
+  private lodDistances: number[] = [75, 150, 300, 500];
   
   // Performance optimization variables
   private updateCounter: number = 0;
@@ -49,7 +50,8 @@ export class GrassSystem {
     baseDensity: 1.2,
     patchDensity: 2.5,
     patchCount: 5,
-    maxDistance: 500, // For visibility only, not generation
+    guaranteedCoverageDistance: 300, // Grass MUST be visible within 300 units
+    softTransitionDistance: 600, // Start soft transition at 600 units
     lodLevels: [1.0, 0.7, 0.4, 0.15] // Never go to 0
   };
   
@@ -107,7 +109,8 @@ export class GrassSystem {
     
     if (this.grassInstances.has(regionKey)) return;
     
-    const distanceFromPlayer = centerPosition.distanceTo(this.lastPlayerPosition);
+    // Use current player position for accurate distance calculation
+    const distanceFromPlayer = centerPosition.distanceTo(this.currentPlayerPosition);
     const lodLevel = this.calculateContinuousLOD(distanceFromPlayer);
     
     console.log(`🌱 Region ${region.ringIndex}-${region.quadrant}: distance=${distanceFromPlayer.toFixed(1)}, LOD=${lodLevel.toFixed(3)}`);
@@ -125,8 +128,10 @@ export class GrassSystem {
       biomeInfo
     );
     
-    const tallGrassMinCoverage = Math.max(0.01, lodLevel * 0.2);
-    const groundGrassMinCoverage = Math.max(0.02, lodLevel * 0.5);
+    // Ensure higher minimum coverage for regions within guaranteed distance
+    const isWithinGuaranteedDistance = distanceFromPlayer <= this.config.guaranteedCoverageDistance;
+    const tallGrassMinCoverage = isWithinGuaranteedDistance ? Math.max(0.3, lodLevel * 0.4) : Math.max(0.01, lodLevel * 0.2);
+    const groundGrassMinCoverage = isWithinGuaranteedDistance ? Math.max(0.5, lodLevel * 0.7) : Math.max(0.02, lodLevel * 0.5);
     
     const tallGrassData = this.generateBiomeAwareGrassDistribution(
       centerPosition, 
@@ -162,7 +167,8 @@ export class GrassSystem {
         region,
         biomeInfo,
         false,
-        lodLevel
+        lodLevel,
+        distanceFromPlayer
       );
     }
     
@@ -174,22 +180,32 @@ export class GrassSystem {
         region,
         biomeInfo,
         true,
-        lodLevel
+        lodLevel,
+        distanceFromPlayer
       );
     }
     
-    console.log(`✅ Generated ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
+    console.log(`✅ Generated ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades (distance: ${distanceFromPlayer.toFixed(1)})`);
   }
   
   private calculateContinuousLOD(distance: number): number {
+    // Within guaranteed distance, maintain high LOD
+    if (distance <= this.config.guaranteedCoverageDistance) {
+      if (distance < this.lodDistances[0]) return this.config.lodLevels[0]; // 1.0
+      if (distance < this.lodDistances[1]) return this.config.lodLevels[1]; // 0.7
+      return this.config.lodLevels[2]; // 0.4 minimum within guaranteed distance
+    }
+    
+    // Beyond guaranteed distance, use standard LOD with soft transitions
     if (distance < this.lodDistances[0]) return this.config.lodLevels[0]; // 1.0
     if (distance < this.lodDistances[1]) return this.config.lodLevels[1]; // 0.7
     if (distance < this.lodDistances[2]) return this.config.lodLevels[2]; // 0.4
     if (distance < this.lodDistances[3]) return this.config.lodLevels[3]; // 0.15
     
+    // Soft transition beyond 500 units instead of hard cutoff
     const excessDistance = distance - this.lodDistances[3];
-    const decayFactor = Math.exp(-excessDistance / 200);
-    return Math.max(0.01, this.config.lodLevels[3] * decayFactor);
+    const decayFactor = Math.exp(-excessDistance / 300); // Slower decay for smoother transition
+    return Math.max(0.05, this.config.lodLevels[3] * decayFactor); // Never completely disappear
   }
   
   private forceEmergencyGrass(
@@ -287,7 +303,8 @@ export class GrassSystem {
     region: RegionCoordinates,
     biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean },
     isGroundGrass: boolean = false,
-    lodLevel: number = 1.0
+    lodLevel: number = 1.0,
+    distanceFromPlayer: number = 0
   ): void {
     const suffix = isGroundGrass ? '_ground' : '';
     const geometryMap = isGroundGrass ? this.groundGrassGeometries : this.grassGeometries;
@@ -337,6 +354,20 @@ export class GrassSystem {
     instancedMesh.castShadow = !isGroundGrass;
     instancedMesh.receiveShadow = true;
     
+    // Always make grass visible - no hard cutoffs
+    instancedMesh.visible = true;
+    
+    // Apply soft opacity transition for distant grass instead of hiding it
+    if (distanceFromPlayer > this.config.softTransitionDistance) {
+      const transitionFactor = Math.max(0.1, 1 - (distanceFromPlayer - this.config.softTransitionDistance) / 300);
+      if (material.uniforms.opacity) {
+        material.uniforms.opacity.value = transitionFactor;
+      } else {
+        material.transparent = true;
+        material.opacity = transitionFactor;
+      }
+    }
+    
     instancedMesh.userData = {
       regionKey: `${regionKey}_${speciesName}${suffix}`,
       centerPosition: lodPositions[0] || new THREE.Vector3(),
@@ -345,7 +376,8 @@ export class GrassSystem {
       biomeType: biomeInfo.type,
       biomeStrength: biomeInfo.strength,
       isGroundGrass,
-      lodLevel
+      lodLevel,
+      distanceFromPlayer
     };
     
     this.scene.add(instancedMesh);
@@ -456,44 +488,81 @@ export class GrassSystem {
   }
   
   private updateGrassVisibility(playerPosition: THREE.Vector3): void {
-    let hiddenCount = 0;
-    let visibleCount = 0;
+    // Update current player position for accurate calculations
+    this.currentPlayerPosition.copy(playerPosition);
     
+    let updatedCount = 0;
+    
+    // Update all grass instances with soft transitions instead of hard visibility cutoffs
     for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
       
-      const shouldBeVisible = distanceToPlayer <= this.config.maxDistance;
+      // Always keep grass visible within guaranteed distance
+      const shouldBeVisible = distanceToPlayer <= this.config.guaranteedCoverageDistance || 
+                             distanceToPlayer <= this.config.softTransitionDistance * 1.5; // Extended range
+      
       const newLodLevel = this.calculateContinuousLOD(distanceToPlayer);
       
+      // Update visibility and opacity based on distance
       if (instancedMesh.visible !== shouldBeVisible) {
         instancedMesh.visible = shouldBeVisible;
-        if (shouldBeVisible) {
-          visibleCount++;
-        } else {
-          hiddenCount++;
+        updatedCount++;
+      }
+      
+      // Apply soft opacity transition for grass beyond soft transition distance
+      if (shouldBeVisible && distanceToPlayer > this.config.softTransitionDistance) {
+        const material = instancedMesh.material as THREE.ShaderMaterial;
+        const transitionFactor = Math.max(0.1, 1 - (distanceToPlayer - this.config.softTransitionDistance) / 300);
+        
+        if (material.uniforms.opacity) {
+          material.uniforms.opacity.value = transitionFactor;
+        }
+      } else if (shouldBeVisible) {
+        // Reset opacity for close grass
+        const material = instancedMesh.material as THREE.ShaderMaterial;
+        if (material.uniforms.opacity) {
+          material.uniforms.opacity.value = 1.0;
         }
       }
       
       if (instancedMesh.userData.lodLevel !== newLodLevel && shouldBeVisible) {
         instancedMesh.userData.lodLevel = newLodLevel;
+        instancedMesh.userData.distanceFromPlayer = distanceToPlayer;
       }
     }
     
-    const groundRenderDistance = this.config.maxDistance * 0.8;
+    // Apply same logic to ground grass with slightly reduced range
+    const groundSoftTransitionDistance = this.config.softTransitionDistance * 0.8;
     for (const [regionKey, instancedMesh] of this.groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
       
-      const shouldBeVisible = distanceToPlayer <= groundRenderDistance;
+      const shouldBeVisible = distanceToPlayer <= this.config.guaranteedCoverageDistance || 
+                             distanceToPlayer <= groundSoftTransitionDistance * 1.5;
       
       if (instancedMesh.visible !== shouldBeVisible) {
         instancedMesh.visible = shouldBeVisible;
       }
+      
+      // Apply soft transition for ground grass too
+      if (shouldBeVisible && distanceToPlayer > groundSoftTransitionDistance) {
+        const material = instancedMesh.material as THREE.ShaderMaterial;
+        const transitionFactor = Math.max(0.1, 1 - (distanceToPlayer - groundSoftTransitionDistance) / 240);
+        
+        if (material.uniforms.opacity) {
+          material.uniforms.opacity.value = transitionFactor;
+        }
+      } else if (shouldBeVisible) {
+        const material = instancedMesh.material as THREE.ShaderMaterial;
+        if (material.uniforms.opacity) {
+          material.uniforms.opacity.value = 1.0;
+        }
+      }
     }
     
-    if (hiddenCount > 0 || visibleCount > 0) {
-      console.log(`🌱 Dynamic LOD: ${visibleCount} regions shown, ${hiddenCount} regions hidden`);
+    if (updatedCount > 0) {
+      console.log(`🌱 Soft Transition Update: ${updatedCount} grass regions updated with soft transitions`);
     }
   }
   
@@ -527,9 +596,10 @@ export class GrassSystem {
     this.updateCounter++;
     this.grassCullingUpdateCounter++;
     
+    // Update player position tracking more frequently for smoother transitions
     if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
       const playerMovedDistance = this.lastPlayerPosition.distanceTo(playerPosition);
-      if (playerMovedDistance > 2.0) {
+      if (playerMovedDistance > 1.0) { // Reduced threshold for more responsive updates
         this.updateGrassVisibility(playerPosition);
         this.lastPlayerPosition.copy(playerPosition);
       }
