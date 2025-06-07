@@ -1,5 +1,6 @@
+
 import * as THREE from 'three';
-import { RockShapeFactory } from '../../world/rocks/generators/RockShapeFactory';
+import { SimpleRockGenerator } from './SimpleRockGenerator';
 import { PhysicsManager } from '../../engine/PhysicsManager';
 
 export class FireplaceRocks {
@@ -21,8 +22,9 @@ export class FireplaceRocks {
     console.log(`🪨 Creating fireplace rock circle with ${rockCount} rocks at radius ${radius}`);
 
     // Create darker rock material for better contrast with fire
-    const rockMaterial = new THREE.MeshLambertMaterial({
-      color: 0x333333
+    const rockMaterial = new THREE.MeshPhongMaterial({
+      color: 0x333333,
+      shininess: 10
     });
 
     for (let i = 0; i < rockCount; i++) {
@@ -32,13 +34,13 @@ export class FireplaceRocks {
       const x = Math.cos(angle) * rockRadius;
       const z = Math.sin(angle) * rockRadius;
 
-      // Generate small organic rock shape
+      // Generate simple organic rock shape
       const rockType = Math.random() < 0.4 ? 'flat' : Math.random() < 0.7 ? 'boulder' : 'angular';
-      const rockShape = RockShapeFactory.generateRock(rockType, 0.02 + Math.random() * 0.03, 0.6);
+      const rockShape = SimpleRockGenerator.generateSimpleRock(rockType, 0.05 + Math.random() * 0.03);
 
-      // Use simple, small scale without compound scaling
+      // Use simple, small scale
       const rock = new THREE.Mesh(rockShape.geometry, rockMaterial.clone());
-      rock.scale.setScalar(0.4); // Fixed small scale
+      rock.scale.setScalar(0.4);
       rock.rotation.copy(rockShape.rotation);
       
       // Position rock on ground level
@@ -66,7 +68,7 @@ export class FireplaceRocks {
       const x = Math.cos(angle) * smallRadius;
       const z = Math.sin(angle) * smallRadius;
 
-      const smallRockShape = RockShapeFactory.generateRock('flat', 0.01 + Math.random() * 0.02, 0.4);
+      const smallRockShape = SimpleRockGenerator.generateSimpleRock('flat', 0.03 + Math.random() * 0.02);
       const smallRock = new THREE.Mesh(smallRockShape.geometry, rockMaterial.clone());
       
       smallRock.scale.setScalar(0.25); // Very small scale for detail rocks
