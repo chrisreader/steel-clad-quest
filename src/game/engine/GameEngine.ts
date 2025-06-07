@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -11,6 +10,7 @@ import { RenderEngine } from './RenderEngine';
 import { StateManager } from './StateManager';
 import { UIIntegrationManager } from './UIIntegrationManager';
 import { PhysicsManager } from './PhysicsManager';
+import { BuildingManager } from '../buildings/BuildingManager';
 import { GameState, EnemyType } from '../../types/GameTypes';
 
 export class GameEngine {
@@ -19,6 +19,7 @@ export class GameEngine {
   private stateManager: StateManager;
   private uiIntegrationManager: UIIntegrationManager;
   private physicsManager: PhysicsManager;
+  private buildingManager: BuildingManager | null = null;
   
   // Game systems
   private sceneManager: SceneManager | null = null;
@@ -65,6 +66,10 @@ export class GameEngine {
       // Initialize render engine
       this.renderEngine.initialize();
       
+      // Create the building manager
+      this.buildingManager = new BuildingManager(this.renderEngine.getScene(), this.physicsManager);
+      console.log("🏗️ [GameEngine] BuildingManager created");
+      
       // Create the scene manager using the render engine's scene and physics manager
       this.sceneManager = new SceneManager(this.renderEngine.getScene(), this.physicsManager);
       
@@ -87,6 +92,15 @@ export class GameEngine {
       
       // Create the audio manager
       this.audioManager = new AudioManager(this.renderEngine.getCamera(), this.renderEngine.getScene());
+      
+      // Set audio manager for building manager
+      if (this.buildingManager && this.audioManager) {
+        this.buildingManager.setAudioManager(this.audioManager);
+        console.log("🔊 [GameEngine] AudioManager connected to BuildingManager");
+      }
+      
+      // Create buildings with fireplaces
+      this.createBuildings();
       
       // Preload audio
       try {
@@ -120,13 +134,30 @@ export class GameEngine {
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete with distance-based fog system and enemy spawning!");
+      console.log("🎮 [GameEngine] Initialization complete with fire animation system!");
       
       // Start the game
       this.start();
     } catch (error) {
       console.error("🎮 [GameEngine] Initialization error:", error);
       this.isInitialized = true; // Still mark as initialized
+    }
+  }
+  
+  private createBuildings(): void {
+    if (!this.buildingManager) return;
+    
+    console.log("🏗️ [GameEngine] Creating buildings with animated fireplaces...");
+    
+    // Create tavern at origin with fireplace
+    const tavernBuilding = this.buildingManager.createBuilding({
+      type: 'tavern',
+      position: new THREE.Vector3(0, 0, 0),
+      id: 'main_tavern'
+    });
+    
+    if (tavernBuilding) {
+      console.log("🔥 [GameEngine] Tavern with animated fireplace created successfully");
     }
   }
   
@@ -275,6 +306,11 @@ export class GameEngine {
                    this.inputManager.isActionPressed('moveBackward') ||
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
+    
+    // Update building manager (critical for fire animation)
+    if (this.buildingManager) {
+      this.buildingManager.update(deltaTime);
+    }
     
     // Sync enemies from scene manager to combat system
     if (this.sceneManager) {
@@ -504,6 +540,11 @@ export class GameEngine {
     this.stateManager.dispose();
     this.uiIntegrationManager.dispose();
     this.renderEngine.dispose();
+    
+    // Dispose building manager
+    if (this.buildingManager) {
+      this.buildingManager.dispose();
+    }
     
     // Dispose systems (check for null to avoid runtime errors)
     if (this.movementSystem) {
