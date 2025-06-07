@@ -85,11 +85,10 @@ export class FireplaceGeometry {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.computeVertexNormals();
     
-    // Create realistic dirt material
+    // Create realistic dirt material - removed roughness property
     const dirtMaterial = new THREE.MeshLambertMaterial({
       color: 0x4A3728, // Dark brown earth color
-      map: this.createDirtTexture(),
-      roughness: 0.9
+      map: this.createDirtTexture()
     });
 
     const dirtPatch = new THREE.Mesh(geometry, dirtMaterial);
