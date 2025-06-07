@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { OrganicFireParticleGenerator } from './components/OrganicFireParticleGenerator';
 import { FireLightingSystem } from './components/FireLightingSystem';
@@ -70,7 +71,7 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    console.log('🔥 Massive fire effects system fully initialized - lights entire tavern + exterior');
+    console.log('🔥 Massive fire effects system fully initialized - lights entire tavern + exterior with time-aware intensity');
   }
 
   public update(deltaTime: number): void {
@@ -82,6 +83,12 @@ export class FireEffectsManager {
 
     if (this.lightingSystem) {
       this.lightingSystem.update(deltaTime);
+    }
+  }
+
+  public updateTimeOfDay(gameTime: number, timePhases: any): void {
+    if (this.lightingSystem) {
+      this.lightingSystem.setGameTime(gameTime, timePhases);
     }
   }
 

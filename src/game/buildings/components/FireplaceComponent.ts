@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { FireplaceGeometry } from './FireplaceGeometry';
 import { FireplaceRocks } from './FireplaceRocks';
@@ -50,7 +51,7 @@ export class FireplaceComponent {
     const rocksGroup = this.fireplaceRocks.createRockCircle(0.8, 16);
     this.fireplaceGroup.add(rocksGroup);
 
-    // Create fire effects
+    // Create fire effects with enhanced night-time lighting
     const firePosition = this.position.clone();
     firePosition.y += 0.2; // Slightly above the base
     
@@ -60,14 +61,18 @@ export class FireplaceComponent {
       particleCount: 45,
       smokeEnabled: true,
       emberCount: 12,
-      lightIntensity: 1.5,
-      lightDistance: 8
+      lightIntensity: 5.0, // Enhanced for night visibility
+      lightDistance: 40 // Extended range for full tavern coverage
     });
 
     this.scene.add(this.fireplaceGroup);
-    console.log(`🔥 Fireplace component '${this.fireplaceId}' created successfully`);
+    console.log(`🔥 Fireplace component '${this.fireplaceId}' created with time-aware lighting`);
     
     return this.fireplaceGroup;
+  }
+
+  public updateTimeOfDay(gameTime: number, timePhases: any): void {
+    this.fireSystem.updateTimeOfDay(gameTime, timePhases);
   }
 
   public registerCollisions(buildingName: string = 'tavern'): void {
@@ -95,11 +100,11 @@ export class FireplaceComponent {
       particleCount: 45,
       smokeEnabled: true,
       emberCount: 12,
-      lightIntensity: 1.5,
-      lightDistance: 8
+      lightIntensity: 5.0, // Enhanced for night visibility
+      lightDistance: 40 // Extended range for full tavern coverage
     });
     
-    console.log(`🔥 Fire '${this.fireplaceId}' lit`);
+    console.log(`🔥 Fire '${this.fireplaceId}' lit with time-aware lighting`);
   }
 
   public setFireIntensity(intensity: number): void {

@@ -1,5 +1,7 @@
+
 import * as THREE from 'three';
 import { FireLightConfig } from '../types/FireTypes';
+import { TimeAwareFireIntensity } from './TimeAwareFireIntensity';
 
 export class FireLightingSystem {
   private scene: THREE.Scene;
@@ -7,12 +9,21 @@ export class FireLightingSystem {
   private lights: THREE.PointLight[] = [];
   private time: number = 0;
   private config: FireLightConfig;
+  private timeAwareIntensity: TimeAwareFireIntensity;
+  private currentGameTime: number = 0;
+  private gameTimePhases: any = null;
 
   constructor(scene: THREE.Scene, position: THREE.Vector3, config: FireLightConfig) {
     this.scene = scene;
     this.position = position.clone();
     this.config = config;
+    this.timeAwareIntensity = new TimeAwareFireIntensity(config.baseIntensity);
     this.createLights();
+  }
+
+  public setGameTime(gameTime: number, timePhases: any): void {
+    this.currentGameTime = gameTime;
+    this.gameTimePhases = timePhases;
   }
 
   private createLights(): void {
@@ -103,6 +114,12 @@ export class FireLightingSystem {
   public update(deltaTime: number): void {
     this.time += deltaTime * this.config.flickerSpeed;
 
+    // Get time-adjusted intensity
+    let adjustedBaseIntensity = this.config.baseIntensity;
+    if (this.gameTimePhases) {
+      adjustedBaseIntensity = this.timeAwareIntensity.getAdjustedIntensity(this.currentGameTime, this.gameTimePhases);
+    }
+
     // Primary light enhanced flickering with realistic pattern
     const primaryLight = this.lights[0];
     if (primaryLight) {
@@ -112,10 +129,10 @@ export class FireLightingSystem {
       
       const intensityVariation = flicker1 + flicker2 + flicker3;
       primaryLight.intensity = Math.max(
-        this.config.baseIntensity * 0.8,
+        adjustedBaseIntensity * 0.8,
         Math.min(
-          this.config.maxIntensity,
-          this.config.baseIntensity + intensityVariation
+          this.config.maxIntensity * (adjustedBaseIntensity / this.config.baseIntensity),
+          adjustedBaseIntensity + intensityVariation
         )
       );
 
@@ -128,21 +145,21 @@ export class FireLightingSystem {
     const ambientLight = this.lights[1];
     if (ambientLight) {
       const ambientFlicker = Math.sin(this.time * 1.8) * 0.04;
-      ambientLight.intensity = this.config.baseIntensity * 0.6 + ambientFlicker;
+      ambientLight.intensity = adjustedBaseIntensity * 0.6 + ambientFlicker;
     }
 
     // Volumetric light slow atmospheric breathing
     const volumetricLight = this.lights[2];
     if (volumetricLight) {
       const volumetricFlicker = Math.sin(this.time * 1.2) * 0.06;
-      volumetricLight.intensity = this.config.baseIntensity * 0.8 + volumetricFlicker;
+      volumetricLight.intensity = adjustedBaseIntensity * 0.8 + volumetricFlicker;
     }
 
     // Enhanced ember light dramatic sparkles
     const emberLight = this.lights[3];
     if (emberLight) {
       const emberFlicker = Math.sin(this.time * 8.7) * Math.sin(this.time * 3.2) * 0.08;
-      emberLight.intensity = Math.max(0, this.config.baseIntensity * 0.4 + emberFlicker);
+      emberLight.intensity = Math.max(0, adjustedBaseIntensity * 0.4 + emberFlicker);
       
       // More dynamic ember position changes
       if (Math.random() < 0.15) {
@@ -155,13 +172,14 @@ export class FireLightingSystem {
     const rimLight = this.lights[4];
     if (rimLight) {
       const rimFlicker = Math.sin(this.time * 2.1) * 0.02;
-      rimLight.intensity = this.config.baseIntensity * 0.3 + rimFlicker;
+      rimLight.intensity = adjustedBaseIntensity * 0.3 + rimFlicker;
     }
   }
 
   public setIntensity(multiplier: number): void {
     this.config.baseIntensity *= multiplier;
     this.config.maxIntensity *= multiplier;
+    this.timeAwareIntensity = new TimeAwareFireIntensity(this.config.baseIntensity);
   }
 
   public dispose(): void {

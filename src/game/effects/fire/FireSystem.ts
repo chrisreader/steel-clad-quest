@@ -12,7 +12,7 @@ export class FireSystem {
   constructor(scene: THREE.Scene, audioManager: AudioManager) {
     this.scene = scene;
     this.audioManager = audioManager;
-    console.log('🔥 Fire system initialized');
+    console.log('🔥 Fire system initialized with time-aware lighting');
   }
 
   public createFire(id: string, position: THREE.Vector3, config: Partial<FireConfig> = {}): FireEffectsManager {
@@ -27,8 +27,14 @@ export class FireSystem {
     this.fires.set(id, fireEffects);
     fireEffects.start();
     
-    console.log(`🔥 Created fire '${id}' at position:`, position);
+    console.log(`🔥 Created time-aware fire '${id}' at position:`, position);
     return fireEffects;
+  }
+
+  public updateTimeOfDay(gameTime: number, timePhases: any): void {
+    for (const fire of this.fires.values()) {
+      fire.updateTimeOfDay(gameTime, timePhases);
+    }
   }
 
   public getFire(id: string): FireEffectsManager | undefined {
