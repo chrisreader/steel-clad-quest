@@ -5,6 +5,8 @@ import { EnvironmentalGrassDistribution, EnvironmentalFactors } from './Environm
 import { RegionCoordinates } from '../world/RingQuadrantSystem';
 import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES } from '../config/DayNightConfig';
+import { GrassBiomeManager, BiomeType } from './GrassBiomeManager';
+import { GrassDebugSystem } from './GrassDebugSystem';
 
 export interface GrassConfig {
   baseDensity: number;
@@ -23,6 +25,7 @@ export class GrassSystem {
   private renderDistance: number = 150;
   private time: number = 0;
   private currentSeason: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer';
+  private debugSystem: GrassDebugSystem;
   
   // Player position tracking for distance-based culling
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -46,6 +49,7 @@ export class GrassSystem {
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
+    this.debugSystem = new GrassDebugSystem(scene);
     this.initializeEnhancedGrassSystem();
   }
   
@@ -88,24 +92,34 @@ export class GrassSystem {
       return;
     }
     
-    console.log(`🌱 Generating enhanced grass for region ${region.ringIndex}-${region.quadrant}`);
+    // Determine biome for this region
+    const biomeInfo = GrassBiomeManager.getBiomeAtPosition(centerPosition);
+    const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     
-    // Create environmental factors for this region
-    const environmentalFactors = this.createRegionEnvironmentalFactors(
+    console.log(`🌱 Generating ${biomeConfig.name} grass for region ${region.ringIndex}-${region.quadrant}`);
+    
+    // Create environmental factors adjusted for biome
+    const baseEnvironmentalFactors = this.createRegionEnvironmentalFactors(
       centerPosition, 
       region, 
       terrainColor
     );
     
-    // Generate grass distribution based on environmental factors
+    const environmentalFactors = GrassBiomeManager.adjustEnvironmentalFactors(
+      baseEnvironmentalFactors,
+      biomeInfo
+    );
+    
+    // Generate grass distribution with biome adjustments
     const lodLevel = this.getLODLevel(distanceFromSpawn);
     if (lodLevel === 0) return;
     
-    const grassData = this.generateEnvironmentalGrassDistribution(
+    const grassData = this.generateBiomeAwareGrassDistribution(
       centerPosition, 
       size, 
       environmentalFactors, 
-      lodLevel
+      lodLevel,
+      biomeInfo
     );
     
     if (grassData.positions.length === 0) return;
@@ -115,15 +129,127 @@ export class GrassSystem {
     
     // Create instanced meshes for each species present
     for (const [speciesName, speciesData] of Object.entries(speciesGroups)) {
-      this.createSpeciesInstancedMesh(
+      this.createBiomeAwareSpeciesInstancedMesh(
         regionKey, 
         speciesName, 
         speciesData, 
-        region
+        region,
+        biomeInfo
       );
     }
     
-    console.log(`✅ Generated enhanced grass for region ${regionKey} with ${grassData.positions.length} blades`);
+    console.log(`✅ Generated ${biomeConfig.name} grass for region ${regionKey} with ${grassData.positions.length} blades`);
+  }
+  
+  private createBiomeAwareSpeciesInstancedMesh(
+    regionKey: string,
+    speciesName: string,
+    speciesData: {
+      positions: THREE.Vector3[];
+      scales: THREE.Vector3[];
+      rotations: THREE.Quaternion[];
+    },
+    region: RegionCoordinates,
+    biomeInfo: { type: BiomeType; strength: number }
+  ): void {
+    // Get biome-specific geometry
+    const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
+    const biomeSpecies = EnhancedGrassGeometry.getEnhancedGrassSpeciesForBiome(biomeInfo.type);
+    const speciesConfig = biomeSpecies.find(s => s.species === speciesName);
+    
+    if (!speciesConfig) return;
+    
+    // Create geometry with biome-specific height variation
+    const heightVariation = biomeConfig.heightMultiplier;
+    const geometry = speciesConfig.clustered 
+      ? EnhancedGrassGeometry.createGrassCluster(speciesConfig, 3, heightVariation)
+      : EnhancedGrassGeometry.createRealisticGrassBladeGeometry(speciesConfig, heightVariation);
+    
+    // Use existing material or create new one
+    let material = this.grassMaterials.get(speciesName);
+    if (!material) {
+      material = RealisticGrassShader.createRealisticGrassMaterial(
+        speciesConfig.color, 
+        0, 
+        speciesConfig.species
+      );
+      this.grassMaterials.set(speciesName, material);
+    }
+    
+    // Apply biome-specific wind exposure
+    if (material.uniforms.windStrength) {
+      material.uniforms.windStrength.value *= biomeConfig.windExposureMultiplier;
+    }
+    
+    const instancedMesh = new THREE.InstancedMesh(
+      geometry, 
+      material, 
+      speciesData.positions.length
+    );
+    
+    // Set instance data
+    for (let i = 0; i < speciesData.positions.length; i++) {
+      const matrix = new THREE.Matrix4();
+      const adjustedPosition = speciesData.positions[i].clone();
+      adjustedPosition.y = Math.max(0.1, adjustedPosition.y);
+      
+      matrix.compose(
+        adjustedPosition,
+        speciesData.rotations[i],
+        speciesData.scales[i]
+      );
+      instancedMesh.setMatrixAt(i, matrix);
+    }
+    
+    instancedMesh.instanceMatrix.needsUpdate = true;
+    instancedMesh.castShadow = true;
+    instancedMesh.receiveShadow = true;
+    
+    // Store biome data
+    instancedMesh.userData = {
+      regionKey: `${regionKey}_${speciesName}`,
+      centerPosition: speciesData.positions[0] || new THREE.Vector3(),
+      ringIndex: region.ringIndex,
+      species: speciesName,
+      biomeType: biomeInfo.type,
+      biomeStrength: biomeInfo.strength
+    };
+    
+    this.scene.add(instancedMesh);
+    this.grassInstances.set(`${regionKey}_${speciesName}`, instancedMesh);
+  }
+  
+  private generateBiomeAwareGrassDistribution(
+    centerPosition: THREE.Vector3,
+    size: number,
+    environmentalFactors: EnvironmentalFactors,
+    lodMultiplier: number,
+    biomeInfo: { type: BiomeType; strength: number }
+  ) {
+    const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
+    const adjustedDensity = this.config.baseDensity * lodMultiplier * biomeConfig.densityMultiplier;
+    const baseSpacing = 1 / Math.sqrt(adjustedDensity);
+    
+    const grassData = EnvironmentalGrassDistribution.calculateGrassDistribution(
+      centerPosition,
+      size,
+      environmentalFactors,
+      baseSpacing
+    );
+    
+    // Apply biome species distribution
+    grassData.species = GrassBiomeManager.adjustSpeciesForBiome(
+      grassData.species, 
+      biomeInfo
+    );
+    
+    // Apply biome height variations
+    for (let i = 0; i < grassData.scales.length; i++) {
+      const heightVariation = 0.7 + Math.random() * 0.6; // ±30% height variation
+      grassData.scales[i].y *= biomeConfig.heightMultiplier * heightVariation;
+    }
+    
+    return grassData;
   }
   
   private createRegionEnvironmentalFactors(
@@ -192,57 +318,6 @@ export class GrassSystem {
     return groups;
   }
   
-  private createSpeciesInstancedMesh(
-    regionKey: string,
-    speciesName: string,
-    speciesData: {
-      positions: THREE.Vector3[];
-      scales: THREE.Vector3[];
-      rotations: THREE.Quaternion[];
-    },
-    region: RegionCoordinates
-  ): void {
-    const geometry = this.grassGeometries.get(speciesName);
-    const material = this.grassMaterials.get(speciesName);
-    
-    if (!geometry || !material) return;
-    
-    const instancedMesh = new THREE.InstancedMesh(
-      geometry, 
-      material, 
-      speciesData.positions.length
-    );
-    
-    // Set instance data
-    for (let i = 0; i < speciesData.positions.length; i++) {
-      const matrix = new THREE.Matrix4();
-      const adjustedPosition = speciesData.positions[i].clone();
-      adjustedPosition.y = Math.max(0.1, adjustedPosition.y);
-      
-      matrix.compose(
-        adjustedPosition,
-        speciesData.rotations[i],
-        speciesData.scales[i]
-      );
-      instancedMesh.setMatrixAt(i, matrix);
-    }
-    
-    instancedMesh.instanceMatrix.needsUpdate = true;
-    instancedMesh.castShadow = true;
-    instancedMesh.receiveShadow = true;
-    
-    // Store region data
-    instancedMesh.userData = {
-      regionKey: `${regionKey}_${speciesName}`,
-      centerPosition: speciesData.positions[0] || new THREE.Vector3(),
-      ringIndex: region.ringIndex,
-      species: speciesName
-    };
-    
-    this.scene.add(instancedMesh);
-    this.grassInstances.set(`${regionKey}_${speciesName}`, instancedMesh);
-  }
-  
   private getLODLevel(distance: number): number {
     if (distance < 50) return this.config.lodLevels[0];
     if (distance < 100) return this.config.lodLevels[1];
@@ -300,6 +375,9 @@ export class GrassSystem {
     this.time += deltaTime;
     this.updateCounter++;
     this.grassCullingUpdateCounter++;
+    
+    // Update debug system
+    this.debugSystem.updateDebugInfo(playerPosition);
     
     // Update grass visibility
     if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
@@ -400,6 +478,9 @@ export class GrassSystem {
       geometry.dispose();
     }
     this.grassGeometries.clear();
+    
+    // Clean up debug system
+    this.debugSystem.dispose();
     
     console.log('🌱 Enhanced GrassSystem disposed');
   }

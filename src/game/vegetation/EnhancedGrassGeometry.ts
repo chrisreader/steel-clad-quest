@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface EnhancedGrassBladeConfig {
@@ -14,8 +13,12 @@ export interface EnhancedGrassBladeConfig {
 
 export class EnhancedGrassGeometry {
   // Enhanced grass blade creation with more realistic shapes
-  public static createRealisticGrassBladeGeometry(config: EnhancedGrassBladeConfig): THREE.BufferGeometry {
-    const { height, width, segments, curve, taper, species } = config;
+  public static createRealisticGrassBladeGeometry(
+    config: EnhancedGrassBladeConfig,
+    heightVariation: number = 1.0
+  ): THREE.BufferGeometry {
+    const { width, segments, curve, taper, species } = config;
+    const height = config.height * heightVariation; // Apply height variation
     const geometry = new THREE.BufferGeometry();
     
     const vertices: number[] = [];
@@ -74,7 +77,11 @@ export class EnhancedGrassGeometry {
   }
   
   // Create clustered grass for natural clumping
-  public static createGrassCluster(config: EnhancedGrassBladeConfig, clusterSize: number = 3): THREE.BufferGeometry {
+  public static createGrassCluster(
+    config: EnhancedGrassBladeConfig, 
+    clusterSize: number = 3,
+    heightVariation: number = 1.0
+  ): THREE.BufferGeometry {
     const clusterGeometry = new THREE.BufferGeometry();
     const clusterVertices: number[] = [];
     const clusterUVs: number[] = [];
@@ -84,15 +91,16 @@ export class EnhancedGrassGeometry {
     let indexOffset = 0;
     
     for (let i = 0; i < clusterSize; i++) {
-      // Vary each blade in the cluster
+      // Vary each blade in the cluster with additional height variation
+      const individualHeightVariation = heightVariation * (0.8 + Math.random() * 0.4);
       const bladeConfig = {
         ...config,
-        height: config.height * (0.8 + Math.random() * 0.4),
+        height: config.height * individualHeightVariation,
         width: config.width * (0.9 + Math.random() * 0.2),
         curve: config.curve * (0.8 + Math.random() * 0.4)
       };
       
-      const bladeGeometry = this.createRealisticGrassBladeGeometry(bladeConfig);
+      const bladeGeometry = this.createRealisticGrassBladeGeometry(bladeConfig, 1.0);
       const bladeVertices = bladeGeometry.getAttribute('position').array;
       const bladeUVs = bladeGeometry.getAttribute('uv').array;
       const bladeNormals = bladeGeometry.getAttribute('normal').array;
@@ -167,6 +175,37 @@ export class EnhancedGrassGeometry {
       default:
         return 1.0 - (t * taper);
     }
+  }
+  
+  // Get enhanced grass species with biome-aware configurations
+  public static getEnhancedGrassSpeciesForBiome(biomeType: string): EnhancedGrassBladeConfig[] {
+    const baseSpecies = this.getEnhancedGrassSpecies();
+    
+    // Apply biome-specific modifications
+    return baseSpecies.map(species => {
+      const modified = { ...species };
+      
+      if (biomeType === 'normal') {
+        // Shorter prairie grass, more clumping
+        if (species.species === 'prairie') {
+          modified.height = 0.5; // Reduced from 0.8
+        }
+      } else if (biomeType === 'meadow') {
+        // Slightly taller and lusher
+        modified.height *= 1.1;
+        if (species.species === 'meadow' || species.species === 'fine') {
+          modified.color = modified.color.clone().multiplyScalar(1.05);
+        }
+      } else if (biomeType === 'prairie') {
+        // Taller grass, especially prairie species
+        if (species.species === 'prairie') {
+          modified.height *= 1.3;
+        }
+        modified.curve *= 1.2; // More wind exposure
+      }
+      
+      return modified;
+    });
   }
   
   // Get enhanced grass species with realistic variations
