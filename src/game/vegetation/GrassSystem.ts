@@ -30,10 +30,14 @@ export class GrassSystem {
   private time: number = 0;
   private currentSeason: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer';
   
-  // Player position tracking for distance-based culling
+  // Enhanced player position tracking for dynamic LOD
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 10;
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // More frequent updates
+  
+  // Dynamic LOD system
+  private lodDistances: number[] = [50, 100, 150, 200]; // LOD distance thresholds
+  private grassRegionQueue: Set<string> = new Set(); // Regions pending generation
   
   // Performance optimization variables
   private updateCounter: number = 0;
@@ -43,11 +47,11 @@ export class GrassSystem {
   private readonly FOG_CHECK_INTERVAL: number = 100;
   
   private config: GrassConfig = {
-    baseDensity: 0.8,
+    baseDensity: 1.2, // Increased base density
     patchDensity: 2.5,
     patchCount: 5,
-    maxDistance: 150,
-    lodLevels: [1.0, 0.5, 0.25, 0.0]
+    maxDistance: 200, // Increased render distance
+    lodLevels: [1.0, 0.8, 0.6, 0.4] // More gradual LOD reduction
   };
   
   constructor(scene: THREE.Scene) {
@@ -96,7 +100,7 @@ export class GrassSystem {
       this.groundGrassMaterials.set(species.species, groundMaterial);
     }
     
-    console.log('🌱 Enhanced grass system with realistic ground coverage initialized with', this.enhancedGrassSpecies.length, 'species');
+    console.log('🌱 Enhanced grass system with dynamic LOD initialized with', this.enhancedGrassSpecies.length, 'species');
   }
   
   public generateGrassForRegion(
@@ -109,9 +113,13 @@ export class GrassSystem {
     
     if (this.grassInstances.has(regionKey)) return;
     
-    // Early distance check
-    const distanceFromSpawn = centerPosition.length();
-    if (distanceFromSpawn > this.renderDistance) {
+    // Calculate distance and LOD level
+    const distanceFromPlayer = this.lastPlayerPosition.distanceTo(centerPosition);
+    const lodLevel = this.getDynamicLODLevel(distanceFromPlayer);
+    
+    // Always generate grass within extended render distance
+    if (distanceFromPlayer > this.config.maxDistance) {
+      this.grassRegionQueue.add(regionKey);
       return;
     }
     
@@ -119,10 +127,10 @@ export class GrassSystem {
     const biomeInfo = GrassBiomeManager.getBiomeAtPosition(centerPosition);
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     
-    console.log(`🌱 Generating ${biomeConfig.name} grass with ground coverage for region ${region.ringIndex}-${region.quadrant}`);
+    console.log(`🌱 Generating ${biomeConfig.name} grass (LOD: ${lodLevel.toFixed(2)}) for region ${region.ringIndex}-${region.quadrant}`);
     
-    // Create environmental factors adjusted for biome
-    const baseEnvironmentalFactors = this.createRegionEnvironmentalFactors(
+    // Create environmental factors adjusted for biome with gradual transitions
+    const baseEnvironmentalFactors = this.createImprovedEnvironmentalFactors(
       centerPosition, 
       region, 
       terrainColor
@@ -133,29 +141,34 @@ export class GrassSystem {
       biomeInfo
     );
     
-    // Generate grass distribution with biome adjustments
-    const lodLevel = this.getLODLevel(distanceFromSpawn);
+    // Generate grass distribution with guaranteed minimum coverage
     if (lodLevel === 0) return;
     
-    // Generate tall grass (existing system)
+    // Generate tall grass (existing system) with minimum coverage guarantee
     const tallGrassData = this.generateBiomeAwareGrassDistribution(
       centerPosition, 
       size, 
       environmentalFactors, 
       lodLevel,
-      biomeInfo
+      biomeInfo,
+      0.2 // Guarantee 20% coverage for tall grass
     );
     
-    // Generate ground grass (new dense layer)
+    // Generate ground grass (new dense layer) with higher minimum coverage
     const groundGrassData = this.generateGroundGrassDistribution(
       centerPosition,
       size,
       environmentalFactors,
       lodLevel,
-      biomeInfo
+      biomeInfo,
+      0.6 // Guarantee 60% coverage for ground grass
     );
     
-    if (tallGrassData.positions.length === 0 && groundGrassData.positions.length === 0) return;
+    // Always ensure some grass is generated
+    if (tallGrassData.positions.length === 0 && groundGrassData.positions.length === 0) {
+      console.warn(`⚠️ No grass generated for region ${regionKey}, forcing minimum grass`);
+      this.forceMinimumGrass(tallGrassData, groundGrassData, centerPosition, size, environmentalFactors);
+    }
     
     // Group by species for efficient rendering
     const tallGrassGroups = this.groupGrassBySpecies(tallGrassData);
@@ -169,7 +182,8 @@ export class GrassSystem {
         speciesData, 
         region,
         biomeInfo,
-        false // tall grass
+        false, // tall grass
+        lodLevel
       );
     }
     
@@ -181,11 +195,76 @@ export class GrassSystem {
         speciesData, 
         region,
         biomeInfo,
-        true // ground grass
+        true, // ground grass
+        lodLevel
       );
     }
     
     console.log(`✅ Generated ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
+  }
+  
+  private forceMinimumGrass(
+    tallGrassData: any,
+    groundGrassData: any,
+    centerPosition: THREE.Vector3,
+    size: number,
+    environmentalFactors: EnvironmentalFactors
+  ): void {
+    // Add minimum grass blades if none were generated
+    const minBlades = 50; // Minimum number of grass blades per region
+    const halfSize = size * 0.5;
+    
+    for (let i = 0; i < minBlades; i++) {
+      const randomX = centerPosition.x - halfSize + Math.random() * size;
+      const randomZ = centerPosition.z - halfSize + Math.random() * size;
+      const worldPos = new THREE.Vector3(randomX, 0, randomZ);
+      
+      if (i < minBlades * 0.3) { // 30% tall grass
+        tallGrassData.positions.push(worldPos.clone());
+        tallGrassData.scales.push(new THREE.Vector3(0.8 + Math.random() * 0.4, 1.0, 0.8 + Math.random() * 0.4));
+        tallGrassData.rotations.push(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2));
+        tallGrassData.species.push('meadow');
+      } else { // 70% ground grass
+        groundGrassData.positions.push(worldPos.clone());
+        groundGrassData.scales.push(new THREE.Vector3(0.8 + Math.random() * 0.4, 0.7, 0.8 + Math.random() * 0.4));
+        groundGrassData.rotations.push(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2));
+        groundGrassData.species.push('clumping');
+      }
+    }
+    
+    console.log(`🌱 Forced minimum ${minBlades} grass blades for coverage`);
+  }
+  
+  private createImprovedEnvironmentalFactors(
+    centerPosition: THREE.Vector3,
+    region: RegionCoordinates,
+    terrainColor: number
+  ): EnvironmentalFactors {
+    const distanceFromCenter = centerPosition.length();
+    
+    // Use gradual environmental factors instead of binary
+    const waterInfluence = Math.sin(centerPosition.x * 0.02) * Math.cos(centerPosition.z * 0.02);
+    const treeInfluence = Math.sin(centerPosition.x * 0.03 + 1) * Math.cos(centerPosition.z * 0.03 + 1);
+    const rockInfluence = Math.sin(centerPosition.x * 0.025 + 2) * Math.cos(centerPosition.z * 0.025 + 2);
+    
+    return EnvironmentalGrassDistribution.createEnvironmentalFactorsForTerrain(
+      centerPosition,
+      0,
+      {
+        hasWater: waterInfluence > 0.3, // Less frequent water
+        hasTrees: treeInfluence > 0.2, // Moderate tree coverage
+        hasRocks: rockInfluence > 0.4, // Less frequent rocks
+        playerTraffic: 0
+      }
+    );
+  }
+  
+  private getDynamicLODLevel(distance: number): number {
+    if (distance < this.lodDistances[0]) return this.config.lodLevels[0]; // Full detail
+    if (distance < this.lodDistances[1]) return this.config.lodLevels[1]; // High detail
+    if (distance < this.lodDistances[2]) return this.config.lodLevels[2]; // Medium detail
+    if (distance < this.lodDistances[3]) return this.config.lodLevels[3]; // Low detail
+    return 0; // No grass
   }
   
   private generateGroundGrassDistribution(
@@ -193,7 +272,8 @@ export class GrassSystem {
     size: number,
     environmentalFactors: EnvironmentalFactors,
     lodMultiplier: number,
-    biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean }
+    biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean },
+    minimumCoverage: number = 0.6
   ) {
     const groundConfig = GroundGrassBiomeConfig.getGroundConfiguration(biomeInfo.type);
     const adjustedDensity = this.config.baseDensity * lodMultiplier * groundConfig.densityMultiplier;
@@ -203,7 +283,8 @@ export class GrassSystem {
       centerPosition,
       size,
       environmentalFactors,
-      baseSpacing
+      baseSpacing,
+      minimumCoverage // Pass minimum coverage to ensure ground grass
     );
     
     // Apply ground-specific species distribution
@@ -235,7 +316,8 @@ export class GrassSystem {
     },
     region: RegionCoordinates,
     biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean },
-    isGroundGrass: boolean = false
+    isGroundGrass: boolean = false,
+    lodLevel: number = 1.0
   ): void {
     const suffix = isGroundGrass ? '_ground' : '';
     const geometryMap = isGroundGrass ? this.groundGrassGeometries : this.grassGeometries;
@@ -248,6 +330,12 @@ export class GrassSystem {
     
     if (!geometry || !material) return;
     
+    // Apply LOD-based instance count reduction
+    const targetInstanceCount = Math.max(1, Math.floor(speciesData.positions.length * lodLevel));
+    const lodPositions = speciesData.positions.slice(0, targetInstanceCount);
+    const lodScales = speciesData.scales.slice(0, targetInstanceCount);
+    const lodRotations = speciesData.rotations.slice(0, targetInstanceCount);
+    
     // Apply biome-specific wind exposure for ground grass with improved values
     if (isGroundGrass && material.uniforms.windStrength) {
       const groundConfig = GroundGrassBiomeConfig.getGroundConfiguration(biomeInfo.type);
@@ -257,13 +345,13 @@ export class GrassSystem {
     const instancedMesh = new THREE.InstancedMesh(
       geometry, 
       material, 
-      speciesData.positions.length
+      lodPositions.length
     );
     
     // Set instance data
-    for (let i = 0; i < speciesData.positions.length; i++) {
+    for (let i = 0; i < lodPositions.length; i++) {
       const matrix = new THREE.Matrix4();
-      const adjustedPosition = speciesData.positions[i].clone();
+      const adjustedPosition = lodPositions[i].clone();
       
       // Position ground grass properly to stand upright
       if (isGroundGrass) {
@@ -274,8 +362,8 @@ export class GrassSystem {
       
       matrix.compose(
         adjustedPosition,
-        speciesData.rotations[i],
-        speciesData.scales[i]
+        lodRotations[i],
+        lodScales[i]
       );
       instancedMesh.setMatrixAt(i, matrix);
     }
@@ -284,15 +372,16 @@ export class GrassSystem {
     instancedMesh.castShadow = !isGroundGrass; // Ground grass doesn't cast shadows for performance
     instancedMesh.receiveShadow = true;
     
-    // Store metadata
+    // Store metadata including LOD level
     instancedMesh.userData = {
       regionKey: `${regionKey}_${speciesName}${suffix}`,
-      centerPosition: speciesData.positions[0] || new THREE.Vector3(),
+      centerPosition: lodPositions[0] || new THREE.Vector3(),
       ringIndex: region.ringIndex,
       species: speciesName,
       biomeType: biomeInfo.type,
       biomeStrength: biomeInfo.strength,
-      isGroundGrass
+      isGroundGrass,
+      lodLevel
     };
     
     this.scene.add(instancedMesh);
@@ -304,7 +393,8 @@ export class GrassSystem {
     size: number,
     environmentalFactors: EnvironmentalFactors,
     lodMultiplier: number,
-    biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean }
+    biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean },
+    minimumCoverage: number = 0.2
   ) {
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     const adjustedDensity = this.config.baseDensity * lodMultiplier * biomeConfig.densityMultiplier;
@@ -314,7 +404,8 @@ export class GrassSystem {
       centerPosition,
       size,
       environmentalFactors,
-      baseSpacing
+      baseSpacing,
+      minimumCoverage // Pass minimum coverage
     );
     
     grassData.species = GrassBiomeManager.adjustSpeciesForBiome(
@@ -411,12 +502,21 @@ export class GrassSystem {
     let hiddenCount = 0;
     let visibleCount = 0;
     
-    // Update tall grass visibility
+    // Process queued regions that are now in range
+    const regionsToProcess = Array.from(this.grassRegionQueue);
+    for (const regionKey of regionsToProcess) {
+      // Extract region info from key and check if now in range
+      // This would require region center position lookup
+      this.grassRegionQueue.delete(regionKey);
+    }
+    
+    // Update tall grass visibility with dynamic LOD
     for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
       
-      const shouldBeVisible = distanceToPlayer <= this.renderDistance;
+      const shouldBeVisible = distanceToPlayer <= this.config.maxDistance;
+      const newLodLevel = this.getDynamicLODLevel(distanceToPlayer);
       
       if (instancedMesh.visible !== shouldBeVisible) {
         instancedMesh.visible = shouldBeVisible;
@@ -426,10 +526,16 @@ export class GrassSystem {
           hiddenCount++;
         }
       }
+      
+      // Update LOD if needed (this could be optimized to only update when LOD level changes significantly)
+      if (instancedMesh.userData.lodLevel !== newLodLevel && shouldBeVisible) {
+        instancedMesh.userData.lodLevel = newLodLevel;
+        // Could implement dynamic instance count updates here for better performance
+      }
     }
     
     // Update ground grass visibility with shorter render distance for performance
-    const groundRenderDistance = this.renderDistance * 0.7;
+    const groundRenderDistance = this.config.maxDistance * 0.8;
     for (const [regionKey, instancedMesh] of this.groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -439,6 +545,10 @@ export class GrassSystem {
       if (instancedMesh.visible !== shouldBeVisible) {
         instancedMesh.visible = shouldBeVisible;
       }
+    }
+    
+    if (hiddenCount > 0 || visibleCount > 0) {
+      console.log(`🌱 Dynamic LOD: ${visibleCount} regions shown, ${hiddenCount} regions hidden`);
     }
   }
   
@@ -472,10 +582,10 @@ export class GrassSystem {
     this.updateCounter++;
     this.grassCullingUpdateCounter++;
     
-    // Update grass visibility
+    // More frequent grass visibility updates for dynamic LOD
     if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
       const playerMovedDistance = this.lastPlayerPosition.distanceTo(playerPosition);
-      if (playerMovedDistance > 5.0) {
+      if (playerMovedDistance > 2.0) { // More sensitive to movement
         this.updateGrassVisibility(playerPosition);
         this.lastPlayerPosition.copy(playerPosition);
       }
@@ -569,6 +679,9 @@ export class GrassSystem {
   public removeGrassForRegion(region: RegionCoordinates): void {
     const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
     
+    // Remove from queue if present
+    this.grassRegionQueue.delete(regionKey);
+    
     // Remove tall grass instances
     const keysToRemove = Array.from(this.grassInstances.keys()).filter(
       key => key.startsWith(regionKey)
@@ -637,6 +750,9 @@ export class GrassSystem {
     }
     this.groundGrassGeometries.clear();
     
-    console.log('🌱 Enhanced GrassSystem with ground coverage disposed');
+    // Clear queue
+    this.grassRegionQueue.clear();
+    
+    console.log('🌱 Enhanced GrassSystem with dynamic LOD and guaranteed coverage disposed');
   }
 }

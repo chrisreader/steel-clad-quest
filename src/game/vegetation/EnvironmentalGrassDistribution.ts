@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { MathUtils } from '../utils/math/MathUtils';
 
@@ -39,19 +40,22 @@ export class EnvironmentalGrassDistribution {
   private static shouldSpawnGrass(position: THREE.Vector3, environmentalFactors: EnvironmentalFactors): boolean {
     const { moisture, slope, lightExposure, terrainDetails } = environmentalFactors;
     
-    let spawnProbability = 0.5;
+    // Start with higher base probability to ensure coverage
+    let spawnProbability = 0.7;
     
     spawnProbability += moisture * 0.3;
-    spawnProbability -= slope * 0.2;
+    spawnProbability -= slope * 0.15; // Reduced from 0.2
     spawnProbability += lightExposure * 0.2;
     
-    if (terrainDetails.hasWater) spawnProbability -= 0.4;
+    // Reduced environmental penalties to prevent barren areas
+    if (terrainDetails.hasWater) spawnProbability -= 0.15; // Reduced from 0.4
     if (terrainDetails.hasTrees) spawnProbability += 0.1;
-    if (terrainDetails.hasRocks) spawnProbability -= 0.2;
+    if (terrainDetails.hasRocks) spawnProbability -= 0.1; // Reduced from 0.2
     
-    spawnProbability -= terrainDetails.playerTraffic * 0.3;
+    spawnProbability -= terrainDetails.playerTraffic * 0.2; // Reduced from 0.3
     
-    return Math.random() < MathUtils.clamp(spawnProbability, 0.1, 0.9);
+    // Ensure minimum spawn probability to prevent completely empty areas
+    return Math.random() < MathUtils.clamp(spawnProbability, 0.4, 0.95); // Increased from 0.1 to 0.4
   }
   
   private static selectSpeciesBasedOnEnvironment(environmentalFactors: EnvironmentalFactors): string {
@@ -86,7 +90,8 @@ export class EnvironmentalGrassDistribution {
     centerPosition: THREE.Vector3,
     size: number,
     environmentalFactors: EnvironmentalFactors,
-    baseSpacing: number
+    baseSpacing: number,
+    minimumCoverage: number = 0.25 // Guarantee at least 25% coverage
   ) {
     const positions: THREE.Vector3[] = [];
     const scales: THREE.Vector3[] = [];
@@ -95,7 +100,10 @@ export class EnvironmentalGrassDistribution {
     
     const gridSize = Math.floor(size / baseSpacing);
     const halfSize = size * 0.5;
+    const totalPossiblePositions = gridSize * gridSize;
+    let spawnedCount = 0;
     
+    // First pass: normal spawning with environmental checks
     for (let x = 0; x < gridSize; x++) {
       for (let z = 0; z < gridSize; z++) {
         const worldX = centerPosition.x - halfSize + (x * baseSpacing) + (Math.random() - 0.5) * baseSpacing * 0.8;
@@ -103,32 +111,61 @@ export class EnvironmentalGrassDistribution {
         const worldPos = new THREE.Vector3(worldX, 0, worldZ);
         
         if (this.shouldSpawnGrass(worldPos, environmentalFactors)) {
-          // Calculate smooth height variation based on position
-          const heightVariation = this.calculateSmoothHeightVariation(worldPos);
-          
-          positions.push(worldPos.clone());
-          
-          // Apply height variation to scale (affecting both regular and ground grass)
-          const baseScale = 0.8 + Math.random() * 0.4;
-          const heightModifiedScale = baseScale * heightVariation;
-          
-          scales.push(new THREE.Vector3(
-            0.8 + Math.random() * 0.4,
-            heightModifiedScale, // This will be further modified by biome and grass type
-            0.8 + Math.random() * 0.4
-          ));
-          
-          rotations.push(new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(0, 1, 0),
-            Math.random() * Math.PI * 2
-          ));
-          
-          species.push(this.selectSpeciesBasedOnEnvironment(environmentalFactors));
+          this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors);
+          spawnedCount++;
         }
       }
     }
     
+    // Second pass: ensure minimum coverage if we haven't met the threshold
+    const currentCoverage = spawnedCount / totalPossiblePositions;
+    if (currentCoverage < minimumCoverage) {
+      const neededGrass = Math.floor(totalPossiblePositions * minimumCoverage) - spawnedCount;
+      
+      for (let i = 0; i < neededGrass; i++) {
+        // Generate random positions in the region
+        const randomX = centerPosition.x - halfSize + Math.random() * size;
+        const randomZ = centerPosition.z - halfSize + Math.random() * size;
+        const worldPos = new THREE.Vector3(randomX, 0, randomZ);
+        
+        this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors);
+      }
+      
+      console.log(`🌱 Guaranteed minimum grass coverage: added ${neededGrass} extra blades to reach ${minimumCoverage * 100}% coverage`);
+    }
+    
     return { positions, scales, rotations, species };
+  }
+  
+  private static addGrassBlade(
+    positions: THREE.Vector3[],
+    scales: THREE.Vector3[],
+    rotations: THREE.Quaternion[],
+    species: string[],
+    worldPos: THREE.Vector3,
+    environmentalFactors: EnvironmentalFactors
+  ): void {
+    // Calculate smooth height variation based on position
+    const heightVariation = this.calculateSmoothHeightVariation(worldPos);
+    
+    positions.push(worldPos.clone());
+    
+    // Apply height variation to scale (affecting both regular and ground grass)
+    const baseScale = 0.8 + Math.random() * 0.4;
+    const heightModifiedScale = baseScale * heightVariation;
+    
+    scales.push(new THREE.Vector3(
+      0.8 + Math.random() * 0.4,
+      heightModifiedScale, // This will be further modified by biome and grass type
+      0.8 + Math.random() * 0.4
+    ));
+    
+    rotations.push(new THREE.Quaternion().setFromAxisAngle(
+      new THREE.Vector3(0, 1, 0),
+      Math.random() * Math.PI * 2
+    ));
+    
+    species.push(this.selectSpeciesBasedOnEnvironment(environmentalFactors));
   }
 
   // Add smooth height variation calculation
