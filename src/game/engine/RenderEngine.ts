@@ -1,7 +1,4 @@
 import * as THREE from 'three';
-import { PerformanceMonitor } from '../performance/PerformanceMonitor';
-import { FrustumCuller } from '../performance/FrustumCuller';
-import { LODManager } from '../performance/LODManager';
 
 export class RenderEngine {
   private scene: THREE.Scene;
@@ -9,11 +6,6 @@ export class RenderEngine {
   private renderer: THREE.WebGLRenderer;
   private clock: THREE.Clock;
   private mountElement: HTMLDivElement;
-  
-  // Performance optimization components
-  private performanceMonitor = new PerformanceMonitor();
-  private frustumCuller = new FrustumCuller();
-  private lodManager = new LODManager();
   
   // Camera controls with smoothing
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
@@ -29,14 +21,9 @@ export class RenderEngine {
   // FIXED: Consistent camera height
   private readonly CAMERA_HEIGHT_OFFSET: number = 1.6; // Standard eye height
   
-  // Performance state
+  // Debug state
   private renderCount: number = 0;
   private lastRenderTime: number = 0;
-  private adaptiveQuality: boolean = true;
-  private qualityLevel: number = 1.0; // 0.5 to 1.0
-  
-  // Grass-specific tracking
-  private grassInstances: THREE.InstancedMesh[] = [];
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -44,10 +31,11 @@ export class RenderEngine {
   }
   
   public initialize(): void {
-    console.log("🎨 [RenderEngine] Initializing with performance optimizations...");
+    console.log("🎨 [RenderEngine] Initializing with enhanced shadow support...");
     
     // Create scene
     this.scene = new THREE.Scene();
+    // Background will be set by SceneManager's fog system for proper atmospheric effect
     this.scene.background = null;
     
     // Create camera
@@ -62,22 +50,16 @@ export class RenderEngine {
     this.camera.layers.enable(0); // Default layer - visible
     this.camera.layers.disable(1); // Layer 1 - invisible to player (torso)
     
-    // Create renderer with performance-optimized settings
-    this.renderer = new THREE.WebGLRenderer({ 
-      antialias: this.qualityLevel > 0.7, // Adaptive antialiasing
-      powerPreference: "high-performance"
-    });
+    // Create renderer with enhanced settings for shadows and fog rendering
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
-    this.renderer.shadowMap.enabled = this.qualityLevel > 0.5;
-    this.renderer.shadowMap.type = this.qualityLevel > 0.8 ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Enhanced soft shadows
     
-    // Performance-optimized renderer settings
+    // Enhanced renderer settings for better shadow quality
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    
-    // Set pixel ratio based on quality level
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.qualityLevel * 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace; // Better color accuracy
     
     // Attach to DOM
     this.mountElement.appendChild(this.renderer.domElement);
@@ -89,10 +71,7 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    // Initialize performance components
-    this.lodManager.setCamera(this.camera);
-    
-    console.log("🎨 [RenderEngine] Initialized with performance optimizations");
+    console.log("🎨 [RenderEngine] Initialized with enhanced shadow and fog rendering support");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
@@ -148,133 +127,24 @@ export class RenderEngine {
   
   public render(): void {
     this.renderCount++;
+    const now = performance.now();
     
-    // Update performance monitoring
-    this.performanceMonitor.update();
-    
-    // Adaptive quality based on performance
-    if (this.adaptiveQuality) {
-      this.updateAdaptiveQuality();
-    }
-    
-    // Update frustum culling
-    this.frustumCuller.updateFrustum(this.camera);
-    
-    // Update LOD system
-    this.lodManager.updateLOD();
-    
-    // Perform frustum culling on scene objects (EXCLUDING grass instances)
-    const cullableObjects: THREE.Object3D[] = [];
-    this.scene.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.geometry && !(child instanceof THREE.InstancedMesh)) {
-        cullableObjects.push(child);
-      }
-    });
-    
-    const { visible, culled } = this.frustumCuller.cullObjects(cullableObjects);
-    
-    // Handle grass instances separately with distance-based culling
-    this.updateGrassVisibility();
-    
-    // Update performance metrics
-    this.performanceMonitor.updateRenderMetrics(
-      this.renderer.info.render.calls,
-      visible.length + this.getVisibleGrassCount(),
-      culled.length
-    );
-    
-    // Reduced frequency logging for better performance
-    if (this.renderCount % 300 === 0) { // Every 5 seconds at 60fps
-      const metrics = this.performanceMonitor.getMetrics();
-      console.log("🎨 [RenderEngine] Performance:", {
-        fps: metrics.fps,
-        frameTime: metrics.frameTime.toFixed(2) + 'ms',
-        visible: metrics.visibleObjects,
-        culled: metrics.culledObjects,
-        quality: this.qualityLevel.toFixed(2),
-        memory: metrics.memoryUsage.toFixed(1) + 'MB'
+    // Log every 60 frames (roughly 1 second)
+    if (this.renderCount % 60 === 0) {
+      const fps = this.renderCount / ((now - this.lastRenderTime) / 1000) * 60;
+      console.log("🎨 [RenderEngine] Rendering with enhanced shadows and smooth camera controls:", {
+        frame: this.renderCount,
+        fps: fps.toFixed(1),
+        cameraPos: this.camera.position,
+        sceneChildren: this.scene.children.length,
+        cameraLayers: this.camera.layers.mask,
+        shadowMapEnabled: this.renderer.shadowMap.enabled,
+        shadowMapType: this.renderer.shadowMap.type
       });
+      this.lastRenderTime = now;
     }
     
     this.renderer.render(this.scene, this.camera);
-  }
-  
-  private updateGrassVisibility(): void {
-    const maxGrassDistance = 150; // Reduced from default to improve performance
-    const cameraPosition = this.camera.position;
-    
-    // Update grass instances based on distance
-    this.scene.traverse((child) => {
-      if (child instanceof THREE.InstancedMesh && child.userData.isGrass) {
-        const distance = cameraPosition.distanceTo(child.position);
-        
-        if (distance > maxGrassDistance) {
-          child.visible = false;
-        } else {
-          child.visible = true;
-          
-          // Apply distance-based opacity for smooth transition
-          const opacity = Math.max(0.1, 1 - (distance / maxGrassDistance));
-          if (child.material instanceof THREE.ShaderMaterial) {
-            if (child.material.uniforms.opacity) {
-              child.material.uniforms.opacity.value = opacity;
-            }
-          }
-        }
-      }
-    });
-  }
-  
-  private getVisibleGrassCount(): number {
-    let count = 0;
-    this.scene.traverse((child) => {
-      if (child instanceof THREE.InstancedMesh && child.userData.isGrass && child.visible) {
-        count += child.count;
-      }
-    });
-    return count;
-  }
-  
-  public registerGrassInstance(instance: THREE.InstancedMesh): void {
-    instance.userData.isGrass = true;
-    this.grassInstances.push(instance);
-  }
-  
-  private updateAdaptiveQuality(): void {
-    const metrics = this.performanceMonitor.getMetrics();
-    
-    if (metrics.fps > 0) { // Only adjust if we have valid FPS data
-      if (this.performanceMonitor.shouldReduceQuality() && this.qualityLevel > 0.5) {
-        this.qualityLevel = Math.max(0.5, this.qualityLevel - 0.1);
-        this.applyQualitySettings();
-        console.log("🎨 [RenderEngine] Reduced quality to", this.qualityLevel.toFixed(2));
-      } else if (this.performanceMonitor.shouldIncreaseQuality() && this.qualityLevel < 1.0) {
-        this.qualityLevel = Math.min(1.0, this.qualityLevel + 0.05);
-        this.applyQualitySettings();
-        console.log("🎨 [RenderEngine] Increased quality to", this.qualityLevel.toFixed(2));
-      }
-    }
-  }
-  
-  private applyQualitySettings(): void {
-    // Update shadow quality
-    this.renderer.shadowMap.enabled = this.qualityLevel > 0.5;
-    this.renderer.shadowMap.type = this.qualityLevel > 0.8 ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
-    
-    // Update pixel ratio
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.qualityLevel * 2));
-  }
-  
-  public addLODObject(id: string, object: THREE.Object3D, lodLevels: any[]): void {
-    this.lodManager.addLODObject(id, object, lodLevels);
-  }
-  
-  public getPerformanceMetrics(): any {
-    return this.performanceMonitor.getMetrics();
-  }
-  
-  public setAdaptiveQuality(enabled: boolean): void {
-    this.adaptiveQuality = enabled;
   }
   
   public getDeltaTime(): number {
@@ -304,8 +174,6 @@ export class RenderEngine {
   
   public dispose(): void {
     console.log("🎨 [RenderEngine] Disposing...");
-    
-    this.lodManager.clear();
     
     if (this.renderer) {
       this.renderer.dispose();
