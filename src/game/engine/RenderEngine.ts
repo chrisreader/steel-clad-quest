@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { PerformanceMonitor } from '../performance/PerformanceMonitor';
 import { FrustumCuller } from '../performance/FrustumCuller';
@@ -35,6 +34,9 @@ export class RenderEngine {
   private lastRenderTime: number = 0;
   private adaptiveQuality: boolean = true;
   private qualityLevel: number = 1.0; // 0.5 to 1.0
+  
+  // Grass-specific tracking
+  private grassInstances: THREE.InstancedMesh[] = [];
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -161,20 +163,23 @@ export class RenderEngine {
     // Update LOD system
     this.lodManager.updateLOD();
     
-    // Perform frustum culling on scene objects
+    // Perform frustum culling on scene objects (EXCLUDING grass instances)
     const cullableObjects: THREE.Object3D[] = [];
     this.scene.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.geometry) {
+      if (child instanceof THREE.Mesh && child.geometry && !(child instanceof THREE.InstancedMesh)) {
         cullableObjects.push(child);
       }
     });
     
     const { visible, culled } = this.frustumCuller.cullObjects(cullableObjects);
     
+    // Handle grass instances separately with distance-based culling
+    this.updateGrassVisibility();
+    
     // Update performance metrics
     this.performanceMonitor.updateRenderMetrics(
       this.renderer.info.render.calls,
-      visible.length,
+      visible.length + this.getVisibleGrassCount(),
       culled.length
     );
     
@@ -192,6 +197,47 @@ export class RenderEngine {
     }
     
     this.renderer.render(this.scene, this.camera);
+  }
+  
+  private updateGrassVisibility(): void {
+    const maxGrassDistance = 150; // Reduced from default to improve performance
+    const cameraPosition = this.camera.position;
+    
+    // Update grass instances based on distance
+    this.scene.traverse((child) => {
+      if (child instanceof THREE.InstancedMesh && child.userData.isGrass) {
+        const distance = cameraPosition.distanceTo(child.position);
+        
+        if (distance > maxGrassDistance) {
+          child.visible = false;
+        } else {
+          child.visible = true;
+          
+          // Apply distance-based opacity for smooth transition
+          const opacity = Math.max(0.1, 1 - (distance / maxGrassDistance));
+          if (child.material instanceof THREE.ShaderMaterial) {
+            if (child.material.uniforms.opacity) {
+              child.material.uniforms.opacity.value = opacity;
+            }
+          }
+        }
+      }
+    });
+  }
+  
+  private getVisibleGrassCount(): number {
+    let count = 0;
+    this.scene.traverse((child) => {
+      if (child instanceof THREE.InstancedMesh && child.userData.isGrass && child.visible) {
+        count += child.count;
+      }
+    });
+    return count;
+  }
+  
+  public registerGrassInstance(instance: THREE.InstancedMesh): void {
+    instance.userData.isGrass = true;
+    this.grassInstances.push(instance);
   }
   
   private updateAdaptiveQuality(): void {

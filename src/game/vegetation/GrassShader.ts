@@ -11,26 +11,36 @@ export class GrassShader {
       varying vec2 vUv;
       varying vec3 vNormal;
       varying float vHeight;
+      varying vec3 vWorldPosition;
+      
+      // Use built-in THREE.js fog uniforms
+      #ifdef USE_FOG
+        varying float vFogDepth;
+      #endif
       
       void main() {
         vUv = uv;
-        vNormal = normal;
+        vNormal = normalize(normalMatrix * normal);
         vHeight = position.y;
         
-        // Get instance matrix
-        mat4 instanceMatrix = instanceMatrix;
         vec3 transformed = position;
         
         // Apply wind animation - affects top more than bottom
         float windFactor = pow(position.y, 2.0) * windStrength;
-        float windOffset = sin(time * 2.0 + instanceMatrix[3][0] * 0.1 + instanceMatrix[3][2] * 0.1) * windFactor;
+        float windOffset = sin(time * 2.0 + position.x * 0.1 + position.z * 0.1) * windFactor;
         transformed.x += windOffset * windDirection.x;
         transformed.z += windOffset * windDirection.y;
         
-        // Apply instance transformation
-        vec4 worldPosition = instanceMatrix * vec4(transformed, 1.0);
+        // Calculate world position
+        vec4 worldPosition = modelMatrix * vec4(transformed, 1.0);
+        vWorldPosition = worldPosition.xyz;
         
-        gl_Position = projectionMatrix * modelViewMatrix * worldPosition;
+        vec4 mvPosition = viewMatrix * worldPosition;
+        gl_Position = projectionMatrix * mvPosition;
+        
+        #ifdef USE_FOG
+          vFogDepth = -mvPosition.z;
+        #endif
       }
     `;
     
@@ -40,13 +50,24 @@ export class GrassShader {
       uniform float time;
       uniform float nightFactor;
       uniform float dayFactor;
-      uniform vec3 fogColor;
-      uniform float fogNear;
-      uniform float fogFar;
+      uniform float opacity;
       
       varying vec2 vUv;
       varying vec3 vNormal;
       varying float vHeight;
+      varying vec3 vWorldPosition;
+      
+      // Use built-in THREE.js fog
+      #ifdef USE_FOG
+        uniform vec3 fogColor;
+        varying float vFogDepth;
+        #ifdef FOG_EXP2
+          uniform float fogDensity;
+        #else
+          uniform float fogNear;
+          uniform float fogFar;
+        #endif
+      #endif
       
       void main() {
         // Interpolate between day and night grass colors
@@ -54,23 +75,34 @@ export class GrassShader {
         
         // Base grass color with height variation
         vec3 color = currentGrassColor;
-        color = mix(color * 0.6, color, vHeight); // Darker at base
+        color = mix(color * 0.7, color, vHeight); // Darker at base
         
-        // Add subtle color variation
-        float variation = sin(gl_FragCoord.x * 0.01) * sin(gl_FragCoord.y * 0.01) * 0.1;
+        // Add subtle color variation based on world position (not screen coordinates)
+        float variation = sin(vWorldPosition.x * 0.1) * sin(vWorldPosition.z * 0.1) * 0.08;
         color += variation;
         
-        // Simple lighting with day/night adjustment
-        float light = dot(vNormal, normalize(vec3(1.0, 1.0, 1.0))) * 0.5 + 0.5;
-        light = mix(light * 0.3, light, dayFactor); // Dimmer lighting at night
-        color *= light;
+        // Improved lighting calculation
+        vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3)); // Fixed light direction
+        float NdotL = dot(normalize(vNormal), lightDir);
+        float lightIntensity = max(0.3, (NdotL * 0.5 + 0.5)); // Softer lighting
         
-        // Apply fog
-        float depth = gl_FragCoord.z / gl_FragCoord.w;
-        float fogFactor = smoothstep(fogNear, fogFar, depth);
-        color = mix(color, fogColor, fogFactor);
+        // Apply day/night lighting adjustment
+        lightIntensity = mix(lightIntensity * 0.2, lightIntensity, dayFactor);
+        color *= lightIntensity;
         
-        gl_FragColor = vec4(color, 1.0);
+        // Apply opacity for distance fading
+        float alpha = opacity;
+        
+        #ifdef USE_FOG
+          #ifdef FOG_EXP2
+            float fogFactor = 1.0 - exp(-fogDensity * fogDensity * vFogDepth * vFogDepth);
+          #else
+            float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);
+          #endif
+          color = mix(color, fogColor, fogFactor);
+        #endif
+        
+        gl_FragColor = vec4(color, alpha);
       }
     `;
     
@@ -79,24 +111,25 @@ export class GrassShader {
       fragmentShader,
       uniforms: {
         time: { value: 0 },
-        windStrength: { value: 0.3 },
+        windStrength: { value: 0.2 },
         windDirection: { value: new THREE.Vector2(1, 0.5) },
         grassColor: { value: baseColor },
-        nightGrassColor: { value: new THREE.Color().copy(baseColor).multiplyScalar(0.2) }, // Much darker for night
+        nightGrassColor: { value: new THREE.Color().copy(baseColor).multiplyScalar(0.15) },
         nightFactor: { value: 0 },
         dayFactor: { value: 1 },
-        fogColor: { value: new THREE.Color(0x87CEEB) },
-        fogNear: { value: 50 },
-        fogFar: { value: 200 }
+        opacity: { value: 1.0 }
       },
-      side: THREE.DoubleSide,
-      transparent: false
+      side: THREE.FrontSide, // Changed from DoubleSide to prevent z-fighting
+      transparent: true, // Enable transparency for opacity control
+      depthWrite: true,
+      depthTest: true,
+      fog: true // Enable built-in fog support
     });
     
     return material;
   }
   
-  public static updateWindAnimation(material: THREE.ShaderMaterial, time: number, windStrength: number = 0.3): void {
+  public static updateWindAnimation(material: THREE.ShaderMaterial, time: number, windStrength: number = 0.2): void {
     if (material.uniforms.time) {
       material.uniforms.time.value = time;
     }
@@ -115,6 +148,12 @@ export class GrassShader {
     }
     if (material.uniforms.dayFactor) {
       material.uniforms.dayFactor.value = dayFactor;
+    }
+  }
+  
+  public static updateOpacity(material: THREE.ShaderMaterial, opacity: number): void {
+    if (material.uniforms.opacity) {
+      material.uniforms.opacity.value = opacity;
     }
   }
 }
