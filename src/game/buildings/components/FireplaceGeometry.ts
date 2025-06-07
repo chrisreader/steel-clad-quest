@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { OrganicDirtPatch } from './geometry/OrganicDirtPatch';
 import { CharredLogs } from './geometry/CharredLogs';
 import { AshBed } from './geometry/AshBed';
+import { logger } from '../../core/Logger';
+import { LOGGING_CONSTANTS } from '../../core/GameConstants';
 
 export class FireplaceGeometry {
   private scene: THREE.Scene;
@@ -18,7 +20,8 @@ export class FireplaceGeometry {
   }
 
   public createFireplaceStructure(): THREE.Group {
-    console.log('🏗️ Creating fireplace structure');
+    const startTime = performance.now();
+    logger.debug(LOGGING_CONSTANTS.MODULES.BUILDING, 'Creating fireplace structure');
 
     // Organic dirt patch base (replaces circular stone base)
     const dirtPatch = OrganicDirtPatch.create();
@@ -38,13 +41,15 @@ export class FireplaceGeometry {
     this.fireplaceGroup.add(ashBed);
 
     this.scene.add(this.fireplaceGroup);
-    console.log(`🏗️ Fireplace structure created with ${this.components.length} components`);
+    
+    logger.debug(LOGGING_CONSTANTS.MODULES.BUILDING, `Fireplace structure created with ${this.components.length} components`);
+    logger.performance(LOGGING_CONSTANTS.MODULES.BUILDING, 'createFireplaceStructure', startTime);
     
     return this.fireplaceGroup;
   }
 
   public dispose(): void {
-    console.log('🏗️ Disposing fireplace geometry');
+    logger.debug(LOGGING_CONSTANTS.MODULES.BUILDING, 'Disposing fireplace geometry');
     
     this.scene.remove(this.fireplaceGroup);
     
@@ -56,6 +61,6 @@ export class FireplaceGeometry {
     }
     
     this.components = [];
-    console.log('🏗️ Fireplace geometry disposed');
+    logger.debug(LOGGING_CONSTANTS.MODULES.BUILDING, 'Fireplace geometry disposed');
   }
 }

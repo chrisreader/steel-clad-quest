@@ -1,5 +1,7 @@
 
 import * as THREE from 'three';
+import { logger } from '../core/Logger';
+import { LOGGING_CONSTANTS, PERFORMANCE_CONSTANTS } from '../core/GameConstants';
 
 interface CachedAnimation {
   jointRotations: Map<string, THREE.Euler>;
@@ -9,14 +11,14 @@ interface CachedAnimation {
 
 export class AnimationCache {
   private cache: Map<string, CachedAnimation> = new Map();
-  private readonly maxCacheSize = 100;
-  private readonly cacheTimeout = 5000; // 5 seconds
+  private readonly maxCacheSize = PERFORMANCE_CONSTANTS.ANIMATION_CACHE_SIZE;
+  private readonly cacheTimeout = PERFORMANCE_CONSTANTS.ANIMATION_CACHE_TIMEOUT;
 
-  // Vector3 object pool to reduce garbage collection
+  // Object pools to reduce garbage collection
   private vectorPool: THREE.Vector3[] = [];
   private eulerPool: THREE.Euler[] = [];
   private poolIndex = 0;
-  private readonly poolSize = 50;
+  private readonly poolSize = PERFORMANCE_CONSTANTS.OBJECT_POOL_SIZE;
 
   constructor() {
     this.initializePools();
@@ -27,6 +29,7 @@ export class AnimationCache {
       this.vectorPool.push(new THREE.Vector3());
       this.eulerPool.push(new THREE.Euler());
     }
+    logger.debug(LOGGING_CONSTANTS.MODULES.ANIMATION, `Initialized object pools with ${this.poolSize} objects each`);
   }
 
   public getPooledVector3(): THREE.Vector3 {
@@ -76,17 +79,28 @@ export class AnimationCache {
   }
 
   private cleanOldEntries(): void {
-    const now = Date.now();
+    const startTime = performance.now();
     const entries = Array.from(this.cache.entries());
     
-    // Remove oldest entries
+    // Remove oldest entries (30% of cache)
+    const entriesToRemove = Math.floor(this.maxCacheSize * 0.3);
     entries
       .sort((a, b) => a[1].timestamp - b[1].timestamp)
-      .slice(0, Math.floor(this.maxCacheSize * 0.3))
+      .slice(0, entriesToRemove)
       .forEach(([key]) => this.cache.delete(key));
+    
+    logger.performance(LOGGING_CONSTANTS.MODULES.ANIMATION, `cleanOldEntries (removed ${entriesToRemove} entries)`, startTime);
   }
 
   public clear(): void {
     this.cache.clear();
+    logger.debug(LOGGING_CONSTANTS.MODULES.ANIMATION, 'Animation cache cleared');
+  }
+
+  public getStats(): { size: number; poolUsage: number } {
+    return {
+      size: this.cache.size,
+      poolUsage: this.poolIndex % this.poolSize
+    };
   }
 }

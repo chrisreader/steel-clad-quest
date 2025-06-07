@@ -4,6 +4,8 @@ import { ANIMATION_CONFIGS, WeaponAnimationConfigs } from './AnimationConfig';
 import { BowAnimationController } from './bow/BowAnimationController';
 import { MeleeWalkAnimation } from './animations/MeleeWalkAnimation';
 import { EmptyHandsWalkAnimation } from './animations/EmptyHandsWalkAnimation';
+import { logger } from '../core/Logger';
+import { LOGGING_CONSTANTS, ANIMATION_CONSTANTS } from '../core/GameConstants';
 
 export type WeaponType = 'emptyHands' | 'melee' | 'bow';
 
@@ -21,12 +23,12 @@ export class WeaponAnimationSystem {
     this.meleeWalkAnimation = new MeleeWalkAnimation(this.configs.melee);
     this.emptyHandsWalkAnimation = new EmptyHandsWalkAnimation(this.configs.emptyHands);
     
-    console.log('🎭 [WeaponAnimationSystem] Initialized with unified bow animation controller');
+    logger.debug(LOGGING_CONSTANTS.MODULES.ANIMATION, 'WeaponAnimationSystem initialized with unified bow animation controller');
   }
   
   public setWeaponType(weaponType: WeaponType): void {
     if (this.currentWeaponType !== weaponType) {
-      console.log(`🎭 [WeaponAnimationSystem] Weapon type changed: ${this.currentWeaponType} -> ${weaponType}`);
+      logger.debug(LOGGING_CONSTANTS.MODULES.ANIMATION, `Weapon type changed: ${this.currentWeaponType} -> ${weaponType}`);
       this.currentWeaponType = weaponType;
     }
   }
@@ -41,11 +43,13 @@ export class WeaponAnimationSystem {
     isBowDrawing: boolean = false,
     bowChargeLevel: number = 0
   ): void {
-    console.log(`🎭 [WeaponAnimationSystem] Update: moving=${isMoving}, weapon=${this.currentWeaponType}, attacking=${isAttacking}, bowDrawing=${isBowDrawing}, chargeLevel=${bowChargeLevel.toFixed(2)}`);
+    // Only log in debug mode to reduce performance overhead
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug(LOGGING_CONSTANTS.MODULES.ANIMATION, 
+        `Update: moving=${isMoving}, weapon=${this.currentWeaponType}, attacking=${isAttacking}, bowDrawing=${isBowDrawing}, chargeLevel=${bowChargeLevel.toFixed(2)}`);
+    }
     
     if (this.currentWeaponType === 'bow') {
-      console.log(`🏹 [WeaponAnimationSystem] Applying bow animation - Drawing: ${isBowDrawing}, Charge: ${(bowChargeLevel * 100).toFixed(1)}%`);
-      
       this.bowAnimationController.updateAnimation(
         playerBody,
         deltaTime,
@@ -55,8 +59,6 @@ export class WeaponAnimationSystem {
         walkCycle,
         isSprinting
       );
-      
-      console.log(`🏹 [WeaponAnimationSystem] Applied unified bow animation - Drawing: ${isBowDrawing}, Charge: ${(bowChargeLevel * 100).toFixed(1)}%`);
       return;
     }
     
@@ -67,15 +69,11 @@ export class WeaponAnimationSystem {
         switch (this.currentWeaponType) {
           case 'melee':
             this.meleeWalkAnimation.update(playerBody, walkCycle, deltaTime, isSprinting, isAttacking);
-            console.log('⚔️ [WeaponAnimationSystem] Applied melee walking animation');
             break;
           case 'emptyHands':
             this.emptyHandsWalkAnimation.update(playerBody, walkCycle, deltaTime, isSprinting);
-            console.log('✋ [WeaponAnimationSystem] Applied empty hands walking animation');
             break;
         }
-      } else {
-        console.log('🚫 [WeaponAnimationSystem] Walking animation blocked due to melee attack');
       }
     } else if (!isMoving && !isAttacking && !isBowDrawing) {
       this.returnToIdlePose(playerBody, deltaTime);

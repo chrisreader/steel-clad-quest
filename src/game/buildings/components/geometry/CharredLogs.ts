@@ -1,6 +1,8 @@
 
 import * as THREE from 'three';
 import { TextureGenerator } from '../../../utils';
+import { logger } from '../../../core/Logger';
+import { LOGGING_CONSTANTS, GEOMETRY_CONSTANTS } from '../../../core/GameConstants';
 
 export class CharredLogs {
   static create(): THREE.Mesh[] {
@@ -32,7 +34,7 @@ export class CharredLogs {
       logs.push(log);
     }
     
-    console.log(`🏗️ Created ${logConfigs.length} charred logs`);
+    logger.debug(LOGGING_CONSTANTS.MODULES.BUILDING, `Created ${logConfigs.length} charred logs`);
     return logs;
   }
 }

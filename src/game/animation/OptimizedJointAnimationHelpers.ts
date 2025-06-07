@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { ANIMATION_CONSTANTS, PRECALCULATED } from './AnimationConstants';
 import { OrcAnimationProfile } from './OrcAnimationProfile';
 import { AnimationCache } from './AnimationCache';
+import { logger } from '../core/Logger';
+import { LOGGING_CONSTANTS, PERFORMANCE_CONSTANTS } from '../core/GameConstants';
 
 export class OptimizedJointAnimationHelpers {
   private static animationCache = new AnimationCache();
@@ -40,6 +42,9 @@ export class OptimizedJointAnimationHelpers {
       const maxBend = isSupporting ? MAX_BEND_SUPPORTING : MAX_BEND_SWING;
       result = THREE.MathUtils.lerp(maxBend, HEEL_STRIKE, t);
     }
+
+    // Clamp to safe range using constants
+    result = THREE.MathUtils.clamp(result, PERFORMANCE_CONSTANTS.KNEE_ROTATION_LIMITS.MIN, PERFORMANCE_CONSTANTS.KNEE_ROTATION_LIMITS.MAX);
 
     // Cache the result
     const rotations = new Map();
@@ -119,12 +124,24 @@ export class OptimizedJointAnimationHelpers {
    */
   public static updateOrcProfile(config: Partial<{ weaponType: 'axe' | 'sword' | 'club'; aggressionLevel: number; bodySize: 'small' | 'medium' | 'large' }>): void {
     this.orcProfile.updateConfig(config);
+    logger.debug(LOGGING_CONSTANTS.MODULES.ANIMATION, 'Orc animation profile updated', config);
   }
 
   /**
    * Clear animation cache (useful for performance optimization)
    */
   public static clearCache(): void {
+    const stats = this.animationCache.getStats();
     this.animationCache.clear();
+    logger.debug(LOGGING_CONSTANTS.MODULES.ANIMATION, `Animation cache cleared. Previous stats:`, stats);
+  }
+
+  /**
+   * Get performance statistics
+   */
+  public static getPerformanceStats(): { cacheStats: any } {
+    return {
+      cacheStats: this.animationCache.getStats()
+    };
   }
 }

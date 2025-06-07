@@ -1,0 +1,45 @@
+
+export const PERFORMANCE_CONSTANTS = {
+  ANIMATION_CACHE_SIZE: 100,
+  ANIMATION_CACHE_TIMEOUT: 5000,
+  OBJECT_POOL_SIZE: 50,
+  MAX_ROTATION_CHANGE_PER_FRAME: 0.1,
+  KNEE_ROTATION_LIMITS: {
+    MIN: 0,
+    MAX: 0.7
+  }
+} as const;
+
+export const ANIMATION_CONSTANTS = {
+  WALK_CYCLE_SPEED: 1.5,
+  SPRINT_MULTIPLIER: 1.8,
+  ELBOW_BEND_INTENSITY: 0.8,
+  KNEE_FLEXION_INTENSITY: 1.0,
+  ASYMMETRY_INTENSITY: 0.1
+} as const;
+
+export const LOGGING_CONSTANTS = {
+  MODULES: {
+    ANIMATION: 'Animation',
+    COMBAT: 'Combat',
+    MOVEMENT: 'Movement',
+    EFFECTS: 'Effects',
+    AUDIO: 'Audio',
+    RENDER: 'Render',
+    PHYSICS: 'Physics',
+    BUILDING: 'Building'
+  }
+} as const;
+
+export const GEOMETRY_CONSTANTS = {
+  FIREPLACE: {
+    DIRT_PATCH_RADIUS: 1.5,
+    ASH_BED_RADIUS: 1.0,
+    LOG_COUNT: 4,
+    BASE_HEIGHT: 0.1
+  },
+  TERRAIN: {
+    CACHE_SIZE: 1000,
+    RAY_DISTANCE: 100
+  }
+} as const;
