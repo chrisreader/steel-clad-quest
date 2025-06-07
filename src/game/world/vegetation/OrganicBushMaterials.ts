@@ -30,9 +30,8 @@ export class OrganicBushMaterials {
       side: THREE.DoubleSide, // Important for organic shapes
     });
 
-    // Add subsurface scattering effect for realism
-    material.transmission = 0.1;
-    material.thickness = 0.5;
+    // Note: transmission and thickness properties removed as they don't exist in current Three.js version
+    // These would be used for subsurface scattering in newer versions
 
     return material;
   }

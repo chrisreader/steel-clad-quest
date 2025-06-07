@@ -145,13 +145,22 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // CRITICAL: Enhanced weapon syncing - sync whenever weapons or active slot changes
   useEffect(() => {
-    if (!gameEngine || !gameStarted) return;
+    if (!gameEngine || !gameStarted || !engineReady) {
+      console.log('[KnightGame] 🔄 WEAPON SYNC SKIPPED - Engine not ready or game not started');
+      return;
+    }
 
     console.log('[KnightGame] 🔄 WEAPON SYNC - Syncing equipped weapons with game engine');
     console.log('[KnightGame] 🔄 Active slot:', activeWeaponSlot);
     console.log('[KnightGame] 🔄 Equipped weapons:', equippedWeapons);
     
     const player = gameEngine.getPlayer();
+    
+    // Add null check for player
+    if (!player) {
+      console.log('[KnightGame] 🔄 WEAPON SYNC SKIPPED - Player not available yet');
+      return;
+    }
     
     // Get the weapon for the currently active slot
     const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
@@ -180,7 +189,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       // Note: We can't directly access private properties, but the equip/unequip calls should have set them
     }, 100);
     
-  }, [gameEngine, gameStarted, equippedWeapons, activeWeaponSlot]);
+  }, [gameEngine, gameStarted, engineReady, equippedWeapons, activeWeaponSlot]);
 
   // Enhanced weapon slot selection with immediate syncing
   const handleEnhancedWeaponSlotSelect = useCallback((slot: 1 | 2 | 3) => {
