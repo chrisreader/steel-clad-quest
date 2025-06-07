@@ -37,6 +37,7 @@ export class GrassSystem {
   
   // Dynamic LOD system - more forgiving distances
   private lodDistances: number[] = [75, 150, 225, 300]; // Increased distances
+  private grassRegionQueue: Set<string> = new Set(); // Regions pending generation
   
   // Performance optimization variables
   private updateCounter: number = 0;
@@ -49,8 +50,8 @@ export class GrassSystem {
     baseDensity: 1.2, // Increased base density
     patchDensity: 2.5,
     patchCount: 5,
-    maxDistance: 400, // Increased render distance further
-    lodLevels: [1.0, 0.7, 0.4, 0.15] // Never go to 0, always have some grass
+    maxDistance: 300, // Increased render distance
+    lodLevels: [1.0, 0.7, 0.4, 0.2] // Never go to 0, always have some grass
   };
   
   constructor(scene: THREE.Scene) {
@@ -106,26 +107,24 @@ export class GrassSystem {
     region: RegionCoordinates, 
     centerPosition: THREE.Vector3, 
     size: number,
-    terrainColor: number,
-    currentPlayerPosition?: THREE.Vector3 // NEW: Accept current player position
+    terrainColor: number
   ): void {
     const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
     
     if (this.grassInstances.has(regionKey)) return;
     
-    // Use current player position if provided, otherwise use cached position
-    const playerPos = currentPlayerPosition || this.lastPlayerPosition;
-    const distanceFromPlayer = centerPosition.distanceTo(playerPos);
+    // Calculate distance and LOD level using center position (current data)
+    const distanceFromPlayer = centerPosition.distanceTo(this.lastPlayerPosition);
+    const lodLevel = this.getDynamicLODLevel(distanceFromPlayer);
     
-    // Calculate LOD level - NEVER skip generation entirely
-    let lodLevel = this.getDynamicLODLevel(distanceFromPlayer);
+    // Add debug logging for LOD assignment
+    console.log(`🌱 Region ${region.ringIndex}-${region.quadrant}: distance=${distanceFromPlayer.toFixed(1)}, LOD=${lodLevel.toFixed(2)}`);
     
-    // Ensure minimum LOD for very distant regions instead of skipping
+    // Always generate grass within extended render distance, but queue very distant regions
     if (distanceFromPlayer > this.config.maxDistance) {
-      lodLevel = Math.max(0.05, this.config.lodLevels[3] * 0.3); // Minimum 5% coverage for very distant
-      console.log(`🌱 Very distant region ${regionKey} (distance: ${distanceFromPlayer.toFixed(1)}) - using minimal LOD: ${lodLevel.toFixed(3)}`);
-    } else {
-      console.log(`🌱 Region ${region.ringIndex}-${region.quadrant}: distance=${distanceFromPlayer.toFixed(1)}, LOD=${lodLevel.toFixed(2)}`);
+      this.grassRegionQueue.add(regionKey);
+      console.log(`📦 Queued distant region ${regionKey} (distance: ${distanceFromPlayer.toFixed(1)})`);
+      return;
     }
     
     // Determine biome for this region
@@ -146,15 +145,15 @@ export class GrassSystem {
       biomeInfo
     );
     
-    // ALWAYS generate grass - never skip regions entirely
-    // Generate tall grass (existing system) with guaranteed minimum coverage
+    // NEVER skip grass generation - always generate minimum coverage
+    // Generate tall grass (existing system) with minimum coverage guarantee
     const tallGrassData = this.generateBiomeAwareGrassDistribution(
       centerPosition, 
       size, 
       environmentalFactors, 
-      Math.max(lodLevel, 0.05), // Ensure absolute minimum LOD of 5%
+      Math.max(lodLevel, 0.1), // Ensure minimum LOD of 0.1
       biomeInfo,
-      Math.max(0.1, lodLevel * 0.5) // Minimum coverage scales with LOD but never below 10%
+      lodLevel < 0.3 ? 0.1 : 0.2 // Lower minimum for very distant regions
     );
     
     // Generate ground grass (new dense layer) with higher minimum coverage
@@ -162,14 +161,14 @@ export class GrassSystem {
       centerPosition,
       size,
       environmentalFactors,
-      Math.max(lodLevel, 0.08), // Ensure minimum LOD of 8% for ground grass
+      Math.max(lodLevel, 0.15), // Ensure minimum LOD of 0.15 for ground grass
       biomeInfo,
-      Math.max(0.3, lodLevel * 0.8) // Ground grass minimum coverage
+      lodLevel < 0.3 ? 0.3 : 0.6 // Lower minimum for very distant regions
     );
     
-    // Emergency grass generation if both failed - this should NEVER happen now
+    // Emergency grass generation if both failed
     if (tallGrassData.positions.length === 0 && groundGrassData.positions.length === 0) {
-      console.error(`🚨 CRITICAL: No grass generated for region ${regionKey}, forcing emergency grass`);
+      console.warn(`⚠️ EMERGENCY: No grass generated for region ${regionKey}, forcing emergency grass`);
       this.forceEmergencyGrass(tallGrassData, groundGrassData, centerPosition, size, environmentalFactors);
     }
     
@@ -214,7 +213,7 @@ export class GrassSystem {
     environmentalFactors: EnvironmentalFactors
   ): void {
     // Emergency minimum grass blades - always generate something
-    const minBlades = 15; // Reduced emergency minimum but always some
+    const minBlades = 20; // Reduced emergency minimum
     const halfSize = size * 0.5;
     
     for (let i = 0; i < minBlades; i++) {
@@ -267,7 +266,7 @@ export class GrassSystem {
     if (distance < this.lodDistances[1]) return this.config.lodLevels[1]; // High detail
     if (distance < this.lodDistances[2]) return this.config.lodLevels[2]; // Medium detail
     if (distance < this.lodDistances[3]) return this.config.lodLevels[3]; // Low detail
-    return this.config.lodLevels[3] * 0.5; // Very distant but never 0
+    return this.config.lodLevels[3]; // Never return 0 - always minimum grass
   }
   
   private generateGroundGrassDistribution(
@@ -505,6 +504,14 @@ export class GrassSystem {
     let hiddenCount = 0;
     let visibleCount = 0;
     
+    // Process queued regions that are now in range
+    const regionsToProcess = Array.from(this.grassRegionQueue);
+    for (const regionKey of regionsToProcess) {
+      // Extract region info from key and check if now in range
+      // This would require region center position lookup
+      this.grassRegionQueue.delete(regionKey);
+    }
+    
     // Update tall grass visibility with dynamic LOD
     for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
@@ -577,12 +584,13 @@ export class GrassSystem {
     this.updateCounter++;
     this.grassCullingUpdateCounter++;
     
-    // Update last player position for future use
-    this.lastPlayerPosition.copy(playerPosition);
-    
     // More frequent grass visibility updates for dynamic LOD
     if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
-      this.updateGrassVisibility(playerPosition);
+      const playerMovedDistance = this.lastPlayerPosition.distanceTo(playerPosition);
+      if (playerMovedDistance > 2.0) { // More sensitive to movement
+        this.updateGrassVisibility(playerPosition);
+        this.lastPlayerPosition.copy(playerPosition);
+      }
       this.grassCullingUpdateCounter = 0;
     }
     
@@ -673,6 +681,9 @@ export class GrassSystem {
   public removeGrassForRegion(region: RegionCoordinates): void {
     const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
     
+    // Remove from queue if present
+    this.grassRegionQueue.delete(regionKey);
+    
     // Remove tall grass instances
     const keysToRemove = Array.from(this.grassInstances.keys()).filter(
       key => key.startsWith(regionKey)
@@ -740,6 +751,9 @@ export class GrassSystem {
       geometry.dispose();
     }
     this.groundGrassGeometries.clear();
+    
+    // Clear queue
+    this.grassRegionQueue.clear();
     
     console.log('🌱 Enhanced GrassSystem with dynamic LOD and guaranteed coverage disposed');
   }

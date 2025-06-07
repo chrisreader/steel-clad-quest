@@ -760,19 +760,11 @@ export class SceneManager {
     this.terrainFeatureGenerator.generateFeaturesForRegion(region);
     this.structureGenerator.generateStructuresForRegion(region);
     
-    // Generate 3D grass for this region - PASS CURRENT PLAYER POSITION
+    // Generate 3D grass for this region
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     const regionSize = region.ringIndex === 0 ? ringDef.outerRadius * 2 : 100;
-    
-    // Use lastPlayerPosition as current player position for grass generation
-    this.grassSystem.generateGrassForRegion(
-      region, 
-      centerPosition, 
-      regionSize, 
-      ringDef.terrainColor,
-      this.lastPlayerPosition.clone() // NEW: Pass current player position
-    );
-    console.log(`🌱 3D grass generated for region ${regionKey} using current player position`);
+    this.grassSystem.generateGrassForRegion(region, centerPosition, regionSize, ringDef.terrainColor);
+    console.log(`🌱 3D grass generated for region ${regionKey}`);
   }
   
   private unloadRegion(region: RegionCoordinates): void {
