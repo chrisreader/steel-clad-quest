@@ -2,8 +2,8 @@
 import { BiomeType } from './GrassBiomeManager';
 
 export interface GroundGrassConfiguration {
-  densityMultiplier: number; // 6-9x denser than tall grass (higher for dense biomes)
-  heightReduction: number; // Height factor (0.3 = 30% of original height)
+  densityMultiplier: number; // 6-7x denser than tall grass
+  heightReduction: number; // Height factor (0.85 = 15% shorter than tall grass)
   speciesDistribution: {
     meadow: number;
     prairie: number;
@@ -16,8 +16,8 @@ export interface GroundGrassConfiguration {
 export class GroundGrassBiomeConfig {
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
-      densityMultiplier: 6.0, // Standard density
-      heightReduction: 0.3, // 30% of original height (70% reduction)
+      densityMultiplier: 6.0, // Increased from 4.0 for proper carpet coverage
+      heightReduction: 0.85, // 15% shorter instead of 25%
       speciesDistribution: {
         meadow: 0.3,
         prairie: 0.15,
@@ -27,8 +27,8 @@ export class GroundGrassBiomeConfig {
       windReduction: 0.2 // 80% of regular wind strength
     },
     meadow: {
-      densityMultiplier: 9.0, // Much denser in meadow biome
-      heightReduction: 0.3, // Same height reduction
+      densityMultiplier: 7.0, // Densest coverage in meadow
+      heightReduction: 0.85,
       speciesDistribution: {
         meadow: 0.6,
         prairie: 0.05,
@@ -38,8 +38,8 @@ export class GroundGrassBiomeConfig {
       windReduction: 0.2
     },
     prairie: {
-      densityMultiplier: 7.0, // Slightly denser than normal
-      heightReduction: 0.3, // Same height reduction
+      densityMultiplier: 6.0, // Dense but allowing for wind exposure
+      heightReduction: 0.85,
       speciesDistribution: {
         meadow: 0.1,
         prairie: 0.7,
