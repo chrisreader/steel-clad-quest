@@ -21,7 +21,6 @@ export class LeafTextureGenerator {
         side: THREE.DoubleSide,
         roughness: 0.8,
         metalness: 0.0,
-        opacity: 0.95, // Increased opacity for better visibility
       });
     }
     return this.leafMaterial;
@@ -29,43 +28,43 @@ export class LeafTextureGenerator {
 
   private static createLeafTexture(): THREE.Texture {
     const canvas = document.createElement('canvas');
-    canvas.width = 128; // Increased resolution for better quality
-    canvas.height = 128;
+    canvas.width = 64;
+    canvas.height = 64;
     const ctx = canvas.getContext('2d')!;
 
     // Clear canvas
-    ctx.clearRect(0, 0, 128, 128);
+    ctx.clearRect(0, 0, 64, 64);
 
-    // Create larger, more visible leaf shape
-    ctx.fillStyle = '#4a7c28'; // Brighter green for better visibility
+    // Create leaf shape with alpha
+    ctx.fillStyle = '#4a7c28';
     ctx.beginPath();
     
-    // Draw larger leaf shape
-    ctx.moveTo(64, 8);
-    ctx.bezierCurveTo(90, 20, 100, 50, 90, 80);
-    ctx.bezierCurveTo(80, 100, 70, 110, 64, 120);
-    ctx.bezierCurveTo(58, 110, 48, 100, 38, 80);
-    ctx.bezierCurveTo(28, 50, 38, 20, 64, 8);
+    // Draw leaf shape
+    ctx.moveTo(32, 4);
+    ctx.bezierCurveTo(45, 10, 50, 25, 45, 40);
+    ctx.bezierCurveTo(40, 50, 35, 55, 32, 60);
+    ctx.bezierCurveTo(29, 55, 24, 50, 19, 40);
+    ctx.bezierCurveTo(14, 25, 19, 10, 32, 4);
     ctx.closePath();
     ctx.fill();
 
-    // Add prominent leaf vein
+    // Add leaf vein
     ctx.strokeStyle = '#2d5016';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(64, 16);
-    ctx.lineTo(64, 112);
+    ctx.moveTo(32, 8);
+    ctx.lineTo(32, 56);
     ctx.stroke();
 
-    // Add more visible side veins
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 4; i++) {
-      const y = 36 + i * 18;
+    // Add side veins
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 3; i++) {
+      const y = 18 + i * 12;
       ctx.beginPath();
-      ctx.moveTo(64, y);
-      ctx.lineTo(48 + i * 2, y + 8);
-      ctx.moveTo(64, y);
-      ctx.lineTo(80 - i * 2, y + 8);
+      ctx.moveTo(32, y);
+      ctx.lineTo(25 + i, y + 5);
+      ctx.moveTo(32, y);
+      ctx.lineTo(39 - i, y + 5);
       ctx.stroke();
     }
 

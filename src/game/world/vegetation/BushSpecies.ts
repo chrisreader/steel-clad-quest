@@ -23,7 +23,6 @@ export interface BushSpeciesConfig {
   berryChance: number;
   textureVariations: number;
   environmentalAdaptation: boolean;
-  leafCoverageIntensity: number; // New property for comprehensive coverage
 }
 
 export const BUSH_SPECIES_CONFIGS: Record<BushSpeciesType, BushSpeciesConfig> = {
@@ -34,14 +33,13 @@ export const BUSH_SPECIES_CONFIGS: Record<BushSpeciesType, BushSpeciesConfig> = 
     heightRange: [0.5, 0.9],
     layerCountRange: [4, 7],
     growthPattern: 'compact',
-    leafDensity: 1.0, // Reduced for performance
+    leafDensity: 0.9,
     stemVisibility: 0.2,
     seasonalVariation: true,
     flowerChance: 0.1,
     berryChance: 0.15,
     textureVariations: 4,
-    environmentalAdaptation: true,
-    leafCoverageIntensity: 1.0
+    environmentalAdaptation: true
   },
   
   [BushSpeciesType.SPRAWLING_GROUND]: {
@@ -51,14 +49,13 @@ export const BUSH_SPECIES_CONFIGS: Record<BushSpeciesType, BushSpeciesConfig> = 
     heightRange: [0.2, 0.4],
     layerCountRange: [3, 5],
     growthPattern: 'spreading',
-    leafDensity: 0.8, // Reduced for performance
+    leafDensity: 0.7,
     stemVisibility: 0.4,
     seasonalVariation: true,
     flowerChance: 0.25,
     berryChance: 0.05,
     textureVariations: 3,
-    environmentalAdaptation: true,
-    leafCoverageIntensity: 0.9
+    environmentalAdaptation: true
   },
   
   [BushSpeciesType.TALL_UPRIGHT]: {
@@ -68,14 +65,13 @@ export const BUSH_SPECIES_CONFIGS: Record<BushSpeciesType, BushSpeciesConfig> = 
     heightRange: [1.0, 1.8],
     layerCountRange: [5, 8],
     growthPattern: 'upright',
-    leafDensity: 0.7, // Reduced for performance
+    leafDensity: 0.6,
     stemVisibility: 0.6,
     seasonalVariation: true,
     flowerChance: 0.2,
     berryChance: 0.1,
     textureVariations: 5,
-    environmentalAdaptation: true,
-    leafCoverageIntensity: 0.8
+    environmentalAdaptation: true
   },
   
   [BushSpeciesType.WILD_BERRY]: {
@@ -85,14 +81,13 @@ export const BUSH_SPECIES_CONFIGS: Record<BushSpeciesType, BushSpeciesConfig> = 
     heightRange: [0.6, 1.0],
     layerCountRange: [3, 6],
     growthPattern: 'cascading',
-    leafDensity: 1.1, // Slightly higher for berry bushes
+    leafDensity: 0.8,
     stemVisibility: 0.3,
     seasonalVariation: true,
     flowerChance: 0.4,
     berryChance: 0.8,
     textureVariations: 4,
-    environmentalAdaptation: false,
-    leafCoverageIntensity: 1.0
+    environmentalAdaptation: false
   },
   
   [BushSpeciesType.FLOWERING_ORNAMENTAL]: {
@@ -102,14 +97,13 @@ export const BUSH_SPECIES_CONFIGS: Record<BushSpeciesType, BushSpeciesConfig> = 
     heightRange: [0.4, 0.7],
     layerCountRange: [4, 6],
     growthPattern: 'compact',
-    leafDensity: 0.9, // Balanced for ornamental appeal
+    leafDensity: 0.7,
     stemVisibility: 0.3,
     seasonalVariation: true,
     flowerChance: 0.9,
     berryChance: 0.0,
     textureVariations: 6,
-    environmentalAdaptation: false,
-    leafCoverageIntensity: 1.1
+    environmentalAdaptation: false
   }
 };
 

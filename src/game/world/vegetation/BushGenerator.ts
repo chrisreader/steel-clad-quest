@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BUSH_CONFIG } from './VegetationConfig';
 import { OrganicShapeGenerator } from './OrganicShapeGenerator';
@@ -11,20 +12,11 @@ import {
 
 export class BushGenerator {
   private bushModels: Map<BushSpeciesType, THREE.Object3D[]> = new Map();
-  private readonly MODELS_PER_SPECIES = 3;
+  private readonly MODELS_PER_SPECIES = 3; // Reduced from 4
   private performanceMode: boolean = false;
-  private sharedLeafGeometry: THREE.PlaneGeometry;
-  private sharedLeafMaterial: THREE.MeshStandardMaterial;
 
   constructor() {
-    this.initializeSharedLeafResources();
     this.loadBushModels();
-  }
-
-  private initializeSharedLeafResources(): void {
-    // Create shared resources for all leaves
-    this.sharedLeafGeometry = new THREE.PlaneGeometry(0.3, 0.36); // Larger, more visible leaves
-    this.sharedLeafMaterial = LeafTextureGenerator.getLeafMaterial();
   }
 
   private loadBushModels(): void {
@@ -41,20 +33,21 @@ export class BushGenerator {
       this.bushModels.set(species.type, models);
     });
     
-    console.log(`🌿 Created ${allSpecies.length} optimized bush species with simplified leaf system`);
+    console.log(`🌿 Created ${allSpecies.length} optimized bush species with ${this.MODELS_PER_SPECIES} variations each`);
   }
 
   private createOptimizedBush(species: BushSpeciesConfig, variationIndex: number): THREE.Group {
     const bushGroup = new THREE.Group();
     bushGroup.userData = { species: species.type, variation: variationIndex };
     
-    // Calculate bush dimensions
+    // Calculate bush dimensions with simpler scaling
     const baseRadius = species.sizeRange[0] + 
       Math.random() * (species.sizeRange[1] - species.sizeRange[0]);
     
     const height = species.heightRange[0] + 
       Math.random() * (species.heightRange[1] - species.heightRange[0]);
     
+    // Reduced layer count for performance
     const layerCount = Math.min(3, species.layerCountRange[0] + 
       Math.floor(Math.random() * (species.layerCountRange[1] - species.layerCountRange[0] + 1)));
 
@@ -64,8 +57,8 @@ export class BushGenerator {
     // Add simplified features
     this.addSimplifiedFeatures(bushGroup, species, baseRadius, height);
 
-    // Add simplified leaf coverage
-    this.addSimplifiedLeafCoverage(bushGroup, species, baseRadius, height);
+    // Add visible leaves
+    this.addVisibleLeaves(bushGroup, species, baseRadius, height);
 
     return bushGroup;
   }
@@ -235,84 +228,56 @@ export class BushGenerator {
     }
   }
 
-  private addSimplifiedLeafCoverage(
+  private addVisibleLeaves(
     bushGroup: THREE.Group,
     species: BushSpeciesConfig,
     baseRadius: number,
     height: number
   ): void {
-    // Calculate simplified leaf count - much fewer leaves
-    const baseLeafCount = this.performanceMode ? 6 : 10;
-    const speciesMultiplier = species.leafDensity;
-    const totalLeafCount = Math.floor(baseLeafCount * speciesMultiplier);
+    // Significantly fewer but larger, more visible leaves
+    const leafCount = Math.floor(12 * species.leafDensity); // Reduced from 40-60 to ~8-12
     
-    console.log(`🍃 Adding ${totalLeafCount} simplified leaves to ${species.name}`);
-
-    // Single layer of strategically placed leaves
-    for (let i = 0; i < totalLeafCount; i++) {
-      this.addVisibleLeaf(bushGroup, species, baseRadius, height, i, totalLeafCount);
-    }
-  }
-
-  private addVisibleLeaf(
-    bushGroup: THREE.Group,
-    species: BushSpeciesConfig,
-    baseRadius: number,
-    height: number,
-    leafIndex: number,
-    totalLeaves: number
-  ): void {
-    // Use shared geometry and material for performance
-    const leaf = new THREE.Mesh(this.sharedLeafGeometry, this.sharedLeafMaterial);
-    
-    // Distribute leaves evenly around the bush perimeter for maximum visibility
-    const angle = (leafIndex / totalLeaves) * Math.PI * 2;
-    const radiusVariation = baseRadius * (0.8 + Math.random() * 0.4); // 0.8-1.2x radius
-    
-    // Position on the outer edge where leaves are most visible
-    const x = Math.cos(angle) * radiusVariation;
-    const z = Math.sin(angle) * radiusVariation;
-    
-    // Distribute vertically across bush height with some clustering
-    let y = Math.random() * height;
-    
-    // Add natural height clustering for realistic branch patterns
-    if (Math.random() < 0.4) {
-      const clusterHeight = height * (0.3 + Math.random() * 0.4); // Cluster in middle-upper area
-      y = clusterHeight + (Math.random() - 0.5) * height * 0.3;
-    }
-    
-    // Clamp to bush bounds
-    y = Math.max(0.1, Math.min(height * 0.9, y));
-    
-    leaf.position.set(x, y, z);
-    
-    // Simple outward-facing orientation for better visibility
-    const outwardDirection = new THREE.Vector3(x, 0, z).normalize();
-    if (outwardDirection.length() > 0) {
+    for (let i = 0; i < leafCount; i++) {
+      const leafSize = 0.12 + Math.random() * 0.08; // Much larger: 0.12-0.20
+      const leafGeometry = new THREE.PlaneGeometry(leafSize, leafSize * 1.2);
+      
+      // Use textured leaf material
+      const leafMaterial = LeafTextureGenerator.getLeafMaterial();
+      
+      const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+      
+      // Position leaves more prominently on bush exterior
+      const angle = Math.random() * Math.PI * 2;
+      const distance = baseRadius * (0.9 + Math.random() * 0.3); // Push to exterior
+      const leafHeight = Math.random() * height * 0.8 + height * 0.1; // Avoid very top/bottom
+      
+      leaf.position.set(
+        Math.cos(angle) * distance,
+        leafHeight,
+        Math.sin(angle) * distance
+      );
+      
+      // Face leaves outward for better visibility
+      const outwardDirection = new THREE.Vector3(
+        leaf.position.x,
+        0,
+        leaf.position.z
+      ).normalize();
+      
       leaf.lookAt(leaf.position.clone().add(outwardDirection));
+      
+      // Add some natural variation
+      leaf.rotation.x += (Math.random() - 0.5) * 0.3;
+      leaf.rotation.z += (Math.random() - 0.5) * 0.3;
+      
+      bushGroup.add(leaf);
     }
-    
-    // Add minimal natural variation
-    leaf.rotation.x += (Math.random() - 0.5) * 0.2;
-    leaf.rotation.z += (Math.random() - 0.5) * 0.2;
-    
-    // Slight random scale for variety
-    const scale = 0.8 + Math.random() * 0.4; // 0.8-1.2x
-    leaf.scale.setScalar(scale);
-    
-    leaf.castShadow = true;
-    leaf.receiveShadow = true;
-    
-    bushGroup.add(leaf);
   }
 
   public setPerformanceMode(enabled: boolean): void {
     this.performanceMode = enabled;
     if (enabled) {
-      console.log("🌿 Bush performance mode enabled - minimal leaf count");
-    } else {
-      console.log("🌿 Bush performance mode disabled - normal leaf count");
+      console.log("🌿 Bush performance mode enabled - using simplified generation");
     }
   }
 
@@ -342,18 +307,11 @@ export class BushGenerator {
   }
 
   public dispose(): void {
-    // Dispose shared resources
-    if (this.sharedLeafGeometry) {
-      this.sharedLeafGeometry.dispose();
-    }
-    
     this.bushModels.forEach(models => {
       models.forEach(bush => {
         bush.traverse(child => {
           if (child instanceof THREE.Mesh) {
-            if (child.geometry && child.geometry !== this.sharedLeafGeometry) {
-              child.geometry.dispose();
-            }
+            if (child.geometry) child.geometry.dispose();
             // Don't dispose shared materials here
           }
         });
@@ -361,7 +319,7 @@ export class BushGenerator {
     });
     this.bushModels.clear();
     
-    // Dispose other shared resources
+    // Dispose shared resources
     OptimizedMaterialGenerator.dispose();
     LeafTextureGenerator.dispose();
   }
