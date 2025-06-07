@@ -28,10 +28,54 @@ export class BushMaterialGenerator {
     return material;
   }
 
+  public static createSolidCoreMaterial(
+    baseColor: THREE.Color,
+    bushType: string,
+    variation: number = 0
+  ): THREE.MeshStandardMaterial {
+    // Create a darker, more muted version of the base color for the core
+    const coreColor = baseColor.clone();
+    coreColor.offsetHSL(0, -0.2, -0.3); // Darker and less saturated
+    
+    // Apply type-specific adjustments
+    switch (bushType) {
+      case 'low_shrub':
+        coreColor.offsetHSL(0, -0.1, -0.2);
+        break;
+      case 'medium_bush':
+        coreColor.offsetHSL(0, -0.15, -0.25);
+        break;
+      case 'tall_bush':
+        coreColor.offsetHSL(0, -0.2, -0.3);
+        break;
+    }
+
+    // Add slight variation
+    const variationAmount = 0.1 * variation;
+    coreColor.offsetHSL(
+      (Math.random() - 0.5) * variationAmount * 0.1,
+      (Math.random() - 0.5) * variationAmount * 0.2,
+      (Math.random() - 0.5) * variationAmount * 0.2
+    );
+
+    const material = new THREE.MeshStandardMaterial({
+      color: coreColor,
+      roughness: 0.9,
+      metalness: 0.0,
+      transparent: false,
+      opacity: 1.0,
+      flatShading: false,
+      side: THREE.FrontSide, // Only front side for performance
+      depthWrite: true,
+      depthTest: true,
+    });
+
+    return material;
+  }
+
   private static getColorVariation(baseColor: THREE.Color, bushType: string, variation: number): THREE.Color {
     const color = baseColor.clone();
     
-    // Apply type-specific color adjustments
     switch (bushType) {
       case 'low_shrub':
         color.offsetHSL(0.01, -0.15, -0.08);
@@ -44,8 +88,7 @@ export class BushMaterialGenerator {
         break;
     }
 
-    // Add natural variation with reduced intensity
-    const variationAmount = 0.15 * variation; // Reduced for more consistent appearance
+    const variationAmount = 0.15 * variation;
     color.offsetHSL(
       (Math.random() - 0.5) * variationAmount * 0.2,
       (Math.random() - 0.5) * variationAmount * 0.3,
