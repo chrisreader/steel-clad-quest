@@ -173,24 +173,6 @@ export class RealisticGrassShader {
     return material;
   }
   
-  private static getSeasonalColors(species: string): { spring: THREE.Color; summer: THREE.Color; autumn: THREE.Color; winter: THREE.Color } {
-    const baseColors = {
-      meadow: new THREE.Color(0x5a8442),
-      prairie: new THREE.Color(0x4a7339),
-      clumping: new THREE.Color(0x7a9451),
-      fine: new THREE.Color(0x6b8f47)
-    };
-    
-    const base = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
-    
-    return {
-      spring: new THREE.Color().copy(base).offsetHSL(0.02, 0.1, 0.05),
-      summer: new THREE.Color().copy(base),
-      autumn: new THREE.Color().copy(base).offsetHSL(-0.05, -0.2, -0.1),
-      winter: new THREE.Color().copy(base).offsetHSL(0, -0.4, -0.2)
-    };
-  }
-  
   public static updateRealisticWindAnimation(
     material: THREE.ShaderMaterial, 
     time: number, 
@@ -266,23 +248,5 @@ export class RealisticGrassShader {
     if (material.uniforms.biomeColorIntensity) {
       material.uniforms.biomeColorIntensity.value = intensity;
     }
-  }
-
-  private static getSeasonalColors(species: string): { spring: THREE.Color; summer: THREE.Color; autumn: THREE.Color; winter: THREE.Color } {
-    const baseColors = {
-      meadow: new THREE.Color(0x5a8442),
-      prairie: new THREE.Color(0x4a7339),
-      clumping: new THREE.Color(0x7a9451),
-      fine: new THREE.Color(0x6b8f47)
-    };
-    
-    const base = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
-    
-    return {
-      spring: new THREE.Color().copy(base).offsetHSL(0.02, 0.1, 0.05),
-      summer: new THREE.Color().copy(base),
-      autumn: new THREE.Color().copy(base).offsetHSL(-0.05, -0.2, -0.1),
-      winter: new THREE.Color().copy(base).offsetHSL(0, -0.4, -0.2)
-    };
   }
 }
