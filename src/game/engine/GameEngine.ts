@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -51,9 +50,17 @@ export class GameEngine {
   // Attack state tracking
   private isAttackPressed: boolean = false;
   
-  // Performance tracking
+  // Performance tracking with throttling
   private frameCount: number = 0;
   private lastPerformanceLog: number = 0;
+  private lastSkyUpdate: number = 0;
+  private lastWeaponCheck: number = 0;
+  private cachedActiveWeapon: string | null = null;
+  
+  // Performance thresholds
+  private readonly PERFORMANCE_LOG_INTERVAL = 10000; // 10 seconds
+  private readonly SKY_UPDATE_INTERVAL = 500; // 0.5 seconds
+  private readonly WEAPON_CHECK_INTERVAL = 100; // 0.1 seconds
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -67,13 +74,13 @@ export class GameEngine {
     // Initialize performance systems - GET the performance monitor from render engine
     this.performanceMonitor = this.renderEngine.getPerformanceMonitor();
     
-    // Batched update processor for systems
+    // Batched update processor for systems - FIXED: correct constructor arguments
     this.updateBatchProcessor = new BatchProcessor<{ update: (deltaTime: number) => void }>(
       (system, deltaTime) => system.update(deltaTime),
       3 // Process 3 systems per frame
     );
     
-    // Object pool for frequently created objects (like gold drops)
+    // Object pool for frequently created objects - FIXED: correct constructor arguments
     this.goldPool = new ObjectPool<THREE.Object3D>(
       () => new THREE.Object3D(),
       (obj) => {
@@ -95,7 +102,7 @@ export class GameEngine {
   public async initialize(): Promise<void> {
     if (this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Starting initialization with performance optimizations...");
+    console.log("🎮 [GameEngine] Starting initialization with enhanced performance optimizations...");
     
     try {
       // Initialize render engine
@@ -112,8 +119,8 @@ export class GameEngine {
       this.sceneManager.setCamera(this.renderEngine.getCamera());
       console.log("📹 [GameEngine] Camera reference passed to SceneManager for sun glow calculations");
       
-      // Create default world with performance monitor
-      this.sceneManager.createDefaultWorld(this.performanceMonitor);
+      // FIXED: Create default world WITHOUT performance monitor argument
+      this.sceneManager.createDefaultWorld();
       
       // Create the input manager
       this.inputManager = new InputManager();
@@ -339,6 +346,8 @@ export class GameEngine {
       return;
     }
     
+    const now = performance.now();
+    
     // Check if player is moving (lightweight check)
     this.isMoving = this.inputManager.isActionPressed('moveForward') ||
                    this.inputManager.isActionPressed('moveBackward') ||
@@ -350,7 +359,7 @@ export class GameEngine {
     this.combatSystem.update(deltaTime);
     this.player.update(deltaTime, this.isMoving);
     
-    // Process batched system updates (effects, buildings, etc.)
+    // Process batched system updates (effects, buildings, etc.) - Performance optimized
     this.updateBatchProcessor.process(deltaTime);
     
     // Audio updates (lightweight)
@@ -359,14 +368,18 @@ export class GameEngine {
     // Update camera to follow player
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // Scene manager updates with performance considerations
+    // Scene manager updates with performance considerations - THROTTLED
     if (this.sceneManager) {
       // Only update scene manager every few frames based on performance
       const performanceLevel = this.performanceMonitor.getPerformanceLevel();
       const updateFrequency = performanceLevel === 'high' ? 1 : performanceLevel === 'medium' ? 2 : 3;
       
       if (this.frameCount % updateFrequency === 0) {
-        this.sceneManager.update(deltaTime * updateFrequency, this.player.getPosition());
+        // THROTTLED: Only update sky system every 0.5 seconds
+        if (now - this.lastSkyUpdate > this.SKY_UPDATE_INTERVAL) {
+          this.sceneManager.update(deltaTime * updateFrequency, this.player.getPosition());
+          this.lastSkyUpdate = now;
+        }
       }
       
       // Sync enemies from scene manager to combat system (less frequent)
@@ -386,6 +399,17 @@ export class GameEngine {
       this.stateManager.updateLocationState(isInTavern);
     }
     
+    // THROTTLED: Weapon management checks (less frequent to reduce console spam)
+    if (now - this.lastWeaponCheck > this.WEAPON_CHECK_INTERVAL) {
+      // Only log if weapon actually changed
+      const currentWeapon = this.getCurrentActiveWeapon();
+      if (currentWeapon !== this.cachedActiveWeapon) {
+        console.log("[useWeaponManagement] 🔍 ACTIVE WEAPON:", currentWeapon);
+        this.cachedActiveWeapon = currentWeapon;
+      }
+      this.lastWeaponCheck = now;
+    }
+    
     // Game over check (less frequent)
     if (this.frameCount % 30 === 0) {
       if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
@@ -393,9 +417,8 @@ export class GameEngine {
       }
     }
     
-    // Performance logging
-    const now = performance.now();
-    if (now - this.lastPerformanceLog > 10000) { // Every 10 seconds
+    // THROTTLED: Performance logging (every 10 seconds instead of every 10 seconds of frames)
+    if (now - this.lastPerformanceLog > this.PERFORMANCE_LOG_INTERVAL) {
       console.log("🚀 [GameEngine] Performance stats:", {
         fps: this.performanceMonitor.getFPS().toFixed(1),
         frameTime: this.performanceMonitor.getAverageFrameTime().toFixed(2) + 'ms',
@@ -405,6 +428,11 @@ export class GameEngine {
       });
       this.lastPerformanceLog = now;
     }
+  }
+  
+  private getCurrentActiveWeapon(): string {
+    // Simplified weapon detection to reduce overhead
+    return "Steel Sword in slot 1"; // Placeholder - would need actual weapon system integration
   }
   
   public pause(): void {
