@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GrassConfig, DEFAULT_GRASS_CONFIG, BiomeInfo } from './core/GrassConfig';
 import { GrassRenderer } from './core/GrassRenderer';
@@ -101,6 +100,7 @@ export class GrassSystem {
     biomeInfo: BiomeInfo,
     isGroundGrass: boolean
   ) {
+    // Get the appropriate config based on grass type
     const config = isGroundGrass 
       ? BiomeManager.getGroundConfiguration(biomeInfo.type)
       : BiomeManager.getBiomeConfiguration(biomeInfo.type);
@@ -121,14 +121,16 @@ export class GrassSystem {
     
     // Adjust species and heights for biome
     if (isGroundGrass) {
+      const groundConfig = BiomeManager.getGroundConfiguration(biomeInfo.type);
       grassData.species = BiomeManager.adjustGroundSpeciesForBiome(grassData.species, biomeInfo.type);
-      const heightMultiplier = config.heightReduction;
+      const heightMultiplier = groundConfig.heightReduction;
       for (let i = 0; i < grassData.scales.length; i++) {
         grassData.scales[i].y *= heightMultiplier * (0.8 + Math.random() * 0.4);
       }
     } else {
+      const biomeConfig = BiomeManager.getBiomeConfiguration(biomeInfo.type);
       grassData.species = BiomeManager.adjustSpeciesForBiome(grassData.species, biomeInfo);
-      const heightMultiplier = (config as any).heightMultiplier || 1.0;
+      const heightMultiplier = biomeConfig.heightMultiplier;
       for (let i = 0; i < grassData.scales.length; i++) {
         grassData.scales[i].y *= heightMultiplier * (0.7 + Math.random() * 0.6);
       }
