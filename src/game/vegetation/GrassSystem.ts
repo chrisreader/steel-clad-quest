@@ -9,6 +9,9 @@ import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES } from '../config/DayNightConfig';
 import { GrassBiomeManager, BiomeType } from './GrassBiomeManager';
 import { GradientDensity } from '../utils/math/GradientDensity';
+import { EnvironmentalRealism } from './EnvironmentalRealism';
+import { RealisticSpeciesDistribution } from './RealisticSpeciesDistribution';
+import { AdvancedBiomeTransitions } from './AdvancedBiomeTransitions';
 
 export interface GrassConfig {
   baseDensity: number;
@@ -34,10 +37,10 @@ export class GrassSystem {
   // Enhanced player position tracking for dynamic LOD
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // More frequent updates
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5;
   
   // Dynamic LOD system - more forgiving distances
-  private lodDistances: number[] = [75, 150, 225, 300]; // Increased distances
+  private lodDistances: number[] = [75, 150, 225, 300];
   
   // Performance optimization variables
   private updateCounter: number = 0;
@@ -46,17 +49,22 @@ export class GrassSystem {
   private readonly MATERIAL_UPDATE_INTERVAL: number = 3;
   private readonly FOG_CHECK_INTERVAL: number = 100;
   
+  // NEW: Player traffic tracking for realistic wear patterns
+  private playerTrafficMap: Map<string, number> = new Map();
+  private readonly TRAFFIC_DECAY_RATE = 0.98; // Traffic slowly fades over time
+  private readonly TRAFFIC_INFLUENCE_RADIUS = 3;
+  
   private config: GrassConfig = {
-    baseDensity: 1.2, // Increased base density
-    patchDensity: 2.5,
-    patchCount: 5,
-    maxDistance: 400, // Increased render distance further
-    lodLevels: [1.0, 0.7, 0.4, 0.15] // Never go to 0, always have some grass
+    baseDensity: 1.4, // Slightly increased for more realistic coverage
+    patchDensity: 2.8,
+    patchCount: 6,
+    maxDistance: 400,
+    lodLevels: [1.0, 0.8, 0.5, 0.2] // More gradual LOD transitions
   };
   
   // Enhanced region tracking for overlap management
   private regionOverlapMap: Map<string, Set<string>> = new Map();
-  private readonly EDGE_BLEND_DISTANCE = 20;
+  private readonly EDGE_BLEND_DISTANCE = 25; // Increased for smoother transitions
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -69,15 +77,15 @@ export class GrassSystem {
     // Create geometries for each species (tall grass)
     for (const species of this.enhancedGrassSpecies) {
       const geometry = species.clustered 
-        ? EnhancedGrassGeometry.createGrassCluster(species, 3)
+        ? EnhancedGrassGeometry.createGrassCluster(species, 4) // Slightly larger clusters
         : EnhancedGrassGeometry.createRealisticGrassBladeGeometry(species);
       
       this.grassGeometries.set(species.species, geometry);
       
       // Create ground grass geometries using realistic geometry
       const groundGeometry = species.clustered
-        ? GroundGrassGeometry.createGroundGrassCluster(species, 7) // Increased cluster size
-        : GroundGrassGeometry.createGroundGrassBladeGeometry(species, 0.85); // 15% shorter
+        ? GroundGrassGeometry.createGroundGrassCluster(species, 8) // Larger ground clusters
+        : GroundGrassGeometry.createGroundGrassBladeGeometry(species, 0.8); // Slightly taller ground grass
       
       this.groundGrassGeometries.set(species.species, groundGeometry);
       
@@ -89,22 +97,22 @@ export class GrassSystem {
       );
       this.grassMaterials.set(species.species, material);
       
-      // Create materials for ground grass with improved wind
+      // Create materials for ground grass
       const groundMaterial = RealisticGrassShader.createRealisticGrassMaterial(
-        species.color.clone().multiplyScalar(0.9), // 10% darker for ground shadow effect
+        species.color.clone().multiplyScalar(0.92), // Less darkening for more realistic look
         0, 
         `ground_${species.species}`
       );
       
-      // Reduce wind strength for ground grass but keep it natural (80% instead of 30%)
+      // Improve ground grass wind for more realism (85% instead of 80%)
       if (groundMaterial.uniforms.windStrength) {
-        groundMaterial.uniforms.windStrength.value *= 0.8;
+        groundMaterial.uniforms.windStrength.value *= 0.85;
       }
       
       this.groundGrassMaterials.set(species.species, groundMaterial);
     }
     
-    console.log('🌱 Enhanced grass system with dynamic LOD initialized with', this.enhancedGrassSpecies.length, 'species');
+    console.log('🌱 Enhanced realistic grass system initialized with', this.enhancedGrassSpecies.length, 'species');
   }
   
   public generateGrassForRegion(
@@ -122,56 +130,51 @@ export class GrassSystem {
     const playerPos = currentPlayerPosition || this.lastPlayerPosition;
     const distanceFromPlayer = centerPosition.distanceTo(playerPos);
     
-    // Calculate smooth LOD density multiplier instead of hard cutoffs
+    // Calculate smooth LOD density multiplier
     const lodDensityMultiplier = GradientDensity.calculateLODDensity(distanceFromPlayer, this.lodDistances);
     
     console.log(`🌱 Region ${region.ringIndex}-${region.quadrant}: distance=${distanceFromPlayer.toFixed(1)}, LOD density=${lodDensityMultiplier.toFixed(3)}`);
     
-    // Determine biome for this region
-    const biomeInfo = GrassBiomeManager.getBiomeAtPosition(centerPosition);
+    // Use enhanced biome system with smooth transitions
+    const biomeInfo = AdvancedBiomeTransitions.getEnhancedBiomeInfo(centerPosition);
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     
-    console.log(`🌱 Generating ${biomeConfig.name} grass (LOD density: ${lodDensityMultiplier.toFixed(3)}) for region ${regionKey}`);
+    console.log(`🌱 Generating enhanced ${biomeConfig.name} grass (strength: ${biomeInfo.strength.toFixed(2)}) for region ${regionKey}`);
     
-    // Create environmental factors with gradual transitions
-    const environmentalFactors = this.createImprovedEnvironmentalFactors(
+    // Create enhanced environmental factors
+    const environmentalFactors = this.createRealisticEnvironmentalFactors(
       centerPosition, 
       region, 
       terrainColor
     );
     
-    const adjustedEnvironmentalFactors = GrassBiomeManager.adjustEnvironmentalFactors(
-      environmentalFactors,
-      biomeInfo
-    );
-    
-    // Generate tall grass with organic sampling and edge blending
-    const tallGrassData = this.generateOrganicGrassDistribution(
+    // Generate realistic grass distribution with environmental awareness
+    const tallGrassData = this.generateRealisticGrassDistribution(
       centerPosition, 
       size, 
-      adjustedEnvironmentalFactors, 
+      environmentalFactors, 
       lodDensityMultiplier,
       biomeInfo,
-      Math.max(0.15, lodDensityMultiplier * 0.4) // Minimum coverage scales with LOD
+      Math.max(0.2, lodDensityMultiplier * 0.5) // Higher minimum coverage
     );
     
-    // Generate ground grass with higher density and organic distribution
-    const groundGrassData = this.generateOrganicGroundGrassDistribution(
+    // Generate enhanced ground grass with better coverage
+    const groundGrassData = this.generateRealisticGroundGrassDistribution(
       centerPosition,
       size,
-      adjustedEnvironmentalFactors,
+      environmentalFactors,
       lodDensityMultiplier,
       biomeInfo,
-      Math.max(0.35, lodDensityMultiplier * 0.7) // Higher minimum for ground coverage
+      Math.max(0.4, lodDensityMultiplier * 0.8) // Much higher ground coverage
     );
     
     // Group by species for efficient rendering
     const tallGrassGroups = this.groupGrassBySpecies(tallGrassData);
     const groundGrassGroups = this.groupGrassBySpecies(groundGrassData);
     
-    // Create instanced meshes for tall grass
+    // Create instanced meshes with realistic variations
     for (const [speciesName, speciesData] of Object.entries(tallGrassGroups)) {
-      this.createBiomeAwareSpeciesInstancedMesh(
+      this.createRealisticSpeciesInstancedMesh(
         regionKey, 
         speciesName, 
         speciesData, 
@@ -182,9 +185,9 @@ export class GrassSystem {
       );
     }
     
-    // Create instanced meshes for ground grass
+    // Create ground grass instances
     for (const [speciesName, speciesData] of Object.entries(groundGrassGroups)) {
-      this.createBiomeAwareSpeciesInstancedMesh(
+      this.createRealisticSpeciesInstancedMesh(
         regionKey, 
         speciesName, 
         speciesData, 
@@ -198,7 +201,7 @@ export class GrassSystem {
     // Track region overlap for blending
     this.trackRegionOverlap(regionKey, centerPosition, size + this.EDGE_BLEND_DISTANCE * 2);
     
-    console.log(`✅ Generated organic ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
+    console.log(`✅ Generated realistic ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
   }
   
   /**
@@ -230,15 +233,15 @@ export class GrassSystem {
   }
   
   /**
-   * NEW: Generate organic grass distribution with Poisson sampling
+   * ENHANCED: Generate realistic grass distribution using new environmental system
    */
-  private generateOrganicGrassDistribution(
+  private generateRealisticGrassDistribution(
     centerPosition: THREE.Vector3,
     size: number,
     environmentalFactors: EnvironmentalFactors,
     lodDensityMultiplier: number,
     biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean },
-    minimumCoverage: number = 0.25
+    minimumCoverage: number = 0.3
   ) {
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     const adjustedDensity = this.config.baseDensity * biomeConfig.densityMultiplier;
@@ -255,35 +258,50 @@ export class GrassSystem {
       this.EDGE_BLEND_DISTANCE
     );
     
-    grassData.species = GrassBiomeManager.adjustSpeciesForBiome(
-      grassData.species, 
-      biomeInfo
+    // Use realistic species distribution system
+    grassData.species = RealisticSpeciesDistribution.generateRealisticDistribution(
+      grassData.positions,
+      biomeInfo,
+      this.currentSeason
     );
     
-    // Apply biome height multiplier with existing terrain height variation
+    // Apply realistic height variations based on environmental conditions
     for (let i = 0; i < grassData.scales.length; i++) {
-      const terrainHeightVariation = grassData.scales[i].y;
-      const additionalHeightVariation = 0.7 + Math.random() * 0.6;
+      const position = grassData.positions[i];
+      const species = grassData.species[i];
+      const conditions = EnvironmentalRealism.calculateEnvironmentalConditions(position);
       
-      grassData.scales[i].y = terrainHeightVariation * biomeConfig.heightMultiplier * additionalHeightVariation;
+      // Add player traffic influence
+      const trafficKey = this.getTrafficKey(position);
+      conditions.playerTraffic = this.playerTrafficMap.get(trafficKey) || 0;
+      
+      const baseHeight = grassData.scales[i].y;
+      const realisticHeight = RealisticSpeciesDistribution.calculateRealisticHeight(
+        species,
+        baseHeight * biomeConfig.heightMultiplier,
+        conditions,
+        this.currentSeason
+      );
+      
+      grassData.scales[i].y = realisticHeight;
     }
     
     return grassData;
   }
   
   /**
-   * NEW: Generate organic ground grass distribution
+   * ENHANCED: Generate realistic ground grass distribution
    */
-  private generateOrganicGroundGrassDistribution(
+  private generateRealisticGroundGrassDistribution(
     centerPosition: THREE.Vector3,
     size: number,
     environmentalFactors: EnvironmentalFactors,
     lodDensityMultiplier: number,
     biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean },
-    minimumCoverage: number = 0.6
+    minimumCoverage: number = 0.7
   ) {
     const groundConfig = GroundGrassBiomeConfig.getGroundConfiguration(biomeInfo.type);
-    const adjustedDensity = this.config.baseDensity * groundConfig.densityMultiplier;
+    const adjustedDensity = this.config.baseDensity * groundConfig.densityMultiplier * 1.2; // Higher density for ground
     const baseSpacing = 1 / Math.sqrt(adjustedDensity);
     
     const grassData = EnvironmentalGrassDistribution.calculateGrassDistribution(
@@ -296,17 +314,32 @@ export class GrassSystem {
       this.EDGE_BLEND_DISTANCE
     );
     
-    grassData.species = GroundGrassBiomeConfig.adjustGroundSpeciesForBiome(
-      grassData.species, 
-      biomeInfo.type
+    // Use realistic distribution for ground grass too
+    grassData.species = RealisticSpeciesDistribution.generateRealisticDistribution(
+      grassData.positions,
+      biomeInfo,
+      this.currentSeason
     );
     
-    // Apply ground grass height reductions with terrain variation
+    // Apply realistic height reductions with environmental factors
     for (let i = 0; i < grassData.scales.length; i++) {
-      const terrainHeightVariation = grassData.scales[i].y;
-      const additionalHeightVariation = 0.8 + Math.random() * 0.4;
+      const position = grassData.positions[i];
+      const species = grassData.species[i];
+      const conditions = EnvironmentalRealism.calculateEnvironmentalConditions(position);
       
-      grassData.scales[i].y = terrainHeightVariation * groundConfig.heightReduction * additionalHeightVariation;
+      // Add player traffic influence
+      const trafficKey = this.getTrafficKey(position);
+      conditions.playerTraffic = this.playerTrafficMap.get(trafficKey) || 0;
+      
+      const baseHeight = grassData.scales[i].y;
+      const realisticHeight = RealisticSpeciesDistribution.calculateRealisticHeight(
+        species,
+        baseHeight * groundConfig.heightReduction,
+        conditions,
+        this.currentSeason
+      );
+      
+      grassData.scales[i].y = realisticHeight;
     }
     
     return grassData;
@@ -374,31 +407,29 @@ export class GrassSystem {
     }
   }
   
-  private createImprovedEnvironmentalFactors(
+  private createRealisticEnvironmentalFactors(
     centerPosition: THREE.Vector3,
     region: RegionCoordinates,
     terrainColor: number
   ): EnvironmentalFactors {
-    const distanceFromCenter = centerPosition.length();
-    
-    // Use gradual environmental factors instead of binary
-    const waterInfluence = Math.sin(centerPosition.x * 0.02) * Math.cos(centerPosition.z * 0.02);
-    const treeInfluence = Math.sin(centerPosition.x * 0.03 + 1) * Math.cos(centerPosition.z * 0.03 + 1);
-    const rockInfluence = Math.sin(centerPosition.x * 0.025 + 2) * Math.cos(centerPosition.z * 0.025 + 2);
+    // Use more realistic environmental modeling
+    const waterInfluence = Math.sin(centerPosition.x * 0.015) * Math.cos(centerPosition.z * 0.015);
+    const treeInfluence = Math.sin(centerPosition.x * 0.025 + 100) * Math.cos(centerPosition.z * 0.025 + 100);
+    const rockInfluence = Math.sin(centerPosition.x * 0.02 + 200) * Math.cos(centerPosition.z * 0.02 + 200);
     
     return EnvironmentalGrassDistribution.createEnvironmentalFactorsForTerrain(
       centerPosition,
       0,
       {
-        hasWater: waterInfluence > 0.3, // Less frequent water
-        hasTrees: treeInfluence > 0.2, // Moderate tree coverage
-        hasRocks: rockInfluence > 0.4, // Less frequent rocks
-        playerTraffic: 0
+        hasWater: waterInfluence > 0.25,
+        hasTrees: treeInfluence > 0.15,
+        hasRocks: rockInfluence > 0.35,
+        playerTraffic: 0 // Will be updated by traffic tracking
       }
     );
   }
   
-  private createBiomeAwareSpeciesInstancedMesh(
+  private createRealisticSpeciesInstancedMesh(
     regionKey: string,
     speciesName: string,
     speciesData: {
@@ -428,10 +459,28 @@ export class GrassSystem {
     const lodScales = speciesData.scales.slice(0, targetInstanceCount);
     const lodRotations = speciesData.rotations.slice(0, targetInstanceCount);
     
-    // Apply biome-specific wind exposure for ground grass with improved values
-    if (isGroundGrass && material.uniforms.windStrength) {
-      const groundConfig = GroundGrassBiomeConfig.getGroundConfiguration(biomeInfo.type);
-      material.uniforms.windStrength.value *= (1 - groundConfig.windReduction); // Use 1 - reduction for proper calculation
+    // Update material with realistic biome colors
+    for (let i = 0; i < lodPositions.length; i++) {
+      const position = lodPositions[i];
+      const realisticColor = AdvancedBiomeTransitions.getTransitionAwareColor(
+        position,
+        speciesName,
+        this.currentSeason
+      );
+      
+      // Apply environmental color modifications
+      const conditions = EnvironmentalRealism.calculateEnvironmentalConditions(position);
+      const trafficKey = this.getTrafficKey(position);
+      conditions.playerTraffic = this.playerTrafficMap.get(trafficKey) || 0;
+      
+      const finalColor = EnvironmentalRealism.getEnvironmentalColorModifier(
+        realisticColor,
+        conditions,
+        this.currentSeason
+      );
+      
+      // Update material uniforms with realistic colors
+      RealisticGrassShader.updateBiomeColors(material, finalColor, biomeInfo.strength);
     }
     
     const instancedMesh = new THREE.InstancedMesh(
@@ -440,16 +489,16 @@ export class GrassSystem {
       lodPositions.length
     );
     
-    // Set instance data
+    // Set instance data with improved positioning
     for (let i = 0; i < lodPositions.length; i++) {
       const matrix = new THREE.Matrix4();
       const adjustedPosition = lodPositions[i].clone();
       
-      // Position ground grass properly to stand upright
+      // Better ground grass positioning
       if (isGroundGrass) {
-        adjustedPosition.y = Math.max(0.05, adjustedPosition.y); // Raised from 0.01 to 0.05
+        adjustedPosition.y = Math.max(0.08, adjustedPosition.y); // Slightly higher
       } else {
-        adjustedPosition.y = Math.max(0.1, adjustedPosition.y);
+        adjustedPosition.y = Math.max(0.12, adjustedPosition.y);
       }
       
       matrix.compose(
@@ -461,10 +510,10 @@ export class GrassSystem {
     }
     
     instancedMesh.instanceMatrix.needsUpdate = true;
-    instancedMesh.castShadow = !isGroundGrass; // Ground grass doesn't cast shadows for performance
+    instancedMesh.castShadow = !isGroundGrass;
     instancedMesh.receiveShadow = true;
     
-    // Store metadata including LOD level
+    // Store enhanced metadata
     instancedMesh.userData = {
       regionKey: `${regionKey}_${speciesName}${suffix}`,
       centerPosition: lodPositions[0] || new THREE.Vector3(),
@@ -473,7 +522,8 @@ export class GrassSystem {
       biomeType: biomeInfo.type,
       biomeStrength: biomeInfo.strength,
       isGroundGrass,
-      lodLevel
+      lodLevel,
+      isRealistic: true // Mark as using realistic system
     };
     
     this.scene.add(instancedMesh);
@@ -531,13 +581,40 @@ export class GrassSystem {
     return false;
   }
   
+  public updatePlayerTraffic(playerPosition: THREE.Vector3): void {
+    const trafficKey = this.getTrafficKey(playerPosition);
+    const currentTraffic = this.playerTrafficMap.get(trafficKey) || 0;
+    
+    // Increase traffic at current position
+    this.playerTrafficMap.set(trafficKey, Math.min(1.0, currentTraffic + 0.02));
+    
+    // Decay all traffic values over time
+    for (const [key, value] of this.playerTrafficMap.entries()) {
+      const newValue = value * this.TRAFFIC_DECAY_RATE;
+      if (newValue < 0.01) {
+        this.playerTrafficMap.delete(key); // Remove very low traffic
+      } else {
+        this.playerTrafficMap.set(key, newValue);
+      }
+    }
+  }
+  
+  private getTrafficKey(position: THREE.Vector3): string {
+    // Create a grid key for traffic tracking
+    const gridSize = 2;
+    const gridX = Math.floor(position.x / gridSize);
+    const gridZ = Math.floor(position.z / gridSize);
+    return `${gridX},${gridZ}`;
+  }
+  
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
     this.time += deltaTime;
     this.updateCounter++;
     this.grassCullingUpdateCounter++;
     
-    // Update last player position for future use
+    // Update last player position and traffic
     this.lastPlayerPosition.copy(playerPosition);
+    this.updatePlayerTraffic(playerPosition);
     
     // More frequent grass visibility updates for dynamic LOD
     if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
@@ -545,7 +622,7 @@ export class GrassSystem {
       this.grassCullingUpdateCounter = 0;
     }
     
-    // Update materials
+    // Update materials with enhanced realism
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
       // Calculate day/night factors
       let nightFactor = 0;
@@ -556,11 +633,11 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // Enhanced wind with gusts
-      const baseWindStrength = 0.2 + Math.sin(this.time * 0.3) * 0.1;
-      const gustIntensity = 0.1 + Math.sin(this.time * 0.8) * 0.08;
+      // Enhanced wind with more realistic variation
+      const baseWindStrength = 0.15 + Math.sin(this.time * 0.25) * 0.08;
+      const gustIntensity = 0.08 + Math.sin(this.time * 0.6) * 0.06;
       
-      // Update tall grass materials
+      // Update all materials with enhanced wind
       for (const material of this.grassMaterials.values()) {
         RealisticGrassShader.updateRealisticWindAnimation(
           material, 
@@ -572,13 +649,13 @@ export class GrassSystem {
         RealisticGrassShader.updateSeasonalVariation(material, this.currentSeason);
       }
       
-      // Update ground grass materials with improved wind
+      // Update ground grass with improved wind responsiveness
       for (const material of this.groundGrassMaterials.values()) {
         RealisticGrassShader.updateRealisticWindAnimation(
           material, 
           this.time, 
-          baseWindStrength * 0.8, // Improved from 0.3 to 0.8
-          gustIntensity * 0.6    // Improved from 0.2 to 0.6
+          baseWindStrength * 0.9, // More responsive ground grass
+          gustIntensity * 0.7
         );
         RealisticGrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
         RealisticGrassShader.updateSeasonalVariation(material, this.currentSeason);
