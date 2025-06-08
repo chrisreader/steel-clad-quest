@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { GrassConfig, DEFAULT_GRASS_CONFIG, BiomeInfo } from './core/GrassConfig';
 import { GrassRenderer } from './core/GrassRenderer';
@@ -86,7 +87,9 @@ export class GrassSystem {
     }
     
     // OPTIMIZED: Single species only beyond 150 units
-    let tallGrassGroups, groundGrassGroups;
+    let tallGrassGroups: { [species: string]: { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; } };
+    let groundGrassGroups: { [species: string]: { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; } };
+    
     if (distanceFromPlayer > 150) {
       // Use only dominant species for distant grass
       const dominantSpecies = this.getDominantSpecies(tallGrassData.species);
@@ -105,13 +108,13 @@ export class GrassSystem {
     // Create instanced meshes
     for (const [speciesName, speciesData] of Object.entries(tallGrassGroups)) {
       this.renderer.createInstancedMesh(
-        regionKey, speciesName, speciesData, region, biomeInfo, false, lodDensityMultiplier
+        regionKey, speciesName, speciesData as { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; }, region, biomeInfo, false, lodDensityMultiplier
       );
     }
     
     for (const [speciesName, speciesData] of Object.entries(groundGrassGroups)) {
       this.renderer.createInstancedMesh(
-        regionKey, speciesName, speciesData, region, biomeInfo, true, lodDensityMultiplier
+        regionKey, speciesName, speciesData as { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; }, region, biomeInfo, true, lodDensityMultiplier
       );
     }
     
