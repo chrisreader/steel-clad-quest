@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GrassBiomeManager, BiomeInfo } from './GrassBiomeManager';
 
 export interface EnhancedGrassBladeConfig {
   height: number;
@@ -177,26 +178,32 @@ export class EnhancedGrassGeometry {
     }
   }
   
-  // Get enhanced grass species with biome-aware configurations
-  public static getEnhancedGrassSpeciesForBiome(biomeType: string): EnhancedGrassBladeConfig[] {
+  /**
+   * Get enhanced grass species with biome-aware configurations and colors
+   */
+  public static getEnhancedGrassSpeciesForBiome(
+    biomeInfo: BiomeInfo,
+    season: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer'
+  ): EnhancedGrassBladeConfig[] {
     const baseSpecies = this.getEnhancedGrassSpecies();
     
-    // Apply biome-specific modifications
+    // Apply biome-specific modifications and colors
     return baseSpecies.map(species => {
       const modified = { ...species };
       
-      if (biomeType === 'normal') {
+      // Get biome-specific color for this species
+      modified.color = GrassBiomeManager.getBiomeSpeciesColor(species.species, biomeInfo, season);
+      
+      // Apply biome-specific height and curve modifications
+      if (biomeInfo.type === 'normal') {
         // Shorter prairie grass, more clumping
         if (species.species === 'prairie') {
           modified.height = 0.5; // Reduced from 0.8
         }
-      } else if (biomeType === 'meadow') {
+      } else if (biomeInfo.type === 'meadow') {
         // Slightly taller and lusher
         modified.height *= 1.1;
-        if (species.species === 'meadow' || species.species === 'fine') {
-          modified.color = modified.color.clone().multiplyScalar(1.05);
-        }
-      } else if (biomeType === 'prairie') {
+      } else if (biomeInfo.type === 'prairie') {
         // Taller grass, especially prairie species
         if (species.species === 'prairie') {
           modified.height *= 1.3;
@@ -218,7 +225,7 @@ export class EnhancedGrassGeometry {
         curve: 0.2,
         taper: 0.8,
         species: 'fine',
-        color: new THREE.Color(0x6b8f47),
+        color: new THREE.Color(0x6b8f47), // Will be overridden by biome colors
         clustered: false
       },
       {
@@ -228,7 +235,7 @@ export class EnhancedGrassGeometry {
         curve: 0.3,
         taper: 0.7,
         species: 'meadow',
-        color: new THREE.Color(0x5a8442),
+        color: new THREE.Color(0x5a8442), // Will be overridden by biome colors
         clustered: true
       },
       {
@@ -238,7 +245,7 @@ export class EnhancedGrassGeometry {
         curve: 0.4,
         taper: 0.6,
         species: 'prairie',
-        color: new THREE.Color(0x4a7339),
+        color: new THREE.Color(0x4a7339), // Will be overridden by biome colors
         clustered: true
       },
       {
@@ -248,7 +255,7 @@ export class EnhancedGrassGeometry {
         curve: 0.15,
         taper: 0.9,
         species: 'clumping',
-        color: new THREE.Color(0x7a9451),
+        color: new THREE.Color(0x7a9451), // Will be overridden by biome colors
         clustered: true
       }
     ];

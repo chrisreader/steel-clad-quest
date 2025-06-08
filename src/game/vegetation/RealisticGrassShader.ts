@@ -83,6 +83,7 @@ export class RealisticGrassShader {
       uniform float subsurfaceIntensity;
       uniform vec3 lightDirection;
       uniform float seasonalFactor; // 0-1 for seasonal variation
+      uniform float biomeColorIntensity; // New: controls how strongly biome colors show
       
       varying vec2 vUv;
       varying vec3 vNormal;
@@ -99,39 +100,37 @@ export class RealisticGrassShader {
         // Base color interpolation between day and night
         vec3 currentGrassColor = mix(grassColor, nightGrassColor, nightFactor);
         
-        // Seasonal color variation
-        vec3 autumnColor = mix(grassColor, vec3(0.8, 0.6, 0.2), 0.3);
-        vec3 springColor = mix(grassColor, vec3(0.4, 0.8, 0.3), 0.2);
-        currentGrassColor = mix(currentGrassColor, mix(autumnColor, springColor, seasonalFactor), 0.3);
+        // Enhanced tip color calculation based on biome-specific base color
+        vec3 enhancedTipColor = tipColor;
         
         // Height-based color variation (darker at base, brighter at tips)
         vec3 baseColor = currentGrassColor * 0.7;
-        vec3 color = mix(baseColor, tipColor, vHeight);
+        vec3 color = mix(baseColor, enhancedTipColor, vHeight);
         
         // Add micro-detail color variation using world position
-        float microVariation = noise(vWorldPosition.xz * 50.0) * 0.1;
+        float microVariation = noise(vWorldPosition.xz * 50.0) * 0.08; // Reduced for more subtle variation
         color += microVariation;
         
-        // Subsurface scattering effect
+        // Enhanced subsurface scattering effect for realistic grass
         vec3 lightDir = normalize(lightDirection);
         float backlight = max(0.0, dot(-lightDir, vNormal));
-        vec3 subsurfaceColor = currentGrassColor * 0.5;
+        vec3 subsurfaceColor = currentGrassColor * 0.6; // Enhanced subsurface
         color = mix(color, subsurfaceColor, backlight * subsurfaceIntensity * vHeight);
         
         // Enhanced lighting with multiple factors
         float frontLight = dot(vNormal, lightDir) * 0.5 + 0.5;
-        float ambientLight = 0.4;
+        float ambientLight = 0.45; // Slightly increased ambient
         float totalLight = mix(ambientLight, frontLight, dayFactor);
         
         // Wind-based lighting variation (grass catches light differently when bent)
-        float windLighting = 1.0 + abs(vWindInfluence) * 0.2;
+        float windLighting = 1.0 + abs(vWindInfluence) * 0.15;
         totalLight *= windLighting;
         
         color *= totalLight;
         
-        // Age and health variation based on world position
-        float ageVariation = noise(vWorldPosition.xz * 10.0);
-        color = mix(color, color * 0.8, ageVariation * 0.3);
+        // Age and health variation based on world position (more subtle)
+        float ageVariation = noise(vWorldPosition.xz * 12.0);
+        color = mix(color, color * 0.85, ageVariation * 0.2); // More subtle aging
         
         // Apply fog
         float depth = gl_FragCoord.z / gl_FragCoord.w;
@@ -142,9 +141,8 @@ export class RealisticGrassShader {
       }
     `;
     
-    // Create seasonal and species-specific colors
-    const tipColor = new THREE.Color().copy(baseColor).multiplyScalar(1.3);
-    const seasonalColors = this.getSeasonalColors(species);
+    // Create enhanced tip color based on the base color
+    const tipColor = new THREE.Color().copy(baseColor).multiplyScalar(1.4);
     
     const material = new THREE.ShaderMaterial({
       vertexShader,
@@ -165,7 +163,8 @@ export class RealisticGrassShader {
         fogFar: { value: 200 },
         subsurfaceIntensity: { value: 0.4 },
         lightDirection: { value: new THREE.Vector3(1, 1, 1).normalize() },
-        seasonalFactor: { value: 0.5 } // Summer by default
+        seasonalFactor: { value: 0.5 }, // Summer by default
+        biomeColorIntensity: { value: 1.0 } // Full biome color intensity
       },
       side: THREE.DoubleSide,
       transparent: false
@@ -245,5 +244,45 @@ export class RealisticGrassShader {
     if (material.uniforms.dayFactor) {
       material.uniforms.dayFactor.value = dayFactor;
     }
+  }
+
+  /**
+   * Update material with biome-specific colors
+   */
+  public static updateBiomeColors(
+    material: THREE.ShaderMaterial,
+    grassColor: THREE.Color,
+    intensity: number = 1.0
+  ): void {
+    if (material.uniforms.grassColor) {
+      material.uniforms.grassColor.value.copy(grassColor);
+    }
+    if (material.uniforms.nightGrassColor) {
+      material.uniforms.nightGrassColor.value.copy(grassColor).multiplyScalar(0.15);
+    }
+    if (material.uniforms.tipColor) {
+      material.uniforms.tipColor.value.copy(grassColor).multiplyScalar(1.4);
+    }
+    if (material.uniforms.biomeColorIntensity) {
+      material.uniforms.biomeColorIntensity.value = intensity;
+    }
+  }
+
+  private static getSeasonalColors(species: string): { spring: THREE.Color; summer: THREE.Color; autumn: THREE.Color; winter: THREE.Color } {
+    const baseColors = {
+      meadow: new THREE.Color(0x5a8442),
+      prairie: new THREE.Color(0x4a7339),
+      clumping: new THREE.Color(0x7a9451),
+      fine: new THREE.Color(0x6b8f47)
+    };
+    
+    const base = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
+    
+    return {
+      spring: new THREE.Color().copy(base).offsetHSL(0.02, 0.1, 0.05),
+      summer: new THREE.Color().copy(base),
+      autumn: new THREE.Color().copy(base).offsetHSL(-0.05, -0.2, -0.1),
+      winter: new THREE.Color().copy(base).offsetHSL(0, -0.4, -0.2)
+    };
   }
 }

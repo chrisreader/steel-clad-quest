@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { EnvironmentalFactors } from './EnvironmentalGrassDistribution';
 
@@ -17,6 +16,18 @@ export interface BiomeConfiguration {
   windExposureMultiplier: number;
   preferredMoisture: number;
   color: THREE.Color; // For debug visualization
+  speciesColors: {
+    meadow: THREE.Color;
+    prairie: THREE.Color;
+    clumping: THREE.Color;
+    fine: THREE.Color;
+  };
+  seasonalModifiers: {
+    spring: { hue: number; saturation: number; lightness: number };
+    summer: { hue: number; saturation: number; lightness: number };
+    autumn: { hue: number; saturation: number; lightness: number };
+    winter: { hue: number; saturation: number; lightness: number };
+  };
 }
 
 export interface BiomeInfo {
@@ -39,7 +50,19 @@ export class GrassBiomeManager {
       heightMultiplier: 0.68,
       windExposureMultiplier: 1.0,
       preferredMoisture: 0.5,
-      color: new THREE.Color(0x90EE90) // Light green
+      color: new THREE.Color(0x90EE90), // Light green
+      speciesColors: {
+        meadow: new THREE.Color(0x5a8442),  // Enhanced forest green
+        prairie: new THREE.Color(0x4a7339),  // Enhanced olive green
+        clumping: new THREE.Color(0x7a9451), // Enhanced grass green
+        fine: new THREE.Color(0x6b8f47)     // Enhanced medium green
+      },
+      seasonalModifiers: {
+        spring: { hue: 0.02, saturation: 0.1, lightness: 0.05 },
+        summer: { hue: 0, saturation: 0, lightness: 0 },
+        autumn: { hue: -0.05, saturation: -0.2, lightness: -0.1 },
+        winter: { hue: 0, saturation: -0.4, lightness: -0.2 }
+      }
     },
     meadow: {
       name: 'Lush Meadow',
@@ -53,7 +76,19 @@ export class GrassBiomeManager {
       heightMultiplier: 1.1,
       windExposureMultiplier: 0.7,
       preferredMoisture: 0.8,
-      color: new THREE.Color(0x32CD32) // Lime green
+      color: new THREE.Color(0x32CD32), // Lime green
+      speciesColors: {
+        meadow: new THREE.Color(0x7CB342),  // Vibrant lime green
+        prairie: new THREE.Color(0x689F38),  // Soft meadow green (prairie species in meadow)
+        clumping: new THREE.Color(0x4CAF50), // Rich emerald
+        fine: new THREE.Color(0x8BC34A)     // Fresh spring green
+      },
+      seasonalModifiers: {
+        spring: { hue: 0.05, saturation: 0.2, lightness: 0.1 },
+        summer: { hue: 0.02, saturation: 0.1, lightness: 0.05 },
+        autumn: { hue: -0.1, saturation: -0.1, lightness: -0.05 },
+        winter: { hue: -0.05, saturation: -0.3, lightness: -0.15 }
+      }
     },
     prairie: {
       name: 'Open Prairie',
@@ -67,7 +102,19 @@ export class GrassBiomeManager {
       heightMultiplier: 1.04,
       windExposureMultiplier: 1.4,
       preferredMoisture: 0.4,
-      color: new THREE.Color(0xFFD700) // Golden
+      color: new THREE.Color(0xFFD700), // Golden
+      speciesColors: {
+        meadow: new THREE.Color(0x827717),  // Dried green (meadow species in prairie)
+        prairie: new THREE.Color(0xD4AF37),  // Golden grass (realistic prairie gold)
+        clumping: new THREE.Color(0xA1887F), // Tan grass (realistic dried grass)
+        fine: new THREE.Color(0xF57F17)     // Wheat color (golden-yellow)
+      },
+      seasonalModifiers: {
+        spring: { hue: 0.1, saturation: -0.1, lightness: 0.05 },
+        summer: { hue: 0.05, saturation: 0, lightness: 0 },
+        autumn: { hue: -0.05, saturation: 0.1, lightness: -0.05 },
+        winter: { hue: -0.1, saturation: -0.2, lightness: -0.2 }
+      }
     }
   };
 
@@ -191,6 +238,45 @@ export class GrassBiomeManager {
 
   public static getBiomeConfiguration(biomeType: BiomeType): BiomeConfiguration {
     return this.BIOME_CONFIGS[biomeType];
+  }
+
+  /**
+   * Get biome-specific color for a grass species with transition blending
+   */
+  public static getBiomeSpeciesColor(
+    species: string,
+    biomeInfo: BiomeInfo,
+    season: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer'
+  ): THREE.Color {
+    const config = this.getBiomeConfiguration(biomeInfo.type);
+    const speciesKey = species as keyof typeof config.speciesColors;
+    
+    // Get base color for this species in this biome
+    let baseColor = config.speciesColors[speciesKey] || config.speciesColors.meadow;
+    baseColor = baseColor.clone(); // Clone to avoid modifying original
+    
+    // Apply seasonal variations
+    const seasonalMod = config.seasonalModifiers[season];
+    const hsl = { h: 0, s: 0, l: 0 };
+    baseColor.getHSL(hsl);
+    
+    hsl.h = Math.max(0, Math.min(1, hsl.h + seasonalMod.hue));
+    hsl.s = Math.max(0, Math.min(1, hsl.s + seasonalMod.saturation));
+    hsl.l = Math.max(0, Math.min(1, hsl.l + seasonalMod.lightness));
+    
+    baseColor.setHSL(hsl.h, hsl.s, hsl.l);
+    
+    // If in transition zone, blend with normal biome color
+    if (biomeInfo.transitionZone && biomeInfo.type !== 'normal') {
+      const normalConfig = this.getBiomeConfiguration('normal');
+      const normalColor = normalConfig.speciesColors[speciesKey] || normalConfig.speciesColors.meadow;
+      
+      // Blend based on biome strength
+      const blendFactor = biomeInfo.strength;
+      baseColor.lerp(normalColor, 1 - blendFactor);
+    }
+    
+    return baseColor;
   }
 
   public static adjustSpeciesForBiome(
