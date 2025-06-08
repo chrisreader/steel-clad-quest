@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class GrassShader {
@@ -93,11 +94,12 @@ export class GrassShader {
       }
       
       void main() {
+        // Properly blend between day and night grass colors
         vec3 currentGrassColor = mix(grassColor, nightGrassColor, nightFactor);
-        vec3 enhancedTipColor = tipColor;
+        vec3 currentTipColor = mix(tipColor, nightGrassColor * 0.8, nightFactor);
         
         vec3 baseColor = currentGrassColor;
-        vec3 color = mix(baseColor, enhancedTipColor, vHeight);
+        vec3 color = mix(baseColor, currentTipColor, vHeight);
         
         float microVariation = noise(vWorldPosition.xz * 50.0) * 0.06;
         color += microVariation;
@@ -107,9 +109,13 @@ export class GrassShader {
         vec3 subsurfaceColor = currentGrassColor * 0.8;
         color = mix(color, subsurfaceColor, backlight * subsurfaceIntensity * vHeight);
         
+        // Enhanced lighting calculation with proper day/night blending
         float frontLight = dot(vNormal, lightDir) * 0.6 + 0.4;
-        float ambientLight = 0.7;
+        float ambientLight = mix(0.15, 0.7, dayFactor); // Much darker ambient at night
         float totalLight = mix(ambientLight, frontLight, dayFactor);
+        
+        // Additional night darkening
+        totalLight *= mix(0.3, 1.0, dayFactor); // Extra darkening during night
         
         float windLighting = 1.0 + abs(vWindInfluence) * 0.2;
         totalLight *= windLighting;
@@ -139,7 +145,7 @@ export class GrassShader {
         gustIntensity: { value: isGroundGrass ? 0.09 : 0.15 },
         gustFrequency: { value: 0.3 },
         grassColor: { value: baseColor },
-        nightGrassColor: { value: new THREE.Color().copy(baseColor).multiplyScalar(0.4) },
+        nightGrassColor: { value: new THREE.Color().copy(baseColor).multiplyScalar(0.2) }, // Darker night color
         tipColor: { value: tipColor },
         nightFactor: { value: 0 },
         dayFactor: { value: 1 },
@@ -199,7 +205,8 @@ export class GrassShader {
     
     if (material.uniforms.lightIntensity) {
       const baseIntensity = 1.2;
-      const dayIntensity = dayFactor * baseIntensity + 0.3;
+      const nightIntensity = 0.3; // Darker base intensity at night
+      const dayIntensity = dayFactor * baseIntensity + nightIntensity;
       material.uniforms.lightIntensity.value = dayIntensity;
     }
   }
