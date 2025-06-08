@@ -12,9 +12,6 @@ import { UIIntegrationManager } from './UIIntegrationManager';
 import { PhysicsManager } from './PhysicsManager';
 import { BuildingManager } from '../buildings/BuildingManager';
 import { GameState, EnemyType } from '../../types/GameTypes';
-import { BatchProcessor } from '../utils/performance/BatchProcessor';
-import { ObjectPool } from '../utils/performance/ObjectPool';
-import { PerformanceMonitor } from '../utils/performance/PerformanceMonitor';
 
 export class GameEngine {
   // Core managers
@@ -23,11 +20,6 @@ export class GameEngine {
   private uiIntegrationManager: UIIntegrationManager;
   private physicsManager: PhysicsManager;
   private buildingManager: BuildingManager | null = null;
-  
-  // Performance systems
-  private performanceMonitor: PerformanceMonitor;
-  private updateBatchProcessor: BatchProcessor<{ update: (deltaTime: number) => void }>;
-  private goldPool: ObjectPool<THREE.Object3D>;
   
   // Game systems
   private sceneManager: SceneManager | null = null;
@@ -50,18 +42,6 @@ export class GameEngine {
   // Attack state tracking
   private isAttackPressed: boolean = false;
   
-  // Performance tracking with throttling
-  private frameCount: number = 0;
-  private lastPerformanceLog: number = 0;
-  private lastSkyUpdate: number = 0;
-  private lastWeaponCheck: number = 0;
-  private cachedActiveWeapon: string | null = null;
-  
-  // Performance thresholds
-  private readonly PERFORMANCE_LOG_INTERVAL = 10000; // 10 seconds
-  private readonly SKY_UPDATE_INTERVAL = 500; // 0.5 seconds
-  private readonly WEAPON_CHECK_INTERVAL = 100; // 0.1 seconds
-  
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
     
@@ -70,28 +50,6 @@ export class GameEngine {
     this.stateManager = new StateManager();
     this.uiIntegrationManager = new UIIntegrationManager();
     this.physicsManager = new PhysicsManager();
-    
-    // Initialize performance systems - GET the performance monitor from render engine
-    this.performanceMonitor = this.renderEngine.getPerformanceMonitor();
-    
-    // Batched update processor for systems - FIXED: correct constructor arguments
-    this.updateBatchProcessor = new BatchProcessor<{ update: (deltaTime: number) => void }>(
-      (system, deltaTime) => system.update(deltaTime),
-      3 // Process 3 systems per frame
-    );
-    
-    // Object pool for frequently created objects - FIXED: correct constructor arguments
-    this.goldPool = new ObjectPool<THREE.Object3D>(
-      () => new THREE.Object3D(),
-      (obj) => {
-        obj.position.set(0, 0, 0);
-        obj.rotation.set(0, 0, 0);
-        obj.scale.set(1, 1, 1);
-        obj.visible = false;
-      },
-      20, // Initial pool size
-      100 // Max pool size
-    );
   }
   
   // NEW METHOD: Set UI state from KnightGame
@@ -102,7 +60,7 @@ export class GameEngine {
   public async initialize(): Promise<void> {
     if (this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Starting initialization with enhanced performance optimizations...");
+    console.log("🎮 [GameEngine] Starting initialization...");
     
     try {
       // Initialize render engine
@@ -119,7 +77,7 @@ export class GameEngine {
       this.sceneManager.setCamera(this.renderEngine.getCamera());
       console.log("📹 [GameEngine] Camera reference passed to SceneManager for sun glow calculations");
       
-      // FIXED: Create default world WITHOUT performance monitor argument
+      // Create default world
       this.sceneManager.createDefaultWorld();
       
       // Create the input manager
@@ -152,9 +110,9 @@ export class GameEngine {
       }
       
       // CRITICAL: Create the player with extensive debugging
-      console.log("🎮 [GameEngine] Creating player with performance optimizations...");
+      console.log("🎮 [GameEngine] Creating player with NEW ARM POSITIONING...");
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
-      console.log("🎮 [GameEngine] Player created successfully with performance optimizations");
+      console.log("🎮 [GameEngine] Player created successfully with new arm positioning");
       
       // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
@@ -164,10 +122,6 @@ export class GameEngine {
       // Create game systems with physics manager
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
-      
-      // Add systems to batched processor
-      if (this.effectsManager) this.updateBatchProcessor.addItem(this.effectsManager);
-      if (this.buildingManager) this.updateBatchProcessor.addItem(this.buildingManager);
       
       // Initialize enemy spawning system in scene manager
       if (this.sceneManager) {
@@ -180,7 +134,7 @@ export class GameEngine {
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete with enhanced performance optimizations!");
+      console.log("🎮 [GameEngine] Initialization complete with fire animation system!");
       
       // Start the game
       this.start();
@@ -316,10 +270,10 @@ export class GameEngine {
       return;
     }
     
-    console.log("🎮 [GameEngine] Starting game with performance optimizations...");
+    console.log("🎮 [GameEngine] Starting game with NEW ARM POSITIONING...");
     this.stateManager.start();
     this.animate();
-    console.log("🎮 [GameEngine] Game started successfully with performance optimizations!");
+    console.log("🎮 [GameEngine] Game started successfully with NEW ARM POSITIONING!");
   }
   
   private animate = (): void => {
@@ -337,8 +291,6 @@ export class GameEngine {
     this.stateManager.update(deltaTime);
     this.update(deltaTime);
     this.renderEngine.render();
-    
-    this.frameCount++;
   };
   
   private update(deltaTime: number): void {
@@ -346,93 +298,59 @@ export class GameEngine {
       return;
     }
     
-    const now = performance.now();
+    // Update movement system first
+    this.movementSystem.update(deltaTime);
     
-    // Check if player is moving (lightweight check)
+    // Check if player is moving
     this.isMoving = this.inputManager.isActionPressed('moveForward') ||
                    this.inputManager.isActionPressed('moveBackward') ||
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
     
-    // Critical systems update every frame
-    this.movementSystem.update(deltaTime);
+    // Update building manager (critical for fire animation)
+    if (this.buildingManager) {
+      this.buildingManager.update(deltaTime);
+    }
+    
+    // Sync enemies from scene manager to combat system
+    if (this.sceneManager) {
+      const sceneEnemies = this.sceneManager.getEnemies();
+      // Update combat system with current enemies
+      sceneEnemies.forEach(enemy => {
+        if (!this.combatSystem!.getEnemies().includes(enemy)) {
+          this.combatSystem!.addEnemy(enemy);
+        }
+      });
+    }
+    
+    // Update combat system
     this.combatSystem.update(deltaTime);
-    this.player.update(deltaTime, this.isMoving);
     
-    // Process batched system updates (effects, buildings, etc.) - Performance optimized
-    this.updateBatchProcessor.process(deltaTime);
+    // Update effects
+    this.effectsManager.update(deltaTime);
     
-    // Audio updates (lightweight)
+    // Update audio
     this.audioManager.update();
+    
+    // Update player
+    this.player.update(deltaTime, this.isMoving);
     
     // Update camera to follow player
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // Scene manager updates with performance considerations - THROTTLED
+    // NEW: Update scene manager with player position for ring-quadrant system
     if (this.sceneManager) {
-      // Only update scene manager every few frames based on performance
-      const performanceLevel = this.performanceMonitor.getPerformanceLevel();
-      const updateFrequency = performanceLevel === 'high' ? 1 : performanceLevel === 'medium' ? 2 : 3;
-      
-      if (this.frameCount % updateFrequency === 0) {
-        // THROTTLED: Only update sky system every 0.5 seconds
-        if (now - this.lastSkyUpdate > this.SKY_UPDATE_INTERVAL) {
-          this.sceneManager.update(deltaTime * updateFrequency, this.player.getPosition());
-          this.lastSkyUpdate = now;
-        }
-      }
-      
-      // Sync enemies from scene manager to combat system (less frequent)
-      if (this.frameCount % 10 === 0) {
-        const sceneEnemies = this.sceneManager.getEnemies();
-        sceneEnemies.forEach(enemy => {
-          if (!this.combatSystem!.getEnemies().includes(enemy)) {
-            this.combatSystem!.addEnemy(enemy);
-          }
-        });
-      }
+      this.sceneManager.update(deltaTime, this.player.getPosition());
     }
     
-    // Location checks (less frequent)
-    if (this.frameCount % 20 === 0) {
-      const isInTavern = this.movementSystem.checkInTavern();
-      this.stateManager.updateLocationState(isInTavern);
-    }
+    // Check location changes
+    const isInTavern = this.movementSystem.checkInTavern();
+    this.stateManager.updateLocationState(isInTavern);
     
-    // THROTTLED: Weapon management checks (less frequent to reduce console spam)
-    if (now - this.lastWeaponCheck > this.WEAPON_CHECK_INTERVAL) {
-      // Only log if weapon actually changed
-      const currentWeapon = this.getCurrentActiveWeapon();
-      if (currentWeapon !== this.cachedActiveWeapon) {
-        console.log("[useWeaponManagement] 🔍 ACTIVE WEAPON:", currentWeapon);
-        this.cachedActiveWeapon = currentWeapon;
-      }
-      this.lastWeaponCheck = now;
+    // Check for game over
+    if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
+      this.stateManager.setGameOver(this.stateManager.getScore());
     }
-    
-    // Game over check (less frequent)
-    if (this.frameCount % 30 === 0) {
-      if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
-        this.stateManager.setGameOver(this.stateManager.getScore());
-      }
-    }
-    
-    // THROTTLED: Performance logging (every 10 seconds instead of every 10 seconds of frames)
-    if (now - this.lastPerformanceLog > this.PERFORMANCE_LOG_INTERVAL) {
-      console.log("🚀 [GameEngine] Performance stats:", {
-        fps: this.performanceMonitor.getFPS().toFixed(1),
-        frameTime: this.performanceMonitor.getAverageFrameTime().toFixed(2) + 'ms',
-        memoryStats: this.renderEngine.getMemoryManager().getStats(),
-        updateBatchStats: this.updateBatchProcessor.getStats(),
-        goldPoolStats: this.goldPool.getStats()
-      });
-      this.lastPerformanceLog = now;
-    }
-  }
-  
-  private getCurrentActiveWeapon(): string {
-    // Simplified weapon detection to reduce overhead
-    return "Steel Sword in slot 1"; // Placeholder - would need actual weapon system integration
   }
   
   public pause(): void {
@@ -454,7 +372,7 @@ export class GameEngine {
   public restart(): void {
     if (!this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Restarting game and RECREATING PLAYER with performance optimizations...");
+    console.log("🎮 [GameEngine] Restarting game and RECREATING PLAYER with NEW ARM POSITIONING...");
     this.stateManager.restart();
     
     // CRITICAL: Recreate player to ensure new arm positioning takes effect
