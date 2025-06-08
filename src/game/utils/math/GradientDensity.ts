@@ -50,12 +50,12 @@ export class GradientDensity {
     
     const combinedNoise = noise1 + noise2 + noise3;
     
-    // Normalize to 0-1 range with higher baseline for all rings
+    // Normalize to 0-1 range
     return MathUtils.clamp((combinedNoise + 1.75) / 3.5, 0, 1);
   }
   
   /**
-   * Calculate environmental density with high baseline for all rings
+   * Calculate environmental density with minimal penalties (trees help, no water/rock penalties)
    */
   static calculateEnvironmentalDensity(
     position: THREE.Vector3,
@@ -66,31 +66,33 @@ export class GradientDensity {
       playerTraffic: number;
     }
   ): number {
-    // Start with high baseline density for all rings (90% minimum)
-    let density = 0.95;
+    // Start with high baseline density (80% minimum)
+    let density = 0.9;
     
-    // Trees help grass in all areas - keep this benefit
+    // Trees actually help grass in most areas - keep this benefit
     if (environmentalFactors.hasTrees) {
-      const treeBenefit = this.generateNoiseDensity(position, 0.015) * 0.2;
+      const treeBenefit = this.generateNoiseDensity(position, 0.015) * 0.15;
       density *= (1.0 + treeBenefit);
     }
     
-    // All environmental factors are positive or neutral for rich environments
-    // Ensure minimum density of 85% for all rings
-    return MathUtils.clamp(density, 0.85, 1.3);
+    // Remove water and rock penalties temporarily
+    // Remove player traffic penalties temporarily
+    
+    // Ensure minimum density of 80%
+    return MathUtils.clamp(density, 0.8, 1.2);
   }
   
   /**
-   * Calculate generous LOD-based density scaling for all rings
+   * Calculate LOD-based density scaling (smooth instead of cutoff)
    */
   static calculateLODDensity(distance: number, lodDistances: number[]): number {
-    if (distance < lodDistances[0]) return 1.0; // Full density close up
-    if (distance < lodDistances[1]) return MathUtils.smoothStep(distance, lodDistances[0], lodDistances[1]) * 0.1 + 0.9; // 90-100%
-    if (distance < lodDistances[2]) return MathUtils.smoothStep(distance, lodDistances[1], lodDistances[2]) * 0.1 + 0.8; // 80-90%
-    if (distance < lodDistances[3]) return MathUtils.smoothStep(distance, lodDistances[2], lodDistances[3]) * 0.1 + 0.7; // 70-80%
+    if (distance < lodDistances[0]) return 1.0;
+    if (distance < lodDistances[1]) return MathUtils.smoothStep(distance, lodDistances[0], lodDistances[1]) * 0.3 + 0.7;
+    if (distance < lodDistances[2]) return MathUtils.smoothStep(distance, lodDistances[1], lodDistances[2]) * 0.3 + 0.4;
+    if (distance < lodDistances[3]) return MathUtils.smoothStep(distance, lodDistances[2], lodDistances[3]) * 0.2 + 0.2;
     
-    // Even at maximum distance, maintain good coverage (minimum 60%)
-    const veryDistantFactor = MathUtils.clamp(1.0 - (distance - lodDistances[3]) / 100, 0.6, 1.0);
-    return veryDistantFactor;
+    // Never go to absolute zero - always maintain some sparse coverage
+    const veryDistantFactor = MathUtils.clamp(1.0 - (distance - lodDistances[3]) / 100, 0.05, 1.0);
+    return veryDistantFactor * 0.15;
   }
 }
