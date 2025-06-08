@@ -34,10 +34,10 @@ export class GrassSystem {
   // Enhanced player position tracking for dynamic LOD
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // More frequent updates
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5;
   
-  // Dynamic LOD system - more forgiving distances
-  private lodDistances: number[] = [75, 150, 225, 300]; // Increased distances
+  // Improved LOD system with better coverage
+  private lodDistances: number[] = [75, 150, 225, 300];
   
   // Performance optimization variables
   private updateCounter: number = 0;
@@ -47,16 +47,16 @@ export class GrassSystem {
   private readonly FOG_CHECK_INTERVAL: number = 100;
   
   private config: GrassConfig = {
-    baseDensity: 1.2, // Increased base density
-    patchDensity: 2.5,
-    patchCount: 5,
-    maxDistance: 400, // Increased render distance further
-    lodLevels: [1.0, 0.7, 0.4, 0.15] // Never go to 0, always have some grass
+    baseDensity: 1.4, // Increased base density
+    patchDensity: 2.8, // Increased patch density
+    patchCount: 6, // Increased patch count
+    maxDistance: 450, // Increased render distance
+    lodLevels: [1.0, 0.8, 0.5, 0.25] // Improved minimum coverage
   };
   
-  // Enhanced region tracking for overlap management
-  private regionOverlapMap: Map<string, Set<string>> = new Map();
-  private readonly EDGE_BLEND_DISTANCE = 20;
+  // NEW: Region tracking for seamless cross-region blending
+  private regionCenters: Map<string, THREE.Vector3> = new Map();
+  private readonly CROSS_REGION_BLEND_DISTANCE = 25;
   
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -104,7 +104,42 @@ export class GrassSystem {
       this.groundGrassMaterials.set(species.species, groundMaterial);
     }
     
-    console.log('🌱 Enhanced grass system with dynamic LOD initialized with', this.enhancedGrassSpecies.length, 'species');
+    console.log('🌱 Enhanced grass system with seamless coverage initialized with', this.enhancedGrassSpecies.length, 'species');
+  }
+  
+  /**
+   * NEW: Get neighboring regions for cross-region blending
+   */
+  private getNeighboringRegions(currentRegion: RegionCoordinates): Array<{ center: THREE.Vector3; size: number }> {
+    const neighbors: Array<{ center: THREE.Vector3; size: number }> = [];
+    
+    // Check adjacent quadrants in the same ring
+    for (let q = 0; q < 4; q++) {
+      if (q !== currentRegion.quadrant) {
+        const neighborKey = `grass_r${currentRegion.ringIndex}_q${q}`;
+        const neighborCenter = this.regionCenters.get(neighborKey);
+        if (neighborCenter) {
+          neighbors.push({ center: neighborCenter, size: 100 }); // Standard region size
+        }
+      }
+    }
+    
+    // Check same quadrant in adjacent rings
+    if (currentRegion.ringIndex > 0) {
+      const innerNeighborKey = `grass_r${currentRegion.ringIndex - 1}_q${currentRegion.quadrant}`;
+      const innerNeighborCenter = this.regionCenters.get(innerNeighborKey);
+      if (innerNeighborCenter) {
+        neighbors.push({ center: innerNeighborCenter, size: 100 });
+      }
+    }
+    
+    const outerNeighborKey = `grass_r${currentRegion.ringIndex + 1}_q${currentRegion.quadrant}`;
+    const outerNeighborCenter = this.regionCenters.get(outerNeighborKey);
+    if (outerNeighborCenter) {
+      neighbors.push({ center: outerNeighborCenter, size: 100 });
+    }
+    
+    return neighbors;
   }
   
   public generateGrassForRegion(
@@ -118,11 +153,14 @@ export class GrassSystem {
     
     if (this.grassInstances.has(regionKey)) return;
     
+    // Store region center for cross-region blending
+    this.regionCenters.set(regionKey, centerPosition.clone());
+    
     // Use current player position if provided, otherwise use cached position
     const playerPos = currentPlayerPosition || this.lastPlayerPosition;
     const distanceFromPlayer = centerPosition.distanceTo(playerPos);
     
-    // Calculate smooth LOD density multiplier instead of hard cutoffs
+    // Calculate enhanced LOD density multiplier
     const lodDensityMultiplier = GradientDensity.calculateLODDensity(distanceFromPlayer, this.lodDistances);
     
     console.log(`🌱 Region ${region.ringIndex}-${region.quadrant}: distance=${distanceFromPlayer.toFixed(1)}, LOD density=${lodDensityMultiplier.toFixed(3)}`);
@@ -131,10 +169,13 @@ export class GrassSystem {
     const biomeInfo = GrassBiomeManager.getBiomeAtPosition(centerPosition);
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     
-    console.log(`🌱 Generating ${biomeConfig.name} grass (LOD density: ${lodDensityMultiplier.toFixed(3)}) for region ${regionKey}`);
+    console.log(`🌱 Generating seamless ${biomeConfig.name} grass (LOD density: ${lodDensityMultiplier.toFixed(3)}) for region ${regionKey}`);
     
-    // Create environmental factors with gradual transitions
-    const environmentalFactors = this.createImprovedEnvironmentalFactors(
+    // Get neighboring regions for cross-region blending
+    const neighboringRegions = this.getNeighboringRegions(region);
+    
+    // Create organic environmental factors instead of geometric patterns
+    const environmentalFactors = this.createOrganicEnvironmentalFactors(
       centerPosition, 
       region, 
       terrainColor
@@ -145,24 +186,26 @@ export class GrassSystem {
       biomeInfo
     );
     
-    // Generate tall grass with organic sampling and edge blending
-    const tallGrassData = this.generateOrganicGrassDistribution(
+    // Generate tall grass with enhanced organic sampling and cross-region blending
+    const tallGrassData = this.generateSeamlessGrassDistribution(
       centerPosition, 
       size, 
       adjustedEnvironmentalFactors, 
       lodDensityMultiplier,
       biomeInfo,
-      Math.max(0.15, lodDensityMultiplier * 0.4) // Minimum coverage scales with LOD
+      Math.max(0.25, lodDensityMultiplier * 0.5), // Improved minimum coverage
+      neighboringRegions
     );
     
-    // Generate ground grass with higher density and organic distribution
-    const groundGrassData = this.generateOrganicGroundGrassDistribution(
+    // Generate ground grass with enhanced density and seamless distribution
+    const groundGrassData = this.generateSeamlessGroundGrassDistribution(
       centerPosition,
       size,
       adjustedEnvironmentalFactors,
       lodDensityMultiplier,
       biomeInfo,
-      Math.max(0.35, lodDensityMultiplier * 0.7) // Higher minimum for ground coverage
+      Math.max(0.45, lodDensityMultiplier * 0.8), // Improved minimum for ground coverage
+      neighboringRegions
     );
     
     // Group by species for efficient rendering
@@ -195,56 +238,26 @@ export class GrassSystem {
       );
     }
     
-    // Track region overlap for blending
-    this.trackRegionOverlap(regionKey, centerPosition, size + this.EDGE_BLEND_DISTANCE * 2);
-    
-    console.log(`✅ Generated organic ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
+    console.log(`✅ Generated seamless ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
   }
   
   /**
-   * NEW: Track region overlaps for proper edge blending
+   * NEW: Generate seamless grass distribution with cross-region blending
    */
-  private trackRegionOverlap(regionKey: string, centerPosition: THREE.Vector3, expandedSize: number): void {
-    const overlappingRegions = new Set<string>();
-    
-    // Check for overlaps with existing regions
-    for (const [existingKey, existingMesh] of this.grassInstances.entries()) {
-      if (existingKey === regionKey) continue;
-      
-      const existingCenter = existingMesh.userData.centerPosition as THREE.Vector3;
-      const distance = centerPosition.distanceTo(existingCenter);
-      
-      // If regions are close enough to potentially overlap
-      if (distance < expandedSize) {
-        overlappingRegions.add(existingKey);
-        
-        // Also update the existing region's overlap set
-        if (!this.regionOverlapMap.has(existingKey)) {
-          this.regionOverlapMap.set(existingKey, new Set());
-        }
-        this.regionOverlapMap.get(existingKey)!.add(regionKey);
-      }
-    }
-    
-    this.regionOverlapMap.set(regionKey, overlappingRegions);
-  }
-  
-  /**
-   * NEW: Generate organic grass distribution with Poisson sampling
-   */
-  private generateOrganicGrassDistribution(
+  private generateSeamlessGrassDistribution(
     centerPosition: THREE.Vector3,
     size: number,
     environmentalFactors: EnvironmentalFactors,
     lodDensityMultiplier: number,
     biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean },
-    minimumCoverage: number = 0.25
+    minimumCoverage: number = 0.35,
+    neighboringRegions: Array<{ center: THREE.Vector3; size: number }> = []
   ) {
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     const adjustedDensity = this.config.baseDensity * biomeConfig.densityMultiplier;
     const baseSpacing = 1 / Math.sqrt(adjustedDensity);
     
-    // Use enhanced organic distribution
+    // Use enhanced organic distribution with cross-region blending
     const grassData = EnvironmentalGrassDistribution.calculateGrassDistribution(
       centerPosition,
       size,
@@ -252,7 +265,8 @@ export class GrassSystem {
       baseSpacing,
       minimumCoverage,
       lodDensityMultiplier,
-      this.EDGE_BLEND_DISTANCE
+      this.CROSS_REGION_BLEND_DISTANCE,
+      neighboringRegions
     );
     
     grassData.species = GrassBiomeManager.adjustSpeciesForBiome(
@@ -272,15 +286,16 @@ export class GrassSystem {
   }
   
   /**
-   * NEW: Generate organic ground grass distribution
+   * NEW: Generate seamless ground grass distribution
    */
-  private generateOrganicGroundGrassDistribution(
+  private generateSeamlessGroundGrassDistribution(
     centerPosition: THREE.Vector3,
     size: number,
     environmentalFactors: EnvironmentalFactors,
     lodDensityMultiplier: number,
     biomeInfo: { type: BiomeType; strength: number; transitionZone: boolean },
-    minimumCoverage: number = 0.6
+    minimumCoverage: number = 0.7,
+    neighboringRegions: Array<{ center: THREE.Vector3; size: number }> = []
   ) {
     const groundConfig = GroundGrassBiomeConfig.getGroundConfiguration(biomeInfo.type);
     const adjustedDensity = this.config.baseDensity * groundConfig.densityMultiplier;
@@ -293,7 +308,8 @@ export class GrassSystem {
       baseSpacing,
       minimumCoverage,
       lodDensityMultiplier,
-      this.EDGE_BLEND_DISTANCE
+      this.CROSS_REGION_BLEND_DISTANCE,
+      neighboringRegions
     );
     
     grassData.species = GroundGrassBiomeConfig.adjustGroundSpeciesForBiome(
@@ -313,20 +329,20 @@ export class GrassSystem {
   }
   
   /**
-   * Updated LOD level calculation with smooth density scaling
+   * Enhanced LOD level calculation with improved minimum coverage
    */
   private getDynamicLODLevel(distance: number): number {
     return GradientDensity.calculateLODDensity(distance, this.lodDistances);
   }
   
   /**
-   * Updated visibility system with smooth transitions
+   * Enhanced visibility system with seamless transitions
    */
   private updateGrassVisibility(playerPosition: THREE.Vector3): void {
     let hiddenCount = 0;
     let visibleCount = 0;
     
-    // Update tall grass visibility with smooth LOD
+    // Update tall grass visibility with improved LOD
     for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -346,18 +362,18 @@ export class GrassSystem {
       // Update LOD density for smooth transitions
       if (instancedMesh.userData.lodLevel !== newLodDensity && shouldBeVisible) {
         instancedMesh.userData.lodLevel = newLodDensity;
-        // Apply material alpha for distant grass fade (optional)
-        if (instancedMesh.material && newLodDensity < 0.3) {
+        // Apply material alpha for distant grass fade with improved visibility
+        if (instancedMesh.material && newLodDensity < 0.4) {
           (instancedMesh.material as THREE.ShaderMaterial).transparent = true;
           if ((instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity) {
-            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.3, newLodDensity);
+            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.4, newLodDensity);
           }
         }
       }
     }
     
-    // Update ground grass visibility with extended render distance
-    const groundRenderDistance = this.config.maxDistance * 0.9; // Increased from 0.8
+    // Update ground grass visibility with enhanced render distance
+    const groundRenderDistance = this.config.maxDistance * 0.95; // Increased from 0.9
     for (const [regionKey, instancedMesh] of this.groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -370,31 +386,22 @@ export class GrassSystem {
     }
     
     if (hiddenCount > 0 || visibleCount > 0) {
-      console.log(`🌱 Organic LOD: ${visibleCount} regions shown, ${hiddenCount} regions hidden`);
+      console.log(`🌱 Seamless LOD: ${visibleCount} regions shown, ${hiddenCount} regions hidden`);
     }
   }
   
-  private createImprovedEnvironmentalFactors(
+  /**
+   * NEW: Create organic environmental factors using noise instead of geometric patterns
+   */
+  private createOrganicEnvironmentalFactors(
     centerPosition: THREE.Vector3,
     region: RegionCoordinates,
     terrainColor: number
   ): EnvironmentalFactors {
-    const distanceFromCenter = centerPosition.length();
-    
-    // Use gradual environmental factors instead of binary
-    const waterInfluence = Math.sin(centerPosition.x * 0.02) * Math.cos(centerPosition.z * 0.02);
-    const treeInfluence = Math.sin(centerPosition.x * 0.03 + 1) * Math.cos(centerPosition.z * 0.03 + 1);
-    const rockInfluence = Math.sin(centerPosition.x * 0.025 + 2) * Math.cos(centerPosition.z * 0.025 + 2);
-    
-    return EnvironmentalGrassDistribution.createEnvironmentalFactorsForTerrain(
+    // Use the new organic environmental factor generation
+    return EnvironmentalGrassDistribution.createOrganicEnvironmentalFactors(
       centerPosition,
-      0,
-      {
-        hasWater: waterInfluence > 0.3, // Less frequent water
-        hasTrees: treeInfluence > 0.2, // Moderate tree coverage
-        hasRocks: rockInfluence > 0.4, // Less frequent rocks
-        playerTraffic: 0
-      }
+      0
     );
   }
   
@@ -632,11 +639,8 @@ export class GrassSystem {
   public removeGrassForRegion(region: RegionCoordinates): void {
     const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
     
-    // Clean up overlap tracking
-    this.regionOverlapMap.delete(regionKey);
-    for (const [otherKey, overlapSet] of this.regionOverlapMap.entries()) {
-      overlapSet.delete(regionKey);
-    }
+    // Clean up region center tracking
+    this.regionCenters.delete(regionKey);
     
     // Remove tall grass instances
     const keysToRemove = Array.from(this.grassInstances.keys()).filter(
@@ -666,7 +670,7 @@ export class GrassSystem {
       }
     }
     
-    console.log(`🌱 Removed organic grass coverage for region ${regionKey}`);
+    console.log(`🌱 Removed seamless grass coverage for region ${regionKey}`);
   }
   
   public dispose(): void {
@@ -706,6 +710,9 @@ export class GrassSystem {
     }
     this.groundGrassGeometries.clear();
     
-    console.log('🌱 Enhanced GrassSystem with dynamic LOD and guaranteed coverage disposed');
+    // Clean up region tracking
+    this.regionCenters.clear();
+    
+    console.log('🌱 Enhanced GrassSystem with seamless coverage disposed');
   }
 }

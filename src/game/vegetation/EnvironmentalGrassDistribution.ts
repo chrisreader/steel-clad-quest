@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { MathUtils } from '../utils/math/MathUtils';
 import { PoissonDiskSampling } from '../utils/math/PoissonDiskSampling';
@@ -47,19 +46,49 @@ export class EnvironmentalGrassDistribution {
   }
   
   /**
-   * NEW: Gradient-based spawn probability instead of binary shouldSpawnGrass
+   * NEW: Create organic environmental factors using noise instead of geometric patterns
+   */
+  public static createOrganicEnvironmentalFactors(
+    position: THREE.Vector3,
+    height: number
+  ): EnvironmentalFactors {
+    const moisture = MathUtils.clamp(0.5 + height * 0.1 - position.y * 0.05, 0.2, 0.8);
+    const slope = MathUtils.clamp(Math.abs(Math.sin(position.x * 0.1) * Math.cos(position.z * 0.1)), 0, 0.6);
+    const lightExposure = MathUtils.clamp(0.7 - height * 0.05 + position.y * 0.03, 0.3, 0.9);
+    
+    // Use organic noise for environmental features instead of geometric patterns
+    const hasWater = GradientDensity.generateOrganicEnvironmentalNoise(position, 'water') > 0.5;
+    const hasTrees = GradientDensity.generateOrganicEnvironmentalNoise(position, 'trees') > 0.5;
+    const hasRocks = GradientDensity.generateOrganicEnvironmentalNoise(position, 'rocks') > 0.5;
+    
+    return {
+      moisture: moisture,
+      slope: slope,
+      lightExposure: lightExposure,
+      terrainDetails: {
+        hasWater: hasWater,
+        hasTrees: hasTrees,
+        hasRocks: hasRocks,
+        playerTraffic: 0
+      }
+    };
+  }
+  
+  /**
+   * Enhanced spawn probability with cross-region blending support
    */
   private static calculateSpawnProbability(
     position: THREE.Vector3, 
     environmentalFactors: EnvironmentalFactors,
     regionBounds: RegionBounds,
-    lodDensityMultiplier: number = 1.0
+    lodDensityMultiplier: number = 1.0,
+    neighboringRegions: Array<{ center: THREE.Vector3; size: number }> = []
   ): number {
     const { moisture, slope, lightExposure, terrainDetails } = environmentalFactors;
     
     // Start with noise-based base probability for organic variation
     const noiseDensity = GradientDensity.generateNoiseDensity(position);
-    let spawnProbability = 0.6 + noiseDensity * 0.3;
+    let spawnProbability = 0.7 + noiseDensity * 0.25; // Increased base probability
     
     // Apply environmental modifiers as gradients
     spawnProbability += moisture * 0.25;
@@ -74,10 +103,16 @@ export class EnvironmentalGrassDistribution {
     const edgeFalloff = GradientDensity.calculateEdgeFalloff(position, regionBounds.center, regionBounds.size);
     spawnProbability *= edgeFalloff;
     
+    // NEW: Apply cross-region blending for seamless coverage
+    const crossRegionBlending = GradientDensity.calculateCrossRegionBlending(
+      position, regionBounds.center, regionBounds.size, neighboringRegions
+    );
+    spawnProbability *= crossRegionBlending;
+    
     // Apply LOD density scaling
     spawnProbability *= lodDensityMultiplier;
     
-    return MathUtils.clamp(spawnProbability, 0, 0.95);
+    return MathUtils.clamp(spawnProbability, 0, 0.98);
   }
   
   private static selectSpeciesBasedOnEnvironment(environmentalFactors: EnvironmentalFactors): string {
@@ -109,23 +144,24 @@ export class EnvironmentalGrassDistribution {
   }
 
   /**
-   * NEW: Organic grass distribution using Poisson Disk Sampling
+   * Enhanced organic grass distribution with cross-region blending
    */
   public static calculateGrassDistribution(
     centerPosition: THREE.Vector3,
     size: number,
     environmentalFactors: EnvironmentalFactors,
     baseSpacing: number,
-    minimumCoverage: number = 0.25,
+    minimumCoverage: number = 0.35, // Increased minimum coverage
     lodDensityMultiplier: number = 1.0,
-    edgeBlendDistance: number = 20
+    edgeBlendDistance: number = 25, // Increased blend distance
+    neighboringRegions: Array<{ center: THREE.Vector3; size: number }> = []
   ) {
     const positions: THREE.Vector3[] = [];
     const scales: THREE.Vector3[] = [];
     const rotations: THREE.Quaternion[] = [];
     const species: string[] = [];
     
-    // Create expanded region bounds for edge blending
+    // Create expanded region bounds for better edge blending
     const expandedSize = size + edgeBlendDistance * 2;
     const regionBounds: RegionBounds = {
       min: new THREE.Vector3(
@@ -142,7 +178,7 @@ export class EnvironmentalGrassDistribution {
       size: size
     };
     
-    // Calculate target density based on LOD and minimum coverage
+    // Calculate target density with improved minimum coverage
     const targetDensity = Math.max(minimumCoverage, 1.0 / (baseSpacing * baseSpacing)) * lodDensityMultiplier;
     
     // Generate organic sampling points using Poisson Disk Sampling
@@ -151,49 +187,51 @@ export class EnvironmentalGrassDistribution {
       max: new THREE.Vector2(regionBounds.max.x, regionBounds.max.z)
     };
     
-    const organicPoints = PoissonDiskSampling.generatePoissonPoints(bounds2D, baseSpacing * 0.8);
+    // Use tighter spacing for better coverage
+    const organicPoints = PoissonDiskSampling.generatePoissonPoints(bounds2D, baseSpacing * 0.7);
     
-    // Process each organic point with gradient probability
+    // Process each organic point with enhanced gradient probability
     for (const point2D of organicPoints) {
       const worldPos = new THREE.Vector3(point2D.x, 0, point2D.y);
       
-      // Calculate spawn probability using gradient system
+      // Calculate spawn probability with cross-region blending
       const spawnProbability = this.calculateSpawnProbability(
         worldPos,
         environmentalFactors,
         regionBounds,
-        lodDensityMultiplier
+        lodDensityMultiplier,
+        neighboringRegions
       );
       
-      // Use probability-based spawning instead of binary decision
+      // Use probability-based spawning with improved threshold
       if (Math.random() < spawnProbability) {
         this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors);
       }
     }
     
-    // Ensure minimum coverage with secondary blue noise sampling
+    // Enhanced secondary coverage with better distribution
     const currentCoverage = positions.length / organicPoints.length;
-    if (currentCoverage < minimumCoverage && lodDensityMultiplier > 0.1) {
+    if (currentCoverage < minimumCoverage && lodDensityMultiplier > 0.2) {
       const additionalPoints = PoissonDiskSampling.generateBlueNoisePoints(
         bounds2D,
-        (minimumCoverage - currentCoverage) * targetDensity,
-        0.9 // High jitter for natural distribution
+        (minimumCoverage - currentCoverage) * targetDensity * 1.2, // Increased multiplier
+        0.85 // Slightly reduced jitter for better coverage
       );
       
       for (const additionalPoint of additionalPoints) {
         const worldPos = new THREE.Vector3(additionalPoint.x, 0, additionalPoint.y);
         
-        // Apply reduced probability for secondary coverage
+        // Apply enhanced probability for secondary coverage
         const secondaryProbability = this.calculateSpawnProbability(
-          worldPos, environmentalFactors, regionBounds, lodDensityMultiplier
-        ) * 0.6;
+          worldPos, environmentalFactors, regionBounds, lodDensityMultiplier, neighboringRegions
+        ) * 0.75; // Increased from 0.6 to 0.75
         
         if (Math.random() < secondaryProbability) {
           this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors);
         }
       }
       
-      console.log(`🌱 Enhanced organic coverage: added ${additionalPoints.length} secondary samples to reach ${minimumCoverage * 100}% coverage`);
+      console.log(`🌱 Enhanced seamless coverage: added ${additionalPoints.length} secondary samples to reach ${minimumCoverage * 100}% coverage`);
     }
     
     return { positions, scales, rotations, species };
