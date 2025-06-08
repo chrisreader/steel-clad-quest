@@ -36,8 +36,8 @@ export class GrassSystem {
   private grassCullingUpdateCounter: number = 0;
   private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // More frequent updates
   
-  // Dynamic LOD system - more forgiving distances
-  private lodDistances: number[] = [75, 150, 225, 300]; // Increased distances
+  // Improved LOD system - generous distances to cover all rings including ring 3
+  private lodDistances: number[] = [150, 300, 450, 700]; // Extended to cover ring 3 (600 units)
   
   // Performance optimization variables
   private updateCounter: number = 0;
@@ -47,11 +47,11 @@ export class GrassSystem {
   private readonly FOG_CHECK_INTERVAL: number = 100;
   
   private config: GrassConfig = {
-    baseDensity: 1.2, // Increased base density
-    patchDensity: 2.5,
-    patchCount: 5,
-    maxDistance: 400, // Increased render distance further
-    lodLevels: [1.0, 0.7, 0.4, 0.15] // Never go to 0, always have some grass
+    baseDensity: 1.4, // Increased base density for lush environments
+    patchDensity: 3.0, // Increased patch density
+    patchCount: 6, // More patches
+    maxDistance: 750, // Extended render distance to cover all rings
+    lodLevels: [1.0, 0.9, 0.8, 0.7] // Generous LOD levels - no sparse outer rings
   };
   
   // Enhanced region tracking for overlap management
@@ -313,20 +313,20 @@ export class GrassSystem {
   }
   
   /**
-   * Updated LOD level calculation with smooth density scaling
+   * Updated LOD level calculation with generous density scaling for all rings
    */
   private getDynamicLODLevel(distance: number): number {
     return GradientDensity.calculateLODDensity(distance, this.lodDistances);
   }
   
   /**
-   * Updated visibility system with smooth transitions
+   * Updated visibility system with extended render distance for all rings
    */
   private updateGrassVisibility(playerPosition: THREE.Vector3): void {
     let hiddenCount = 0;
     let visibleCount = 0;
     
-    // Update tall grass visibility with smooth LOD
+    // Update tall grass visibility with generous LOD for all rings
     for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -343,21 +343,21 @@ export class GrassSystem {
         }
       }
       
-      // Update LOD density for smooth transitions
+      // Update LOD density for smooth transitions - maintain visibility in ring 3
       if (instancedMesh.userData.lodLevel !== newLodDensity && shouldBeVisible) {
         instancedMesh.userData.lodLevel = newLodDensity;
-        // Apply material alpha for distant grass fade (optional)
-        if (instancedMesh.material && newLodDensity < 0.3) {
+        // Only apply alpha fade for very distant areas beyond ring 3
+        if (instancedMesh.material && newLodDensity < 0.5 && distanceToPlayer > 650) {
           (instancedMesh.material as THREE.ShaderMaterial).transparent = true;
           if ((instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity) {
-            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.3, newLodDensity);
+            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.7, newLodDensity);
           }
         }
       }
     }
     
-    // Update ground grass visibility with extended render distance
-    const groundRenderDistance = this.config.maxDistance * 0.9; // Increased from 0.8
+    // Update ground grass visibility with extended render distance for all rings
+    const groundRenderDistance = this.config.maxDistance * 0.95; // Covers all rings including ring 3
     for (const [regionKey, instancedMesh] of this.groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -370,7 +370,7 @@ export class GrassSystem {
     }
     
     if (hiddenCount > 0 || visibleCount > 0) {
-      console.log(`🌱 Organic LOD: ${visibleCount} regions shown, ${hiddenCount} regions hidden`);
+      console.log(`🌱 Extended LOD: ${visibleCount} regions shown, ${hiddenCount} regions hidden (covering all rings to ${this.config.maxDistance})`);
     }
   }
   

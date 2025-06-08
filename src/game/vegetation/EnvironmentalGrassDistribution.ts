@@ -33,10 +33,10 @@ export class EnvironmentalGrassDistribution {
       playerTraffic: number;
     }
   ): EnvironmentalFactors {
-    // Reduce geometric patterns that create large exclusion zones
-    const moisture = MathUtils.clamp(0.6 + height * 0.05, 0.4, 0.9);
-    const slope = MathUtils.clamp(Math.abs(Math.sin(position.x * 0.05) * Math.cos(position.z * 0.05)), 0, 0.4);
-    const lightExposure = MathUtils.clamp(0.8 - height * 0.02, 0.5, 0.95);
+    // Generous environmental factors for lush environments in all rings
+    const moisture = MathUtils.clamp(0.7 + height * 0.03, 0.6, 0.95);
+    const slope = MathUtils.clamp(Math.abs(Math.sin(position.x * 0.05) * Math.cos(position.z * 0.05)), 0, 0.3);
+    const lightExposure = MathUtils.clamp(0.85 - height * 0.01, 0.7, 0.98);
     
     return {
       moisture: moisture,
@@ -47,7 +47,7 @@ export class EnvironmentalGrassDistribution {
   }
   
   /**
-   * Calculate spawn probability with higher baseline and reduced penalties
+   * Calculate spawn probability with high baseline for all rings
    */
   private static calculateSpawnProbability(
     position: THREE.Vector3, 
@@ -57,16 +57,16 @@ export class EnvironmentalGrassDistribution {
   ): number {
     const { moisture, slope, lightExposure, terrainDetails } = environmentalFactors;
     
-    // Start with higher base probability for better coverage
+    // Start with very high base probability for lush coverage in all rings
     const noiseDensity = GradientDensity.generateNoiseDensity(position);
-    let spawnProbability = 0.75 + noiseDensity * 0.2; // Higher baseline (75% instead of 60%)
+    let spawnProbability = 0.85 + noiseDensity * 0.15; // Higher baseline (85%)
     
-    // Apply lighter environmental modifiers
-    spawnProbability += moisture * 0.15; // Reduced from 0.25
-    spawnProbability -= slope * 0.08;    // Reduced from 0.12
-    spawnProbability += lightExposure * 0.1; // Reduced from 0.18
+    // Apply generous environmental modifiers
+    spawnProbability += moisture * 0.1;
+    spawnProbability -= slope * 0.05; // Reduced slope penalty
+    spawnProbability += lightExposure * 0.08;
     
-    // Apply environmental density (now with minimal penalties)
+    // Apply environmental density (now with high baseline for all rings)
     const environmentalDensity = GradientDensity.calculateEnvironmentalDensity(position, terrainDetails);
     spawnProbability *= environmentalDensity;
     
@@ -77,8 +77,8 @@ export class EnvironmentalGrassDistribution {
     // Apply LOD density scaling
     spawnProbability *= lodDensityMultiplier;
     
-    // Ensure minimum spawn probability of 30% in most areas
-    return MathUtils.clamp(spawnProbability, 0.3, 0.98);
+    // Ensure high minimum spawn probability for all rings (50%)
+    return MathUtils.clamp(spawnProbability, 0.5, 0.98);
   }
   
   private static selectSpeciesBasedOnEnvironment(environmentalFactors: EnvironmentalFactors): string {
@@ -110,14 +110,14 @@ export class EnvironmentalGrassDistribution {
   }
 
   /**
-   * Organic grass distribution with improved minimum coverage guarantee
+   * Organic grass distribution with guaranteed high coverage for all rings
    */
   public static calculateGrassDistribution(
     centerPosition: THREE.Vector3,
     size: number,
     environmentalFactors: EnvironmentalFactors,
     baseSpacing: number,
-    minimumCoverage: number = 0.4, // Increased from 0.25
+    minimumCoverage: number = 0.6, // Increased minimum coverage for all rings
     lodDensityMultiplier: number = 1.0,
     edgeBlendDistance: number = 20
   ) {
@@ -143,8 +143,8 @@ export class EnvironmentalGrassDistribution {
       size: size
     };
     
-    // Calculate target density based on LOD and minimum coverage
-    const targetDensity = Math.max(minimumCoverage, 1.0 / (baseSpacing * baseSpacing)) * lodDensityMultiplier;
+    // Calculate higher target density for all rings
+    const targetDensity = Math.max(minimumCoverage, 1.2 / (baseSpacing * baseSpacing)) * lodDensityMultiplier;
     
     // Generate organic sampling points using Poisson Disk Sampling
     const bounds2D = {
@@ -152,9 +152,9 @@ export class EnvironmentalGrassDistribution {
       max: new THREE.Vector2(regionBounds.max.x, regionBounds.max.z)
     };
     
-    const organicPoints = PoissonDiskSampling.generatePoissonPoints(bounds2D, baseSpacing * 0.8);
+    const organicPoints = PoissonDiskSampling.generatePoissonPoints(bounds2D, baseSpacing * 0.7); // Denser spacing
     
-    // Process each organic point with gradient probability
+    // Process each organic point with high probability
     for (const point2D of organicPoints) {
       const worldPos = new THREE.Vector3(point2D.x, 0, point2D.y);
       
@@ -166,35 +166,35 @@ export class EnvironmentalGrassDistribution {
         lodDensityMultiplier
       );
       
-      // Use probability-based spawning with higher success rate
+      // Use probability-based spawning with high success rate
       if (Math.random() < spawnProbability) {
         this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors);
       }
     }
     
-    // Ensure minimum coverage with more generous secondary sampling
+    // Ensure minimum coverage with generous secondary sampling for all rings
     const currentCoverage = positions.length / organicPoints.length;
-    if (currentCoverage < minimumCoverage && lodDensityMultiplier > 0.1) {
+    if (currentCoverage < minimumCoverage) {
       const additionalPoints = PoissonDiskSampling.generateBlueNoisePoints(
         bounds2D,
-        (minimumCoverage - currentCoverage) * targetDensity * 1.5, // More generous multiplier
+        (minimumCoverage - currentCoverage) * targetDensity * 2.0, // More generous multiplier
         0.9 // High jitter for natural distribution
       );
       
       for (const additionalPoint of additionalPoints) {
         const worldPos = new THREE.Vector3(additionalPoint.x, 0, additionalPoint.y);
         
-        // Apply higher probability for secondary coverage to ensure minimum
+        // Apply high probability for secondary coverage in all rings
         const secondaryProbability = this.calculateSpawnProbability(
           worldPos, environmentalFactors, regionBounds, lodDensityMultiplier
-        ) * 0.8; // Increased from 0.6
+        ) * 0.9; // High probability for guaranteed coverage
         
         if (Math.random() < secondaryProbability) {
           this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors);
         }
       }
       
-      console.log(`🌱 Enhanced organic coverage: added ${additionalPoints.length} secondary samples to reach ${minimumCoverage * 100}% coverage`);
+      console.log(`🌱 Enhanced coverage for all rings: added ${additionalPoints.length} secondary samples to reach ${minimumCoverage * 100}% coverage`);
     }
     
     return { positions, scales, rotations, species };
