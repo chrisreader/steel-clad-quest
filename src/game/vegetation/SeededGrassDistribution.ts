@@ -44,7 +44,8 @@ export class SeededGrassDistribution {
       ? DeterministicBiomeManager.getGroundConfiguration(biomeData.biomeType).densityMultiplier
       : biomeConfig.densityMultiplier;
     
-    const baseSpacing = isGroundGrass ? 3.5 : 6.0;
+    // Increased density by reducing spacing
+    const baseSpacing = isGroundGrass ? 2.8 : 4.5; // Reduced from 3.5 and 6.0
     const spacing = baseSpacing / Math.sqrt(density);
     
     // Generate grass positions using seeded sampling
@@ -69,8 +70,8 @@ export class SeededGrassDistribution {
         if (seededRandom() < spawnProbability) {
           positions.push(worldPos);
           
-          // Generate seeded scale
-          const baseScale = isGroundGrass ? 0.5 : 1.0;
+          // Generate seeded scale with increased variation
+          const baseScale = isGroundGrass ? 0.6 : 1.2; // Increased from 0.5 and 1.0
           const scaleVariation = biomeConfig.heightMultiplier;
           scales.push(new THREE.Vector3(
             baseScale * (0.7 + seededRandom() * 0.6),
@@ -116,13 +117,13 @@ export class SeededGrassDistribution {
     const noiseZ = Math.cos(position.z * 0.05 + seed * 0.001) * 0.5 + 0.5;
     const combinedNoise = (noiseX + noiseZ) / 2;
     
-    // Base probability with environmental variation
-    let probability = 0.6 + combinedNoise * 0.3;
+    // Base probability with environmental variation - increased from 0.6
+    let probability = 0.75 + combinedNoise * 0.2;
     
     // Add some randomness but keep it seeded
     probability *= (0.8 + seededRandom() * 0.4);
     
-    return MathUtils.clamp(probability, 0.2, 0.9);
+    return MathUtils.clamp(probability, 0.3, 0.95); // Increased minimum from 0.2
   }
 
   private static selectSeededSpecies(biomeType: string, seededRandom: () => number): string {

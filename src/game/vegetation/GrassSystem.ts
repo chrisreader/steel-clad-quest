@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GrassConfig, DEFAULT_GRASS_CONFIG } from './core/GrassConfig';
 import { GrassRenderer } from './core/GrassRenderer';
@@ -45,7 +44,14 @@ export class GrassSystem {
     console.log('🌱 Grass system initialized with persistent player-following render bubble');
   }
   
-  // Legacy method for compatibility - now uses bubble manager
+  // New method to initialize grass coverage
+  public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 600): void {
+    console.log(`🌱 Initializing grass system at position: ${playerPosition.x}, ${playerPosition.z} with radius: ${coverageRadius}`);
+    this.bubbleManager.initializeWithCoverage(playerPosition, coverageRadius);
+    this.lastPlayerPosition.copy(playerPosition);
+  }
+  
+  // Updated method to handle legacy region-based requests
   public generateGrassForRegion(
     region: RegionCoordinates, 
     centerPosition: THREE.Vector3, 
@@ -53,9 +59,13 @@ export class GrassSystem {
     terrainColor: number,
     currentPlayerPosition?: THREE.Vector3
   ): void {
-    // The bubble manager now handles all grass generation
-    // This method is kept for compatibility but does nothing
-    console.log(`🌱 Legacy region generation ignored - using bubble manager instead`);
+    // Convert legacy region request to coverage area if not initialized
+    if (!this.bubbleManager.isLoadingComplete() && currentPlayerPosition) {
+      const coverageRadius = Math.max(size, 400); // Ensure minimum coverage
+      this.initializeGrassSystem(currentPlayerPosition, coverageRadius);
+    }
+    
+    console.log(`🌱 Legacy region generation converted to chunk-based system`);
   }
   
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
@@ -175,6 +185,10 @@ export class GrassSystem {
   
   public getLoadedChunkCount(): number {
     return this.bubbleManager.getLoadedChunkCount();
+  }
+  
+  public isGrassSystemReady(): boolean {
+    return this.bubbleManager.isLoadingComplete();
   }
   
   public dispose(): void {

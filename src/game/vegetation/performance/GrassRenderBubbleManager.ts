@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { ChunkCoordinate, DeterministicBiomeManager } from '../biomes/DeterministicBiomeManager';
 import { SeededGrassDistribution, SeededGrassData } from '../SeededGrassDistribution';
@@ -15,11 +14,12 @@ export class GrassRenderBubbleManager {
   private scene: THREE.Scene;
   private renderer: GrassRenderer;
   
-  // Render bubble configuration
-  private readonly RENDER_RADIUS = 280;
-  private readonly UNLOAD_RADIUS = 320;
+  // Enhanced render bubble configuration
+  private readonly RENDER_RADIUS = 600; // Increased from 280
+  private readonly UNLOAD_RADIUS = 700; // Increased from 320
   private readonly CHUNK_SIZE = 64;
-  private readonly MAX_CHUNKS_PER_FRAME = 3;
+  private readonly MAX_CHUNKS_PER_FRAME = 8; // Increased from 3
+  private readonly MOVEMENT_THRESHOLD = 2; // Reduced from 5
   
   // Chunk tracking
   private loadedChunks: Map<string, LoadedChunk> = new Map();
@@ -30,26 +30,69 @@ export class GrassRenderBubbleManager {
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private frameCounter = 0;
   private loadingThisFrame = 0;
+  private isInitialized = false;
 
   constructor(scene: THREE.Scene, renderer: GrassRenderer) {
     this.scene = scene;
     this.renderer = renderer;
   }
 
+  public initializeWithCoverage(playerPosition: THREE.Vector3, coverageRadius: number = 600): void {
+    console.log(`🌱 Initializing grass system with coverage radius: ${coverageRadius}`);
+    
+    this.lastPlayerPosition.copy(playerPosition);
+    
+    // Calculate chunks needed for initial coverage
+    const chunkRadius = Math.ceil(coverageRadius / this.CHUNK_SIZE);
+    const playerChunk = DeterministicBiomeManager.worldPositionToChunk(playerPosition);
+    
+    const initialChunks: ChunkCoordinate[] = [];
+    
+    for (let x = playerChunk.x - chunkRadius; x <= playerChunk.x + chunkRadius; x++) {
+      for (let z = playerChunk.z - chunkRadius; z <= playerChunk.z + chunkRadius; z++) {
+        const chunk: ChunkCoordinate = { x, z };
+        const chunkCenter = DeterministicBiomeManager.chunkToWorldPosition(chunk);
+        const distance = playerPosition.distanceTo(chunkCenter);
+        
+        if (distance <= coverageRadius) {
+          initialChunks.push(chunk);
+        }
+      }
+    }
+    
+    // Sort by distance for progressive loading
+    initialChunks.sort((a, b) => {
+      const distA = playerPosition.distanceTo(DeterministicBiomeManager.chunkToWorldPosition(a));
+      const distB = playerPosition.distanceTo(DeterministicBiomeManager.chunkToWorldPosition(b));
+      return distA - distB;
+    });
+    
+    this.loadQueue.push(...initialChunks);
+    this.isInitialized = true;
+    
+    console.log(`🌱 Queued ${initialChunks.length} chunks for initial loading`);
+  }
+
   public update(playerPosition: THREE.Vector3): void {
     this.frameCounter++;
     this.loadingThisFrame = 0;
     
+    // If not initialized, skip movement-based updates
+    if (!this.isInitialized) {
+      this.processLoadQueue();
+      return;
+    }
+    
     // Check if player moved significantly
     const movement = this.lastPlayerPosition.distanceTo(playerPosition);
-    if (movement < 5) return; // Only update if player moved
+    if (movement < this.MOVEMENT_THRESHOLD && this.loadQueue.length === 0) return;
     
     this.lastPlayerPosition.copy(playerPosition);
     
     // Update chunk visibility
     this.updateChunkVisibility(playerPosition);
     
-    // Process loading queue (limited per frame)
+    // Process loading queue (increased per frame)
     this.processLoadQueue();
     
     // Process unloading queue
@@ -80,9 +123,9 @@ export class GrassRenderBubbleManager {
         if (distance <= this.RENDER_RADIUS) {
           const chunkKey = DeterministicBiomeManager.getChunkKey(chunk);
           
-          if (!this.loadedChunks.has(chunkKey)) {
+          if (!this.loadedChunks.has(chunkKey) && !this.isChunkInQueue(chunk)) {
             chunksToLoad.push(chunk);
-          } else {
+          } else if (this.loadedChunks.has(chunkKey)) {
             // Update access time for loaded chunks
             const loadedChunk = this.loadedChunks.get(chunkKey)!;
             loadedChunk.lastAccessTime = performance.now();
@@ -113,6 +156,12 @@ export class GrassRenderBubbleManager {
     }
     
     this.unloadQueue.push(...chunksToUnload);
+  }
+
+  private isChunkInQueue(chunk: ChunkCoordinate): boolean {
+    return this.loadQueue.some(queuedChunk => 
+      queuedChunk.x === chunk.x && queuedChunk.z === chunk.z
+    );
   }
 
   private processLoadQueue(): void {
@@ -243,6 +292,10 @@ export class GrassRenderBubbleManager {
 
   public getLoadedChunkCount(): number {
     return this.loadedChunks.size;
+  }
+
+  public isLoadingComplete(): boolean {
+    return this.loadQueue.length === 0 && this.isInitialized;
   }
 
   public dispose(): void {
