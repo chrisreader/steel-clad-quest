@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { MathUtils } from './MathUtils';
 
@@ -56,7 +55,7 @@ export class GradientDensity {
   }
   
   /**
-   * Calculate environmental penalties as gradients instead of binary
+   * Calculate environmental density with minimal penalties (trees help, no water/rock penalties)
    */
   static calculateEnvironmentalDensity(
     position: THREE.Vector3,
@@ -67,30 +66,20 @@ export class GradientDensity {
       playerTraffic: number;
     }
   ): number {
-    let density = 1.0;
+    // Start with high baseline density (80% minimum)
+    let density = 0.9;
     
-    // Apply graduated penalties instead of binary exclusions
-    if (environmentalFactors.hasWater) {
-      const waterPenalty = this.generateNoiseDensity(position, 0.02) * 0.4 + 0.1;
-      density *= (1.0 - waterPenalty);
-    }
-    
-    if (environmentalFactors.hasRocks) {
-      const rockPenalty = this.generateNoiseDensity(position, 0.025) * 0.25 + 0.05;
-      density *= (1.0 - rockPenalty);
-    }
-    
+    // Trees actually help grass in most areas - keep this benefit
     if (environmentalFactors.hasTrees) {
-      // Trees actually help grass in some areas
       const treeBenefit = this.generateNoiseDensity(position, 0.015) * 0.15;
       density *= (1.0 + treeBenefit);
     }
     
-    // Player traffic creates graduated worn areas
-    const trafficPenalty = environmentalFactors.playerTraffic * 0.3;
-    density *= (1.0 - trafficPenalty);
+    // Remove water and rock penalties temporarily
+    // Remove player traffic penalties temporarily
     
-    return MathUtils.clamp(density, 0, 1);
+    // Ensure minimum density of 80%
+    return MathUtils.clamp(density, 0.8, 1.2);
   }
   
   /**
