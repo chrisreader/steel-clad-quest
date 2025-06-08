@@ -9,6 +9,9 @@ import { RegionCoordinates } from '../world/RingQuadrantSystem';
 import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES } from '../config/DayNightConfig';
 import { GrassShader } from './core/GrassShader';
+import { BatchProcessor } from '../utils/performance/BatchProcessor';
+import { EnhancedLODManager } from '../utils/performance/EnhancedLODManager';
+import { PerformanceMonitor } from '../utils/performance/PerformanceMonitor';
 
 export class GrassSystem {
   private scene: THREE.Scene;
@@ -18,16 +21,23 @@ export class GrassSystem {
   // Core systems
   private renderer: GrassRenderer;
   private lodManager: LODManager;
+  private enhancedLODManager: EnhancedLODManager;
   private windSystem: WindSystem;
   
-  // Performance optimization
+  // Performance optimization systems
+  private materialUpdateProcessor: BatchProcessor<THREE.ShaderMaterial>;
+  private visibilityUpdateProcessor: BatchProcessor<THREE.InstancedMesh>;
+  private performanceMonitor: PerformanceMonitor;
+  
+  // Enhanced performance optimization
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 3;
-  private readonly FOG_CHECK_INTERVAL: number = 100;
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 5; // Reduced frequency
+  private readonly FOG_CHECK_INTERVAL: number = 150; // Reduced frequency
+  private readonly VISIBILITY_UPDATE_INTERVAL: number = 10; // Batch visibility updates
   
-  constructor(scene: THREE.Scene, config?: Partial<GrassConfig>) {
+  constructor(scene: THREE.Scene, config?: Partial<GrassConfig>, performanceMonitor?: PerformanceMonitor) {
     this.scene = scene;
     this.config = { ...DEFAULT_GRASS_CONFIG, ...config };
     
@@ -35,7 +45,22 @@ export class GrassSystem {
     this.lodManager = new LODManager();
     this.windSystem = new WindSystem();
     
-    console.log('🌱 Optimized grass system initialized with modular architecture');
+    // Performance systems
+    this.performanceMonitor = performanceMonitor || new PerformanceMonitor();
+    this.enhancedLODManager = new EnhancedLODManager(this.performanceMonitor);
+    
+    // Batched processors for performance
+    this.materialUpdateProcessor = new BatchProcessor<THREE.ShaderMaterial>(
+      (material, deltaTime) => this.updateSingleMaterial(material, deltaTime),
+      5 // Process 5 materials per frame
+    );
+    
+    this.visibilityUpdateProcessor = new BatchProcessor<THREE.InstancedMesh>(
+      (mesh, deltaTime) => this.updateSingleMeshVisibility(mesh),
+      8 // Process 8 meshes per frame
+    );
+    
+    console.log('🌱 Optimized grass system initialized with enhanced performance systems');
   }
   
   public generateGrassForRegion(
@@ -186,6 +211,39 @@ export class GrassSystem {
     return groups;
   }
   
+  private updateSingleMaterial(material: THREE.ShaderMaterial, deltaTime: number): void {
+    this.windSystem.updateMaterialWind(material, material.userData?.isGroundGrass || false);
+    
+    // Update seasonal and lighting only periodically
+    if (this.updateCounter % 30 === 0) {
+      GrassShader.updateSeasonalVariation(material, this.currentSeason);
+    }
+  }
+  
+  private updateSingleMeshVisibility(mesh: THREE.InstancedMesh): void {
+    const centerPosition = mesh.userData.centerPosition as THREE.Vector3;
+    if (!centerPosition) return;
+    
+    const playerPos = this.lodManager.getLastPlayerPosition();
+    const distance = centerPosition.distanceTo(playerPos);
+    
+    // Enhanced LOD-based visibility
+    const isVisible = this.enhancedLODManager.isVisible(distance, this.config.maxDistance);
+    const shouldUpdate = this.enhancedLODManager.shouldUpdate(distance, this.updateCounter);
+    
+    if (mesh.visible !== isVisible) {
+      mesh.visible = isVisible;
+    }
+    
+    // Update LOD quality
+    if (isVisible && shouldUpdate) {
+      const qualityMultiplier = this.enhancedLODManager.getQualityMultiplier(distance);
+      if (mesh.material && (mesh.material as THREE.ShaderMaterial).uniforms?.opacity) {
+        (mesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.3, qualityMultiplier);
+      }
+    }
+  }
+  
   private checkFogChanges(): boolean {
     if (!this.scene.fog || !(this.scene.fog instanceof THREE.Fog)) return false;
     
@@ -215,17 +273,30 @@ export class GrassSystem {
     this.updateCounter++;
     this.windSystem.update(deltaTime);
     
-    // Update visibility and LOD
-    this.lodManager.updateVisibility(
-      playerPosition,
-      this.renderer.getGrassInstances(),
-      this.renderer.getGroundGrassInstances(),
-      this.config.maxDistance
-    );
+    // Update visibility with enhanced LOD system (less frequent)
+    if (this.updateCounter % this.VISIBILITY_UPDATE_INTERVAL === 0) {
+      this.lodManager.updateVisibility(
+        playerPosition,
+        this.renderer.getGrassInstances(),
+        this.renderer.getGroundGrassInstances(),
+        this.config.maxDistance
+      );
+      
+      // Add meshes to batched visibility processor
+      for (const mesh of this.renderer.getGrassInstances().values()) {
+        this.visibilityUpdateProcessor.addItem(mesh);
+      }
+      for (const mesh of this.renderer.getGroundGrassInstances().values()) {
+        this.visibilityUpdateProcessor.addItem(mesh);
+      }
+    }
     
-    // Update materials periodically
+    // Process batched visibility updates
+    this.visibilityUpdateProcessor.process(deltaTime);
+    
+    // Update materials with reduced frequency and batching
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
-      // Calculate day/night factors
+      // Calculate day/night factors once
       let nightFactor = 0;
       let dayFactor = 1;
       
@@ -234,24 +305,27 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // Update all materials
+      // Add materials to batched processor
       for (const material of this.renderer.getGrassMaterials().values()) {
-        this.windSystem.updateMaterialWind(material, false);
+        this.materialUpdateProcessor.addItem(material);
+        // Update day/night cycle immediately (lightweight operation)
         GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
-        GrassShader.updateSeasonalVariation(material, this.currentSeason);
       }
       
       for (const material of this.renderer.getGroundGrassMaterials().values()) {
-        this.windSystem.updateMaterialWind(material, true);
+        this.materialUpdateProcessor.addItem(material);
+        // Update day/night cycle immediately (lightweight operation)
         GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
-        GrassShader.updateSeasonalVariation(material, this.currentSeason);
       }
       
-      // Update fog if changed
+      // Update fog if changed (less frequent check)
       if (this.checkFogChanges() && this.cachedFogValues) {
         this.updateFogUniforms();
       }
     }
+    
+    // Process batched material updates
+    this.materialUpdateProcessor.process(deltaTime);
   }
   
   private updateFogUniforms(): void {
