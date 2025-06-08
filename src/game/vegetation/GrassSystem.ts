@@ -20,18 +20,18 @@ export class GrassSystem {
   private lodManager: LODManager;
   private windSystem: WindSystem;
   
-  // OPTIMIZED: Performance optimization with reduced update frequencies
+  // Performance optimization with reduced update frequencies
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 10; // Increased from 3 for 70% fewer updates
-  private readonly FOG_CHECK_INTERVAL: number = 200; // Increased from 100 for better performance
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 8; // Slightly more frequent for responsiveness
+  private readonly FOG_CHECK_INTERVAL: number = 150;
   
-  // OPTIMIZED: Player movement tracking for conditional updates
+  // Player movement tracking for conditional updates
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private playerVelocity: number = 0;
   
-  // NEW: Track region metadata for regeneration
+  // Track region metadata for regeneration (kept for fallback)
   private regionMetadata: Map<string, {
     centerPosition: THREE.Vector3;
     size: number;
@@ -47,7 +47,7 @@ export class GrassSystem {
     this.lodManager = new LODManager();
     this.windSystem = new WindSystem();
     
-    console.log('🌱 Optimized grass system initialized with dynamic LOD');
+    console.log('🌱 Enhanced grass system initialized with continuous LOD updates');
   }
   
   public generateGrassForRegion(
@@ -59,7 +59,7 @@ export class GrassSystem {
   ): void {
     const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
     
-    // Store region metadata for potential regeneration
+    // Store region metadata
     this.regionMetadata.set(regionKey, {
       centerPosition: centerPosition.clone(),
       size,
@@ -81,13 +81,12 @@ export class GrassSystem {
   ): void {
     const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
     
-    // Calculate LOD density based on current player position
+    // Always generate full density - LOD will be handled at instance level
     const playerPos = currentPlayerPosition || this.lodManager.getLastPlayerPosition();
     const distanceFromPlayer = centerPosition.distanceTo(playerPos);
-    const lodDensityMultiplier = this.lodManager.calculateLODDensity(distanceFromPlayer);
     
-    // OPTIMIZED: Skip generation for very distant regions
-    if (distanceFromPlayer > this.config.maxDistance || lodDensityMultiplier < 0.05) {
+    // Skip generation for very distant regions
+    if (distanceFromPlayer > this.config.maxDistance) {
       return;
     }
     
@@ -95,53 +94,38 @@ export class GrassSystem {
     const biomeInfo = BiomeManager.getBiomeAtPosition(centerPosition);
     const biomeConfig = BiomeManager.getBiomeConfiguration(biomeInfo.type);
     
-    console.log(`🌱 Generating ${biomeConfig.name} grass (LOD: ${lodDensityMultiplier.toFixed(3)}) for region ${regionKey}`);
+    console.log(`🌱 Generating ${biomeConfig.name} grass for region ${regionKey} (distance: ${distanceFromPlayer.toFixed(1)})`);
     
     // Create environmental factors
     const environmentalFactors = this.createEnvironmentalFactors(centerPosition, region, terrainColor);
     
-    // Generate grass distributions with conditional ground grass
+    // Generate grass distributions with full density (LOD handled by instance manager)
     const tallGrassData = this.generateGrassDistribution(
-      centerPosition, size, environmentalFactors, lodDensityMultiplier, biomeInfo, false
+      centerPosition, size, environmentalFactors, 1.0, biomeInfo, false // Always full density
     );
     
-    // OPTIMIZED: Only generate ground grass within 120 units for performance
+    // Generate ground grass within reasonable distance
     let groundGrassData = { positions: [], scales: [], rotations: [], species: [] };
-    if (distanceFromPlayer <= 120) {
+    if (distanceFromPlayer <= 180) {
       groundGrassData = this.generateGrassDistribution(
-        centerPosition, size, environmentalFactors, lodDensityMultiplier, biomeInfo, true
+        centerPosition, size, environmentalFactors, 1.0, biomeInfo, true // Always full density
       );
     }
     
-    // OPTIMIZED: Single species only beyond 150 units
-    let tallGrassGroups: { [species: string]: { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; } };
-    let groundGrassGroups: { [species: string]: { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; } };
+    // Group by species
+    const tallGrassGroups = this.groupGrassBySpecies(tallGrassData);
+    const groundGrassGroups = this.groupGrassBySpecies(groundGrassData);
     
-    if (distanceFromPlayer > 150) {
-      // Use only dominant species for distant grass
-      const dominantSpecies = this.getDominantSpecies(tallGrassData.species);
-      tallGrassGroups = { [dominantSpecies]: {
-        positions: tallGrassData.positions,
-        scales: tallGrassData.scales,
-        rotations: tallGrassData.rotations
-      }};
-      groundGrassGroups = {};
-    } else {
-      // Group by species for close grass
-      tallGrassGroups = this.groupGrassBySpecies(tallGrassData);
-      groundGrassGroups = this.groupGrassBySpecies(groundGrassData);
-    }
-    
-    // Create instanced meshes
+    // Create instanced meshes with full density
     for (const [speciesName, speciesData] of Object.entries(tallGrassGroups)) {
       this.renderer.createInstancedMesh(
-        regionKey, speciesName, speciesData as { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; }, region, biomeInfo, false, lodDensityMultiplier
+        regionKey, speciesName, speciesData as { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; }, region, biomeInfo, false, 1.0 // Full density
       );
     }
     
     for (const [speciesName, speciesData] of Object.entries(groundGrassGroups)) {
       this.renderer.createInstancedMesh(
-        regionKey, speciesName, speciesData as { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; }, region, biomeInfo, true, lodDensityMultiplier
+        regionKey, speciesName, speciesData as { positions: THREE.Vector3[]; scales: THREE.Vector3[]; rotations: THREE.Quaternion[]; }, region, biomeInfo, true, 1.0 // Full density
       );
     }
     
@@ -192,8 +176,7 @@ export class GrassSystem {
     const adjustedDensity = this.config.baseDensity * config.densityMultiplier;
     const baseSpacing = 1 / Math.sqrt(adjustedDensity);
     
-    // OPTIMIZED: Reduced minimum coverage for better performance
-    const minimumCoverage = isGroundGrass ? 0.35 : 0.15; // Reduced from 0.6 and 0.25
+    const minimumCoverage = isGroundGrass ? 0.4 : 0.2;
     
     const grassData = EnvironmentalGrassDistribution.calculateGrassDistribution(
       centerPosition,
@@ -300,18 +283,19 @@ export class GrassSystem {
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
     this.updateCounter++;
     
-    // OPTIMIZED: Track player velocity for conditional updates
+    // Track player velocity for conditional updates
     this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / deltaTime;
     this.lastPlayerPosition.copy(playerPosition);
     
-    // OPTIMIZED: Skip all updates when player is nearly stationary for better performance
-    if (this.playerVelocity < 0.1 && this.updateCounter % 30 !== 0) {
+    // More responsive updates - don't skip when player is moving
+    const shouldSkipUpdate = this.playerVelocity < 0.05 && this.updateCounter % 20 !== 0;
+    if (shouldSkipUpdate) {
       return;
     }
     
     this.windSystem.update(deltaTime);
     
-    // Update visibility and LOD
+    // Update visibility and LOD with new instance-based system
     this.lodManager.updateVisibility(
       playerPosition,
       this.renderer.getGrassInstances(),
@@ -319,13 +303,7 @@ export class GrassSystem {
       this.config.maxDistance
     );
     
-    // NEW: Handle dynamic region regeneration
-    const pendingRegenerations = this.lodManager.getPendingRegenerations();
-    for (const regionKey of pendingRegenerations) {
-      this.regenerateRegion(regionKey, playerPosition);
-    }
-    
-    // OPTIMIZED: Update materials less frequently for better performance
+    // Update materials less frequently for better performance
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
       // Calculate day/night factors
       let nightFactor = 0;
@@ -336,21 +314,18 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // OPTIMIZED: Stagger wind updates for different material types
-      const shouldUpdateTallGrass = this.updateCounter % 20 === 0;
-      const shouldUpdateGroundGrass = this.updateCounter % 20 === 10;
+      // Update materials with staggered updates
+      const shouldUpdateTallGrass = this.updateCounter % 16 === 0;
+      const shouldUpdateGroundGrass = this.updateCounter % 16 === 8;
       
-      // Update tall grass materials
       if (shouldUpdateTallGrass) {
         for (const material of this.renderer.getGrassMaterials().values()) {
-          // OPTIMIZED: Static wind for distant grass beyond 200 units
           this.windSystem.updateMaterialWind(material, false);
           GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
           GrassShader.updateSeasonalVariation(material, this.currentSeason);
         }
       }
       
-      // Update ground grass materials
       if (shouldUpdateGroundGrass) {
         for (const material of this.renderer.getGroundGrassMaterials().values()) {
           this.windSystem.updateMaterialWind(material, true);
@@ -414,7 +389,7 @@ export class GrassSystem {
   public dispose(): void {
     this.renderer.dispose();
     this.regionMetadata.clear();
-    console.log('🌱 Optimized grass system disposed');
+    console.log('🌱 Enhanced grass system disposed');
   }
 }
 
