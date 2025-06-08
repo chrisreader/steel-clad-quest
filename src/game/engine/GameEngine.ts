@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { Player } from '../entities/Player';
 import { SceneManager } from './SceneManager';
@@ -63,7 +64,7 @@ export class GameEngine {
     this.uiIntegrationManager = new UIIntegrationManager();
     this.physicsManager = new PhysicsManager();
     
-    // Initialize performance systems
+    // Initialize performance systems - GET the performance monitor from render engine
     this.performanceMonitor = this.renderEngine.getPerformanceMonitor();
     
     // Batched update processor for systems
