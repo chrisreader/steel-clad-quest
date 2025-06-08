@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
 
@@ -8,7 +7,7 @@ export class BiomeManager {
       name: 'Mixed Grassland',
       densityMultiplier: 1.0,
       heightMultiplier: 1.0,
-      colorModifier: new THREE.Color(0x4a7c59),
+      colorModifier: new THREE.Color(0x6db070),
       speciesDistribution: { meadow: 0.4, prairie: 0.2, clumping: 0.3, fine: 0.1 },
       windExposure: 1.0
     },
@@ -16,7 +15,7 @@ export class BiomeManager {
       name: 'Lush Meadow',
       densityMultiplier: 1.3,
       heightMultiplier: 1.1,
-      colorModifier: new THREE.Color(0x5a8e42),
+      colorModifier: new THREE.Color(0x7db965),
       speciesDistribution: { meadow: 0.7, prairie: 0.1, clumping: 0.1, fine: 0.1 },
       windExposure: 0.8
     },
@@ -24,7 +23,7 @@ export class BiomeManager {
       name: 'Open Prairie',
       densityMultiplier: 0.8,
       heightMultiplier: 1.2,
-      colorModifier: new THREE.Color(0x6b9547),
+      colorModifier: new THREE.Color(0x8dc46a),
       speciesDistribution: { meadow: 0.2, prairie: 0.6, clumping: 0.1, fine: 0.1 },
       windExposure: 1.3
     }
@@ -89,22 +88,24 @@ export class BiomeManager {
     season: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer'
   ): THREE.Color {
     const biomeConfig = this.getBiomeConfiguration(biomeInfo.type);
+    
+    // Enhanced base colors - much brighter
     const baseColors = {
-      meadow: new THREE.Color(0x5a8442),
-      prairie: new THREE.Color(0x4a7339),
-      clumping: new THREE.Color(0x7a9451),
-      fine: new THREE.Color(0x6b8f47)
+      meadow: new THREE.Color(0x7aad62),
+      prairie: new THREE.Color(0x6a9c55),
+      clumping: new THREE.Color(0x9bc471),
+      fine: new THREE.Color(0x8bbf67)
     };
     
     const baseColor = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
     const biomeColor = baseColor.clone().multiply(biomeConfig.colorModifier);
     
-    // Apply seasonal variation
+    // Apply seasonal variation with enhanced brightness
     const seasonalMultipliers = {
-      spring: new THREE.Color(1.1, 1.2, 0.9),
-      summer: new THREE.Color(1.0, 1.0, 1.0),
-      autumn: new THREE.Color(1.2, 1.0, 0.7),
-      winter: new THREE.Color(0.7, 0.8, 0.9)
+      spring: new THREE.Color(1.2, 1.3, 1.0),
+      summer: new THREE.Color(1.1, 1.1, 1.0),
+      autumn: new THREE.Color(1.3, 1.1, 0.8),
+      winter: new THREE.Color(0.8, 0.9, 1.0)
     };
     
     return biomeColor.multiply(seasonalMultipliers[season]);

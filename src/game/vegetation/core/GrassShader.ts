@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class GrassShader {
@@ -81,6 +80,7 @@ export class GrassShader {
       uniform vec3 lightDirection;
       uniform float seasonalFactor;
       uniform float biomeColorIntensity;
+      uniform float lightIntensity;
       
       varying vec2 vUv;
       varying vec3 vNormal;
@@ -95,28 +95,29 @@ export class GrassShader {
       void main() {
         vec3 currentGrassColor = mix(grassColor, nightGrassColor, nightFactor);
         vec3 enhancedTipColor = tipColor;
-        vec3 baseColor = currentGrassColor * 0.7;
+        
+        vec3 baseColor = currentGrassColor;
         vec3 color = mix(baseColor, enhancedTipColor, vHeight);
         
-        float microVariation = noise(vWorldPosition.xz * 50.0) * 0.08;
+        float microVariation = noise(vWorldPosition.xz * 50.0) * 0.06;
         color += microVariation;
         
         vec3 lightDir = normalize(lightDirection);
         float backlight = max(0.0, dot(-lightDir, vNormal));
-        vec3 subsurfaceColor = currentGrassColor * 0.6;
+        vec3 subsurfaceColor = currentGrassColor * 0.8;
         color = mix(color, subsurfaceColor, backlight * subsurfaceIntensity * vHeight);
         
-        float frontLight = dot(vNormal, lightDir) * 0.5 + 0.5;
-        float ambientLight = 0.45;
+        float frontLight = dot(vNormal, lightDir) * 0.6 + 0.4;
+        float ambientLight = 0.7;
         float totalLight = mix(ambientLight, frontLight, dayFactor);
         
-        float windLighting = 1.0 + abs(vWindInfluence) * 0.15;
+        float windLighting = 1.0 + abs(vWindInfluence) * 0.2;
         totalLight *= windLighting;
         
         color *= totalLight;
         
         float ageVariation = noise(vWorldPosition.xz * 12.0);
-        color = mix(color, color * 0.85, ageVariation * 0.2);
+        color = mix(color, color * 0.92, ageVariation * 0.15);
         
         float depth = gl_FragCoord.z / gl_FragCoord.w;
         float fogFactor = smoothstep(fogNear, fogFar, depth);
@@ -126,7 +127,7 @@ export class GrassShader {
       }
     `;
     
-    const tipColor = new THREE.Color().copy(baseColor).multiplyScalar(1.4);
+    const tipColor = new THREE.Color().copy(baseColor).multiplyScalar(1.6);
     
     const material = new THREE.ShaderMaterial({
       vertexShader,
@@ -138,17 +139,18 @@ export class GrassShader {
         gustIntensity: { value: isGroundGrass ? 0.09 : 0.15 },
         gustFrequency: { value: 0.3 },
         grassColor: { value: baseColor },
-        nightGrassColor: { value: new THREE.Color().copy(baseColor).multiplyScalar(0.15) },
+        nightGrassColor: { value: new THREE.Color().copy(baseColor).multiplyScalar(0.4) },
         tipColor: { value: tipColor },
         nightFactor: { value: 0 },
         dayFactor: { value: 1 },
         fogColor: { value: new THREE.Color(0x87CEEB) },
         fogNear: { value: 50 },
         fogFar: { value: 200 },
-        subsurfaceIntensity: { value: 0.4 },
+        subsurfaceIntensity: { value: 0.5 },
         lightDirection: { value: new THREE.Vector3(1, 1, 1).normalize() },
         seasonalFactor: { value: 0.5 },
-        biomeColorIntensity: { value: 1.0 }
+        biomeColorIntensity: { value: 1.0 },
+        lightIntensity: { value: 1.2 }
       },
       side: THREE.DoubleSide,
       transparent: false
@@ -194,6 +196,12 @@ export class GrassShader {
   ): void {
     if (material.uniforms.nightFactor) material.uniforms.nightFactor.value = nightFactor;
     if (material.uniforms.dayFactor) material.uniforms.dayFactor.value = dayFactor;
+    
+    if (material.uniforms.lightIntensity) {
+      const baseIntensity = 1.2;
+      const dayIntensity = dayFactor * baseIntensity + 0.3;
+      material.uniforms.lightIntensity.value = dayIntensity;
+    }
   }
 
   public static updateBiomeColors(
@@ -203,10 +211,10 @@ export class GrassShader {
   ): void {
     if (material.uniforms.grassColor) material.uniforms.grassColor.value.copy(grassColor);
     if (material.uniforms.nightGrassColor) {
-      material.uniforms.nightGrassColor.value.copy(grassColor).multiplyScalar(0.15);
+      material.uniforms.nightGrassColor.value.copy(grassColor).multiplyScalar(0.4);
     }
     if (material.uniforms.tipColor) {
-      material.uniforms.tipColor.value.copy(grassColor).multiplyScalar(1.4);
+      material.uniforms.tipColor.value.copy(grassColor).multiplyScalar(1.6);
     }
     if (material.uniforms.biomeColorIntensity) {
       material.uniforms.biomeColorIntensity.value = intensity;
