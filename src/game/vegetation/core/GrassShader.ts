@@ -1,12 +1,20 @@
 
 import * as THREE from 'three';
 
-export class RealisticGrassShader {
-  public static createRealisticGrassMaterial(
+export class GrassShader {
+  private static materialCache = new Map<string, THREE.ShaderMaterial>();
+
+  public static createGrassMaterial(
     baseColor: THREE.Color, 
-    ringIndex: number = 0,
-    species: string = 'meadow'
+    species: string = 'meadow',
+    isGroundGrass: boolean = false
   ): THREE.ShaderMaterial {
+    const cacheKey = `${species}_${baseColor.getHexString()}_${isGroundGrass}`;
+    
+    if (this.materialCache.has(cacheKey)) {
+      return this.materialCache.get(cacheKey)!.clone();
+    }
+
     const vertexShader = `
       uniform float time;
       uniform float windStrength;
@@ -20,7 +28,6 @@ export class RealisticGrassShader {
       varying vec3 vWorldPosition;
       varying float vWindInfluence;
       
-      // Noise function for wind variation
       float noise(vec2 p) {
         return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
       }
@@ -30,42 +37,32 @@ export class RealisticGrassShader {
         vNormal = normal;
         vHeight = position.y;
         
-        // Get instance matrix
         mat4 instanceMatrix = instanceMatrix;
         vec3 transformed = position;
         
-        // Enhanced wind system with multiple layers
         vec3 worldPos = (instanceMatrix * vec4(position, 1.0)).xyz;
         vWorldPosition = worldPos;
         
-        // Base wind animation
-        float heightFactor = pow(position.y, 1.8); // More realistic height curve
+        float heightFactor = pow(position.y, 1.8);
         float baseWind = sin(time * 1.5 + worldPos.x * 0.08 + worldPos.z * 0.08) * windStrength;
         
-        // Wind gusts
         float gustTime = time * gustFrequency;
         float gustNoise = noise(vec2(worldPos.x * 0.02, gustTime * 0.1));
         float gustWind = sin(gustTime + gustNoise * 6.28) * gustIntensity;
         
-        // Micro wind variations
         float microWind = sin(time * 4.0 + worldPos.x * 0.2 + worldPos.z * 0.2) * 0.02;
         
-        // Combine wind effects
         float totalWind = (baseWind + gustWind + microWind) * heightFactor;
         vWindInfluence = totalWind;
         
-        // Apply wind displacement
         transformed.x += totalWind * windDirection.x;
         transformed.z += totalWind * windDirection.y;
         
-        // Add subtle sideways swaying
         float sideWind = sin(time * 0.8 + worldPos.z * 0.1) * windStrength * 0.3 * heightFactor;
-        transformed.x += sideWind * windDirection.y; // Perpendicular to main wind
+        transformed.x += sideWind * windDirection.y;
         transformed.z -= sideWind * windDirection.x;
         
-        // Apply instance transformation
         vec4 worldPosition = instanceMatrix * vec4(transformed, 1.0);
-        
         gl_Position = projectionMatrix * modelViewMatrix * worldPosition;
       }
     `;
@@ -82,8 +79,8 @@ export class RealisticGrassShader {
       uniform float fogFar;
       uniform float subsurfaceIntensity;
       uniform vec3 lightDirection;
-      uniform float seasonalFactor; // 0-1 for seasonal variation
-      uniform float biomeColorIntensity; // New: controls how strongly biome colors show
+      uniform float seasonalFactor;
+      uniform float biomeColorIntensity;
       
       varying vec2 vUv;
       varying vec3 vNormal;
@@ -91,48 +88,36 @@ export class RealisticGrassShader {
       varying vec3 vWorldPosition;
       varying float vWindInfluence;
       
-      // Noise function for micro-detail variation
       float noise(vec2 p) {
         return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
       }
       
       void main() {
-        // Base color interpolation between day and night
         vec3 currentGrassColor = mix(grassColor, nightGrassColor, nightFactor);
-        
-        // Enhanced tip color calculation based on biome-specific base color
         vec3 enhancedTipColor = tipColor;
-        
-        // Height-based color variation (darker at base, brighter at tips)
         vec3 baseColor = currentGrassColor * 0.7;
         vec3 color = mix(baseColor, enhancedTipColor, vHeight);
         
-        // Add micro-detail color variation using world position
-        float microVariation = noise(vWorldPosition.xz * 50.0) * 0.08; // Reduced for more subtle variation
+        float microVariation = noise(vWorldPosition.xz * 50.0) * 0.08;
         color += microVariation;
         
-        // Enhanced subsurface scattering effect for realistic grass
         vec3 lightDir = normalize(lightDirection);
         float backlight = max(0.0, dot(-lightDir, vNormal));
-        vec3 subsurfaceColor = currentGrassColor * 0.6; // Enhanced subsurface
+        vec3 subsurfaceColor = currentGrassColor * 0.6;
         color = mix(color, subsurfaceColor, backlight * subsurfaceIntensity * vHeight);
         
-        // Enhanced lighting with multiple factors
         float frontLight = dot(vNormal, lightDir) * 0.5 + 0.5;
-        float ambientLight = 0.45; // Slightly increased ambient
+        float ambientLight = 0.45;
         float totalLight = mix(ambientLight, frontLight, dayFactor);
         
-        // Wind-based lighting variation (grass catches light differently when bent)
         float windLighting = 1.0 + abs(vWindInfluence) * 0.15;
         totalLight *= windLighting;
         
         color *= totalLight;
         
-        // Age and health variation based on world position (more subtle)
         float ageVariation = noise(vWorldPosition.xz * 12.0);
-        color = mix(color, color * 0.85, ageVariation * 0.2); // More subtle aging
+        color = mix(color, color * 0.85, ageVariation * 0.2);
         
-        // Apply fog
         float depth = gl_FragCoord.z / gl_FragCoord.w;
         float fogFactor = smoothstep(fogNear, fogFar, depth);
         color = mix(color, fogColor, fogFactor);
@@ -141,7 +126,6 @@ export class RealisticGrassShader {
       }
     `;
     
-    // Create enhanced tip color based on the base color
     const tipColor = new THREE.Color().copy(baseColor).multiplyScalar(1.4);
     
     const material = new THREE.ShaderMaterial({
@@ -149,9 +133,9 @@ export class RealisticGrassShader {
       fragmentShader,
       uniforms: {
         time: { value: 0 },
-        windStrength: { value: 0.25 },
+        windStrength: { value: isGroundGrass ? 0.2 : 0.25 },
         windDirection: { value: new THREE.Vector2(1, 0.5) },
-        gustIntensity: { value: 0.15 },
+        gustIntensity: { value: isGroundGrass ? 0.09 : 0.15 },
         gustFrequency: { value: 0.3 },
         grassColor: { value: baseColor },
         nightGrassColor: { value: new THREE.Color().copy(baseColor).multiplyScalar(0.15) },
@@ -163,33 +147,27 @@ export class RealisticGrassShader {
         fogFar: { value: 200 },
         subsurfaceIntensity: { value: 0.4 },
         lightDirection: { value: new THREE.Vector3(1, 1, 1).normalize() },
-        seasonalFactor: { value: 0.5 }, // Summer by default
-        biomeColorIntensity: { value: 1.0 } // Full biome color intensity
+        seasonalFactor: { value: 0.5 },
+        biomeColorIntensity: { value: 1.0 }
       },
       side: THREE.DoubleSide,
       transparent: false
     });
     
-    return material;
+    this.materialCache.set(cacheKey, material);
+    return material.clone();
   }
   
-  public static updateRealisticWindAnimation(
+  public static updateWindAnimation(
     material: THREE.ShaderMaterial, 
     time: number, 
     windStrength: number = 0.25,
     gustIntensity: number = 0.15
   ): void {
-    if (material.uniforms.time) {
-      material.uniforms.time.value = time;
-    }
-    if (material.uniforms.windStrength) {
-      material.uniforms.windStrength.value = windStrength;
-    }
-    if (material.uniforms.gustIntensity) {
-      material.uniforms.gustIntensity.value = gustIntensity;
-    }
+    if (material.uniforms.time) material.uniforms.time.value = time;
+    if (material.uniforms.windStrength) material.uniforms.windStrength.value = windStrength;
+    if (material.uniforms.gustIntensity) material.uniforms.gustIntensity.value = gustIntensity;
     
-    // Slowly change wind direction
     if (material.uniforms.windDirection) {
       const windAngle = time * 0.1;
       material.uniforms.windDirection.value.set(
@@ -203,13 +181,7 @@ export class RealisticGrassShader {
     material: THREE.ShaderMaterial,
     season: 'spring' | 'summer' | 'autumn' | 'winter'
   ): void {
-    const seasonalFactors = {
-      spring: 0.2,
-      summer: 0.5,
-      autumn: 0.8,
-      winter: 0.1
-    };
-    
+    const seasonalFactors = { spring: 0.2, summer: 0.5, autumn: 0.8, winter: 0.1 };
     if (material.uniforms.seasonalFactor) {
       material.uniforms.seasonalFactor.value = seasonalFactors[season];
     }
@@ -220,25 +192,16 @@ export class RealisticGrassShader {
     nightFactor: number, 
     dayFactor: number
   ): void {
-    if (material.uniforms.nightFactor) {
-      material.uniforms.nightFactor.value = nightFactor;
-    }
-    if (material.uniforms.dayFactor) {
-      material.uniforms.dayFactor.value = dayFactor;
-    }
+    if (material.uniforms.nightFactor) material.uniforms.nightFactor.value = nightFactor;
+    if (material.uniforms.dayFactor) material.uniforms.dayFactor.value = dayFactor;
   }
 
-  /**
-   * Update material with biome-specific colors
-   */
   public static updateBiomeColors(
     material: THREE.ShaderMaterial,
     grassColor: THREE.Color,
     intensity: number = 1.0
   ): void {
-    if (material.uniforms.grassColor) {
-      material.uniforms.grassColor.value.copy(grassColor);
-    }
+    if (material.uniforms.grassColor) material.uniforms.grassColor.value.copy(grassColor);
     if (material.uniforms.nightGrassColor) {
       material.uniforms.nightGrassColor.value.copy(grassColor).multiplyScalar(0.15);
     }
@@ -248,5 +211,12 @@ export class RealisticGrassShader {
     if (material.uniforms.biomeColorIntensity) {
       material.uniforms.biomeColorIntensity.value = intensity;
     }
+  }
+
+  public static dispose(): void {
+    for (const material of this.materialCache.values()) {
+      material.dispose();
+    }
+    this.materialCache.clear();
   }
 }

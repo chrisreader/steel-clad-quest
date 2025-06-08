@@ -1,14 +1,12 @@
 
 export { GrassSystem } from './GrassSystem';
-export { EnhancedGrassGeometry } from './EnhancedGrassGeometry';
-export { GroundGrassGeometry } from './GroundGrassGeometry';
-export { GrassBiomeManager } from './GrassBiomeManager';
-export { GroundGrassBiomeConfig } from './GroundGrassBiomeConfig';
-export { RealisticGrassShader } from './RealisticGrassShader';
+export { GrassGeometry } from './core/GrassGeometry';
+export { GrassShader } from './core/GrassShader';
+export { GrassRenderer } from './core/GrassRenderer';
+export { BiomeManager } from './biomes/BiomeManager';
+export { LODManager } from './performance/LODManager';
+export { WindSystem } from './animation/WindSystem';
 export { EnvironmentalGrassDistribution } from './EnvironmentalGrassDistribution';
 
-export type { GrassConfig } from './GrassSystem';
-export type { EnhancedGrassBladeConfig } from './EnhancedGrassGeometry';
-export type { BiomeType, BiomeConfiguration, BiomeInfo } from './GrassBiomeManager';
-export type { GroundGrassConfiguration } from './GroundGrassBiomeConfig';
+export type { GrassConfig, GrassBladeConfig, BiomeConfiguration, BiomeInfo, BiomeType } from './core/GrassConfig';
 export type { EnvironmentalFactors } from './EnvironmentalGrassDistribution';
