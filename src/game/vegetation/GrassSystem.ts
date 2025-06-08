@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GrassConfig, DEFAULT_GRASS_CONFIG, BiomeInfo } from './core/GrassConfig';
 import { GrassRenderer } from './core/GrassRenderer';
@@ -32,6 +31,14 @@ export class GrassSystem {
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private playerVelocity: number = 0;
   
+  // NEW: Track region metadata for regeneration
+  private regionMetadata: Map<string, {
+    centerPosition: THREE.Vector3;
+    size: number;
+    terrainColor: number;
+    region: RegionCoordinates;
+  }> = new Map();
+  
   constructor(scene: THREE.Scene, config?: Partial<GrassConfig>) {
     this.scene = scene;
     this.config = { ...DEFAULT_GRASS_CONFIG, ...config };
@@ -40,7 +47,7 @@ export class GrassSystem {
     this.lodManager = new LODManager();
     this.windSystem = new WindSystem();
     
-    console.log('🌱 Optimized grass system initialized with performance enhancements');
+    console.log('🌱 Optimized grass system initialized with dynamic LOD');
   }
   
   public generateGrassForRegion(
@@ -52,9 +59,29 @@ export class GrassSystem {
   ): void {
     const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
     
+    // Store region metadata for potential regeneration
+    this.regionMetadata.set(regionKey, {
+      centerPosition: centerPosition.clone(),
+      size,
+      terrainColor,
+      region
+    });
+    
     if (this.renderer.getGrassInstances().has(regionKey)) return;
     
-    // Calculate LOD density
+    this.generateGrassForRegionInternal(region, centerPosition, size, terrainColor, currentPlayerPosition);
+  }
+
+  private generateGrassForRegionInternal(
+    region: RegionCoordinates, 
+    centerPosition: THREE.Vector3, 
+    size: number,
+    terrainColor: number,
+    currentPlayerPosition?: THREE.Vector3
+  ): void {
+    const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
+    
+    // Calculate LOD density based on current player position
     const playerPos = currentPlayerPosition || this.lodManager.getLastPlayerPosition();
     const distanceFromPlayer = centerPosition.distanceTo(playerPos);
     const lodDensityMultiplier = this.lodManager.calculateLODDensity(distanceFromPlayer);
@@ -119,6 +146,28 @@ export class GrassSystem {
     }
     
     console.log(`✅ Generated ${biomeConfig.name} grass: ${tallGrassData.positions.length} tall, ${groundGrassData.positions.length} ground blades`);
+  }
+
+  private regenerateRegion(regionKey: string, currentPlayerPosition: THREE.Vector3): void {
+    const metadata = this.regionMetadata.get(regionKey);
+    if (!metadata) return;
+    
+    console.log(`🔄 Regenerating grass for region ${regionKey} with new LOD`);
+    
+    // Remove existing grass
+    this.removeGrassForRegionInternal(regionKey);
+    
+    // Generate with current player position for accurate LOD
+    this.generateGrassForRegionInternal(
+      metadata.region, 
+      metadata.centerPosition, 
+      metadata.size, 
+      metadata.terrainColor, 
+      currentPlayerPosition
+    );
+    
+    // Mark as regenerated
+    this.lodManager.markRegionRegenerated(regionKey);
   }
   
   private getDominantSpecies(species: string[]): string {
@@ -270,6 +319,12 @@ export class GrassSystem {
       this.config.maxDistance
     );
     
+    // NEW: Handle dynamic region regeneration
+    const pendingRegenerations = this.lodManager.getPendingRegenerations();
+    for (const regionKey of pendingRegenerations) {
+      this.regenerateRegion(regionKey, playerPosition);
+    }
+    
     // OPTIMIZED: Update materials less frequently for better performance
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
       // Calculate day/night factors
@@ -346,12 +401,19 @@ export class GrassSystem {
   
   public removeGrassForRegion(region: RegionCoordinates): void {
     const regionKey = `grass_r${region.ringIndex}_q${region.quadrant}`;
-    this.renderer.removeRegion(regionKey);
+    this.removeGrassForRegionInternal(regionKey);
+    this.regionMetadata.delete(regionKey);
+    this.lodManager.clearRegionLODState(regionKey);
     console.log(`🌱 Removed grass coverage for region ${regionKey}`);
+  }
+
+  private removeGrassForRegionInternal(regionKey: string): void {
+    this.renderer.removeRegion(regionKey);
   }
   
   public dispose(): void {
     this.renderer.dispose();
+    this.regionMetadata.clear();
     console.log('🌱 Optimized grass system disposed');
   }
 }
