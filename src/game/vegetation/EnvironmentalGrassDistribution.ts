@@ -47,7 +47,7 @@ export class EnvironmentalGrassDistribution {
   }
   
   /**
-   * Calculate spawn probability with higher baseline and reduced penalties
+   * OPTIMIZED: Calculate spawn probability with reduced baseline for better performance
    */
   private static calculateSpawnProbability(
     position: THREE.Vector3, 
@@ -57,14 +57,14 @@ export class EnvironmentalGrassDistribution {
   ): number {
     const { moisture, slope, lightExposure, terrainDetails } = environmentalFactors;
     
-    // Start with higher base probability for better coverage
+    // OPTIMIZED: Reduced base probability for better performance
     const noiseDensity = GradientDensity.generateNoiseDensity(position);
-    let spawnProbability = 0.75 + noiseDensity * 0.2; // Higher baseline (75% instead of 60%)
+    let spawnProbability = 0.55 + noiseDensity * 0.15; // Reduced from 0.75 + 0.2
     
     // Apply lighter environmental modifiers
-    spawnProbability += moisture * 0.15; // Reduced from 0.25
-    spawnProbability -= slope * 0.08;    // Reduced from 0.12
-    spawnProbability += lightExposure * 0.1; // Reduced from 0.18
+    spawnProbability += moisture * 0.12; // Reduced from 0.15
+    spawnProbability -= slope * 0.06;    // Reduced from 0.08
+    spawnProbability += lightExposure * 0.08; // Reduced from 0.1
     
     // Apply environmental density (now with minimal penalties)
     const environmentalDensity = GradientDensity.calculateEnvironmentalDensity(position, terrainDetails);
@@ -77,8 +77,8 @@ export class EnvironmentalGrassDistribution {
     // Apply LOD density scaling
     spawnProbability *= lodDensityMultiplier;
     
-    // Ensure minimum spawn probability of 30% in most areas
-    return MathUtils.clamp(spawnProbability, 0.3, 0.98);
+    // OPTIMIZED: Reduced minimum spawn probability for better performance
+    return MathUtils.clamp(spawnProbability, 0.2, 0.9); // Reduced from 0.3, 0.98
   }
   
   private static selectSpeciesBasedOnEnvironment(environmentalFactors: EnvironmentalFactors): string {
@@ -110,14 +110,14 @@ export class EnvironmentalGrassDistribution {
   }
 
   /**
-   * Organic grass distribution with improved minimum coverage guarantee
+   * OPTIMIZED: Organic grass distribution with reduced coverage and conditional features
    */
   public static calculateGrassDistribution(
     centerPosition: THREE.Vector3,
     size: number,
     environmentalFactors: EnvironmentalFactors,
     baseSpacing: number,
-    minimumCoverage: number = 0.4, // Increased from 0.25
+    minimumCoverage: number = 0.25, // Note: This is now passed from caller with reduced values
     lodDensityMultiplier: number = 1.0,
     edgeBlendDistance: number = 20
   ) {
@@ -168,16 +168,16 @@ export class EnvironmentalGrassDistribution {
       
       // Use probability-based spawning with higher success rate
       if (Math.random() < spawnProbability) {
-        this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors);
+        this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors, lodDensityMultiplier);
       }
     }
     
-    // Ensure minimum coverage with more generous secondary sampling
+    // OPTIMIZED: Disable secondary sampling for very low LOD to improve performance
     const currentCoverage = positions.length / organicPoints.length;
-    if (currentCoverage < minimumCoverage && lodDensityMultiplier > 0.1) {
+    if (currentCoverage < minimumCoverage && lodDensityMultiplier > 0.5) { // Changed from 0.1
       const additionalPoints = PoissonDiskSampling.generateBlueNoisePoints(
         bounds2D,
-        (minimumCoverage - currentCoverage) * targetDensity * 1.5, // More generous multiplier
+        (minimumCoverage - currentCoverage) * targetDensity * 1.2, // Reduced from 1.5
         0.9 // High jitter for natural distribution
       );
       
@@ -187,14 +187,17 @@ export class EnvironmentalGrassDistribution {
         // Apply higher probability for secondary coverage to ensure minimum
         const secondaryProbability = this.calculateSpawnProbability(
           worldPos, environmentalFactors, regionBounds, lodDensityMultiplier
-        ) * 0.8; // Increased from 0.6
+        ) * 0.7; // Reduced from 0.8
         
         if (Math.random() < secondaryProbability) {
-          this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors);
+          this.addGrassBlade(positions, scales, rotations, species, worldPos, environmentalFactors, lodDensityMultiplier);
         }
       }
       
-      console.log(`🌱 Enhanced organic coverage: added ${additionalPoints.length} secondary samples to reach ${minimumCoverage * 100}% coverage`);
+      // OPTIMIZED: Reduce logging frequency
+      if (additionalPoints.length > 0) {
+        console.log(`🌱 Enhanced organic coverage: added ${additionalPoints.length} secondary samples to reach ${minimumCoverage * 100}% coverage`);
+      }
     }
     
     return { positions, scales, rotations, species };
@@ -206,10 +209,14 @@ export class EnvironmentalGrassDistribution {
     rotations: THREE.Quaternion[],
     species: string[],
     worldPos: THREE.Vector3,
-    environmentalFactors: EnvironmentalFactors
+    environmentalFactors: EnvironmentalFactors,
+    lodDensityMultiplier: number = 1.0
   ): void {
-    // Calculate smooth height variation based on position
-    const heightVariation = this.calculateSmoothHeightVariation(worldPos);
+    // OPTIMIZED: Skip height variation calculations for distant grass (LOD < 0.3)
+    let heightVariation = 1.0;
+    if (lodDensityMultiplier > 0.3) {
+      heightVariation = this.calculateSmoothHeightVariation(worldPos);
+    }
     
     positions.push(worldPos.clone());
     
