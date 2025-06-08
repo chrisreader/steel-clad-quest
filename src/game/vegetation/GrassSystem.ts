@@ -290,7 +290,7 @@ export class GrassSystem {
           // OPTIMIZED: Static wind for distant grass beyond 200 units
           const isDistantGrass = material.userData?.distance > 200;
           this.windSystem.updateMaterialWind(material, false, isDistantGrass);
-          GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
+          GrassShader.updateDayNightCycle(material, nightFactor);
           GrassShader.updateSeasonalVariation(material, this.currentSeason);
         }
       }
@@ -299,7 +299,7 @@ export class GrassSystem {
       if (shouldUpdateGroundGrass) {
         for (const material of this.renderer.getGroundGrassMaterials().values()) {
           this.windSystem.updateMaterialWind(material, true);
-          GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
+          GrassShader.updateDayNightCycle(material, nightFactor);
           GrassShader.updateSeasonalVariation(material, this.currentSeason);
         }
       }
