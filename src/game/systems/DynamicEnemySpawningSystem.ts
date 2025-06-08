@@ -77,9 +77,9 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       maxEntityDistance: 80,
       minSpawnDistance: 20,
       maxSpawnDistance: 40,
-      maxEntities: 8,
-      baseSpawnInterval: 5000,
-      spawnCountPerTrigger: 2,
+      maxEntities: 3, // Reduced from 8 to 3 (approx 70% reduction)
+      baseSpawnInterval: 16000, // Increased from 5000 to 16000 (3.2x slower, 70% reduction in frequency)
+      spawnCountPerTrigger: 1, // Reduced from 2 to 1 (50% reduction)
       aggressiveCleanupDistance: 100,
       fadedOutTimeout: 10000
     };
@@ -102,7 +102,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       () => this.onPlayerExitSafeZone()
     );
     
-    console.log(`[DynamicEnemySpawningSystem] Initialized with simplified safe zone system`);
+    console.log(`[DynamicEnemySpawningSystem] Initialized with reduced spawning (70% decrease)`);
   }
 
   private onPlayerEnterSafeZone(): void {
@@ -133,10 +133,10 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       this.safeZoneManager.updatePlayerPosition(playerPosition);
     }
 
-    // Reduce spawn rate when player is in safe zone
+    // Reduce spawn rate when player is in safe zone (even more reduction)
     if (this.isPlayerInSafeZone) {
-      // Much slower spawning in safe zone
-      this.spawnTimer += deltaTime * 1000 * 0.1; // 10x slower
+      // Much slower spawning in safe zone (20x slower instead of 10x)
+      this.spawnTimer += deltaTime * 1000 * 0.05;
     } else {
       this.spawnTimer += deltaTime * 1000;
     }
