@@ -30,40 +30,40 @@ export class RingQuadrantSystem {
   private noise: any;
   private static readonly TRANSITION_ZONE_SIZE = 12; // Reduced for more stable transitions
   
-  // Define 4 rings with consistent lush terrain colors - rings are now pure classifiers
+  // Define 4 rings with increasing radius and difficulty
   private rings: RingDefinition[] = [
     {
       innerRadius: 0,
-      outerRadius: 50,
+      outerRadius: 50, // Reduced from 200 to 50
       difficulty: 1,
-      terrainColor: 0x5FAD5F, // Lush green for all rings
+      terrainColor: 0x5FAD5F, // Match existing green terrain
       enemyTypes: ['goblin', 'wolf'],
       structureTypes: ['tavern'],
       eventChance: 0.1
     },
     {
-      innerRadius: 50,
-      outerRadius: 150,
+      innerRadius: 50, // Updated to match new center ring size
+      outerRadius: 150, // Reduced proportionally
       difficulty: 2,
-      terrainColor: 0x5FAD5F, // Same lush green - no visual degradation
+      terrainColor: 0x4A9A4A, // Slightly darker green
       enemyTypes: ['goblin', 'wolf', 'orc'],
       structureTypes: ['ruins', 'cabin'],
       eventChance: 0.2
     },
     {
-      innerRadius: 150,
-      outerRadius: 300,
+      innerRadius: 150, // Updated to match previous ring
+      outerRadius: 300, // Reduced proportionally
       difficulty: 3,
-      terrainColor: 0x5FAD5F, // Same lush green - consistently lush
+      terrainColor: 0x3A8A3A, // Even darker green
       enemyTypes: ['orc', 'bandit', 'troll'],
       structureTypes: ['castle', 'tower'],
       eventChance: 0.3
     },
     {
-      innerRadius: 300,
-      outerRadius: 600,
+      innerRadius: 300, // Updated to match previous ring
+      outerRadius: 600, // Reduced proportionally
       difficulty: 4,
-      terrainColor: 0x5FAD5F, // Same lush green - ring 3 is now lush
+      terrainColor: 0x2A7A2A, // Darkest green
       enemyTypes: ['troll', 'warlord', 'witch'],
       structureTypes: ['temple', 'fortress'],
       eventChance: 0.4
@@ -310,9 +310,9 @@ export class RingQuadrantSystem {
         region.ringIndex
       );
     } else {
-      console.log(`🌱 Creating lush terrain with hills for ring ${region.ringIndex}`);
+      console.log(`🌱 Creating standard terrain with hills for ring ${region.ringIndex}`);
       
-      // Standard ring material with realistic grass - now consistently lush
+      // Standard ring material with realistic grass
       const ring = this.rings[region.ringIndex];
       material = GroundMaterialUtils.createGrassMaterial(ring.terrainColor, region.ringIndex, {
         roughness: 0.9,
@@ -335,7 +335,7 @@ export class RingQuadrantSystem {
     terrain.position.copy(center);
     terrain.position.y = totalYOffset;
     
-    console.log(`✅ Lush terrain with hills created for ring ${region.ringIndex}, Y-offset: ${totalYOffset.toFixed(4)}`);
+    console.log(`✅ Enhanced terrain with hills created for ring ${region.ringIndex}, Y-offset: ${totalYOffset.toFixed(4)}`);
     
     return terrain;
   }

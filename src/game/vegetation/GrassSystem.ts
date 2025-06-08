@@ -36,8 +36,8 @@ export class GrassSystem {
   private grassCullingUpdateCounter: number = 0;
   private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // More frequent updates
   
-  // Expanded LOD system - extended distances to cover Ring 3 (300-600 units)
-  private lodDistances: number[] = [150, 300, 450, 600]; // Covers all rings including Ring 3
+  // Dynamic LOD system - more forgiving distances
+  private lodDistances: number[] = [75, 150, 225, 300]; // Increased distances
   
   // Performance optimization variables
   private updateCounter: number = 0;
@@ -50,8 +50,8 @@ export class GrassSystem {
     baseDensity: 1.2, // Increased base density
     patchDensity: 2.5,
     patchCount: 5,
-    maxDistance: 700, // Extended to cover Ring 3 entirely (600 units + buffer)
-    lodLevels: [1.0, 0.8, 0.6, 0.4] // Higher minimum levels - Ring 3 gets 40% density
+    maxDistance: 400, // Increased render distance further
+    lodLevels: [1.0, 0.7, 0.4, 0.15] // Never go to 0, always have some grass
   };
   
   // Enhanced region tracking for overlap management
@@ -104,7 +104,7 @@ export class GrassSystem {
       this.groundGrassMaterials.set(species.species, groundMaterial);
     }
     
-    console.log('🌱 Enhanced grass system with extended coverage for all rings initialized with', this.enhancedGrassSpecies.length, 'species');
+    console.log('🌱 Enhanced grass system with dynamic LOD initialized with', this.enhancedGrassSpecies.length, 'species');
   }
   
   public generateGrassForRegion(
@@ -122,16 +122,16 @@ export class GrassSystem {
     const playerPos = currentPlayerPosition || this.lastPlayerPosition;
     const distanceFromPlayer = centerPosition.distanceTo(playerPos);
     
-    // Calculate improved LOD density multiplier for extended coverage
+    // Calculate smooth LOD density multiplier instead of hard cutoffs
     const lodDensityMultiplier = GradientDensity.calculateLODDensity(distanceFromPlayer, this.lodDistances);
     
-    console.log(`🌱 Ring ${region.ringIndex}-${region.quadrant}: distance=${distanceFromPlayer.toFixed(1)}, LOD density=${lodDensityMultiplier.toFixed(3)} (Ring 3 support)`);
+    console.log(`🌱 Region ${region.ringIndex}-${region.quadrant}: distance=${distanceFromPlayer.toFixed(1)}, LOD density=${lodDensityMultiplier.toFixed(3)}`);
     
     // Determine biome for this region
     const biomeInfo = GrassBiomeManager.getBiomeAtPosition(centerPosition);
     const biomeConfig = GrassBiomeManager.getBiomeConfiguration(biomeInfo.type);
     
-    console.log(`🌱 Generating ${biomeConfig.name} grass (extended coverage: ${lodDensityMultiplier.toFixed(3)}) for region ${regionKey}`);
+    console.log(`🌱 Generating ${biomeConfig.name} grass (LOD density: ${lodDensityMultiplier.toFixed(3)}) for region ${regionKey}`);
     
     // Create environmental factors with gradual transitions
     const environmentalFactors = this.createImprovedEnvironmentalFactors(
@@ -152,7 +152,7 @@ export class GrassSystem {
       adjustedEnvironmentalFactors, 
       lodDensityMultiplier,
       biomeInfo,
-      Math.max(0.25, lodDensityMultiplier * 0.5) // Higher minimum coverage for all rings
+      Math.max(0.15, lodDensityMultiplier * 0.4) // Minimum coverage scales with LOD
     );
     
     // Generate ground grass with higher density and organic distribution
@@ -162,7 +162,7 @@ export class GrassSystem {
       adjustedEnvironmentalFactors,
       lodDensityMultiplier,
       biomeInfo,
-      Math.max(0.5, lodDensityMultiplier * 0.8) // Much higher minimum for ground coverage
+      Math.max(0.35, lodDensityMultiplier * 0.7) // Higher minimum for ground coverage
     );
     
     // Group by species for efficient rendering
@@ -198,7 +198,7 @@ export class GrassSystem {
     // Track region overlap for blending
     this.trackRegionOverlap(regionKey, centerPosition, size + this.EDGE_BLEND_DISTANCE * 2);
     
-    console.log(`✅ Generated extended coverage ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
+    console.log(`✅ Generated organic ${biomeConfig.name} grass for region ${regionKey} with ${tallGrassData.positions.length} tall and ${groundGrassData.positions.length} ground blades`);
   }
   
   /**
@@ -313,25 +313,25 @@ export class GrassSystem {
   }
   
   /**
-   * Updated LOD level calculation with extended coverage
+   * Updated LOD level calculation with smooth density scaling
    */
   private getDynamicLODLevel(distance: number): number {
     return GradientDensity.calculateLODDensity(distance, this.lodDistances);
   }
   
   /**
-   * Updated visibility system with extended coverage for Ring 3
+   * Updated visibility system with smooth transitions
    */
   private updateGrassVisibility(playerPosition: THREE.Vector3): void {
     let hiddenCount = 0;
     let visibleCount = 0;
     
-    // Update tall grass visibility with extended coverage
+    // Update tall grass visibility with smooth LOD
     for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
       
-      const shouldBeVisible = distanceToPlayer <= this.config.maxDistance; // Now covers Ring 3
+      const shouldBeVisible = distanceToPlayer <= this.config.maxDistance;
       const newLodDensity = this.getDynamicLODLevel(distanceToPlayer);
       
       if (instancedMesh.visible !== shouldBeVisible) {
@@ -347,17 +347,17 @@ export class GrassSystem {
       if (instancedMesh.userData.lodLevel !== newLodDensity && shouldBeVisible) {
         instancedMesh.userData.lodLevel = newLodDensity;
         // Apply material alpha for distant grass fade (optional)
-        if (instancedMesh.material && newLodDensity < 0.5) {
+        if (instancedMesh.material && newLodDensity < 0.3) {
           (instancedMesh.material as THREE.ShaderMaterial).transparent = true;
           if ((instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity) {
-            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.4, newLodDensity);
+            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.3, newLodDensity);
           }
         }
       }
     }
     
     // Update ground grass visibility with extended render distance
-    const groundRenderDistance = this.config.maxDistance * 0.95; // Extended from 0.8 to 0.95
+    const groundRenderDistance = this.config.maxDistance * 0.9; // Increased from 0.8
     for (const [regionKey, instancedMesh] of this.groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -370,7 +370,7 @@ export class GrassSystem {
     }
     
     if (hiddenCount > 0 || visibleCount > 0) {
-      console.log(`🌱 Extended coverage LOD: ${visibleCount} regions shown, ${hiddenCount} regions hidden`);
+      console.log(`🌱 Organic LOD: ${visibleCount} regions shown, ${hiddenCount} regions hidden`);
     }
   }
   
@@ -666,7 +666,7 @@ export class GrassSystem {
       }
     }
     
-    console.log(`🌱 Removed extended coverage grass for region ${regionKey}`);
+    console.log(`🌱 Removed organic grass coverage for region ${regionKey}`);
   }
   
   public dispose(): void {
@@ -706,6 +706,6 @@ export class GrassSystem {
     }
     this.groundGrassGeometries.clear();
     
-    console.log('🌱 Enhanced GrassSystem with extended Ring 3 coverage disposed');
+    console.log('🌱 Enhanced GrassSystem with dynamic LOD and guaranteed coverage disposed');
   }
 }

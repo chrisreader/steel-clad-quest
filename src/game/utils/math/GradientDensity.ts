@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { MathUtils } from './MathUtils';
 
@@ -51,12 +50,12 @@ export class GradientDensity {
     
     const combinedNoise = noise1 + noise2 + noise3;
     
-    // Normalize to 0-1 range with higher baseline
+    // Normalize to 0-1 range
     return MathUtils.clamp((combinedNoise + 1.75) / 3.5, 0, 1);
   }
   
   /**
-   * Calculate environmental density with high baseline for all rings
+   * Calculate environmental density with minimal penalties (trees help, no water/rock penalties)
    */
   static calculateEnvironmentalDensity(
     position: THREE.Vector3,
@@ -67,42 +66,33 @@ export class GradientDensity {
       playerTraffic: number;
     }
   ): number {
-    // Start with very high baseline density (95% minimum) for lush environments
-    let density = 0.95;
+    // Start with high baseline density (80% minimum)
+    let density = 0.9;
     
-    // Trees provide benefits everywhere - enhance this
+    // Trees actually help grass in most areas - keep this benefit
     if (environmentalFactors.hasTrees) {
-      const treeBenefit = this.generateNoiseDensity(position, 0.015) * 0.2;
+      const treeBenefit = this.generateNoiseDensity(position, 0.015) * 0.15;
       density *= (1.0 + treeBenefit);
     }
     
-    // Water areas get slight density boost instead of penalty
-    if (environmentalFactors.hasWater) {
-      const waterBenefit = this.generateNoiseDensity(position, 0.012) * 0.1;
-      density *= (1.0 + waterBenefit);
-    }
+    // Remove water and rock penalties temporarily
+    // Remove player traffic penalties temporarily
     
-    // Rocks provide shelter - slight benefit
-    if (environmentalFactors.hasRocks) {
-      const rockBenefit = this.generateNoiseDensity(position, 0.018) * 0.05;
-      density *= (1.0 + rockBenefit);
-    }
-    
-    // Ensure very high minimum density (90% for all areas)
-    return MathUtils.clamp(density, 0.9, 1.3);
+    // Ensure minimum density of 80%
+    return MathUtils.clamp(density, 0.8, 1.2);
   }
   
   /**
-   * Calculate LOD-based density scaling with higher minimums for Ring 3 coverage
+   * Calculate LOD-based density scaling (smooth instead of cutoff)
    */
   static calculateLODDensity(distance: number, lodDistances: number[]): number {
-    if (distance < lodDistances[0]) return 1.0; // Full density up to 150 units
-    if (distance < lodDistances[1]) return MathUtils.smoothStep(distance, lodDistances[0], lodDistances[1]) * 0.2 + 0.8; // 80-100% for Ring 2
-    if (distance < lodDistances[2]) return MathUtils.smoothStep(distance, lodDistances[1], lodDistances[2]) * 0.2 + 0.6; // 60-80% for Ring 3 inner
-    if (distance < lodDistances[3]) return MathUtils.smoothStep(distance, lodDistances[2], lodDistances[3]) * 0.2 + 0.4; // 40-60% for Ring 3 outer
+    if (distance < lodDistances[0]) return 1.0;
+    if (distance < lodDistances[1]) return MathUtils.smoothStep(distance, lodDistances[0], lodDistances[1]) * 0.3 + 0.7;
+    if (distance < lodDistances[2]) return MathUtils.smoothStep(distance, lodDistances[1], lodDistances[2]) * 0.3 + 0.4;
+    if (distance < lodDistances[3]) return MathUtils.smoothStep(distance, lodDistances[2], lodDistances[3]) * 0.2 + 0.2;
     
-    // Even at maximum distance, maintain reasonable coverage (25% minimum)
-    const veryDistantFactor = MathUtils.clamp(1.0 - (distance - lodDistances[3]) / 100, 0.25, 1.0);
-    return veryDistantFactor * 0.3; // 25-30% at extreme distances
+    // Never go to absolute zero - always maintain some sparse coverage
+    const veryDistantFactor = MathUtils.clamp(1.0 - (distance - lodDistances[3]) / 100, 0.05, 1.0);
+    return veryDistantFactor * 0.15;
   }
 }
