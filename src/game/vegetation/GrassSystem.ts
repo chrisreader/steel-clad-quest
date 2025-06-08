@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { GrassConfig, DEFAULT_GRASS_CONFIG, BiomeInfo } from './core/GrassConfig';
 import { GrassRenderer } from './core/GrassRenderer';
@@ -288,9 +289,8 @@ export class GrassSystem {
       if (shouldUpdateTallGrass) {
         for (const material of this.renderer.getGrassMaterials().values()) {
           // OPTIMIZED: Static wind for distant grass beyond 200 units
-          const isDistantGrass = material.userData?.distance > 200;
-          this.windSystem.updateMaterialWind(material, false, isDistantGrass);
-          GrassShader.updateDayNightCycle(material, nightFactor);
+          this.windSystem.updateMaterialWind(material, false);
+          GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
           GrassShader.updateSeasonalVariation(material, this.currentSeason);
         }
       }
@@ -299,7 +299,7 @@ export class GrassSystem {
       if (shouldUpdateGroundGrass) {
         for (const material of this.renderer.getGroundGrassMaterials().values()) {
           this.windSystem.updateMaterialWind(material, true);
-          GrassShader.updateDayNightCycle(material, nightFactor);
+          GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
           GrassShader.updateSeasonalVariation(material, this.currentSeason);
         }
       }
