@@ -44,8 +44,8 @@ export class SeededGrassDistribution {
       ? DeterministicBiomeManager.getGroundConfiguration(biomeData.biomeType).densityMultiplier
       : biomeConfig.densityMultiplier;
     
-    // Increased density by reducing spacing
-    const baseSpacing = isGroundGrass ? 2.8 : 4.5; // Reduced from 3.5 and 6.0
+    // Significantly increased density - reduced spacing for much denser grass
+    const baseSpacing = isGroundGrass ? 1.8 : 2.5; // Reduced from 2.8 and 4.5
     const spacing = baseSpacing / Math.sqrt(density);
     
     // Generate grass positions using seeded sampling
@@ -60,7 +60,7 @@ export class SeededGrassDistribution {
         
         const worldPos = new THREE.Vector3(x + offsetX, 0, z + offsetZ);
         
-        // Use seeded noise for spawn probability
+        // Use seeded noise for spawn probability - significantly increased
         const spawnProbability = this.calculateSeededSpawnProbability(
           worldPos, 
           biomeData.seed, 
@@ -71,7 +71,7 @@ export class SeededGrassDistribution {
           positions.push(worldPos);
           
           // Generate seeded scale with increased variation
-          const baseScale = isGroundGrass ? 0.6 : 1.2; // Increased from 0.5 and 1.0
+          const baseScale = isGroundGrass ? 0.7 : 1.3; // Increased from 0.6 and 1.2
           const scaleVariation = biomeConfig.heightMultiplier;
           scales.push(new THREE.Vector3(
             baseScale * (0.7 + seededRandom() * 0.6),
@@ -117,13 +117,13 @@ export class SeededGrassDistribution {
     const noiseZ = Math.cos(position.z * 0.05 + seed * 0.001) * 0.5 + 0.5;
     const combinedNoise = (noiseX + noiseZ) / 2;
     
-    // Base probability with environmental variation - increased from 0.6
-    let probability = 0.75 + combinedNoise * 0.2;
+    // Significantly increased base probability
+    let probability = 0.9 + combinedNoise * 0.15; // Increased from 0.75
     
     // Add some randomness but keep it seeded
-    probability *= (0.8 + seededRandom() * 0.4);
+    probability *= (0.85 + seededRandom() * 0.3); // Slightly less variation
     
-    return MathUtils.clamp(probability, 0.3, 0.95); // Increased minimum from 0.2
+    return MathUtils.clamp(probability, 0.6, 0.98); // Increased minimum from 0.3 to 0.6
   }
 
   private static selectSeededSpecies(biomeType: string, seededRandom: () => number): string {

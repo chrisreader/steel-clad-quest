@@ -14,12 +14,12 @@ export class GrassRenderBubbleManager {
   private scene: THREE.Scene;
   private renderer: GrassRenderer;
   
-  // Enhanced render bubble configuration
-  private readonly RENDER_RADIUS = 600; // Increased from 280
-  private readonly UNLOAD_RADIUS = 700; // Increased from 320
+  // Enhanced render bubble configuration - restored wider coverage
+  private readonly RENDER_RADIUS = 800; // Increased from 600 for wider coverage
+  private readonly UNLOAD_RADIUS = 900; // Increased from 700
   private readonly CHUNK_SIZE = 64;
-  private readonly MAX_CHUNKS_PER_FRAME = 8; // Increased from 3
-  private readonly MOVEMENT_THRESHOLD = 2; // Reduced from 5
+  private readonly MAX_CHUNKS_PER_FRAME = 12; // Increased from 8 for faster loading
+  private readonly MOVEMENT_THRESHOLD = 2; // Keep responsive
   
   // Chunk tracking
   private loadedChunks: Map<string, LoadedChunk> = new Map();
@@ -37,12 +37,12 @@ export class GrassRenderBubbleManager {
     this.renderer = renderer;
   }
 
-  public initializeWithCoverage(playerPosition: THREE.Vector3, coverageRadius: number = 600): void {
+  public initializeWithCoverage(playerPosition: THREE.Vector3, coverageRadius: number = 800): void {
     console.log(`🌱 Initializing grass system with coverage radius: ${coverageRadius}`);
     
     this.lastPlayerPosition.copy(playerPosition);
     
-    // Calculate chunks needed for initial coverage
+    // Calculate chunks needed for initial coverage - increased area
     const chunkRadius = Math.ceil(coverageRadius / this.CHUNK_SIZE);
     const playerChunk = DeterministicBiomeManager.worldPositionToChunk(playerPosition);
     

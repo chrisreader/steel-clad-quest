@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export interface GrassConfig {
@@ -56,9 +55,9 @@ export interface BiomeInfo {
 
 // OPTIMIZED: Reduced density and distance for better performance
 export const DEFAULT_GRASS_CONFIG: GrassConfig = {
-  baseDensity: 0.75, // Reduced from 1.2 for 37% performance gain
-  patchDensity: 2.5,
-  patchCount: 5,
-  maxDistance: 280, // Reduced from 400 for GPU optimization
-  lodLevels: [1.0, 0.5, 0.2, 0.05] // More aggressive LOD scaling
+  baseDensity: 1.2, // Restored from 0.75 for proper density
+  patchDensity: 3.0, // Increased from 2.5
+  patchCount: 6, // Increased from 5
+  maxDistance: 400, // Restored from 280 for wider coverage
+  lodLevels: [1.0, 0.7, 0.4, 0.1] // Less aggressive LOD for better quality
 };
