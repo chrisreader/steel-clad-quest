@@ -1,9 +1,9 @@
-
 import * as THREE from 'three';
 import { GrassGeometry } from './GrassGeometry';
 import { GrassShader } from './GrassShader';
 import { GrassBladeConfig, BiomeInfo } from './GrassConfig';
 import { BiomeManager } from '../biomes/BiomeManager';
+import { DeterministicBiomeManager } from '../biomes/DeterministicBiomeManager';
 import { RegionCoordinates } from '../../world/RingQuadrantSystem';
 
 export class GrassRenderer {
@@ -35,16 +35,26 @@ export class GrassRenderer {
     
     if (!species) return;
 
-    // Get biome-specific color
-    const biomeColor = BiomeManager.getBiomeSpeciesColor(speciesName, biomeInfo);
+    // For organic biomes, we need to get biome-specific colors per position
+    // Use the center position of the first grass blade for material creation
+    const centerPosition = speciesData.positions[0] || new THREE.Vector3();
+    const positionBiomeData = DeterministicBiomeManager.getBiomeAtPosition(centerPosition);
+    const positionBiomeInfo: BiomeInfo = {
+      type: positionBiomeData.biomeType,
+      strength: positionBiomeData.strength,
+      transitionZone: false
+    };
+    
+    // Get biome-specific color for this species at this position
+    const biomeColor = DeterministicBiomeManager.getBiomeSpeciesColor(speciesName, positionBiomeInfo);
     
     // Create or get geometry
     const geometry = species.clustered 
       ? GrassGeometry.createGrassCluster(species, isGroundGrass ? 7 : 3, isGroundGrass)
       : GrassGeometry.createGrassBladeGeometry(species, 1.0, isGroundGrass);
     
-    // Create or get material
-    const materialKey = `${speciesName}${suffix}`;
+    // Create or get material with position-specific biome coloring
+    const materialKey = `${speciesName}${suffix}_${positionBiomeData.biomeType}`;
     let material = isGroundGrass 
       ? this.groundGrassMaterials.get(materialKey)
       : this.grassMaterials.get(materialKey);
@@ -91,8 +101,8 @@ export class GrassRenderer {
       centerPosition: lodPositions[0] || new THREE.Vector3(),
       ringIndex: region.ringIndex,
       species: speciesName,
-      biomeType: biomeInfo.type,
-      biomeStrength: biomeInfo.strength,
+      biomeType: positionBiomeData.biomeType,
+      biomeStrength: positionBiomeData.strength,
       isGroundGrass,
       lodLevel
     };
