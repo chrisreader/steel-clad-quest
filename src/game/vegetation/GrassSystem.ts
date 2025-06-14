@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GrassConfig, DEFAULT_GRASS_CONFIG } from './core/GrassConfig';
 import { GrassRenderer } from './core/GrassRenderer';
@@ -42,27 +41,31 @@ export class GrassSystem {
     // ENHANCED: Initialize with random seed for each new game
     DeterministicBiomeManager.initializeWithRandomSeed();
     
-    console.log(`🌱 Grass system initialized with equal biome distribution, multi-scale patch generation, and enhanced prairie density (seed: ${DeterministicBiomeManager.getWorldSeed()})`);
+    console.log(`🌱 Grass system initialized with 11 distinct biomes: Prairie (golden), Thicket (dark green), Crystalline (blue-green), and 8 others (seed: ${DeterministicBiomeManager.getWorldSeed()})`);
   }
   
   public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 200): void {
-    console.log(`🌱 Initializing grass system with 200-unit FPS-optimized radius and random biome seed: ${DeterministicBiomeManager.getWorldSeed()}`);
+    console.log(`🌱 Initializing 11-biome grass system with dramatically different biomes at position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)}`);
+    console.log(`🌱 Expected biomes: Dense Thicket (4x density, dark green), Sparse Steppe (0.3x density, golden), Crystalline Grove (blue-green), and 8 others`);
+    
     this.bubbleManager.initializeWithCoverage(playerPosition, 200);
     this.lastPlayerPosition.copy(playerPosition);
+    
+    console.log(`🌱 Biome system initialized with seed: ${DeterministicBiomeManager.getWorldSeed()} - walk around to see dramatic differences!`);
   }
   
   /**
    * Reinitialize with a new random seed (useful for "new game" scenarios)
    */
   public regenerateWithNewSeed(): void {
-    console.log('🌱 Regenerating biomes with new random seed...');
+    console.log('🌱 Regenerating 11-biome system with new random seed...');
     DeterministicBiomeManager.initializeWithRandomSeed();
     
     // Clear existing grass and regenerate
     this.bubbleManager.dispose();
     this.bubbleManager = new GrassRenderBubbleManager(this.scene, this.renderer);
     
-    console.log(`🌱 Biomes regenerated with new seed: ${DeterministicBiomeManager.getWorldSeed()}`);
+    console.log(`🌱 11-biome system regenerated with new seed: ${DeterministicBiomeManager.getWorldSeed()}`);
   }
   
   public generateGrassForRegion(
@@ -72,12 +75,13 @@ export class GrassSystem {
     terrainColor: number,
     currentPlayerPosition?: THREE.Vector3
   ): void {
+    // LEGACY METHOD - now handled by bubble manager with 11-biome system
+    console.log(`🌱 Legacy region generation bypassed - using 11-biome bubble manager instead`);
+    
     if (!this.bubbleManager.isLoadingComplete() && currentPlayerPosition) {
       const coverageRadius = Math.max(size, 400);
       this.initializeGrassSystem(currentPlayerPosition, coverageRadius);
     }
-    
-    console.log(`🌱 Legacy region generation converted to balanced biome chunk system with patchy distribution`);
   }
   
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
@@ -187,7 +191,7 @@ export class GrassSystem {
   }
   
   public removeGrassForRegion(region: RegionCoordinates): void {
-    console.log(`🌱 Legacy region removal ignored - bubble manager handles this automatically`);
+    console.log(`🌱 Legacy region removal ignored - 11-biome bubble manager handles this automatically`);
   }
   
   public getLoadedChunkCount(): number {

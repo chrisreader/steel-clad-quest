@@ -42,6 +42,7 @@ export class SceneManager {
   
   // 3D grass system
   private grassSystem: GrassSystem;
+  private grassSystemInitialized: boolean = false;
   
   // Enhanced lighting system for realistic shadows
   private ambientLight: THREE.AmbientLight;
@@ -107,9 +108,9 @@ export class SceneManager {
     // Connect StructureGenerator with BuildingManager
     this.structureGenerator.setBuildingManager(this.buildingManager);
     
-    // Initialize 3D grass system
+    // Initialize 3D grass system with 11-biome configuration
     this.grassSystem = new GrassSystem(this.scene);
-    console.log("🌱 3D Grass system initialized");
+    console.log("🌱 3D Grass system initialized with 11 distinct biomes");
     
     // Initialize skybox system
     this.skyboxSystem = new SkyboxSystem(this.scene);
@@ -196,7 +197,7 @@ export class SceneManager {
     
     // Enhanced shadow settings
     this.directionalLight.shadow.mapSize.width = LIGHTING_CONFIG.directional.shadowMapSize;
-    this.directionalLight.shadow.mapSize.height = LIGHTING_CONFIG.directional.shadowMapSize;
+    this.directionalLight.shadow.mapSize.height = LIGHTINGING_CONFIG.directional.shadowMapSize;
     this.directionalLight.shadow.camera.left = -DAY_NIGHT_CONFIG.shadowCameraSize;
     this.directionalLight.shadow.camera.right = DAY_NIGHT_CONFIG.shadowCameraSize;
     this.directionalLight.shadow.camera.top = DAY_NIGHT_CONFIG.shadowCameraSize;
@@ -589,8 +590,15 @@ export class SceneManager {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
     }
     
-    // Update 3D grass system with game time for day/night color changes
-    if (this.grassSystem && playerPosition) {
+    // Initialize 11-biome grass system when player position is available
+    if (this.grassSystem && playerPosition && !this.grassSystemInitialized) {
+      console.log("🌱 Initializing 11-biome grass system at player position:", playerPosition);
+      this.grassSystem.initializeGrassSystem(playerPosition, 200);
+      this.grassSystemInitialized = true;
+    }
+    
+    // Update 11-biome grass system with game time for day/night color changes
+    if (this.grassSystem && playerPosition && this.grassSystemInitialized) {
       this.grassSystem.update(deltaTime, playerPosition, this.timeOfDay);
     }
     
@@ -686,7 +694,7 @@ export class SceneManager {
   }
 
   public createDefaultWorld(): void {
-    console.log('Creating default world with enhanced terrain and 3D grass system...');
+    console.log('Creating default world with enhanced terrain and 11-biome 3D grass system...');
     
     console.log('Skipped simple ground creation to prevent Z-fighting');
     
@@ -725,7 +733,7 @@ export class SceneManager {
     this.environmentCollisionManager.registerEnvironmentCollisions();
     console.log('🔧 Environment collision system initialized');
     
-    console.log('World with enhanced terrain and 3D grass system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
+    console.log('World with enhanced terrain and 11-biome 3D grass system complete. Current time:', (this.timeOfDay * 24).toFixed(1), 'hours');
     
     if (this.debugMode) {
       (window as any).sceneDebug = {
@@ -760,19 +768,9 @@ export class SceneManager {
     this.terrainFeatureGenerator.generateFeaturesForRegion(region);
     this.structureGenerator.generateStructuresForRegion(region);
     
-    // Generate 3D grass for this region - PASS CURRENT PLAYER POSITION
-    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
-    const regionSize = region.ringIndex === 0 ? ringDef.outerRadius * 2 : 100;
-    
-    // Use lastPlayerPosition as current player position for grass generation
-    this.grassSystem.generateGrassForRegion(
-      region, 
-      centerPosition, 
-      regionSize, 
-      ringDef.terrainColor,
-      this.lastPlayerPosition.clone() // NEW: Pass current player position
-    );
-    console.log(`🌱 3D grass generated for region ${regionKey} using current player position`);
+    // NOTE: 11-biome grass generation is now handled by the GrassRenderBubbleManager
+    // No need for legacy region-based grass generation
+    console.log(`✅ Region ${regionKey} loaded - 11-biome grass system handles grass generation automatically`);
   }
   
   private unloadRegion(region: RegionCoordinates): void {
@@ -786,8 +784,8 @@ export class SceneManager {
     this.structureGenerator.cleanupStructuresForRegion(region);
     this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
     
-    // Remove 3D grass for this region
-    this.grassSystem.removeGrassForRegion(region);
+    // NOTE: 11-biome grass cleanup is handled by the GrassRenderBubbleManager
+    // No need for legacy region-based grass removal
     
     if (loadedRegion.terrain) {
       this.scene.remove(loadedRegion.terrain);
