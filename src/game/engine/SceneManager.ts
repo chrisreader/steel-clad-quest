@@ -197,7 +197,7 @@ export class SceneManager {
     
     // Enhanced shadow settings
     this.directionalLight.shadow.mapSize.width = LIGHTING_CONFIG.directional.shadowMapSize;
-    this.directionalLight.shadow.mapSize.height = LIGHTINGING_CONFIG.directional.shadowMapSize;
+    this.directionalLight.shadow.mapSize.height = LIGHTING_CONFIG.directional.shadowMapSize;
     this.directionalLight.shadow.camera.left = -DAY_NIGHT_CONFIG.shadowCameraSize;
     this.directionalLight.shadow.camera.right = DAY_NIGHT_CONFIG.shadowCameraSize;
     this.directionalLight.shadow.camera.top = DAY_NIGHT_CONFIG.shadowCameraSize;
