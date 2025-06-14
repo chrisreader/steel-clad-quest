@@ -118,10 +118,10 @@ export class MovementSystem {
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
-      // Apply sprint multiplier - increased from 7.5 to 37.5 (5x faster)
+      // Apply sprint multiplier
       let speed = 5.0; // Base movement speed
       if (this.player.getSprinting() && forwardPressed && !backwardPressed) {
-        speed = 37.5; // 5x faster sprint speed (was 7.5, now 37.5)
+        speed = 7.5;
       }
       
       // Transform movement direction relative to camera rotation

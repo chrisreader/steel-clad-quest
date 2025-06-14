@@ -1,9 +1,9 @@
+
 import * as THREE from 'three';
 import { GrassGeometry } from './GrassGeometry';
 import { GrassShader } from './GrassShader';
 import { GrassBladeConfig, BiomeInfo } from './GrassConfig';
-import { DeterministicBiomeManager } from '../biomes/DeterministicBiomeManager';
-import { BiomeBlendingSystem } from '../biomes/BiomeBlendingSystem';
+import { BiomeManager } from '../biomes/BiomeManager';
 import { RegionCoordinates } from '../../world/RingQuadrantSystem';
 
 export class GrassRenderer {
@@ -35,31 +35,28 @@ export class GrassRenderer {
     
     if (!species) return;
 
-    // Get biome-specific color using the new 11-biome system
-    const biomeColor = DeterministicBiomeManager.getBiomeSpeciesColor(speciesName, biomeInfo);
+    // Get biome-specific color
+    const biomeColor = BiomeManager.getBiomeSpeciesColor(speciesName, biomeInfo);
     
     // Create or get geometry
     const geometry = species.clustered 
       ? GrassGeometry.createGrassCluster(species, isGroundGrass ? 7 : 3, isGroundGrass)
       : GrassGeometry.createGrassBladeGeometry(species, 1.0, isGroundGrass);
     
-    // Create or get material with biome type included for unique caching
-    const materialKey = `${speciesName}_${biomeInfo.type}${suffix}`;
+    // Create or get material
+    const materialKey = `${speciesName}${suffix}`;
     let material = isGroundGrass 
       ? this.groundGrassMaterials.get(materialKey)
       : this.grassMaterials.get(materialKey);
     
     if (!material) {
-      // Pass biome type to ensure unique materials per biome
-      material = GrassShader.createGrassMaterial(biomeColor, speciesName, isGroundGrass, biomeInfo.type);
+      material = GrassShader.createGrassMaterial(biomeColor, speciesName, isGroundGrass);
       
       if (isGroundGrass) {
         this.groundGrassMaterials.set(materialKey, material);
       } else {
         this.grassMaterials.set(materialKey, material);
       }
-      
-      console.log(`🎨 Created unique material for ${speciesName} in ${biomeInfo.type} biome with color #${biomeColor.getHexString()}`);
     }
     
     // Apply LOD-based instance count reduction

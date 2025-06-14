@@ -2,165 +2,53 @@ import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
 
 export class BiomeManager {
-  // DRAMATICALLY ENHANCED biome configurations with obvious visual differences for all 11 biomes
+  // DRAMATICALLY ENHANCED biome configurations with obvious visual differences
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
-      densityMultiplier: 1.5,
+      densityMultiplier: 1.5, // Increased from 1.0 for 2x density boost
       heightMultiplier: 1.0,
-      colorModifier: new THREE.Color(0x6db070),
+      colorModifier: new THREE.Color(0x6db070), // Standard green
       speciesDistribution: { meadow: 0.4, prairie: 0.25, clumping: 0.25, fine: 0.1 },
       windExposure: 1.0
     },
     meadow: {
       name: 'Lush Meadow',
-      densityMultiplier: 2.5,
-      heightMultiplier: 1.6,
-      colorModifier: new THREE.Color(0x2d8f2d),
-      speciesDistribution: { meadow: 0.9, prairie: 0.02, clumping: 0.03, fine: 0.05 },
-      windExposure: 0.4
+      densityMultiplier: 2.0, // Increased from 1.3 for very dense, lush appearance
+      heightMultiplier: 1.4, // Increased from 1.1 for dramatically taller grass
+      colorModifier: new THREE.Color(0x4db84d), // Brighter, more vibrant green
+      speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.05, fine: 0.1 }, // Dominated by meadow
+      windExposure: 0.6 // Less wind exposure due to density
     },
     prairie: {
       name: 'Open Prairie',
-      densityMultiplier: 1.0,
-      heightMultiplier: 0.6,
-      colorModifier: new THREE.Color(0xd4af37),
-      speciesDistribution: { meadow: 0.05, prairie: 0.85, clumping: 0.05, fine: 0.05 },
-      windExposure: 2.0
-    },
-    wildflower: {
-      name: 'Wildflower Meadow',
-      densityMultiplier: 2.0,
-      heightMultiplier: 1.2,
-      colorModifier: new THREE.Color(0x8fbc8f),
-      speciesDistribution: { meadow: 0.6, prairie: 0.1, clumping: 0.2, fine: 0.1 },
-      windExposure: 0.8
-    },
-    thicket: {
-      name: 'Dense Thicket',
-      densityMultiplier: 4.0,
-      heightMultiplier: 2.2,
-      colorModifier: new THREE.Color(0x1a4a1a),
-      speciesDistribution: { meadow: 0.3, prairie: 0.05, clumping: 0.6, fine: 0.05 },
-      windExposure: 0.2
-    },
-    steppe: {
-      name: 'Sparse Steppe',
-      densityMultiplier: 0.3,
-      heightMultiplier: 0.4,
-      colorModifier: new THREE.Color(0xb8860b),
-      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.05, fine: 0.1 },
-      windExposure: 3.0
-    },
-    savanna: {
-      name: 'Rolling Savanna',
-      densityMultiplier: 1.2,
-      heightMultiplier: 0.8,
-      colorModifier: new THREE.Color(0xcdaa3d),
-      speciesDistribution: { meadow: 0.2, prairie: 0.6, clumping: 0.15, fine: 0.05 },
-      windExposure: 1.8
-    },
-    valley: {
-      name: 'Lush Valley',
-      densityMultiplier: 3.0,
-      heightMultiplier: 1.4,
-      colorModifier: new THREE.Color(0x32cd32),
-      speciesDistribution: { meadow: 0.7, prairie: 0.1, clumping: 0.15, fine: 0.05 },
-      windExposure: 0.6
-    },
-    windswept: {
-      name: 'Windswept Plain',
-      densityMultiplier: 0.8,
-      heightMultiplier: 0.5,
-      colorModifier: new THREE.Color(0x9acd32),
-      speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.05, fine: 0.15 },
-      windExposure: 2.5
-    },
-    clearing: {
-      name: 'Ancient Clearing',
-      densityMultiplier: 1.6,
-      heightMultiplier: 1.1,
-      colorModifier: new THREE.Color(0x556b2f),
-      speciesDistribution: { meadow: 0.3, prairie: 0.2, clumping: 0.3, fine: 0.2 },
-      windExposure: 1.2
-    },
-    crystalline: {
-      name: 'Crystalline Grove',
-      densityMultiplier: 1.8,
-      heightMultiplier: 1.3,
-      colorModifier: new THREE.Color(0x4682b4),
-      speciesDistribution: { meadow: 0.5, prairie: 0.1, clumping: 0.2, fine: 0.2 },
-      windExposure: 0.7
+      densityMultiplier: 1.2, // Increased from 0.8 for denser coverage
+      heightMultiplier: 0.8, // Reduced from 1.2 for shorter, wind-swept look
+      colorModifier: new THREE.Color(0xb8b84d), // Golden-brown prairie grass
+      speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.15, fine: 0.05 }, // Prairie dominated
+      windExposure: 1.5 // High wind exposure
     }
   };
 
-  // ENHANCED ground grass configurations with much higher density for all 11 biomes
+  // ENHANCED ground grass configurations with much higher density
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
-      densityMultiplier: 10.0,
+      densityMultiplier: 10.0, // Increased from 6.0 for much denser ground coverage
       heightReduction: 0.65,
       speciesDistribution: { meadow: 0.3, prairie: 0.2, clumping: 0.4, fine: 0.1 },
       windReduction: 0.2
     },
     meadow: {
-      densityMultiplier: 15.0,
-      heightReduction: 0.5,
-      speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.05, fine: 0.1 },
-      windReduction: 0.1
-    },
-    prairie: {
-      densityMultiplier: 8.0,
-      heightReduction: 0.8,
-      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.1, fine: 0.05 },
-      windReduction: 0.4
-    },
-    wildflower: {
-      densityMultiplier: 12.0,
-      heightReduction: 0.6,
-      speciesDistribution: { meadow: 0.6, prairie: 0.1, clumping: 0.2, fine: 0.1 },
+      densityMultiplier: 12.0, // Increased from 7.0 for extremely dense meadow floor
+      heightReduction: 0.8, // Less height reduction for lush appearance
+      speciesDistribution: { meadow: 0.7, prairie: 0.05, clumping: 0.05, fine: 0.2 }, // Meadow dominated
       windReduction: 0.15
     },
-    thicket: {
-      densityMultiplier: 20.0,
-      heightReduction: 0.4,
-      speciesDistribution: { meadow: 0.3, prairie: 0.05, clumping: 0.6, fine: 0.05 },
-      windReduction: 0.05
-    },
-    steppe: {
-      densityMultiplier: 4.0,
-      heightReduction: 0.9,
-      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.05, fine: 0.1 },
-      windReduction: 0.6
-    },
-    savanna: {
-      densityMultiplier: 9.0,
-      heightReduction: 0.7,
-      speciesDistribution: { meadow: 0.2, prairie: 0.6, clumping: 0.15, fine: 0.05 },
+    prairie: {
+      densityMultiplier: 8.0, // Increased from 6.0 but less than meadow
+      heightReduction: 0.6, // More height reduction for prairie look
+      speciesDistribution: { meadow: 0.05, prairie: 0.75, clumping: 0.1, fine: 0.1 }, // Prairie dominated
       windReduction: 0.3
-    },
-    valley: {
-      densityMultiplier: 16.0,
-      heightReduction: 0.45,
-      speciesDistribution: { meadow: 0.7, prairie: 0.1, clumping: 0.15, fine: 0.05 },
-      windReduction: 0.12
-    },
-    windswept: {
-      densityMultiplier: 6.0,
-      heightReduction: 0.85,
-      speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.05, fine: 0.15 },
-      windReduction: 0.5
-    },
-    clearing: {
-      densityMultiplier: 11.0,
-      heightReduction: 0.6,
-      speciesDistribution: { meadow: 0.3, prairie: 0.2, clumping: 0.3, fine: 0.2 },
-      windReduction: 0.2
-    },
-    crystalline: {
-      densityMultiplier: 13.0,
-      heightReduction: 0.55,
-      speciesDistribution: { meadow: 0.5, prairie: 0.1, clumping: 0.2, fine: 0.2 },
-      windReduction: 0.18
     }
   };
 

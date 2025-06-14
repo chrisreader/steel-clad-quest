@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 
 export class GrassShader {
@@ -6,11 +7,9 @@ export class GrassShader {
   public static createGrassMaterial(
     baseColor: THREE.Color, 
     species: string = 'meadow',
-    isGroundGrass: boolean = false,
-    biomeType?: string
+    isGroundGrass: boolean = false
   ): THREE.ShaderMaterial {
-    // Include biome type in cache key to ensure unique materials per biome
-    const cacheKey = `${species}_${biomeType || 'default'}_${baseColor.getHexString()}_${isGroundGrass}`;
+    const cacheKey = `${species}_${baseColor.getHexString()}_${isGroundGrass}`;
     
     if (this.materialCache.has(cacheKey)) {
       return this.materialCache.get(cacheKey)!.clone();
