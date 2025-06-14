@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { MathUtils } from '../utils/math/MathUtils';
 import { EnvironmentalFactors } from './EnvironmentalGrassDistribution';
 import { ChunkCoordinate, DeterministicBiomeManager } from './biomes/DeterministicBiomeManager';
+import { BiomeManager } from './biomes/BiomeManager';
 
 export interface SeededGrassData {
   positions: THREE.Vector3[];
@@ -70,10 +71,14 @@ export class SeededGrassDistribution {
         if (seededRandom() < spawnProbability) {
           positions.push(worldPos);
           
-          // Generate seeded scale with ENHANCED BIOME-SPECIFIC variation
+          // Generate seeded scale with ENHANCED BIOME-SPECIFIC variation including position-based height
           const biomeScaleMultiplier = this.getBiomeScaleMultiplier(biomeData.biomeType, isGroundGrass);
+          
+          // Use position-based height multiplier for meadow biomes
+          const positionBasedHeightMultiplier = BiomeManager.getBiomeHeightMultiplier(biomeData.biomeType, worldPos);
+          
           const baseScale = isGroundGrass ? 0.7 : 1.4; // Increased base scales
-          const scaleVariation = biomeConfig.heightMultiplier * biomeScaleMultiplier;
+          const scaleVariation = positionBasedHeightMultiplier * biomeScaleMultiplier;
           
           scales.push(new THREE.Vector3(
             baseScale * (0.6 + seededRandom() * 0.8), // More variation

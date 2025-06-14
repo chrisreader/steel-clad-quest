@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
 
@@ -83,6 +84,33 @@ export class BiomeManager {
 
   public static getGroundConfiguration(biomeType: BiomeType): GroundGrassConfiguration {
     return this.GROUND_CONFIGS[biomeType];
+  }
+
+  /**
+   * Get height multiplier with position-based variation for meadow biomes
+   */
+  public static getBiomeHeightMultiplier(biomeType: BiomeType, position: THREE.Vector3): number {
+    const baseConfig = this.getBiomeConfiguration(biomeType);
+    let heightMultiplier = baseConfig.heightMultiplier;
+    
+    // Add height variation specifically for meadow biomes
+    if (biomeType === 'meadow') {
+      // Create noise-based height variation within the meadow
+      const noiseScale = 0.05; // Controls frequency of height variation
+      const heightNoise = Math.sin(position.x * noiseScale) * Math.cos(position.z * noiseScale) * 
+                         Math.sin(position.x * noiseScale * 1.7) * Math.cos(position.z * noiseScale * 2.3);
+      
+      // Normalize noise to 0-1 range
+      const normalizedNoise = (heightNoise + 1) * 0.5;
+      
+      // Vary between 50% and 100% of original height (1.4 becomes 0.7-1.4)
+      const minMultiplier = heightMultiplier * 0.5; // 50% of original
+      const maxMultiplier = heightMultiplier; // 100% of original
+      
+      heightMultiplier = minMultiplier + normalizedNoise * (maxMultiplier - minMultiplier);
+    }
+    
+    return heightMultiplier;
   }
 
   public static getBiomeSpeciesColor(
