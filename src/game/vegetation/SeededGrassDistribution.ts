@@ -42,8 +42,7 @@ export class SeededGrassDistribution {
     const rotations: THREE.Quaternion[] = [];
     const species: string[] = [];
     
-    const baseSpacing = isGroundGrass ? 2.0 : 3.2;
-    const spacing = baseSpacing;
+    const baseSpacing = isGroundGrass ? 1.5 : 2.8;
     
     // Generate grass positions using seeded sampling
     const startX = chunkCenter.x - chunkSize / 2;
@@ -52,71 +51,68 @@ export class SeededGrassDistribution {
     // Get biome info for this chunk to use in logging
     const chunkBiomeInfo = DeterministicBiomeManager.getBiomeInfo(chunkCenter);
     
-    for (let x = startX; x < startX + chunkSize; x += spacing) {
-      for (let z = startZ; z < startZ + chunkSize; z += spacing) {
-        const offsetX = (seededRandom() - 0.5) * spacing * 0.8;
-        const offsetZ = (seededRandom() - 0.5) * spacing * 0.8;
+    for (let x = startX; x < startX + chunkSize; x += baseSpacing) {
+      for (let z = startZ; z < startZ + chunkSize; z += baseSpacing) {
+        const offsetX = (seededRandom() - 0.5) * baseSpacing * 0.8;
+        const offsetZ = (seededRandom() - 0.5) * baseSpacing * 0.8;
         
         const worldPos = new THREE.Vector3(x + offsetX, 0, z + offsetZ);
         
-        // SIMPLIFIED: Get biome at this position - prefer pure biome properties
+        // Get PURE biome at this position - NO BLENDING unless at edge
         const biomeInfo = DeterministicBiomeManager.getBiomeInfo(worldPos);
         
-        // Use PURE biome config unless in immediate transition zone
-        const biomeConfig = biomeInfo.transitionZone 
-          ? (isGroundGrass 
-             ? BiomeBlendingSystem.getBlendedGroundConfig(worldPos, chunkSeed)
-             : BiomeBlendingSystem.getBlendedBiomeConfig(worldPos, chunkSeed))
-          : (isGroundGrass
-             ? DeterministicBiomeManager.getGroundConfiguration(biomeInfo.type)
-             : DeterministicBiomeManager.getBiomeConfiguration(biomeInfo.type));
+        // Use PURE biome config for dramatic differences
+        const biomeConfig = isGroundGrass
+          ? DeterministicBiomeManager.getGroundConfiguration(biomeInfo.type)
+          : DeterministicBiomeManager.getBiomeConfiguration(biomeInfo.type);
         
-        // Apply PURE biome density for clear distinction
-        const localDensity = biomeConfig.densityMultiplier;
+        // Apply EXTREME density differences
+        const densityMultiplier = biomeConfig.densityMultiplier;
         
-        // Generate position noise for natural distribution
-        const localNoise = FractalNoiseSystem.getWarpedNoise(worldPos, chunkSeed + 5000, 10);
-        
-        const spawnProbability = this.calculateSeededSpawnProbability(
+        // Calculate spawn probability with DRAMATIC biome differences
+        const spawnProbability = this.calculateBiomeSpawnProbability(
           worldPos, 
           chunkSeed, 
           seededRandom,
-          localDensity * (0.9 + localNoise * 0.2)
+          densityMultiplier,
+          biomeInfo.type
         );
         
         if (seededRandom() < spawnProbability) {
           positions.push(worldPos);
           
-          // Use PURE biome height properties for dramatic differences
+          // Use EXTREME height differences
           const heightMultiplier = isGroundGrass
-            ? ('heightReduction' in biomeConfig ? biomeConfig.heightReduction : 0.7)
+            ? (1.0 - ('heightReduction' in biomeConfig ? biomeConfig.heightReduction : 0.7))
             : ('heightMultiplier' in biomeConfig ? biomeConfig.heightMultiplier : 1.0);
           
-          const baseScale = isGroundGrass ? 0.7 : 1.4;
+          // Apply biome-specific scaling
+          let baseScale = isGroundGrass ? 0.6 : 1.2;
           
-          // Add position-based variation
-          const positionNoise = FractalNoiseSystem.getFractalNoise(worldPos, chunkSeed + 2000, 2, 0.5, 2, 0.02);
-          const scaleVariation = heightMultiplier * (0.8 + positionNoise * 0.4);
+          // EXTREME scaling differences based on biome
+          if (biomeInfo.type === 'meadow') {
+            baseScale *= isGroundGrass ? 1.8 : 2.2; // Much larger in meadow
+          } else if (biomeInfo.type === 'prairie') {
+            baseScale *= isGroundGrass ? 0.4 : 0.4; // Much smaller in prairie
+          }
+          
+          const scaleVariation = heightMultiplier * (0.8 + seededRandom() * 0.4);
           
           scales.push(new THREE.Vector3(
-            baseScale * (0.6 + seededRandom() * 0.8), 
-            baseScale * scaleVariation * (0.7 + seededRandom() * 0.6),
-            baseScale * (0.6 + seededRandom() * 0.8)
+            baseScale * (0.7 + seededRandom() * 0.6), 
+            baseScale * scaleVariation * (0.8 + seededRandom() * 0.4),
+            baseScale * (0.7 + seededRandom() * 0.6)
           ));
           
-          // Generate rotation with wind influence
-          const windNoise = FractalNoiseSystem.getFractalNoise(worldPos, chunkSeed + 3000, 2, 0.5, 2, 0.001);
-          const windDirection = windNoise * Math.PI * 2;
-          
+          // Generate rotation
           const randomRotation = seededRandom() * Math.PI * 2;
-          const finalRotation = randomRotation * 0.7 + windDirection * 0.3;
           
           rotations.push(new THREE.Quaternion().setFromAxisAngle(
             new THREE.Vector3(0, 1, 0),
-            finalRotation
+            randomRotation
           ));
           
-          // Select species based on PURE biome properties
+          // Select PURE biome species
           species.push(this.selectPureBiomeSpecies(biomeInfo, seededRandom));
         }
       }
@@ -125,7 +121,7 @@ export class SeededGrassDistribution {
     const grassData: SeededGrassData = { positions, scales, rotations, species };
     cache.set(cacheKey, grassData);
     
-    console.log(`🌱 Generated distinct biome grass for chunk ${chunkKey}: ${positions.length} blades with pure ${chunkBiomeInfo.type} characteristics`);
+    console.log(`🌱 Generated EXTREME ${chunkBiomeInfo.type} biome grass for chunk ${chunkKey}: ${positions.length} blades (density: ${DeterministicBiomeManager.getBiomeConfiguration(chunkBiomeInfo.type).densityMultiplier}x)`);
     
     return grassData;
   }
@@ -138,23 +134,39 @@ export class SeededGrassDistribution {
     };
   }
 
-  private static calculateSeededSpawnProbability(
+  /**
+   * Calculate spawn probability with EXTREME biome differences
+   */
+  private static calculateBiomeSpawnProbability(
     position: THREE.Vector3,
     seed: number,
     seededRandom: () => number,
-    densityFactor: number = 1.0
+    densityMultiplier: number,
+    biomeType: string
   ): number {
-    const detailNoise = FractalNoiseSystem.getFractalNoise(position, seed + 4000, 3, 0.5, 2, 0.05);
+    // Base probability varies dramatically by biome
+    let baseProbability = 0.3; // Default
     
-    let probability = 0.85 + detailNoise * 0.15;
-    probability *= densityFactor;
-    probability *= (0.85 + seededRandom() * 0.3);
+    if (biomeType === 'meadow') {
+      baseProbability = 0.95; // Very high density
+    } else if (biomeType === 'prairie') {
+      baseProbability = 0.15; // Very low density
+    } else {
+      baseProbability = 0.5; // Normal density
+    }
     
-    return MathUtils.clamp(probability, 0.5 * densityFactor, 0.95 * densityFactor);
+    // Apply density multiplier
+    let probability = baseProbability * (densityMultiplier / 2.0);
+    
+    // Add some natural variation
+    const naturalNoise = FractalNoiseSystem.getFractalNoise(position, seed + 4000, 2, 0.5, 2, 0.03);
+    probability *= (0.8 + naturalNoise * 0.4);
+    
+    return MathUtils.clamp(probability, 0.05, 0.98);
   }
 
   /**
-   * SIMPLIFIED: Select species based on PURE biome properties for clear distinction
+   * Select species based on PURE biome properties for clear distinction
    */
   private static selectPureBiomeSpecies(
     biomeInfo: BiomeInfo,
