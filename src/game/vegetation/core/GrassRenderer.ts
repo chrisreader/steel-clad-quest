@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { GrassGeometry } from './GrassGeometry';
 import { GrassShader } from './GrassShader';
 import { GrassBladeConfig, BiomeInfo } from './GrassConfig';
-import { BiomeManager } from '../biomes/BiomeManager';
+import { DeterministicBiomeManager } from '../biomes/DeterministicBiomeManager';
+import { BiomeBlendingSystem } from '../biomes/BiomeBlendingSystem';
 import { RegionCoordinates } from '../../world/RingQuadrantSystem';
 
 export class GrassRenderer {
@@ -35,8 +36,8 @@ export class GrassRenderer {
     
     if (!species) return;
 
-    // Get biome-specific color
-    const biomeColor = BiomeManager.getBiomeSpeciesColor(speciesName, biomeInfo);
+    // Get biome-specific color using the new 11-biome system
+    const biomeColor = DeterministicBiomeManager.getBiomeSpeciesColor(speciesName, biomeInfo);
     
     // Create or get geometry
     const geometry = species.clustered 

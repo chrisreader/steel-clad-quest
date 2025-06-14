@@ -3,7 +3,6 @@ export { GrassSystem } from './GrassSystem';
 export { GrassGeometry } from './core/GrassGeometry';
 export { GrassShader } from './core/GrassShader';
 export { GrassRenderer } from './core/GrassRenderer';
-export { BiomeManager } from './biomes/BiomeManager';
 export { DeterministicBiomeManager } from './biomes/DeterministicBiomeManager';
 export { BiomeBlendingSystem } from './biomes/BiomeBlendingSystem';
 export { FractalNoiseSystem } from './biomes/FractalNoiseSystem';

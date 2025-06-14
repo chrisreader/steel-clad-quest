@@ -73,7 +73,7 @@ export class GrassRenderBubbleManager {
     this.loadQueue.push(...initialChunks);
     this.isInitialized = true;
     
-    console.log(`🌱 Queued ${initialChunks.length} chunks for 200-unit render area`);
+    console.log(`🌱 Queued ${initialChunks.length} chunks for 200-unit render area with 11 distinct biomes`);
   }
 
   public update(playerPosition: THREE.Vector3): void {
@@ -204,6 +204,7 @@ export class GrassRenderBubbleManager {
     
     if (this.loadedChunks.has(chunkKey)) return;
     
+    // Use new biome system to get chunk biome data
     const biomeData = DeterministicBiomeManager.getBiomeForChunk(chunk);
     const biomeInfo = {
       type: biomeData.biomeType,
@@ -265,7 +266,7 @@ export class GrassRenderBubbleManager {
     // Remove from data-only cache if it was there
     this.dataOnlyChunks.delete(chunkKey);
     
-    console.log(`🌱 Loaded 3D chunk ${chunkKey} with ${tallGrassData.positions.length} tall grass, ${groundGrassData.positions.length} ground grass`);
+    console.log(`🌱 Loaded 3D chunk ${chunkKey} (${biomeData.biomeType}) with ${tallGrassData.positions.length} tall grass, ${groundGrassData.positions.length} ground grass`);
   }
 
   private unloadChunk(chunkKey: string): void {
