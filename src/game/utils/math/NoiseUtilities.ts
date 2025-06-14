@@ -37,7 +37,7 @@ export class NoiseUtilities {
   }
   
   /**
-   * Creates organic boundary distortion
+   * Enhanced organic boundary distortion with fractal complexity
    */
   static boundaryDistortion(
     angle: number,
@@ -49,36 +49,63 @@ export class NoiseUtilities {
     const x = Math.cos(angle);
     const y = Math.sin(angle);
     
-    // Multiple noise layers for complex organic shapes
-    const largeScale = this.organicNoise(x * 2 + centerX * 0.001, y * 2 + centerZ * 0.001, seed, 3, 0.5, 1.0, 0.6);
-    const mediumScale = this.organicNoise(x * 8 + centerX * 0.002, y * 8 + centerZ * 0.002, seed + 500, 2, 1.0, 0.5, 0.7);
-    const fineScale = this.organicNoise(x * 20 + centerX * 0.005, y * 20 + centerZ * 0.005, seed + 1000, 2, 2.0, 0.3, 0.8);
+    // Large scale features for major shape variation
+    const largeScale = this.organicNoise(x * 1.5 + centerX * 0.0008, y * 1.5 + centerZ * 0.0008, seed, 4, 0.3, 1.0, 0.6);
     
-    return (largeScale + mediumScale * 0.6 + fineScale * 0.4) * intensity;
+    // Medium scale for organic irregularity
+    const mediumScale = this.organicNoise(x * 6 + centerX * 0.003, y * 6 + centerZ * 0.003, seed + 500, 3, 0.8, 0.7, 0.65);
+    
+    // Fine scale for detailed texture
+    const fineScale = this.organicNoise(x * 25 + centerX * 0.015, y * 25 + centerZ * 0.015, seed + 1000, 3, 3.0, 0.4, 0.75);
+    
+    // Ultra-fine scale for micro-details (fractal-like)
+    const microScale = this.organicNoise(x * 80 + centerX * 0.05, y * 80 + centerZ * 0.05, seed + 1500, 2, 8.0, 0.2, 0.8);
+    
+    // Combine all scales with weighted influence
+    const combined = largeScale + mediumScale * 0.7 + fineScale * 0.5 + microScale * 0.3;
+    
+    return combined * intensity;
   }
   
   /**
-   * Generates variable blend distance along biome edges
+   * Enhanced variable blend distance with fractal variation
    */
   static variableBlendDistance(
     position: THREE.Vector3,
     biomeCenter: THREE.Vector3,
     seed: number,
-    minBlend: number = 2,
-    maxBlend: number = 8
+    minBlend: number = 3,
+    maxBlend: number = 15
   ): number {
-    const noise = this.organicNoise(
-      position.x * 0.1, 
-      position.z * 0.1, 
+    // Primary blend variation
+    const primaryNoise = this.organicNoise(
+      position.x * 0.08, 
+      position.z * 0.08, 
       seed + 2000, 
-      3, 
-      0.05, 
+      4, 
+      0.1, 
       1.0, 
-      0.5
+      0.6
     );
     
-    // Normalize noise to 0-1 range
-    const normalizedNoise = (noise + 1) * 0.5;
+    // Secondary variation for more complexity
+    const secondaryNoise = this.organicNoise(
+      position.x * 0.25,
+      position.z * 0.25,
+      seed + 2500,
+      3,
+      0.3,
+      0.6,
+      0.7
+    );
+    
+    // Distance-based modulation for larger variations near edges
+    const distanceToCenter = position.distanceTo(biomeCenter);
+    const distanceModulation = 1.0 + Math.sin(distanceToCenter * 0.01) * 0.3;
+    
+    // Combine all variations
+    const combinedNoise = (primaryNoise + secondaryNoise * 0.5) * distanceModulation;
+    const normalizedNoise = (combinedNoise + 1) * 0.5; // 0-1 range
     
     return minBlend + normalizedNoise * (maxBlend - minBlend);
   }

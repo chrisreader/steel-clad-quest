@@ -15,7 +15,7 @@ export interface OrganicBiomeShape {
 
 export class OrganicBiomeGenerator {
   /**
-   * Creates an organic, irregular biome shape
+   * Creates highly irregular, fractal-like biome shapes
    */
   static createOrganicBiome(
     center: THREE.Vector3,
@@ -24,26 +24,58 @@ export class OrganicBiomeGenerator {
     seed: number,
     strength: number = 1.0
   ): OrganicBiomeShape {
-    // Generate 8-16 control points around the perimeter for organic shapes
-    const controlPointCount = 8 + Math.floor(NoiseUtilities.seededNoise(seed, 0, 0) * 8);
+    // Generate 12-24 control points for highly irregular shapes
+    const controlPointCount = 12 + Math.floor(NoiseUtilities.seededNoise(seed, 0, 0) * 12);
     const controlPoints: THREE.Vector3[] = [];
-    const shapeComplexity = 0.2 + Math.abs(NoiseUtilities.seededNoise(seed, 1000, 0)) * 0.4;
+    
+    // Enhanced shape complexity (0.4-0.8 for extreme variation)
+    const shapeComplexity = 0.4 + Math.abs(NoiseUtilities.seededNoise(seed, 1000, 0)) * 0.4;
     
     for (let i = 0; i < controlPointCount; i++) {
       const angle = (i / controlPointCount) * Math.PI * 2;
       
-      // Add organic distortion to radius
-      const radiusVariation = 1.0 + NoiseUtilities.boundaryDistortion(
+      // Multi-layer boundary distortion for fractal-like edges
+      const primaryDistortion = NoiseUtilities.boundaryDistortion(
         angle, center.x, center.z, seed, shapeComplexity
       );
       
-      const distortedRadius = baseRadius * radiusVariation;
+      // Add secondary fractal layer
+      const secondaryDistortion = NoiseUtilities.organicNoise(
+        Math.cos(angle) * 5 + center.x * 0.01,
+        Math.sin(angle) * 5 + center.z * 0.01,
+        seed + 2000,
+        4,
+        0.5,
+        0.4,
+        0.7
+      );
+      
+      // Add fine detail layer for "erosion patterns"
+      const fineDistortion = NoiseUtilities.organicNoise(
+        Math.cos(angle) * 20 + center.x * 0.05,
+        Math.sin(angle) * 20 + center.z * 0.05,
+        seed + 3000,
+        3,
+        2.0,
+        0.2,
+        0.8
+      );
+      
+      // Combine all distortion layers
+      const totalDistortion = primaryDistortion + secondaryDistortion * 0.6 + fineDistortion * 0.3;
+      const radiusVariation = 1.0 + totalDistortion;
+      
+      // Clamp to prevent negative radius but allow extreme variation
+      const clampedVariation = Math.max(0.2, Math.min(2.5, radiusVariation));
+      const distortedRadius = baseRadius * clampedVariation;
       
       const x = center.x + Math.cos(angle) * distortedRadius;
       const z = center.z + Math.sin(angle) * distortedRadius;
       
       controlPoints.push(new THREE.Vector3(x, 0, z));
     }
+    
+    console.log(`🔥 FRACTAL BIOME: Created ${biomeType} with ${controlPointCount} control points and complexity ${shapeComplexity.toFixed(2)}`);
     
     return {
       center,
@@ -57,7 +89,7 @@ export class OrganicBiomeGenerator {
   }
   
   /**
-   * Calculate distance from point to organic biome boundary
+   * Enhanced distance calculation with fractal boundary detection
    */
   static getDistanceToOrganicBoundary(
     position: THREE.Vector3,
@@ -67,21 +99,25 @@ export class OrganicBiomeGenerator {
     const angle = Math.atan2(toCenter.z, toCenter.x);
     const distanceToCenter = toCenter.length();
     
-    // Find the closest boundary point using the organic shape
-    const boundaryRadius = this.getBoundaryRadiusAtAngle(angle, biomeShape);
+    // Calculate boundary radius with enhanced fractal distortion
+    const boundaryRadius = this.getEnhancedBoundaryRadius(angle, position, biomeShape);
     
     return distanceToCenter - boundaryRadius;
   }
   
   /**
-   * Get the boundary radius at a specific angle for organic shape
+   * Enhanced boundary radius calculation with multi-scale fractal distortion
    */
-  static getBoundaryRadiusAtAngle(angle: number, biomeShape: OrganicBiomeShape): number {
+  static getEnhancedBoundaryRadius(
+    angle: number, 
+    position: THREE.Vector3,
+    biomeShape: OrganicBiomeShape
+  ): number {
     // Normalize angle to 0-2π
     const normalizedAngle = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
     
-    // Add organic distortion to the radius
-    const organicDistortion = NoiseUtilities.boundaryDistortion(
+    // Primary organic distortion
+    const primaryDistortion = NoiseUtilities.boundaryDistortion(
       normalizedAngle,
       biomeShape.center.x,
       biomeShape.center.z,
@@ -89,11 +125,36 @@ export class OrganicBiomeGenerator {
       biomeShape.shapeComplexity
     );
     
-    return biomeShape.baseRadius * (1.0 + organicDistortion);
+    // Secondary position-based distortion for "erosion patterns"
+    const erosionNoise = NoiseUtilities.organicNoise(
+      position.x * 0.1,
+      position.z * 0.1,
+      biomeShape.seed + 4000,
+      3,
+      0.2,
+      0.3,
+      0.6
+    );
+    
+    // Fine-scale "boundary wobble" for natural irregularity
+    const wobbleNoise = NoiseUtilities.organicNoise(
+      position.x * 0.3,
+      position.z * 0.3,
+      biomeShape.seed + 5000,
+      2,
+      0.8,
+      0.15,
+      0.7
+    );
+    
+    // Combine all distortions
+    const totalDistortion = primaryDistortion + erosionNoise * 0.4 + wobbleNoise * 0.2;
+    
+    return biomeShape.baseRadius * (1.0 + totalDistortion);
   }
   
   /**
-   * Check if a position is inside the organic biome
+   * Check if position is inside the fractal biome shape
    */
   static isInsideOrganicBiome(
     position: THREE.Vector3,
@@ -103,7 +164,7 @@ export class OrganicBiomeGenerator {
   }
   
   /**
-   * Calculate organic influence at position with variable blending
+   * Calculate organic influence with enhanced variable blending and fractal boundaries
    */
   static calculateOrganicInfluence(
     position: THREE.Vector3,
@@ -111,43 +172,57 @@ export class OrganicBiomeGenerator {
   ): number {
     const distanceToBoundary = this.getDistanceToOrganicBoundary(position, biomeShape);
     
-    // Variable blend distance based on position
-    const blendDistance = NoiseUtilities.variableBlendDistance(
+    // Enhanced variable blend distance with position-based variation
+    const baseBlendDistance = NoiseUtilities.variableBlendDistance(
       position,
       biomeShape.center,
       biomeShape.seed,
-      2, // minBlend
-      8  // maxBlend
+      3, // minBlend
+      15  // maxBlend - increased for more gradual transitions
     );
     
+    // Add micro-variation to blend distance for organic edges
+    const blendVariation = NoiseUtilities.organicNoise(
+      position.x * 0.2,
+      position.z * 0.2,
+      biomeShape.seed + 6000,
+      2,
+      0.4,
+      0.3,
+      0.6
+    );
+    
+    const actualBlendDistance = baseBlendDistance * (1.0 + blendVariation * 0.3);
+    
     if (distanceToBoundary <= 0) {
-      // Inside the biome - full strength with some organic variation
+      // Inside the biome - enhanced strength with organic variation
       const innerVariation = 1.0 + NoiseUtilities.organicNoise(
-        position.x * 0.02,
-        position.z * 0.02,
-        biomeShape.seed + 3000,
-        2,
-        1.0,
-        0.1,
+        position.x * 0.05,
+        position.z * 0.05,
+        biomeShape.seed + 7000,
+        3,
+        0.8,
+        0.15,
         0.5
       );
       return Math.min(1.0, biomeShape.strength * innerVariation);
-    } else if (distanceToBoundary <= blendDistance) {
-      // In the transition zone - organic falloff
-      const falloffRatio = 1.0 - (distanceToBoundary / blendDistance);
+    } else if (distanceToBoundary <= actualBlendDistance) {
+      // In the transition zone - enhanced organic falloff
+      const falloffRatio = 1.0 - (distanceToBoundary / actualBlendDistance);
       
-      // Add organic variation to the falloff
+      // Add complex organic variation to falloff
       const falloffNoise = NoiseUtilities.organicNoise(
-        position.x * 0.05,
-        position.z * 0.05,
-        biomeShape.seed + 4000,
-        3,
-        2.0,
-        0.2,
-        0.6
+        position.x * 0.15,
+        position.z * 0.15,
+        biomeShape.seed + 8000,
+        4,
+        1.0,
+        0.25,
+        0.65
       );
       
-      const organicFalloff = falloffRatio + falloffNoise * 0.3;
+      // Enhanced falloff calculation with fractal edges
+      const organicFalloff = falloffRatio + falloffNoise * 0.4;
       return Math.max(0, Math.min(1.0, organicFalloff * biomeShape.strength));
     }
     

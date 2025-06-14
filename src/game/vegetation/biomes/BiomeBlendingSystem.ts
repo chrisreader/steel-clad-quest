@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BiomeType } from '../core/GrassConfig';
 import { OrganicBiomeShape, OrganicBiomeGenerator } from './OrganicBiomeGenerator';
@@ -24,7 +25,7 @@ export interface EnhancedBiomeData {
 
 export class BiomeBlendingSystem {
   /**
-   * Calculate complex biome influences at a position
+   * Calculate complex biome influences at a position with enhanced organic boundaries
    */
   static calculateEnhancedBiomeInfluence(
     position: THREE.Vector3,
@@ -32,12 +33,12 @@ export class BiomeBlendingSystem {
   ): EnhancedBiomeData {
     const influences: BiomeInfluence[] = [];
     
-    // Calculate influence from each organic biome
+    // Calculate influence from each organic biome with enhanced boundary detection
     for (const biome of organicBiomes) {
       const influence = OrganicBiomeGenerator.calculateOrganicInfluence(position, biome);
       const distance = OrganicBiomeGenerator.getDistanceToOrganicBoundary(position, biome);
       
-      if (influence > 0.01) { // Lower threshold to detect more influences
+      if (influence > 0.005) { // Even lower threshold to detect more subtle influences
         influences.push({
           biomeType: biome.biomeType,
           influence,
@@ -47,11 +48,11 @@ export class BiomeBlendingSystem {
       }
     }
     
-    // Add ecological succession influences
-    this.addEcologicalInfluences(position, influences);
+    // Add enhanced ecological succession influences
+    this.addEnhancedEcologicalInfluences(position, influences);
     
-    // Add micro-transition influences for realistic blending
-    this.addMicroTransitionInfluences(position, influences);
+    // Add fractal micro-transition influences for complex boundaries
+    this.addFractalTransitionInfluences(position, influences);
     
     // Sort by influence strength
     influences.sort((a, b) => b.influence - a.influence);
@@ -60,12 +61,12 @@ export class BiomeBlendingSystem {
     const dominantBiome = influences.length > 0 ? influences[0].biomeType : 'normal';
     const totalInfluence = influences.reduce((sum, inf) => sum + inf.influence, 0);
     
-    // Calculate transition intensity based on competing influences
+    // Enhanced transition intensity calculation
     let transitionIntensity = 0;
     if (influences.length > 1) {
-      const topTwo = influences.slice(0, 2);
-      const difference = topTwo[0].influence - topTwo[1].influence;
-      transitionIntensity = Math.max(0, 1.0 - (difference / 0.5));
+      const topThree = influences.slice(0, 3);
+      const difference = topThree[0].influence - (topThree[1]?.influence || 0);
+      transitionIntensity = Math.max(0, 1.0 - (difference / 0.3)); // Lower threshold for more transitions
     }
     
     // Calculate ecological factors
@@ -73,46 +74,78 @@ export class BiomeBlendingSystem {
     
     return {
       dominantBiome,
-      totalInfluence: Math.min(1.0, Math.max(0.6, totalInfluence)), // Ensure minimum 0.6 influence
-      influences: influences.slice(0, 5), // Keep top 5 influences
+      totalInfluence: Math.min(1.0, Math.max(0.7, totalInfluence)), // Higher minimum influence
+      influences: influences.slice(0, 8), // Keep more influences for complex blending
       transitionIntensity,
       ecologicalFactors
     };
   }
   
   /**
-   * Add ecological succession patterns
+   * Enhanced ecological succession patterns with more variation
    */
-  private static addEcologicalInfluences(
+  private static addEnhancedEcologicalInfluences(
     position: THREE.Vector3,
     influences: BiomeInfluence[]
   ): void {
-    // Simulate ecological patterns like water proximity affecting meadow growth
-    const moistureNoise = NoiseUtilities.organicNoise(
-      position.x * 0.003,
-      position.z * 0.003,
+    // Multi-scale moisture patterns for realistic ecological zones
+    const largeMoisture = NoiseUtilities.organicNoise(
+      position.x * 0.001,
+      position.z * 0.001,
       12345,
       4,
-      0.01,
+      0.005,
       1.0,
       0.6
     );
     
-    // High moisture areas favor meadows
-    if (moistureNoise > 0.2) { // Lower threshold
+    const mediumMoisture = NoiseUtilities.organicNoise(
+      position.x * 0.008,
+      position.z * 0.008,
+      12346,
+      3,
+      0.02,
+      0.8,
+      0.7
+    );
+    
+    const combinedMoisture = largeMoisture * 0.7 + mediumMoisture * 0.3;
+    
+    // High moisture areas strongly favor meadows
+    if (combinedMoisture > 0.1) { // Lower threshold
       influences.push({
         biomeType: 'meadow',
-        influence: (moistureNoise - 0.2) * 0.5, // Increased influence
+        influence: (combinedMoisture - 0.1) * 0.8, // Stronger influence
         distance: 0,
         source: 'ecological'
       });
     }
     
-    // Dry areas favor prairie
-    if (moistureNoise < -0.1) { // Lower threshold
+    // Dry areas favor prairie with variable intensity
+    if (combinedMoisture < -0.05) { // Lower threshold
       influences.push({
         biomeType: 'prairie',
-        influence: Math.abs(moistureNoise + 0.1) * 0.4, // Increased influence
+        influence: Math.abs(combinedMoisture + 0.05) * 0.7, // Stronger influence
+        distance: 0,
+        source: 'ecological'
+      });
+    }
+    
+    // Add elevation-based influences
+    const elevation = NoiseUtilities.organicNoise(
+      position.x * 0.0005,
+      position.z * 0.0005,
+      54321,
+      5,
+      0.002,
+      1.0,
+      0.5
+    );
+    
+    if (elevation > 0.3) {
+      influences.push({
+        biomeType: 'prairie',
+        influence: (elevation - 0.3) * 0.4,
         distance: 0,
         source: 'ecological'
       });
@@ -120,28 +153,61 @@ export class BiomeBlendingSystem {
   }
   
   /**
-   * Add micro-transition influences for realistic blending
+   * Add fractal micro-transition influences for complex, organic boundaries
    */
-  private static addMicroTransitionInfluences(
+  private static addFractalTransitionInfluences(
     position: THREE.Vector3,
     influences: BiomeInfluence[]
   ): void {
-    // Create small pockets of different biomes for realism
-    const microNoise = NoiseUtilities.organicNoise(
-      position.x * 0.02,
-      position.z * 0.02,
-      54321,
-      3,
-      0.05,
+    // Multi-octave noise for fractal boundary complexity
+    const fractalNoise = NoiseUtilities.organicNoise(
+      position.x * 0.05,
+      position.z * 0.05,
+      98765,
+      5,
+      0.1,
       1.0,
+      0.65
+    );
+    
+    const fineFractal = NoiseUtilities.organicNoise(
+      position.x * 0.2,
+      position.z * 0.2,
+      98766,
+      3,
+      0.5,
+      0.6,
+      0.8
+    );
+    
+    const combinedFractal = fractalNoise * 0.8 + fineFractal * 0.2;
+    
+    if (Math.abs(combinedFractal) > 0.2) { // Lower threshold for more variation
+      const fractalBiome = combinedFractal > 0 ? 'meadow' : 'prairie';
+      influences.push({
+        biomeType: fractalBiome,
+        influence: (Math.abs(combinedFractal) - 0.2) * 0.5, // Stronger influence
+        distance: 0,
+        source: 'transition'
+      });
+    }
+    
+    // Add "biome tendrils" - finger-like extensions
+    const tendrilNoise = NoiseUtilities.organicNoise(
+      position.x * 0.15,
+      position.z * 0.15,
+      11111,
+      4,
+      0.3,
+      0.8,
       0.7
     );
     
-    if (Math.abs(microNoise) > 0.4) { // Lower threshold
-      const microBiome = microNoise > 0 ? 'meadow' : 'prairie';
+    if (Math.abs(tendrilNoise) > 0.4) {
+      const tendrilBiome = tendrilNoise > 0 ? 'meadow' : 'normal';
       influences.push({
-        biomeType: microBiome,
-        influence: (Math.abs(microNoise) - 0.4) * 0.3, // Increased influence
+        biomeType: tendrilBiome,
+        influence: (Math.abs(tendrilNoise) - 0.4) * 0.3,
         distance: 0,
         source: 'transition'
       });
@@ -164,7 +230,7 @@ export class BiomeBlendingSystem {
       0.01,
       1.0,
       0.5
-    ) + 1) * 0.5; // 0-1 range
+    ) + 1) * 0.5;
     
     const elevation = (NoiseUtilities.organicNoise(
       position.x * 0.001,
@@ -174,7 +240,7 @@ export class BiomeBlendingSystem {
       0.005,
       1.0,
       0.6
-    ) + 1) * 0.5; // 0-1 range
+    ) + 1) * 0.5;
     
     const biodiversity = (NoiseUtilities.organicNoise(
       position.x * 0.008,
@@ -184,13 +250,13 @@ export class BiomeBlendingSystem {
       0.02,
       1.0,
       0.4
-    ) + 1) * 0.5; // 0-1 range
+    ) + 1) * 0.5;
     
     return { moisture, elevation, biodiversity };
   }
   
   /**
-   * Generate random organic biome layout for a world seed - ENHANCED
+   * Generate enhanced organic biome layout with variable sizes and irregular shapes
    */
   static generateOrganicBiomeLayout(
     worldSeed: number,
@@ -201,14 +267,14 @@ export class BiomeBlendingSystem {
     const biomes: OrganicBiomeShape[] = [];
     const biomeSeed = worldSeed + regionX * 73856093 + regionZ * 19349663;
     
-    // Generate 4-7 organic biomes per region (increased from 3-8)
-    const biomeCount = 4 + Math.floor(Math.abs(NoiseUtilities.seededNoise(biomeSeed, 0, 0)) * 3);
+    // Generate 6-10 organic biomes per region for better coverage
+    const biomeCount = 6 + Math.floor(Math.abs(NoiseUtilities.seededNoise(biomeSeed, 0, 0)) * 4);
     
     for (let i = 0; i < biomeCount; i++) {
       const seedOffset = i * 1000;
       
-      // Random position within region with some padding
-      const padding = regionSize * 0.05; // Reduced padding
+      // Reduced padding to allow biomes to reach edges
+      const padding = regionSize * 0.02; // Much smaller padding
       const x = regionX * regionSize + padding + 
         Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 1, 0)) * (regionSize - 2 * padding);
       const z = regionZ * regionSize + padding + 
@@ -216,24 +282,37 @@ export class BiomeBlendingSystem {
       
       const center = new THREE.Vector3(x, 0, z);
       
-      // Enhanced biome type distribution for better coverage
+      // Enhanced biome type distribution with more variation
       const biomeRandom = NoiseUtilities.seededNoise(biomeSeed + seedOffset, 3, 0);
       let biomeType: BiomeType;
       
-      if (biomeRandom > 0.2) {
+      if (biomeRandom > 0.15) {
         biomeType = 'meadow';
-      } else if (biomeRandom > -0.3) {
+      } else if (biomeRandom > -0.4) {
         biomeType = 'prairie';
       } else {
         biomeType = 'normal';
       }
       
-      // Larger, more impactful radius (50-150 units)
+      // Much more variable radius (25-200 units for extreme size variation)
       const radiusRandom = Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 4, 0));
-      const radius = 50 + radiusRandom * 100; // Increased from 30-120
+      const secondaryRadius = Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 5, 0));
       
-      // Higher strength for more visible impact
-      const strength = 0.7 + Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 5, 0)) * 0.3;
+      // Bimodal distribution for both very small and very large biomes
+      let radius: number;
+      if (radiusRandom > 0.7) {
+        // Large biomes (120-200 units)
+        radius = 120 + secondaryRadius * 80;
+      } else if (radiusRandom > 0.3) {
+        // Medium biomes (60-120 units)
+        radius = 60 + secondaryRadius * 60;
+      } else {
+        // Small biomes (25-60 units)
+        radius = 25 + secondaryRadius * 35;
+      }
+      
+      // Enhanced strength for more visible impact
+      const strength = 0.8 + Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 6, 0)) * 0.2;
       
       const organicBiome = OrganicBiomeGenerator.createOrganicBiome(
         center,
@@ -246,7 +325,7 @@ export class BiomeBlendingSystem {
       biomes.push(organicBiome);
     }
     
-    console.log(`🌿 ENHANCED ORGANIC: Generated ${biomes.length} biomes for region ${regionX}_${regionZ}`);
+    console.log(`🌿 ENHANCED ORGANIC v2: Generated ${biomes.length} highly variable biomes for region ${regionX}_${regionZ}`);
     return biomes;
   }
 }
