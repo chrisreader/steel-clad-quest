@@ -121,6 +121,7 @@ export class OrganicBiomeGenerator {
     // Small, clean blend distance for sharp transitions
     const blendDistance = 2 + Math.abs(NoiseUtilities.seededNoise(
       position.x * 0.1 + position.z * 0.1,
+      0,
       biomeShape.seed
     )) * 3; // 2-5 units blend distance
     
