@@ -185,7 +185,7 @@ export class GrassRenderBubbleManager {
     isGroundGrass: boolean
   ): void {
     const chunkKey = DeterministicBiomeManager.getChunkKey(chunk);
-    const biomeData = DeterministicBiomeManager.getBiomeForChunk(chunk);
+    const biomeInfo = DeterministicBiomeManager.getBiomeInfo(DeterministicBiomeManager.chunkToWorldPosition(chunk));
 
     // Group species by type
     const speciesMap: { [species: string]: number[] } = {};
@@ -205,6 +205,7 @@ export class GrassRenderBubbleManager {
       const speciesScales = indices.map(i => grassData.scales[i]);
       const speciesRotations = indices.map(i => grassData.rotations[i]);
 
+      // Updated to use chunk-based system instead of region-based
       this.renderer.createInstancedMesh(
         chunkKey,
         species,
@@ -213,8 +214,8 @@ export class GrassRenderBubbleManager {
           scales: speciesScales,
           rotations: speciesRotations
         },
-        chunk,
-        DeterministicBiomeManager.getBiomeInfo(DeterministicBiomeManager.chunkToWorldPosition(chunk)),
+        { x: 0, z: 0 }, // Dummy region coordinate since we're using chunk-based system
+        biomeInfo,
         isGroundGrass,
         1.0 // Full LOD
       );
