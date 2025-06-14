@@ -540,20 +540,20 @@ export class RealisticTreeGenerator {
 
   private createStackedPineCones(species: TreeSpeciesType, height: number): THREE.Mesh[] {
     const cones: THREE.Mesh[] = [];
-    const coneCount = 6 + Math.floor(Math.random() * 3); // 6-8 cones
+    const coneCount = 4 + Math.floor(Math.random() * 2); // 4-5 cones instead of 6-8
     
     for (let i = 0; i < coneCount; i++) {
       const heightRatio = i / (coneCount - 1);
       
-      // Cone size decreases from bottom to top
-      const baseRadius = 3.5 - (heightRatio * 2.5); // 3.5 to 1.0
-      const coneHeight = 2.5 - (heightRatio * 1.0); // 2.5 to 1.5
+      // Much larger cone sizes with better proportions
+      const baseRadius = 5.5 - (heightRatio * 3.5); // 5.5 to 2.0 (much larger)
+      const coneHeight = 3.5 - (heightRatio * 1.5); // 3.5 to 2.0 (taller cones)
       
-      // Create cone geometry
+      // Create wider, more natural cone geometry
       const geometry = new THREE.ConeGeometry(
-        Math.max(0.5, baseRadius + (Math.random() - 0.5) * 0.3),
-        coneHeight + (Math.random() - 0.5) * 0.2,
-        12,
+        Math.max(1.0, baseRadius + (Math.random() - 0.5) * 0.4),
+        coneHeight + (Math.random() - 0.5) * 0.3,
+        16, // More segments for smoother look
         1
       );
       
@@ -564,17 +564,17 @@ export class RealisticTreeGenerator {
         const y = positions.getY(j);
         const z = positions.getZ(j);
         
-        // Add slight irregularity
-        const noise = (Math.random() - 0.5) * 0.1;
+        // Add slight irregularity for organic look
+        const noise = (Math.random() - 0.5) * 0.08;
         positions.setX(j, x + noise);
         positions.setZ(j, z + noise);
       }
       geometry.computeVertexNormals();
       
-      // Varying green shades for each cone level
-      const greenHue = 0.22 + (Math.random() - 0.5) * 0.02;
-      const saturation = 0.8 - (heightRatio * 0.1); // Slightly less saturated at top
-      const lightness = 0.15 + (Math.random() * 0.05); // Dark green variations
+      // More natural green color progression
+      const greenHue = 0.22 + (Math.random() - 0.5) * 0.015;
+      const saturation = 0.85 - (heightRatio * 0.15); // Darker at bottom, lighter at top
+      const lightness = 0.12 + (heightRatio * 0.06) + (Math.random() * 0.03); // Gradual lightening
       
       const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color().setHSL(greenHue, saturation, lightness),
@@ -586,16 +586,35 @@ export class RealisticTreeGenerator {
       
       const cone = new THREE.Mesh(geometry, material);
       
-      // Position cones vertically with slight overlap
-      const coneY = height * 0.25 + (i * 2.8) - (coneHeight * 0.3); // Slight overlap
+      // Calculate position with significant overlap (60-70%)
+      const overlapFactor = 0.65; // 65% overlap
+      let coneY;
+      
+      if (i === 0) {
+        // Bottom cone starts at base
+        coneY = height * 0.2 + (coneHeight * 0.5);
+      } else {
+        // Each subsequent cone overlaps significantly with the previous one
+        const previousCone = cones[i - 1];
+        const previousConeHeight = 3.5 - ((i - 1) / (coneCount - 1)) * 1.5;
+        coneY = previousCone.position.y + (previousConeHeight * (1 - overlapFactor)) + (coneHeight * 0.5);
+      }
+      
+      // For the top cone, ensure it covers the trunk tip completely
+      if (i === coneCount - 1) {
+        const trunkTip = height;
+        // Position top cone so its bottom is at or slightly below trunk tip
+        coneY = Math.max(coneY, trunkTip - (coneHeight * 0.3));
+      }
+      
       cone.position.set(
-        (Math.random() - 0.5) * 0.1, // Very slight horizontal offset
+        (Math.random() - 0.5) * 0.08, // Minimal horizontal offset
         coneY,
-        (Math.random() - 0.5) * 0.1
+        (Math.random() - 0.5) * 0.08
       );
       
-      // Slight rotation for natural variation
-      cone.rotation.y = Math.random() * Math.PI * 0.2;
+      // Very slight rotation for natural variation
+      cone.rotation.y = Math.random() * Math.PI * 0.1;
       
       cone.castShadow = true;
       cone.receiveShadow = true;
