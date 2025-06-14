@@ -127,7 +127,7 @@ export class GrassGeometry {
     return group;
   }
 
-  private static createSingleGrassBlade(config: GrassBladeConfig): THREE.BufferGeometry {
+  public static createSingleGrassBlade(config: GrassBladeConfig): THREE.BufferGeometry {
     const cacheKey = `${config.species}_${config.height}_${config.width}_${config.segments}`;
     
     if (this.geometryCache.has(cacheKey)) {
@@ -176,11 +176,12 @@ export class GrassGeometry {
     return geometry.clone();
   }
 
-  // Specialized creation methods that don't call each other
+  // Specialized creation methods for specific biomes
   public static createWildflowerCluster(position: THREE.Vector3): THREE.Group {
     const group = new THREE.Group();
     
     // Create main wildflower grass
+    const grassConfig = this.getGrassSpecies('wildflower');
     const grassCluster = this.createGrassCluster(position, 'wildflower');
     group.add(grassCluster);
     

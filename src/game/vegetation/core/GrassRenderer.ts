@@ -31,17 +31,26 @@ export class GrassRenderer {
     lodLevel: number = 1.0
   ): void {
     const suffix = isGroundGrass ? '_ground' : '';
-    const species = GrassGeometry.getGrassSpecies().find(s => s.species === speciesName);
+    const species = GrassGeometry.getGrassSpecies(speciesName);
     
     if (!species) return;
 
     // Get biome-specific color
     const biomeColor = BiomeManager.getBiomeSpeciesColor(speciesName, biomeInfo);
     
-    // Create or get geometry
-    const geometry = species.clustered 
-      ? GrassGeometry.createGrassCluster(species, isGroundGrass ? 7 : 3, isGroundGrass)
-      : GrassGeometry.createGrassBladeGeometry(species, 1.0, isGroundGrass);
+    // Create geometry based on species type
+    let geometry: THREE.BufferGeometry;
+    if (species.clustered) {
+      const clusterGroup = GrassGeometry.createGrassCluster(
+        new THREE.Vector3(0, 0, 0), 
+        speciesName
+      );
+      // Extract geometry from the first mesh in the cluster
+      const firstMesh = clusterGroup.children[0] as THREE.Mesh;
+      geometry = firstMesh.geometry;
+    } else {
+      geometry = GrassGeometry.createSingleGrassBlade(species);
+    }
     
     // Create or get material
     const materialKey = `${speciesName}${suffix}`;
@@ -178,7 +187,7 @@ export class GrassRenderer {
     this.groundGrassMaterials.clear();
     
     // Clean up cached resources
-    GrassGeometry.dispose();
+    GrassGeometry.clearCache();
     GrassShader.dispose();
   }
 }
