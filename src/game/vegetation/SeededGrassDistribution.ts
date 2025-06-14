@@ -67,9 +67,7 @@ export class SeededGrassDistribution {
           : BiomeBlendingSystem.getBlendedBiomeConfig(worldPos, chunkSeed);
         
         // Adjust density based on blended biome properties
-        const localDensity = isGroundGrass
-          ? biomeConfig.densityMultiplier
-          : biomeConfig.densityMultiplier;
+        const localDensity = biomeConfig.densityMultiplier;
         
         // Generate detailed position-specific noise for more natural distribution
         const localNoise = FractalNoiseSystem.getWarpedNoise(worldPos, chunkSeed + 5000, 10);
@@ -87,8 +85,8 @@ export class SeededGrassDistribution {
           
           // Generate seeded scale with blended biome-specific variation
           const heightMultiplier = isGroundGrass
-            ? biomeConfig.heightReduction
-            : biomeConfig.heightMultiplier;
+            ? ('heightReduction' in biomeConfig ? biomeConfig.heightReduction : 0.7)
+            : ('heightMultiplier' in biomeConfig ? biomeConfig.heightMultiplier : 1.0);
           
           const baseScale = isGroundGrass ? 0.7 : 1.4;
           

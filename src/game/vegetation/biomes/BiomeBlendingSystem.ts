@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
 import { FractalNoiseSystem } from './FractalNoiseSystem';
@@ -204,7 +203,12 @@ export class BiomeBlendingSystem {
     let totalDensity = 0;
     let totalHeight = 0;
     let totalWind = 0;
-    const speciesDistribution: Record<string, number> = {};
+    const speciesDistribution: { meadow: number; prairie: number; clumping: number; fine: number } = {
+      meadow: 0,
+      prairie: 0,
+      clumping: 0,
+      fine: 0
+    };
     let totalInfluence = 0;
     
     // Calculate weighted sums
@@ -216,15 +220,22 @@ export class BiomeBlendingSystem {
       totalWind += config.windExposure * influence;
       
       // Blend species distributions
-      for (const [species, probability] of Object.entries(config.speciesDistribution)) {
-        speciesDistribution[species] = (speciesDistribution[species] || 0) + probability * influence;
-      }
+      speciesDistribution.meadow += config.speciesDistribution.meadow * influence;
+      speciesDistribution.prairie += config.speciesDistribution.prairie * influence;
+      speciesDistribution.clumping += config.speciesDistribution.clumping * influence;
+      speciesDistribution.fine += config.speciesDistribution.fine * influence;
       
       totalInfluence += influence;
     }
     
     // Normalize the result
     const normFactor = 1 / totalInfluence;
+    
+    // Normalize species distribution
+    speciesDistribution.meadow *= normFactor;
+    speciesDistribution.prairie *= normFactor;
+    speciesDistribution.clumping *= normFactor;
+    speciesDistribution.fine *= normFactor;
     
     // Build blended config
     result = {
@@ -261,7 +272,12 @@ export class BiomeBlendingSystem {
     let totalDensity = 0;
     let totalHeightReduction = 0;
     let totalWindReduction = 0;
-    const speciesDistribution: Record<string, number> = {};
+    const speciesDistribution: { meadow: number; prairie: number; clumping: number; fine: number } = {
+      meadow: 0,
+      prairie: 0,
+      clumping: 0,
+      fine: 0
+    };
     let totalInfluence = 0;
     
     // Calculate weighted sums
@@ -272,15 +288,22 @@ export class BiomeBlendingSystem {
       totalWindReduction += config.windReduction * influence;
       
       // Blend species distributions
-      for (const [species, probability] of Object.entries(config.speciesDistribution)) {
-        speciesDistribution[species] = (speciesDistribution[species] || 0) + probability * influence;
-      }
+      speciesDistribution.meadow += config.speciesDistribution.meadow * influence;
+      speciesDistribution.prairie += config.speciesDistribution.prairie * influence;
+      speciesDistribution.clumping += config.speciesDistribution.clumping * influence;
+      speciesDistribution.fine += config.speciesDistribution.fine * influence;
       
       totalInfluence += influence;
     }
     
     // Normalize
     const normFactor = 1 / totalInfluence;
+    
+    // Normalize species distribution
+    speciesDistribution.meadow *= normFactor;
+    speciesDistribution.prairie *= normFactor;
+    speciesDistribution.clumping *= normFactor;
+    speciesDistribution.fine *= normFactor;
     
     // Build blended config
     result = {
