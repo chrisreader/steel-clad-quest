@@ -1,5 +1,6 @@
 
 export { TreeGenerator } from './TreeGenerator';
+export { EnhancedTreeGenerator, type TreeSpecies, type TreeConfig, type ProceduralTreeOptions } from './EnhancedTreeGenerator';
 export { BushGenerator } from './BushGenerator';
 export { OrganicShapeGenerator } from './OrganicShapeGenerator';
 export { RealisticMaterialGenerator } from './RealisticMaterialGenerator';

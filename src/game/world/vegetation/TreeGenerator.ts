@@ -1,21 +1,29 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { TREE_CONFIG } from './VegetationConfig';
+import { EnhancedTreeGenerator, TreeSpecies } from './EnhancedTreeGenerator';
+import { BiomeType } from '../../vegetation/core/GrassConfig';
 
 export class TreeGenerator {
-  private treeModels: THREE.Object3D[] = [];
+  private enhancedGenerator: EnhancedTreeGenerator;
+  private legacyModels: THREE.Object3D[] = [];
 
   constructor() {
-    this.loadTreeModels();
+    // Initialize enhanced tree generator
+    this.enhancedGenerator = new EnhancedTreeGenerator();
+    
+    // Keep legacy models for backward compatibility
+    this.loadLegacyTreeModels();
+    
+    console.log(`🌳 TreeGenerator: Enhanced system with 5 realistic species initialized`);
   }
 
-  private loadTreeModels(): void {
-    // Tree models (3 variations) - Keep existing tree graphics
+  private loadLegacyTreeModels(): void {
+    // Keep existing simple tree models for fallback
     for (let i = 0; i < 3; i++) {
       const treeHeight = TREE_CONFIG.height;
-      const treeWidth = TREE_CONFIG.trunkRadius + Math.random() * 0.3; // 0.3-0.6 radius
+      const treeWidth = TREE_CONFIG.trunkRadius + Math.random() * 0.3;
       
-      // Tree trunk (larger than before)
       const trunk = new THREE.Mesh(
         new THREE.CylinderGeometry(treeWidth, treeWidth * TREE_CONFIG.trunkRadiusBottom, treeHeight, 12),
         new THREE.MeshLambertMaterial({ 
@@ -30,7 +38,7 @@ export class TreeGenerator {
       const tree = new THREE.Group();
       tree.add(trunk);
       
-      // Tree leaves (3 layers like original)
+      // Legacy leaf layers
       for (let layer = 0; layer < TREE_CONFIG.layerCount; layer++) {
         const leavesGeometry = new THREE.ConeGeometry(2.5 - layer * 0.3, 4, 8);
         const leavesColor = new THREE.Color().setHSL(0.3, 0.7, 0.5 + Math.random() * 0.3);
@@ -40,27 +48,35 @@ export class TreeGenerator {
           opacity: 0.9
         });
         const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-        leaves.position.y = 7 + layer * 1.5; // Heights: 7, 8.5, 10
+        leaves.position.y = 7 + layer * 1.5;
         leaves.castShadow = true;
         leaves.receiveShadow = true;
         tree.add(leaves);
       }
       
-      this.treeModels.push(tree);
+      this.legacyModels.push(tree);
     }
-    
-    console.log(`🌲 Created ${this.treeModels.length} tree variations`);
   }
 
   public getTreeModels(): THREE.Object3D[] {
-    return this.treeModels;
+    // Return enhanced models
+    return this.enhancedGenerator.getTreeModels();
   }
 
-  public createTree(position: THREE.Vector3): THREE.Object3D | null {
-    if (this.treeModels.length === 0) return null;
+  public createTree(position: THREE.Vector3, biomeType?: BiomeType): THREE.Object3D | null {
+    // Use enhanced tree generation
+    const enhancedTree = this.enhancedGenerator.createTree(position, biomeType);
     
-    const modelIndex = Math.floor(Math.random() * this.treeModels.length);
-    const model = this.treeModels[modelIndex].clone();
+    if (enhancedTree) {
+      console.log(`🌳 Created enhanced tree at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}) for biome: ${biomeType || 'default'}`);
+      return enhancedTree;
+    }
+    
+    // Fallback to legacy if needed
+    if (this.legacyModels.length === 0) return null;
+    
+    const modelIndex = Math.floor(Math.random() * this.legacyModels.length);
+    const model = this.legacyModels[modelIndex].clone();
     
     model.rotation.y = Math.random() * Math.PI * 2;
     const scale = 0.8 + Math.random() * 0.4;
@@ -68,11 +84,22 @@ export class TreeGenerator {
     
     model.position.copy(position);
     
+    console.log(`🌳 Created legacy fallback tree at (${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
     return model;
   }
 
+  public createSpecificTree(species: TreeSpecies, position: THREE.Vector3): THREE.Object3D | null {
+    // Direct species creation for specific use cases
+    const tree = this.enhancedGenerator.createTree(position);
+    return tree;
+  }
+
   public dispose(): void {
-    this.treeModels.forEach(tree => {
+    // Dispose enhanced generator
+    this.enhancedGenerator.dispose();
+    
+    // Dispose legacy models
+    this.legacyModels.forEach(tree => {
       tree.traverse(child => {
         if (child instanceof THREE.Mesh) {
           if (child.geometry) child.geometry.dispose();
@@ -86,6 +113,8 @@ export class TreeGenerator {
         }
       });
     });
-    this.treeModels.length = 0;
+    this.legacyModels.length = 0;
+    
+    console.log('🌳 TreeGenerator disposed');
   }
 }
