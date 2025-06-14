@@ -15,9 +15,21 @@ export interface GrassBladeConfig {
   segments: number;
   curve: number;
   taper: number;
-  species: 'meadow' | 'prairie' | 'clumping' | 'fine';
+  species: 'meadow' | 'prairie' | 'clumping' | 'fine' | 'wildflower' | 'reed' | 'fern' | 'crystal' | 'shrub' | 'thicket';
   color: THREE.Color;
   clustered: boolean;
+  hasFlowers?: boolean;
+  emissive?: THREE.Color;
+  windResistance?: number;
+}
+
+export interface FlowerConfig {
+  type: 'daisy' | 'poppy' | 'cornflower' | 'violet' | 'crystal_bloom';
+  color: THREE.Color;
+  size: number;
+  stemHeight: number;
+  petalCount: number;
+  bloomSeason: 'spring' | 'summer' | 'autumn' | 'all';
 }
 
 export interface BiomeConfiguration {
@@ -30,8 +42,21 @@ export interface BiomeConfiguration {
     prairie: number;
     clumping: number;
     fine: number;
+    wildflower?: number;
+    reed?: number;
+    fern?: number;
+    crystal?: number;
+    shrub?: number;
+    thicket?: number;
   };
   windExposure: number;
+  rarity?: number;
+  specialFeatures?: {
+    hasFlowers?: boolean;
+    hasMagicalGlow?: boolean;
+    hasParticleEffects?: boolean;
+    windBentGrass?: boolean;
+  };
 }
 
 export interface GroundGrassConfiguration {
@@ -42,11 +67,28 @@ export interface GroundGrassConfiguration {
     prairie: number;
     clumping: number;
     fine: number;
+    wildflower?: number;
+    reed?: number;
+    fern?: number;
+    crystal?: number;
+    shrub?: number;
+    thicket?: number;
   };
   windReduction: number;
 }
 
-export type BiomeType = 'normal' | 'meadow' | 'prairie';
+export type BiomeType = 
+  | 'normal' 
+  | 'meadow' 
+  | 'prairie'
+  | 'wildflower_meadow'
+  | 'dense_thicket'
+  | 'sparse_steppe'
+  | 'rolling_savanna'
+  | 'lush_valley'
+  | 'windswept_plain'
+  | 'ancient_clearing'
+  | 'crystalline_grove';
 
 export interface BiomeInfo {
   type: BiomeType;

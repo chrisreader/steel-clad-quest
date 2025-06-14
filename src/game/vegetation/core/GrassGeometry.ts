@@ -1,11 +1,32 @@
 
 import * as THREE from 'three';
 import { GrassBladeConfig } from './GrassConfig';
+import { VegetationGeometry } from './VegetationGeometry';
 
 export class GrassGeometry {
   private static geometryCache = new Map<string, THREE.BufferGeometry>();
 
   public static createGrassBladeGeometry(
+    config: GrassBladeConfig,
+    heightVariation: number = 1.0,
+    isGroundGrass: boolean = false
+  ): THREE.BufferGeometry {
+    // Use specialized geometry for new species
+    switch (config.species) {
+      case 'reed':
+        return VegetationGeometry.createReedGeometry(config);
+      case 'fern':
+        return VegetationGeometry.createFernGeometry(config);
+      case 'crystal':
+        return VegetationGeometry.createCrystalGrassGeometry(config);
+      case 'shrub':
+        return VegetationGeometry.createShrubGeometry(config);
+      default:
+        return this.createStandardGrassGeometry(config, heightVariation, isGroundGrass);
+    }
+  }
+
+  private static createStandardGrassGeometry(
     config: GrassBladeConfig,
     heightVariation: number = 1.0,
     isGroundGrass: boolean = false
@@ -138,6 +159,8 @@ export class GrassGeometry {
       case 'prairie': return { curveFactor: 1.3, taperRate: 0.5 };
       case 'clumping': return { curveFactor: 0.8, taperRate: 0.9 };
       case 'fine': return { curveFactor: 1.1, taperRate: 0.3 };
+      case 'wildflower': return { curveFactor: 0.9, taperRate: 0.6 };
+      case 'thicket': return { curveFactor: 0.6, taperRate: 0.3 };
       default: return { curveFactor: 1.0, taperRate: 0.7 };
     }
   }
@@ -148,12 +171,15 @@ export class GrassGeometry {
       case 'prairie': return 1.0 - (Math.pow(t, 1.5) * taper);
       case 'clumping': return 1.0 - (t * taper * 0.8);
       case 'fine': return 1.0 - (Math.pow(t, 2.5) * taper);
+      case 'wildflower': return 1.0 - (t * taper * 0.9);
+      case 'thicket': return 1.0 - (t * taper * 0.4); // Less taper for thick grass
       default: return 1.0 - (t * taper);
     }
   }
 
   public static getGrassSpecies(): GrassBladeConfig[] {
     return [
+      // Original species
       {
         height: 0.4, width: 0.08, segments: 4, curve: 0.2, taper: 0.8,
         species: 'fine', color: new THREE.Color(0x6b8f47), clustered: false
@@ -169,6 +195,32 @@ export class GrassGeometry {
       {
         height: 0.35, width: 0.1, segments: 4, curve: 0.15, taper: 0.9,
         species: 'clumping', color: new THREE.Color(0x7a9451), clustered: true
+      },
+      // New species for enhanced biomes
+      {
+        height: 0.5, width: 0.1, segments: 5, curve: 0.25, taper: 0.6,
+        species: 'wildflower', color: new THREE.Color(0x65a350), clustered: true, hasFlowers: true
+      },
+      {
+        height: 1.2, width: 0.2, segments: 7, curve: 0.2, taper: 0.3,
+        species: 'reed', color: new THREE.Color(0x6b7c4a), clustered: false, windResistance: 0.3
+      },
+      {
+        height: 0.7, width: 0.18, segments: 6, curve: 0.35, taper: 0.8,
+        species: 'fern', color: new THREE.Color(0x4a6b3a), clustered: true
+      },
+      {
+        height: 0.9, width: 0.12, segments: 8, curve: 0.1, taper: 0.5,
+        species: 'crystal', color: new THREE.Color(0x7bb8c7), clustered: false, 
+        emissive: new THREE.Color(0x1a3d4a)
+      },
+      {
+        height: 0.6, width: 0.25, segments: 4, curve: 0.1, taper: 0.4,
+        species: 'shrub', color: new THREE.Color(0x5a7a3a), clustered: true
+      },
+      {
+        height: 1.8, width: 0.25, segments: 8, curve: 0.15, taper: 0.2,
+        species: 'thicket', color: new THREE.Color(0x3d5a2a), clustered: true, windResistance: 0.1
       }
     ];
   }
@@ -178,5 +230,6 @@ export class GrassGeometry {
       geometry.dispose();
     }
     this.geometryCache.clear();
+    VegetationGeometry.dispose();
   }
 }
