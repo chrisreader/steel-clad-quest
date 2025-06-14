@@ -23,8 +23,8 @@ export class GrassSystem {
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 8;
-  private readonly FOG_CHECK_INTERVAL: number = 150;
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 12; // Reduced frequency for better FPS
+  private readonly FOG_CHECK_INTERVAL: number = 200; // Less frequent fog checks
   
   // Player tracking
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -41,13 +41,13 @@ export class GrassSystem {
     // Initialize deterministic biome system
     DeterministicBiomeManager.setWorldSeed(12345); // Could be set from game config
     
-    console.log('🌱 Grass system initialized with persistent player-following render bubble');
+    console.log('🌱 Grass system initialized with 200-unit render optimization for improved FPS');
   }
   
-  // New method to initialize grass coverage
-  public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 600): void {
-    console.log(`🌱 Initializing grass system at position: ${playerPosition.x}, ${playerPosition.z} with radius: ${coverageRadius}`);
-    this.bubbleManager.initializeWithCoverage(playerPosition, coverageRadius);
+  // Updated method to use 200-unit optimization
+  public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 200): void {
+    console.log(`🌱 Initializing grass system with 200-unit FPS-optimized radius`);
+    this.bubbleManager.initializeWithCoverage(playerPosition, 200); // Force 200-unit radius
     this.lastPlayerPosition.copy(playerPosition);
   }
   
@@ -75,7 +75,7 @@ export class GrassSystem {
     this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / deltaTime;
     this.lastPlayerPosition.copy(playerPosition);
     
-    // Update bubble manager (handles all chunk loading/unloading)
+    // Update bubble manager (handles all chunk loading/unloading with 200-unit optimization)
     this.bubbleManager.update(playerPosition);
     
     // Update wind system
@@ -92,9 +92,9 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // Update materials with staggered updates
-      const shouldUpdateTallGrass = this.updateCounter % 16 === 0;
-      const shouldUpdateGroundGrass = this.updateCounter % 16 === 8;
+      // Update materials with even more staggered updates for better FPS
+      const shouldUpdateTallGrass = this.updateCounter % 24 === 0;
+      const shouldUpdateGroundGrass = this.updateCounter % 24 === 12;
       
       if (shouldUpdateTallGrass) {
         for (const material of this.renderer.getGrassMaterials().values()) {
@@ -116,6 +116,11 @@ export class GrassSystem {
       if (this.checkFogChanges() && this.cachedFogValues) {
         this.updateFogUniforms();
       }
+    }
+    
+    // Report performance metrics less frequently
+    if (this.updateCounter % 600 === 0) {
+      console.log(`🌱 Performance: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 200-unit radius`);
     }
   }
   
@@ -185,6 +190,10 @@ export class GrassSystem {
   
   public getLoadedChunkCount(): number {
     return this.bubbleManager.getLoadedChunkCount();
+  }
+  
+  public getRenderedInstanceCount(): number {
+    return this.bubbleManager.getRenderedInstanceCount();
   }
   
   public isGrassSystemReady(): boolean {

@@ -11,16 +11,19 @@ export interface InstanceLODInfo {
 
 export class InstanceLODManager {
   private regionInstanceData: Map<string, InstanceLODInfo> = new Map();
-  private lodDistances: number[] = [50, 100, 150, 200]; // More granular distances
-  private readonly DENSITY_UPDATE_THRESHOLD = 0.15; // Lower threshold for smoother updates
-  private readonly POSITION_UPDATE_THRESHOLD = 5; // Much lower threshold
+  // Tighter LOD distances for 200-unit optimization
+  private lodDistances: number[] = [40, 80, 120, 200];
+  private readonly DENSITY_UPDATE_THRESHOLD = 0.1; // Lower threshold for smoother updates
+  private readonly POSITION_UPDATE_THRESHOLD = 3; // Lower threshold for responsiveness
+  private readonly CULLING_DISTANCE = 200; // Complete culling beyond this distance
 
   public calculateInstanceLODDensity(distance: number): number {
+    if (distance >= this.CULLING_DISTANCE) return 0.0; // Complete culling beyond 200 units
     if (distance < this.lodDistances[0]) return 1.0;
-    if (distance < this.lodDistances[1]) return 0.8;
-    if (distance < this.lodDistances[2]) return 0.5;
-    if (distance < this.lodDistances[3]) return 0.25;
-    return 0.1; // Minimum density for very distant areas
+    if (distance < this.lodDistances[1]) return 0.7; // More aggressive reduction
+    if (distance < this.lodDistances[2]) return 0.4; // Stronger culling
+    if (distance < this.lodDistances[3]) return 0.15; // Very sparse at distance
+    return 0.0; // Complete culling
   }
 
   public updateInstanceVisibility(
@@ -32,6 +35,17 @@ export class InstanceLODManager {
     if (!regionCenter) return false;
 
     const distanceToPlayer = playerPosition.distanceTo(regionCenter);
+    
+    // Immediate culling for distant regions
+    if (distanceToPlayer > this.CULLING_DISTANCE) {
+      if (instancedMesh.visible) {
+        instancedMesh.visible = false;
+        console.log(`🌱 LOD: Culled ${regionKey} at distance ${distanceToPlayer.toFixed(1)}`);
+        return true;
+      }
+      return false;
+    }
+    
     const targetLODDensity = this.calculateInstanceLODDensity(distanceToPlayer);
     
     let lodInfo = this.regionInstanceData.get(regionKey);
@@ -59,6 +73,11 @@ export class InstanceLODManager {
       this.regionInstanceData.set(regionKey, lodInfo);
     }
 
+    // Ensure mesh is visible for distances within culling range
+    if (!instancedMesh.visible && distanceToPlayer <= this.CULLING_DISTANCE) {
+      instancedMesh.visible = true;
+    }
+
     // Check if significant change in distance or LOD level
     const distanceChange = Math.abs(lodInfo.distanceFromPlayer - distanceToPlayer);
     const lodChange = Math.abs(lodInfo.lastLODLevel - targetLODDensity);
@@ -68,7 +87,7 @@ export class InstanceLODManager {
     }
 
     // Calculate new visible instance count
-    const targetVisibleCount = Math.max(1, Math.floor(lodInfo.originalInstanceCount * targetLODDensity));
+    const targetVisibleCount = Math.max(0, Math.floor(lodInfo.originalInstanceCount * targetLODDensity));
     
     if (targetVisibleCount !== lodInfo.currentVisibleCount) {
       this.updateInstanceCount(instancedMesh, lodInfo, targetVisibleCount);
@@ -76,7 +95,11 @@ export class InstanceLODManager {
       lodInfo.lastLODLevel = targetLODDensity;
       lodInfo.distanceFromPlayer = distanceToPlayer;
       
-      console.log(`🌱 LOD: Updated ${regionKey} instances: ${targetVisibleCount}/${lodInfo.originalInstanceCount} (${targetLODDensity.toFixed(2)})`);
+      if (targetVisibleCount === 0) {
+        instancedMesh.visible = false;
+      }
+      
+      console.log(`🌱 LOD: Updated ${regionKey} instances: ${targetVisibleCount}/${lodInfo.originalInstanceCount} (${targetLODDensity.toFixed(2)}) at ${distanceToPlayer.toFixed(1)}u`);
       return true;
     }
 
@@ -88,6 +111,12 @@ export class InstanceLODManager {
     lodInfo: InstanceLODInfo,
     targetCount: number
   ): void {
+    if (targetCount === 0) {
+      instancedMesh.count = 0;
+      instancedMesh.instanceMatrix.needsUpdate = true;
+      return;
+    }
+
     // Use distance-based selection for which instances to show
     const playerPos = instancedMesh.userData.lastPlayerPosition as THREE.Vector3;
     
@@ -126,10 +155,29 @@ export class InstanceLODManager {
     this.regionInstanceData.delete(regionKey);
   }
 
-  public updatePlayerPosition(playerPosition: THREE.Vector3): void {
-    // Store player position for distance calculations
-    for (const [regionKey, lodInfo] of this.regionInstanceData.entries()) {
-      lodInfo.distanceFromPlayer = playerPosition.distanceTo(lodInfo.distanceFromPlayer as any);
+  public getTotalManagedInstances(): number {
+    let total = 0;
+    for (const lodInfo of this.regionInstanceData.values()) {
+      total += lodInfo.currentVisibleCount;
     }
+    return total;
+  }
+
+  public getPerformanceMetrics(): { totalRegions: number; totalInstances: number; culledRegions: number } {
+    let totalInstances = 0;
+    let culledRegions = 0;
+    
+    for (const lodInfo of this.regionInstanceData.values()) {
+      totalInstances += lodInfo.currentVisibleCount;
+      if (lodInfo.currentVisibleCount === 0) {
+        culledRegions++;
+      }
+    }
+    
+    return {
+      totalRegions: this.regionInstanceData.size,
+      totalInstances,
+      culledRegions
+    };
   }
 }

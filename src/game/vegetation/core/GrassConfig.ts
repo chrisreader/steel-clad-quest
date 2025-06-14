@@ -54,11 +54,11 @@ export interface BiomeInfo {
   transitionZone: boolean;
 }
 
-// OPTIMIZED: Reduced density and distance for better performance
+// OPTIMIZED: Reduced to 200-unit viewable area for better FPS
 export const DEFAULT_GRASS_CONFIG: GrassConfig = {
-  baseDensity: 0.75, // Reduced from 1.2 for 37% performance gain
+  baseDensity: 0.75,
   patchDensity: 2.5,
   patchCount: 5,
-  maxDistance: 280, // Reduced from 400 for GPU optimization
-  lodLevels: [1.0, 0.5, 0.2, 0.05] // More aggressive LOD scaling
+  maxDistance: 200, // Reduced from 280 for FPS optimization
+  lodLevels: [1.0, 0.6, 0.3, 0.1] // More aggressive LOD scaling for better performance
 };
