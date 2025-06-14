@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BiomeType } from '../core/GrassConfig';
 import { NoiseUtilities } from '../../utils/math/NoiseUtilities';
@@ -15,7 +14,7 @@ export interface OrganicBiomeShape {
 
 export class OrganicBiomeGenerator {
   /**
-   * Creates highly irregular, fractal-like biome shapes
+   * Creates organic biome shapes
    */
   static createOrganicBiome(
     center: THREE.Vector3,
@@ -75,7 +74,7 @@ export class OrganicBiomeGenerator {
       controlPoints.push(new THREE.Vector3(x, 0, z));
     }
     
-    console.log(`🔥 FRACTAL BIOME: Created ${biomeType} with ${controlPointCount} control points and complexity ${shapeComplexity.toFixed(2)}`);
+    console.log(`🔥 DISTINCT BIOME: Created ${biomeType} with ${controlPointCount} control points and complexity ${shapeComplexity.toFixed(2)}`);
     
     return {
       center,
@@ -89,7 +88,7 @@ export class OrganicBiomeGenerator {
   }
   
   /**
-   * Enhanced distance calculation with fractal boundary detection
+   * Distance calculation with fractal boundary detection
    */
   static getDistanceToOrganicBoundary(
     position: THREE.Vector3,
@@ -164,7 +163,7 @@ export class OrganicBiomeGenerator {
   }
   
   /**
-   * Calculate organic influence with enhanced variable blending and fractal boundaries
+   * Calculate organic influence with MUCH sharper boundaries and smaller blend distances
    */
   static calculateOrganicInfluence(
     position: THREE.Vector3,
@@ -172,57 +171,57 @@ export class OrganicBiomeGenerator {
   ): number {
     const distanceToBoundary = this.getDistanceToOrganicBoundary(position, biomeShape);
     
-    // Enhanced variable blend distance with position-based variation
+    // MUCH smaller blend distances for sharper biome boundaries
     const baseBlendDistance = NoiseUtilities.variableBlendDistance(
       position,
       biomeShape.center,
       biomeShape.seed,
-      3, // minBlend
-      15  // maxBlend - increased for more gradual transitions
+      1, // minBlend - reduced from 3
+      3  // maxBlend - reduced from 15
     );
     
-    // Add micro-variation to blend distance for organic edges
+    // Minimal blend variation for consistent sharp edges
     const blendVariation = NoiseUtilities.organicNoise(
       position.x * 0.2,
       position.z * 0.2,
       biomeShape.seed + 6000,
       2,
       0.4,
-      0.3,
+      0.1, // Reduced variation
       0.6
     );
     
-    const actualBlendDistance = baseBlendDistance * (1.0 + blendVariation * 0.3);
+    const actualBlendDistance = baseBlendDistance * (1.0 + blendVariation * 0.1); // Much less variation
     
     if (distanceToBoundary <= 0) {
-      // Inside the biome - enhanced strength with organic variation
+      // Inside the biome - VERY strong, consistent influence
       const innerVariation = 1.0 + NoiseUtilities.organicNoise(
         position.x * 0.05,
         position.z * 0.05,
         biomeShape.seed + 7000,
-        3,
+        2, // Reduced octaves
         0.8,
-        0.15,
+        0.05, // Much less variation
         0.5
       );
       return Math.min(1.0, biomeShape.strength * innerVariation);
     } else if (distanceToBoundary <= actualBlendDistance) {
-      // In the transition zone - enhanced organic falloff
+      // In the transition zone - MUCH sharper falloff
       const falloffRatio = 1.0 - (distanceToBoundary / actualBlendDistance);
       
-      // Add complex organic variation to falloff
+      // Minimal organic variation in falloff for cleaner boundaries
       const falloffNoise = NoiseUtilities.organicNoise(
         position.x * 0.15,
         position.z * 0.15,
         biomeShape.seed + 8000,
-        4,
+        2, // Reduced octaves
         1.0,
-        0.25,
+        0.05, // Much less noise
         0.65
       );
       
-      // Enhanced falloff calculation with fractal edges
-      const organicFalloff = falloffRatio + falloffNoise * 0.4;
+      // Sharp falloff calculation with minimal organic distortion
+      const organicFalloff = falloffRatio + falloffNoise * 0.1; // Much less noise influence
       return Math.max(0, Math.min(1.0, organicFalloff * biomeShape.strength));
     }
     
