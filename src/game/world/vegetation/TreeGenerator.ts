@@ -1,55 +1,35 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { TREE_CONFIG } from './VegetationConfig';
+import { RealisticTreeGenerator } from './RealisticTreeGenerator';
+import { ForestBiomeManager, ForestBiomeType } from './ForestBiomeManager';
+import { TreeSpeciesType, TreeSpeciesManager } from './TreeSpecies';
 
 export class TreeGenerator {
   private treeModels: THREE.Object3D[] = [];
+  private realisticTreeGenerator: RealisticTreeGenerator;
 
   constructor() {
+    this.realisticTreeGenerator = new RealisticTreeGenerator();
     this.loadTreeModels();
   }
 
   private loadTreeModels(): void {
-    // Tree models (3 variations) - Keep existing tree graphics
-    for (let i = 0; i < 3; i++) {
-      const treeHeight = TREE_CONFIG.height;
-      const treeWidth = TREE_CONFIG.trunkRadius + Math.random() * 0.3; // 0.3-0.6 radius
-      
-      // Tree trunk (larger than before)
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(treeWidth, treeWidth * TREE_CONFIG.trunkRadiusBottom, treeHeight, 12),
-        new THREE.MeshLambertMaterial({ 
-          color: TREE_CONFIG.trunkColor,
-          map: TextureGenerator.createWoodTexture()
-        })
-      );
-      trunk.position.y = treeHeight/2;
-      trunk.castShadow = true;
-      trunk.receiveShadow = true;
-      
-      const tree = new THREE.Group();
-      tree.add(trunk);
-      
-      // Tree leaves (3 layers like original)
-      for (let layer = 0; layer < TREE_CONFIG.layerCount; layer++) {
-        const leavesGeometry = new THREE.ConeGeometry(2.5 - layer * 0.3, 4, 8);
-        const leavesColor = new THREE.Color().setHSL(0.3, 0.7, 0.5 + Math.random() * 0.3);
-        const leavesMaterial = new THREE.MeshLambertMaterial({ 
-          color: leavesColor,
-          transparent: true,
-          opacity: 0.9
-        });
-        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-        leaves.position.y = 7 + layer * 1.5; // Heights: 7, 8.5, 10
-        leaves.castShadow = true;
-        leaves.receiveShadow = true;
-        tree.add(leaves);
+    // Create 3 variations of each tree species for diversity
+    const allSpecies = TreeSpeciesManager.getAllSpecies();
+    
+    for (const species of allSpecies) {
+      for (let variation = 0; variation < 3; variation++) {
+        const tree = this.realisticTreeGenerator.createTree(
+          species, 
+          new THREE.Vector3(0, 0, 0)
+        );
+        this.treeModels.push(tree);
       }
-      
-      this.treeModels.push(tree);
     }
     
-    console.log(`🌲 Created ${this.treeModels.length} tree variations`);
+    console.log(`🌲 Created ${this.treeModels.length} realistic tree variations across ${allSpecies.length} species`);
   }
 
   public getTreeModels(): THREE.Object3D[] {
@@ -57,18 +37,49 @@ export class TreeGenerator {
   }
 
   public createTree(position: THREE.Vector3): THREE.Object3D | null {
-    if (this.treeModels.length === 0) return null;
+    // Check for forest biome at this position
+    const forestBiome = ForestBiomeManager.getForestBiomeAtPosition(position);
     
-    const modelIndex = Math.floor(Math.random() * this.treeModels.length);
-    const model = this.treeModels[modelIndex].clone();
+    if (forestBiome) {
+      // Use forest biome tree selection
+      if (ForestBiomeManager.shouldSpawnTree(forestBiome, position)) {
+        const species = ForestBiomeManager.selectTreeSpecies(forestBiome);
+        const tree = this.realisticTreeGenerator.createTree(species, position);
+        
+        // Add slight random variations
+        const scale = 0.8 + Math.random() * 0.4;
+        tree.scale.set(scale, scale, scale);
+        tree.rotation.y = Math.random() * Math.PI * 2;
+        
+        return tree;
+      }
+      return null;
+    } else {
+      // Fallback to original tree generation for non-forest areas
+      if (this.treeModels.length === 0) return null;
+      
+      // Use mixed species for scattered trees in grass biomes
+      const species = Math.random() < 0.6 ? TreeSpeciesType.OAK : 
+                     Math.random() < 0.8 ? TreeSpeciesType.BIRCH : TreeSpeciesType.DEAD;
+      
+      const tree = this.realisticTreeGenerator.createTree(species, position);
+      
+      const scale = 0.8 + Math.random() * 0.4;
+      tree.scale.set(scale, scale, scale);
+      tree.rotation.y = Math.random() * Math.PI * 2;
+      
+      return tree;
+    }
+  }
+
+  public createSpecificTree(species: TreeSpeciesType, position: THREE.Vector3): THREE.Object3D {
+    const tree = this.realisticTreeGenerator.createTree(species, position);
     
-    model.rotation.y = Math.random() * Math.PI * 2;
     const scale = 0.8 + Math.random() * 0.4;
-    model.scale.set(scale, scale, scale);
+    tree.scale.set(scale, scale, scale);
+    tree.rotation.y = Math.random() * Math.PI * 2;
     
-    model.position.copy(position);
-    
-    return model;
+    return tree;
   }
 
   public dispose(): void {
@@ -87,5 +98,9 @@ export class TreeGenerator {
       });
     });
     this.treeModels.length = 0;
+    
+    if (this.realisticTreeGenerator) {
+      this.realisticTreeGenerator.dispose();
+    }
   }
 }

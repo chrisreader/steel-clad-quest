@@ -25,3 +25,16 @@ export type {
   GrowthModifiers 
 } from './NaturalGrowthSimulator';
 export type { BushCluster } from './BushClusterGenerator';
+
+// NEW: Enhanced tree system exports
+export { 
+  TreeSpeciesType, 
+  TreeSpeciesManager,
+  type TreeSpeciesConfig 
+} from './TreeSpecies';
+export { RealisticTreeGenerator } from './RealisticTreeGenerator';
+export { 
+  ForestBiomeType, 
+  ForestBiomeManager,
+  type ForestBiomeConfig 
+} from './ForestBiomeManager';
