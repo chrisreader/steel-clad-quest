@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
 import { FractalNoiseSystem } from './FractalNoiseSystem';
@@ -23,18 +22,18 @@ export interface BiomeInfluence {
 }
 
 /**
- * SIMPLIFIED: Manages minimal biome blending for DISTINCT patch boundaries
- * Only blends at immediate patch edges (1-3 units) to maintain clear biome identity
+ * ENHANCED: Manages biome blending for 11 distinct grassland biomes
+ * Maintains sharp boundaries while allowing natural transitions
  */
 export class BiomeBlendingSystem {
   private static biomeInfluenceCache: Map<string, BiomeInfluence> = new Map();
-  private static readonly CACHE_PRECISION = 2; // Lower precision for performance
-  private static readonly MIN_TRANSITION_WIDTH = 1;  // Very small transitions
-  private static readonly MAX_TRANSITION_WIDTH = 3;  // Maximum 3 units for sharp boundaries
+  private static readonly CACHE_PRECISION = 2;
+  private static readonly MIN_TRANSITION_WIDTH = 1;
+  private static readonly MAX_TRANSITION_WIDTH = 4; // Slightly larger for 11 biomes
   
   /**
-   * SIMPLIFIED: Calculate biome influence with MINIMAL blending
-   * Creates sharp 1-3 unit transition zones only at true patch boundaries
+   * ENHANCED: Calculate biome influence with support for 11 biome types
+   * Creates sharp boundaries while allowing natural clustering
    */
   public static getBiomeInfluenceAtPosition(
     position: THREE.Vector3, 
@@ -48,13 +47,16 @@ export class BiomeBlendingSystem {
     // Get primary biome info
     const primaryBiomeInfo = DeterministicBiomeManager.getBiomeInfo(position);
     
-    // SIMPLIFIED: Only check immediate neighbors for transitions
-    const sampleRadius = 3; // Small radius for sharp boundaries
+    // Check immediate neighbors for transitions
+    const sampleRadius = 4; // Slightly larger for more biome variety
     const samplePositions = [
       new THREE.Vector3(position.x + sampleRadius, position.y, position.z),
       new THREE.Vector3(position.x - sampleRadius, position.y, position.z),
       new THREE.Vector3(position.x, position.y, position.z + sampleRadius),
       new THREE.Vector3(position.x, position.y, position.z - sampleRadius),
+      // Add diagonal samples for better transition detection
+      new THREE.Vector3(position.x + sampleRadius * 0.7, position.y, position.z + sampleRadius * 0.7),
+      new THREE.Vector3(position.x - sampleRadius * 0.7, position.y, position.z - sampleRadius * 0.7),
     ];
     
     // Check for different biomes in immediate area
@@ -77,15 +79,14 @@ export class BiomeBlendingSystem {
       }
     }
     
-    // STRICT: Only transition if there's a clear secondary biome nearby
+    // TRANSITION DETECTION: More lenient for 11 biomes
     const totalSamples = samplePositions.length + 1;
     const primaryCount = nearbyBiomes.get(primaryBiomeInfo.type) || 0;
     const primaryRatio = primaryCount / totalSamples;
     
-    // More strict transition detection for sharper boundaries
-    const isTransitionZone = primaryRatio < 0.6 && secondaryBiome !== null && secondaryCount >= 2;
+    const isTransitionZone = primaryRatio < 0.65 && secondaryBiome !== null && secondaryCount >= 2;
     
-    // Calculate narrow transition width
+    // Calculate transition width
     const edgeNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       worldSeed + 5000, 
@@ -98,17 +99,16 @@ export class BiomeBlendingSystem {
     const transitionWidth = this.MIN_TRANSITION_WIDTH + 
       edgeNoise * (this.MAX_TRANSITION_WIDTH - this.MIN_TRANSITION_WIDTH);
     
-    // MINIMAL BLENDING: Most areas use pure biome properties
+    // MINIMAL BLENDING: Preserve distinct biome characteristics
     let primaryStrength = 1.0;
     let secondaryStrength = 0;
     
     if (isTransitionZone && secondaryBiome) {
-      // Very limited blending - only at immediate edges
       const blendFactor = Math.max(0, 1.0 - primaryRatio);
-      const limitedBlend = Math.min(0.3, blendFactor); // Cap blending at 30%
+      const limitedBlend = Math.min(0.35, blendFactor); // Slightly higher for smoother transitions
       
-      primaryStrength = Math.max(0.7, 1.0 - limitedBlend);
-      secondaryStrength = Math.min(0.3, limitedBlend);
+      primaryStrength = Math.max(0.65, 1.0 - limitedBlend);
+      secondaryStrength = Math.min(0.35, limitedBlend);
     }
     
     const result: BiomeInfluence = {
@@ -148,7 +148,7 @@ export class BiomeBlendingSystem {
   }
   
   /**
-   * SIMPLIFIED: Calculate biome configuration - prefer pure biome configs
+   * ENHANCED: Calculate biome configuration - prefer pure biome configs for 11 distinct types
    */
   public static getBlendedBiomeConfig(
     position: THREE.Vector3,
@@ -181,7 +181,7 @@ export class BiomeBlendingSystem {
   }
   
   /**
-   * SIMPLIFIED: Calculate ground grass configuration - prefer pure biome configs
+   * ENHANCED: Calculate ground grass configuration - prefer pure biome configs for 11 types
    */
   public static getBlendedGroundConfig(
     position: THREE.Vector3,
@@ -213,7 +213,7 @@ export class BiomeBlendingSystem {
   }
   
   /**
-   * SIMPLIFIED: Get biome color - prefer pure biome colors
+   * ENHANCED: Get biome color for 11 distinct biome types
    */
   public static getBlendedBiomeColor(
     species: string,

@@ -46,7 +46,7 @@ export interface GroundGrassConfiguration {
   windReduction: number;
 }
 
-export type BiomeType = 'normal' | 'meadow' | 'prairie';
+export type BiomeType = 'normal' | 'meadow' | 'prairie' | 'wildflower' | 'thicket' | 'steppe' | 'savanna' | 'valley' | 'windswept' | 'clearing' | 'crystalline';
 
 export interface BiomeInfo {
   type: BiomeType;

@@ -59,7 +59,7 @@ export class SeededGrassDistribution {
         
         const worldPos = new THREE.Vector3(x + offsetX, 0, z + offsetZ);
         
-        // SIMPLIFIED: Get biome at this position - prefer pure biome properties
+        // ENHANCED: Get biome at this position for 11 distinct types
         const biomeInfo = DeterministicBiomeManager.getBiomeInfo(worldPos);
         
         // Use PURE biome config unless in immediate transition zone
@@ -71,7 +71,7 @@ export class SeededGrassDistribution {
              ? DeterministicBiomeManager.getGroundConfiguration(biomeInfo.type)
              : DeterministicBiomeManager.getBiomeConfiguration(biomeInfo.type));
         
-        // Apply PURE biome density for clear distinction
+        // Apply DRAMATIC biome density differences
         const localDensity = biomeConfig.densityMultiplier;
         
         // Generate position noise for natural distribution
@@ -87,7 +87,7 @@ export class SeededGrassDistribution {
         if (seededRandom() < spawnProbability) {
           positions.push(worldPos);
           
-          // Use PURE biome height properties for dramatic differences
+          // Use DRAMATIC biome height differences
           const heightMultiplier = isGroundGrass
             ? ('heightReduction' in biomeConfig ? biomeConfig.heightReduction : 0.7)
             : ('heightMultiplier' in biomeConfig ? biomeConfig.heightMultiplier : 1.0);
@@ -125,7 +125,9 @@ export class SeededGrassDistribution {
     const grassData: SeededGrassData = { positions, scales, rotations, species };
     cache.set(cacheKey, grassData);
     
-    console.log(`🌱 Generated distinct biome grass for chunk ${chunkKey}: ${positions.length} blades with pure ${chunkBiomeInfo.type} characteristics`);
+    // ENHANCED: Better logging for 11 biome types
+    const biomeConfig = DeterministicBiomeManager.getBiomeConfiguration(chunkBiomeInfo.type);
+    console.log(`🌱 Generated ${biomeConfig.name} grass for chunk ${chunkKey}: ${positions.length} blades (density: ${biomeConfig.densityMultiplier}x, height: ${biomeConfig.heightMultiplier}x)`);
     
     return grassData;
   }
@@ -154,7 +156,7 @@ export class SeededGrassDistribution {
   }
 
   /**
-   * SIMPLIFIED: Select species based on PURE biome properties for clear distinction
+   * ENHANCED: Select species based on PURE biome properties for 11 distinct biomes
    */
   private static selectPureBiomeSpecies(
     biomeInfo: BiomeInfo,
@@ -248,7 +250,16 @@ export class SeededGrassDistribution {
       prairie: [0.1, 0.7, 0.15, 0.05],
       wetland: [0.6, 0.1, 0.25, 0.05],
       dry: [0.05, 0.8, 0.1, 0.05],
-      forest: [0.3, 0.2, 0.4, 0.1]
+      forest: [0.3, 0.2, 0.4, 0.1],
+      // Add mappings for new biomes
+      wildflower: [0.6, 0.1, 0.2, 0.1],
+      thicket: [0.3, 0.05, 0.6, 0.05],
+      steppe: [0.05, 0.8, 0.05, 0.1],
+      savanna: [0.2, 0.6, 0.15, 0.05],
+      valley: [0.7, 0.1, 0.15, 0.05],
+      windswept: [0.1, 0.7, 0.05, 0.15],
+      clearing: [0.3, 0.2, 0.3, 0.2],
+      crystalline: [0.5, 0.1, 0.2, 0.2]
     };
     
     const biomeWeights = weights[biomeType as keyof typeof weights] || weights.normal;

@@ -21,35 +21,99 @@ export class DeterministicBiomeManager {
   private static chunkBiomeCache: Map<string, ChunkBiomeData> = new Map();
   private static positionBiomeCache: Map<string, BiomeInfo> = new Map();
 
-  // ENHANCED biome configurations with DRAMATIC differences for clear distinction
+  // EXPANDED: 11 distinct grassland biomes with dramatic visual differences
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
       densityMultiplier: 1.5,
       heightMultiplier: 1.0,
-      colorModifier: new THREE.Color(0x6db070), // Standard green
+      colorModifier: new THREE.Color(0x6db070),
       speciesDistribution: { meadow: 0.4, prairie: 0.25, clumping: 0.25, fine: 0.1 },
       windExposure: 1.0
     },
     meadow: {
       name: 'Lush Meadow',
-      densityMultiplier: 2.5, // Much higher density
-      heightMultiplier: 1.6, // Much taller
-      colorModifier: new THREE.Color(0x2d8f2d), // Rich, dark green
-      speciesDistribution: { meadow: 0.9, prairie: 0.02, clumping: 0.03, fine: 0.05 }, // Almost pure meadow
+      densityMultiplier: 2.5,
+      heightMultiplier: 1.6,
+      colorModifier: new THREE.Color(0x2d8f2d),
+      speciesDistribution: { meadow: 0.9, prairie: 0.02, clumping: 0.03, fine: 0.05 },
       windExposure: 0.4
     },
     prairie: {
       name: 'Open Prairie',
-      densityMultiplier: 1.0, // Lower density
-      heightMultiplier: 0.6, // Much shorter
-      colorModifier: new THREE.Color(0xd4af37), // Golden color
-      speciesDistribution: { meadow: 0.05, prairie: 0.85, clumping: 0.05, fine: 0.05 }, // Almost pure prairie
+      densityMultiplier: 1.0,
+      heightMultiplier: 0.6,
+      colorModifier: new THREE.Color(0xd4af37),
+      speciesDistribution: { meadow: 0.05, prairie: 0.85, clumping: 0.05, fine: 0.05 },
       windExposure: 2.0
+    },
+    wildflower: {
+      name: 'Wildflower Meadow',
+      densityMultiplier: 2.0,
+      heightMultiplier: 1.2,
+      colorModifier: new THREE.Color(0x8fbc8f),
+      speciesDistribution: { meadow: 0.6, prairie: 0.1, clumping: 0.2, fine: 0.1 },
+      windExposure: 0.8
+    },
+    thicket: {
+      name: 'Dense Thicket',
+      densityMultiplier: 4.0,
+      heightMultiplier: 2.2,
+      colorModifier: new THREE.Color(0x1a4a1a),
+      speciesDistribution: { meadow: 0.3, prairie: 0.05, clumping: 0.6, fine: 0.05 },
+      windExposure: 0.2
+    },
+    steppe: {
+      name: 'Sparse Steppe',
+      densityMultiplier: 0.3,
+      heightMultiplier: 0.4,
+      colorModifier: new THREE.Color(0xb8860b),
+      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.05, fine: 0.1 },
+      windExposure: 3.0
+    },
+    savanna: {
+      name: 'Rolling Savanna',
+      densityMultiplier: 1.2,
+      heightMultiplier: 0.8,
+      colorModifier: new THREE.Color(0xcdaa3d),
+      speciesDistribution: { meadow: 0.2, prairie: 0.6, clumping: 0.15, fine: 0.05 },
+      windExposure: 1.8
+    },
+    valley: {
+      name: 'Lush Valley',
+      densityMultiplier: 3.0,
+      heightMultiplier: 1.4,
+      colorModifier: new THREE.Color(0x32cd32),
+      speciesDistribution: { meadow: 0.7, prairie: 0.1, clumping: 0.15, fine: 0.05 },
+      windExposure: 0.6
+    },
+    windswept: {
+      name: 'Windswept Plain',
+      densityMultiplier: 0.8,
+      heightMultiplier: 0.5,
+      colorModifier: new THREE.Color(0x9acd32),
+      speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.05, fine: 0.15 },
+      windExposure: 2.5
+    },
+    clearing: {
+      name: 'Ancient Clearing',
+      densityMultiplier: 1.6,
+      heightMultiplier: 1.1,
+      colorModifier: new THREE.Color(0x556b2f),
+      speciesDistribution: { meadow: 0.3, prairie: 0.2, clumping: 0.3, fine: 0.2 },
+      windExposure: 1.2
+    },
+    crystalline: {
+      name: 'Crystalline Grove',
+      densityMultiplier: 1.8,
+      heightMultiplier: 1.3,
+      colorModifier: new THREE.Color(0x4682b4),
+      speciesDistribution: { meadow: 0.5, prairie: 0.1, clumping: 0.2, fine: 0.2 },
+      windExposure: 0.7
     }
   };
 
-  // ENHANCED ground grass configurations with dramatic differences
+  // EXPANDED: Ground grass configurations for all 11 biomes
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
       densityMultiplier: 10.0,
@@ -58,16 +122,64 @@ export class DeterministicBiomeManager {
       windReduction: 0.2
     },
     meadow: {
-      densityMultiplier: 15.0, // Much denser
-      heightReduction: 0.5, // Less reduction (taller)
+      densityMultiplier: 15.0,
+      heightReduction: 0.5,
       speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.05, fine: 0.1 },
       windReduction: 0.1
     },
     prairie: {
-      densityMultiplier: 8.0, // Less dense
-      heightReduction: 0.8, // More reduction (shorter)
+      densityMultiplier: 8.0,
+      heightReduction: 0.8,
       speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.1, fine: 0.05 },
       windReduction: 0.4
+    },
+    wildflower: {
+      densityMultiplier: 12.0,
+      heightReduction: 0.6,
+      speciesDistribution: { meadow: 0.6, prairie: 0.1, clumping: 0.2, fine: 0.1 },
+      windReduction: 0.15
+    },
+    thicket: {
+      densityMultiplier: 20.0,
+      heightReduction: 0.4,
+      speciesDistribution: { meadow: 0.3, prairie: 0.05, clumping: 0.6, fine: 0.05 },
+      windReduction: 0.05
+    },
+    steppe: {
+      densityMultiplier: 4.0,
+      heightReduction: 0.9,
+      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.05, fine: 0.1 },
+      windReduction: 0.6
+    },
+    savanna: {
+      densityMultiplier: 9.0,
+      heightReduction: 0.7,
+      speciesDistribution: { meadow: 0.2, prairie: 0.6, clumping: 0.15, fine: 0.05 },
+      windReduction: 0.3
+    },
+    valley: {
+      densityMultiplier: 16.0,
+      heightReduction: 0.45,
+      speciesDistribution: { meadow: 0.7, prairie: 0.1, clumping: 0.15, fine: 0.05 },
+      windReduction: 0.12
+    },
+    windswept: {
+      densityMultiplier: 6.0,
+      heightReduction: 0.85,
+      speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.05, fine: 0.15 },
+      windReduction: 0.5
+    },
+    clearing: {
+      densityMultiplier: 11.0,
+      heightReduction: 0.6,
+      speciesDistribution: { meadow: 0.3, prairie: 0.2, clumping: 0.3, fine: 0.2 },
+      windReduction: 0.2
+    },
+    crystalline: {
+      densityMultiplier: 13.0,
+      heightReduction: 0.55,
+      speciesDistribution: { meadow: 0.5, prairie: 0.1, clumping: 0.2, fine: 0.2 },
+      windReduction: 0.18
     }
   };
 
@@ -154,8 +266,8 @@ export class DeterministicBiomeManager {
   }
 
   /**
-   * SIMPLIFIED: Position-based biome determination for DISTINCT patches
-   * Creates 30-80 unit biome patches that are clearly different from each other
+   * ENHANCED: Multi-layered biome distribution for 11 distinct, sprawling biomes
+   * Creates varied patch sizes from 20-150 units with natural clustering
    */
   public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
     const cacheKey = `${Math.round(position.x)}_${Math.round(position.z)}`;
@@ -164,73 +276,126 @@ export class DeterministicBiomeManager {
       return this.positionBiomeCache.get(cacheKey)!;
     }
 
-    // SIMPLIFIED: Use clearer, more distinct noise patterns
+    // MULTI-LAYER APPROACH: Combine different scales for varied, interesting patterns
     
-    // Primary patch noise (30-80 units) - creates main biome regions
-    const primaryNoise = FractalNoiseSystem.getFractalNoise(
+    // Large-scale regional patterns (80-150 units)
+    const regionalNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       this.worldSeed, 
       3, 
       0.6, 
       2.0, 
-      0.015  // Larger patches for clear distinction
+      0.008
     );
     
-    // Secondary variation (20-40 units) - adds some variety within regions
-    const secondaryNoise = FractalNoiseSystem.getFractalNoise(
+    // Medium-scale patch patterns (30-60 units)
+    const patchNoise = FractalNoiseSystem.getFractalNoise(
       position, 
-      this.worldSeed + 1000, 
+      this.worldSeed + 2000, 
+      4, 
+      0.5, 
+      2.0, 
+      0.02
+    );
+    
+    // Small-scale variation (10-20 units)
+    const detailNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      this.worldSeed + 4000, 
+      2, 
+      0.4, 
+      2.0, 
+      0.06
+    );
+    
+    // Voronoi for natural clustering
+    const voronoiData = FractalNoiseSystem.getVoronoiNoise(
+      position, 
+      this.worldSeed + 6000, 
+      0.012
+    );
+    
+    // RARE BIOME DETECTION: Some biomes appear less frequently
+    const rareBiomeNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      this.worldSeed + 8000, 
       2, 
       0.5, 
       2.0, 
-      0.025
+      0.004
     );
     
-    // CELLULAR PATTERN: Use Voronoi for distinct patch boundaries
-    const voronoiData = FractalNoiseSystem.getVoronoiNoise(
-      position, 
-      this.worldSeed, 
-      0.008  // Larger cells for bigger patches
-    );
+    // COMBINE NOISE LAYERS: Weight different scales appropriately
+    const combinedNoise = regionalNoise * 0.4 + patchNoise * 0.35 + voronoiData.value * 0.25;
+    const finalNoise = combinedNoise * 0.85 + detailNoise * 0.15;
     
-    // SIMPLIFIED COMBINATION: 70% cellular, 30% noise for organic edges
-    const combinedNoise = voronoiData.value * 0.7 + primaryNoise * 0.3;
-    
-    // Add minor secondary variation
-    const finalNoise = combinedNoise * 0.8 + secondaryNoise * 0.2;
-    
-    // CLEAR THRESHOLDS: Create distinct biome regions
+    // BIOME SELECTION: Map noise values to 11 distinct biomes
     let biomeType: BiomeType = 'normal';
     let strength = 1.0;
     let isTransitionZone = false;
     
-    // Use SHARP thresholds for clear boundaries
-    if (finalNoise > 0.65) {
-      biomeType = 'meadow';
-      strength = 1.0;
-      // Only transition at very edge
-      isTransitionZone = finalNoise < 0.7;
-    } else if (finalNoise < 0.35) {
-      biomeType = 'prairie';
-      strength = 1.0;
-      // Only transition at very edge
-      isTransitionZone = finalNoise > 0.3;
-    } else {
-      biomeType = 'normal';
-      strength = 1.0;
-      // Small transition zones at boundaries
-      isTransitionZone = finalNoise > 0.6 || finalNoise < 0.4;
-    }
-    
-    // FORCE BIOME VARIETY: Use cell ID to ensure all biomes appear
-    const cellBiome = this.getCellForcedBiome(voronoiData.cellId);
-    
-    // Occasionally force the cell biome to ensure variety
-    const forceNoise = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 5000, 1, 1.0, 1.0, 0.003);
-    if (forceNoise > 0.85) {
-      biomeType = cellBiome;
+    // RARE BIOMES: Special discovery areas (5% chance)
+    if (rareBiomeNoise > 0.92) {
+      if (rareBiomeNoise > 0.96) {
+        biomeType = 'crystalline'; // Rarest biome
+      } else {
+        biomeType = 'clearing'; // Rare biome
+      }
       strength = 1.0;
       isTransitionZone = false;
+    } else {
+      // REGULAR BIOME DISTRIBUTION: Divide remaining 95% among other biomes
+      if (finalNoise > 0.85) {
+        biomeType = 'thicket';
+        strength = 1.0;
+        isTransitionZone = finalNoise < 0.9;
+      } else if (finalNoise > 0.75) {
+        biomeType = 'valley';
+        strength = 1.0;
+        isTransitionZone = finalNoise < 0.8;
+      } else if (finalNoise > 0.65) {
+        biomeType = 'meadow';
+        strength = 1.0;
+        isTransitionZone = finalNoise < 0.7;
+      } else if (finalNoise > 0.55) {
+        biomeType = 'wildflower';
+        strength = 1.0;
+        isTransitionZone = finalNoise < 0.6;
+      } else if (finalNoise > 0.45) {
+        biomeType = 'normal';
+        strength = 1.0;
+        isTransitionZone = finalNoise > 0.5 || finalNoise < 0.5;
+      } else if (finalNoise > 0.35) {
+        biomeType = 'savanna';
+        strength = 1.0;
+        isTransitionZone = finalNoise < 0.4;
+      } else if (finalNoise > 0.25) {
+        biomeType = 'prairie';
+        strength = 1.0;
+        isTransitionZone = finalNoise < 0.3;
+      } else if (finalNoise > 0.15) {
+        biomeType = 'windswept';
+        strength = 1.0;
+        isTransitionZone = finalNoise < 0.2;
+      } else {
+        biomeType = 'steppe';
+        strength = 1.0;
+        isTransitionZone = finalNoise > 0.1;
+      }
+    }
+    
+    // BIOME CLUSTERING: Encourage similar biomes to appear near each other
+    const clusterNoise = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 10000, 1, 1.0, 1.0, 0.015);
+    if (clusterNoise > 0.7) {
+      // Bias toward lush biomes in fertile clusters
+      if (['normal', 'prairie', 'windswept'].includes(biomeType)) {
+        biomeType = Math.random() > 0.5 ? 'meadow' : 'valley';
+      }
+    } else if (clusterNoise < 0.3) {
+      // Bias toward dry biomes in arid clusters
+      if (['normal', 'meadow', 'valley'].includes(biomeType)) {
+        biomeType = Math.random() > 0.5 ? 'steppe' : 'savanna';
+      }
     }
 
     const biomeInfo: BiomeInfo = {
@@ -241,14 +406,6 @@ export class DeterministicBiomeManager {
 
     this.positionBiomeCache.set(cacheKey, biomeInfo);
     return biomeInfo;
-  }
-
-  /**
-   * Force biome variety using cell IDs to ensure equal representation
-   */
-  private static getCellForcedBiome(cellId: number): BiomeType {
-    const biomes: BiomeType[] = ['normal', 'meadow', 'prairie'];
-    return biomes[Math.abs(cellId) % 3];
   }
 
   public static getBiomeConfiguration(biomeType: BiomeType): BiomeConfiguration {
