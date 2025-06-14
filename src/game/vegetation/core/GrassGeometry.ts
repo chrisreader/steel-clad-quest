@@ -98,9 +98,21 @@ export class GrassGeometry {
       side: THREE.DoubleSide 
     });
     
-    // Create cluster based on species
-    const clusterSize = finalConfig.clustered ? 5 : 3;
-    const spread = finalConfig.clustered ? 0.3 : 0.2;
+    // Create cluster based on species - NO RECURSIVE CALLS
+    let clusterSize = finalConfig.clustered ? 5 : 3;
+    let spread = finalConfig.clustered ? 0.3 : 0.2;
+    
+    // Species-specific adjustments without calling other methods
+    if (species === 'thicket') {
+      clusterSize = 7;
+      spread = 0.4;
+    } else if (species === 'golden') {
+      clusterSize = 4;
+      spread = 0.15;
+    } else if (species === 'wildflower') {
+      clusterSize = 6;
+      spread = 0.25;
+    }
     
     for (let i = 0; i < clusterSize; i++) {
       const blade = new THREE.Mesh(geometry, material);
@@ -122,6 +134,24 @@ export class GrassGeometry {
       blade.scale.set(scaleVariation, scaleVariation, scaleVariation);
       
       group.add(blade);
+    }
+    
+    // Add flowers only for wildflower species
+    if (species === 'wildflower' && Math.random() < 0.3) {
+      const flowerGeometry = new THREE.SphereGeometry(0.02, 6, 6);
+      const flowerColors = [0xff6b9d, 0x87ceeb, 0xffd700, 0xff6347];
+      const flowerColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      const flowerMaterial = new THREE.MeshLambertMaterial({ color: flowerColor });
+      
+      for (let i = 0; i < 2; i++) {
+        const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+        flower.position.set(
+          position.x + (Math.random() - 0.5) * 0.4,
+          position.y + 0.3 + Math.random() * 0.3,
+          position.z + (Math.random() - 0.5) * 0.4
+        );
+        group.add(flower);
+      }
     }
     
     return group;
@@ -176,34 +206,9 @@ export class GrassGeometry {
     return geometry.clone();
   }
 
-  // Specialized creation methods for specific biomes
+  // Simplified specialized creation methods that just call createGrassCluster with configs
   public static createWildflowerCluster(position: THREE.Vector3): THREE.Group {
-    const group = new THREE.Group();
-    
-    // Create main wildflower grass
-    const grassConfig = this.getGrassSpecies('wildflower');
-    const grassCluster = this.createGrassCluster(position, 'wildflower');
-    group.add(grassCluster);
-    
-    // Add small flower elements
-    if (Math.random() < 0.3) {
-      const flowerGeometry = new THREE.SphereGeometry(0.02, 6, 6);
-      const flowerColors = [0xff6b9d, 0x87ceeb, 0xffd700, 0xff6347];
-      const flowerColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-      const flowerMaterial = new THREE.MeshLambertMaterial({ color: flowerColor });
-      
-      for (let i = 0; i < 2; i++) {
-        const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
-        flower.position.set(
-          position.x + (Math.random() - 0.5) * 0.4,
-          position.y + 0.3 + Math.random() * 0.3,
-          position.z + (Math.random() - 0.5) * 0.4
-        );
-        group.add(flower);
-      }
-    }
-    
-    return group;
+    return this.createGrassCluster(position, 'wildflower');
   }
   
   public static createThicketGrass(position: THREE.Vector3): THREE.Group {
@@ -223,6 +228,13 @@ export class GrassGeometry {
   }
 
   public static clearCache(): void {
+    for (const geometry of this.geometryCache.values()) {
+      geometry.dispose();
+    }
     this.geometryCache.clear();
+  }
+
+  public static dispose(): void {
+    this.clearCache();
   }
 }
