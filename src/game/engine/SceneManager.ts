@@ -733,9 +733,24 @@ export class SceneManager {
         toggleCycle: () => this.toggleDayNightCycle(),
         setSpeed: (speed: number) => this.setCycleSpeed(speed),
         getCurrentTime: () => (this.timeOfDay * 24).toFixed(1) + ' hours',
-        getMoonElevation: () => this.getMoonElevationFactor().toFixed(2)
+        getMoonElevation: () => this.getMoonElevationFactor().toFixed(2),
+        // NEW: Realistic biome debugging
+        getBiomeAt: (x: number, z: number) => {
+          const { DeterministicBiomeManager } = require('../vegetation/biomes/DeterministicBiomeManager');
+          return DeterministicBiomeManager.getDebugBiomeInfo(new THREE.Vector3(x, 0, z));
+        },
+        getSeedPoints: () => {
+          const { BiomeSeedManager } = require('../vegetation/biomes/BiomeSeedManager');
+          return BiomeSeedManager.getDebugInfo();
+        },
+        clearBiomeCache: () => {
+          const { DeterministicBiomeManager } = require('../vegetation/biomes/DeterministicBiomeManager');
+          DeterministicBiomeManager.clearCache();
+          console.log('🌍 Biome cache cleared - new realistic biomes will generate');
+        }
       };
       console.log('Debug commands available: sceneDebug.setTime(hour), sceneDebug.toggleCycle(), sceneDebug.setSpeed(speed), sceneDebug.getMoonElevation()');
+      console.log('🌍 NEW Biome debug: sceneDebug.getBiomeAt(x, z), sceneDebug.getSeedPoints(), sceneDebug.clearBiomeCache()');
     }
   }
 
