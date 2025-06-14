@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
-import { BiomeBlendingSystem } from './BiomeBlendingSystem';
 
 export interface ChunkCoordinate {
   x: number;
@@ -19,7 +18,7 @@ export class DeterministicBiomeManager {
   private static worldSeed: number = 12345; // Can be set from game config
   private static chunkBiomeCache: Map<string, ChunkBiomeData> = new Map();
 
-  // Enhanced biome configurations with realistic blending support
+  // DRAMATICALLY ENHANCED biome configurations with obvious visual differences
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
@@ -72,8 +71,6 @@ export class DeterministicBiomeManager {
   public static setWorldSeed(seed: number): void {
     this.worldSeed = seed;
     this.chunkBiomeCache.clear();
-    // Initialize the blending system with new seed-based center
-    BiomeBlendingSystem.initialize(seed % 1000, (seed * 17) % 1000);
   }
 
   public static worldPositionToChunk(position: THREE.Vector3): ChunkCoordinate {
@@ -109,13 +106,28 @@ export class DeterministicBiomeManager {
     const seed = this.getChunkSeed(chunk);
     const centerPos = this.chunkToWorldPosition(chunk);
     
-    // Use the new blending system for realistic biome boundaries
-    const biomeInfo = BiomeBlendingSystem.getBiomeInfo(centerPos.x, centerPos.z);
+    // Enhanced biome generation with more variation for obvious differences
+    const seededRandom = this.createSeededRandom(seed);
+    const noiseX = this.seededNoise(centerPos.x * 0.002, seed); // Increased frequency for more variation
+    const noiseZ = this.seededNoise(centerPos.z * 0.002, seed + 1000);
+    const combinedNoise = (noiseX + noiseZ) / 2;
     
+    let biomeType: BiomeType = 'normal';
+    let strength = 1.0;
+    
+    // Enhanced biome selection with clearer boundaries
+    if (noiseX > 0.2) {
+      biomeType = 'meadow';
+      strength = Math.min(1.0, (noiseX - 0.2) / 0.5); // More gradual transition
+    } else if (noiseZ > 0.1) {
+      biomeType = 'prairie';
+      strength = Math.min(1.0, (noiseZ - 0.1) / 0.6); // More gradual transition
+    }
+
     const biomeData: ChunkBiomeData = {
       coordinate: chunk,
-      biomeType: biomeInfo.type,
-      strength: biomeInfo.strength,
+      biomeType,
+      strength,
       seed
     };
 
@@ -145,19 +157,25 @@ export class DeterministicBiomeManager {
   }
 
   public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
-    // Use the blending system for smooth biome transitions at grass level
-    return BiomeBlendingSystem.getBiomeInfo(position.x, position.z);
+    const chunk = this.worldPositionToChunk(position);
+    const biomeData = this.getBiomeForChunk(chunk);
+    
+    return {
+      type: biomeData.biomeType,
+      strength: biomeData.strength,
+      transitionZone: biomeData.strength < 0.8
+    };
   }
 
-  // Enhanced biome species color with realistic blending
+  // Enhanced biome species color with more dramatic differences
   public static getBiomeSpeciesColor(
     species: string, 
     biomeInfo: BiomeInfo, 
     season: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer'
   ): THREE.Color {
-    // Get blended color data for smooth transitions
-    const blendedData = BiomeBlendingSystem.getBlendedBiomeData(0, 0); // This will be position-specific in practice
+    const biomeConfig = this.getBiomeConfiguration(biomeInfo.type);
     
+    // Enhanced base colors for better species distinction
     const baseColors = {
       meadow: new THREE.Color(0x7aad62), // Rich green
       prairie: new THREE.Color(0xa0a055), // Golden-green
@@ -166,10 +184,9 @@ export class DeterministicBiomeManager {
     };
     
     const baseColor = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
+    const biomeColor = baseColor.clone().multiply(biomeConfig.colorModifier);
     
-    // Use blended color from the blending system
-    const biomeColor = baseColor.clone().multiply(blendedData.blendedColor);
-    
+    // Enhanced seasonal variations for more dramatic changes
     const seasonalMultipliers = {
       spring: new THREE.Color(1.3, 1.4, 1.1), // Bright, vibrant
       summer: new THREE.Color(1.1, 1.2, 1.0), // Lush
