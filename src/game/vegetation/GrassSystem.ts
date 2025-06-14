@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { GrassConfig, DEFAULT_GRASS_CONFIG } from './core/GrassConfig';
 import { GrassRenderer } from './core/GrassRenderer';
@@ -41,7 +42,7 @@ export class GrassSystem {
     // ENHANCED: Initialize with random seed for each new game
     DeterministicBiomeManager.initializeWithRandomSeed();
     
-    console.log(`🌱 Grass system initialized with equal biome distribution and enhanced prairie density (seed: ${DeterministicBiomeManager.getWorldSeed()})`);
+    console.log(`🌱 Grass system initialized with equal biome distribution, multi-scale patch generation, and enhanced prairie density (seed: ${DeterministicBiomeManager.getWorldSeed()})`);
   }
   
   public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 200): void {
@@ -51,7 +52,7 @@ export class GrassSystem {
   }
   
   /**
-   * NEW: Reinitialize with a new random seed (useful for "new game" scenarios)
+   * Reinitialize with a new random seed (useful for "new game" scenarios)
    */
   public regenerateWithNewSeed(): void {
     console.log('🌱 Regenerating biomes with new random seed...');
@@ -76,7 +77,7 @@ export class GrassSystem {
       this.initializeGrassSystem(currentPlayerPosition, coverageRadius);
     }
     
-    console.log(`🌱 Legacy region generation converted to balanced biome chunk system`);
+    console.log(`🌱 Legacy region generation converted to balanced biome chunk system with patchy distribution`);
   }
   
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
@@ -123,7 +124,7 @@ export class GrassSystem {
     }
     
     if (this.updateCounter % 600 === 0) {
-      console.log(`🌱 Performance: ${this.bubbleManager.getRenderedInstanceCount()} grass instances across balanced biomes`);
+      console.log(`🌱 Performance: ${this.bubbleManager.getRenderedInstanceCount()} grass instances across patchy biome distribution`);
     }
   }
   

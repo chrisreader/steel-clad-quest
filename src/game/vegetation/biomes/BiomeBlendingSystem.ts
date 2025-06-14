@@ -44,85 +44,161 @@ export class BiomeBlendingSystem {
       return this.biomeInfluenceCache.get(cacheKey)!;
     }
     
-    // Enhanced multi-frequency noise for better biome distribution
-    const temperatureNoise = FractalNoiseSystem.getWarpedNoise(position, worldSeed, 15);
-    const moistureNoise = FractalNoiseSystem.getWarpedNoise(position, worldSeed + 1000, 15);
-    const elevationNoise = FractalNoiseSystem.getFractalNoise(position, worldSeed + 2000, 5, 0.5, 2.0, 0.001);
+    // ENHANCED: Multi-scale noise layers for patchier biome distribution
+    // Large patches (100-200 units)
+    const largeScaleNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      worldSeed + 500, 
+      4,
+      0.5, 
+      2.0, 
+      0.004  // Lower frequency for larger patterns
+    );
     
-    // Additional noise layer for more variation
-    const detailNoise = FractalNoiseSystem.getFractalNoise(position, worldSeed + 3000, 3, 0.5, 2.0, 0.01);
+    // Medium patches (30-70 units)
+    const mediumScaleNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      worldSeed + 1000, 
+      3, 
+      0.5, 
+      2.0, 
+      0.015  // Medium frequency
+    );
     
-    // Combine noise values for primary biome factor
-    const combinedFactor = (temperatureNoise * 0.4 + moistureNoise * 0.4 + elevationNoise * 0.1 + detailNoise * 0.1);
+    // Small patches (10-20 units)
+    const smallScaleNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      worldSeed + 1500, 
+      2, 
+      0.5, 
+      2.0, 
+      0.05  // Higher frequency for micro-variations
+    );
     
-    // REBALANCED: Equal distribution thresholds (~33% each)
+    // Micro variations (1-5 units)
+    const microNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      worldSeed + 2000, 
+      2, 
+      0.5, 
+      2.0, 
+      0.2  // Very high frequency for tiny details
+    );
+    
+    // ENHANCED: Domain warping for irregular patch shapes
+    const warpStrength = 50.0; // Increased from 15.0 for more dramatic warping
+    const warpedPos = new THREE.Vector3(
+      position.x + (largeScaleNoise - 0.5) * warpStrength,
+      position.y,
+      position.z + (mediumScaleNoise - 0.5) * warpStrength
+    );
+    
+    // NEW: Environmental factors influence
+    // Simulate elevation with noise
+    const elevation = FractalNoiseSystem.getFractalNoise(position, worldSeed + 3000, 4, 0.5, 2.0, 0.002);
+    // Simulate water proximity
+    const waterProximity = FractalNoiseSystem.getWarpedNoise(position, worldSeed + 3500, 30.0);
+    // Simulate soil richness
+    const soilRichness = FractalNoiseSystem.getFractalNoise(position, worldSeed + 4000, 3, 0.5, 2.0, 0.008);
+    
+    // Combine noise layers with different weights for natural patchiness
+    const baseBiomeNoise = largeScaleNoise * 0.35 +  // Large areas
+                           mediumScaleNoise * 0.3 +   // Medium patches
+                           smallScaleNoise * 0.25 +   // Small details
+                           microNoise * 0.1;          // Micro variations
+    
+    // ENHANCED: Voronoi influence for cellular patches (increased from 20% to 50%)
+    const voronoiData = FractalNoiseSystem.getVoronoiNoise(
+      position, 
+      worldSeed, 
+      0.002  // Smaller cells for more varied patches
+    );
+    
+    // Apply 50% Voronoi influence for distinct cell-based patches
+    let combinedNoise = baseBiomeNoise * 0.5 + voronoiData.value * 0.5;
+    
+    // NEW: Apply environmental influences
+    // Meadows prefer lower elevation, wetter areas, and rich soil
+    const meadowAffinity = (1.0 - elevation) * 0.5 + waterProximity * 0.3 + soilRichness * 0.2;
+    // Prairies prefer higher elevation, drier areas, and moderate soil
+    const prairieAffinity = elevation * 0.5 + (1.0 - waterProximity) * 0.3 + (0.5 - Math.abs(soilRichness - 0.5)) * 0.2;
+    // Normal grasslands prefer middle elevations and moderate conditions
+    const normalAffinity = (1.0 - Math.abs(elevation - 0.5) * 2.0) * 0.4 + 
+                           (1.0 - Math.abs(waterProximity - 0.5) * 2.0) * 0.3 + 
+                           (1.0 - Math.abs(soilRichness - 0.5) * 2.0) * 0.3;
+    
+    // Blend environmental affinity with noise (60% noise, 40% environmental factors)
+    const environmentalInfluence = 0.4;
+    const noiseInfluence = 1.0 - environmentalInfluence;
+    
+    // Adjusted thresholds based on environmental factors
     let primaryBiome: BiomeType = 'normal';
     let primaryStrength = 1.0;
     let secondaryBiome: BiomeType | null = null;
     let secondaryStrength = 0.0;
     
-    if (combinedFactor > 0.66) {
+    // Apply environmental influence to biome selection
+    // Use the highest affinity score to bias biome selection
+    const maxAffinity = Math.max(meadowAffinity, prairieAffinity, normalAffinity);
+    
+    if (maxAffinity === meadowAffinity) {
+      // Bias toward meadow
+      combinedNoise = combinedNoise * noiseInfluence + 0.8 * environmentalInfluence;
+    } else if (maxAffinity === prairieAffinity) {
+      // Bias toward prairie
+      combinedNoise = combinedNoise * noiseInfluence + 0.2 * environmentalInfluence;
+    } else {
+      // Bias toward normal
+      combinedNoise = combinedNoise * noiseInfluence + 0.5 * environmentalInfluence;
+    }
+    
+    // REBALANCED: Equal distribution thresholds (~33% each)
+    if (combinedNoise > 0.66) {
       primaryBiome = 'meadow';
-      primaryStrength = Math.min(1.0, (combinedFactor - 0.66) * 3.0);
-    } else if (combinedFactor < 0.33) {
+      primaryStrength = Math.min(1.0, (combinedNoise - 0.66) * 3.0);
+    } else if (combinedNoise < 0.33) {
       primaryBiome = 'prairie';
-      primaryStrength = Math.min(1.0, (0.33 - combinedFactor) * 3.0);
+      primaryStrength = Math.min(1.0, (0.33 - combinedNoise) * 3.0);
     } else {
       primaryBiome = 'normal';
-      primaryStrength = 1.0 - Math.abs(combinedFactor - 0.5) * 2.0;
+      primaryStrength = 1.0 - Math.abs(combinedNoise - 0.5) * 2.0;
     }
     
-    // Determine secondary biome for transitions
-    const meadowScore = temperatureNoise;
-    const prairieScore = moistureNoise;
-    const normalScore = 1.0 - (meadowScore + prairieScore) / 2;
-    
+    // ENHANCED: Stronger secondary biome influence for better transitions
     if (primaryBiome === 'meadow') {
-      if (prairieScore > normalScore) {
-        secondaryBiome = 'prairie';
-        secondaryStrength = prairieScore;
-      } else {
-        secondaryBiome = 'normal';
-        secondaryStrength = normalScore;
-      }
+      // Meadows more likely to transition to normal than prairie
+      secondaryBiome = combinedNoise < 0.75 ? 'normal' : 'prairie';
+      secondaryStrength = 1.0 - primaryStrength;
     } else if (primaryBiome === 'prairie') {
-      if (meadowScore > normalScore) {
-        secondaryBiome = 'meadow';
-        secondaryStrength = meadowScore;
-      } else {
-        secondaryBiome = 'normal';
-        secondaryStrength = normalScore;
-      }
+      // Prairies more likely to transition to normal than meadow
+      secondaryBiome = combinedNoise > 0.25 ? 'normal' : 'meadow';
+      secondaryStrength = 1.0 - primaryStrength;
     } else {
-      if (meadowScore > prairieScore) {
-        secondaryBiome = 'meadow';
-        secondaryStrength = meadowScore;
-      } else {
-        secondaryBiome = 'prairie';
-        secondaryStrength = prairieScore;
-      }
+      // Normal areas can transition to either meadow or prairie
+      secondaryBiome = combinedNoise > 0.5 ? 'meadow' : 'prairie';
+      secondaryStrength = 1.0 - primaryStrength;
     }
     
-    // Voronoi clustering for natural biome patches
-    const voronoiData = FractalNoiseSystem.getVoronoiNoise(position, worldSeed, 0.001);
-    primaryStrength = primaryStrength * 0.7 + voronoiData.value * 0.3;
-    
-    // Calculate transition zones
+    // ENHANCED: Variable transition widths for more natural boundaries
+    // Use noise to vary transition width between min and max
     const edgeDetailNoise = FractalNoiseSystem.getFractalNoise(
       position, 
-      worldSeed + 3000, 
+      worldSeed + 5000, 
       3, 
       0.5, 
       2.0, 
       0.05
     );
     
+    // Calculate wider transition zones (5-25 units) for more gradual blending
     const transitionWidth = this.MIN_TRANSITION_WIDTH + 
       edgeDetailNoise * (this.MAX_TRANSITION_WIDTH - this.MIN_TRANSITION_WIDTH);
     
+    // Calculate distance to nearest biome boundary
     const distanceToBoundary = Math.abs(primaryStrength - 0.5) * 2.0 * transitionWidth;
     const isTransitionZone = distanceToBoundary < transitionWidth;
     
+    // ENHANCED: Smoother transitions using improved smoothstep function
     if (isTransitionZone) {
       const blendFactor = Math.max(0, Math.min(1, distanceToBoundary / transitionWidth));
       const smoothBlend = this.smoothStep(blendFactor);

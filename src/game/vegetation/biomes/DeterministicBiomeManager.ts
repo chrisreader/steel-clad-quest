@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
 import { FractalNoiseSystem } from './FractalNoiseSystem';
@@ -125,7 +126,8 @@ export class DeterministicBiomeManager {
   }
 
   /**
-   * ENHANCED: Equal biome distribution with multi-frequency noise mixing
+   * ENHANCED: Small-scale patch biome distribution with multi-frequency noise mixing
+   * and ecological factors for more realistic, patched biome distribution
    */
   public static getBiomeForChunk(chunk: ChunkCoordinate): ChunkBiomeData {
     const chunkKey = this.getChunkKey(chunk);
@@ -137,43 +139,105 @@ export class DeterministicBiomeManager {
     const seed = this.getChunkSeed(chunk);
     const centerPos = this.chunkToWorldPosition(chunk);
     
-    // ENHANCED: Multi-frequency noise for better distribution
+    // ENHANCED: Multi-frequency noise for better patch distribution
+    // Large scale biome regions (200-500 units)
     const largeScaleNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed, 4, 0.5, 2.0, 0.001);
+    
+    // Medium scale patches (50-100 units)
     const mediumScaleNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed + 1000, 3, 0.5, 2.0, 0.005);
+    
+    // Small scale variations (10-30 units)
     const smallScaleNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed + 2000, 2, 0.5, 2.0, 0.02);
     
-    // Combine noise layers for more varied patterns
-    const combinedNoise = largeScaleNoise * 0.6 + mediumScaleNoise * 0.3 + smallScaleNoise * 0.1;
+    // Micro variations (1-5 units)
+    const microNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed + 3000, 2, 0.5, 2.0, 0.08);
     
-    // REBALANCED: Equal distribution (~33% each biome)
+    // NEW: Environmental factors
+    // Elevation simulation
+    const elevation = FractalNoiseSystem.getFractalNoise(centerPos, seed + 4000, 4, 0.5, 2.0, 0.002);
+    
+    // Water proximity simulation
+    const waterProximity = FractalNoiseSystem.getWarpedNoise(centerPos, seed + 5000, 40.0);
+    
+    // Soil richness simulation
+    const soilRichness = FractalNoiseSystem.getFractalNoise(centerPos, seed + 6000, 3, 0.5, 2.0, 0.008);
+    
+    // Combine noise layers with varying weights for natural patchiness
+    const combinedNoise = largeScaleNoise * 0.3 +       // Large regions
+                         mediumScaleNoise * 0.3 +       // Medium patches
+                         smallScaleNoise * 0.25 +       // Small variations
+                         microNoise * 0.15;             // Micro details
+    
+    // Apply domain warping for irregular patch shapes
+    const warpStrength = 50;
+    const warpX = FractalNoiseSystem.getFractalNoise(centerPos, seed + 7000, 3, 0.5, 2.0, 0.005) - 0.5;
+    const warpZ = FractalNoiseSystem.getFractalNoise(centerPos, seed + 8000, 3, 0.5, 2.0, 0.005) - 0.5;
+    
+    const warpedPos = new THREE.Vector3(
+      centerPos.x + warpX * warpStrength,
+      centerPos.y,
+      centerPos.z + warpZ * warpStrength
+    );
+    
+    // Get noise at warped position for more organic shapes
+    const warpedNoise = FractalNoiseSystem.getFractalNoise(warpedPos, seed + 9000, 3, 0.5, 2.0, 0.01);
+    
+    // REBALANCED: Equal distribution (~33% each biome) with environmental factors
     let biomeType: BiomeType = 'normal';
     let strength = 1.0;
+    let baseNoise = combinedNoise * 0.6 + warpedNoise * 0.4;
     
-    if (combinedNoise > 0.66) {
+    // Apply environmental factors (40% influence)
+    // Meadows prefer lower areas with high water and rich soil
+    const meadowFactor = (1.0 - elevation) * 0.4 + waterProximity * 0.4 + soilRichness * 0.2;
+    // Prairies prefer higher areas with low water and moderate soil
+    const prairieFactor = elevation * 0.4 + (1.0 - waterProximity) * 0.4 + Math.abs(soilRichness - 0.5) * 0.2;
+    // Normal grasslands prefer middle elevations and moderate conditions
+    const normalFactor = (1.0 - Math.abs(elevation - 0.5) * 2.0) * 0.4 + 
+                        (1.0 - Math.abs(waterProximity - 0.5) * 2.0) * 0.4 + 
+                        (1.0 - Math.abs(soilRichness - 0.5) * 2.0) * 0.2;
+    
+    // Environmental influence (40%)
+    const environmentalInfluence = 0.4;
+    
+    // Bias the base noise with environmental factors
+    if (meadowFactor > prairieFactor && meadowFactor > normalFactor) {
+      baseNoise = baseNoise * (1.0 - environmentalInfluence) + 0.8 * environmentalInfluence;
+    } else if (prairieFactor > meadowFactor && prairieFactor > normalFactor) {
+      baseNoise = baseNoise * (1.0 - environmentalInfluence) + 0.2 * environmentalInfluence;
+    } else {
+      baseNoise = baseNoise * (1.0 - environmentalInfluence) + 0.5 * environmentalInfluence;
+    }
+    
+    // Thresholds for equal distribution
+    if (baseNoise > 0.66) {
       // 33% chance for meadow
       biomeType = 'meadow';
-      strength = Math.min(1.0, (combinedNoise - 0.66) / 0.34);
-    } else if (combinedNoise < 0.33) {
+      strength = Math.min(1.0, (baseNoise - 0.66) / 0.34);
+    } else if (baseNoise < 0.33) {
       // 33% chance for prairie
       biomeType = 'prairie';
-      strength = Math.min(1.0, (0.33 - combinedNoise) / 0.33);
+      strength = Math.min(1.0, (0.33 - baseNoise) / 0.33);
     } else {
       // 33% chance for normal (middle range)
       biomeType = 'normal';
-      strength = 1.0 - Math.abs(combinedNoise - 0.5) * 2.0; // Strongest at center (0.5)
+      strength = 1.0 - Math.abs(baseNoise - 0.5) * 2.0; // Strongest at center (0.5)
     }
     
-    // Add Voronoi balancing to prevent large uniform areas
-    const voronoiData = FractalNoiseSystem.getVoronoiNoise(centerPos, seed, 0.0008);
-    const voronoiInfluence = voronoiData.value * 0.2; // 20% influence
+    // ENHANCED: Stronger Voronoi influence for cellular patterns
+    const voronoiData = FractalNoiseSystem.getVoronoiNoise(centerPos, seed, 0.002); // Higher density for smaller cells
+    const voronoiInfluence = voronoiData.value * 0.5; // 50% influence (up from 20%)
     
-    // Use Voronoi cell ID to force biome variety
+    // Force biome variety based on Voronoi cell ID
     const cellBiomeType = this.getCellForcedBiome(voronoiData.cellId);
-    if (voronoiInfluence > 0.15 && cellBiomeType !== biomeType) {
-      // Force some variation based on Voronoi cells
-      strength *= 0.7; // Reduce primary strength
-      if (Math.random() < 0.3) { // 30% chance to switch
+    
+    // Higher chance to switch biome type if in strong voronoi influence
+    if (voronoiInfluence > 0.4 && cellBiomeType !== biomeType) {
+      // 60% chance to switch (up from 30%)
+      if (Math.random() < 0.6) {
         biomeType = cellBiomeType;
+        // Adjust strength for a smoother transition
+        strength *= 0.8;
       }
     }
 
