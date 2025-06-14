@@ -4,6 +4,7 @@ import { EnvironmentalFactors } from './EnvironmentalGrassDistribution';
 import { ChunkCoordinate, DeterministicBiomeManager } from './biomes/DeterministicBiomeManager';
 import { BiomeBlendingSystem } from './biomes/BiomeBlendingSystem';
 import { FractalNoiseSystem } from './biomes/FractalNoiseSystem';
+import { BiomeInfo } from './core/GrassConfig';
 
 export interface SeededGrassData {
   positions: THREE.Vector3[];
@@ -47,6 +48,9 @@ export class SeededGrassDistribution {
     // Generate grass positions using seeded sampling
     const startX = chunkCenter.x - chunkSize / 2;
     const startZ = chunkCenter.z - chunkSize / 2;
+    
+    // Get biome info for this chunk to use in logging
+    const chunkBiomeInfo = DeterministicBiomeManager.getBiomeInfo(chunkCenter);
     
     for (let x = startX; x < startX + chunkSize; x += spacing) {
       for (let z = startZ; z < startZ + chunkSize; z += spacing) {
@@ -121,7 +125,7 @@ export class SeededGrassDistribution {
     const grassData: SeededGrassData = { positions, scales, rotations, species };
     cache.set(cacheKey, grassData);
     
-    console.log(`🌱 Generated distinct biome grass for chunk ${chunkKey}: ${positions.length} blades with pure ${biomeInfo.type} characteristics`);
+    console.log(`🌱 Generated distinct biome grass for chunk ${chunkKey}: ${positions.length} blades with pure ${chunkBiomeInfo.type} characteristics`);
     
     return grassData;
   }
