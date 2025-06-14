@@ -20,75 +20,35 @@ export class DeterministicBiomeManager {
   private static worldSeed: number = 12345;
   private static chunkBiomeCache: Map<string, ChunkBiomeData> = new Map();
 
-  // ENHANCED biome configurations with 8 realistic biomes
+  // DRAMATICALLY ENHANCED biome configurations with obvious visual differences
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
       densityMultiplier: 1.0,
       heightMultiplier: 1.0,
-      colorModifier: new THREE.Color(0x6db070),
+      colorModifier: new THREE.Color(0x6db070), // Green
       speciesDistribution: { meadow: 0.4, prairie: 0.25, clumping: 0.25, fine: 0.1 },
       windExposure: 1.0
     },
     meadow: {
-      name: 'Standard Meadow',
-      densityMultiplier: 1.8,
-      heightMultiplier: 1.3,
-      colorModifier: new THREE.Color(0x4db84d),
-      speciesDistribution: { meadow: 0.6, prairie: 0.15, clumping: 0.15, fine: 0.1 },
-      windExposure: 0.7
+      name: 'Lush Meadow',
+      densityMultiplier: 2.8,
+      heightMultiplier: 1.8,
+      colorModifier: new THREE.Color(0x2eb82e), // Bright green
+      speciesDistribution: { meadow: 0.85, prairie: 0.05, clumping: 0.05, fine: 0.05 },
+      windExposure: 0.5
     },
     prairie: {
       name: 'Open Prairie',
-      densityMultiplier: 0.8,
-      heightMultiplier: 0.9,
-      colorModifier: new THREE.Color(0xb8b84d),
-      speciesDistribution: { meadow: 0.1, prairie: 0.6, clumping: 0.2, fine: 0.1 },
-      windExposure: 1.5
-    },
-    wildflower_meadow: {
-      name: 'Wildflower Meadow',
-      densityMultiplier: 1.5,
-      heightMultiplier: 1.0,
-      colorModifier: new THREE.Color(0x5eb85e),
-      speciesDistribution: { meadow: 0.35, prairie: 0.05, clumping: 0.2, fine: 0.0, wildflower: 0.4 },
-      windExposure: 0.8
-    },
-    dense_thicket: {
-      name: 'Dense Thicket',
-      densityMultiplier: 4.0,
-      heightMultiplier: 2.5,
-      colorModifier: new THREE.Color(0x2d5a2d),
-      speciesDistribution: { meadow: 0.1, prairie: 0.0, clumping: 0.25, fine: 0.05, thicket: 0.6 },
-      windExposure: 0.4
-    },
-    sparse_steppe: {
-      name: 'Sparse Steppe',
-      densityMultiplier: 0.3,
+      densityMultiplier: 0.6,
       heightMultiplier: 0.6,
-      colorModifier: new THREE.Color(0xd4c55a),
-      speciesDistribution: { meadow: 0.02, prairie: 0.2, clumping: 0.08, fine: 0.0, golden: 0.7 },
-      windExposure: 2.0
-    },
-    rolling_savanna: {
-      name: 'Rolling Savanna',
-      densityMultiplier: 1.2,
-      heightMultiplier: 0.9,
-      colorModifier: new THREE.Color(0xc4a855),
-      speciesDistribution: { meadow: 0.15, prairie: 0.5, clumping: 0.05, fine: 0.0, golden: 0.3 },
-      windExposure: 1.4
-    },
-    lush_valley: {
-      name: 'Lush Valley',
-      densityMultiplier: 3.0,
-      heightMultiplier: 1.6,
-      colorModifier: new THREE.Color(0x3eb83e),
-      speciesDistribution: { meadow: 0.6, prairie: 0.05, clumping: 0.25, fine: 0.0, wildflower: 0.1 },
-      windExposure: 0.6
+      colorModifier: new THREE.Color(0xe6e632), // Bright yellow-green
+      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.1, fine: 0.05 },
+      windExposure: 1.8
     }
   };
 
-  // Enhanced ground grass configurations for all biomes
+  // ENHANCED ground grass configurations with much higher density
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
       densityMultiplier: 8.0,
@@ -97,46 +57,16 @@ export class DeterministicBiomeManager {
       windReduction: 0.2
     },
     meadow: {
-      densityMultiplier: 12.0,
-      heightReduction: 0.8,
-      speciesDistribution: { meadow: 0.5, prairie: 0.1, clumping: 0.2, fine: 0.2 },
-      windReduction: 0.15
-    },
-    prairie: {
-      densityMultiplier: 6.0,
-      heightReduction: 0.6,
-      speciesDistribution: { meadow: 0.1, prairie: 0.6, clumping: 0.2, fine: 0.1 },
-      windReduction: 0.3
-    },
-    wildflower_meadow: {
-      densityMultiplier: 10.0,
-      heightReduction: 0.7,
-      speciesDistribution: { meadow: 0.3, prairie: 0.1, clumping: 0.2, fine: 0.1, wildflower: 0.3 },
-      windReduction: 0.2
-    },
-    dense_thicket: {
-      densityMultiplier: 20.0,
-      heightReduction: 0.9,
-      speciesDistribution: { meadow: 0.2, prairie: 0.0, clumping: 0.3, fine: 0.1, thicket: 0.4 },
-      windReduction: 0.1
-    },
-    sparse_steppe: {
-      densityMultiplier: 2.0,
-      heightReduction: 0.5,
-      speciesDistribution: { meadow: 0.05, prairie: 0.2, clumping: 0.05, fine: 0.0, golden: 0.7 },
-      windReduction: 0.5
-    },
-    rolling_savanna: {
-      densityMultiplier: 7.0,
-      heightReduction: 0.6,
-      speciesDistribution: { meadow: 0.15, prairie: 0.4, clumping: 0.1, fine: 0.05, golden: 0.3 },
-      windReduction: 0.3
-    },
-    lush_valley: {
       densityMultiplier: 18.0,
       heightReduction: 0.8,
-      speciesDistribution: { meadow: 0.5, prairie: 0.1, clumping: 0.2, fine: 0.1, wildflower: 0.1 },
-      windReduction: 0.15
+      speciesDistribution: { meadow: 0.7, prairie: 0.05, clumping: 0.05, fine: 0.2 },
+      windReduction: 0.1
+    },
+    prairie: {
+      densityMultiplier: 4.0,
+      heightReduction: 0.5,
+      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.1, fine: 0.05 },
+      windReduction: 0.4
     }
   };
 
@@ -144,7 +74,7 @@ export class DeterministicBiomeManager {
     this.worldSeed = seed;
     this.chunkBiomeCache.clear();
     BiomeSeedManager.setWorldSeed(seed);
-    console.log(`🌍 ENHANCED BIOME SYSTEM: World seed set to ${seed}, 8 biomes available`);
+    console.log(`🌍 ORGANIC BIOME SYSTEM: World seed set to ${seed}, cache cleared`);
   }
 
   public static worldPositionToChunk(position: THREE.Vector3): ChunkCoordinate {
@@ -170,34 +100,31 @@ export class DeterministicBiomeManager {
     return this.worldSeed + chunk.x * 73856093 + chunk.z * 19349663;
   }
 
-  // Enhanced position-based biome determination with equal 12.5% distribution for 8 biomes
+  // NEW: Position-based biome determination (bypasses chunks)
   public static getBiomeAtPosition(position: THREE.Vector3): { biomeType: BiomeType; strength: number } {
     const biomeInfluence = BiomeSeedManager.getBiomeInfluenceAtPosition(position);
     
+    // Use organic biome directly with enhanced minimum strength
     if (biomeInfluence.influences.length > 0) {
-      console.log(`✅ ENHANCED BIOME: ${biomeInfluence.dominantBiome} at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}) strength: ${biomeInfluence.strength.toFixed(2)}`);
+      console.log(`✅ POSITION BIOME: ${biomeInfluence.dominantBiome} at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}) strength: ${biomeInfluence.strength.toFixed(2)}`);
       return {
         biomeType: biomeInfluence.dominantBiome,
-        strength: Math.max(0.7, biomeInfluence.strength)
+        strength: Math.max(0.7, biomeInfluence.strength) // Higher minimum strength
       };
     }
     
-    // Fallback with equal distribution for all 8 biomes
+    // Ultra-minimal fallback - just use position-based noise if absolutely no organic biomes
     const seed = this.worldSeed + Math.floor(position.x) * 73856093 + Math.floor(position.z) * 19349663;
-    const biomeRandom = Math.abs(this.seededNoise(position.x * 0.002, seed)) + 
-                       Math.abs(this.seededNoise(position.z * 0.002, seed + 1000));
+    const noiseX = this.seededNoise(position.x * 0.002, seed);
+    const noiseZ = this.seededNoise(position.z * 0.002, seed + 1000);
     
-    // Equal 12.5% chance for each of 8 biomes
-    const biomeIndex = Math.floor((biomeRandom % 1.0) * 8);
-    const biomeTypes: BiomeType[] = [
-      'normal', 'meadow', 'prairie', 'wildflower_meadow',
-      'dense_thicket', 'sparse_steppe', 'rolling_savanna', 'lush_valley'
-    ];
+    if (noiseX > 0.4) {
+      return { biomeType: 'meadow', strength: 0.8 };
+    } else if (noiseZ > 0.3) {
+      return { biomeType: 'prairie', strength: 0.8 };
+    }
     
-    return { 
-      biomeType: biomeTypes[biomeIndex], 
-      strength: 0.8 + (biomeRandom % 0.2)
-    };
+    return { biomeType: 'normal', strength: 0.7 };
   }
 
   public static getBiomeForChunk(chunk: ChunkCoordinate): ChunkBiomeData {
@@ -207,6 +134,7 @@ export class DeterministicBiomeManager {
       return this.chunkBiomeCache.get(chunkKey)!;
     }
 
+    // Use position-based biome for chunk center (for legacy compatibility)
     const centerPos = this.chunkToWorldPosition(chunk);
     const biomeData = this.getBiomeAtPosition(centerPos);
     const seed = this.getChunkSeed(chunk);
@@ -236,11 +164,12 @@ export class DeterministicBiomeManager {
     return this.GROUND_CONFIGS[biomeType];
   }
 
+  // UPDATED: Position-based biome info (main method for grass generation)
   public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
     const biomeData = this.getBiomeAtPosition(position);
     
     // Check for transition zones by sampling nearby positions
-    const sampleDistance = 8;
+    const sampleDistance = 8; // Sample 8 units away
     const nearbyPositions = [
       new THREE.Vector3(position.x + sampleDistance, position.y, position.z),
       new THREE.Vector3(position.x - sampleDistance, position.y, position.z),
@@ -259,6 +188,7 @@ export class DeterministicBiomeManager {
     };
   }
 
+  // Enhanced biome species color with more dramatic differences
   public static getBiomeSpeciesColor(
     species: string, 
     biomeInfo: BiomeInfo, 
@@ -266,21 +196,18 @@ export class DeterministicBiomeManager {
   ): THREE.Color {
     const biomeConfig = this.getBiomeConfiguration(biomeInfo.type);
     
-    // Enhanced base colors including new species
+    // Enhanced base colors for better species distinction
     const baseColors = {
       meadow: new THREE.Color(0x7aad62),
       prairie: new THREE.Color(0xa0a055),
       clumping: new THREE.Color(0x9bc471),
-      fine: new THREE.Color(0x8bbf67),
-      wildflower: new THREE.Color(0x8faf72),
-      thicket: new THREE.Color(0x5a7a45),
-      golden: new THREE.Color(0xb8a555)
+      fine: new THREE.Color(0x8bbf67)
     };
     
     const baseColor = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
     const biomeColor = baseColor.clone().multiply(biomeConfig.colorModifier);
     
-    // Enhanced seasonal variations
+    // Enhanced seasonal variations for more dramatic changes
     const seasonalMultipliers = {
       spring: new THREE.Color(1.3, 1.4, 1.1),
       summer: new THREE.Color(1.1, 1.2, 1.0),
@@ -331,6 +258,7 @@ export class DeterministicBiomeManager {
     return adjustedSpecies;
   }
 
+  // Updated debug methods for position-based system
   public static getDebugBiomeInfo(position: THREE.Vector3): {
     position: THREE.Vector3;
     biomeData: { biomeType: BiomeType; strength: number };
@@ -341,7 +269,7 @@ export class DeterministicBiomeManager {
     const organicInfluences = BiomeSeedManager.getBiomeInfluenceAtPosition(position);
     const organicBiomes = BiomeSeedManager.getOrganicBiomesAt(position);
     
-    console.log(`🔍 ENHANCED BIOME DEBUG at ${position.x}, ${position.z}:`);
+    console.log(`🔍 POSITION-BASED DEBUG at ${position.x}, ${position.z}:`);
     console.log(`  - Biome: ${biomeData.biomeType} (strength: ${biomeData.strength})`);
     console.log(`  - Organic biomes nearby: ${organicBiomes.length}`);
     console.log(`  - Organic influences: ${organicInfluences.influences.length}`);
@@ -357,11 +285,11 @@ export class DeterministicBiomeManager {
   public static clearCache(): void {
     this.chunkBiomeCache.clear();
     BiomeSeedManager.clearCache();
-    console.log('🧹 ENHANCED BIOME: All caches cleared, 8 biomes ready for regeneration');
+    console.log('🧹 POSITION-BASED BIOME: All caches cleared, forcing regeneration');
   }
 
   public static forceRegenerateAllBiomes(): void {
     this.clearCache();
-    console.log('🔄 ENHANCED BIOME: Forced complete regeneration with 8 realistic biomes');
+    console.log('🔄 POSITION-BASED BIOME: Forced complete regeneration');
   }
 }

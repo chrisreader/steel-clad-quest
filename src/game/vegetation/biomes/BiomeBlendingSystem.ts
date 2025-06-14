@@ -20,7 +20,7 @@ export interface EnhancedBiomeData {
 
 export class BiomeBlendingSystem {
   /**
-   * Enhanced biome influence calculation with all 8 biome types
+   * Simplified biome influence calculation with clean boundaries
    */
   static calculateEnhancedBiomeInfluence(
     position: THREE.Vector3,
@@ -28,7 +28,7 @@ export class BiomeBlendingSystem {
   ): EnhancedBiomeData {
     const influences: BiomeInfluence[] = [];
     
-    // Calculate influence from each organic biome
+    // Calculate influence from each organic biome only
     for (const biome of organicBiomes) {
       const influence = OrganicBiomeGenerator.calculateOrganicInfluence(position, biome);
       const distance = OrganicBiomeGenerator.getDistanceToOrganicBoundary(position, biome);
@@ -66,7 +66,7 @@ export class BiomeBlendingSystem {
   }
   
   /**
-   * Generate organic biome layout with all 8 biome types and equal distribution
+   * Generate simplified organic biome layout with larger, exploration-focused biomes
    */
   static generateOrganicBiomeLayout(
     worldSeed: number,
@@ -77,14 +77,8 @@ export class BiomeBlendingSystem {
     const biomes: OrganicBiomeShape[] = [];
     const biomeSeed = worldSeed + regionX * 73856093 + regionZ * 19349663;
     
-    // Generate 3-5 large organic biomes per region
+    // Generate 3-5 large organic biomes per region for better exploration
     const biomeCount = 3 + Math.floor(Math.abs(NoiseUtilities.seededNoise(biomeSeed, 0, 0)) * 3);
-    
-    // All 8 biome types with equal probability
-    const allBiomeTypes: BiomeType[] = [
-      'normal', 'meadow', 'prairie', 'wildflower_meadow',
-      'dense_thicket', 'sparse_steppe', 'rolling_savanna', 'lush_valley'
-    ];
     
     for (let i = 0; i < biomeCount; i++) {
       const seedOffset = i * 1000;
@@ -98,28 +92,21 @@ export class BiomeBlendingSystem {
       
       const center = new THREE.Vector3(x, 0, z);
       
-      // Equal distribution across all 8 biome types
-      const biomeRandom = Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 3, 0));
-      const biomeIndex = Math.floor(biomeRandom * allBiomeTypes.length);
-      const biomeType = allBiomeTypes[biomeIndex];
+      // Balanced biome type distribution
+      const biomeRandom = NoiseUtilities.seededNoise(biomeSeed + seedOffset, 3, 0);
+      let biomeType: BiomeType;
       
-      // Biome-specific radius ranges for gameplay variety
-      const radiusRandom = Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 4, 0));
-      let radius: number;
-      
-      switch (biomeType) {
-        case 'dense_thicket':
-          radius = 25 + radiusRandom * 30; // Smaller, denser areas
-          break;
-        case 'sparse_steppe':
-          radius = 50 + radiusRandom * 50; // Larger, open areas
-          break;
-        case 'lush_valley':
-          radius = 30 + radiusRandom * 40; // Medium, fertile areas
-          break;
-        default:
-          radius = 36 + radiusRandom * 36; // Standard size
+      if (biomeRandom > 0.33) {
+        biomeType = 'meadow';
+      } else if (biomeRandom > -0.33) {
+        biomeType = 'prairie';
+      } else {
+        biomeType = 'normal';
       }
+      
+      // Target: 4096-16384 square units = 36-72 unit radius
+      const radiusRandom = Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 4, 0));
+      const radius = 36 + radiusRandom * 36; // 36-72 unit radius range
       
       // Strong influence for clear biome dominance
       const strength = 0.9 + Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 6, 0)) * 0.1;
@@ -135,7 +122,7 @@ export class BiomeBlendingSystem {
       biomes.push(organicBiome);
     }
     
-    console.log(`🌿 ENHANCED ORGANIC: Generated ${biomes.length} diverse biomes for region ${regionX}_${regionZ}`);
+    console.log(`🌿 SIMPLIFIED ORGANIC: Generated ${biomes.length} exploration-sized biomes for region ${regionX}_${regionZ}`);
     return biomes;
   }
 }

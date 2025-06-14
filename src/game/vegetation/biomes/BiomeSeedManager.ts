@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BiomeType } from '../core/GrassConfig';
 import { OrganicBiomeShape, OrganicBiomeGenerator } from './OrganicBiomeGenerator';
@@ -27,7 +28,7 @@ export class BiomeSeedManager {
     this.worldSeed = seed;
     this.organicBiomes.clear();
     this.generatedRegions.clear();
-    console.log(`🌍 Enhanced organic biome system initialized with seed: ${seed} (8 biome types)`);
+    console.log(`🌍 New organic biome system initialized with seed: ${seed}`);
   }
 
   private static getRegionKey(position: THREE.Vector3): string {
@@ -40,7 +41,7 @@ export class BiomeSeedManager {
     const regionKey = `${regionX}_${regionZ}`;
     if (this.generatedRegions.has(regionKey)) return;
 
-    // Generate organic biomes for this region with all 8 biome types
+    // Generate organic biomes for this region
     const organicBiomes = BiomeBlendingSystem.generateOrganicBiomeLayout(
       this.worldSeed,
       regionX,
@@ -51,7 +52,7 @@ export class BiomeSeedManager {
     this.organicBiomes.set(regionKey, organicBiomes);
     this.generatedRegions.add(regionKey);
     
-    console.log(`🌿 Generated ${organicBiomes.length} enhanced organic biomes for region ${regionKey}`);
+    console.log(`🌿 Generated ${organicBiomes.length} organic biomes for region ${regionKey}`);
   }
 
   public static getBiomeInfluenceAtPosition(position: THREE.Vector3): BiomeInfluenceData {
@@ -96,6 +97,7 @@ export class BiomeSeedManager {
     };
   }
 
+  // Legacy compatibility methods
   public static getAllSeedPoints(): BiomeSeedPoint[] {
     const seedPoints: BiomeSeedPoint[] = [];
     
@@ -123,7 +125,7 @@ export class BiomeSeedManager {
   public static clearCache(): void {
     this.organicBiomes.clear();
     this.generatedRegions.clear();
-    console.log('🧹 Enhanced organic biome cache cleared');
+    console.log('🧹 Organic biome cache cleared');
   }
 
   public static getDebugInfo(): {
@@ -134,12 +136,7 @@ export class BiomeSeedManager {
     const biomeCounts: Record<BiomeType, number> = {
       normal: 0,
       meadow: 0,
-      prairie: 0,
-      wildflower_meadow: 0,
-      dense_thicket: 0,
-      sparse_steppe: 0,
-      rolling_savanna: 0,
-      lush_valley: 0
+      prairie: 0
     };
 
     for (const biomes of this.organicBiomes.values()) {
@@ -155,6 +152,7 @@ export class BiomeSeedManager {
     };
   }
 
+  // New debug methods for organic biomes
   public static getOrganicBiomesAt(position: THREE.Vector3): OrganicBiomeShape[] {
     const regionKey = this.getRegionKey(position);
     return this.organicBiomes.get(regionKey) || [];
