@@ -155,19 +155,19 @@ export class GrassGeometry {
   public static getGrassSpecies(): GrassBladeConfig[] {
     return [
       {
-        height: 0.3, width: 0.06, segments: 4, curve: 0.2, taper: 0.8, // Reduced height from 0.4
+        height: 0.4, width: 0.08, segments: 4, curve: 0.2, taper: 0.8,
         species: 'fine', color: new THREE.Color(0x6b8f47), clustered: false
       },
       {
-        height: 0.45, width: 0.1, segments: 5, curve: 0.3, taper: 0.7, // Reduced height from 0.6
+        height: 0.6, width: 0.12, segments: 5, curve: 0.3, taper: 0.7,
         species: 'meadow', color: new THREE.Color(0x5a8442), clustered: true
       },
       {
-        height: 0.5, width: 0.12, segments: 6, curve: 0.4, taper: 0.6, // Reduced height from 0.8
+        height: 0.8, width: 0.15, segments: 6, curve: 0.4, taper: 0.6,
         species: 'prairie', color: new THREE.Color(0x4a7339), clustered: true
       },
       {
-        height: 0.25, width: 0.08, segments: 4, curve: 0.15, taper: 0.9, // Reduced height from 0.35
+        height: 0.35, width: 0.1, segments: 4, curve: 0.15, taper: 0.9,
         species: 'clumping', color: new THREE.Color(0x7a9451), clustered: true
       }
     ];

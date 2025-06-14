@@ -20,52 +20,52 @@ export class DeterministicBiomeManager {
   private static worldSeed: number = 12345;
   private static chunkBiomeCache: Map<string, ChunkBiomeData> = new Map();
 
-  // REALISTIC biome configurations with natural proportions
+  // DRAMATICALLY ENHANCED biome configurations with obvious visual differences
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
       densityMultiplier: 1.0,
       heightMultiplier: 1.0,
-      colorModifier: new THREE.Color(0x6db070), // Natural green
+      colorModifier: new THREE.Color(0x6db070), // Green
       speciesDistribution: { meadow: 0.4, prairie: 0.25, clumping: 0.25, fine: 0.1 },
       windExposure: 1.0
     },
     meadow: {
-      name: 'Natural Meadow',
-      densityMultiplier: 1.8, // Reduced from 2.8 for realism
-      heightMultiplier: 1.2, // Reduced from 1.8 for realistic heights
-      colorModifier: new THREE.Color(0x4db34d), // Rich green
-      speciesDistribution: { meadow: 0.6, prairie: 0.05, clumping: 0.1, fine: 0.25 }, // More diversity
-      windExposure: 0.6
+      name: 'Lush Meadow',
+      densityMultiplier: 2.8,
+      heightMultiplier: 1.8,
+      colorModifier: new THREE.Color(0x2eb82e), // Bright green
+      speciesDistribution: { meadow: 0.85, prairie: 0.05, clumping: 0.05, fine: 0.05 },
+      windExposure: 0.5
     },
     prairie: {
       name: 'Open Prairie',
-      densityMultiplier: 0.7,
-      heightMultiplier: 0.8, // Slightly increased for natural look
-      colorModifier: new THREE.Color(0xb8b855), // Golden-green
-      speciesDistribution: { meadow: 0.05, prairie: 0.75, clumping: 0.15, fine: 0.05 },
-      windExposure: 1.6
+      densityMultiplier: 0.6,
+      heightMultiplier: 0.6,
+      colorModifier: new THREE.Color(0xe6e632), // Bright yellow-green
+      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.1, fine: 0.05 },
+      windExposure: 1.8
     }
   };
 
-  // More realistic ground grass configurations
+  // ENHANCED ground grass configurations with much higher density
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
-      densityMultiplier: 6.0, // Reduced for natural spacing
-      heightReduction: 0.6,
+      densityMultiplier: 8.0,
+      heightReduction: 0.65,
       speciesDistribution: { meadow: 0.3, prairie: 0.2, clumping: 0.4, fine: 0.1 },
-      windReduction: 0.3
-    },
-    meadow: {
-      densityMultiplier: 12.0, // Reduced from 18.0 for realistic meadow
-      heightReduction: 0.7, // Less reduction for natural meadow height
-      speciesDistribution: { meadow: 0.5, prairie: 0.05, clumping: 0.15, fine: 0.3 }, // More fine grasses
       windReduction: 0.2
     },
+    meadow: {
+      densityMultiplier: 18.0,
+      heightReduction: 0.8,
+      speciesDistribution: { meadow: 0.7, prairie: 0.05, clumping: 0.05, fine: 0.2 },
+      windReduction: 0.1
+    },
     prairie: {
-      densityMultiplier: 3.5, // Slightly increased for better coverage
+      densityMultiplier: 4.0,
       heightReduction: 0.5,
-      speciesDistribution: { meadow: 0.05, prairie: 0.75, clumping: 0.15, fine: 0.05 },
+      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.1, fine: 0.05 },
       windReduction: 0.4
     }
   };
@@ -188,7 +188,7 @@ export class DeterministicBiomeManager {
     };
   }
 
-  // Enhanced biome species color with more natural tones
+  // Enhanced biome species color with more dramatic differences
   public static getBiomeSpeciesColor(
     species: string, 
     biomeInfo: BiomeInfo, 
@@ -196,23 +196,23 @@ export class DeterministicBiomeManager {
   ): THREE.Color {
     const biomeConfig = this.getBiomeConfiguration(biomeInfo.type);
     
-    // More realistic base colors for species
+    // Enhanced base colors for better species distinction
     const baseColors = {
-      meadow: new THREE.Color(0x6ba352), // Natural meadow green
-      prairie: new THREE.Color(0x9ba050), // Prairie grass color
-      clumping: new THREE.Color(0x7db361), // Clumping grass
-      fine: new THREE.Color(0x85b557)     // Fine grass
+      meadow: new THREE.Color(0x7aad62),
+      prairie: new THREE.Color(0xa0a055),
+      clumping: new THREE.Color(0x9bc471),
+      fine: new THREE.Color(0x8bbf67)
     };
     
     const baseColor = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
     const biomeColor = baseColor.clone().multiply(biomeConfig.colorModifier);
     
-    // Natural seasonal variations
+    // Enhanced seasonal variations for more dramatic changes
     const seasonalMultipliers = {
-      spring: new THREE.Color(1.2, 1.3, 1.0), // Fresh spring green
-      summer: new THREE.Color(1.0, 1.1, 0.95), // Mature summer
-      autumn: new THREE.Color(1.3, 1.1, 0.7),  // Golden autumn
-      winter: new THREE.Color(0.8, 0.85, 0.9)  // Muted winter
+      spring: new THREE.Color(1.3, 1.4, 1.1),
+      summer: new THREE.Color(1.1, 1.2, 1.0),
+      autumn: new THREE.Color(1.4, 1.2, 0.7),
+      winter: new THREE.Color(0.7, 0.8, 0.9)
     };
     
     return biomeColor.multiply(seasonalMultipliers[season]);
