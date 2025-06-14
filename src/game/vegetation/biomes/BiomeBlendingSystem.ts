@@ -17,190 +17,106 @@ export interface BiomeInfluence {
   secondaryStrength: number;
   // Whether this position is in a transition zone
   isTransitionZone: boolean;
-  // Width of the transition zone in units (5-25)
+  // Width of the transition zone in units (2-8 for small patches)
   transitionWidth: number;
 }
 
 /**
- * Manages biome blending and creates smooth transitions between biomes
+ * Manages biome blending and creates smooth transitions between small biome patches
  */
 export class BiomeBlendingSystem {
   private static biomeInfluenceCache: Map<string, BiomeInfluence> = new Map();
-  private static readonly CACHE_PRECISION = 2; // Cache positions rounded to nearest 2 units
-  private static readonly MIN_TRANSITION_WIDTH = 5;
-  private static readonly MAX_TRANSITION_WIDTH = 25;
+  private static readonly CACHE_PRECISION = 1; // Cache every unit for small patches
+  private static readonly MIN_TRANSITION_WIDTH = 2;  // Smaller transitions for small patches
+  private static readonly MAX_TRANSITION_WIDTH = 8;  // Maximum 8 units for small patch system
   
   /**
-   * Calculate pure chaotic biome influence at a specific world position
-   * Creates completely random, organic boundaries with 5-25 unit transition zones
+   * Calculate biome influence using the new position-based small patch system
+   * Creates 2-8 unit transition zones between small biome patches
    */
   public static getBiomeInfluenceAtPosition(
     position: THREE.Vector3, 
     worldSeed: number = 12345
   ): BiomeInfluence {
-    // Round position for caching
+    // Use higher precision caching for small patches
     const cacheKey = this.getCacheKey(position);
     if (this.biomeInfluenceCache.has(cacheKey)) {
       return this.biomeInfluenceCache.get(cacheKey)!;
     }
     
-    // ENHANCED: Multi-scale pure chaos layers for maximum patch variety
-    // Large patches (80-150 units) - reduced weight
-    const largeScaleNoise = FractalNoiseSystem.getFractalNoise(
-      position, 
-      worldSeed + 500, 
-      4,
-      0.5, 
-      2.0, 
-      0.005  // Slightly higher frequency
-    );
+    // Get primary biome info from the new position-based system
+    const primaryBiomeInfo = DeterministicBiomeManager.getBiomeInfo(position);
     
-    // Medium patches (20-60 units) - INCREASED weight
-    const mediumScaleNoise = FractalNoiseSystem.getFractalNoise(
-      position, 
-      worldSeed + 1000, 
-      4, 
-      0.6, 
-      2.2, 
-      0.02   // Higher frequency for smaller patches
-    );
+    // Sample nearby positions to detect transitions
+    const sampleRadius = 4; // Sample within 4 units for small patch detection
+    const samplePositions = [
+      new THREE.Vector3(position.x + sampleRadius, position.y, position.z),
+      new THREE.Vector3(position.x - sampleRadius, position.y, position.z),
+      new THREE.Vector3(position.x, position.y, position.z + sampleRadius),
+      new THREE.Vector3(position.x, position.y, position.z - sampleRadius),
+      new THREE.Vector3(position.x + sampleRadius * 0.7, position.y, position.z + sampleRadius * 0.7),
+      new THREE.Vector3(position.x - sampleRadius * 0.7, position.y, position.z - sampleRadius * 0.7),
+    ];
     
-    // Small patches (5-15 units) - INCREASED weight
-    const smallScaleNoise = FractalNoiseSystem.getFractalNoise(
-      position, 
-      worldSeed + 1500, 
-      3, 
-      0.7, 
-      2.5, 
-      0.06   // Much higher frequency
-    );
+    // Check for different biomes in nearby positions
+    const nearbyBiomes = new Map<BiomeType, number>();
+    nearbyBiomes.set(primaryBiomeInfo.type, 1);
     
-    // Micro variations (1-5 units) - NEW chaos layer
-    const microNoise = FractalNoiseSystem.getFractalNoise(
-      position, 
-      worldSeed + 2000, 
-      3, 
-      0.5, 
-      2.0, 
-      0.15   // Very high frequency for chaos
-    );
+    for (const samplePos of samplePositions) {
+      const sampleBiome = DeterministicBiomeManager.getBiomeInfo(samplePos);
+      nearbyBiomes.set(sampleBiome.type, (nearbyBiomes.get(sampleBiome.type) || 0) + 1);
+    }
     
-    // Ultra-micro chaos (0.5-2 units) - NEW ultra chaos layer
-    const ultraMicroNoise = FractalNoiseSystem.getFractalNoise(
-      position, 
-      worldSeed + 2500, 
-      2, 
-      0.4, 
-      2.0, 
-      0.3    // Extremely high frequency
-    );
-    
-    // ENHANCED: Much stronger domain warping for maximum irregular shapes
-    const warpStrength = 100.0; // Increased from 50.0 for extreme chaos
-    const warpedPos = new THREE.Vector3(
-      position.x + (largeScaleNoise - 0.5) * warpStrength,
-      position.y,
-      position.z + (mediumScaleNoise - 0.5) * warpStrength
-    );
-    
-    // Additional warping layers for ultra-organic shapes
-    const secondaryWarp = FractalNoiseSystem.getFractalNoise(warpedPos, worldSeed + 3000, 3, 0.6, 2.0, 0.008);
-    const finalWarpedPos = new THREE.Vector3(
-      warpedPos.x + (secondaryWarp - 0.5) * 30.0,
-      warpedPos.y,
-      warpedPos.z + (smallScaleNoise - 0.5) * 30.0
-    );
-    
-    // Combine all chaos layers with enhanced weights for maximum randomness
-    const baseBiomeNoise = largeScaleNoise * 0.15 +    // Large areas (reduced)
-                           mediumScaleNoise * 0.35 +   // Medium patches (increased)
-                           smallScaleNoise * 0.3 +     // Small details (increased)
-                           microNoise * 0.15 +         // Micro chaos (new)
-                           ultraMicroNoise * 0.05;     // Ultra chaos (new)
-    
-    // ENHANCED: Much stronger Voronoi influence for cellular chaos (70% instead of 50%)
-    const voronoiData = FractalNoiseSystem.getVoronoiNoise(
-      position, 
-      worldSeed, 
-      0.004  // Higher density for smaller, more chaotic cells
-    );
-    
-    // Apply 70% Voronoi influence for maximum cellular chaos
-    let combinedNoise = baseBiomeNoise * 0.3 + voronoiData.value * 0.7;
-    
-    // Add final chaos layers from warped positions
-    const warpedChaoNoise = FractalNoiseSystem.getFractalNoise(finalWarpedPos, worldSeed + 4000, 3, 0.5, 2.0, 0.02);
-    combinedNoise = combinedNoise * 0.8 + warpedChaoNoise * 0.2;
-    
-    // Pure random biome selection (no environmental factors)
-    let primaryBiome: BiomeType = 'normal';
-    let primaryStrength = 1.0;
+    // Find secondary biome if it exists
     let secondaryBiome: BiomeType | null = null;
-    let secondaryStrength = 0.0;
+    let secondaryCount = 0;
     
-    // Equal distribution thresholds (~33% each) with pure randomness
-    if (combinedNoise > 0.66) {
-      primaryBiome = 'meadow';
-      primaryStrength = Math.min(1.0, (combinedNoise - 0.66) * 3.0);
-    } else if (combinedNoise < 0.33) {
-      primaryBiome = 'prairie';
-      primaryStrength = Math.min(1.0, (0.33 - combinedNoise) * 3.0);
-    } else {
-      primaryBiome = 'normal';
-      primaryStrength = 1.0 - Math.abs(combinedNoise - 0.5) * 2.0;
+    for (const [biomeType, count] of nearbyBiomes.entries()) {
+      if (biomeType !== primaryBiomeInfo.type && count > secondaryCount) {
+        secondaryBiome = biomeType;
+        secondaryCount = count;
+      }
     }
     
-    // ENHANCED: Stronger secondary biome influence for chaotic transitions
-    if (primaryBiome === 'meadow') {
-      // Random transitions to any other biome
-      secondaryBiome = combinedNoise < 0.75 ? 'normal' : 'prairie';
-      secondaryStrength = 1.0 - primaryStrength;
-    } else if (primaryBiome === 'prairie') {
-      // Random transitions to any other biome
-      secondaryBiome = combinedNoise > 0.25 ? 'normal' : 'meadow';
-      secondaryStrength = 1.0 - primaryStrength;
-    } else {
-      // Normal areas can transition to either randomly
-      secondaryBiome = combinedNoise > 0.5 ? 'meadow' : 'prairie';
-      secondaryStrength = 1.0 - primaryStrength;
-    }
+    // Determine if we're in a transition zone based on nearby biome diversity
+    const totalSamples = samplePositions.length + 1;
+    const primaryCount = nearbyBiomes.get(primaryBiomeInfo.type) || 0;
+    const primaryRatio = primaryCount / totalSamples;
     
-    // ENHANCED: Variable transition widths with chaos for organic boundaries
+    const isTransitionZone = primaryRatio < 0.8 && secondaryBiome !== null;
+    
+    // Calculate transition width with small-patch appropriate noise
     const edgeDetailNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       worldSeed + 5000, 
-      4, 
+      3, 
       0.6, 
       2.0, 
-      0.08  // Higher frequency for more chaotic edges
+      0.2  // Very high frequency for small patch edges
     );
     
-    // Calculate chaotic transition zones (5-25 units) 
     const transitionWidth = this.MIN_TRANSITION_WIDTH + 
       edgeDetailNoise * (this.MAX_TRANSITION_WIDTH - this.MIN_TRANSITION_WIDTH);
     
-    // Calculate distance to nearest biome boundary with chaos
-    const distanceToBoundary = Math.abs(primaryStrength - 0.5) * 2.0 * transitionWidth;
-    const isTransitionZone = distanceToBoundary < transitionWidth;
+    // Calculate strengths based on transition zone
+    let primaryStrength = primaryBiomeInfo.strength;
+    let secondaryStrength = 0;
     
-    // ENHANCED: Chaotic transitions using improved smoothstep function
-    if (isTransitionZone) {
-      const blendFactor = Math.max(0, Math.min(1, distanceToBoundary / transitionWidth));
+    if (isTransitionZone && secondaryBiome) {
+      // Use the primary ratio to determine blend strength
+      const blendFactor = 1.0 - primaryRatio;
       const smoothBlend = this.smoothStep(blendFactor);
       
-      // Add some chaos to the blend for more organic transitions
-      const blendChaos = FractalNoiseSystem.getFractalNoise(position, worldSeed + 6000, 2, 0.4, 2.0, 0.1);
-      const chaoticBlend = smoothBlend * 0.8 + blendChaos * 0.2;
+      // Add micro-chaos for natural transition edges
+      const microChaos = FractalNoiseSystem.getFractalNoise(position, worldSeed + 6000, 2, 0.4, 2.0, 0.3);
+      const chaoticBlend = smoothBlend * 0.85 + microChaos * 0.15;
       
-      primaryStrength = 0.5 + Math.max(0, Math.min(0.5, chaoticBlend * 0.5));
-      secondaryStrength = 1.0 - primaryStrength;
-    } else {
-      primaryStrength = Math.min(1.0, primaryStrength * 1.2);
-      secondaryStrength = 0;
+      primaryStrength = Math.max(0.4, 1.0 - chaoticBlend * 0.6);
+      secondaryStrength = Math.min(0.6, chaoticBlend * 0.6);
     }
     
     const result: BiomeInfluence = {
-      primaryBiome,
+      primaryBiome: primaryBiomeInfo.type,
       primaryStrength,
       secondaryBiome,
       secondaryStrength,
@@ -209,7 +125,6 @@ export class BiomeBlendingSystem {
     };
     
     this.biomeInfluenceCache.set(cacheKey, result);
-    
     return result;
   }
   
@@ -403,7 +318,7 @@ export class BiomeBlendingSystem {
   }
   
   /**
-   * Get cache key for a position (round to lower precision)
+   * Get cache key for a position (high precision for small patches)
    */
   private static getCacheKey(position: THREE.Vector3): string {
     const x = Math.round(position.x / this.CACHE_PRECISION) * this.CACHE_PRECISION;

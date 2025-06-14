@@ -17,8 +17,9 @@ export interface ChunkBiomeData {
 
 export class DeterministicBiomeManager {
   private static readonly CHUNK_SIZE = 64;
-  private static worldSeed: number = DeterministicBiomeManager.generateRandomSeed(); // Dynamic random seed
+  private static worldSeed: number = DeterministicBiomeManager.generateRandomSeed();
   private static chunkBiomeCache: Map<string, ChunkBiomeData> = new Map();
+  private static positionBiomeCache: Map<string, BiomeInfo> = new Map();
 
   // REBALANCED biome configurations with MUCH DENSER prairie grass
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
@@ -40,8 +41,8 @@ export class DeterministicBiomeManager {
     },
     prairie: {
       name: 'Open Prairie',
-      densityMultiplier: 1.8, // Increased from 1.2 for much denser prairie
-      heightMultiplier: 1.1, // Increased from 0.8 for taller prairie grass
+      densityMultiplier: 1.8,
+      heightMultiplier: 1.1,
       colorModifier: new THREE.Color(0xb8b84d),
       speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.15, fine: 0.05 },
       windExposure: 1.5
@@ -63,8 +64,8 @@ export class DeterministicBiomeManager {
       windReduction: 0.15
     },
     prairie: {
-      densityMultiplier: 11.0, // Increased from 8.0 for much denser prairie ground coverage
-      heightReduction: 0.65, // Reduced from 0.6 for taller prairie ground grass
+      densityMultiplier: 11.0,
+      heightReduction: 0.65,
       speciesDistribution: { meadow: 0.05, prairie: 0.75, clumping: 0.1, fine: 0.1 },
       windReduction: 0.3
     }
@@ -89,6 +90,7 @@ export class DeterministicBiomeManager {
   public static setWorldSeed(seed: number): void {
     this.worldSeed = seed;
     this.chunkBiomeCache.clear();
+    this.positionBiomeCache.clear();
     BiomeBlendingSystem.clearCache();
     console.log(`🌱 World seed set to: ${seed} - biome caches cleared`);
   }
@@ -125,8 +127,7 @@ export class DeterministicBiomeManager {
   }
 
   /**
-   * ENHANCED: Pure chaotic patch distribution with multi-frequency noise mixing
-   * Removed all environmental factors for completely random, dynamic biome patches
+   * LEGACY: Keep for compatibility but use position-based biome determination
    */
   public static getBiomeForChunk(chunk: ChunkCoordinate): ChunkBiomeData {
     const chunkKey = this.getChunkKey(chunk);
@@ -138,93 +139,162 @@ export class DeterministicBiomeManager {
     const seed = this.getChunkSeed(chunk);
     const centerPos = this.chunkToWorldPosition(chunk);
     
-    // ENHANCED: Multi-frequency chaos for maximum patch variety
-    // Large scale regions (100-200 units)
-    const largeScaleNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed, 4, 0.5, 2.0, 0.002);
-    
-    // Medium scale patches (30-70 units) - INCREASED WEIGHT
-    const mediumScaleNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed + 1000, 4, 0.6, 2.2, 0.008);
-    
-    // Small scale variations (10-30 units) - INCREASED WEIGHT  
-    const smallScaleNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed + 2000, 3, 0.7, 2.5, 0.025);
-    
-    // Micro variations (1-10 units) - NEW LAYER
-    const microNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed + 3000, 3, 0.5, 2.0, 0.08);
-    
-    // Ultra-micro chaos (0.5-3 units) - NEW LAYER for maximum randomness
-    const ultraMicroNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed + 4000, 2, 0.4, 2.0, 0.15);
-    
-    // Combine noise layers with enhanced weights for chaotic patchiness
-    const combinedNoise = largeScaleNoise * 0.2 +       // Large regions (reduced)
-                         mediumScaleNoise * 0.3 +       // Medium patches (increased)
-                         smallScaleNoise * 0.3 +        // Small variations (increased)
-                         microNoise * 0.15 +            // Micro details (increased)
-                         ultraMicroNoise * 0.05;        // Ultra chaos
-    
-    // ENHANCED: Domain warping for maximum irregular patch shapes
-    const warpStrength = 80; // Increased from 50 for more chaos
-    const warpX = FractalNoiseSystem.getFractalNoise(centerPos, seed + 5000, 4, 0.6, 2.0, 0.006) - 0.5;
-    const warpZ = FractalNoiseSystem.getFractalNoise(centerPos, seed + 6000, 4, 0.6, 2.0, 0.006) - 0.5;
-    
-    const warpedPos = new THREE.Vector3(
-      centerPos.x + warpX * warpStrength,
-      centerPos.y,
-      centerPos.z + warpZ * warpStrength
-    );
-    
-    // Get noise at warped position for completely organic shapes
-    const warpedNoise = FractalNoiseSystem.getFractalNoise(warpedPos, seed + 7000, 4, 0.6, 2.0, 0.012);
-    
-    // ENHANCED: Pure random distribution with chaos layers
-    let biomeType: BiomeType = 'normal';
-    let strength = 1.0;
-    let baseNoise = combinedNoise * 0.5 + warpedNoise * 0.5;
-    
-    // Add additional chaos layers for maximum unpredictability
-    const chaosNoise1 = FractalNoiseSystem.getWarpedNoise(centerPos, seed + 8000, 25.0);
-    const chaosNoise2 = FractalNoiseSystem.getWarpedNoise(centerPos, seed + 9000, 15.0);
-    
-    // Blend all chaos sources
-    baseNoise = baseNoise * 0.7 + chaosNoise1 * 0.2 + chaosNoise2 * 0.1;
-    
-    // Pure random thresholds for equal distribution (no environmental bias)
-    if (baseNoise > 0.66) {
-      biomeType = 'meadow';
-      strength = Math.min(1.0, (baseNoise - 0.66) * 3.0);
-    } else if (baseNoise < 0.33) {
-      biomeType = 'prairie';
-      strength = Math.min(1.0, (0.33 - baseNoise) * 3.0);
-    } else {
-      biomeType = 'normal';
-      strength = 1.0 - Math.abs(baseNoise - 0.5) * 2.0;
-    }
-    
-    // ENHANCED: Much stronger Voronoi influence for cellular chaos patterns
-    const voronoiData = FractalNoiseSystem.getVoronoiNoise(centerPos, seed, 0.003); // Higher density
-    const voronoiInfluence = voronoiData.value * 0.7; // 70% influence (up from 50%)
-    
-    // Force maximum biome variety based on Voronoi cell ID
-    const cellBiomeType = this.getCellForcedBiome(voronoiData.cellId);
-    
-    // Much higher chance to switch biome type for maximum chaos
-    if (voronoiInfluence > 0.3 && cellBiomeType !== biomeType) {
-      // 80% chance to switch (up from 60%)
-      if (Math.random() < 0.8) {
-        biomeType = cellBiomeType;
-        // Adjust strength for natural transitions
-        strength *= 0.9;
-      }
-    }
+    // Use position-based biome info for the chunk center
+    const biomeInfo = this.getBiomeInfo(centerPos);
 
     const biomeData: ChunkBiomeData = {
       coordinate: chunk,
-      biomeType,
-      strength,
+      biomeType: biomeInfo.type,
+      strength: biomeInfo.strength,
       seed
     };
 
     this.chunkBiomeCache.set(chunkKey, biomeData);
     return biomeData;
+  }
+
+  /**
+   * NEW: Position-based biome determination for small, realistic patches
+   * Creates 5-30 unit biome patches that intermix naturally
+   */
+  public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
+    const cacheKey = `${Math.round(position.x)}_${Math.round(position.z)}`;
+    
+    if (this.positionBiomeCache.has(cacheKey)) {
+      return this.positionBiomeCache.get(cacheKey)!;
+    }
+
+    // ULTRA-HIGH FREQUENCY NOISE for small patches (5-30 units)
+    
+    // Patch cluster noise (20-50 units) - creates groups of similar patches
+    const patchClusterNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      this.worldSeed, 
+      3, 
+      0.6, 
+      2.0, 
+      0.025  // High frequency for small clusters
+    );
+    
+    // Small patch noise (10-25 units) - individual patch definition
+    const smallPatchNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      this.worldSeed + 1000, 
+      4, 
+      0.7, 
+      2.2, 
+      0.05   // Very high frequency for small patches
+    );
+    
+    // Micro patch noise (5-15 units) - patch edge variation
+    const microPatchNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      this.worldSeed + 2000, 
+      3, 
+      0.8, 
+      2.5, 
+      0.08   // Ultra high frequency for micro details
+    );
+    
+    // Ultra-micro chaos (2-8 units) - natural irregularity
+    const ultraMicroNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      this.worldSeed + 3000, 
+      2, 
+      0.6, 
+      2.0, 
+      0.15   // Extremely high frequency
+    );
+    
+    // Disturbance patterns (30-80 units) - creates natural clearings and variations
+    const disturbanceNoise = FractalNoiseSystem.getWarpedNoise(
+      position, 
+      this.worldSeed + 4000, 
+      40.0   // Medium warp for disturbance patterns
+    );
+    
+    // ENHANCED: Domain warping for ultra-organic patch shapes
+    const warpStrength = 25.0; // Smaller warp for tighter patches
+    const warpX = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 5000, 3, 0.6, 2.0, 0.08) - 0.5;
+    const warpZ = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 6000, 3, 0.6, 2.0, 0.08) - 0.5;
+    
+    const warpedPos = new THREE.Vector3(
+      position.x + warpX * warpStrength,
+      position.y,
+      position.z + warpZ * warpStrength
+    );
+    
+    // Get additional noise at warped position
+    const warpedDetailNoise = FractalNoiseSystem.getFractalNoise(warpedPos, this.worldSeed + 7000, 3, 0.7, 2.0, 0.06);
+    
+    // COMBINE: Weight ultra-high frequency noise heavily for small patches
+    const combinedNoise = patchClusterNoise * 0.2 +     // Large-scale clustering
+                         smallPatchNoise * 0.35 +       // Primary patch definition
+                         microPatchNoise * 0.25 +       // Patch edge details
+                         ultraMicroNoise * 0.15 +       // Natural chaos
+                         warpedDetailNoise * 0.05;      // Warped details
+    
+    // ULTRA-HIGH DENSITY Voronoi for cellular patch patterns (90% influence)
+    const voronoiData = FractalNoiseSystem.getVoronoiNoise(
+      position, 
+      this.worldSeed, 
+      0.015  // Very high density for small cells
+    );
+    
+    // Blend with 90% Voronoi influence for strong cellular patterns
+    let finalNoise = combinedNoise * 0.1 + voronoiData.value * 0.9;
+    
+    // Add disturbance patterns for natural clearings
+    finalNoise = finalNoise * 0.8 + disturbanceNoise * 0.2;
+    
+    // REALISTIC PATCH DISTRIBUTION: Create natural clustering
+    let biomeType: BiomeType = 'normal';
+    let strength = 1.0;
+    let isTransitionZone = false;
+    
+    // Use triple-threshold system for natural patch distribution
+    if (finalNoise > 0.7) {
+      biomeType = 'meadow';
+      strength = Math.min(1.0, (finalNoise - 0.7) * 3.33);
+      isTransitionZone = finalNoise < 0.8;
+    } else if (finalNoise < 0.3) {
+      biomeType = 'prairie';
+      strength = Math.min(1.0, (0.3 - finalNoise) * 3.33);
+      isTransitionZone = finalNoise > 0.2;
+    } else {
+      biomeType = 'normal';
+      strength = 1.0 - Math.abs(finalNoise - 0.5) * 2.0;
+      isTransitionZone = finalNoise > 0.35 && finalNoise < 0.65;
+    }
+    
+    // SEED DISPERSAL LOGIC: Similar biomes cluster together naturally
+    const clusteringNoise = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 8000, 2, 0.5, 2.0, 0.003);
+    
+    // Force clustering based on surrounding area tendency
+    if (clusteringNoise > 0.6) {
+      // Strong meadow clustering areas
+      if (biomeType === 'normal' && finalNoise > 0.55) {
+        biomeType = 'meadow';
+        strength *= 0.8;
+        isTransitionZone = true;
+      }
+    } else if (clusteringNoise < 0.4) {
+      // Strong prairie clustering areas
+      if (biomeType === 'normal' && finalNoise < 0.45) {
+        biomeType = 'prairie';
+        strength *= 0.8;
+        isTransitionZone = true;
+      }
+    }
+
+    const biomeInfo: BiomeInfo = {
+      type: biomeType,
+      strength,
+      transitionZone: isTransitionZone
+    };
+
+    this.positionBiomeCache.set(cacheKey, biomeInfo);
+    return biomeInfo;
   }
 
   /**
@@ -241,16 +311,6 @@ export class DeterministicBiomeManager {
 
   public static getGroundConfiguration(biomeType: BiomeType): GroundGrassConfiguration {
     return this.GROUND_CONFIGS[biomeType];
-  }
-
-  public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
-    const biomeInfluence = BiomeBlendingSystem.getBiomeInfluenceAtPosition(position, this.worldSeed);
-    
-    return {
-      type: biomeInfluence.primaryBiome,
-      strength: biomeInfluence.primaryStrength,
-      transitionZone: biomeInfluence.isTransitionZone
-    };
   }
 
   public static getBiomeSpeciesColor(
