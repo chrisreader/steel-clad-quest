@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
-import { BiomeTransitionSystem, TransitionZoneInfo } from './BiomeTransitionSystem';
 
 export interface ChunkCoordinate {
   x: number;
@@ -107,13 +106,28 @@ export class DeterministicBiomeManager {
     const seed = this.getChunkSeed(chunk);
     const centerPos = this.chunkToWorldPosition(chunk);
     
-    // Use enhanced biome transition system for realistic edges
-    const transition = BiomeTransitionSystem.calculateBiomeTransition(centerPos, seed);
+    // Enhanced biome generation with more variation for obvious differences
+    const seededRandom = this.createSeededRandom(seed);
+    const noiseX = this.seededNoise(centerPos.x * 0.002, seed); // Increased frequency for more variation
+    const noiseZ = this.seededNoise(centerPos.z * 0.002, seed + 1000);
+    const combinedNoise = (noiseX + noiseZ) / 2;
     
+    let biomeType: BiomeType = 'normal';
+    let strength = 1.0;
+    
+    // Enhanced biome selection with clearer boundaries
+    if (noiseX > 0.2) {
+      biomeType = 'meadow';
+      strength = Math.min(1.0, (noiseX - 0.2) / 0.5); // More gradual transition
+    } else if (noiseZ > 0.1) {
+      biomeType = 'prairie';
+      strength = Math.min(1.0, (noiseZ - 0.1) / 0.6); // More gradual transition
+    }
+
     const biomeData: ChunkBiomeData = {
       coordinate: chunk,
-      biomeType: transition.primaryBiome,
-      strength: transition.secondaryBiome ? (1 - transition.blendFactor) : 1.0,
+      biomeType,
+      strength,
       seed
     };
 
@@ -144,25 +158,13 @@ export class DeterministicBiomeManager {
 
   public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
     const chunk = this.worldPositionToChunk(position);
-    const seed = this.getChunkSeed(chunk);
-    
-    // Use position-specific transition calculation for accurate biome info
-    const transition = BiomeTransitionSystem.calculateBiomeTransition(position, seed);
+    const biomeData = this.getBiomeForChunk(chunk);
     
     return {
-      type: transition.primaryBiome,
-      strength: transition.secondaryBiome ? (1 - transition.blendFactor) : 1.0,
-      transitionZone: transition.secondaryBiome !== null
+      type: biomeData.biomeType,
+      strength: biomeData.strength,
+      transitionZone: biomeData.strength < 0.8
     };
-  }
-
-  /**
-   * Get detailed transition information for a specific position
-   */
-  public static getBiomeTransition(position: THREE.Vector3): TransitionZoneInfo {
-    const chunk = this.worldPositionToChunk(position);
-    const seed = this.getChunkSeed(chunk);
-    return BiomeTransitionSystem.calculateBiomeTransition(position, seed);
   }
 
   // Enhanced biome species color with more dramatic differences
