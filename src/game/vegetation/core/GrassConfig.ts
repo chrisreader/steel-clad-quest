@@ -15,7 +15,7 @@ export interface GrassBladeConfig {
   segments: number;
   curve: number;
   taper: number;
-  species: 'meadow' | 'prairie' | 'clumping' | 'fine';
+  species: 'meadow' | 'prairie' | 'clumping' | 'fine' | 'wildflower' | 'thicket' | 'golden';
   color: THREE.Color;
   clustered: boolean;
 }
@@ -30,6 +30,9 @@ export interface BiomeConfiguration {
     prairie: number;
     clumping: number;
     fine: number;
+    wildflower?: number;
+    thicket?: number;
+    golden?: number;
   };
   windExposure: number;
 }
@@ -42,11 +45,14 @@ export interface GroundGrassConfiguration {
     prairie: number;
     clumping: number;
     fine: number;
+    wildflower?: number;
+    thicket?: number;
+    golden?: number;
   };
   windReduction: number;
 }
 
-export type BiomeType = 'normal' | 'meadow' | 'prairie';
+export type BiomeType = 'normal' | 'meadow' | 'prairie' | 'wildflower_meadow' | 'dense_thicket' | 'sparse_steppe' | 'rolling_savanna' | 'lush_valley';
 
 export interface BiomeInfo {
   type: BiomeType;
