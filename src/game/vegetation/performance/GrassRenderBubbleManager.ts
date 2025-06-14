@@ -1,8 +1,17 @@
+
 import * as THREE from 'three';
 import { SeededGrassDistribution } from '../SeededGrassDistribution';
 import { GrassRenderer } from '../core/GrassRenderer';
 import { DeterministicBiomeManager, ChunkCoordinate } from '../biomes/DeterministicBiomeManager';
 import { FlowerDistribution } from '../flowers/FlowerDistribution';
+
+interface ChunkData {
+  coordinate: ChunkCoordinate;
+  tallGrassData: any;
+  groundGrassData: any;
+  flowerData: THREE.Group[];
+  lastAccessTime: number;
+}
 
 export class GrassRenderBubbleManager {
   private scene: THREE.Scene;
@@ -19,14 +28,6 @@ export class GrassRenderBubbleManager {
   constructor(scene: THREE.Scene, renderer: GrassRenderer) {
     this.scene = scene;
     this.renderer = renderer;
-  }
-
-  private interface ChunkData {
-    coordinate: ChunkCoordinate;
-    tallGrassData: any;
-    groundGrassData: any;
-    flowerData: THREE.Group[];
-    lastAccessTime: number;
   }
 
   public initializeWithCoverage(playerPosition: THREE.Vector3, coverageRadius: number): void {
