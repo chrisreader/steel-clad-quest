@@ -190,7 +190,12 @@ export class RealisticTreeGenerator {
   private createOrganicTrunk(species: TreeSpeciesType): THREE.Mesh {
     const config = TreeSpeciesManager.getSpeciesConfig(species);
     const height = TreeSpeciesManager.getRandomHeight(species);
-    const baseRadius = TreeSpeciesManager.getRandomTrunkRadius(species);
+    let baseRadius = TreeSpeciesManager.getRandomTrunkRadius(species);
+
+    // Increase trunk thickness for pine trees and scale with height
+    if (species === TreeSpeciesType.PINE) {
+      baseRadius = baseRadius * 2.2 * (height / 20); // Thicker trunk that scales with tree size
+    }
 
     // Create organic trunk with proper tapering
     const segments = 16;
@@ -541,24 +546,25 @@ export class RealisticTreeGenerator {
   private createRealisticPineCones(species: TreeSpeciesType, height: number): THREE.Mesh[] {
     const cones: THREE.Mesh[] = [];
     
-    // Simple, predictable cone count based on tree height
-    const coneCount = Math.floor(height / 4) + 2; // 4-8 cones for 15-25 unit trees
+    // Calculate cone count (4-8 cones total, but we'll skip the bottom one)
+    const totalConeCount = Math.floor(height / 4) + 2;
+    const coneCount = totalConeCount - 1; // Remove bottom cone
     
-    // Define coverage area - start higher up the trunk, not at the base
-    const startHeight = height * 0.15; // Start at 15% of trunk height
+    // Define coverage area - start higher up the trunk since we removed bottom cone
+    const startHeight = height * 0.35; // Start at 35% of trunk height (was 15%)
     const endHeight = height * 0.95;   // End near the top
     const coverageHeight = endHeight - startHeight;
     
-    // Calculate cone dimensions with simple, realistic proportions
-    const bottomConeRadius = height * 0.3;  // Bottom cone = 30% of tree height
-    const topConeRadius = height * 0.05;    // Top cone = 5% of tree height
-    const coneHeight = height * 0.25;       // All cones same height = 25% of tree height
+    // Calculate cone dimensions
+    const bottomConeRadius = height * 0.25;  // Slightly smaller since no bottom cone
+    const topConeRadius = height * 0.05;     
+    const coneHeight = height * 0.25;        
     
-    // Calculate spacing with 50% overlap
+    // Calculate spacing
     const coneSpacing = coverageHeight / (coneCount - 1);
     
     for (let i = 0; i < coneCount; i++) {
-      // Linear taper from bottom to top
+      // Linear taper from what would be the second cone to top
       const heightRatio = i / (coneCount - 1);
       const coneRadius = bottomConeRadius * (1 - heightRatio) + topConeRadius * heightRatio;
       
@@ -566,15 +572,15 @@ export class RealisticTreeGenerator {
       const geometry = new THREE.ConeGeometry(
         coneRadius,
         coneHeight,
-        Math.max(12, Math.floor(coneRadius * 3)), // More segments for larger cones
+        Math.max(12, Math.floor(coneRadius * 3)),
         1
       );
       
       // Create realistic pine needle material
       const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color().setHSL(
-          0.21 + (Math.random() - 0.5) * 0.02, // Pine green with slight variation
-          0.9 - heightRatio * 0.1,              // Slightly less saturated at top
+          0.21 + (Math.random() - 0.5) * 0.02,
+          0.9 - heightRatio * 0.1,
           0.12 + heightRatio * 0.08 + Math.random() * 0.02
         ),
         roughness: 0.9,
