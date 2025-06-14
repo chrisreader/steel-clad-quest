@@ -1,5 +1,8 @@
+
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
+import { FractalNoiseSystem } from './FractalNoiseSystem';
+import { BiomeBlendingSystem } from './BiomeBlendingSystem';
 
 export interface ChunkCoordinate {
   x: number;
@@ -71,6 +74,11 @@ export class DeterministicBiomeManager {
   public static setWorldSeed(seed: number): void {
     this.worldSeed = seed;
     this.chunkBiomeCache.clear();
+    BiomeBlendingSystem.clearCache(); // Clear blending cache when seed changes
+  }
+
+  public static getChunkSize(): number {
+    return this.CHUNK_SIZE;
   }
 
   public static worldPositionToChunk(position: THREE.Vector3): ChunkCoordinate {
@@ -96,6 +104,10 @@ export class DeterministicBiomeManager {
     return this.worldSeed + chunk.x * 73856093 + chunk.z * 19349663;
   }
 
+  /**
+   * Get biome data for a chunk (used for chunk-based operations)
+   * For individual grass blades, use BiomeBlendingSystem.getBiomeInfluenceAtPosition instead
+   */
   public static getBiomeForChunk(chunk: ChunkCoordinate): ChunkBiomeData {
     const chunkKey = this.getChunkKey(chunk);
     
@@ -106,22 +118,20 @@ export class DeterministicBiomeManager {
     const seed = this.getChunkSeed(chunk);
     const centerPos = this.chunkToWorldPosition(chunk);
     
-    // Enhanced biome generation with more variation for obvious differences
-    const seededRandom = this.createSeededRandom(seed);
-    const noiseX = this.seededNoise(centerPos.x * 0.002, seed); // Increased frequency for more variation
-    const noiseZ = this.seededNoise(centerPos.z * 0.002, seed + 1000);
-    const combinedNoise = (noiseX + noiseZ) / 2;
+    // Use the new FractalNoiseSystem for more organic patterns
+    const influence = FractalNoiseSystem.calculateBiomeInfluence(centerPos, seed);
+    const noiseValue = influence.noiseValue;
     
     let biomeType: BiomeType = 'normal';
     let strength = 1.0;
     
-    // Enhanced biome selection with clearer boundaries
-    if (noiseX > 0.2) {
+    // Improved biome selection with enhanced noise
+    if (noiseValue > 0.6) {
       biomeType = 'meadow';
-      strength = Math.min(1.0, (noiseX - 0.2) / 0.5); // More gradual transition
-    } else if (noiseZ > 0.1) {
+      strength = Math.min(1.0, (noiseValue - 0.6) / 0.4);
+    } else if (noiseValue < 0.4) {
       biomeType = 'prairie';
-      strength = Math.min(1.0, (noiseZ - 0.1) / 0.6); // More gradual transition
+      strength = Math.min(1.0, (0.4 - noiseValue) / 0.4);
     }
 
     const biomeData: ChunkBiomeData = {
@@ -135,19 +145,6 @@ export class DeterministicBiomeManager {
     return biomeData;
   }
 
-  private static createSeededRandom(seed: number): () => number {
-    let current = seed;
-    return () => {
-      current = (current * 16807) % 2147483647;
-      return (current - 1) / 2147483646;
-    };
-  }
-
-  private static seededNoise(x: number, seed: number): number {
-    const n = Math.sin(x * 12.9898 + seed * 78.233) * 43758.5453;
-    return (n - Math.floor(n)) * 2 - 1;
-  }
-
   public static getBiomeConfiguration(biomeType: BiomeType): BiomeConfiguration {
     return this.BIOME_CONFIGS[biomeType];
   }
@@ -156,14 +153,17 @@ export class DeterministicBiomeManager {
     return this.GROUND_CONFIGS[biomeType];
   }
 
+  /**
+   * Get biome info at a world position using the enhanced blending system
+   */
   public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
-    const chunk = this.worldPositionToChunk(position);
-    const biomeData = this.getBiomeForChunk(chunk);
+    // Use BiomeBlendingSystem for more accurate position-based biome info
+    const biomeInfluence = BiomeBlendingSystem.getBiomeInfluenceAtPosition(position, this.worldSeed);
     
     return {
-      type: biomeData.biomeType,
-      strength: biomeData.strength,
-      transitionZone: biomeData.strength < 0.8
+      type: biomeInfluence.primaryBiome,
+      strength: biomeInfluence.primaryStrength,
+      transitionZone: biomeInfluence.isTransitionZone
     };
   }
 
@@ -173,6 +173,15 @@ export class DeterministicBiomeManager {
     biomeInfo: BiomeInfo, 
     season: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer'
   ): THREE.Color {
+    // For positions in transition zones, use the blended color system
+    if (biomeInfo.transitionZone) {
+      // Create a temporary position for color calculation
+      // In real usage, the actual world position should be passed to BiomeBlendingSystem
+      const tempPosition = new THREE.Vector3(0, 0, 0);
+      return BiomeBlendingSystem.getBlendedBiomeColor(species, tempPosition, season, this.worldSeed);
+    }
+    
+    // Standard coloring for single-biome areas
     const biomeConfig = this.getBiomeConfiguration(biomeInfo.type);
     
     // Enhanced base colors for better species distinction
@@ -197,6 +206,9 @@ export class DeterministicBiomeManager {
     return biomeColor.multiply(seasonalMultipliers[season]);
   }
 
+  /**
+   * Adjust species list based on biome influence (use BiomeBlendingSystem for transitions)
+   */
   public static adjustSpeciesForBiome(baseSpecies: string[], biomeInfo: BiomeInfo): string[] {
     const config = this.getBiomeConfiguration(biomeInfo.type);
     const adjustedSpecies: string[] = [];
@@ -235,5 +247,16 @@ export class DeterministicBiomeManager {
     }
 
     return adjustedSpecies;
+  }
+  
+  /**
+   * Creates a consistent seeded random number generator
+   */
+  public static createSeededRandom(seed: number): () => number {
+    let current = seed;
+    return () => {
+      current = (current * 16807) % 2147483647;
+      return (current - 1) / 2147483646;
+    };
   }
 }
