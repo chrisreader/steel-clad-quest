@@ -55,7 +55,7 @@ export class DeterministicBiomeManager {
       heightMultiplier: 1.4,
       colorModifier: new THREE.Color(0x3eb83e),
       speciesDistribution: { 
-        meadow: 0.3, wildflower: 0.4, fine: 0.2, clumping: 0.1 
+        meadow: 0.3, prairie: 0.0, clumping: 0.1, fine: 0.2, wildflower: 0.4 
       },
       windExposure: 0.7,
       rarity: 0.15,
@@ -70,7 +70,7 @@ export class DeterministicBiomeManager {
       heightMultiplier: 2.5,
       colorModifier: new THREE.Color(0x2a4a1a),
       speciesDistribution: { 
-        thicket: 0.6, reed: 0.2, shrub: 0.15, fern: 0.05 
+        meadow: 0.0, prairie: 0.0, clumping: 0.0, fine: 0.05, thicket: 0.6, reed: 0.2, shrub: 0.15 
       },
       windExposure: 0.2,
       rarity: 0.12
@@ -81,7 +81,7 @@ export class DeterministicBiomeManager {
       heightMultiplier: 0.4,
       colorModifier: new THREE.Color(0xd4c068),
       speciesDistribution: { 
-        prairie: 0.7, fine: 0.25, meadow: 0.05 
+        meadow: 0.05, prairie: 0.7, clumping: 0.0, fine: 0.25 
       },
       windExposure: 2.5,
       rarity: 0.18,
@@ -95,7 +95,7 @@ export class DeterministicBiomeManager {
       heightMultiplier: 1.2,
       colorModifier: new THREE.Color(0xb8a047),
       speciesDistribution: { 
-        prairie: 0.5, meadow: 0.3, clumping: 0.15, fine: 0.05 
+        meadow: 0.3, prairie: 0.5, clumping: 0.15, fine: 0.05 
       },
       windExposure: 1.3,
       rarity: 0.20
@@ -106,7 +106,7 @@ export class DeterministicBiomeManager {
       heightMultiplier: 2.0,
       colorModifier: new THREE.Color(0x1eb81e),
       speciesDistribution: { 
-        meadow: 0.4, fern: 0.3, wildflower: 0.2, reed: 0.1 
+        meadow: 0.4, prairie: 0.0, clumping: 0.0, fine: 0.0, fern: 0.3, wildflower: 0.2, reed: 0.1 
       },
       windExposure: 0.3,
       rarity: 0.10
@@ -117,7 +117,7 @@ export class DeterministicBiomeManager {
       heightMultiplier: 0.7,
       colorModifier: new THREE.Color(0x8ba85f),
       speciesDistribution: { 
-        prairie: 0.6, fine: 0.3, clumping: 0.1 
+        meadow: 0.0, prairie: 0.6, clumping: 0.1, fine: 0.3 
       },
       windExposure: 2.2,
       rarity: 0.16,
@@ -131,7 +131,7 @@ export class DeterministicBiomeManager {
       heightMultiplier: 1.3,
       colorModifier: new THREE.Color(0x4a6b2a),
       speciesDistribution: { 
-        fern: 0.35, meadow: 0.25, shrub: 0.25, clumping: 0.15 
+        meadow: 0.25, prairie: 0.0, clumping: 0.15, fine: 0.0, fern: 0.35, shrub: 0.25 
       },
       windExposure: 0.8,
       rarity: 0.08
@@ -142,7 +142,7 @@ export class DeterministicBiomeManager {
       heightMultiplier: 1.6,
       colorModifier: new THREE.Color(0x5bb8c7),
       speciesDistribution: { 
-        crystal: 0.7, wildflower: 0.2, fine: 0.1 
+        meadow: 0.0, prairie: 0.0, clumping: 0.0, fine: 0.1, crystal: 0.7, wildflower: 0.2 
       },
       windExposure: 0.1,
       rarity: 0.02,
@@ -176,49 +176,49 @@ export class DeterministicBiomeManager {
     wildflower_meadow: {
       densityMultiplier: 15.0,
       heightReduction: 0.7,
-      speciesDistribution: { meadow: 0.4, wildflower: 0.3, fine: 0.3 },
+      speciesDistribution: { meadow: 0.4, prairie: 0.0, clumping: 0.0, fine: 0.3, wildflower: 0.3 },
       windReduction: 0.15
     },
     dense_thicket: {
       densityMultiplier: 25.0,
       heightReduction: 0.9,
-      speciesDistribution: { fern: 0.5, shrub: 0.3, clumping: 0.2 },
+      speciesDistribution: { meadow: 0.0, prairie: 0.0, clumping: 0.2, fine: 0.0, fern: 0.5, shrub: 0.3 },
       windReduction: 0.05
     },
     sparse_steppe: {
       densityMultiplier: 2.0,
       heightReduction: 0.3,
-      speciesDistribution: { prairie: 0.8, fine: 0.2 },
+      speciesDistribution: { meadow: 0.0, prairie: 0.8, clumping: 0.0, fine: 0.2 },
       windReduction: 0.8
     },
     rolling_savanna: {
       densityMultiplier: 10.0,
       heightReduction: 0.6,
-      speciesDistribution: { prairie: 0.6, meadow: 0.3, clumping: 0.1 },
+      speciesDistribution: { meadow: 0.3, prairie: 0.6, clumping: 0.1, fine: 0.0 },
       windReduction: 0.3
     },
     lush_valley: {
       densityMultiplier: 22.0,
       heightReduction: 0.8,
-      speciesDistribution: { meadow: 0.5, fern: 0.4, wildflower: 0.1 },
+      speciesDistribution: { meadow: 0.5, prairie: 0.0, clumping: 0.0, fine: 0.0, fern: 0.4, wildflower: 0.1 },
       windReduction: 0.1
     },
     windswept_plain: {
       densityMultiplier: 5.0,
       heightReduction: 0.4,
-      speciesDistribution: { prairie: 0.7, fine: 0.3 },
+      speciesDistribution: { meadow: 0.0, prairie: 0.7, clumping: 0.0, fine: 0.3 },
       windReduction: 0.6
     },
     ancient_clearing: {
       densityMultiplier: 12.0,
       heightReduction: 0.7,
-      speciesDistribution: { fern: 0.4, meadow: 0.3, shrub: 0.2, clumping: 0.1 },
+      speciesDistribution: { meadow: 0.3, prairie: 0.0, clumping: 0.1, fine: 0.0, fern: 0.4, shrub: 0.2 },
       windReduction: 0.2
     },
     crystalline_grove: {
       densityMultiplier: 8.0,
       heightReduction: 0.8,
-      speciesDistribution: { crystal: 0.6, wildflower: 0.3, fine: 0.1 },
+      speciesDistribution: { meadow: 0.0, prairie: 0.0, clumping: 0.0, fine: 0.1, crystal: 0.6, wildflower: 0.3 },
       windReduction: 0.05
     }
   };

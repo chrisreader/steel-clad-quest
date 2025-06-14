@@ -136,7 +136,15 @@ export class BiomeSeedManager {
     const biomeCounts: Record<BiomeType, number> = {
       normal: 0,
       meadow: 0,
-      prairie: 0
+      prairie: 0,
+      wildflower_meadow: 0,
+      dense_thicket: 0,
+      sparse_steppe: 0,
+      rolling_savanna: 0,
+      lush_valley: 0,
+      windswept_plain: 0,
+      ancient_clearing: 0,
+      crystalline_grove: 0
     };
 
     for (const biomes of this.organicBiomes.values()) {
