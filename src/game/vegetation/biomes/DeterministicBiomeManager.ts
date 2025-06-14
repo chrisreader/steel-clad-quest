@@ -21,35 +21,35 @@ export class DeterministicBiomeManager {
   private static chunkBiomeCache: Map<string, ChunkBiomeData> = new Map();
   private static positionBiomeCache: Map<string, BiomeInfo> = new Map();
 
-  // REBALANCED biome configurations with MUCH DENSER prairie grass
+  // ENHANCED biome configurations with DRAMATIC differences for clear distinction
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
       densityMultiplier: 1.5,
       heightMultiplier: 1.0,
-      colorModifier: new THREE.Color(0x6db070),
+      colorModifier: new THREE.Color(0x6db070), // Standard green
       speciesDistribution: { meadow: 0.4, prairie: 0.25, clumping: 0.25, fine: 0.1 },
       windExposure: 1.0
     },
     meadow: {
       name: 'Lush Meadow',
-      densityMultiplier: 2.0,
-      heightMultiplier: 1.4,
-      colorModifier: new THREE.Color(0x4db84d),
-      speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.05, fine: 0.1 },
-      windExposure: 0.6
+      densityMultiplier: 2.5, // Much higher density
+      heightMultiplier: 1.6, // Much taller
+      colorModifier: new THREE.Color(0x2d8f2d), // Rich, dark green
+      speciesDistribution: { meadow: 0.9, prairie: 0.02, clumping: 0.03, fine: 0.05 }, // Almost pure meadow
+      windExposure: 0.4
     },
     prairie: {
       name: 'Open Prairie',
-      densityMultiplier: 1.8,
-      heightMultiplier: 1.1,
-      colorModifier: new THREE.Color(0xb8b84d),
-      speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.15, fine: 0.05 },
-      windExposure: 1.5
+      densityMultiplier: 1.0, // Lower density
+      heightMultiplier: 0.6, // Much shorter
+      colorModifier: new THREE.Color(0xd4af37), // Golden color
+      speciesDistribution: { meadow: 0.05, prairie: 0.85, clumping: 0.05, fine: 0.05 }, // Almost pure prairie
+      windExposure: 2.0
     }
   };
 
-  // ENHANCED ground grass configurations with MUCH DENSER prairie
+  // ENHANCED ground grass configurations with dramatic differences
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
       densityMultiplier: 10.0,
@@ -58,16 +58,16 @@ export class DeterministicBiomeManager {
       windReduction: 0.2
     },
     meadow: {
-      densityMultiplier: 12.0,
-      heightReduction: 0.8,
-      speciesDistribution: { meadow: 0.7, prairie: 0.05, clumping: 0.05, fine: 0.2 },
-      windReduction: 0.15
+      densityMultiplier: 15.0, // Much denser
+      heightReduction: 0.5, // Less reduction (taller)
+      speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.05, fine: 0.1 },
+      windReduction: 0.1
     },
     prairie: {
-      densityMultiplier: 11.0,
-      heightReduction: 0.65,
-      speciesDistribution: { meadow: 0.05, prairie: 0.75, clumping: 0.1, fine: 0.1 },
-      windReduction: 0.3
+      densityMultiplier: 8.0, // Less dense
+      heightReduction: 0.8, // More reduction (shorter)
+      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.1, fine: 0.05 },
+      windReduction: 0.4
     }
   };
 
@@ -154,8 +154,8 @@ export class DeterministicBiomeManager {
   }
 
   /**
-   * NEW: Position-based biome determination for small, realistic patches
-   * Creates 5-30 unit biome patches that intermix naturally
+   * SIMPLIFIED: Position-based biome determination for DISTINCT patches
+   * Creates 30-80 unit biome patches that are clearly different from each other
    */
   public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
     const cacheKey = `${Math.round(position.x)}_${Math.round(position.z)}`;
@@ -164,127 +164,73 @@ export class DeterministicBiomeManager {
       return this.positionBiomeCache.get(cacheKey)!;
     }
 
-    // ULTRA-HIGH FREQUENCY NOISE for small patches (5-30 units)
+    // SIMPLIFIED: Use clearer, more distinct noise patterns
     
-    // Patch cluster noise (20-50 units) - creates groups of similar patches
-    const patchClusterNoise = FractalNoiseSystem.getFractalNoise(
+    // Primary patch noise (30-80 units) - creates main biome regions
+    const primaryNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       this.worldSeed, 
       3, 
       0.6, 
       2.0, 
-      0.025  // High frequency for small clusters
+      0.015  // Larger patches for clear distinction
     );
     
-    // Small patch noise (10-25 units) - individual patch definition
-    const smallPatchNoise = FractalNoiseSystem.getFractalNoise(
+    // Secondary variation (20-40 units) - adds some variety within regions
+    const secondaryNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       this.worldSeed + 1000, 
-      4, 
-      0.7, 
-      2.2, 
-      0.05   // Very high frequency for small patches
-    );
-    
-    // Micro patch noise (5-15 units) - patch edge variation
-    const microPatchNoise = FractalNoiseSystem.getFractalNoise(
-      position, 
-      this.worldSeed + 2000, 
-      3, 
-      0.8, 
-      2.5, 
-      0.08   // Ultra high frequency for micro details
-    );
-    
-    // Ultra-micro chaos (2-8 units) - natural irregularity
-    const ultraMicroNoise = FractalNoiseSystem.getFractalNoise(
-      position, 
-      this.worldSeed + 3000, 
       2, 
-      0.6, 
+      0.5, 
       2.0, 
-      0.15   // Extremely high frequency
+      0.025
     );
     
-    // Disturbance patterns (30-80 units) - creates natural clearings and variations
-    const disturbanceNoise = FractalNoiseSystem.getWarpedNoise(
-      position, 
-      this.worldSeed + 4000, 
-      40.0   // Medium warp for disturbance patterns
-    );
-    
-    // ENHANCED: Domain warping for ultra-organic patch shapes
-    const warpStrength = 25.0; // Smaller warp for tighter patches
-    const warpX = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 5000, 3, 0.6, 2.0, 0.08) - 0.5;
-    const warpZ = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 6000, 3, 0.6, 2.0, 0.08) - 0.5;
-    
-    const warpedPos = new THREE.Vector3(
-      position.x + warpX * warpStrength,
-      position.y,
-      position.z + warpZ * warpStrength
-    );
-    
-    // Get additional noise at warped position
-    const warpedDetailNoise = FractalNoiseSystem.getFractalNoise(warpedPos, this.worldSeed + 7000, 3, 0.7, 2.0, 0.06);
-    
-    // COMBINE: Weight ultra-high frequency noise heavily for small patches
-    const combinedNoise = patchClusterNoise * 0.2 +     // Large-scale clustering
-                         smallPatchNoise * 0.35 +       // Primary patch definition
-                         microPatchNoise * 0.25 +       // Patch edge details
-                         ultraMicroNoise * 0.15 +       // Natural chaos
-                         warpedDetailNoise * 0.05;      // Warped details
-    
-    // ULTRA-HIGH DENSITY Voronoi for cellular patch patterns (90% influence)
+    // CELLULAR PATTERN: Use Voronoi for distinct patch boundaries
     const voronoiData = FractalNoiseSystem.getVoronoiNoise(
       position, 
       this.worldSeed, 
-      0.015  // Very high density for small cells
+      0.008  // Larger cells for bigger patches
     );
     
-    // Blend with 90% Voronoi influence for strong cellular patterns
-    let finalNoise = combinedNoise * 0.1 + voronoiData.value * 0.9;
+    // SIMPLIFIED COMBINATION: 70% cellular, 30% noise for organic edges
+    const combinedNoise = voronoiData.value * 0.7 + primaryNoise * 0.3;
     
-    // Add disturbance patterns for natural clearings
-    finalNoise = finalNoise * 0.8 + disturbanceNoise * 0.2;
+    // Add minor secondary variation
+    const finalNoise = combinedNoise * 0.8 + secondaryNoise * 0.2;
     
-    // REALISTIC PATCH DISTRIBUTION: Create natural clustering
+    // CLEAR THRESHOLDS: Create distinct biome regions
     let biomeType: BiomeType = 'normal';
     let strength = 1.0;
     let isTransitionZone = false;
     
-    // Use triple-threshold system for natural patch distribution
-    if (finalNoise > 0.7) {
+    // Use SHARP thresholds for clear boundaries
+    if (finalNoise > 0.65) {
       biomeType = 'meadow';
-      strength = Math.min(1.0, (finalNoise - 0.7) * 3.33);
-      isTransitionZone = finalNoise < 0.8;
-    } else if (finalNoise < 0.3) {
+      strength = 1.0;
+      // Only transition at very edge
+      isTransitionZone = finalNoise < 0.7;
+    } else if (finalNoise < 0.35) {
       biomeType = 'prairie';
-      strength = Math.min(1.0, (0.3 - finalNoise) * 3.33);
-      isTransitionZone = finalNoise > 0.2;
+      strength = 1.0;
+      // Only transition at very edge
+      isTransitionZone = finalNoise > 0.3;
     } else {
       biomeType = 'normal';
-      strength = 1.0 - Math.abs(finalNoise - 0.5) * 2.0;
-      isTransitionZone = finalNoise > 0.35 && finalNoise < 0.65;
+      strength = 1.0;
+      // Small transition zones at boundaries
+      isTransitionZone = finalNoise > 0.6 || finalNoise < 0.4;
     }
     
-    // SEED DISPERSAL LOGIC: Similar biomes cluster together naturally
-    const clusteringNoise = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 8000, 2, 0.5, 2.0, 0.003);
+    // FORCE BIOME VARIETY: Use cell ID to ensure all biomes appear
+    const cellBiome = this.getCellForcedBiome(voronoiData.cellId);
     
-    // Force clustering based on surrounding area tendency
-    if (clusteringNoise > 0.6) {
-      // Strong meadow clustering areas
-      if (biomeType === 'normal' && finalNoise > 0.55) {
-        biomeType = 'meadow';
-        strength *= 0.8;
-        isTransitionZone = true;
-      }
-    } else if (clusteringNoise < 0.4) {
-      // Strong prairie clustering areas
-      if (biomeType === 'normal' && finalNoise < 0.45) {
-        biomeType = 'prairie';
-        strength *= 0.8;
-        isTransitionZone = true;
-      }
+    // Occasionally force the cell biome to ensure variety
+    const forceNoise = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 5000, 1, 1.0, 1.0, 0.003);
+    if (forceNoise > 0.85) {
+      biomeType = cellBiome;
+      strength = 1.0;
+      isTransitionZone = false;
     }
 
     const biomeInfo: BiomeInfo = {

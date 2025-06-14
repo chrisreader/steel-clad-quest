@@ -31,7 +31,7 @@ export class SeededGrassDistribution {
 
     const chunkSeed = DeterministicBiomeManager.getChunkSeed(chunk);
     const chunkCenter = DeterministicBiomeManager.chunkToWorldPosition(chunk);
-    const chunkSize = 64; // DeterministicBiomeManager.CHUNK_SIZE
+    const chunkSize = 64;
     
     // Create seeded random generator for this chunk
     const seededRandom = this.createSeededRandom(chunkSeed + (isGroundGrass ? 1000 : 0));
@@ -41,38 +41,38 @@ export class SeededGrassDistribution {
     const rotations: THREE.Quaternion[] = [];
     const species: string[] = [];
     
-    // DOUBLED DENSITY: Reduced spacing significantly to achieve 2x density
-    const baseSpacing = isGroundGrass ? 2.0 : 3.2; // Reduced from 2.8 and 4.5 for 2x density
-    const spacing = baseSpacing; // We'll adjust per-position based on biome now
+    const baseSpacing = isGroundGrass ? 2.0 : 3.2;
+    const spacing = baseSpacing;
     
     // Generate grass positions using seeded sampling
     const startX = chunkCenter.x - chunkSize / 2;
     const startZ = chunkCenter.z - chunkSize / 2;
     
-    // Use Poisson-like distribution for more natural spacing
     for (let x = startX; x < startX + chunkSize; x += spacing) {
       for (let z = startZ; z < startZ + chunkSize; z += spacing) {
-        // Add some randomness to avoid grid patterns
         const offsetX = (seededRandom() - 0.5) * spacing * 0.8;
         const offsetZ = (seededRandom() - 0.5) * spacing * 0.8;
         
         const worldPos = new THREE.Vector3(x + offsetX, 0, z + offsetZ);
         
-        // NEW: Get biome influence at this exact position for organic edges
-        const biomeInfluences = BiomeBlendingSystem.getBiomeTypesAtPosition(worldPos, chunkSeed);
+        // SIMPLIFIED: Get biome at this position - prefer pure biome properties
+        const biomeInfo = DeterministicBiomeManager.getBiomeInfo(worldPos);
         
-        // NEW: Get blended biome config at this position
-        const biomeConfig = isGroundGrass
-          ? BiomeBlendingSystem.getBlendedGroundConfig(worldPos, chunkSeed)
-          : BiomeBlendingSystem.getBlendedBiomeConfig(worldPos, chunkSeed);
+        // Use PURE biome config unless in immediate transition zone
+        const biomeConfig = biomeInfo.transitionZone 
+          ? (isGroundGrass 
+             ? BiomeBlendingSystem.getBlendedGroundConfig(worldPos, chunkSeed)
+             : BiomeBlendingSystem.getBlendedBiomeConfig(worldPos, chunkSeed))
+          : (isGroundGrass
+             ? DeterministicBiomeManager.getGroundConfiguration(biomeInfo.type)
+             : DeterministicBiomeManager.getBiomeConfiguration(biomeInfo.type));
         
-        // Adjust density based on blended biome properties
+        // Apply PURE biome density for clear distinction
         const localDensity = biomeConfig.densityMultiplier;
         
-        // Generate detailed position-specific noise for more natural distribution
+        // Generate position noise for natural distribution
         const localNoise = FractalNoiseSystem.getWarpedNoise(worldPos, chunkSeed + 5000, 10);
         
-        // Use seeded noise for spawn probability
         const spawnProbability = this.calculateSeededSpawnProbability(
           worldPos, 
           chunkSeed, 
@@ -83,14 +83,14 @@ export class SeededGrassDistribution {
         if (seededRandom() < spawnProbability) {
           positions.push(worldPos);
           
-          // Generate seeded scale with blended biome-specific variation
+          // Use PURE biome height properties for dramatic differences
           const heightMultiplier = isGroundGrass
             ? ('heightReduction' in biomeConfig ? biomeConfig.heightReduction : 0.7)
             : ('heightMultiplier' in biomeConfig ? biomeConfig.heightMultiplier : 1.0);
           
           const baseScale = isGroundGrass ? 0.7 : 1.4;
           
-          // Add some position-based variation for more natural look
+          // Add position-based variation
           const positionNoise = FractalNoiseSystem.getFractalNoise(worldPos, chunkSeed + 2000, 2, 0.5, 2, 0.02);
           const scaleVariation = heightMultiplier * (0.8 + positionNoise * 0.4);
           
@@ -100,11 +100,10 @@ export class SeededGrassDistribution {
             baseScale * (0.6 + seededRandom() * 0.8)
           ));
           
-          // Generate seeded rotation with wind direction influence
+          // Generate rotation with wind influence
           const windNoise = FractalNoiseSystem.getFractalNoise(worldPos, chunkSeed + 3000, 2, 0.5, 2, 0.001);
           const windDirection = windNoise * Math.PI * 2;
           
-          // Slightly align rotation with wind direction for more natural look
           const randomRotation = seededRandom() * Math.PI * 2;
           const finalRotation = randomRotation * 0.7 + windDirection * 0.3;
           
@@ -113,8 +112,8 @@ export class SeededGrassDistribution {
             finalRotation
           ));
           
-          // Select species based on blended biome influences
-          species.push(this.selectBlendedSpecies(worldPos, biomeInfluences, chunkSeed, seededRandom));
+          // Select species based on PURE biome properties
+          species.push(this.selectPureBiomeSpecies(biomeInfo, seededRandom));
         }
       }
     }
@@ -122,7 +121,7 @@ export class SeededGrassDistribution {
     const grassData: SeededGrassData = { positions, scales, rotations, species };
     cache.set(cacheKey, grassData);
     
-    console.log(`🌱 Generated organic grass for chunk ${chunkKey}: ${positions.length} blades with realistic biome transitions`);
+    console.log(`🌱 Generated distinct biome grass for chunk ${chunkKey}: ${positions.length} blades with pure ${biomeInfo.type} characteristics`);
     
     return grassData;
   }
@@ -141,17 +140,36 @@ export class SeededGrassDistribution {
     seededRandom: () => number,
     densityFactor: number = 1.0
   ): number {
-    // Use position-specific noise for natural distribution patterns
     const detailNoise = FractalNoiseSystem.getFractalNoise(position, seed + 4000, 3, 0.5, 2, 0.05);
     
-    // Calculate spawn probability with noise and density factor
     let probability = 0.85 + detailNoise * 0.15;
-    probability *= densityFactor; // Apply biome-specific density
-    
-    // Add some randomness but keep it seeded
+    probability *= densityFactor;
     probability *= (0.85 + seededRandom() * 0.3);
     
     return MathUtils.clamp(probability, 0.5 * densityFactor, 0.95 * densityFactor);
+  }
+
+  /**
+   * SIMPLIFIED: Select species based on PURE biome properties for clear distinction
+   */
+  private static selectPureBiomeSpecies(
+    biomeInfo: BiomeInfo,
+    seededRandom: () => number
+  ): string {
+    const biomeConfig = DeterministicBiomeManager.getBiomeConfiguration(biomeInfo.type);
+    
+    // Use pure biome species distribution for clear differences
+    const random = seededRandom();
+    let cumulativeWeight = 0;
+    
+    for (const [speciesName, probability] of Object.entries(biomeConfig.speciesDistribution)) {
+      cumulativeWeight += probability;
+      if (random <= cumulativeWeight) {
+        return speciesName;
+      }
+    }
+    
+    return 'meadow'; // Default fallback
   }
 
   private static selectBlendedSpecies(
@@ -162,12 +180,10 @@ export class SeededGrassDistribution {
   ): string {
     const speciesOptions = ['meadow', 'prairie', 'clumping', 'fine'];
     
-    // If single biome, use standard selection
     if (biomeInfluences.length === 1) {
       return this.selectSeededSpecies(biomeInfluences[0].biome, seededRandom);
     }
     
-    // Blend species probabilities from all influencing biomes
     const blendedWeights: { [key: string]: number } = {
       meadow: 0, 
       prairie: 0, 
@@ -177,7 +193,6 @@ export class SeededGrassDistribution {
     
     let totalInfluence = 0;
     
-    // Calculate weighted species probabilities
     for (const { biome, influence } of biomeInfluences) {
       const biomeConfig = DeterministicBiomeManager.getBiomeConfiguration(biome as any);
       
@@ -188,20 +203,16 @@ export class SeededGrassDistribution {
       totalInfluence += influence;
     }
     
-    // Normalize weights
     for (const speciesName of Object.keys(blendedWeights)) {
       blendedWeights[speciesName] /= totalInfluence;
     }
     
-    // Add some local variation based on position
     const localNoise = FractalNoiseSystem.getFractalNoise(position, seed + 5000, 2, 0.5, 2, 0.02);
     const primarySpecies = biomeInfluences[0].biome === 'meadow' ? 'meadow' : 
                           biomeInfluences[0].biome === 'prairie' ? 'prairie' : 'clumping';
     
-    // Boost primary species probability based on noise
     blendedWeights[primarySpecies] += localNoise * 0.2;
     
-    // Renormalize
     let sum = 0;
     for (const value of Object.values(blendedWeights)) {
       sum += value;
@@ -211,7 +222,6 @@ export class SeededGrassDistribution {
       blendedWeights[speciesName] /= sum;
     }
     
-    // Select species using weighted probabilities
     const random = seededRandom();
     let cumulativeWeight = 0;
     
@@ -222,23 +232,19 @@ export class SeededGrassDistribution {
       }
     }
     
-    return 'meadow'; // Default fallback
+    return 'meadow';
   }
 
-  /**
-   * Legacy method for direct species selection
-   */
   private static selectSeededSpecies(biomeType: string, seededRandom: () => number): string {
     const speciesOptions = ['meadow', 'prairie', 'clumping', 'fine'];
     
-    // DRAMATICALLY ENHANCED species distribution for obvious biome differences
     const weights = {
-      normal: [0.4, 0.25, 0.25, 0.1], // Balanced
-      meadow: [0.8, 0.05, 0.05, 0.1], // Dominated by meadow species
-      prairie: [0.1, 0.7, 0.15, 0.05], // Dominated by prairie species
-      wetland: [0.6, 0.1, 0.25, 0.05], // Wet-loving species
-      dry: [0.05, 0.8, 0.1, 0.05], // Drought-resistant
-      forest: [0.3, 0.2, 0.4, 0.1] // Mixed with clustering
+      normal: [0.4, 0.25, 0.25, 0.1],
+      meadow: [0.8, 0.05, 0.05, 0.1],
+      prairie: [0.1, 0.7, 0.15, 0.05],
+      wetland: [0.6, 0.1, 0.25, 0.05],
+      dry: [0.05, 0.8, 0.1, 0.05],
+      forest: [0.3, 0.2, 0.4, 0.1]
     };
     
     const biomeWeights = weights[biomeType as keyof typeof weights] || weights.normal;
