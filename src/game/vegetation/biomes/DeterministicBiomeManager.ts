@@ -21,53 +21,53 @@ export class DeterministicBiomeManager {
   private static chunkBiomeCache: Map<string, ChunkBiomeData> = new Map();
   private static positionBiomeCache: Map<string, BiomeInfo> = new Map();
 
-  // EXTREMELY DRAMATIC biome configurations for unmistakable visual differences
+  // ENHANCED biome configurations with DRAMATIC differences for clear distinction
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
-      densityMultiplier: 1.0, // Standard density
-      heightMultiplier: 1.0, // Standard height
+      densityMultiplier: 1.5,
+      heightMultiplier: 1.0,
       colorModifier: new THREE.Color(0x6db070), // Standard green
       speciesDistribution: { meadow: 0.4, prairie: 0.25, clumping: 0.25, fine: 0.1 },
       windExposure: 1.0
     },
     meadow: {
-      name: 'Dense Meadow',
-      densityMultiplier: 4.0, // 4x density - extremely dense
-      heightMultiplier: 2.2, // Much taller grass
-      colorModifier: new THREE.Color(0x1a5f1a), // Very dark, rich green
-      speciesDistribution: { meadow: 0.95, prairie: 0.01, clumping: 0.02, fine: 0.02 }, // Almost pure meadow
-      windExposure: 0.2
+      name: 'Lush Meadow',
+      densityMultiplier: 2.5, // Much higher density
+      heightMultiplier: 1.6, // Much taller
+      colorModifier: new THREE.Color(0x2d8f2d), // Rich, dark green
+      speciesDistribution: { meadow: 0.9, prairie: 0.02, clumping: 0.03, fine: 0.05 }, // Almost pure meadow
+      windExposure: 0.4
     },
     prairie: {
-      name: 'Sparse Prairie',
-      densityMultiplier: 0.4, // Very sparse - 40% of normal
-      heightMultiplier: 0.4, // Much shorter
-      colorModifier: new THREE.Color(0xd4af37), // Golden/yellow color
-      speciesDistribution: { meadow: 0.02, prairie: 0.95, clumping: 0.02, fine: 0.01 }, // Almost pure prairie
-      windExposure: 3.0
+      name: 'Open Prairie',
+      densityMultiplier: 1.0, // Lower density
+      heightMultiplier: 0.6, // Much shorter
+      colorModifier: new THREE.Color(0xd4af37), // Golden color
+      speciesDistribution: { meadow: 0.05, prairie: 0.85, clumping: 0.05, fine: 0.05 }, // Almost pure prairie
+      windExposure: 2.0
     }
   };
 
-  // EXTREME ground grass configurations
+  // ENHANCED ground grass configurations with dramatic differences
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
-      densityMultiplier: 8.0,
+      densityMultiplier: 10.0,
       heightReduction: 0.65,
       speciesDistribution: { meadow: 0.3, prairie: 0.2, clumping: 0.4, fine: 0.1 },
       windReduction: 0.2
     },
     meadow: {
-      densityMultiplier: 20.0, // Extremely dense ground coverage
-      heightReduction: 0.3, // Less reduction (taller ground grass)
-      speciesDistribution: { meadow: 0.9, prairie: 0.03, clumping: 0.04, fine: 0.03 },
-      windReduction: 0.05
+      densityMultiplier: 15.0, // Much denser
+      heightReduction: 0.5, // Less reduction (taller)
+      speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.05, fine: 0.1 },
+      windReduction: 0.1
     },
     prairie: {
-      densityMultiplier: 3.0, // Very sparse ground grass
-      heightReduction: 0.9, // Very short
-      speciesDistribution: { meadow: 0.03, prairie: 0.9, clumping: 0.04, fine: 0.03 },
-      windReduction: 0.6
+      densityMultiplier: 8.0, // Less dense
+      heightReduction: 0.8, // More reduction (shorter)
+      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.1, fine: 0.05 },
+      windReduction: 0.4
     }
   };
 
@@ -154,63 +154,101 @@ export class DeterministicBiomeManager {
   }
 
   /**
-   * ULTRA-SIMPLIFIED: Create MASSIVE, DISTINCT biome patches with sharp boundaries
-   * Each patch should be 50-150 units and completely different from neighbors
+   * SIMPLIFIED: Position-based biome determination for DISTINCT patches
+   * Creates 30-80 unit biome patches that are clearly different from each other
    */
   public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
-    const cacheKey = `${Math.round(position.x / 2) * 2}_${Math.round(position.z / 2) * 2}`;
+    const cacheKey = `${Math.round(position.x)}_${Math.round(position.z)}`;
     
     if (this.positionBiomeCache.has(cacheKey)) {
       return this.positionBiomeCache.get(cacheKey)!;
     }
 
-    // ULTRA-SIMPLE: Use large-scale Voronoi for distinct patches
+    // SIMPLIFIED: Use clearer, more distinct noise patterns
+    
+    // Primary patch noise (30-80 units) - creates main biome regions
+    const primaryNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      this.worldSeed, 
+      3, 
+      0.6, 
+      2.0, 
+      0.015  // Larger patches for clear distinction
+    );
+    
+    // Secondary variation (20-40 units) - adds some variety within regions
+    const secondaryNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      this.worldSeed + 1000, 
+      2, 
+      0.5, 
+      2.0, 
+      0.025
+    );
+    
+    // CELLULAR PATTERN: Use Voronoi for distinct patch boundaries
     const voronoiData = FractalNoiseSystem.getVoronoiNoise(
       position, 
       this.worldSeed, 
-      0.004  // Very large cells for 100+ unit patches
+      0.008  // Larger cells for bigger patches
     );
     
-    // Force equal distribution of biomes using cell ID
-    const biomeIndex = Math.abs(voronoiData.cellId) % 3;
-    let biomeType: BiomeType = 'normal';
+    // SIMPLIFIED COMBINATION: 70% cellular, 30% noise for organic edges
+    const combinedNoise = voronoiData.value * 0.7 + primaryNoise * 0.3;
     
-    if (biomeIndex === 0) {
+    // Add minor secondary variation
+    const finalNoise = combinedNoise * 0.8 + secondaryNoise * 0.2;
+    
+    // CLEAR THRESHOLDS: Create distinct biome regions
+    let biomeType: BiomeType = 'normal';
+    let strength = 1.0;
+    let isTransitionZone = false;
+    
+    // Use SHARP thresholds for clear boundaries
+    if (finalNoise > 0.65) {
       biomeType = 'meadow';
-    } else if (biomeIndex === 1) {
+      strength = 1.0;
+      // Only transition at very edge
+      isTransitionZone = finalNoise < 0.7;
+    } else if (finalNoise < 0.35) {
       biomeType = 'prairie';
+      strength = 1.0;
+      // Only transition at very edge
+      isTransitionZone = finalNoise > 0.3;
     } else {
       biomeType = 'normal';
+      strength = 1.0;
+      // Small transition zones at boundaries
+      isTransitionZone = finalNoise > 0.6 || finalNoise < 0.4;
     }
     
-    // Add some randomness to break up perfect patterns
-    const randomNoise = FractalNoiseSystem.getFractalNoise(
-      position, 
-      this.worldSeed + 7777, 
-      1, 
-      1.0, 
-      1.0, 
-      0.001
-    );
+    // FORCE BIOME VARIETY: Use cell ID to ensure all biomes appear
+    const cellBiome = this.getCellForcedBiome(voronoiData.cellId);
     
-    // Occasionally override with random biome for variety
-    if (randomNoise > 0.9) {
-      const randomBiomes: BiomeType[] = ['normal', 'meadow', 'prairie'];
-      biomeType = randomBiomes[Math.floor(randomNoise * 100) % 3];
+    // Occasionally force the cell biome to ensure variety
+    const forceNoise = FractalNoiseSystem.getFractalNoise(position, this.worldSeed + 5000, 1, 1.0, 1.0, 0.003);
+    if (forceNoise > 0.85) {
+      biomeType = cellBiome;
+      strength = 1.0;
+      isTransitionZone = false;
     }
-    
-    // Only create transition zones at the very edges of Voronoi cells
-    const isTransitionZone = voronoiData.distance < 0.1; // Very small transition zones
-    
+
     const biomeInfo: BiomeInfo = {
       type: biomeType,
-      strength: 1.0,
+      strength,
       transitionZone: isTransitionZone
     };
 
     this.positionBiomeCache.set(cacheKey, biomeInfo);
-    
     return biomeInfo;
+  }
+
+  /**
+   * Force biome variety using cell IDs to ensure equal representation
+   */
+  private static getCellForcedBiome(cellId: number): BiomeType {
+    const biomes: BiomeType[] = ['normal', 'meadow', 'prairie'];
+    return biomes[Math.abs(cellId) % 3];
   }
 
   public static getBiomeConfiguration(biomeType: BiomeType): BiomeConfiguration {
@@ -234,10 +272,10 @@ export class DeterministicBiomeManager {
     const biomeConfig = this.getBiomeConfiguration(biomeInfo.type);
     
     const baseColors = {
-      meadow: new THREE.Color(0x2d5016), // Very dark green for meadow
-      prairie: new THREE.Color(0xb8860b), // Dark golden for prairie
-      clumping: new THREE.Color(0x4a5c2a), // Olive green
-      fine: new THREE.Color(0x556b2f) // Dark olive
+      meadow: new THREE.Color(0x7aad62),
+      prairie: new THREE.Color(0xa0a055),
+      clumping: new THREE.Color(0x9bc471),
+      fine: new THREE.Color(0x8bbf67)
     };
     
     const baseColor = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
