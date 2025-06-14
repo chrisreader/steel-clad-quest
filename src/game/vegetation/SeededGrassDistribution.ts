@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { MathUtils } from '../utils/math/MathUtils';
 import { EnvironmentalFactors } from './EnvironmentalGrassDistribution';
@@ -28,61 +27,56 @@ export class SeededGrassDistribution {
       return cache.get(cacheKey)!;
     }
 
+    const biomeData = DeterministicBiomeManager.getBiomeForChunk(chunk);
     const chunkCenter = DeterministicBiomeManager.chunkToWorldPosition(chunk);
     const chunkSize = 64; // DeterministicBiomeManager.CHUNK_SIZE
     
     // Create seeded random generator for this chunk
-    const chunkSeed = DeterministicBiomeManager.getChunkSeed(chunk);
-    const seededRandom = this.createSeededRandom(chunkSeed + (isGroundGrass ? 1000 : 0));
+    const seededRandom = this.createSeededRandom(biomeData.seed + (isGroundGrass ? 1000 : 0));
     
     const positions: THREE.Vector3[] = [];
     const scales: THREE.Vector3[] = [];
     const rotations: THREE.Quaternion[] = [];
     const species: string[] = [];
 
-    // FIXED: Use position-based biome queries instead of chunk-based
-    const baseSpacing = isGroundGrass ? 2.0 : 3.2;
+    const biomeConfig = DeterministicBiomeManager.getBiomeConfiguration(biomeData.biomeType);
+    const density = isGroundGrass 
+      ? DeterministicBiomeManager.getGroundConfiguration(biomeData.biomeType).densityMultiplier
+      : biomeConfig.densityMultiplier;
+    
+    // DOUBLED DENSITY: Reduced spacing significantly to achieve 2x density
+    const baseSpacing = isGroundGrass ? 2.0 : 3.2; // Reduced from 2.8 and 4.5 for 2x density
+    const spacing = baseSpacing / Math.sqrt(density);
     
     // Generate grass positions using seeded sampling
     const startX = chunkCenter.x - chunkSize / 2;
     const startZ = chunkCenter.z - chunkSize / 2;
     
-    for (let x = startX; x < startX + chunkSize; x += baseSpacing) {
-      for (let z = startZ; z < startZ + chunkSize; z += baseSpacing) {
+    for (let x = startX; x < startX + chunkSize; x += spacing) {
+      for (let z = startZ; z < startZ + chunkSize; z += spacing) {
         // Add some randomness to avoid grid patterns
-        const offsetX = (seededRandom() - 0.5) * baseSpacing * 0.8;
-        const offsetZ = (seededRandom() - 0.5) * baseSpacing * 0.8;
+        const offsetX = (seededRandom() - 0.5) * spacing * 0.8;
+        const offsetZ = (seededRandom() - 0.5) * spacing * 0.8;
         
         const worldPos = new THREE.Vector3(x + offsetX, 0, z + offsetZ);
         
-        // CRITICAL FIX: Query biome at exact grass blade position
-        const biomeData = DeterministicBiomeManager.getBiomeAtPosition(worldPos);
-        const biomeConfig = DeterministicBiomeManager.getBiomeConfiguration(biomeData.biomeType);
-        
-        // Apply biome-specific density per position
-        const biomeDensity = isGroundGrass 
-          ? DeterministicBiomeManager.getGroundConfiguration(biomeData.biomeType).densityMultiplier
-          : biomeConfig.densityMultiplier;
-        
-        // Calculate position-specific spawn probability
-        const spawnProbability = this.calculatePositionBasedSpawnProbability(
+        // Use seeded noise for spawn probability - INCREASED for 2x density
+        const spawnProbability = this.calculateSeededSpawnProbability(
           worldPos, 
-          biomeData,
-          biomeDensity,
-          chunkSeed, 
+          biomeData.seed, 
           seededRandom
         );
         
         if (seededRandom() < spawnProbability) {
           positions.push(worldPos);
           
-          // Apply biome-specific scaling per position
+          // Generate seeded scale with ENHANCED BIOME-SPECIFIC variation
           const biomeScaleMultiplier = this.getBiomeScaleMultiplier(biomeData.biomeType, isGroundGrass);
-          const baseScale = isGroundGrass ? 0.7 : 1.4;
+          const baseScale = isGroundGrass ? 0.7 : 1.4; // Increased base scales
           const scaleVariation = biomeConfig.heightMultiplier * biomeScaleMultiplier;
           
           scales.push(new THREE.Vector3(
-            baseScale * (0.6 + seededRandom() * 0.8),
+            baseScale * (0.6 + seededRandom() * 0.8), // More variation
             baseScale * scaleVariation * (0.7 + seededRandom() * 0.6),
             baseScale * (0.6 + seededRandom() * 0.8)
           ));
@@ -93,8 +87,8 @@ export class SeededGrassDistribution {
             seededRandom() * Math.PI * 2
           ));
           
-          // Select species based on position-specific biome
-          species.push(this.selectBiomeSpecificSpecies(biomeData.biomeType, seededRandom));
+          // Select species based on biome - now with enhanced diversity
+          species.push(this.selectSeededSpecies(biomeData.biomeType, seededRandom));
         }
       }
     }
@@ -102,42 +96,9 @@ export class SeededGrassDistribution {
     const grassData: SeededGrassData = { positions, scales, rotations, species };
     cache.set(cacheKey, grassData);
     
-    // Debug: Show biome diversity within chunk
-    const uniqueBiomes = new Set(species);
-    console.log(`🌱 ORGANIC CHUNK ${chunkKey}: ${positions.length} blades, ${uniqueBiomes.size} species types (per-position biome queries)`);
+    console.log(`🌱 Generated DENSE seeded ${isGroundGrass ? 'ground' : 'tall'} grass for chunk ${chunkKey}: ${positions.length} blades`);
     
     return grassData;
-  }
-
-  private static calculatePositionBasedSpawnProbability(
-    position: THREE.Vector3,
-    biomeData: { biomeType: string; strength: number },
-    biomeDensity: number,
-    seed: number,
-    seededRandom: () => number
-  ): number {
-    // Enhanced base probability based on biome type
-    const biomeBaseProbability = {
-      'meadow': 0.95,    // Very dense
-      'prairie': 0.65,   // Moderate density  
-      'normal': 0.80     // Standard density
-    };
-    
-    const baseProbability = biomeBaseProbability[biomeData.biomeType as keyof typeof biomeBaseProbability] || 0.80;
-    
-    // Use seeded noise for consistent spawn patterns
-    const noiseX = Math.sin(position.x * 0.05 + seed * 0.001) * 0.5 + 0.5;
-    const noiseZ = Math.cos(position.z * 0.05 + seed * 0.001) * 0.5 + 0.5;
-    const combinedNoise = (noiseX + noiseZ) / 2;
-    
-    // Apply biome density multiplier and strength
-    let probability = baseProbability * biomeDensity * biomeData.strength;
-    probability += combinedNoise * 0.15;
-    
-    // Add seeded randomness
-    probability *= (0.85 + seededRandom() * 0.3);
-    
-    return MathUtils.clamp(probability, 0.1, 0.98);
   }
 
   private static getBiomeScaleMultiplier(biomeType: string, isGroundGrass: boolean): number {
@@ -162,7 +123,26 @@ export class SeededGrassDistribution {
     };
   }
 
-  private static selectBiomeSpecificSpecies(biomeType: string, seededRandom: () => number): string {
+  private static calculateSeededSpawnProbability(
+    position: THREE.Vector3,
+    seed: number,
+    seededRandom: () => number
+  ): number {
+    // Use seeded noise for consistent spawn patterns
+    const noiseX = Math.sin(position.x * 0.05 + seed * 0.001) * 0.5 + 0.5;
+    const noiseZ = Math.cos(position.z * 0.05 + seed * 0.001) * 0.5 + 0.5;
+    const combinedNoise = (noiseX + noiseZ) / 2;
+    
+    // INCREASED base probability for 2x density - increased from 0.75
+    let probability = 0.85 + combinedNoise * 0.15;
+    
+    // Add some randomness but keep it seeded
+    probability *= (0.85 + seededRandom() * 0.3);
+    
+    return MathUtils.clamp(probability, 0.5, 0.95); // Increased minimum from 0.3 to 0.5
+  }
+
+  private static selectSeededSpecies(biomeType: string, seededRandom: () => number): string {
     const speciesOptions = ['meadow', 'prairie', 'clumping', 'fine'];
     
     // DRAMATICALLY ENHANCED species distribution for obvious biome differences
