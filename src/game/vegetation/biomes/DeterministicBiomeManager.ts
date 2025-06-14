@@ -74,7 +74,7 @@ export class DeterministicBiomeManager {
     this.worldSeed = seed;
     this.chunkBiomeCache.clear();
     BiomeSeedManager.setWorldSeed(seed);
-    console.log(`🌍 ORGANIC BIOME SYSTEM: World seed set to ${seed}, cache cleared`);
+    console.log(`🌍 SHARP BIOME SYSTEM: World seed set to ${seed}, cache cleared`);
   }
 
   public static worldPositionToChunk(position: THREE.Vector3): ChunkCoordinate {
@@ -100,31 +100,33 @@ export class DeterministicBiomeManager {
     return this.worldSeed + chunk.x * 73856093 + chunk.z * 19349663;
   }
 
-  // NEW: Position-based biome determination (bypasses chunks)
+  /**
+   * SHARP BOUNDARY: Position-based biome determination with no blending
+   */
   public static getBiomeAtPosition(position: THREE.Vector3): { biomeType: BiomeType; strength: number } {
     const biomeInfluence = BiomeSeedManager.getBiomeInfluenceAtPosition(position);
     
-    // Use organic biome directly with enhanced minimum strength
+    // SHARP BOUNDARIES: Use organic biome directly with FULL strength (no gradual strength)
     if (biomeInfluence.influences.length > 0) {
-      console.log(`✅ POSITION BIOME: ${biomeInfluence.dominantBiome} at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}) strength: ${biomeInfluence.strength.toFixed(2)}`);
+      console.log(`✅ SHARP POSITION BIOME: ${biomeInfluence.dominantBiome} at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}) - SHARP BOUNDARY`);
       return {
         biomeType: biomeInfluence.dominantBiome,
-        strength: Math.max(0.7, biomeInfluence.strength) // Higher minimum strength
+        strength: 1.0 // Always full strength for sharp boundaries
       };
     }
     
-    // Ultra-minimal fallback - just use position-based noise if absolutely no organic biomes
-    const seed = this.worldSeed + Math.floor(position.x) * 73856093 + Math.floor(position.z) * 19349663;
-    const noiseX = this.seededNoise(position.x * 0.002, seed);
-    const noiseZ = this.seededNoise(position.z * 0.002, seed + 1000);
+    // Fallback with sharp boundaries - no gradual noise
+    const seed = this.worldSeed + Math.floor(position.x / 32) * 73856093 + Math.floor(position.z / 32) * 19349663;
+    const noiseValue = this.seededNoise(position.x * 0.01, seed);
     
-    if (noiseX > 0.4) {
-      return { biomeType: 'meadow', strength: 0.8 };
-    } else if (noiseZ > 0.3) {
-      return { biomeType: 'prairie', strength: 0.8 };
+    // SHARP thresholds - no gradual transitions
+    if (noiseValue > 0.3) {
+      return { biomeType: 'meadow', strength: 1.0 };
+    } else if (noiseValue > -0.3) {
+      return { biomeType: 'prairie', strength: 1.0 };
     }
     
-    return { biomeType: 'normal', strength: 0.7 };
+    return { biomeType: 'normal', strength: 1.0 };
   }
 
   public static getBiomeForChunk(chunk: ChunkCoordinate): ChunkBiomeData {
@@ -134,7 +136,7 @@ export class DeterministicBiomeManager {
       return this.chunkBiomeCache.get(chunkKey)!;
     }
 
-    // Use position-based biome for chunk center (for legacy compatibility)
+    // Use position-based biome for chunk center
     const centerPos = this.chunkToWorldPosition(chunk);
     const biomeData = this.getBiomeAtPosition(centerPos);
     const seed = this.getChunkSeed(chunk);
@@ -142,9 +144,9 @@ export class DeterministicBiomeManager {
     const chunkBiomeData: ChunkBiomeData = {
       coordinate: chunk,
       biomeType: biomeData.biomeType,
-      strength: biomeData.strength,
+      strength: 1.0, // Always full strength for sharp boundaries
       seed,
-      influences: [{ biomeType: biomeData.biomeType, influence: biomeData.strength, distance: 0 }]
+      influences: [{ biomeType: biomeData.biomeType, influence: 1.0, distance: 0 }]
     };
 
     this.chunkBiomeCache.set(chunkKey, chunkBiomeData);
@@ -164,31 +166,23 @@ export class DeterministicBiomeManager {
     return this.GROUND_CONFIGS[biomeType];
   }
 
-  // UPDATED: Position-based biome info (main method for grass generation)
+  /**
+   * SHARP BOUNDARY: Position-based biome info with no transition zones
+   */
   public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
     const biomeData = this.getBiomeAtPosition(position);
     
-    // Check for transition zones by sampling nearby positions
-    const sampleDistance = 8; // Sample 8 units away
-    const nearbyPositions = [
-      new THREE.Vector3(position.x + sampleDistance, position.y, position.z),
-      new THREE.Vector3(position.x - sampleDistance, position.y, position.z),
-      new THREE.Vector3(position.x, position.y, position.z + sampleDistance),
-      new THREE.Vector3(position.x, position.y, position.z - sampleDistance)
-    ];
-    
-    const nearbyBiomes = nearbyPositions.map(pos => this.getBiomeAtPosition(pos).biomeType);
-    const uniqueBiomes = new Set([biomeData.biomeType, ...nearbyBiomes]);
-    const isTransitionZone = uniqueBiomes.size > 1;
-    
+    // SHARP BOUNDARIES: No transition zones - always distinct biomes
     return {
       type: biomeData.biomeType,
-      strength: biomeData.strength,
-      transitionZone: isTransitionZone
+      strength: 1.0, // Always full strength
+      transitionZone: false // Never transition zones for sharp boundaries
     };
   }
 
-  // Enhanced biome species color with more dramatic differences
+  /**
+   * SHARP BOUNDARY: Enhanced biome species color with no blending
+   */
   public static getBiomeSpeciesColor(
     species: string, 
     biomeInfo: BiomeInfo, 
@@ -205,9 +199,11 @@ export class DeterministicBiomeManager {
     };
     
     const baseColor = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
+    
+    // SHARP BOUNDARY: Pure biome color with no strength blending
     const biomeColor = baseColor.clone().multiply(biomeConfig.colorModifier);
     
-    // Enhanced seasonal variations for more dramatic changes
+    // Enhanced seasonal variations
     const seasonalMultipliers = {
       spring: new THREE.Color(1.3, 1.4, 1.1),
       summer: new THREE.Color(1.1, 1.2, 1.0),
@@ -258,7 +254,6 @@ export class DeterministicBiomeManager {
     return adjustedSpecies;
   }
 
-  // Updated debug methods for position-based system
   public static getDebugBiomeInfo(position: THREE.Vector3): {
     position: THREE.Vector3;
     biomeData: { biomeType: BiomeType; strength: number };
@@ -269,8 +264,8 @@ export class DeterministicBiomeManager {
     const organicInfluences = BiomeSeedManager.getBiomeInfluenceAtPosition(position);
     const organicBiomes = BiomeSeedManager.getOrganicBiomesAt(position);
     
-    console.log(`🔍 POSITION-BASED DEBUG at ${position.x}, ${position.z}:`);
-    console.log(`  - Biome: ${biomeData.biomeType} (strength: ${biomeData.strength})`);
+    console.log(`🔍 SHARP BOUNDARY DEBUG at ${position.x}, ${position.z}:`);
+    console.log(`  - Biome: ${biomeData.biomeType} (SHARP - strength: ${biomeData.strength})`);
     console.log(`  - Organic biomes nearby: ${organicBiomes.length}`);
     console.log(`  - Organic influences: ${organicInfluences.influences.length}`);
     
@@ -285,11 +280,11 @@ export class DeterministicBiomeManager {
   public static clearCache(): void {
     this.chunkBiomeCache.clear();
     BiomeSeedManager.clearCache();
-    console.log('🧹 POSITION-BASED BIOME: All caches cleared, forcing regeneration');
+    console.log('🧹 SHARP BOUNDARIES: All caches cleared, forcing regeneration');
   }
 
   public static forceRegenerateAllBiomes(): void {
     this.clearCache();
-    console.log('🔄 POSITION-BASED BIOME: Forced complete regeneration');
+    console.log('🔄 SHARP BOUNDARIES: Forced complete regeneration');
   }
 }
