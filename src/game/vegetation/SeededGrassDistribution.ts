@@ -29,8 +29,9 @@ export class SeededGrassDistribution {
 
     const biomeData = DeterministicBiomeManager.getBiomeForChunk(chunk);
     const chunkCenter = DeterministicBiomeManager.chunkToWorldPosition(chunk);
-    const chunkSize = 64;
+    const chunkSize = 64; // DeterministicBiomeManager.CHUNK_SIZE
     
+    // Create seeded random generator for this chunk
     const seededRandom = this.createSeededRandom(biomeData.seed + (isGroundGrass ? 1000 : 0));
     
     const positions: THREE.Vector3[] = [];
@@ -38,55 +39,56 @@ export class SeededGrassDistribution {
     const rotations: THREE.Quaternion[] = [];
     const species: string[] = [];
 
-    // Base density from chunk's dominant biome
     const biomeConfig = DeterministicBiomeManager.getBiomeConfiguration(biomeData.biomeType);
     const density = isGroundGrass 
       ? DeterministicBiomeManager.getGroundConfiguration(biomeData.biomeType).densityMultiplier
       : biomeConfig.densityMultiplier;
     
-    const baseSpacing = isGroundGrass ? 2.0 : 3.2;
+    // DOUBLED DENSITY: Reduced spacing significantly to achieve 2x density
+    const baseSpacing = isGroundGrass ? 2.0 : 3.2; // Reduced from 2.8 and 4.5 for 2x density
     const spacing = baseSpacing / Math.sqrt(density);
     
+    // Generate grass positions using seeded sampling
     const startX = chunkCenter.x - chunkSize / 2;
     const startZ = chunkCenter.z - chunkSize / 2;
     
     for (let x = startX; x < startX + chunkSize; x += spacing) {
       for (let z = startZ; z < startZ + chunkSize; z += spacing) {
+        // Add some randomness to avoid grid patterns
         const offsetX = (seededRandom() - 0.5) * spacing * 0.8;
         const offsetZ = (seededRandom() - 0.5) * spacing * 0.8;
         
         const worldPos = new THREE.Vector3(x + offsetX, 0, z + offsetZ);
         
-        // ENHANCED: Sample biome at exact grass position for smooth transitions
-        const blendedBiomeInfo = DeterministicBiomeManager.getBlendedBiomeAtPosition(worldPos);
-        
-        // Calculate spawn probability using blended biome data
-        const spawnProbability = this.calculateBlendedSpawnProbability(
+        // Use seeded noise for spawn probability - INCREASED for 2x density
+        const spawnProbability = this.calculateSeededSpawnProbability(
           worldPos, 
-          blendedBiomeInfo,
+          biomeData.seed, 
           seededRandom
         );
         
         if (seededRandom() < spawnProbability) {
           positions.push(worldPos);
           
-          // Use blended height multiplier for smooth scale transitions
-          const baseScale = isGroundGrass ? 0.7 : 1.4;
-          const scaleVariation = blendedBiomeInfo.blendedHeight;
+          // Generate seeded scale with ENHANCED BIOME-SPECIFIC variation
+          const biomeScaleMultiplier = this.getBiomeScaleMultiplier(biomeData.biomeType, isGroundGrass);
+          const baseScale = isGroundGrass ? 0.7 : 1.4; // Increased base scales
+          const scaleVariation = biomeConfig.heightMultiplier * biomeScaleMultiplier;
           
           scales.push(new THREE.Vector3(
-            baseScale * (0.6 + seededRandom() * 0.8),
+            baseScale * (0.6 + seededRandom() * 0.8), // More variation
             baseScale * scaleVariation * (0.7 + seededRandom() * 0.6),
             baseScale * (0.6 + seededRandom() * 0.8)
           ));
           
+          // Generate seeded rotation
           rotations.push(new THREE.Quaternion().setFromAxisAngle(
             new THREE.Vector3(0, 1, 0),
             seededRandom() * Math.PI * 2
           ));
           
-          // Select species based on blended biome influences
-          species.push(this.selectBlendedSpecies(blendedBiomeInfo, seededRandom));
+          // Select species based on biome - now with enhanced diversity
+          species.push(this.selectSeededSpecies(biomeData.biomeType, seededRandom));
         }
       }
     }
@@ -94,80 +96,9 @@ export class SeededGrassDistribution {
     const grassData: SeededGrassData = { positions, scales, rotations, species };
     cache.set(cacheKey, grassData);
     
-    console.log(`🌱 Generated organic ${isGroundGrass ? 'ground' : 'tall'} grass for chunk ${chunkKey}: ${positions.length} blades with realistic biome edges`);
+    console.log(`🌱 Generated DENSE seeded ${isGroundGrass ? 'ground' : 'tall'} grass for chunk ${chunkKey}: ${positions.length} blades`);
     
     return grassData;
-  }
-
-  /**
-   * Calculate spawn probability using blended biome information
-   */
-  private static calculateBlendedSpawnProbability(
-    position: THREE.Vector3,
-    blendedBiomeInfo: any, // BlendedBiomeInfo type
-    seededRandom: () => number
-  ): number {
-    // Use blended density for spawn probability
-    const baseProbability = Math.min(0.9, blendedBiomeInfo.blendedDensity * 0.45);
-    
-    // Add position-based noise for organic variation
-    const noiseX = Math.sin(position.x * 0.05) * 0.5 + 0.5;
-    const noiseZ = Math.cos(position.z * 0.05) * 0.5 + 0.5;
-    const combinedNoise = (noiseX + noiseZ) / 2;
-    
-    let probability = baseProbability + combinedNoise * 0.15;
-    
-    // Add transition zone variation - more variation in transition areas
-    if (blendedBiomeInfo.transitionStrength > 0.3) {
-      const transitionVariation = blendedBiomeInfo.transitionStrength * 0.2;
-      probability += (seededRandom() - 0.5) * transitionVariation;
-    }
-    
-    return MathUtils.clamp(probability, 0.3, 0.95);
-  }
-
-  /**
-   * Select species based on blended biome influences
-   */
-  private static selectBlendedSpecies(blendedBiomeInfo: any, seededRandom: () => number): string {
-    const availableSpecies = blendedBiomeInfo.blendedSpecies;
-    
-    if (availableSpecies.length === 0) {
-      return 'meadow';
-    }
-    
-    // In transition zones, randomly select from available species
-    if (blendedBiomeInfo.transitionStrength > 0.4) {
-      return availableSpecies[Math.floor(seededRandom() * availableSpecies.length)];
-    }
-    
-    // In dominant biome areas, weight toward the most appropriate species
-    const speciesWeights: { [key: string]: number } = {};
-    
-    for (const [biomeType, influence] of blendedBiomeInfo.biomeInfluences.entries()) {
-      const config = DeterministicBiomeManager.getBiomeConfiguration(biomeType);
-      
-      for (const [species, weight] of Object.entries(config.speciesDistribution)) {
-        if (!speciesWeights[species]) {
-          speciesWeights[species] = 0;
-        }
-        speciesWeights[species] += weight * influence;
-      }
-    }
-    
-    // Select species based on weighted probability
-    const random = seededRandom();
-    let cumulativeWeight = 0;
-    const totalWeight = Object.values(speciesWeights).reduce((sum, weight) => sum + weight, 0);
-    
-    for (const [species, weight] of Object.entries(speciesWeights)) {
-      cumulativeWeight += weight / totalWeight;
-      if (random <= cumulativeWeight) {
-        return species;
-      }
-    }
-    
-    return 'meadow';
   }
 
   private static getBiomeScaleMultiplier(biomeType: string, isGroundGrass: boolean): number {
