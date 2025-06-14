@@ -292,7 +292,7 @@ export class RealisticTreeGenerator {
 
     switch (species) {
       case TreeSpeciesType.OAK:
-        return this.createOakBranches(height);
+        return this.createImprovedOakBranches(height);
       case TreeSpeciesType.PINE:
         return []; // Pine trees don't use branches, they use stacked cones
       case TreeSpeciesType.BIRCH:
@@ -306,13 +306,25 @@ export class RealisticTreeGenerator {
     }
   }
 
-  private createOakBranches(height: number): THREE.Mesh[] {
+  private createImprovedOakBranches(height: number): THREE.Mesh[] {
     const branches: THREE.Mesh[] = [];
-    const branchCount = 4 + Math.floor(Math.random() * 3);
-
+    const branchCount = 4 + Math.floor(Math.random() * 2); // 4-5 main branches
+    const trunkRadius = TreeSpeciesManager.getRandomTrunkRadius(TreeSpeciesType.OAK);
+    
+    // Create main branches
     for (let i = 0; i < branchCount; i++) {
-      // Main branch
-      const branchGeometry = new THREE.CylinderGeometry(0.08, 0.25, 4, 8);
+      const angle = (i / branchCount) * Math.PI * 2 + Math.random() * 0.5;
+      const branchHeight = height * (0.4 + Math.random() * 0.3); // 40-70% up the trunk
+      const branchLength = 3 + Math.random() * 2; // 3-5 units long
+      
+      // Create main branch with proper tapering
+      const branchGeometry = new THREE.CylinderGeometry(
+        0.08 + Math.random() * 0.04, // Tip radius: 0.08-0.12
+        0.25 + Math.random() * 0.1,  // Base radius: 0.25-0.35
+        branchLength,
+        8
+      );
+      
       const texture = this.textureCache.get('bark');
       const branchMaterial = new THREE.MeshStandardMaterial({
         color: 0x8B4513,
@@ -323,28 +335,87 @@ export class RealisticTreeGenerator {
 
       const branch = new THREE.Mesh(branchGeometry, branchMaterial);
       
-      const angle = (i / branchCount) * Math.PI * 2 + Math.random() * 0.5;
-      const branchHeight = height * 0.5 + Math.random() * height * 0.3;
+      // Position branch at trunk surface
+      const trunkX = Math.cos(angle) * trunkRadius;
+      const trunkZ = Math.sin(angle) * trunkRadius;
       
-      branch.position.set(
-        Math.cos(angle) * 2,
-        branchHeight,
-        Math.sin(angle) * 2
-      );
+      branch.position.set(trunkX, branchHeight, trunkZ);
       
-      branch.rotation.z = Math.PI / 4 + Math.random() * (Math.PI / 6);
-      branch.rotation.y = angle;
+      // Rotate branch to extend outward and upward
+      branch.rotation.y = angle; // Point outward
+      branch.rotation.z = -(Math.PI / 6 + Math.random() * (Math.PI / 12)); // 30-45 degrees upward
+      
+      // Move branch to its center point so it extends from trunk
+      branch.position.x += Math.cos(angle) * Math.cos(branch.rotation.z) * (branchLength / 2);
+      branch.position.z += Math.sin(angle) * Math.cos(branch.rotation.z) * (branchLength / 2);
+      branch.position.y += Math.sin(-branch.rotation.z) * (branchLength / 2);
       
       branch.castShadow = true;
       branch.receiveShadow = true;
       branches.push(branch);
 
       // Add secondary branches
-      const secondaryBranches = this.createSecondaryBranches(branch, 2, texture);
-      branches.push(...secondaryBranches);
+      const secondaryCount = 2 + Math.floor(Math.random() * 2);
+      for (let j = 0; j < secondaryCount; j++) {
+        const secondaryBranch = this.createSecondaryOakBranch(branch, j, secondaryCount, texture);
+        branches.push(secondaryBranch);
+      }
     }
 
     return branches;
+  }
+
+  private createSecondaryOakBranch(parentBranch: THREE.Mesh, index: number, totalCount: number, texture: THREE.Texture | undefined): THREE.Mesh {
+    const secondaryLength = 1.5 + Math.random() * 1; // 1.5-2.5 units
+    
+    const geometry = new THREE.CylinderGeometry(
+      0.03 + Math.random() * 0.02, // Tip: 0.03-0.05
+      0.08 + Math.random() * 0.04, // Base: 0.08-0.12
+      secondaryLength,
+      6
+    );
+    
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x8B4513,
+      map: texture,
+      roughness: 0.9,
+      metalness: 0.0
+    });
+
+    const secondaryBranch = new THREE.Mesh(geometry, material);
+    
+    // Position along parent branch
+    const parentLength = 3 + Math.random() * 2; // Same as main branch calculation
+    const positionAlongBranch = 0.4 + (index / (totalCount - 1)) * 0.5; // 40-90% along branch
+    
+    // Calculate position on parent branch
+    const localX = 0;
+    const localY = (positionAlongBranch - 0.5) * parentLength;
+    const localZ = 0;
+    
+    // Transform to world space using parent's rotation
+    const worldPos = new THREE.Vector3(localX, localY, localZ);
+    worldPos.applyEuler(new THREE.Euler(0, parentBranch.rotation.y, parentBranch.rotation.z));
+    worldPos.add(parentBranch.position);
+    
+    secondaryBranch.position.copy(worldPos);
+    
+    // Rotate secondary branch
+    const secondaryAngle = parentBranch.rotation.y + (Math.random() - 0.5) * Math.PI / 2;
+    const secondaryUpward = parentBranch.rotation.z - (Math.PI / 8 + Math.random() * (Math.PI / 8));
+    
+    secondaryBranch.rotation.y = secondaryAngle;
+    secondaryBranch.rotation.z = secondaryUpward;
+    
+    // Extend from attachment point
+    secondaryBranch.position.x += Math.cos(secondaryAngle) * Math.cos(-secondaryUpward) * (secondaryLength / 2);
+    secondaryBranch.position.z += Math.sin(secondaryAngle) * Math.cos(-secondaryUpward) * (secondaryLength / 2);
+    secondaryBranch.position.y += Math.sin(-secondaryUpward) * (secondaryLength / 2);
+    
+    secondaryBranch.castShadow = true;
+    secondaryBranch.receiveShadow = true;
+    
+    return secondaryBranch;
   }
 
   private createPineBranches(height: number): THREE.Mesh[] {
@@ -498,6 +569,8 @@ export class RealisticTreeGenerator {
   }
 
   private createSecondaryBranches(parentBranch: THREE.Mesh, count: number, texture: THREE.Texture | undefined): THREE.Mesh[] {
+    // This method is now replaced by createSecondaryOakBranch for oak trees
+    // Keep for other tree types that might use it
     const secondaryBranches: THREE.Mesh[] = [];
     
     for (let i = 0; i < count; i++) {
@@ -616,8 +689,12 @@ export class RealisticTreeGenerator {
     const foliage: THREE.Mesh[] = [];
     const config = TreeSpeciesManager.getSpeciesConfig(species);
     
-    // Create multiple organic leaf clusters
-    const clusterCount = species === TreeSpeciesType.OAK ? 6 : 4;
+    if (species === TreeSpeciesType.OAK) {
+      return this.createOakFoliageOnBranches(height);
+    }
+    
+    // Create multiple organic leaf clusters for other spherical trees
+    const clusterCount = 4;
     
     for (let i = 0; i < clusterCount; i++) {
       // Irregular sphere for organic look
@@ -664,6 +741,83 @@ export class RealisticTreeGenerator {
       foliage.push(cluster);
     }
 
+    return foliage;
+  }
+
+  private createOakFoliageOnBranches(height: number): THREE.Mesh[] {
+    const foliage: THREE.Mesh[] = [];
+    const branchCount = 4 + Math.floor(Math.random() * 2);
+    const trunkRadius = TreeSpeciesManager.getRandomTrunkRadius(TreeSpeciesType.OAK);
+    
+    // Create foliage clusters that follow the branch structure
+    for (let i = 0; i < branchCount; i++) {
+      const angle = (i / branchCount) * Math.PI * 2 + Math.random() * 0.5;
+      const branchHeight = height * (0.4 + Math.random() * 0.3);
+      const branchLength = 3 + Math.random() * 2;
+      
+      // Calculate branch end position
+      const branchEndX = Math.cos(angle) * (trunkRadius + branchLength * 0.8);
+      const branchEndZ = Math.sin(angle) * (trunkRadius + branchLength * 0.8);
+      const branchEndY = branchHeight + Math.sin(Math.PI / 6) * branchLength * 0.8;
+      
+      // Main foliage cluster at branch end
+      const mainClusterGeometry = new THREE.SphereGeometry(1.8 + Math.random() * 0.8, 12, 8);
+      
+      // Apply organic deformation
+      const positions = mainClusterGeometry.attributes.position;
+      for (let j = 0; j < positions.count; j++) {
+        const x = positions.getX(j);
+        const y = positions.getY(j);
+        const z = positions.getZ(j);
+        
+        const noise = (Math.random() - 0.5) * 0.4;
+        positions.setX(j, x + noise);
+        positions.setY(j, y + noise);
+        positions.setZ(j, z + noise);
+      }
+      mainClusterGeometry.computeVertexNormals();
+
+      const foliageMaterial = new THREE.MeshStandardMaterial({
+        color: new THREE.Color().setHSL(0.25 + Math.random() * 0.08, 0.7, 0.35 + Math.random() * 0.15),
+        roughness: 0.9,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 0.88 + Math.random() * 0.1,
+        side: THREE.DoubleSide
+      });
+
+      const mainCluster = new THREE.Mesh(mainClusterGeometry, foliageMaterial);
+      mainCluster.position.set(branchEndX, branchEndY, branchEndZ);
+      
+      mainCluster.castShadow = true;
+      mainCluster.receiveShadow = true;
+      foliage.push(mainCluster);
+      
+      // Add secondary foliage clusters along the branch
+      const secondaryCount = 1 + Math.floor(Math.random() * 2);
+      for (let k = 0; k < secondaryCount; k++) {
+        const positionRatio = 0.5 + (k / secondaryCount) * 0.4; // 50-90% along branch
+        
+        const secX = Math.cos(angle) * (trunkRadius + branchLength * positionRatio * 0.8);
+        const secZ = Math.sin(angle) * (trunkRadius + branchLength * positionRatio * 0.8);
+        const secY = branchHeight + Math.sin(Math.PI / 6) * branchLength * positionRatio * 0.8;
+        
+        const secGeometry = new THREE.SphereGeometry(1.2 + Math.random() * 0.6, 10, 6);
+        const secCluster = new THREE.Mesh(secGeometry, foliageMaterial);
+        
+        // Add some offset for natural variation
+        secCluster.position.set(
+          secX + (Math.random() - 0.5) * 1.5,
+          secY + (Math.random() - 0.5) * 1,
+          secZ + (Math.random() - 0.5) * 1.5
+        );
+        
+        secCluster.castShadow = true;
+        secCluster.receiveShadow = true;
+        foliage.push(secCluster);
+      }
+    }
+    
     return foliage;
   }
 
