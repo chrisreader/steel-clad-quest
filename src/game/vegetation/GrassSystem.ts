@@ -23,8 +23,8 @@ export class GrassSystem {
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 12; // Reduced frequency for better FPS
-  private readonly FOG_CHECK_INTERVAL: number = 200; // Less frequent fog checks
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 12;
+  private readonly FOG_CHECK_INTERVAL: number = 200;
   
   // Player tracking
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -38,20 +38,32 @@ export class GrassSystem {
     this.windSystem = new WindSystem();
     this.bubbleManager = new GrassRenderBubbleManager(scene, this.renderer);
     
-    // Initialize deterministic biome system
-    DeterministicBiomeManager.setWorldSeed(12345); // Could be set from game config
+    // ENHANCED: Initialize with random seed for each new game
+    DeterministicBiomeManager.initializeWithRandomSeed();
     
-    console.log('🌱 Grass system initialized with 200-unit render optimization for improved FPS');
+    console.log(`🌱 Grass system initialized with equal biome distribution and enhanced prairie density (seed: ${DeterministicBiomeManager.getWorldSeed()})`);
   }
   
-  // Updated method to use 200-unit optimization
   public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 200): void {
-    console.log(`🌱 Initializing grass system with 200-unit FPS-optimized radius`);
-    this.bubbleManager.initializeWithCoverage(playerPosition, 200); // Force 200-unit radius
+    console.log(`🌱 Initializing grass system with 200-unit FPS-optimized radius and random biome seed: ${DeterministicBiomeManager.getWorldSeed()}`);
+    this.bubbleManager.initializeWithCoverage(playerPosition, 200);
     this.lastPlayerPosition.copy(playerPosition);
   }
   
-  // Updated method to handle legacy region-based requests
+  /**
+   * NEW: Reinitialize with a new random seed (useful for "new game" scenarios)
+   */
+  public regenerateWithNewSeed(): void {
+    console.log('🌱 Regenerating biomes with new random seed...');
+    DeterministicBiomeManager.initializeWithRandomSeed();
+    
+    // Clear existing grass and regenerate
+    this.bubbleManager.dispose();
+    this.bubbleManager = new GrassRenderBubbleManager(this.scene, this.renderer);
+    
+    console.log(`🌱 Biomes regenerated with new seed: ${DeterministicBiomeManager.getWorldSeed()}`);
+  }
+  
   public generateGrassForRegion(
     region: RegionCoordinates, 
     centerPosition: THREE.Vector3, 
@@ -59,31 +71,25 @@ export class GrassSystem {
     terrainColor: number,
     currentPlayerPosition?: THREE.Vector3
   ): void {
-    // Convert legacy region request to coverage area if not initialized
     if (!this.bubbleManager.isLoadingComplete() && currentPlayerPosition) {
-      const coverageRadius = Math.max(size, 400); // Ensure minimum coverage
+      const coverageRadius = Math.max(size, 400);
       this.initializeGrassSystem(currentPlayerPosition, coverageRadius);
     }
     
-    console.log(`🌱 Legacy region generation converted to chunk-based system`);
+    console.log(`🌱 Legacy region generation converted to balanced biome chunk system`);
   }
   
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
     this.updateCounter++;
     
-    // Track player velocity
     this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / deltaTime;
     this.lastPlayerPosition.copy(playerPosition);
     
-    // Update bubble manager (handles all chunk loading/unloading with 200-unit optimization)
     this.bubbleManager.update(playerPosition);
     
-    // Update wind system
     this.windSystem.update(deltaTime);
     
-    // Update materials less frequently for better performance
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
-      // Calculate day/night factors
       let nightFactor = 0;
       let dayFactor = 1;
       
@@ -92,7 +98,6 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // Update materials with even more staggered updates for better FPS
       const shouldUpdateTallGrass = this.updateCounter % 24 === 0;
       const shouldUpdateGroundGrass = this.updateCounter % 24 === 12;
       
@@ -112,15 +117,13 @@ export class GrassSystem {
         }
       }
       
-      // Update fog if changed
       if (this.checkFogChanges() && this.cachedFogValues) {
         this.updateFogUniforms();
       }
     }
     
-    // Report performance metrics less frequently
     if (this.updateCounter % 600 === 0) {
-      console.log(`🌱 Performance: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 200-unit radius`);
+      console.log(`🌱 Performance: ${this.bubbleManager.getRenderedInstanceCount()} grass instances across balanced biomes`);
     }
   }
   
@@ -182,9 +185,7 @@ export class GrassSystem {
     }
   }
   
-  // Legacy method for compatibility
   public removeGrassForRegion(region: RegionCoordinates): void {
-    // The bubble manager now handles all grass removal automatically
     console.log(`🌱 Legacy region removal ignored - bubble manager handles this automatically`);
   }
   

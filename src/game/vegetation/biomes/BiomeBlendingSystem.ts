@@ -44,36 +44,39 @@ export class BiomeBlendingSystem {
       return this.biomeInfluenceCache.get(cacheKey)!;
     }
     
-    // Generate multiple noise values for different biome factors
+    // Enhanced multi-frequency noise for better biome distribution
     const temperatureNoise = FractalNoiseSystem.getWarpedNoise(position, worldSeed, 15);
     const moistureNoise = FractalNoiseSystem.getWarpedNoise(position, worldSeed + 1000, 15);
     const elevationNoise = FractalNoiseSystem.getFractalNoise(position, worldSeed + 2000, 5, 0.5, 2.0, 0.001);
     
-    // Generate Voronoi cells for biome clustering
-    const voronoiData = FractalNoiseSystem.getVoronoiNoise(position, worldSeed, 0.001);
+    // Additional noise layer for more variation
+    const detailNoise = FractalNoiseSystem.getFractalNoise(position, worldSeed + 3000, 3, 0.5, 2.0, 0.01);
     
-    // Determine biome types based on the combined factors
-    // Use temperature as the primary factor
+    // Combine noise values for primary biome factor
+    const combinedFactor = (temperatureNoise * 0.4 + moistureNoise * 0.4 + elevationNoise * 0.1 + detailNoise * 0.1);
+    
+    // REBALANCED: Equal distribution thresholds (~33% each)
     let primaryBiome: BiomeType = 'normal';
     let primaryStrength = 1.0;
     let secondaryBiome: BiomeType | null = null;
     let secondaryStrength = 0.0;
     
-    // Biome determination based on noise values
-    if (temperatureNoise > 0.55) {
+    if (combinedFactor > 0.66) {
       primaryBiome = 'meadow';
-      primaryStrength = Math.min(1.0, (temperatureNoise - 0.55) * 4.0);
-    } else if (moistureNoise > 0.5) {
+      primaryStrength = Math.min(1.0, (combinedFactor - 0.66) * 3.0);
+    } else if (combinedFactor < 0.33) {
       primaryBiome = 'prairie';
-      primaryStrength = Math.min(1.0, (moistureNoise - 0.5) * 4.0);
+      primaryStrength = Math.min(1.0, (0.33 - combinedFactor) * 3.0);
+    } else {
+      primaryBiome = 'normal';
+      primaryStrength = 1.0 - Math.abs(combinedFactor - 0.5) * 2.0;
     }
     
-    // Calculate the closest competing biome for transitions
+    // Determine secondary biome for transitions
     const meadowScore = temperatureNoise;
     const prairieScore = moistureNoise;
     const normalScore = 1.0 - (meadowScore + prairieScore) / 2;
     
-    // Determine which biomes are competing in this area
     if (primaryBiome === 'meadow') {
       if (prairieScore > normalScore) {
         secondaryBiome = 'prairie';
@@ -100,11 +103,11 @@ export class BiomeBlendingSystem {
       }
     }
     
-    // Adjust strength based on Voronoi cells for more clustered biomes
+    // Voronoi clustering for natural biome patches
+    const voronoiData = FractalNoiseSystem.getVoronoiNoise(position, worldSeed, 0.001);
     primaryStrength = primaryStrength * 0.7 + voronoiData.value * 0.3;
     
-    // Determine if we're in a transition zone and calculate width
-    // Higher noise frequency near boundaries for more detailed edges
+    // Calculate transition zones
     const edgeDetailNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       worldSeed + 3000, 
@@ -114,32 +117,23 @@ export class BiomeBlendingSystem {
       0.05
     );
     
-    // Calculate transition zone width (5-25 units)
     const transitionWidth = this.MIN_TRANSITION_WIDTH + 
       edgeDetailNoise * (this.MAX_TRANSITION_WIDTH - this.MIN_TRANSITION_WIDTH);
     
-    // Determine if we're in a transition zone by checking proximity to boundary
     const distanceToBoundary = Math.abs(primaryStrength - 0.5) * 2.0 * transitionWidth;
     const isTransitionZone = distanceToBoundary < transitionWidth;
     
-    // Adjust strengths in transition zone for smooth blending
     if (isTransitionZone) {
-      // Calculate blend factor (0-1) based on distance to boundary
       const blendFactor = Math.max(0, Math.min(1, distanceToBoundary / transitionWidth));
-      
-      // Smooth curve for more natural blending
       const smoothBlend = this.smoothStep(blendFactor);
       
-      // Adjust primary and secondary strengths
       primaryStrength = 0.5 + smoothBlend * 0.5;
       secondaryStrength = 1.0 - primaryStrength;
     } else {
-      // Outside transition zone, primary biome dominates
       primaryStrength = Math.min(1.0, primaryStrength * 1.2);
       secondaryStrength = 0;
     }
     
-    // Create result
     const result: BiomeInfluence = {
       primaryBiome,
       primaryStrength,
@@ -149,7 +143,6 @@ export class BiomeBlendingSystem {
       transitionWidth
     };
     
-    // Cache result
     this.biomeInfluenceCache.set(cacheKey, result);
     
     return result;
@@ -211,7 +204,6 @@ export class BiomeBlendingSystem {
     };
     let totalInfluence = 0;
     
-    // Calculate weighted sums
     for (const { biome, influence } of biomeInfluences) {
       const config = DeterministicBiomeManager.getBiomeConfiguration(biome);
       totalColor.add(config.colorModifier.clone().multiplyScalar(influence));
@@ -219,7 +211,6 @@ export class BiomeBlendingSystem {
       totalHeight += config.heightMultiplier * influence;
       totalWind += config.windExposure * influence;
       
-      // Blend species distributions
       speciesDistribution.meadow += config.speciesDistribution.meadow * influence;
       speciesDistribution.prairie += config.speciesDistribution.prairie * influence;
       speciesDistribution.clumping += config.speciesDistribution.clumping * influence;
@@ -228,16 +219,13 @@ export class BiomeBlendingSystem {
       totalInfluence += influence;
     }
     
-    // Normalize the result
     const normFactor = 1 / totalInfluence;
     
-    // Normalize species distribution
     speciesDistribution.meadow *= normFactor;
     speciesDistribution.prairie *= normFactor;
     speciesDistribution.clumping *= normFactor;
     speciesDistribution.fine *= normFactor;
     
-    // Build blended config
     result = {
       name: 'Blended Biome',
       densityMultiplier: totalDensity * normFactor,
@@ -280,14 +268,12 @@ export class BiomeBlendingSystem {
     };
     let totalInfluence = 0;
     
-    // Calculate weighted sums
     for (const { biome, influence } of biomeInfluences) {
       const config = DeterministicBiomeManager.getGroundConfiguration(biome);
       totalDensity += config.densityMultiplier * influence;
       totalHeightReduction += config.heightReduction * influence;
       totalWindReduction += config.windReduction * influence;
       
-      // Blend species distributions
       speciesDistribution.meadow += config.speciesDistribution.meadow * influence;
       speciesDistribution.prairie += config.speciesDistribution.prairie * influence;
       speciesDistribution.clumping += config.speciesDistribution.clumping * influence;
@@ -296,16 +282,13 @@ export class BiomeBlendingSystem {
       totalInfluence += influence;
     }
     
-    // Normalize
     const normFactor = 1 / totalInfluence;
     
-    // Normalize species distribution
     speciesDistribution.meadow *= normFactor;
     speciesDistribution.prairie *= normFactor;
     speciesDistribution.clumping *= normFactor;
     speciesDistribution.fine *= normFactor;
     
-    // Build blended config
     result = {
       densityMultiplier: totalDensity * normFactor,
       heightReduction: totalHeightReduction * normFactor,
@@ -327,7 +310,6 @@ export class BiomeBlendingSystem {
   ): THREE.Color {
     const biomeInfluences = this.getBiomeTypesAtPosition(position, worldSeed);
     
-    // If only one biome, use standard calculation
     if (biomeInfluences.length === 1) {
       const biomeInfo = {
         type: biomeInfluences[0].biome,
@@ -337,11 +319,9 @@ export class BiomeBlendingSystem {
       return DeterministicBiomeManager.getBiomeSpeciesColor(species, biomeInfo, season);
     }
     
-    // Start with black and blend colors
     const resultColor = new THREE.Color(0, 0, 0);
     let totalInfluence = 0;
     
-    // Blend all contributing biome colors
     for (const { biome, influence } of biomeInfluences) {
       const biomeInfo = {
         type: biome,
@@ -354,7 +334,6 @@ export class BiomeBlendingSystem {
       totalInfluence += influence;
     }
     
-    // Normalize
     return resultColor.multiplyScalar(1 / totalInfluence);
   }
   
@@ -371,7 +350,6 @@ export class BiomeBlendingSystem {
    * Smooth step function for nicer transitions
    */
   private static smoothStep(t: number): number {
-    // Improved smooth step: 6t^5 - 15t^4 + 10t^3
     return t * t * t * (t * (t * 6 - 15) + 10);
   }
   

@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
 import { FractalNoiseSystem } from './FractalNoiseSystem';
@@ -18,63 +17,84 @@ export interface ChunkBiomeData {
 
 export class DeterministicBiomeManager {
   private static readonly CHUNK_SIZE = 64;
-  private static worldSeed: number = 12345; // Can be set from game config
+  private static worldSeed: number = DeterministicBiomeManager.generateRandomSeed(); // Dynamic random seed
   private static chunkBiomeCache: Map<string, ChunkBiomeData> = new Map();
 
-  // DRAMATICALLY ENHANCED biome configurations with obvious visual differences
+  // REBALANCED biome configurations with MUCH DENSER prairie grass
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
-      densityMultiplier: 1.5, // Increased from 1.0 for 2x density boost
+      densityMultiplier: 1.5,
       heightMultiplier: 1.0,
-      colorModifier: new THREE.Color(0x6db070), // Standard green
+      colorModifier: new THREE.Color(0x6db070),
       speciesDistribution: { meadow: 0.4, prairie: 0.25, clumping: 0.25, fine: 0.1 },
       windExposure: 1.0
     },
     meadow: {
       name: 'Lush Meadow',
-      densityMultiplier: 2.0, // Increased from 1.3 for very dense, lush appearance
-      heightMultiplier: 1.4, // Increased from 1.1 for dramatically taller grass
-      colorModifier: new THREE.Color(0x4db84d), // Brighter, more vibrant green
-      speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.05, fine: 0.1 }, // Dominated by meadow
-      windExposure: 0.6 // Less wind exposure due to density
+      densityMultiplier: 2.0,
+      heightMultiplier: 1.4,
+      colorModifier: new THREE.Color(0x4db84d),
+      speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.05, fine: 0.1 },
+      windExposure: 0.6
     },
     prairie: {
       name: 'Open Prairie',
-      densityMultiplier: 1.2, // Increased from 0.8 for denser coverage
-      heightMultiplier: 0.8, // Reduced from 1.2 for shorter, wind-swept look
-      colorModifier: new THREE.Color(0xb8b84d), // Golden-brown prairie grass
-      speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.15, fine: 0.05 }, // Prairie dominated
-      windExposure: 1.5 // High wind exposure
+      densityMultiplier: 1.8, // Increased from 1.2 for much denser prairie
+      heightMultiplier: 1.1, // Increased from 0.8 for taller prairie grass
+      colorModifier: new THREE.Color(0xb8b84d),
+      speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.15, fine: 0.05 },
+      windExposure: 1.5
     }
   };
 
-  // ENHANCED ground grass configurations with much higher density
+  // ENHANCED ground grass configurations with MUCH DENSER prairie
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
-      densityMultiplier: 10.0, // Increased from 6.0 for much denser ground coverage
+      densityMultiplier: 10.0,
       heightReduction: 0.65,
       speciesDistribution: { meadow: 0.3, prairie: 0.2, clumping: 0.4, fine: 0.1 },
       windReduction: 0.2
     },
     meadow: {
-      densityMultiplier: 12.0, // Increased from 7.0 for extremely dense meadow floor
-      heightReduction: 0.8, // Less height reduction for lush appearance
-      speciesDistribution: { meadow: 0.7, prairie: 0.05, clumping: 0.05, fine: 0.2 }, // Meadow dominated
+      densityMultiplier: 12.0,
+      heightReduction: 0.8,
+      speciesDistribution: { meadow: 0.7, prairie: 0.05, clumping: 0.05, fine: 0.2 },
       windReduction: 0.15
     },
     prairie: {
-      densityMultiplier: 8.0, // Increased from 6.0 but less than meadow
-      heightReduction: 0.6, // More height reduction for prairie look
-      speciesDistribution: { meadow: 0.05, prairie: 0.75, clumping: 0.1, fine: 0.1 }, // Prairie dominated
+      densityMultiplier: 11.0, // Increased from 8.0 for much denser prairie ground coverage
+      heightReduction: 0.65, // Reduced from 0.6 for taller prairie ground grass
+      speciesDistribution: { meadow: 0.05, prairie: 0.75, clumping: 0.1, fine: 0.1 },
       windReduction: 0.3
     }
   };
 
+  /**
+   * Generate a random seed for world generation
+   */
+  private static generateRandomSeed(): number {
+    return Math.floor(Math.random() * 2147483647) + Date.now() % 1000000;
+  }
+
+  /**
+   * Initialize with a new random seed (call on game start)
+   */
+  public static initializeWithRandomSeed(): void {
+    const newSeed = this.generateRandomSeed();
+    console.log(`🌱 Initializing biomes with random seed: ${newSeed}`);
+    this.setWorldSeed(newSeed);
+  }
+
   public static setWorldSeed(seed: number): void {
     this.worldSeed = seed;
     this.chunkBiomeCache.clear();
-    BiomeBlendingSystem.clearCache(); // Clear blending cache when seed changes
+    BiomeBlendingSystem.clearCache();
+    console.log(`🌱 World seed set to: ${seed} - biome caches cleared`);
+  }
+
+  public static getWorldSeed(): number {
+    return this.worldSeed;
   }
 
   public static getChunkSize(): number {
@@ -105,8 +125,7 @@ export class DeterministicBiomeManager {
   }
 
   /**
-   * Get biome data for a chunk (used for chunk-based operations)
-   * For individual grass blades, use BiomeBlendingSystem.getBiomeInfluenceAtPosition instead
+   * ENHANCED: Equal biome distribution with multi-frequency noise mixing
    */
   public static getBiomeForChunk(chunk: ChunkCoordinate): ChunkBiomeData {
     const chunkKey = this.getChunkKey(chunk);
@@ -118,20 +137,44 @@ export class DeterministicBiomeManager {
     const seed = this.getChunkSeed(chunk);
     const centerPos = this.chunkToWorldPosition(chunk);
     
-    // Use the new FractalNoiseSystem for more organic patterns
-    const influence = FractalNoiseSystem.calculateBiomeInfluence(centerPos, seed);
-    const noiseValue = influence.noiseValue;
+    // ENHANCED: Multi-frequency noise for better distribution
+    const largeScaleNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed, 4, 0.5, 2.0, 0.001);
+    const mediumScaleNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed + 1000, 3, 0.5, 2.0, 0.005);
+    const smallScaleNoise = FractalNoiseSystem.getFractalNoise(centerPos, seed + 2000, 2, 0.5, 2.0, 0.02);
     
+    // Combine noise layers for more varied patterns
+    const combinedNoise = largeScaleNoise * 0.6 + mediumScaleNoise * 0.3 + smallScaleNoise * 0.1;
+    
+    // REBALANCED: Equal distribution (~33% each biome)
     let biomeType: BiomeType = 'normal';
     let strength = 1.0;
     
-    // Improved biome selection with enhanced noise
-    if (noiseValue > 0.6) {
+    if (combinedNoise > 0.66) {
+      // 33% chance for meadow
       biomeType = 'meadow';
-      strength = Math.min(1.0, (noiseValue - 0.6) / 0.4);
-    } else if (noiseValue < 0.4) {
+      strength = Math.min(1.0, (combinedNoise - 0.66) / 0.34);
+    } else if (combinedNoise < 0.33) {
+      // 33% chance for prairie
       biomeType = 'prairie';
-      strength = Math.min(1.0, (0.4 - noiseValue) / 0.4);
+      strength = Math.min(1.0, (0.33 - combinedNoise) / 0.33);
+    } else {
+      // 33% chance for normal (middle range)
+      biomeType = 'normal';
+      strength = 1.0 - Math.abs(combinedNoise - 0.5) * 2.0; // Strongest at center (0.5)
+    }
+    
+    // Add Voronoi balancing to prevent large uniform areas
+    const voronoiData = FractalNoiseSystem.getVoronoiNoise(centerPos, seed, 0.0008);
+    const voronoiInfluence = voronoiData.value * 0.2; // 20% influence
+    
+    // Use Voronoi cell ID to force biome variety
+    const cellBiomeType = this.getCellForcedBiome(voronoiData.cellId);
+    if (voronoiInfluence > 0.15 && cellBiomeType !== biomeType) {
+      // Force some variation based on Voronoi cells
+      strength *= 0.7; // Reduce primary strength
+      if (Math.random() < 0.3) { // 30% chance to switch
+        biomeType = cellBiomeType;
+      }
     }
 
     const biomeData: ChunkBiomeData = {
@@ -145,6 +188,14 @@ export class DeterministicBiomeManager {
     return biomeData;
   }
 
+  /**
+   * Force biome variety using cell IDs to ensure equal representation
+   */
+  private static getCellForcedBiome(cellId: number): BiomeType {
+    const biomes: BiomeType[] = ['normal', 'meadow', 'prairie'];
+    return biomes[Math.abs(cellId) % 3];
+  }
+
   public static getBiomeConfiguration(biomeType: BiomeType): BiomeConfiguration {
     return this.BIOME_CONFIGS[biomeType];
   }
@@ -153,11 +204,7 @@ export class DeterministicBiomeManager {
     return this.GROUND_CONFIGS[biomeType];
   }
 
-  /**
-   * Get biome info at a world position using the enhanced blending system
-   */
   public static getBiomeInfo(position: THREE.Vector3): BiomeInfo {
-    // Use BiomeBlendingSystem for more accurate position-based biome info
     const biomeInfluence = BiomeBlendingSystem.getBiomeInfluenceAtPosition(position, this.worldSeed);
     
     return {
@@ -167,48 +214,38 @@ export class DeterministicBiomeManager {
     };
   }
 
-  // Enhanced biome species color with more dramatic differences
   public static getBiomeSpeciesColor(
     species: string, 
     biomeInfo: BiomeInfo, 
     season: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer'
   ): THREE.Color {
-    // For positions in transition zones, use the blended color system
     if (biomeInfo.transitionZone) {
-      // Create a temporary position for color calculation
-      // In real usage, the actual world position should be passed to BiomeBlendingSystem
       const tempPosition = new THREE.Vector3(0, 0, 0);
       return BiomeBlendingSystem.getBlendedBiomeColor(species, tempPosition, season, this.worldSeed);
     }
     
-    // Standard coloring for single-biome areas
     const biomeConfig = this.getBiomeConfiguration(biomeInfo.type);
     
-    // Enhanced base colors for better species distinction
     const baseColors = {
-      meadow: new THREE.Color(0x7aad62), // Rich green
-      prairie: new THREE.Color(0xa0a055), // Golden-green
-      clumping: new THREE.Color(0x9bc471), // Bright lime
-      fine: new THREE.Color(0x8bbf67) // Medium green
+      meadow: new THREE.Color(0x7aad62),
+      prairie: new THREE.Color(0xa0a055),
+      clumping: new THREE.Color(0x9bc471),
+      fine: new THREE.Color(0x8bbf67)
     };
     
     const baseColor = baseColors[species as keyof typeof baseColors] || baseColors.meadow;
     const biomeColor = baseColor.clone().multiply(biomeConfig.colorModifier);
     
-    // Enhanced seasonal variations for more dramatic changes
     const seasonalMultipliers = {
-      spring: new THREE.Color(1.3, 1.4, 1.1), // Bright, vibrant
-      summer: new THREE.Color(1.1, 1.2, 1.0), // Lush
-      autumn: new THREE.Color(1.4, 1.2, 0.7), // Golden tones
-      winter: new THREE.Color(0.7, 0.8, 0.9) // Muted, cool
+      spring: new THREE.Color(1.3, 1.4, 1.1),
+      summer: new THREE.Color(1.1, 1.2, 1.0),
+      autumn: new THREE.Color(1.4, 1.2, 0.7),
+      winter: new THREE.Color(0.7, 0.8, 0.9)
     };
     
     return biomeColor.multiply(seasonalMultipliers[season]);
   }
 
-  /**
-   * Adjust species list based on biome influence (use BiomeBlendingSystem for transitions)
-   */
   public static adjustSpeciesForBiome(baseSpecies: string[], biomeInfo: BiomeInfo): string[] {
     const config = this.getBiomeConfiguration(biomeInfo.type);
     const adjustedSpecies: string[] = [];
@@ -249,9 +286,6 @@ export class DeterministicBiomeManager {
     return adjustedSpecies;
   }
   
-  /**
-   * Creates a consistent seeded random number generator
-   */
   public static createSeededRandom(seed: number): () => number {
     let current = seed;
     return () => {
