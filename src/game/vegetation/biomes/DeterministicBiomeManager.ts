@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
 
@@ -21,7 +22,7 @@ export class DeterministicBiomeManager {
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
-      densityMultiplier: 1.2, // Increased from 1.0
+      densityMultiplier: 1.0,
       heightMultiplier: 1.0,
       colorModifier: new THREE.Color(0x6db070),
       speciesDistribution: { meadow: 0.4, prairie: 0.2, clumping: 0.3, fine: 0.1 },
@@ -29,39 +30,39 @@ export class DeterministicBiomeManager {
     },
     meadow: {
       name: 'Lush Meadow',
-      densityMultiplier: 1.8, // Increased from 1.3 for very dense meadows
-      heightMultiplier: 1.2, // Increased from 1.1
-      colorModifier: new THREE.Color(0x85c265), // Brighter green
-      speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.1, fine: 0.05 }, // More meadow species
+      densityMultiplier: 1.3,
+      heightMultiplier: 1.1,
+      colorModifier: new THREE.Color(0x7db965),
+      speciesDistribution: { meadow: 0.7, prairie: 0.1, clumping: 0.1, fine: 0.1 },
       windExposure: 0.8
     },
     prairie: {
       name: 'Open Prairie',
-      densityMultiplier: 1.0, // Kept same for contrast
-      heightMultiplier: 1.4, // Increased from 1.2 for taller prairie grass
-      colorModifier: new THREE.Color(0x9dc76a), // More yellow-green
-      speciesDistribution: { meadow: 0.1, prairie: 0.75, clumping: 0.05, fine: 0.1 }, // More prairie species
+      densityMultiplier: 0.8,
+      heightMultiplier: 1.2,
+      colorModifier: new THREE.Color(0x8dc46a),
+      speciesDistribution: { meadow: 0.2, prairie: 0.6, clumping: 0.1, fine: 0.1 },
       windExposure: 1.3
     }
   };
 
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
-      densityMultiplier: 8.0, // Increased from 6.0
-      heightReduction: 0.6, // Reduced from 0.68 for better visibility
+      densityMultiplier: 6.0,
+      heightReduction: 0.68,
       speciesDistribution: { meadow: 0.3, prairie: 0.15, clumping: 0.45, fine: 0.1 },
       windReduction: 0.2
     },
     meadow: {
-      densityMultiplier: 10.0, // Increased from 7.0 for very dense ground coverage
-      heightReduction: 0.75, // Reduced from 0.85 for better visibility
-      speciesDistribution: { meadow: 0.7, prairie: 0.05, clumping: 0.05, fine: 0.2 },
+      densityMultiplier: 7.0,
+      heightReduction: 0.85,
+      speciesDistribution: { meadow: 0.6, prairie: 0.05, clumping: 0.05, fine: 0.3 },
       windReduction: 0.2
     },
     prairie: {
-      densityMultiplier: 7.0, // Increased from 6.0
-      heightReduction: 0.55, // Reduced from 0.68 for taller ground grass
-      speciesDistribution: { meadow: 0.05, prairie: 0.8, clumping: 0.05, fine: 0.1 },
+      densityMultiplier: 6.0,
+      heightReduction: 0.68,
+      speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.05, fine: 0.15 },
       windReduction: 0.25
     }
   };
@@ -104,21 +105,20 @@ export class DeterministicBiomeManager {
     const seed = this.getChunkSeed(chunk);
     const centerPos = this.chunkToWorldPosition(chunk);
     
-    // Use seeded noise for deterministic biome generation with larger biome areas
+    // Use seeded noise for deterministic biome generation
     const seededRandom = this.createSeededRandom(seed);
-    const noiseX = this.seededNoise(centerPos.x * 0.0008, seed); // Reduced frequency for larger biomes
-    const noiseZ = this.seededNoise(centerPos.z * 0.0008, seed + 1000);
+    const noiseX = this.seededNoise(centerPos.x * 0.001, seed);
+    const noiseZ = this.seededNoise(centerPos.z * 0.001, seed + 1000);
     
     let biomeType: BiomeType = 'normal';
     let strength = 1.0;
     
-    // Adjusted thresholds for better biome distribution
-    if (noiseX > 0.2) {
+    if (noiseX > 0.3) {
       biomeType = 'meadow';
-      strength = Math.min(1.0, (noiseX - 0.2) / 0.5); // Easier to reach full strength
-    } else if (noiseZ > 0.15) {
+      strength = Math.min(1.0, (noiseX - 0.3) / 0.4);
+    } else if (noiseZ > 0.2) {
       biomeType = 'prairie';
-      strength = Math.min(1.0, (noiseZ - 0.15) / 0.6);
+      strength = Math.min(1.0, (noiseZ - 0.2) / 0.5);
     }
 
     const biomeData: ChunkBiomeData = {
