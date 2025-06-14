@@ -88,46 +88,39 @@ export class TerrainFeatureGenerator {
   private generateBiomeAwareTrees(features: THREE.Object3D[], bounds: any, region: RegionCoordinates): void {
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     
-    // Enhanced tree density based on ring type
+    // Enhanced tree density based on ring index
     let baseDensity = 0.0015; // Base trees per square unit
     let minSpacing = 8; // Minimum distance between trees
     
-    switch (ringDef.name) {
-      case 'Spawn Area':
-        baseDensity = 0.001; // Fewer trees in spawn area
-        minSpacing = 12;
-        break;
-      case 'Dense Thicket':
-        baseDensity = 0.003; // Dense forest
-        minSpacing = 6;
-        break;
-      case 'Lush Valley':
-        baseDensity = 0.0025; // Moderate density with variety
-        minSpacing = 7;
-        break;
-      case 'Rolling Savanna':
-        baseDensity = 0.0008; // Sparse trees
-        minSpacing = 15;
-        break;
-      case 'Sparse Steppe':
-        baseDensity = 0.0005; // Very sparse
-        minSpacing = 20;
-        break;
+    // Adjust density based on ring index (inner rings are spawn areas, outer rings are wilderness)
+    if (region.ringIndex === 0) {
+      baseDensity = 0.001; // Fewer trees in center spawn area
+      minSpacing = 12;
+    } else if (region.ringIndex >= 3) {
+      baseDensity = 0.003; // More trees in outer wilderness
+      minSpacing = 6;
     }
 
     const area = (bounds.maxX - bounds.minX) * (bounds.maxZ - bounds.minZ);
     const treeCount = Math.floor(area * baseDensity);
 
     // Use Poisson disk sampling for natural distribution
-    const positions = PoissonDiskSampling.generatePoints(
-      bounds.minX, bounds.minZ,
-      bounds.maxX, bounds.maxZ,
+    const poissonBounds = {
+      min: new THREE.Vector2(bounds.minX, bounds.minZ),
+      max: new THREE.Vector2(bounds.maxX, bounds.maxZ)
+    };
+    
+    const positions = PoissonDiskSampling.generatePoissonPoints(
+      poissonBounds,
       minSpacing,
-      treeCount
+      30 // max attempts
     );
 
-    positions.forEach(pos => {
-      const treePosition = new THREE.Vector3(pos.x, 0, pos.z);
+    // Limit to desired tree count
+    const limitedPositions = positions.slice(0, treeCount);
+
+    limitedPositions.forEach(pos => {
+      const treePosition = new THREE.Vector3(pos.x, 0, pos.y);
       
       // Get biome type at this position for species selection
       const biomeData = DeterministicBiomeManager.getBiomeAtPosition(treePosition);
@@ -140,7 +133,7 @@ export class TerrainFeatureGenerator {
         tree.position.y = this.getTerrainHeight(treePosition);
         
         features.push(tree);
-        console.log(`🌳 Generated ${this.getTreeSpeciesForBiome(biomeData.biomeType)} tree in ${biomeData.biomeType} biome at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)})`);
+        console.log(`🌳 Generated ${this.getTreeSpeciesForBiome(biomeData.biomeType)} tree in ${biomeData.biomeType} biome at (${pos.x.toFixed(1)}, ${pos.y.toFixed(1)})`);
       }
     });
   }
@@ -158,39 +151,37 @@ export class TerrainFeatureGenerator {
   }
 
   private generateBushes(features: THREE.Object3D[], bounds: any, region: RegionCoordinates): void {
-    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
-    
     // Bush density varies by ring
     let bushDensity = 0.002;
     let minSpacing = 4;
     
-    switch (ringDef.name) {
-      case 'Dense Thicket':
-        bushDensity = 0.004;
-        minSpacing = 3;
-        break;
-      case 'Lush Valley':
-        bushDensity = 0.003;
-        minSpacing = 3.5;
-        break;
-      case 'Sparse Steppe':
-        bushDensity = 0.001;
-        minSpacing = 6;
-        break;
+    // Adjust based on ring index
+    if (region.ringIndex === 0) {
+      bushDensity = 0.001;
+      minSpacing = 6;
+    } else if (region.ringIndex >= 3) {
+      bushDensity = 0.004;
+      minSpacing = 3;
     }
 
     const area = (bounds.maxX - bounds.minX) * (bounds.maxZ - bounds.minZ);
     const bushCount = Math.floor(area * bushDensity);
 
-    const positions = PoissonDiskSampling.generatePoints(
-      bounds.minX, bounds.minZ,
-      bounds.maxX, bounds.maxZ,
+    const poissonBounds = {
+      min: new THREE.Vector2(bounds.minX, bounds.minZ),
+      max: new THREE.Vector2(bounds.maxX, bounds.maxZ)
+    };
+    
+    const positions = PoissonDiskSampling.generatePoissonPoints(
+      poissonBounds,
       minSpacing,
-      bushCount
+      30
     );
 
-    positions.forEach(pos => {
-      const bushPosition = new THREE.Vector3(pos.x, 0, pos.z);
+    const limitedPositions = positions.slice(0, bushCount);
+
+    limitedPositions.forEach(pos => {
+      const bushPosition = new THREE.Vector3(pos.x, 0, pos.y);
       const bush = this.bushGenerator.createBush(bushPosition);
       
       if (bush) {
@@ -201,40 +192,71 @@ export class TerrainFeatureGenerator {
   }
 
   private generateRocks(features: THREE.Object3D[], bounds: any, region: RegionCoordinates): void {
-    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
-    
     // Rock density varies by ring
     let rockDensity = 0.0008;
     let minSpacing = 6;
     
-    switch (ringDef.name) {
-      case 'Dense Thicket':
-        rockDensity = 0.0005; // Fewer rocks in dense areas
-        break;
-      case 'Sparse Steppe':
-        rockDensity = 0.0012; // More rocks in sparse areas
-        minSpacing = 5;
-        break;
+    // Adjust based on ring index
+    if (region.ringIndex >= 4) {
+      rockDensity = 0.0012; // More rocks in far outer areas
+      minSpacing = 5;
     }
 
     const area = (bounds.maxX - bounds.minX) * (bounds.maxZ - bounds.minZ);
     const rockCount = Math.floor(area * rockDensity);
 
-    const positions = PoissonDiskSampling.generatePoints(
-      bounds.minX, bounds.minZ,
-      bounds.maxX, bounds.maxZ,
+    const poissonBounds = {
+      min: new THREE.Vector2(bounds.minX, bounds.minZ),
+      max: new THREE.Vector2(bounds.maxX, bounds.maxZ)
+    };
+    
+    const positions = PoissonDiskSampling.generatePoissonPoints(
+      poissonBounds,
       minSpacing,
-      rockCount
+      30
     );
 
-    positions.forEach(pos => {
-      const rockPosition = new THREE.Vector3(pos.x, 0, pos.z);
-      const rockCluster = this.rockGenerator.generateCluster(rockPosition, 1 + Math.floor(Math.random() * 3));
+    const limitedPositions = positions.slice(0, rockCount);
+
+    limitedPositions.forEach(pos => {
+      const rockPosition = new THREE.Vector3(pos.x, 0, pos.y);
       
-      if (rockCluster) {
-        rockCluster.position.y = this.getTerrainHeight(rockPosition);
-        features.push(rockCluster);
+      // Create a simple rock cluster using a basic approach
+      const rockGroup = new THREE.Group();
+      const clusterSize = 1 + Math.floor(Math.random() * 3);
+      
+      // Create simple rock geometries
+      for (let i = 0; i < clusterSize; i++) {
+        const rockGeometry = new THREE.SphereGeometry(0.5 + Math.random() * 0.5, 6, 4);
+        const rockMaterial = new THREE.MeshLambertMaterial({ 
+          color: 0x666666 + Math.floor(Math.random() * 0x222222)
+        });
+        const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+        
+        rock.position.set(
+          (Math.random() - 0.5) * 2,
+          Math.random() * 0.5,
+          (Math.random() - 0.5) * 2
+        );
+        rock.scale.set(
+          0.8 + Math.random() * 0.4,
+          0.6 + Math.random() * 0.8,
+          0.8 + Math.random() * 0.4
+        );
+        rock.rotation.set(
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        );
+        
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        rockGroup.add(rock);
       }
+      
+      rockGroup.position.copy(rockPosition);
+      rockGroup.position.y = this.getTerrainHeight(rockPosition);
+      features.push(rockGroup);
     });
   }
 
@@ -306,10 +328,6 @@ export class TerrainFeatureGenerator {
     
     if (this.bushGenerator) {
       this.bushGenerator.dispose();
-    }
-
-    if (this.rockGenerator) {
-      this.rockGenerator.dispose();
     }
 
     console.log('🧹 TerrainFeatureGenerator with enhanced trees disposed');
