@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { BiomeType } from '../core/GrassConfig';
 import { OrganicBiomeShape, OrganicBiomeGenerator } from './OrganicBiomeGenerator';
@@ -19,7 +20,7 @@ export interface EnhancedBiomeData {
 
 export class BiomeBlendingSystem {
   /**
-   * SHARP BOUNDARY: Binary biome selection with no blending
+   * Simplified biome influence calculation with clean boundaries
    */
   static calculateEnhancedBiomeInfluence(
     position: THREE.Vector3,
@@ -27,37 +28,40 @@ export class BiomeBlendingSystem {
   ): EnhancedBiomeData {
     const influences: BiomeInfluence[] = [];
     
-    // Find all biomes that contain this position
+    // Calculate influence from each organic biome only
     for (const biome of organicBiomes) {
-      const isInside = OrganicBiomeGenerator.isInsideOrganicBiome(position, biome);
+      const influence = OrganicBiomeGenerator.calculateOrganicInfluence(position, biome);
       const distance = OrganicBiomeGenerator.getDistanceToOrganicBoundary(position, biome);
       
-      if (isInside) {
+      if (influence > 0.01) {
         influences.push({
           biomeType: biome.biomeType,
-          influence: biome.strength, // Full strength for inside positions
+          influence,
           distance: Math.abs(distance),
           source: 'organic'
         });
       }
     }
     
-    // SHARP SELECTION: Choose the closest biome center if multiple biomes overlap
-    let selectedBiome: BiomeType = 'normal';
-    let selectedInfluence = 0.8; // Default normal biome strength
+    // Sort by influence strength
+    influences.sort((a, b) => b.influence - a.influence);
     
-    if (influences.length > 0) {
-      // If multiple biomes overlap, choose the one with smallest distance to boundary (closest to center)
-      influences.sort((a, b) => a.distance - b.distance);
-      selectedBiome = influences[0].biomeType;
-      selectedInfluence = influences[0].influence;
+    // Calculate dominant biome
+    const dominantBiome = influences.length > 0 ? influences[0].biomeType : 'normal';
+    const totalInfluence = influences.length > 0 ? influences[0].influence : 0.7;
+    
+    // Simple transition intensity calculation
+    let transitionIntensity = 0;
+    if (influences.length > 1) {
+      const difference = influences[0].influence - influences[1].influence;
+      transitionIntensity = Math.max(0, 1.0 - (difference / 0.5));
     }
     
     return {
-      dominantBiome: selectedBiome,
-      totalInfluence: selectedInfluence,
-      influences: influences.slice(0, 1), // Only keep the selected biome
-      transitionIntensity: 0 // No transitions with sharp boundaries
+      dominantBiome,
+      totalInfluence: Math.max(0.7, totalInfluence),
+      influences: influences.slice(0, 2),
+      transitionIntensity
     };
   }
   
@@ -118,7 +122,7 @@ export class BiomeBlendingSystem {
       biomes.push(organicBiome);
     }
     
-    console.log(`🌿 SHARP MOSAIC: Generated ${biomes.length} distinct biome patches for region ${regionX}_${regionZ}`);
+    console.log(`🌿 SIMPLIFIED ORGANIC: Generated ${biomes.length} exploration-sized biomes for region ${regionX}_${regionZ}`);
     return biomes;
   }
 }

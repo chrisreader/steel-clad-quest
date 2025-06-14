@@ -1,9 +1,9 @@
+
 import * as THREE from 'three';
 import { GrassGeometry } from './GrassGeometry';
 import { GrassShader } from './GrassShader';
 import { GrassBladeConfig, BiomeInfo } from './GrassConfig';
 import { BiomeManager } from '../biomes/BiomeManager';
-import { DeterministicBiomeManager } from '../biomes/DeterministicBiomeManager';
 import { RegionCoordinates } from '../../world/RingQuadrantSystem';
 
 export class GrassRenderer {
@@ -35,27 +35,21 @@ export class GrassRenderer {
     
     if (!species) return;
 
-    // SHARP BOUNDARY: Use region-based biome determination (no per-position variation)
-    const centerPosition = speciesData.positions[0] || new THREE.Vector3();
-    const positionBiomeData = DeterministicBiomeManager.getBiomeAtPosition(centerPosition);
+    // Get biome-specific color
+    const biomeColor = BiomeManager.getBiomeSpeciesColor(speciesName, biomeInfo);
     
-    // PURE biome-based material (no strength blending)
-    const materialKey = `${speciesName}${suffix}_${positionBiomeData.biomeType}`;
+    // Create or get geometry
+    const geometry = species.clustered 
+      ? GrassGeometry.createGrassCluster(species, isGroundGrass ? 7 : 3, isGroundGrass)
+      : GrassGeometry.createGrassBladeGeometry(species, 1.0, isGroundGrass);
+    
+    // Create or get material
+    const materialKey = `${speciesName}${suffix}`;
     let material = isGroundGrass 
       ? this.groundGrassMaterials.get(materialKey)
       : this.grassMaterials.get(materialKey);
     
     if (!material) {
-      // SHARP BOUNDARY: Pure biome color with no blending
-      const biomeColor = DeterministicBiomeManager.getBiomeSpeciesColor(
-        speciesName, 
-        { 
-          type: positionBiomeData.biomeType, 
-          strength: 1.0, // Always full strength for sharp boundaries
-          transitionZone: false // No transition zones
-        }
-      );
-      
       material = GrassShader.createGrassMaterial(biomeColor, speciesName, isGroundGrass);
       
       if (isGroundGrass) {
@@ -64,11 +58,6 @@ export class GrassRenderer {
         this.grassMaterials.set(materialKey, material);
       }
     }
-    
-    // Create or get geometry
-    const geometry = species.clustered 
-      ? GrassGeometry.createGrassCluster(species, isGroundGrass ? 7 : 3, isGroundGrass)
-      : GrassGeometry.createGrassBladeGeometry(species, 1.0, isGroundGrass);
     
     // Apply LOD-based instance count reduction
     const targetInstanceCount = Math.max(1, Math.floor(speciesData.positions.length * lodLevel));
@@ -102,8 +91,8 @@ export class GrassRenderer {
       centerPosition: lodPositions[0] || new THREE.Vector3(),
       ringIndex: region.ringIndex,
       species: speciesName,
-      biomeType: positionBiomeData.biomeType,
-      biomeStrength: 1.0, // Always full strength for sharp boundaries
+      biomeType: biomeInfo.type,
+      biomeStrength: biomeInfo.strength,
       isGroundGrass,
       lodLevel
     };

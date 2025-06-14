@@ -49,7 +49,7 @@ export class OrganicBiomeGenerator {
       controlPoints.push(new THREE.Vector3(x, 0, z));
     }
     
-    console.log(`🔥 SHARP BIOME: Created ${biomeType} with ${controlPointCount} control points, radius ${baseRadius.toFixed(1)}, complexity ${shapeComplexity.toFixed(2)}`);
+    console.log(`🔥 SIMPLIFIED BIOME: Created ${biomeType} with ${controlPointCount} control points, radius ${baseRadius.toFixed(1)}, complexity ${shapeComplexity.toFixed(2)}`);
     
     return {
       center,
@@ -63,7 +63,7 @@ export class OrganicBiomeGenerator {
   }
   
   /**
-   * Sharp distance calculation for hard boundaries
+   * Simplified distance calculation with clean boundaries
    */
   static getDistanceToOrganicBoundary(
     position: THREE.Vector3,
@@ -110,15 +110,30 @@ export class OrganicBiomeGenerator {
   }
   
   /**
-   * HARD BOUNDARY: Binary influence calculation - either 1.0 or 0.0
+   * Calculate simplified organic influence with clean boundaries
    */
   static calculateOrganicInfluence(
     position: THREE.Vector3,
     biomeShape: OrganicBiomeShape
   ): number {
-    const isInside = this.isInsideOrganicBiome(position, biomeShape);
+    const distanceToBoundary = this.getDistanceToOrganicBoundary(position, biomeShape);
     
-    // Sharp boundary: either full influence or none
-    return isInside ? biomeShape.strength : 0.0;
+    // Small, clean blend distance for sharp transitions
+    const blendDistance = 2 + Math.abs(NoiseUtilities.seededNoise(
+      position.x * 0.1 + position.z * 0.1,
+      0,
+      biomeShape.seed
+    )) * 3; // 2-5 units blend distance
+    
+    if (distanceToBoundary <= 0) {
+      // Inside the biome - strong, consistent influence
+      return Math.min(1.0, biomeShape.strength);
+    } else if (distanceToBoundary <= blendDistance) {
+      // In the small transition zone - simple linear falloff
+      const falloffRatio = 1.0 - (distanceToBoundary / blendDistance);
+      return Math.max(0, falloffRatio * biomeShape.strength);
+    }
+    
+    return 0; // Outside influence range
   }
 }
