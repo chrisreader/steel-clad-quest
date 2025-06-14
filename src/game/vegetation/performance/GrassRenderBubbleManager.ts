@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { SeededGrassDistribution } from '../SeededGrassDistribution';
 import { GrassRenderer } from '../core/GrassRenderer';
@@ -214,7 +213,7 @@ export class GrassRenderBubbleManager {
           scales: speciesScales,
           rotations: speciesRotations
         },
-        { x: 0, z: 0 }, // Dummy region coordinate since we're using chunk-based system
+        { ringIndex: 0, quadrant: 0 }, // Dummy RegionCoordinates since we're using chunk-based system
         biomeInfo,
         isGroundGrass,
         1.0 // Full LOD
