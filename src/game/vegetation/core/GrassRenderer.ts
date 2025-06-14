@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GrassGeometry } from './GrassGeometry';
 import { GrassShader } from './GrassShader';
@@ -44,20 +43,23 @@ export class GrassRenderer {
       ? GrassGeometry.createGrassCluster(species, isGroundGrass ? 7 : 3, isGroundGrass)
       : GrassGeometry.createGrassBladeGeometry(species, 1.0, isGroundGrass);
     
-    // Create or get material
-    const materialKey = `${speciesName}${suffix}`;
+    // Create or get material with biome type included for unique caching
+    const materialKey = `${speciesName}_${biomeInfo.type}${suffix}`;
     let material = isGroundGrass 
       ? this.groundGrassMaterials.get(materialKey)
       : this.grassMaterials.get(materialKey);
     
     if (!material) {
-      material = GrassShader.createGrassMaterial(biomeColor, speciesName, isGroundGrass);
+      // Pass biome type to ensure unique materials per biome
+      material = GrassShader.createGrassMaterial(biomeColor, speciesName, isGroundGrass, biomeInfo.type);
       
       if (isGroundGrass) {
         this.groundGrassMaterials.set(materialKey, material);
       } else {
         this.grassMaterials.set(materialKey, material);
       }
+      
+      console.log(`🎨 Created unique material for ${speciesName} in ${biomeInfo.type} biome with color #${biomeColor.getHexString()}`);
     }
     
     // Apply LOD-based instance count reduction
