@@ -31,8 +31,8 @@ export class BiomeBlendingSystem {
   private static readonly MAX_TRANSITION_WIDTH = 25;
   
   /**
-   * Calculate biome influence at a specific world position
-   * Creates organic, blended biome boundaries with 5-25 unit transition zones
+   * Calculate pure chaotic biome influence at a specific world position
+   * Creates completely random, organic boundaries with 5-25 unit transition zones
    */
   public static getBiomeInfluenceAtPosition(
     position: THREE.Vector3, 
@@ -44,115 +44,101 @@ export class BiomeBlendingSystem {
       return this.biomeInfluenceCache.get(cacheKey)!;
     }
     
-    // ENHANCED: Multi-scale noise layers for patchier biome distribution
-    // Large patches (100-200 units)
+    // ENHANCED: Multi-scale pure chaos layers for maximum patch variety
+    // Large patches (80-150 units) - reduced weight
     const largeScaleNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       worldSeed + 500, 
       4,
       0.5, 
       2.0, 
-      0.004  // Lower frequency for larger patterns
+      0.005  // Slightly higher frequency
     );
     
-    // Medium patches (30-70 units)
+    // Medium patches (20-60 units) - INCREASED weight
     const mediumScaleNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       worldSeed + 1000, 
-      3, 
-      0.5, 
-      2.0, 
-      0.015  // Medium frequency
+      4, 
+      0.6, 
+      2.2, 
+      0.02   // Higher frequency for smaller patches
     );
     
-    // Small patches (10-20 units)
+    // Small patches (5-15 units) - INCREASED weight
     const smallScaleNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       worldSeed + 1500, 
-      2, 
-      0.5, 
-      2.0, 
-      0.05  // Higher frequency for micro-variations
+      3, 
+      0.7, 
+      2.5, 
+      0.06   // Much higher frequency
     );
     
-    // Micro variations (1-5 units)
+    // Micro variations (1-5 units) - NEW chaos layer
     const microNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       worldSeed + 2000, 
-      2, 
+      3, 
       0.5, 
       2.0, 
-      0.2  // Very high frequency for tiny details
+      0.15   // Very high frequency for chaos
     );
     
-    // ENHANCED: Domain warping for irregular patch shapes
-    const warpStrength = 50.0; // Increased from 15.0 for more dramatic warping
+    // Ultra-micro chaos (0.5-2 units) - NEW ultra chaos layer
+    const ultraMicroNoise = FractalNoiseSystem.getFractalNoise(
+      position, 
+      worldSeed + 2500, 
+      2, 
+      0.4, 
+      2.0, 
+      0.3    // Extremely high frequency
+    );
+    
+    // ENHANCED: Much stronger domain warping for maximum irregular shapes
+    const warpStrength = 100.0; // Increased from 50.0 for extreme chaos
     const warpedPos = new THREE.Vector3(
       position.x + (largeScaleNoise - 0.5) * warpStrength,
       position.y,
       position.z + (mediumScaleNoise - 0.5) * warpStrength
     );
     
-    // NEW: Environmental factors influence
-    // Simulate elevation with noise
-    const elevation = FractalNoiseSystem.getFractalNoise(position, worldSeed + 3000, 4, 0.5, 2.0, 0.002);
-    // Simulate water proximity
-    const waterProximity = FractalNoiseSystem.getWarpedNoise(position, worldSeed + 3500, 30.0);
-    // Simulate soil richness
-    const soilRichness = FractalNoiseSystem.getFractalNoise(position, worldSeed + 4000, 3, 0.5, 2.0, 0.008);
+    // Additional warping layers for ultra-organic shapes
+    const secondaryWarp = FractalNoiseSystem.getFractalNoise(warpedPos, worldSeed + 3000, 3, 0.6, 2.0, 0.008);
+    const finalWarpedPos = new THREE.Vector3(
+      warpedPos.x + (secondaryWarp - 0.5) * 30.0,
+      warpedPos.y,
+      warpedPos.z + (smallScaleNoise - 0.5) * 30.0
+    );
     
-    // Combine noise layers with different weights for natural patchiness
-    const baseBiomeNoise = largeScaleNoise * 0.35 +  // Large areas
-                           mediumScaleNoise * 0.3 +   // Medium patches
-                           smallScaleNoise * 0.25 +   // Small details
-                           microNoise * 0.1;          // Micro variations
+    // Combine all chaos layers with enhanced weights for maximum randomness
+    const baseBiomeNoise = largeScaleNoise * 0.15 +    // Large areas (reduced)
+                           mediumScaleNoise * 0.35 +   // Medium patches (increased)
+                           smallScaleNoise * 0.3 +     // Small details (increased)
+                           microNoise * 0.15 +         // Micro chaos (new)
+                           ultraMicroNoise * 0.05;     // Ultra chaos (new)
     
-    // ENHANCED: Voronoi influence for cellular patches (increased from 20% to 50%)
+    // ENHANCED: Much stronger Voronoi influence for cellular chaos (70% instead of 50%)
     const voronoiData = FractalNoiseSystem.getVoronoiNoise(
       position, 
       worldSeed, 
-      0.002  // Smaller cells for more varied patches
+      0.004  // Higher density for smaller, more chaotic cells
     );
     
-    // Apply 50% Voronoi influence for distinct cell-based patches
-    let combinedNoise = baseBiomeNoise * 0.5 + voronoiData.value * 0.5;
+    // Apply 70% Voronoi influence for maximum cellular chaos
+    let combinedNoise = baseBiomeNoise * 0.3 + voronoiData.value * 0.7;
     
-    // NEW: Apply environmental influences
-    // Meadows prefer lower elevation, wetter areas, and rich soil
-    const meadowAffinity = (1.0 - elevation) * 0.5 + waterProximity * 0.3 + soilRichness * 0.2;
-    // Prairies prefer higher elevation, drier areas, and moderate soil
-    const prairieAffinity = elevation * 0.5 + (1.0 - waterProximity) * 0.3 + (0.5 - Math.abs(soilRichness - 0.5)) * 0.2;
-    // Normal grasslands prefer middle elevations and moderate conditions
-    const normalAffinity = (1.0 - Math.abs(elevation - 0.5) * 2.0) * 0.4 + 
-                           (1.0 - Math.abs(waterProximity - 0.5) * 2.0) * 0.3 + 
-                           (1.0 - Math.abs(soilRichness - 0.5) * 2.0) * 0.3;
+    // Add final chaos layers from warped positions
+    const warpedChaoNoise = FractalNoiseSystem.getFractalNoise(finalWarpedPos, worldSeed + 4000, 3, 0.5, 2.0, 0.02);
+    combinedNoise = combinedNoise * 0.8 + warpedChaoNoise * 0.2;
     
-    // Blend environmental affinity with noise (60% noise, 40% environmental factors)
-    const environmentalInfluence = 0.4;
-    const noiseInfluence = 1.0 - environmentalInfluence;
-    
-    // Adjusted thresholds based on environmental factors
+    // Pure random biome selection (no environmental factors)
     let primaryBiome: BiomeType = 'normal';
     let primaryStrength = 1.0;
     let secondaryBiome: BiomeType | null = null;
     let secondaryStrength = 0.0;
     
-    // Apply environmental influence to biome selection
-    // Use the highest affinity score to bias biome selection
-    const maxAffinity = Math.max(meadowAffinity, prairieAffinity, normalAffinity);
-    
-    if (maxAffinity === meadowAffinity) {
-      // Bias toward meadow
-      combinedNoise = combinedNoise * noiseInfluence + 0.8 * environmentalInfluence;
-    } else if (maxAffinity === prairieAffinity) {
-      // Bias toward prairie
-      combinedNoise = combinedNoise * noiseInfluence + 0.2 * environmentalInfluence;
-    } else {
-      // Bias toward normal
-      combinedNoise = combinedNoise * noiseInfluence + 0.5 * environmentalInfluence;
-    }
-    
-    // REBALANCED: Equal distribution thresholds (~33% each)
+    // Equal distribution thresholds (~33% each) with pure randomness
     if (combinedNoise > 0.66) {
       primaryBiome = 'meadow';
       primaryStrength = Math.min(1.0, (combinedNoise - 0.66) * 3.0);
@@ -164,46 +150,49 @@ export class BiomeBlendingSystem {
       primaryStrength = 1.0 - Math.abs(combinedNoise - 0.5) * 2.0;
     }
     
-    // ENHANCED: Stronger secondary biome influence for better transitions
+    // ENHANCED: Stronger secondary biome influence for chaotic transitions
     if (primaryBiome === 'meadow') {
-      // Meadows more likely to transition to normal than prairie
+      // Random transitions to any other biome
       secondaryBiome = combinedNoise < 0.75 ? 'normal' : 'prairie';
       secondaryStrength = 1.0 - primaryStrength;
     } else if (primaryBiome === 'prairie') {
-      // Prairies more likely to transition to normal than meadow
+      // Random transitions to any other biome
       secondaryBiome = combinedNoise > 0.25 ? 'normal' : 'meadow';
       secondaryStrength = 1.0 - primaryStrength;
     } else {
-      // Normal areas can transition to either meadow or prairie
+      // Normal areas can transition to either randomly
       secondaryBiome = combinedNoise > 0.5 ? 'meadow' : 'prairie';
       secondaryStrength = 1.0 - primaryStrength;
     }
     
-    // ENHANCED: Variable transition widths for more natural boundaries
-    // Use noise to vary transition width between min and max
+    // ENHANCED: Variable transition widths with chaos for organic boundaries
     const edgeDetailNoise = FractalNoiseSystem.getFractalNoise(
       position, 
       worldSeed + 5000, 
-      3, 
-      0.5, 
+      4, 
+      0.6, 
       2.0, 
-      0.05
+      0.08  // Higher frequency for more chaotic edges
     );
     
-    // Calculate wider transition zones (5-25 units) for more gradual blending
+    // Calculate chaotic transition zones (5-25 units) 
     const transitionWidth = this.MIN_TRANSITION_WIDTH + 
       edgeDetailNoise * (this.MAX_TRANSITION_WIDTH - this.MIN_TRANSITION_WIDTH);
     
-    // Calculate distance to nearest biome boundary
+    // Calculate distance to nearest biome boundary with chaos
     const distanceToBoundary = Math.abs(primaryStrength - 0.5) * 2.0 * transitionWidth;
     const isTransitionZone = distanceToBoundary < transitionWidth;
     
-    // ENHANCED: Smoother transitions using improved smoothstep function
+    // ENHANCED: Chaotic transitions using improved smoothstep function
     if (isTransitionZone) {
       const blendFactor = Math.max(0, Math.min(1, distanceToBoundary / transitionWidth));
       const smoothBlend = this.smoothStep(blendFactor);
       
-      primaryStrength = 0.5 + smoothBlend * 0.5;
+      // Add some chaos to the blend for more organic transitions
+      const blendChaos = FractalNoiseSystem.getFractalNoise(position, worldSeed + 6000, 2, 0.4, 2.0, 0.1);
+      const chaoticBlend = smoothBlend * 0.8 + blendChaos * 0.2;
+      
+      primaryStrength = 0.5 + Math.max(0, Math.min(0.5, chaoticBlend * 0.5));
       secondaryStrength = 1.0 - primaryStrength;
     } else {
       primaryStrength = Math.min(1.0, primaryStrength * 1.2);
