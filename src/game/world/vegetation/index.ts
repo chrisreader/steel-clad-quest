@@ -1,6 +1,5 @@
 
 export { TreeGenerator } from './TreeGenerator';
-export { EnhancedTreeGenerator, type TreeSpecies, type ProceduralTreeOptions } from './EnhancedTreeGenerator';
 export { BushGenerator } from './BushGenerator';
 export { OrganicShapeGenerator } from './OrganicShapeGenerator';
 export { RealisticMaterialGenerator } from './RealisticMaterialGenerator';
@@ -20,7 +19,7 @@ export {
   type SmallBushSpeciesConfig
 } from './SmallBushSpecies';
 export { TREE_CONFIG, BUSH_CONFIG } from './VegetationConfig';
-export type { BushConfig } from './VegetationConfig';
+export type { TreeConfig, BushConfig } from './VegetationConfig';
 export type { 
   GrowthEnvironment, 
   GrowthModifiers 
