@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { TreeSpeciesType, TreeSpeciesManager } from './TreeSpecies';
@@ -290,7 +289,7 @@ export class RealisticTreeGenerator {
       case TreeSpeciesType.OAK:
         return this.createOakBranches(height);
       case TreeSpeciesType.PINE:
-        return this.createPineBranches(height);
+        return []; // Pine trees don't use branches, they use stacked cones
       case TreeSpeciesType.BIRCH:
         return this.createBirchBranches(height);
       case TreeSpeciesType.WILLOW:
@@ -531,12 +530,79 @@ export class RealisticTreeGenerator {
       case 'spherical':
         return this.createRealisticSphericalFoliage(species, height);
       case 'conical':
-        return this.createRealisticConicalFoliage(species, height);
+        return this.createStackedPineCones(species, height);
       case 'drooping':
         return this.createRealisticDroopingFoliage(species, height);
       default:
         return [];
     }
+  }
+
+  private createStackedPineCones(species: TreeSpeciesType, height: number): THREE.Mesh[] {
+    const cones: THREE.Mesh[] = [];
+    const coneCount = 6 + Math.floor(Math.random() * 3); // 6-8 cones
+    
+    for (let i = 0; i < coneCount; i++) {
+      const heightRatio = i / (coneCount - 1);
+      
+      // Cone size decreases from bottom to top
+      const baseRadius = 3.5 - (heightRatio * 2.5); // 3.5 to 1.0
+      const coneHeight = 2.5 - (heightRatio * 1.0); // 2.5 to 1.5
+      
+      // Create cone geometry
+      const geometry = new THREE.ConeGeometry(
+        Math.max(0.5, baseRadius + (Math.random() - 0.5) * 0.3),
+        coneHeight + (Math.random() - 0.5) * 0.2,
+        12,
+        1
+      );
+      
+      // Apply organic deformation to cones
+      const positions = geometry.attributes.position;
+      for (let j = 0; j < positions.count; j++) {
+        const x = positions.getX(j);
+        const y = positions.getY(j);
+        const z = positions.getZ(j);
+        
+        // Add slight irregularity
+        const noise = (Math.random() - 0.5) * 0.1;
+        positions.setX(j, x + noise);
+        positions.setZ(j, z + noise);
+      }
+      geometry.computeVertexNormals();
+      
+      // Varying green shades for each cone level
+      const greenHue = 0.22 + (Math.random() - 0.5) * 0.02;
+      const saturation = 0.8 - (heightRatio * 0.1); // Slightly less saturated at top
+      const lightness = 0.15 + (Math.random() * 0.05); // Dark green variations
+      
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color().setHSL(greenHue, saturation, lightness),
+        roughness: 0.9,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 0.95
+      });
+      
+      const cone = new THREE.Mesh(geometry, material);
+      
+      // Position cones vertically with slight overlap
+      const coneY = height * 0.25 + (i * 2.8) - (coneHeight * 0.3); // Slight overlap
+      cone.position.set(
+        (Math.random() - 0.5) * 0.1, // Very slight horizontal offset
+        coneY,
+        (Math.random() - 0.5) * 0.1
+      );
+      
+      // Slight rotation for natural variation
+      cone.rotation.y = Math.random() * Math.PI * 0.2;
+      
+      cone.castShadow = true;
+      cone.receiveShadow = true;
+      cones.push(cone);
+    }
+    
+    return cones;
   }
 
   private createRealisticSphericalFoliage(species: TreeSpeciesType, height: number): THREE.Mesh[] {
@@ -589,45 +655,6 @@ export class RealisticTreeGenerator {
       cluster.castShadow = true;
       cluster.receiveShadow = true;
       foliage.push(cluster);
-    }
-
-    return foliage;
-  }
-
-  private createRealisticConicalFoliage(species: TreeSpeciesType, height: number): THREE.Mesh[] {
-    const foliage: THREE.Mesh[] = [];
-
-    // Create layered needle clusters instead of solid cones
-    const layerCount = 7;
-    for (let layer = 0; layer < layerCount; layer++) {
-      const needleClusters = 8 + Math.floor(Math.random() * 4);
-      
-      for (let cluster = 0; cluster < needleClusters; cluster++) {
-        const geometry = new THREE.SphereGeometry(0.3 + Math.random() * 0.2, 6, 4);
-        const material = new THREE.MeshStandardMaterial({
-          color: new THREE.Color().setHSL(0.22, 0.8, 0.2 + Math.random() * 0.1),
-          roughness: 1.0,
-          metalness: 0.0,
-          transparent: true,
-          opacity: 0.9
-        });
-
-        const needleCluster = new THREE.Mesh(geometry, material);
-        
-        const layerRadius = 2.5 - layer * 0.3;
-        const angle = (cluster / needleClusters) * Math.PI * 2;
-        const layerHeight = height * 0.3 + layer * 2.2;
-        
-        needleCluster.position.set(
-          Math.cos(angle) * layerRadius * (0.8 + Math.random() * 0.4),
-          layerHeight,
-          Math.sin(angle) * layerRadius * (0.8 + Math.random() * 0.4)
-        );
-        
-        needleCluster.castShadow = true;
-        needleCluster.receiveShadow = true;
-        foliage.push(needleCluster);
-      }
     }
 
     return foliage;

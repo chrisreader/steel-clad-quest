@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { TreeSpeciesType } from './TreeSpecies';
 
@@ -15,6 +14,8 @@ export interface ForestBiomeConfig {
   treeDistribution: Record<TreeSpeciesType, number>;
   density: number;
   preferredElevation: { min: number; max: number };
+  clusterDensity?: number; // New property for cluster variation
+  sparseDensity?: number; // New property for sparse areas
 }
 
 export class ForestBiomeManager {
@@ -41,7 +42,9 @@ export class ForestBiomeManager {
         [TreeSpeciesType.WILLOW]: 0.0
       },
       density: 0.12,
-      preferredElevation: { min: 20, max: 200 }
+      preferredElevation: { min: 20, max: 200 },
+      clusterDensity: 0.25, // Dense clusters
+      sparseDensity: 0.04   // Sparse clearings
     },
     [ForestBiomeType.WILLOW_GROVE]: {
       name: 'Willow Grove',
@@ -126,6 +129,25 @@ export class ForestBiomeManager {
     const elevation = position.y;
     if (elevation < config.preferredElevation.min || elevation > config.preferredElevation.max) {
       return Math.random() < config.density * 0.3; // Reduced chance outside preferred elevation
+    }
+
+    // Enhanced density variation for pine forests
+    if (biomeType === ForestBiomeType.PINE_FOREST && config.clusterDensity && config.sparseDensity) {
+      // Use noise to create clusters and clearings
+      const clusterNoise = Math.sin(position.x * 0.003) * Math.cos(position.z * 0.003);
+      const detailNoise = Math.sin(position.x * 0.01) * Math.cos(position.z * 0.01);
+      
+      // Create cluster zones
+      if (clusterNoise > 0.2) {
+        // Dense cluster area
+        return Math.random() < config.clusterDensity * (0.8 + detailNoise * 0.4);
+      } else if (clusterNoise < -0.1) {
+        // Sparse clearing area
+        return Math.random() < config.sparseDensity * (0.5 + detailNoise * 0.5);
+      } else {
+        // Normal density area
+        return Math.random() < config.density * (0.7 + detailNoise * 0.6);
+      }
     }
 
     return Math.random() < config.density;
