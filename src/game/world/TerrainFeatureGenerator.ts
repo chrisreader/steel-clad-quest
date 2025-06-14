@@ -1,10 +1,8 @@
-
 import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { TreeGenerator } from './vegetation/TreeGenerator';
 import { BushGenerator } from './vegetation/BushGenerator';
 import { PoissonDiskSampling } from '../utils/math/PoissonDiskSampling';
-import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
 import { DeterministicBiomeManager } from '../vegetation/biomes/DeterministicBiomeManager';
 import { BiomeType } from '../vegetation/core/GrassConfig';
 
@@ -13,7 +11,6 @@ export class TerrainFeatureGenerator {
   private scene: THREE.Scene;
   private treeGenerator: TreeGenerator;
   private bushGenerator: BushGenerator;
-  private rockGenerator: RockClusterGenerator;
   private regionFeatures: Map<string, THREE.Object3D[]> = new Map();
   private collisionRegistrationCallback?: (object: THREE.Object3D) => void;
 
@@ -24,7 +21,6 @@ export class TerrainFeatureGenerator {
     // Initialize generators with enhanced tree system
     this.treeGenerator = new TreeGenerator();
     this.bushGenerator = new BushGenerator();
-    this.rockGenerator = new RockClusterGenerator();
     
     console.log('🌲 TerrainFeatureGenerator: Enhanced tree system initialized');
   }
@@ -221,7 +217,7 @@ export class TerrainFeatureGenerator {
     limitedPositions.forEach(pos => {
       const rockPosition = new THREE.Vector3(pos.x, 0, pos.y);
       
-      // Create a simple rock cluster using a basic approach
+      // Create a simple rock cluster using the basic approach that was working
       const rockGroup = new THREE.Group();
       const clusterSize = 1 + Math.floor(Math.random() * 3);
       
