@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BiomeType } from '../core/GrassConfig';
 import { OrganicBiomeShape, OrganicBiomeGenerator } from './OrganicBiomeGenerator';
@@ -38,7 +37,7 @@ export class BiomeBlendingSystem {
       const influence = OrganicBiomeGenerator.calculateOrganicInfluence(position, biome);
       const distance = OrganicBiomeGenerator.getDistanceToOrganicBoundary(position, biome);
       
-      if (influence > 0.05) {
+      if (influence > 0.01) { // Lower threshold to detect more influences
         influences.push({
           biomeType: biome.biomeType,
           influence,
@@ -74,7 +73,7 @@ export class BiomeBlendingSystem {
     
     return {
       dominantBiome,
-      totalInfluence: Math.min(1.0, totalInfluence),
+      totalInfluence: Math.min(1.0, Math.max(0.6, totalInfluence)), // Ensure minimum 0.6 influence
       influences: influences.slice(0, 5), // Keep top 5 influences
       transitionIntensity,
       ecologicalFactors
@@ -100,20 +99,20 @@ export class BiomeBlendingSystem {
     );
     
     // High moisture areas favor meadows
-    if (moistureNoise > 0.3) {
+    if (moistureNoise > 0.2) { // Lower threshold
       influences.push({
         biomeType: 'meadow',
-        influence: (moistureNoise - 0.3) * 0.4,
+        influence: (moistureNoise - 0.2) * 0.5, // Increased influence
         distance: 0,
         source: 'ecological'
       });
     }
     
     // Dry areas favor prairie
-    if (moistureNoise < -0.2) {
+    if (moistureNoise < -0.1) { // Lower threshold
       influences.push({
         biomeType: 'prairie',
-        influence: Math.abs(moistureNoise + 0.2) * 0.3,
+        influence: Math.abs(moistureNoise + 0.1) * 0.4, // Increased influence
         distance: 0,
         source: 'ecological'
       });
@@ -138,11 +137,11 @@ export class BiomeBlendingSystem {
       0.7
     );
     
-    if (Math.abs(microNoise) > 0.6) {
+    if (Math.abs(microNoise) > 0.4) { // Lower threshold
       const microBiome = microNoise > 0 ? 'meadow' : 'prairie';
       influences.push({
         biomeType: microBiome,
-        influence: (Math.abs(microNoise) - 0.6) * 0.2,
+        influence: (Math.abs(microNoise) - 0.4) * 0.3, // Increased influence
         distance: 0,
         source: 'transition'
       });
@@ -191,7 +190,7 @@ export class BiomeBlendingSystem {
   }
   
   /**
-   * Generate random organic biome layout for a world seed
+   * Generate random organic biome layout for a world seed - ENHANCED
    */
   static generateOrganicBiomeLayout(
     worldSeed: number,
@@ -202,14 +201,14 @@ export class BiomeBlendingSystem {
     const biomes: OrganicBiomeShape[] = [];
     const biomeSeed = worldSeed + regionX * 73856093 + regionZ * 19349663;
     
-    // Generate 3-8 organic biomes per region
-    const biomeCount = 3 + Math.floor(Math.abs(NoiseUtilities.seededNoise(biomeSeed, 0, 0)) * 5);
+    // Generate 4-7 organic biomes per region (increased from 3-8)
+    const biomeCount = 4 + Math.floor(Math.abs(NoiseUtilities.seededNoise(biomeSeed, 0, 0)) * 3);
     
     for (let i = 0; i < biomeCount; i++) {
       const seedOffset = i * 1000;
       
       // Random position within region with some padding
-      const padding = regionSize * 0.1;
+      const padding = regionSize * 0.05; // Reduced padding
       const x = regionX * regionSize + padding + 
         Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 1, 0)) * (regionSize - 2 * padding);
       const z = regionZ * regionSize + padding + 
@@ -217,24 +216,24 @@ export class BiomeBlendingSystem {
       
       const center = new THREE.Vector3(x, 0, z);
       
-      // Random biome type with some clustering
+      // Enhanced biome type distribution for better coverage
       const biomeRandom = NoiseUtilities.seededNoise(biomeSeed + seedOffset, 3, 0);
       let biomeType: BiomeType;
       
-      if (biomeRandom > 0.3) {
+      if (biomeRandom > 0.2) {
         biomeType = 'meadow';
-      } else if (biomeRandom > -0.2) {
+      } else if (biomeRandom > -0.3) {
         biomeType = 'prairie';
       } else {
         biomeType = 'normal';
       }
       
-      // Variable radius (30-120 units for more varied sizes)
+      // Larger, more impactful radius (50-150 units)
       const radiusRandom = Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 4, 0));
-      const radius = 30 + radiusRandom * 90;
+      const radius = 50 + radiusRandom * 100; // Increased from 30-120
       
-      // Variable strength
-      const strength = 0.6 + Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 5, 0)) * 0.4;
+      // Higher strength for more visible impact
+      const strength = 0.7 + Math.abs(NoiseUtilities.seededNoise(biomeSeed + seedOffset, 5, 0)) * 0.3;
       
       const organicBiome = OrganicBiomeGenerator.createOrganicBiome(
         center,
@@ -247,6 +246,7 @@ export class BiomeBlendingSystem {
       biomes.push(organicBiome);
     }
     
+    console.log(`🌿 ENHANCED ORGANIC: Generated ${biomes.length} biomes for region ${regionX}_${regionZ}`);
     return biomes;
   }
 }

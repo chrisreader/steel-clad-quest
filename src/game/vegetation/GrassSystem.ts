@@ -38,17 +38,26 @@ export class GrassSystem {
     this.windSystem = new WindSystem();
     this.bubbleManager = new GrassRenderBubbleManager(scene, this.renderer);
     
-    // Initialize deterministic biome system
-    DeterministicBiomeManager.setWorldSeed(12345); // Could be set from game config
+    // Initialize deterministic biome system with organic biomes
+    DeterministicBiomeManager.setWorldSeed(Date.now()); // Use current time for unique seeds
+    DeterministicBiomeManager.forceRegenerateAllBiomes(); // Force fresh organic biome generation
     
-    console.log('🌱 Grass system initialized with 200-unit render optimization for improved FPS');
+    console.log('🌱 ORGANIC GRASS SYSTEM: Initialized with fresh organic biome generation');
   }
   
   // Updated method to use 200-unit optimization
   public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 200): void {
-    console.log(`🌱 Initializing grass system with 200-unit FPS-optimized radius`);
+    console.log(`🌱 ORGANIC GRASS: Initializing with 200-unit radius and organic biomes`);
+    
+    // Force biome regeneration at player position
+    DeterministicBiomeManager.clearCache();
+    
     this.bubbleManager.initializeWithCoverage(playerPosition, 200); // Force 200-unit radius
     this.lastPlayerPosition.copy(playerPosition);
+    
+    // Debug current biome at player position
+    const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
+    console.log(`🌱 ORGANIC GRASS: Player in ${debugInfo.biomeData.biomeType} biome with ${debugInfo.organicBiomeCount} organic biomes nearby`);
   }
   
   // Updated method to handle legacy region-based requests
@@ -118,9 +127,11 @@ export class GrassSystem {
       }
     }
     
-    // Report performance metrics less frequently
+    // Report performance metrics and biome debug info less frequently
     if (this.updateCounter % 600 === 0) {
-      console.log(`🌱 Performance: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 200-unit radius`);
+      console.log(`🌱 ORGANIC PERFORMANCE: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 200-unit radius`);
+      const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
+      console.log(`🌱 ORGANIC BIOME: Currently in ${debugInfo.biomeData.biomeType} (${debugInfo.organicBiomeCount} organic biomes nearby)`);
     }
   }
   
@@ -204,6 +215,18 @@ export class GrassSystem {
     this.bubbleManager.dispose();
     this.renderer.dispose();
     console.log('🌱 Grass system disposed');
+  }
+  
+  // Add debug method to test organic biomes
+  public debugBiomeAtPosition(position: THREE.Vector3): void {
+    const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(position);
+    console.log('🔍 ORGANIC BIOME DEBUG:', debugInfo);
+  }
+  
+  // Force regenerate biomes for testing
+  public regenerateOrganicBiomes(): void {
+    DeterministicBiomeManager.setWorldSeed(Date.now()); // New random seed
+    console.log('🔄 ORGANIC BIOME: Regenerated with new seed');
   }
 }
 

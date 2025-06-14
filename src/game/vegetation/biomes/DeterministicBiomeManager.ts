@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { BiomeType, BiomeInfo, BiomeConfiguration, GroundGrassConfiguration } from '../core/GrassConfig';
 import { BiomeSeedManager } from './BiomeSeedManager';
@@ -25,25 +24,25 @@ export class DeterministicBiomeManager {
   private static readonly BIOME_CONFIGS: Record<BiomeType, BiomeConfiguration> = {
     normal: {
       name: 'Mixed Grassland',
-      densityMultiplier: 1.5,
+      densityMultiplier: 1.0,
       heightMultiplier: 1.0,
-      colorModifier: new THREE.Color(0x6db070),
+      colorModifier: new THREE.Color(0x6db070), // Green
       speciesDistribution: { meadow: 0.4, prairie: 0.25, clumping: 0.25, fine: 0.1 },
       windExposure: 1.0
     },
     meadow: {
       name: 'Lush Meadow',
-      densityMultiplier: 2.0,
-      heightMultiplier: 1.4,
-      colorModifier: new THREE.Color(0x4db84d),
+      densityMultiplier: 2.5,
+      heightMultiplier: 1.6,
+      colorModifier: new THREE.Color(0x3da53d), // Bright green
       speciesDistribution: { meadow: 0.8, prairie: 0.05, clumping: 0.05, fine: 0.1 },
       windExposure: 0.6
     },
     prairie: {
       name: 'Open Prairie',
-      densityMultiplier: 1.2,
-      heightMultiplier: 0.8,
-      colorModifier: new THREE.Color(0xb8b84d),
+      densityMultiplier: 0.8,
+      heightMultiplier: 0.7,
+      colorModifier: new THREE.Color(0xd4d43a), // Yellow-green
       speciesDistribution: { meadow: 0.1, prairie: 0.7, clumping: 0.15, fine: 0.05 },
       windExposure: 1.5
     }
@@ -52,19 +51,19 @@ export class DeterministicBiomeManager {
   // ENHANCED ground grass configurations with much higher density
   private static readonly GROUND_CONFIGS: Record<BiomeType, GroundGrassConfiguration> = {
     normal: {
-      densityMultiplier: 10.0,
+      densityMultiplier: 8.0,
       heightReduction: 0.65,
       speciesDistribution: { meadow: 0.3, prairie: 0.2, clumping: 0.4, fine: 0.1 },
       windReduction: 0.2
     },
     meadow: {
-      densityMultiplier: 12.0,
+      densityMultiplier: 15.0,
       heightReduction: 0.8,
       speciesDistribution: { meadow: 0.7, prairie: 0.05, clumping: 0.05, fine: 0.2 },
       windReduction: 0.15
     },
     prairie: {
-      densityMultiplier: 8.0,
+      densityMultiplier: 5.0,
       heightReduction: 0.6,
       speciesDistribution: { meadow: 0.05, prairie: 0.75, clumping: 0.1, fine: 0.1 },
       windReduction: 0.3
@@ -75,6 +74,7 @@ export class DeterministicBiomeManager {
     this.worldSeed = seed;
     this.chunkBiomeCache.clear();
     BiomeSeedManager.setWorldSeed(seed);
+    console.log(`🌍 ORGANIC BIOME SYSTEM: World seed set to ${seed}, cache cleared`);
   }
 
   public static worldPositionToChunk(position: THREE.Vector3): ChunkCoordinate {
@@ -110,45 +110,41 @@ export class DeterministicBiomeManager {
     const centerPos = this.chunkToWorldPosition(chunk);
     const seed = this.getChunkSeed(chunk);
     
-    // Use the new seed-based biome system
+    // FIXED: Use only the organic biome system - no fallback override
     const biomeInfluence = BiomeSeedManager.getBiomeInfluenceAtPosition(centerPos);
     
-    // If no strong influences, fall back to original noise-based system for variety
     let biomeType = biomeInfluence.dominantBiome;
-    let strength = biomeInfluence.strength;
+    let strength = Math.max(0.6, biomeInfluence.strength); // Ensure minimum 0.6 strength
     
-    if (strength < 0.3) {
-      // Fallback to noise-based generation for areas without strong seed influence
+    // Only use fallback if absolutely no organic influence exists
+    if (biomeInfluence.influences.length === 0) {
+      console.log(`⚠️ ORGANIC BIOME: No organic influence at ${centerPos.x}, ${centerPos.z}, using fallback`);
       const noiseX = this.seededNoise(centerPos.x * 0.001, seed);
       const noiseZ = this.seededNoise(centerPos.z * 0.001, seed + 1000);
       
       if (noiseX > 0.3) {
         biomeType = 'meadow';
-        strength = Math.min(1.0, (noiseX - 0.3) * 2);
+        strength = 0.7;
       } else if (noiseZ > 0.2) {
         biomeType = 'prairie';
-        strength = Math.min(1.0, (noiseZ - 0.2) * 2.5);
+        strength = 0.7;
       } else {
         biomeType = 'normal';
-        strength = 0.8;
+        strength = 0.6;
       }
+    } else {
+      console.log(`✅ ORGANIC BIOME: Generated ${biomeType} at ${centerPos.x}, ${centerPos.z} with strength ${strength.toFixed(2)} (${biomeInfluence.influences.length} influences)`);
     }
 
     const biomeData: ChunkBiomeData = {
       coordinate: chunk,
       biomeType,
-      strength: Math.max(0.5, strength), // Ensure minimum strength
+      strength,
       seed,
       influences: biomeInfluence.influences
     };
 
     this.chunkBiomeCache.set(chunkKey, biomeData);
-    
-    // Debug logging for new biome system
-    if (biomeInfluence.influences.length > 0) {
-      console.log(`🌍 Realistic biome generated at chunk ${chunkKey}: ${biomeType} (strength: ${strength.toFixed(2)}, influences: ${biomeInfluence.influences.length})`);
-    }
-    
     return biomeData;
   }
 
@@ -254,25 +250,41 @@ export class DeterministicBiomeManager {
     return adjustedSpecies;
   }
 
-  // New debug methods for the realistic biome system
+  // New debug methods for the organic biome system
   public static getDebugBiomeInfo(position: THREE.Vector3): {
     chunk: ChunkCoordinate;
     biomeData: ChunkBiomeData;
     seedInfluences: Array<{ biomeType: BiomeType; influence: number; distance: number }>;
+    organicBiomeCount: number;
   } {
     const chunk = this.worldPositionToChunk(position);
     const biomeData = this.getBiomeForChunk(chunk);
     const seedInfluences = BiomeSeedManager.getBiomeInfluenceAtPosition(position);
+    const organicBiomes = BiomeSeedManager.getOrganicBiomesAt(position);
+    
+    console.log(`🔍 DEBUG BIOME INFO at ${position.x}, ${position.z}:`);
+    console.log(`  - Chunk: ${chunk.x}, ${chunk.z}`);
+    console.log(`  - Biome: ${biomeData.biomeType} (strength: ${biomeData.strength})`);
+    console.log(`  - Organic biomes nearby: ${organicBiomes.length}`);
+    console.log(`  - Influences: ${seedInfluences.influences.length}`);
     
     return {
       chunk,
       biomeData,
-      seedInfluences: seedInfluences.influences
+      seedInfluences: seedInfluences.influences,
+      organicBiomeCount: organicBiomes.length
     };
   }
 
   public static clearCache(): void {
     this.chunkBiomeCache.clear();
     BiomeSeedManager.clearCache();
+    console.log('🧹 ORGANIC BIOME: All caches cleared, forcing regeneration');
+  }
+
+  // Force cache regeneration for testing
+  public static forceRegenerateAllBiomes(): void {
+    this.clearCache();
+    console.log('🔄 ORGANIC BIOME: Forced complete regeneration');
   }
 }
