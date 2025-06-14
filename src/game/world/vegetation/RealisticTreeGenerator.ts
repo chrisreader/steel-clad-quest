@@ -540,81 +540,66 @@ export class RealisticTreeGenerator {
 
   private createStackedPineCones(species: TreeSpeciesType, height: number): THREE.Mesh[] {
     const cones: THREE.Mesh[] = [];
-    const coneCount = 4 + Math.floor(Math.random() * 2); // 4-5 cones instead of 6-8
+    
+    // Dynamic cone count based on tree height (Phase 1)
+    const coneCount = this.calculateConeCount(height);
+    
+    // Calculate tree age factor for different growth patterns (Phase 2)
+    const ageFactor = Math.min(1.0, height / 25); // 0 = young, 1 = mature
+    
+    // Coverage area - mature trees cover more of trunk height (Phase 3)
+    const coverageStart = height * (0.15 + ageFactor * 0.05); // 15-20% from bottom
+    const coverageHeight = height * (0.65 + ageFactor * 0.15); // 65-80% of trunk
     
     for (let i = 0; i < coneCount; i++) {
       const heightRatio = i / (coneCount - 1);
       
-      // Much larger cone sizes with better proportions
-      const baseRadius = 5.5 - (heightRatio * 3.5); // 5.5 to 2.0 (much larger)
-      const coneHeight = 3.5 - (heightRatio * 1.5); // 3.5 to 2.0 (taller cones)
+      // Dynamic cone sizing based on tree height and position (Phase 1 & 2)
+      const baseRadius = this.calculateConeRadius(height, heightRatio, ageFactor);
+      const coneHeight = this.calculateConeHeight(height, heightRatio, ageFactor);
       
-      // Create wider, more natural cone geometry
+      // Create cone geometry with realistic proportions
       const geometry = new THREE.ConeGeometry(
-        Math.max(1.0, baseRadius + (Math.random() - 0.5) * 0.4),
-        coneHeight + (Math.random() - 0.5) * 0.3,
-        16, // More segments for smoother look
+        Math.max(0.8, baseRadius + (Math.random() - 0.5) * (baseRadius * 0.15)),
+        coneHeight + (Math.random() - 0.5) * (coneHeight * 0.1),
+        Math.max(12, Math.min(20, Math.floor(baseRadius * 3))), // Segments scale with size
         1
       );
       
-      // Apply organic deformation to cones
-      const positions = geometry.attributes.position;
-      for (let j = 0; j < positions.count; j++) {
-        const x = positions.getX(j);
-        const y = positions.getY(j);
-        const z = positions.getZ(j);
-        
-        // Add slight irregularity for organic look
-        const noise = (Math.random() - 0.5) * 0.08;
-        positions.setX(j, x + noise);
-        positions.setZ(j, z + noise);
-      }
-      geometry.computeVertexNormals();
+      // Apply organic deformation for natural look (Phase 4)
+      this.applyPineConeDeformation(geometry, heightRatio, ageFactor);
       
-      // More natural green color progression
-      const greenHue = 0.22 + (Math.random() - 0.5) * 0.015;
-      const saturation = 0.85 - (heightRatio * 0.15); // Darker at bottom, lighter at top
-      const lightness = 0.12 + (heightRatio * 0.06) + (Math.random() * 0.03); // Gradual lightening
-      
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color().setHSL(greenHue, saturation, lightness),
-        roughness: 0.9,
-        metalness: 0.0,
-        transparent: true,
-        opacity: 0.95
-      });
+      // Enhanced color variations (Phase 4)
+      const material = this.createPineFoliageMaterial(heightRatio, ageFactor);
       
       const cone = new THREE.Mesh(geometry, material);
       
-      // Calculate position with significant overlap (60-70%)
-      const overlapFactor = 0.65; // 65% overlap
-      let coneY;
+      // Natural cone distribution with proper overlap (Phase 3)
+      const coneY = this.calculateConePosition(i, coneCount, coverageStart, coverageHeight, coneHeight, cones);
       
-      if (i === 0) {
-        // Bottom cone starts at base
-        coneY = height * 0.2 + (coneHeight * 0.5);
-      } else {
-        // Each subsequent cone overlaps significantly with the previous one
-        const previousCone = cones[i - 1];
-        const previousConeHeight = 3.5 - ((i - 1) / (coneCount - 1)) * 1.5;
-        coneY = previousCone.position.y + (previousConeHeight * (1 - overlapFactor)) + (coneHeight * 0.5);
-      }
-      
-      // For the top cone, ensure it covers the trunk tip completely
+      // Ensure top cone covers trunk tip completely
       if (i === coneCount - 1) {
-        const trunkTip = height;
-        // Position top cone so its bottom is at or slightly below trunk tip
-        coneY = Math.max(coneY, trunkTip - (coneHeight * 0.3));
+        const adjustedY = Math.max(coneY, height - (coneHeight * 0.4));
+        cone.position.set(
+          (Math.random() - 0.5) * 0.06,
+          adjustedY,
+          (Math.random() - 0.5) * 0.06
+        );
+      } else {
+        cone.position.set(
+          (Math.random() - 0.5) * 0.08,
+          coneY,
+          (Math.random() - 0.5) * 0.08
+        );
       }
       
-      cone.position.set(
-        (Math.random() - 0.5) * 0.08, // Minimal horizontal offset
-        coneY,
-        (Math.random() - 0.5) * 0.08
-      );
+      // Subtle rotation for natural variation (Phase 4)
+      cone.rotation.y = Math.random() * Math.PI * 0.08;
       
-      // Very slight rotation for natural variation
-      cone.rotation.y = Math.random() * Math.PI * 0.1;
+      // Add slight droop variation for mature trees (Phase 4)
+      if (ageFactor > 0.6 && i < coneCount - 2) {
+        cone.rotation.z += (Math.random() - 0.5) * 0.1 * ageFactor;
+      }
       
       cone.castShadow = true;
       cone.receiveShadow = true;
@@ -622,6 +607,105 @@ export class RealisticTreeGenerator {
     }
     
     return cones;
+  }
+
+  private calculateConeCount(height: number): number {
+    // Dynamic cone count based on tree size (Phase 5)
+    if (height < 8) return 3 + Math.floor(Math.random() * 2); // Small: 3-4 cones
+    if (height < 15) return 4 + Math.floor(Math.random() * 2); // Medium: 4-5 cones
+    if (height < 22) return 5 + Math.floor(Math.random() * 2); // Large: 5-6 cones
+    return 6 + Math.floor(Math.random() * 3); // Very large: 6-8 cones
+  }
+
+  private calculateConeRadius(height: number, heightRatio: number, ageFactor: number): number {
+    // Base radius scales with tree height (Phase 1)
+    const baseScale = height * 0.22; // 22% of tree height for bottom cone
+    const maxRadius = Math.max(2.5, Math.min(8.0, baseScale));
+    
+    // Realistic taper - more dramatic for young trees (Phase 2)
+    const taperFactor = ageFactor > 0.5 ? 0.75 : 0.85; // Mature trees less tapered
+    const radius = maxRadius * (1 - (heightRatio * taperFactor));
+    
+    return Math.max(1.0, radius);
+  }
+
+  private calculateConeHeight(height: number, heightRatio: number, ageFactor: number): number {
+    // Cone height scales with tree and varies by position (Phase 1 & 2)
+    const baseHeight = height * 0.18; // 18% of tree height for bottom cone
+    const maxHeight = Math.max(2.0, Math.min(6.0, baseHeight));
+    
+    // Bottom cones are taller, top cones shorter but not too small
+    const heightTaper = 0.4 + (heightRatio * 0.3); // 40-70% height variation
+    const coneHeight = maxHeight * heightTaper;
+    
+    return Math.max(1.5, coneHeight);
+  }
+
+  private calculateConePosition(index: number, totalCones: number, startHeight: number, coverageHeight: number, coneHeight: number, existingCones: THREE.Mesh[]): number {
+    // Natural distribution with realistic overlap (Phase 3)
+    const overlapFactor = 0.45; // 45% overlap for more realistic spacing
+    
+    if (index === 0) {
+      // Bottom cone
+      return startHeight + (coneHeight * 0.5);
+    } else {
+      // Subsequent cones with proper spacing
+      const previousCone = existingCones[index - 1];
+      const previousHeight = this.calculateConeHeight(
+        (startHeight + coverageHeight) / 0.8, // Reverse calculate tree height
+        (index - 1) / (totalCones - 1),
+        0.5 // Average age factor for calculation
+      );
+      
+      return previousCone.position.y + (previousHeight * (1 - overlapFactor)) + (coneHeight * 0.5);
+    }
+  }
+
+  private applyPineConeDeformation(geometry: THREE.BufferGeometry, heightRatio: number, ageFactor: number): void {
+    // Enhanced organic deformation (Phase 4)
+    const positions = geometry.attributes.position;
+    
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const y = positions.getY(i);
+      const z = positions.getZ(i);
+      
+      // More irregular shape for mature trees
+      const irregularityFactor = ageFactor * 0.12;
+      const noise = (Math.random() - 0.5) * irregularityFactor;
+      
+      // Add slight droop for lower sections of mature trees
+      if (heightRatio < 0.3 && ageFactor > 0.6) {
+        const droopEffect = Math.sin(Math.atan2(z, x) * 4) * 0.05 * ageFactor;
+        positions.setY(i, y + droopEffect);
+      }
+      
+      positions.setX(i, x + noise);
+      positions.setZ(i, z + noise);
+    }
+    
+    geometry.computeVertexNormals();
+  }
+
+  private createPineFoliageMaterial(heightRatio: number, ageFactor: number): THREE.MeshStandardMaterial {
+    // Enhanced color variations (Phase 4)
+    const baseHue = 0.22; // Pine green base
+    
+    // Mature trees have more varied colors
+    const hueVariation = ageFactor * 0.02;
+    const greenHue = baseHue + (Math.random() - 0.5) * hueVariation;
+    
+    // Bottom darker, top lighter with age consideration
+    const saturation = 0.88 - (heightRatio * 0.12) - (ageFactor * 0.05);
+    const lightness = 0.10 + (heightRatio * 0.08) + (ageFactor * 0.03) + (Math.random() * 0.02);
+    
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(greenHue, saturation, lightness),
+      roughness: 0.9 + (Math.random() * 0.05),
+      metalness: 0.0,
+      transparent: true,
+      opacity: 0.94 + (Math.random() * 0.04), // Slightly varied opacity
+    });
   }
 
   private createRealisticSphericalFoliage(species: TreeSpeciesType, height: number): THREE.Mesh[] {
