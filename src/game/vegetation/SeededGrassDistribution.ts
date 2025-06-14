@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { MathUtils } from '../utils/math/MathUtils';
 import { EnvironmentalFactors } from './EnvironmentalGrassDistribution';
@@ -44,8 +45,8 @@ export class SeededGrassDistribution {
       ? DeterministicBiomeManager.getGroundConfiguration(biomeData.biomeType).densityMultiplier
       : biomeConfig.densityMultiplier;
     
-    // DOUBLED DENSITY: Reduced spacing significantly to achieve 2x density
-    const baseSpacing = isGroundGrass ? 2.0 : 3.2; // Reduced from 2.8 and 4.5 for 2x density
+    // Realistic spacing for natural appearance
+    const baseSpacing = isGroundGrass ? 2.0 : 3.2;
     const spacing = baseSpacing / Math.sqrt(density);
     
     // Generate grass positions using seeded sampling
@@ -54,13 +55,13 @@ export class SeededGrassDistribution {
     
     for (let x = startX; x < startX + chunkSize; x += spacing) {
       for (let z = startZ; z < startZ + chunkSize; z += spacing) {
-        // Add some randomness to avoid grid patterns
+        // Add natural clustering variation
         const offsetX = (seededRandom() - 0.5) * spacing * 0.8;
         const offsetZ = (seededRandom() - 0.5) * spacing * 0.8;
         
         const worldPos = new THREE.Vector3(x + offsetX, 0, z + offsetZ);
         
-        // Use seeded noise for spawn probability - INCREASED for 2x density
+        // Use seeded noise for natural spawn probability
         const spawnProbability = this.calculateSeededSpawnProbability(
           worldPos, 
           biomeData.seed, 
@@ -70,14 +71,17 @@ export class SeededGrassDistribution {
         if (seededRandom() < spawnProbability) {
           positions.push(worldPos);
           
-          // Generate seeded scale with ENHANCED BIOME-SPECIFIC variation
+          // REDUCED realistic scale with biome-specific variation
           const biomeScaleMultiplier = this.getBiomeScaleMultiplier(biomeData.biomeType, isGroundGrass);
-          const baseScale = isGroundGrass ? 0.7 : 1.4; // Increased base scales
+          const baseScale = isGroundGrass ? 0.5 : 0.8; // Reduced from 0.7 and 1.4
           const scaleVariation = biomeConfig.heightMultiplier * biomeScaleMultiplier;
           
+          // Natural height variation within realistic range
+          const heightVariation = 0.6 + seededRandom() * 0.8; // 0.6-1.4x variation
+          
           scales.push(new THREE.Vector3(
-            baseScale * (0.6 + seededRandom() * 0.8), // More variation
-            baseScale * scaleVariation * (0.7 + seededRandom() * 0.6),
+            baseScale * (0.6 + seededRandom() * 0.8),
+            baseScale * scaleVariation * heightVariation,
             baseScale * (0.6 + seededRandom() * 0.8)
           ));
           
@@ -87,7 +91,7 @@ export class SeededGrassDistribution {
             seededRandom() * Math.PI * 2
           ));
           
-          // Select species based on biome - now with enhanced diversity
+          // Enhanced species diversity for realistic meadows
           species.push(this.selectSeededSpecies(biomeData.biomeType, seededRandom));
         }
       }
@@ -96,20 +100,20 @@ export class SeededGrassDistribution {
     const grassData: SeededGrassData = { positions, scales, rotations, species };
     cache.set(cacheKey, grassData);
     
-    console.log(`🌱 Generated DENSE seeded ${isGroundGrass ? 'ground' : 'tall'} grass for chunk ${chunkKey}: ${positions.length} blades`);
+    console.log(`🌱 Generated realistic ${isGroundGrass ? 'ground' : 'tall'} grass for chunk ${chunkKey}: ${positions.length} blades`);
     
     return grassData;
   }
 
   private static getBiomeScaleMultiplier(biomeType: string, isGroundGrass: boolean): number {
-    // Enhanced height differences between biomes
+    // More realistic height differences between biomes
     const heightMultipliers = {
       normal: 1.0,
-      meadow: isGroundGrass ? 1.2 : 1.4, // Tall, lush grass
+      meadow: isGroundGrass ? 1.0 : 1.1, // Slightly taller but realistic
       prairie: isGroundGrass ? 0.7 : 0.8, // Shorter, wind-swept
-      wetland: isGroundGrass ? 1.3 : 1.5, // Very tall, dense
+      wetland: isGroundGrass ? 1.2 : 1.3, // Taller in wet areas
       dry: isGroundGrass ? 0.5 : 0.6, // Short, sparse
-      forest: isGroundGrass ? 0.9 : 1.1 // Moderate height
+      forest: isGroundGrass ? 0.8 : 0.9 // Moderate height in shade
     };
     
     return heightMultipliers[biomeType as keyof typeof heightMultipliers] || 1.0;
@@ -128,29 +132,29 @@ export class SeededGrassDistribution {
     seed: number,
     seededRandom: () => number
   ): number {
-    // Use seeded noise for consistent spawn patterns
+    // Natural clustering with seeded noise
     const noiseX = Math.sin(position.x * 0.05 + seed * 0.001) * 0.5 + 0.5;
     const noiseZ = Math.cos(position.z * 0.05 + seed * 0.001) * 0.5 + 0.5;
     const combinedNoise = (noiseX + noiseZ) / 2;
     
-    // INCREASED base probability for 2x density - increased from 0.75
-    let probability = 0.85 + combinedNoise * 0.15;
+    // More natural probability distribution
+    let probability = 0.75 + combinedNoise * 0.2;
     
-    // Add some randomness but keep it seeded
-    probability *= (0.85 + seededRandom() * 0.3);
+    // Add natural randomness
+    probability *= (0.8 + seededRandom() * 0.4);
     
-    return MathUtils.clamp(probability, 0.5, 0.95); // Increased minimum from 0.3 to 0.5
+    return MathUtils.clamp(probability, 0.4, 0.9);
   }
 
   private static selectSeededSpecies(biomeType: string, seededRandom: () => number): string {
     const speciesOptions = ['meadow', 'prairie', 'clumping', 'fine'];
     
-    // DRAMATICALLY ENHANCED species distribution for obvious biome differences
+    // ENHANCED species distribution for realistic meadows
     const weights = {
-      normal: [0.4, 0.25, 0.25, 0.1], // Balanced
-      meadow: [0.8, 0.05, 0.05, 0.1], // Dominated by meadow species
+      normal: [0.4, 0.25, 0.25, 0.1], // Balanced mix
+      meadow: [0.6, 0.05, 0.1, 0.25], // More diverse with fine grasses
       prairie: [0.1, 0.7, 0.15, 0.05], // Dominated by prairie species
-      wetland: [0.6, 0.1, 0.25, 0.05], // Wet-loving species
+      wetland: [0.5, 0.1, 0.3, 0.1], // Wet-loving species
       dry: [0.05, 0.8, 0.1, 0.05], // Drought-resistant
       forest: [0.3, 0.2, 0.4, 0.1] // Mixed with clustering
     };
