@@ -78,7 +78,7 @@ export class SceneManager {
       this.structureGenerator = new StructureGenerator(this.scene, this.physicsManager);
       console.log("🏗️ [SceneManager] Structure generator created");
       
-      // Create tree generator
+      // Create tree generator - FIXED: no arguments needed for constructor
       this.treeGenerator = new RealisticTreeGenerator();
       console.log("🌳 [SceneManager] Tree generator created");
       
