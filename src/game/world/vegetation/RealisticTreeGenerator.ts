@@ -2,12 +2,31 @@ import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { TreeSpeciesType, TreeSpeciesManager } from './TreeSpecies';
 
+interface BranchConfig {
+  length: number;
+  thickness: number;
+  attachmentPoint: THREE.Vector3;
+  direction: THREE.Vector3;
+  species: TreeSpeciesType;
+  treeHeight: number;
+  branchLevel: number; // 0=main, 1=secondary, 2=tertiary
+}
+
+interface FoliageCluster {
+  position: THREE.Vector3;
+  size: number;
+  density: number;
+}
+
 export class RealisticTreeGenerator {
   private textureCache: Map<string, THREE.Texture> = new Map();
+  private foliageGeometryCache: Map<string, THREE.BufferGeometry> = new Map();
+  private materialCache: Map<string, THREE.Material> = new Map();
   private debugMode: boolean = false;
 
   constructor() {
     this.preloadTextures();
+    this.preloadOptimizedGeometries();
   }
 
   private preloadTextures(): void {
@@ -16,6 +35,17 @@ export class RealisticTreeGenerator {
     this.textureCache.set('birch', this.createBirchTexture());
     this.textureCache.set('weathered', this.createWeatheredTexture());
     this.textureCache.set('pine', this.createPineBarkTexture());
+  }
+
+  private preloadOptimizedGeometries(): void {
+    // Pre-create optimized foliage geometries for different LOD levels
+    for (let lod = 0; lod < 3; lod++) {
+      const segments = lod === 0 ? 16 : lod === 1 ? 12 : 8;
+      const rings = lod === 0 ? 12 : lod === 1 ? 8 : 6;
+      
+      const geometry = new THREE.SphereGeometry(1, segments, rings);
+      this.foliageGeometryCache.set(`foliage_lod${lod}`, geometry);
+    }
   }
 
   private createOakBarkTexture(): THREE.Texture {
@@ -168,37 +198,441 @@ export class RealisticTreeGenerator {
     const height = TreeSpeciesManager.getRandomHeight(species);
     const baseRadius = TreeSpeciesManager.getRandomTrunkRadius(species);
 
-    console.log(`🌲 Creating ${species} tree: height=${height.toFixed(2)}, radius=${baseRadius.toFixed(2)}`);
+    console.log(`🌲 Creating realistic ${species} tree: height=${height.toFixed(2)}, radius=${baseRadius.toFixed(2)}`);
 
-    // Create trunk with bottom at Y=0, top at Y=height
+    // Create trunk
     const trunk = this.createRealisticTrunk(species, height, baseRadius);
     tree.add(trunk);
 
-    // Create branch system based on species
-    if (species === TreeSpeciesType.OAK) {
-      const branches = this.createOakBranchSystem(height, baseRadius);
-      branches.forEach(branch => tree.add(branch));
-    } else if (species === TreeSpeciesType.PINE) {
-      const foliage = this.createRealisticPineCones(species, height);
-      foliage.forEach(cone => tree.add(cone));
-    } else if (species === TreeSpeciesType.BIRCH) {
-      const branches = this.createBirchBranchSystem(height, baseRadius);
-      branches.forEach(branch => tree.add(branch));
-    } else if (species === TreeSpeciesType.WILLOW) {
-      const branches = this.createWillowBranchSystem(height, baseRadius);
-      branches.forEach(branch => tree.add(branch));
-    } else if (species === TreeSpeciesType.DEAD) {
-      const branches = this.createDeadTreeBranches(height, baseRadius);
-      branches.forEach(branch => tree.add(branch));
+    // Create complete branch and crown system
+    const { branches, foliageClusters } = this.createRealisticTreeStructure(species, height, baseRadius);
+    
+    // Add all branches
+    branches.forEach(branch => tree.add(branch));
+    
+    // Create optimized unified foliage
+    const unifiedFoliage = this.createOptimizedFoliage(foliageClusters, species, height);
+    if (unifiedFoliage) {
+      tree.add(unifiedFoliage);
     }
 
-    // Position tree
+    // Position and scale tree
     tree.position.copy(position);
-    const scale = 0.7 + Math.random() * 0.6;
-    tree.scale.set(scale, scale * (0.9 + Math.random() * 0.2), scale);
+    const scale = 0.8 + Math.random() * 0.4;
+    tree.scale.set(scale, scale * (0.95 + Math.random() * 0.1), scale);
     tree.rotation.y = Math.random() * Math.PI * 2;
 
     return tree;
+  }
+
+  private createRealisticTreeStructure(species: TreeSpeciesType, treeHeight: number, trunkBaseRadius: number): {
+    branches: THREE.Object3D[];
+    foliageClusters: FoliageCluster[];
+  } {
+    const branches: THREE.Object3D[] = [];
+    const foliageClusters: FoliageCluster[] = [];
+
+    if (species === TreeSpeciesType.PINE) {
+      return this.createPineTreeStructure(treeHeight, trunkBaseRadius);
+    }
+
+    // Create lower trunk branches (20-50% height)
+    const lowerBranches = this.createLowerBranches(species, treeHeight, trunkBaseRadius);
+    branches.push(...lowerBranches.branches);
+    foliageClusters.push(...lowerBranches.foliageClusters);
+
+    // Create main crown branches (50-85% height)
+    const crownBranches = this.createCrownBranches(species, treeHeight, trunkBaseRadius);
+    branches.push(...crownBranches.branches);
+    foliageClusters.push(...crownBranches.foliageClusters);
+
+    // Create upper crown branches (85-95% height)
+    const upperCrown = this.createUpperCrown(species, treeHeight, trunkBaseRadius);
+    branches.push(...upperCrown.branches);
+    foliageClusters.push(...upperCrown.foliageClusters);
+
+    return { branches, foliageClusters };
+  }
+
+  private createLowerBranches(species: TreeSpeciesType, treeHeight: number, trunkBaseRadius: number): {
+    branches: THREE.Object3D[];
+    foliageClusters: FoliageCluster[];
+  } {
+    const branches: THREE.Object3D[] = [];
+    const foliageClusters: FoliageCluster[] = [];
+    
+    const branchCount = species === TreeSpeciesType.OAK ? 4 : species === TreeSpeciesType.WILLOW ? 6 : 3;
+    
+    for (let i = 0; i < branchCount; i++) {
+      const heightRatio = 0.2 + (i / branchCount) * 0.3; // 20-50% height
+      const attachmentHeight = treeHeight * heightRatio;
+      const angle = (i / branchCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+      
+      const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.6);
+      const branchLength = treeHeight * (0.2 + Math.random() * 0.15);
+      const branchThickness = Math.max(0.12, trunkRadiusAtHeight * (0.25 + Math.random() * 0.15));
+      
+      const attachmentPoint = new THREE.Vector3(
+        Math.cos(angle) * trunkRadiusAtHeight,
+        attachmentHeight,
+        Math.sin(angle) * trunkRadiusAtHeight
+      );
+      
+      const direction = new THREE.Vector3(
+        Math.cos(angle),
+        0.1 + Math.random() * 0.2,
+        Math.sin(angle)
+      ).normalize();
+      
+      const branchResult = this.createBranchWithHierarchy({
+        length: branchLength,
+        thickness: branchThickness,
+        attachmentPoint,
+        direction,
+        species,
+        treeHeight,
+        branchLevel: 0
+      });
+      
+      branches.push(...branchResult.branches);
+      foliageClusters.push(...branchResult.foliageClusters);
+    }
+    
+    return { branches, foliageClusters };
+  }
+
+  private createCrownBranches(species: TreeSpeciesType, treeHeight: number, trunkBaseRadius: number): {
+    branches: THREE.Object3D[];
+    foliageClusters: FoliageCluster[];
+  } {
+    const branches: THREE.Object3D[] = [];
+    const foliageClusters: FoliageCluster[] = [];
+    
+    const branchCount = species === TreeSpeciesType.OAK ? 8 : species === TreeSpeciesType.WILLOW ? 10 : 6;
+    
+    for (let i = 0; i < branchCount; i++) {
+      const heightRatio = 0.5 + (i / branchCount) * 0.35; // 50-85% height
+      const attachmentHeight = treeHeight * heightRatio;
+      const angle = (i / branchCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
+      
+      const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.7);
+      const branchLength = treeHeight * (0.25 + Math.random() * 0.15);
+      const branchThickness = Math.max(0.1, trunkRadiusAtHeight * (0.3 + Math.random() * 0.15));
+      
+      const attachmentPoint = new THREE.Vector3(
+        Math.cos(angle) * trunkRadiusAtHeight,
+        attachmentHeight,
+        Math.sin(angle) * trunkRadiusAtHeight
+      );
+      
+      let direction: THREE.Vector3;
+      if (species === TreeSpeciesType.WILLOW) {
+        direction = new THREE.Vector3(Math.cos(angle), -0.2 - Math.random() * 0.3, Math.sin(angle)).normalize();
+      } else {
+        direction = new THREE.Vector3(Math.cos(angle), 0.2 + Math.random() * 0.3, Math.sin(angle)).normalize();
+      }
+      
+      const branchResult = this.createBranchWithHierarchy({
+        length: branchLength,
+        thickness: branchThickness,
+        attachmentPoint,
+        direction,
+        species,
+        treeHeight,
+        branchLevel: 0
+      });
+      
+      branches.push(...branchResult.branches);
+      foliageClusters.push(...branchResult.foliageClusters);
+    }
+    
+    return { branches, foliageClusters };
+  }
+
+  private createUpperCrown(species: TreeSpeciesType, treeHeight: number, trunkBaseRadius: number): {
+    branches: THREE.Object3D[];
+    foliageClusters: FoliageCluster[];
+  } {
+    const branches: THREE.Object3D[] = [];
+    const foliageClusters: FoliageCluster[] = [];
+    
+    if (species === TreeSpeciesType.DEAD) {
+      return { branches, foliageClusters }; // Dead trees don't have upper crowns
+    }
+    
+    const branchCount = species === TreeSpeciesType.OAK ? 6 : 4;
+    
+    for (let i = 0; i < branchCount; i++) {
+      const heightRatio = 0.85 + (i / branchCount) * 0.1; // 85-95% height
+      const attachmentHeight = treeHeight * heightRatio;
+      const angle = (i / branchCount) * Math.PI * 2 + Math.random();
+      
+      const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.8);
+      const branchLength = treeHeight * (0.15 + Math.random() * 0.1);
+      const branchThickness = Math.max(0.08, trunkRadiusAtHeight * (0.2 + Math.random() * 0.1));
+      
+      const attachmentPoint = new THREE.Vector3(
+        Math.cos(angle) * trunkRadiusAtHeight,
+        attachmentHeight,
+        Math.sin(angle) * trunkRadiusAtHeight
+      );
+      
+      const direction = new THREE.Vector3(
+        Math.cos(angle) * 0.7,
+        0.3 + Math.random() * 0.4,
+        Math.sin(angle) * 0.7
+      ).normalize();
+      
+      const branchResult = this.createBranchWithHierarchy({
+        length: branchLength,
+        thickness: branchThickness,
+        attachmentPoint,
+        direction,
+        species,
+        treeHeight,
+        branchLevel: 0
+      });
+      
+      branches.push(...branchResult.branches);
+      foliageClusters.push(...branchResult.foliageClusters);
+    }
+    
+    // Add central crown foliage for fuller top
+    const centralFoliageSize = treeHeight * 0.2;
+    foliageClusters.push({
+      position: new THREE.Vector3(0, treeHeight * 0.9, 0),
+      size: centralFoliageSize,
+      density: 1.0
+    });
+    
+    return { branches, foliageClusters };
+  }
+
+  private createBranchWithHierarchy(config: BranchConfig): {
+    branches: THREE.Object3D[];
+    foliageClusters: FoliageCluster[];
+  } {
+    const branches: THREE.Object3D[] = [];
+    const foliageClusters: FoliageCluster[] = [];
+    
+    // Create main branch
+    const mainBranch = this.createOptimizedBranch(config);
+    branches.push(mainBranch);
+    
+    // Add foliage at branch end
+    const endFoliageSize = config.treeHeight * (0.08 + config.thickness * 5);
+    const endPosition = config.direction.clone()
+      .multiplyScalar(config.length)
+      .add(config.attachmentPoint);
+    
+    foliageClusters.push({
+      position: endPosition,
+      size: endFoliageSize,
+      density: 0.9 + Math.random() * 0.1
+    });
+    
+    // Create secondary branches if not at max level
+    if (config.branchLevel < 2) {
+      const secondaryCount = config.branchLevel === 0 ? 3 + Math.floor(Math.random() * 3) : 2;
+      
+      for (let i = 0; i < secondaryCount; i++) {
+        const positionRatio = 0.4 + (i / secondaryCount) * 0.4;
+        const localPosition = config.direction.clone()
+          .multiplyScalar(config.length * positionRatio);
+        const worldPosition = localPosition.add(config.attachmentPoint);
+        
+        const sideVector = new THREE.Vector3(-config.direction.z, 0, config.direction.x).normalize();
+        const randomAngle = (Math.random() - 0.5) * Math.PI * 0.6;
+        const upwardBias = config.branchLevel === 0 ? 0.1 + Math.random() * 0.2 : 0.05;
+        
+        const secondaryDirection = config.direction.clone()
+          .multiplyScalar(0.5)
+          .add(sideVector.multiplyScalar(Math.sin(randomAngle) * 0.8))
+          .add(new THREE.Vector3(0, upwardBias, 0))
+          .normalize();
+        
+        const secondaryLength = config.length * (0.4 + Math.random() * 0.3);
+        const secondaryThickness = Math.max(0.05, config.thickness * (0.5 + Math.random() * 0.2));
+        
+        const secondaryResult = this.createBranchWithHierarchy({
+          length: secondaryLength,
+          thickness: secondaryThickness,
+          attachmentPoint: worldPosition,
+          direction: secondaryDirection,
+          species: config.species,
+          treeHeight: config.treeHeight,
+          branchLevel: config.branchLevel + 1
+        });
+        
+        branches.push(...secondaryResult.branches);
+        foliageClusters.push(...secondaryResult.foliageClusters);
+      }
+    }
+    
+    return { branches, foliageClusters };
+  }
+
+  private createOptimizedBranch(config: BranchConfig): THREE.Mesh {
+    const segments = config.branchLevel === 0 ? 8 : 6;
+    const geometry = new THREE.CylinderGeometry(
+      config.thickness * 0.3,
+      config.thickness,
+      config.length,
+      segments,
+      1
+    );
+    
+    const material = this.getOptimizedBranchMaterial(config.species);
+    const branch = new THREE.Mesh(geometry, material);
+    
+    // Position and orient branch
+    branch.position.copy(config.attachmentPoint);
+    branch.position.add(config.direction.clone().multiplyScalar(config.length / 2));
+    
+    const up = new THREE.Vector3(0, 1, 0);
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromUnitVectors(up, config.direction);
+    branch.setRotationFromQuaternion(quaternion);
+    
+    branch.castShadow = true;
+    branch.receiveShadow = true;
+    
+    return branch;
+  }
+
+  private getOptimizedBranchMaterial(species: TreeSpeciesType): THREE.Material {
+    const materialKey = `branch_${species}`;
+    
+    if (!this.materialCache.has(materialKey)) {
+      const texture = this.textureCache.get(species === TreeSpeciesType.PINE ? 'pine' : 'bark');
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x8B4513,
+        map: texture,
+        roughness: 0.9,
+        metalness: 0.0
+      });
+      this.materialCache.set(materialKey, material);
+    }
+    
+    return this.materialCache.get(materialKey)!;
+  }
+
+  private createOptimizedFoliage(clusters: FoliageCluster[], species: TreeSpeciesType, treeHeight: number): THREE.Mesh | null {
+    if (clusters.length === 0) return null;
+    
+    const instancedGeometry = new THREE.InstancedBufferGeometry();
+    const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!.clone();
+    
+    instancedGeometry.copy(baseGeometry);
+    instancedGeometry.instanceCount = clusters.length;
+    
+    // Create transformation matrices for each foliage cluster
+    const matrices = new Float32Array(clusters.length * 16);
+    const colors = new Float32Array(clusters.length * 3);
+    
+    for (let i = 0; i < clusters.length; i++) {
+      const cluster = clusters[i];
+      const matrix = new THREE.Matrix4();
+      
+      // Apply position and scale
+      matrix.makeScale(cluster.size, cluster.size, cluster.size);
+      matrix.setPosition(cluster.position);
+      
+      // Add slight random rotation
+      const rotationMatrix = new THREE.Matrix4();
+      rotationMatrix.makeRotationY(Math.random() * Math.PI * 2);
+      matrix.multiply(rotationMatrix);
+      
+      matrix.toArray(matrices, i * 16);
+      
+      // Generate foliage color variation
+      const hue = 0.25 + (Math.random() - 0.5) * 0.05;
+      const saturation = 0.6 + (Math.random() - 0.5) * 0.2;
+      const lightness = 0.35 + (Math.random() - 0.5) * 0.1;
+      const color = new THREE.Color().setHSL(hue, saturation, lightness);
+      
+      colors[i * 3] = color.r;
+      colors[i * 3 + 1] = color.g;
+      colors[i * 3 + 2] = color.b;
+    }
+    
+    instancedGeometry.setAttribute('instanceMatrix', new THREE.InstancedBufferAttribute(matrices, 16));
+    instancedGeometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(colors, 3));
+    
+    const material = this.getOptimizedFoliageMaterial(species);
+    const instancedMesh = new THREE.Mesh(instancedGeometry, material);
+    
+    instancedMesh.castShadow = true;
+    instancedMesh.receiveShadow = true;
+    
+    return instancedMesh;
+  }
+
+  private getOptimizedFoliageMaterial(species: TreeSpeciesType): THREE.Material {
+    const materialKey = `foliage_${species}`;
+    
+    if (!this.materialCache.has(materialKey)) {
+      const material = new THREE.MeshStandardMaterial({
+        color: 0x2d5016,
+        roughness: 0.9,
+        metalness: 0.0,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide,
+        vertexColors: true // Enable per-instance colors
+      });
+      this.materialCache.set(materialKey, material);
+    }
+    
+    return this.materialCache.get(materialKey)!;
+  }
+
+  private createPineTreeStructure(treeHeight: number, trunkBaseRadius: number): {
+    branches: THREE.Object3D[];
+    foliageClusters: FoliageCluster[];
+  } {
+    const branches: THREE.Object3D[] = [];
+    const foliageClusters: FoliageCluster[] = [];
+    
+    const coneCount = Math.floor(treeHeight / 3) + 2;
+    const startHeight = treeHeight * 0.25;
+    const endHeight = treeHeight * 0.95;
+    const coverageHeight = endHeight - startHeight;
+    
+    const bottomConeRadius = treeHeight * 0.35;
+    const topConeRadius = treeHeight * 0.08;
+    
+    for (let i = 0; i < coneCount; i++) {
+      const heightRatio = i / (coneCount - 1);
+      const coneRadius = bottomConeRadius * (1 - heightRatio) + topConeRadius * heightRatio;
+      const coneY = startHeight + (i * (coverageHeight / (coneCount - 1)));
+      
+      // Create foliage cluster for this cone level
+      foliageClusters.push({
+        position: new THREE.Vector3(0, coneY, 0),
+        size: coneRadius * 0.8,
+        density: 0.95
+      });
+      
+      // Add smaller clusters around the main cone for natural variation
+      const subClusterCount = Math.max(3, Math.floor(coneRadius * 1.5));
+      for (let j = 0; j < subClusterCount; j++) {
+        const angle = (j / subClusterCount) * Math.PI * 2;
+        const distance = coneRadius * (0.6 + Math.random() * 0.3);
+        
+        foliageClusters.push({
+          position: new THREE.Vector3(
+            Math.cos(angle) * distance,
+            coneY + (Math.random() - 0.5) * coneRadius * 0.2,
+            Math.sin(angle) * distance
+          ),
+          size: coneRadius * (0.3 + Math.random() * 0.2),
+          density: 0.8
+        });
+      }
+    }
+    
+    return { branches, foliageClusters };
   }
 
   private createRealisticTrunk(species: TreeSpeciesType, height: number, baseRadius: number): THREE.Mesh {
@@ -206,8 +640,8 @@ export class RealisticTreeGenerator {
     const heightSegments = 12;
     
     const geometry = new THREE.CylinderGeometry(
-      baseRadius * 0.3, // Top radius
-      baseRadius,       // Bottom radius
+      baseRadius * 0.3,
+      baseRadius,
       height,
       segments,
       heightSegments
@@ -217,7 +651,6 @@ export class RealisticTreeGenerator {
     const material = this.createAdvancedTrunkMaterial(species);
 
     const trunk = new THREE.Mesh(geometry, material);
-    // Position trunk so bottom is at Y=0 and top is at Y=height
     trunk.position.y = height / 2;
     trunk.castShadow = true;
     trunk.receiveShadow = true;
@@ -282,400 +715,23 @@ export class RealisticTreeGenerator {
     });
   }
 
-  private createOakBranchSystem(treeHeight: number, trunkBaseRadius: number): THREE.Object3D[] {
-    const allBranches: THREE.Object3D[] = [];
-    const mainBranchCount = 5 + Math.floor(Math.random() * 3); // Increased from 4+3 to 5+3
-    
-    console.log(`🌳 Creating ${mainBranchCount} main oak branches`);
-    
-    for (let i = 0; i < mainBranchCount; i++) {
-      // Calculate attachment point
-      const attachmentHeight = treeHeight * (0.3 + Math.random() * 0.4); // Broader distribution: 30-70%
-      const angle = (i / mainBranchCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
-      
-      // Calculate trunk radius at attachment height
-      const heightRatio = attachmentHeight / treeHeight;
-      const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.7);
-      
-      // PHASE 1 & 2: Dramatically increase branch thickness and scale with tree height
-      const branchLength = treeHeight * (0.25 + Math.random() * 0.15); // 25-40% of tree height
-      const branchThickness = Math.max(0.15, trunkRadiusAtHeight * (0.3 + Math.random() * 0.15)); // 30-45% of trunk radius
-      
-      const attachmentPoint = new THREE.Vector3(
-        Math.cos(angle) * trunkRadiusAtHeight,
-        attachmentHeight,
-        Math.sin(angle) * trunkRadiusAtHeight
-      );
-      
-      const direction = new THREE.Vector3(
-        Math.cos(angle),
-        0.2 + Math.random() * 0.3, // Slightly more upward angle
-        Math.sin(angle)
-      ).normalize();
-      
-      const branch = this.createProperBranch({
-        length: branchLength,
-        thickness: branchThickness,
-        attachmentPoint: attachmentPoint,
-        direction: direction,
-        species: TreeSpeciesType.OAK,
-        treeHeight: treeHeight
-      });
-      
-      allBranches.push(branch);
-      
-      // PHASE 5: More secondary branches per main branch
-      const secondaryCount = 3 + Math.floor(Math.random() * 4); // Increased from 2+3 to 3+4
-      for (let j = 0; j < secondaryCount; j++) {
-        const secondary = this.createSecondaryBranch(branch, j, secondaryCount, branchLength, branchThickness, treeHeight);
-        if (secondary) {
-          allBranches.push(secondary);
-        }
-      }
-    }
-    
-    return allBranches;
-  }
-
-  private createProperBranch(config: {
-    length: number;
-    thickness: number;
-    attachmentPoint: THREE.Vector3;
-    direction: THREE.Vector3;
-    species: TreeSpeciesType;
-    treeHeight: number;
-  }): THREE.Group {
-    const branchGroup = new THREE.Group();
-    
-    // Create branch geometry
-    const geometry = new THREE.CylinderGeometry(
-      config.thickness * 0.2, // Tip radius (reduced taper)
-      config.thickness,       // Base radius
-      config.length,
-      8,
-      1
-    );
-    
-    // Create material
-    const texture = this.textureCache.get('bark');
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x8B4513,
-      map: texture,
-      roughness: 0.9,
-      metalness: 0.0
-    });
-    
-    const branchMesh = new THREE.Mesh(geometry, material);
-    branchMesh.position.set(0, config.length / 2, 0);
-    
-    // PHASE 4: Multiple foliage clusters for density
-    const foliagePositions = [
-      { position: new THREE.Vector3(0, config.length * 0.6, 0), size: 0.7 },
-      { position: new THREE.Vector3(0, config.length * 0.8, 0), size: 0.85 },
-      { position: new THREE.Vector3(0, config.length, 0), size: 1.0 }
-    ];
-    
-    foliagePositions.forEach(({ position, size }) => {
-      const foliage = this.createBranchFoliage(config.species, config.thickness, config.treeHeight, size);
-      foliage.position.copy(position);
-      branchGroup.add(foliage);
-    });
-    
-    branchGroup.add(branchMesh);
-    
-    // Position and orient the branch
-    branchGroup.position.copy(config.attachmentPoint);
-    
-    const up = new THREE.Vector3(0, 1, 0);
-    const quaternion = new THREE.Quaternion();
-    quaternion.setFromUnitVectors(up, config.direction);
-    branchGroup.setRotationFromQuaternion(quaternion);
-    
-    branchGroup.traverse(child => {
-      if (child instanceof THREE.Mesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
-    
-    (branchGroup as any).branchData = {
-      length: config.length,
-      thickness: config.thickness,
-      direction: config.direction.clone()
-    };
-    
-    return branchGroup;
-  }
-
-  private createSecondaryBranch(
-    parentBranch: THREE.Group,
-    index: number,
-    totalCount: number,
-    parentLength: number,
-    parentThickness: number,
-    treeHeight: number
-  ): THREE.Group | null {
-    const branchData = (parentBranch as any).branchData;
-    if (!branchData) return null;
-    
-    // Position along parent branch (40-90% along its length)
-    const positionRatio = 0.4 + (index / totalCount) * 0.5;
-    const localPosition = new THREE.Vector3(0, parentLength * positionRatio, 0);
-    
-    // Transform to world space
-    const worldPosition = localPosition.clone();
-    worldPosition.applyQuaternion(parentBranch.quaternion);
-    worldPosition.add(parentBranch.position);
-    
-    // Calculate secondary branch direction
-    const baseDirection = branchData.direction.clone();
-    const sideVector = new THREE.Vector3(-baseDirection.z, 0, baseDirection.x).normalize();
-    const randomAngle = (Math.random() - 0.5) * Math.PI * 0.8;
-    const upwardBias = 0.1 + Math.random() * 0.2;
-    
-    const secondaryDirection = baseDirection.clone()
-      .multiplyScalar(0.6)
-      .add(sideVector.clone().multiplyScalar(Math.sin(randomAngle) * 0.8))
-      .add(new THREE.Vector3(0, upwardBias, 0))
-      .normalize();
-    
-    // PHASE 1 & 2: Increase secondary branch proportions
-    const secondaryLength = parentLength * (0.5 + Math.random() * 0.3); // Increased from 0.4+0.3
-    const secondaryThickness = Math.max(0.08, parentThickness * (0.6 + Math.random() * 0.2)); // Increased from 0.4+0.2
-    
-    return this.createProperBranch({
-      length: secondaryLength,
-      thickness: secondaryThickness,
-      attachmentPoint: worldPosition,
-      direction: secondaryDirection,
-      species: TreeSpeciesType.OAK,
-      treeHeight: treeHeight
-    });
-  }
-
-  private createBranchFoliage(species: TreeSpeciesType, branchThickness: number, treeHeight: number, sizeMultiplier: number = 1.0): THREE.Mesh {
-    // PHASE 3: Dramatically increase foliage size based on tree height
-    const baseFoliageSize = treeHeight * 0.12; // Base size as percentage of tree height
-    const thicknessBonus = branchThickness * 2; // Additional size from branch thickness
-    const foliageSize = Math.max(1.2, (baseFoliageSize + thicknessBonus) * sizeMultiplier);
-    
-    const geometry = new THREE.SphereGeometry(foliageSize, 8, 6);
-    
-    // Add organic variation
-    const positions = geometry.attributes.position;
-    for (let i = 0; i < positions.count; i++) {
-      const variation = (Math.random() - 0.5) * 0.3;
-      positions.setX(i, positions.getX(i) * (1 + variation));
-      positions.setY(i, positions.getY(i) * (1 + variation));
-      positions.setZ(i, positions.getZ(i) * (1 + variation));
-    }
-    geometry.computeVertexNormals();
-    
-    const material = new THREE.MeshStandardMaterial({
-      color: new THREE.Color().setHSL(0.25 + Math.random() * 0.08, 0.7, 0.35 + Math.random() * 0.15),
-      roughness: 0.9,
-      metalness: 0.0,
-      transparent: true,
-      opacity: 0.85 + Math.random() * 0.1,
-      side: THREE.DoubleSide
-    });
-    
-    const foliage = new THREE.Mesh(geometry, material);
-    foliage.castShadow = true;
-    foliage.receiveShadow = true;
-    
-    return foliage;
-  }
-
-  private createBirchBranchSystem(treeHeight: number, trunkBaseRadius: number): THREE.Object3D[] {
-    const branches: THREE.Object3D[] = [];
-    const branchCount = 4 + Math.floor(Math.random() * 3); // Increased from 3+2
-    
-    for (let i = 0; i < branchCount; i++) {
-      const attachmentHeight = treeHeight * (0.5 + Math.random() * 0.3);
-      const angle = (i / branchCount) * Math.PI * 2;
-      const heightRatio = attachmentHeight / treeHeight;
-      const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.7);
-      
-      // PHASE 6: Species-specific scaling - Birch has more delicate proportions
-      const branchLength = treeHeight * (0.2 + Math.random() * 0.15);
-      const branchThickness = Math.max(0.1, trunkRadiusAtHeight * (0.25 + Math.random() * 0.1));
-      
-      const branch = this.createProperBranch({
-        length: branchLength,
-        thickness: branchThickness,
-        attachmentPoint: new THREE.Vector3(
-          Math.cos(angle) * trunkRadiusAtHeight,
-          attachmentHeight,
-          Math.sin(angle) * trunkRadiusAtHeight
-        ),
-        direction: new THREE.Vector3(Math.cos(angle), -0.05 + Math.random() * 0.15, Math.sin(angle)).normalize(),
-        species: TreeSpeciesType.BIRCH,
-        treeHeight: treeHeight
-      });
-      
-      branches.push(branch);
-    }
-    
-    return branches;
-  }
-
-  private createWillowBranchSystem(treeHeight: number, trunkBaseRadius: number): THREE.Object3D[] {
-    const branches: THREE.Object3D[] = [];
-    const branchCount = 7 + Math.floor(Math.random() * 4); // Increased from 6+3
-    
-    for (let i = 0; i < branchCount; i++) {
-      const attachmentHeight = treeHeight * (0.6 + Math.random() * 0.3);
-      const angle = (i / branchCount) * Math.PI * 2;
-      const heightRatio = attachmentHeight / treeHeight;
-      const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.7);
-      
-      // PHASE 6: Species-specific scaling - Willow has long, drooping branches
-      const branchLength = treeHeight * (0.3 + Math.random() * 0.2);
-      const branchThickness = Math.max(0.12, trunkRadiusAtHeight * (0.2 + Math.random() * 0.1));
-      
-      const branch = this.createProperBranch({
-        length: branchLength,
-        thickness: branchThickness,
-        attachmentPoint: new THREE.Vector3(
-          Math.cos(angle) * trunkRadiusAtHeight,
-          attachmentHeight,
-          Math.sin(angle) * trunkRadiusAtHeight
-        ),
-        direction: new THREE.Vector3(Math.cos(angle), -0.4 - Math.random() * 0.3, Math.sin(angle)).normalize(),
-        species: TreeSpeciesType.WILLOW,
-        treeHeight: treeHeight
-      });
-      
-      branches.push(branch);
-    }
-    
-    return branches;
-  }
-
-  private createDeadTreeBranches(treeHeight: number, trunkBaseRadius: number): THREE.Object3D[] {
-    const branches: THREE.Object3D[] = [];
-    const branchCount = 3 + Math.floor(Math.random() * 3); // Increased from 2+3
-
-    for (let i = 0; i < branchCount; i++) {
-      const attachmentHeight = treeHeight * (0.4 + Math.random() * 0.4);
-      const angle = (i / branchCount) * Math.PI * 2 + Math.random();
-      const heightRatio = attachmentHeight / treeHeight;
-      const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.7);
-      
-      const branchGroup = new THREE.Group();
-      
-      // PHASE 1 & 2: Scale dead branches properly too
-      const branchLength = treeHeight * (0.15 + Math.random() * 0.1);
-      const branchThickness = Math.max(0.1, trunkRadiusAtHeight * (0.2 + Math.random() * 0.1));
-      
-      const geometry = new THREE.CylinderGeometry(
-        branchThickness * 0.3,
-        branchThickness,
-        branchLength,
-        6,
-        1
-      );
-      
-      const texture = this.textureCache.get('weathered');
-      const material = new THREE.MeshStandardMaterial({
-        color: 0x2F1B14,
-        map: texture,
-        roughness: 1.0,
-        metalness: 0.0
-      });
-      
-      const branchMesh = new THREE.Mesh(geometry, material);
-      branchMesh.position.y = branchLength / 2;
-      branchGroup.add(branchMesh);
-      
-      branchGroup.position.set(
-        Math.cos(angle) * trunkRadiusAtHeight,
-        attachmentHeight,
-        Math.sin(angle) * trunkRadiusAtHeight
-      );
-      
-      const direction = new THREE.Vector3(Math.cos(angle), Math.random() - 0.1, Math.sin(angle)).normalize();
-      const quaternion = new THREE.Quaternion();
-      quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-      branchGroup.setRotationFromQuaternion(quaternion);
-      
-      branchGroup.traverse(child => {
-        if (child instanceof THREE.Mesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
-      
-      branches.push(branchGroup);
-    }
-
-    return branches;
-  }
-
-  private createRealisticPineCones(species: TreeSpeciesType, height: number): THREE.Mesh[] {
-    const cones: THREE.Mesh[] = [];
-    
-    const totalConeCount = Math.floor(height / 4) + 2;
-    const coneCount = totalConeCount - 1;
-    
-    const startHeight = height * 0.35;
-    const endHeight = height * 0.95;
-    const coverageHeight = endHeight - startHeight;
-    
-    // PHASE 3: Scale pine cone size with tree height
-    const bottomConeRadius = height * 0.3; // Increased from 0.25
-    const topConeRadius = height * 0.08; // Increased from 0.05
-    const coneHeight = height * 0.3; // Increased from 0.25
-    
-    const coneSpacing = coverageHeight / (coneCount - 1);
-    
-    for (let i = 0; i < coneCount; i++) {
-      const heightRatio = i / (coneCount - 1);
-      const coneRadius = bottomConeRadius * (1 - heightRatio) + topConeRadius * heightRatio;
-      
-      const geometry = new THREE.ConeGeometry(
-        coneRadius,
-        coneHeight,
-        Math.max(12, Math.floor(coneRadius * 3)),
-        1
-      );
-      
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color().setHSL(
-          0.21 + (Math.random() - 0.5) * 0.02,
-          0.9 - heightRatio * 0.1,
-          0.12 + heightRatio * 0.08 + Math.random() * 0.02
-        ),
-        roughness: 0.9,
-        metalness: 0.0,
-        transparent: true,
-        opacity: 0.95
-      });
-      
-      const cone = new THREE.Mesh(geometry, material);
-      
-      const coneY = startHeight + (i * coneSpacing);
-      
-      if (i === coneCount - 1) {
-        cone.position.set(0, height - (coneHeight * 0.4), 0);
-      } else {
-        cone.position.set(0, coneY + (coneHeight * 0.4), 0);
-      }
-      
-      cone.rotation.y = Math.random() * Math.PI * 0.1;
-      cone.castShadow = true;
-      cone.receiveShadow = true;
-      cones.push(cone);
-    }
-    
-    return cones;
-  }
-
   public dispose(): void {
+    // Dispose textures
     for (const texture of this.textureCache.values()) {
       texture.dispose();
     }
     this.textureCache.clear();
+    
+    // Dispose geometries
+    for (const geometry of this.foliageGeometryCache.values()) {
+      geometry.dispose();
+    }
+    this.foliageGeometryCache.clear();
+    
+    // Dispose materials
+    for (const material of this.materialCache.values()) {
+      material.dispose();
+    }
+    this.materialCache.clear();
   }
 }
