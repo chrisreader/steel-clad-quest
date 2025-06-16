@@ -284,41 +284,50 @@ export class RealisticTreeGenerator {
 
   private createOakBranchSystem(treeHeight: number, trunkBaseRadius: number): THREE.Object3D[] {
     const allBranches: THREE.Object3D[] = [];
-    const mainBranchCount = 4 + Math.floor(Math.random() * 3);
+    const mainBranchCount = 5 + Math.floor(Math.random() * 3); // Increased from 4+3 to 5+3
     
     console.log(`🌳 Creating ${mainBranchCount} main oak branches`);
     
     for (let i = 0; i < mainBranchCount; i++) {
       // Calculate attachment point
-      const attachmentHeight = treeHeight * (0.4 + Math.random() * 0.3); // 40-70% up the trunk
+      const attachmentHeight = treeHeight * (0.3 + Math.random() * 0.4); // Broader distribution: 30-70%
       const angle = (i / mainBranchCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
       
       // Calculate trunk radius at attachment height
       const heightRatio = attachmentHeight / treeHeight;
-      const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.7); // Trunk tapers
+      const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.7);
       
-      // Create main branch
-      const branchLength = 4 + Math.random() * 3;
-      const branchThickness = trunkRadiusAtHeight * (0.15 + Math.random() * 0.1);
+      // PHASE 1 & 2: Dramatically increase branch thickness and scale with tree height
+      const branchLength = treeHeight * (0.25 + Math.random() * 0.15); // 25-40% of tree height
+      const branchThickness = Math.max(0.15, trunkRadiusAtHeight * (0.3 + Math.random() * 0.15)); // 30-45% of trunk radius
+      
+      const attachmentPoint = new THREE.Vector3(
+        Math.cos(angle) * trunkRadiusAtHeight,
+        attachmentHeight,
+        Math.sin(angle) * trunkRadiusAtHeight
+      );
+      
+      const direction = new THREE.Vector3(
+        Math.cos(angle),
+        0.2 + Math.random() * 0.3, // Slightly more upward angle
+        Math.sin(angle)
+      ).normalize();
       
       const branch = this.createProperBranch({
         length: branchLength,
         thickness: branchThickness,
-        attachmentPoint: new THREE.Vector3(
-          Math.cos(angle) * trunkRadiusAtHeight,
-          attachmentHeight,
-          Math.sin(angle) * trunkRadiusAtHeight
-        ),
-        direction: new THREE.Vector3(Math.cos(angle), 0.3 + Math.random() * 0.2, Math.sin(angle)).normalize(),
-        species: TreeSpeciesType.OAK
+        attachmentPoint: attachmentPoint,
+        direction: direction,
+        species: TreeSpeciesType.OAK,
+        treeHeight: treeHeight
       });
       
       allBranches.push(branch);
       
-      // Create secondary branches from this main branch
-      const secondaryCount = 2 + Math.floor(Math.random() * 3);
+      // PHASE 5: More secondary branches per main branch
+      const secondaryCount = 3 + Math.floor(Math.random() * 4); // Increased from 2+3 to 3+4
       for (let j = 0; j < secondaryCount; j++) {
-        const secondary = this.createSecondaryBranch(branch, j, secondaryCount, branchLength, branchThickness);
+        const secondary = this.createSecondaryBranch(branch, j, secondaryCount, branchLength, branchThickness, treeHeight);
         if (secondary) {
           allBranches.push(secondary);
         }
@@ -334,12 +343,13 @@ export class RealisticTreeGenerator {
     attachmentPoint: THREE.Vector3;
     direction: THREE.Vector3;
     species: TreeSpeciesType;
+    treeHeight: number;
   }): THREE.Group {
     const branchGroup = new THREE.Group();
     
     // Create branch geometry
     const geometry = new THREE.CylinderGeometry(
-      config.thickness * 0.3, // Tip radius
+      config.thickness * 0.2, // Tip radius (reduced taper)
       config.thickness,       // Base radius
       config.length,
       8,
@@ -356,24 +366,26 @@ export class RealisticTreeGenerator {
     });
     
     const branchMesh = new THREE.Mesh(geometry, material);
-    
-    // Position branch mesh at origin in local space
     branchMesh.position.set(0, config.length / 2, 0);
     
-    // Calculate branch endpoint for foliage
-    const branchEnd = new THREE.Vector3(0, config.length, 0);
+    // PHASE 4: Multiple foliage clusters for density
+    const foliagePositions = [
+      { position: new THREE.Vector3(0, config.length * 0.6, 0), size: 0.7 },
+      { position: new THREE.Vector3(0, config.length * 0.8, 0), size: 0.85 },
+      { position: new THREE.Vector3(0, config.length, 0), size: 1.0 }
+    ];
     
-    // Create foliage at branch end
-    const foliage = this.createBranchFoliage(config.species, config.thickness);
-    foliage.position.copy(branchEnd);
+    foliagePositions.forEach(({ position, size }) => {
+      const foliage = this.createBranchFoliage(config.species, config.thickness, config.treeHeight, size);
+      foliage.position.copy(position);
+      branchGroup.add(foliage);
+    });
     
     branchGroup.add(branchMesh);
-    branchGroup.add(foliage);
     
-    // Position the entire group at attachment point
+    // Position and orient the branch
     branchGroup.position.copy(config.attachmentPoint);
     
-    // Orient the branch in the correct direction
     const up = new THREE.Vector3(0, 1, 0);
     const quaternion = new THREE.Quaternion();
     quaternion.setFromUnitVectors(up, config.direction);
@@ -386,16 +398,11 @@ export class RealisticTreeGenerator {
       }
     });
     
-    // Store branch data for secondary branch calculations
     (branchGroup as any).branchData = {
       length: config.length,
       thickness: config.thickness,
       direction: config.direction.clone()
     };
-    
-    if (this.debugMode) {
-      console.log(`  Branch: pos=${config.attachmentPoint.x.toFixed(2)},${config.attachmentPoint.y.toFixed(2)},${config.attachmentPoint.z.toFixed(2)} len=${config.length.toFixed(2)}`);
-    }
     
     return branchGroup;
   }
@@ -405,7 +412,8 @@ export class RealisticTreeGenerator {
     index: number,
     totalCount: number,
     parentLength: number,
-    parentThickness: number
+    parentThickness: number,
+    treeHeight: number
   ): THREE.Group | null {
     const branchData = (parentBranch as any).branchData;
     if (!branchData) return null;
@@ -419,7 +427,7 @@ export class RealisticTreeGenerator {
     worldPosition.applyQuaternion(parentBranch.quaternion);
     worldPosition.add(parentBranch.position);
     
-    // Calculate secondary branch direction (branch off at angle)
+    // Calculate secondary branch direction
     const baseDirection = branchData.direction.clone();
     const sideVector = new THREE.Vector3(-baseDirection.z, 0, baseDirection.x).normalize();
     const randomAngle = (Math.random() - 0.5) * Math.PI * 0.8;
@@ -431,20 +439,26 @@ export class RealisticTreeGenerator {
       .add(new THREE.Vector3(0, upwardBias, 0))
       .normalize();
     
-    const secondaryLength = parentLength * (0.4 + Math.random() * 0.3);
-    const secondaryThickness = parentThickness * (0.4 + Math.random() * 0.2);
+    // PHASE 1 & 2: Increase secondary branch proportions
+    const secondaryLength = parentLength * (0.5 + Math.random() * 0.3); // Increased from 0.4+0.3
+    const secondaryThickness = Math.max(0.08, parentThickness * (0.6 + Math.random() * 0.2)); // Increased from 0.4+0.2
     
     return this.createProperBranch({
       length: secondaryLength,
       thickness: secondaryThickness,
       attachmentPoint: worldPosition,
       direction: secondaryDirection,
-      species: TreeSpeciesType.OAK
+      species: TreeSpeciesType.OAK,
+      treeHeight: treeHeight
     });
   }
 
-  private createBranchFoliage(species: TreeSpeciesType, branchThickness: number): THREE.Mesh {
-    const foliageSize = Math.max(0.8, branchThickness * 8);
+  private createBranchFoliage(species: TreeSpeciesType, branchThickness: number, treeHeight: number, sizeMultiplier: number = 1.0): THREE.Mesh {
+    // PHASE 3: Dramatically increase foliage size based on tree height
+    const baseFoliageSize = treeHeight * 0.12; // Base size as percentage of tree height
+    const thicknessBonus = branchThickness * 2; // Additional size from branch thickness
+    const foliageSize = Math.max(1.2, (baseFoliageSize + thicknessBonus) * sizeMultiplier);
+    
     const geometry = new THREE.SphereGeometry(foliageSize, 8, 6);
     
     // Add organic variation
@@ -475,24 +489,29 @@ export class RealisticTreeGenerator {
 
   private createBirchBranchSystem(treeHeight: number, trunkBaseRadius: number): THREE.Object3D[] {
     const branches: THREE.Object3D[] = [];
-    const branchCount = 3 + Math.floor(Math.random() * 2);
+    const branchCount = 4 + Math.floor(Math.random() * 3); // Increased from 3+2
     
     for (let i = 0; i < branchCount; i++) {
-      const attachmentHeight = treeHeight * (0.6 + Math.random() * 0.2);
+      const attachmentHeight = treeHeight * (0.5 + Math.random() * 0.3);
       const angle = (i / branchCount) * Math.PI * 2;
       const heightRatio = attachmentHeight / treeHeight;
       const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.7);
       
+      // PHASE 6: Species-specific scaling - Birch has more delicate proportions
+      const branchLength = treeHeight * (0.2 + Math.random() * 0.15);
+      const branchThickness = Math.max(0.1, trunkRadiusAtHeight * (0.25 + Math.random() * 0.1));
+      
       const branch = this.createProperBranch({
-        length: 3 + Math.random() * 1.5,
-        thickness: trunkRadiusAtHeight * 0.12,
+        length: branchLength,
+        thickness: branchThickness,
         attachmentPoint: new THREE.Vector3(
           Math.cos(angle) * trunkRadiusAtHeight,
           attachmentHeight,
           Math.sin(angle) * trunkRadiusAtHeight
         ),
-        direction: new THREE.Vector3(Math.cos(angle), -0.1 + Math.random() * 0.2, Math.sin(angle)).normalize(),
-        species: TreeSpeciesType.BIRCH
+        direction: new THREE.Vector3(Math.cos(angle), -0.05 + Math.random() * 0.15, Math.sin(angle)).normalize(),
+        species: TreeSpeciesType.BIRCH,
+        treeHeight: treeHeight
       });
       
       branches.push(branch);
@@ -503,24 +522,29 @@ export class RealisticTreeGenerator {
 
   private createWillowBranchSystem(treeHeight: number, trunkBaseRadius: number): THREE.Object3D[] {
     const branches: THREE.Object3D[] = [];
-    const branchCount = 6 + Math.floor(Math.random() * 3);
+    const branchCount = 7 + Math.floor(Math.random() * 4); // Increased from 6+3
     
     for (let i = 0; i < branchCount; i++) {
-      const attachmentHeight = treeHeight * (0.7 + Math.random() * 0.2);
+      const attachmentHeight = treeHeight * (0.6 + Math.random() * 0.3);
       const angle = (i / branchCount) * Math.PI * 2;
       const heightRatio = attachmentHeight / treeHeight;
       const trunkRadiusAtHeight = trunkBaseRadius * (1 - heightRatio * 0.7);
       
+      // PHASE 6: Species-specific scaling - Willow has long, drooping branches
+      const branchLength = treeHeight * (0.3 + Math.random() * 0.2);
+      const branchThickness = Math.max(0.12, trunkRadiusAtHeight * (0.2 + Math.random() * 0.1));
+      
       const branch = this.createProperBranch({
-        length: 5 + Math.random() * 2,
-        thickness: trunkRadiusAtHeight * 0.15,
+        length: branchLength,
+        thickness: branchThickness,
         attachmentPoint: new THREE.Vector3(
           Math.cos(angle) * trunkRadiusAtHeight,
           attachmentHeight,
           Math.sin(angle) * trunkRadiusAtHeight
         ),
         direction: new THREE.Vector3(Math.cos(angle), -0.4 - Math.random() * 0.3, Math.sin(angle)).normalize(),
-        species: TreeSpeciesType.WILLOW
+        species: TreeSpeciesType.WILLOW,
+        treeHeight: treeHeight
       });
       
       branches.push(branch);
@@ -531,7 +555,7 @@ export class RealisticTreeGenerator {
 
   private createDeadTreeBranches(treeHeight: number, trunkBaseRadius: number): THREE.Object3D[] {
     const branches: THREE.Object3D[] = [];
-    const branchCount = 2 + Math.floor(Math.random() * 3);
+    const branchCount = 3 + Math.floor(Math.random() * 3); // Increased from 2+3
 
     for (let i = 0; i < branchCount; i++) {
       const attachmentHeight = treeHeight * (0.4 + Math.random() * 0.4);
@@ -541,10 +565,14 @@ export class RealisticTreeGenerator {
       
       const branchGroup = new THREE.Group();
       
+      // PHASE 1 & 2: Scale dead branches properly too
+      const branchLength = treeHeight * (0.15 + Math.random() * 0.1);
+      const branchThickness = Math.max(0.1, trunkRadiusAtHeight * (0.2 + Math.random() * 0.1));
+      
       const geometry = new THREE.CylinderGeometry(
-        trunkRadiusAtHeight * 0.04,
-        trunkRadiusAtHeight * 0.12,
-        2.5 + Math.random() * 1.5,
+        branchThickness * 0.3,
+        branchThickness,
+        branchLength,
         6,
         1
       );
@@ -558,7 +586,7 @@ export class RealisticTreeGenerator {
       });
       
       const branchMesh = new THREE.Mesh(geometry, material);
-      branchMesh.position.y = geometry.parameters.height / 2;
+      branchMesh.position.y = branchLength / 2;
       branchGroup.add(branchMesh);
       
       branchGroup.position.set(
@@ -567,7 +595,7 @@ export class RealisticTreeGenerator {
         Math.sin(angle) * trunkRadiusAtHeight
       );
       
-      const direction = new THREE.Vector3(Math.cos(angle), Math.random() - 0.2, Math.sin(angle)).normalize();
+      const direction = new THREE.Vector3(Math.cos(angle), Math.random() - 0.1, Math.sin(angle)).normalize();
       const quaternion = new THREE.Quaternion();
       quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
       branchGroup.setRotationFromQuaternion(quaternion);
@@ -595,9 +623,10 @@ export class RealisticTreeGenerator {
     const endHeight = height * 0.95;
     const coverageHeight = endHeight - startHeight;
     
-    const bottomConeRadius = height * 0.25;
-    const topConeRadius = height * 0.05;
-    const coneHeight = height * 0.25;
+    // PHASE 3: Scale pine cone size with tree height
+    const bottomConeRadius = height * 0.3; // Increased from 0.25
+    const topConeRadius = height * 0.08; // Increased from 0.05
+    const coneHeight = height * 0.3; // Increased from 0.25
     
     const coneSpacing = coverageHeight / (coneCount - 1);
     
