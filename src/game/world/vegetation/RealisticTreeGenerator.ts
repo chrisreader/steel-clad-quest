@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { TreeSpeciesType, TreeSpeciesManager } from './TreeSpecies';
@@ -16,6 +17,7 @@ interface FoliageCluster {
   position: THREE.Vector3;
   size: number;
   density: number;
+  heightRatio: number; // Added for height-based scaling
 }
 
 export class RealisticTreeGenerator {
@@ -245,17 +247,17 @@ export class RealisticTreeGenerator {
       return this.createPineTreeStructure(treeHeight, trunkBaseRadius);
     }
 
-    // Create lower trunk branches (20-50% height)
+    // Create lower trunk branches (20-50% height) - sparse, smaller foliage
     const lowerBranches = this.createLowerBranches(species, treeHeight, trunkBaseRadius);
     branches.push(...lowerBranches.branches);
     foliageClusters.push(...lowerBranches.foliageClusters);
 
-    // Create main crown branches (50-85% height)
+    // Create main crown branches (50-85% height) - medium foliage, growing larger
     const crownBranches = this.createCrownBranches(species, treeHeight, trunkBaseRadius);
     branches.push(...crownBranches.branches);
     foliageClusters.push(...crownBranches.foliageClusters);
 
-    // Create upper crown branches (85-95% height)
+    // Create upper crown branches (85-95% height) - largest, densest foliage
     const upperCrown = this.createUpperCrown(species, treeHeight, trunkBaseRadius);
     branches.push(...upperCrown.branches);
     foliageClusters.push(...upperCrown.foliageClusters);
@@ -301,7 +303,7 @@ export class RealisticTreeGenerator {
         species,
         treeHeight,
         branchLevel: 0
-      });
+      }, heightRatio);
       
       branches.push(...branchResult.branches);
       foliageClusters.push(...branchResult.foliageClusters);
@@ -349,7 +351,7 @@ export class RealisticTreeGenerator {
         species,
         treeHeight,
         branchLevel: 0
-      });
+      }, heightRatio);
       
       branches.push(...branchResult.branches);
       foliageClusters.push(...branchResult.foliageClusters);
@@ -369,7 +371,7 @@ export class RealisticTreeGenerator {
       return { branches, foliageClusters }; // Dead trees don't have upper crowns
     }
     
-    const branchCount = species === TreeSpeciesType.OAK ? 6 : 4;
+    const branchCount = species === TreeSpeciesType.OAK ? 8 : 6; // Increased branch count for denser canopy
     
     for (let i = 0; i < branchCount; i++) {
       const heightRatio = 0.85 + (i / branchCount) * 0.1; // 85-95% height
@@ -400,24 +402,107 @@ export class RealisticTreeGenerator {
         species,
         treeHeight,
         branchLevel: 0
-      });
+      }, heightRatio);
       
       branches.push(...branchResult.branches);
       foliageClusters.push(...branchResult.foliageClusters);
     }
     
-    // Add central crown foliage for fuller top - REDUCED SIZE
-    const centralFoliageSize = treeHeight * 0.08; // Reduced from 0.2
-    foliageClusters.push({
-      position: new THREE.Vector3(0, treeHeight * 0.9, 0),
-      size: centralFoliageSize,
-      density: 1.0
-    });
+    // Add multiple overlapping central crown foliage clusters for dense canopy
+    const centralHeightStart = 0.8;
+    const centralHeightEnd = 0.95;
+    const centralClusterCount = species === TreeSpeciesType.OAK ? 4 : 3;
+    
+    for (let i = 0; i < centralClusterCount; i++) {
+      const heightRatio = centralHeightStart + (i / (centralClusterCount - 1)) * (centralHeightEnd - centralHeightStart);
+      const centralHeight = treeHeight * heightRatio;
+      
+      // Calculate size based on height and species
+      const baseSize = this.calculateFoliageSize(treeHeight, heightRatio, species);
+      const centralFoliageSize = baseSize * (2.0 + Math.random() * 0.5); // Large central canopy
+      
+      // Add slight horizontal offset for natural variation
+      const offsetRadius = treeHeight * 0.05;
+      const offsetAngle = Math.random() * Math.PI * 2;
+      const position = new THREE.Vector3(
+        Math.cos(offsetAngle) * offsetRadius,
+        centralHeight,
+        Math.sin(offsetAngle) * offsetRadius
+      );
+      
+      foliageClusters.push({
+        position,
+        size: centralFoliageSize,
+        density: 1.0,
+        heightRatio
+      });
+    }
     
     return { branches, foliageClusters };
   }
 
-  private createBranchWithHierarchy(config: BranchConfig): {
+  private calculateFoliageSize(treeHeight: number, heightRatio: number, species: TreeSpeciesType): number {
+    // Base size calculation
+    let baseSize = treeHeight * 0.04; // Reduced base size
+    
+    // Height-based scaling - creates the realistic canopy layers
+    let heightMultiplier: number;
+    
+    if (heightRatio < 0.5) {
+      // Lower branches: 0.6-0.8x base size (sparse undergrowth)
+      heightMultiplier = 0.6 + (heightRatio / 0.5) * 0.2;
+    } else if (heightRatio < 0.85) {
+      // Mid crown: 0.8-1.3x base size (transition zone)
+      const midRatio = (heightRatio - 0.5) / 0.35;
+      heightMultiplier = 0.8 + midRatio * 0.5;
+    } else {
+      // Upper crown: 1.3-2.0x base size (dense canopy)
+      const upperRatio = (heightRatio - 0.85) / 0.15;
+      heightMultiplier = 1.3 + upperRatio * 0.7;
+    }
+    
+    // Species-specific adjustments
+    switch (species) {
+      case TreeSpeciesType.OAK:
+        // Oak trees have broader, more pronounced canopies
+        heightMultiplier *= heightRatio > 0.7 ? 1.2 : 1.0;
+        break;
+      case TreeSpeciesType.BIRCH:
+        // Birch trees have more elegant, less dramatic size variation
+        heightMultiplier = 0.8 + (heightMultiplier - 0.8) * 0.7;
+        break;
+      case TreeSpeciesType.WILLOW:
+        // Willow trees have larger drooping foliage
+        heightMultiplier *= 1.1;
+        break;
+    }
+    
+    return baseSize * heightMultiplier;
+  }
+
+  private calculateFoliageDensity(heightRatio: number, species: TreeSpeciesType): number {
+    let density: number;
+    
+    if (heightRatio < 0.5) {
+      // Lower branches: 0.6-0.7 density (sparse)
+      density = 0.6 + (heightRatio / 0.5) * 0.1;
+    } else if (heightRatio < 0.85) {
+      // Mid crown: 0.7-0.9 density (medium)
+      const midRatio = (heightRatio - 0.5) / 0.35;
+      density = 0.7 + midRatio * 0.2;
+    } else {
+      // Upper crown: 0.9-1.0 density (dense)
+      const upperRatio = (heightRatio - 0.85) / 0.15;
+      density = 0.9 + upperRatio * 0.1;
+    }
+    
+    // Add slight random variation
+    density += (Math.random() - 0.5) * 0.1;
+    
+    return Math.max(0.5, Math.min(1.0, density));
+  }
+
+  private createBranchWithHierarchy(config: BranchConfig, parentHeightRatio: number): {
     branches: THREE.Object3D[];
     foliageClusters: FoliageCluster[];
   } {
@@ -428,16 +513,20 @@ export class RealisticTreeGenerator {
     const mainBranch = this.createOptimizedBranch(config);
     branches.push(mainBranch);
     
-    // Add foliage at branch end - REDUCED SIZE
-    const endFoliageSize = config.treeHeight * (0.03 + config.thickness * 2); // Reduced from 0.08 and *5
+    // Add foliage at branch end with height-based sizing
     const endPosition = config.direction.clone()
       .multiplyScalar(config.length)
       .add(config.attachmentPoint);
     
+    const heightRatio = endPosition.y / config.treeHeight;
+    const foliageSize = this.calculateFoliageSize(config.treeHeight, heightRatio, config.species);
+    const foliageDensity = this.calculateFoliageDensity(heightRatio, config.species);
+    
     foliageClusters.push({
       position: endPosition,
-      size: endFoliageSize,
-      density: 0.9 + Math.random() * 0.1
+      size: foliageSize,
+      density: foliageDensity,
+      heightRatio
     });
     
     // Create secondary branches if not at max level
@@ -463,6 +552,7 @@ export class RealisticTreeGenerator {
         const secondaryLength = config.length * (0.4 + Math.random() * 0.3);
         const secondaryThickness = Math.max(0.05, config.thickness * (0.5 + Math.random() * 0.2));
         
+        const secondaryHeightRatio = worldPosition.y / config.treeHeight;
         const secondaryResult = this.createBranchWithHierarchy({
           length: secondaryLength,
           thickness: secondaryThickness,
@@ -471,7 +561,7 @@ export class RealisticTreeGenerator {
           species: config.species,
           treeHeight: config.treeHeight,
           branchLevel: config.branchLevel + 1
-        });
+        }, secondaryHeightRatio);
         
         branches.push(...secondaryResult.branches);
         foliageClusters.push(...secondaryResult.foliageClusters);
@@ -534,14 +624,12 @@ export class RealisticTreeGenerator {
     
     console.log(`🍃 Creating instanced foliage with ${clusters.length} clusters for ${species}`);
     
-    // Validate and cap foliage sizes
+    // Validate clusters - no size capping needed since we now calculate appropriate sizes
     const validClusters = clusters.filter(cluster => {
       const isValid = cluster.position && cluster.size > 0 && cluster.density > 0;
       if (!isValid) {
         console.warn('🚨 Invalid foliage cluster:', cluster);
       }
-      // Cap maximum foliage size to prevent oversized clusters
-      cluster.size = Math.min(cluster.size, treeHeight * 0.12); // Cap at 12% of tree height
       return isValid;
     });
     
@@ -568,18 +656,21 @@ export class RealisticTreeGenerator {
         const rotation = new THREE.Quaternion().setFromEuler(
           new THREE.Euler(0, Math.random() * Math.PI * 2, 0)
         );
-        // Apply additional size reduction multiplier
-        const finalSize = cluster.size * 0.6; // Additional 40% size reduction
-        const scale = new THREE.Vector3(finalSize, finalSize, finalSize);
+        
+        // Use the calculated size directly - no additional reductions
+        const scale = new THREE.Vector3(cluster.size, cluster.size, cluster.size);
         
         matrix.compose(position, rotation, scale);
         instancedMesh.setMatrixAt(i, matrix);
         
-        // Set instance color with variation
+        // Set instance color with height-based variation for more realism
+        const heightRatio = cluster.heightRatio || (cluster.position.y / treeHeight);
+        
+        // Higher foliage is slightly lighter (more sun exposure)
+        const lightnessFactor = 0.35 + heightRatio * 0.15;
         const hue = 0.25 + (Math.random() - 0.5) * 0.05;
         const saturation = 0.6 + (Math.random() - 0.5) * 0.2;
-        const lightness = 0.35 + (Math.random() - 0.5) * 0.1;
-        const color = new THREE.Color().setHSL(hue, saturation, lightness);
+        const color = new THREE.Color().setHSL(hue, saturation, lightnessFactor);
         
         instancedMesh.setColorAt(i, color);
       }
