@@ -66,27 +66,27 @@ export class SceneManager {
       this.grassSystem = new OptimizedGrassSystem(this.scene);
       console.log("🌱 [SceneManager] OPTIMIZED grass system created for maximum performance");
       
+      // Create ring quadrant system for world management - FIXED constructor order
+      this.ringQuadrantSystem = new RingQuadrantSystem(this.scene, this.physicsManager, new THREE.Vector3(0, 0, 0));
+      console.log("🔄 [SceneManager] Ring quadrant system created");
+      
       // Create terrain generator - FIXED constructor call
-      this.terrainGenerator = new TerrainFeatureGenerator(this.scene, this.physicsManager);
+      this.terrainGenerator = new TerrainFeatureGenerator(this.scene, this.physicsManager, this.ringQuadrantSystem);
       console.log("🏔️ [SceneManager] Terrain generator created");
       
       // Create structure generator - FIXED constructor call
-      this.structureGenerator = new StructureGenerator(this.scene, this.physicsManager);
+      this.structureGenerator = new StructureGenerator(this.scene, this.physicsManager, this.ringQuadrantSystem);
       console.log("🏗️ [SceneManager] Structure generator created");
       
       // Create tree generator
       this.treeGenerator = new RealisticTreeGenerator();
       console.log("🌳 [SceneManager] Tree generator created");
       
-      // Create ring quadrant system for world management - FIXED constructor call
-      this.ringQuadrantSystem = new RingQuadrantSystem(this.scene, this.physicsManager, new THREE.Vector3(0, 0, 0));
-      console.log("🔄 [SceneManager] Ring quadrant system created");
-      
       // Create cloud spawning system - FIXED constructor call
-      this.cloudSpawningSystem = new DynamicCloudSpawningSystem(this.scene);
+      this.cloudSpawningSystem = new DynamicCloudSpawningSystem(this.scene, this.physicsManager);
       console.log("☁️ [SceneManager] Cloud spawning system created");
       
-      // Generate initial world chunks
+      // Generate initial world
       this.generateInitialWorld();
       
       console.log("🌍 [SceneManager] OPTIMIZED default world created successfully!");
@@ -113,13 +113,13 @@ export class SceneManager {
       console.log("🏗️ [SceneManager] OPTIMIZED structures generated");
     }
     
-    // Initialize OPTIMIZED grass system - FIXED method call
+    // Initialize OPTIMIZED grass system - FIXED method call to use initializeGrassSystem
     if (this.grassSystem) {
-      this.grassSystem.initialize(new THREE.Vector3(0, 0, 0), 200);
+      this.grassSystem.initializeGrassSystem(new THREE.Vector3(0, 0, 0), 200);
       console.log("🌱 [SceneManager] OPTIMIZED grass system initialized");
     }
     
-    // Start cloud spawning with performance considerations - FIXED method call
+    // Start cloud spawning with performance considerations
     if (this.cloudSpawningSystem) {
       // Use a simpler initialization that exists
       console.log("☁️ [SceneManager] OPTIMIZED cloud spawning started");
@@ -152,7 +152,7 @@ export class SceneManager {
       this.cloudSpawningSystem.update(deltaTime);
     }
     
-    // Update ring quadrant system for world management - FIXED method call
+    // Update ring quadrant system for world management
     if (this.ringQuadrantSystem) {
       this.ringQuadrantSystem.update(playerPosition);
     }
@@ -173,7 +173,6 @@ export class SceneManager {
     // Initialize enemy spawning system - FIXED constructor call
     this.enemySpawningSystem = new DynamicEnemySpawningSystem(
       this.scene,
-      this.physicsManager,
       effectsManager,
       audioManager
     );
@@ -182,8 +181,8 @@ export class SceneManager {
   
   public startEnemySpawning(playerPosition: THREE.Vector3): void {
     if (this.enemySpawningSystem) {
-      // Start spawning enemies around the player - FIXED method call
-      this.enemySpawningSystem.startSpawning(playerPosition);
+      // FIXED: Use the correct method name based on DynamicSpawningSystem
+      this.enemySpawningSystem.update(0, playerPosition); // Start the system by updating it
       console.log("👾 [SceneManager] Enemy spawning started");
     }
   }
@@ -222,8 +221,8 @@ export class SceneManager {
       this.treeGenerator.dispose();
     }
     
-    // FIXED: Check if dispose method exists before calling it
-    if (this.ringQuadrantSystem && typeof this.ringQuadrantSystem.dispose === 'function') {
+    // Dispose ring quadrant system - now has dispose method
+    if (this.ringQuadrantSystem) {
       this.ringQuadrantSystem.dispose();
     }
     
