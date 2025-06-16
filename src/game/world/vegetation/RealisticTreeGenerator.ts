@@ -406,8 +406,8 @@ export class RealisticTreeGenerator {
       foliageClusters.push(...branchResult.foliageClusters);
     }
     
-    // Add central crown foliage for fuller top
-    const centralFoliageSize = treeHeight * 0.2;
+    // Add central crown foliage for fuller top - REDUCED SIZE
+    const centralFoliageSize = treeHeight * 0.08; // Reduced from 0.2
     foliageClusters.push({
       position: new THREE.Vector3(0, treeHeight * 0.9, 0),
       size: centralFoliageSize,
@@ -428,8 +428,8 @@ export class RealisticTreeGenerator {
     const mainBranch = this.createOptimizedBranch(config);
     branches.push(mainBranch);
     
-    // Add foliage at branch end
-    const endFoliageSize = config.treeHeight * (0.08 + config.thickness * 5);
+    // Add foliage at branch end - REDUCED SIZE
+    const endFoliageSize = config.treeHeight * (0.03 + config.thickness * 2); // Reduced from 0.08 and *5
     const endPosition = config.direction.clone()
       .multiplyScalar(config.length)
       .add(config.attachmentPoint);
@@ -534,12 +534,14 @@ export class RealisticTreeGenerator {
     
     console.log(`🍃 Creating instanced foliage with ${clusters.length} clusters for ${species}`);
     
-    // Validate clusters have reasonable properties
+    // Validate and cap foliage sizes
     const validClusters = clusters.filter(cluster => {
       const isValid = cluster.position && cluster.size > 0 && cluster.density > 0;
       if (!isValid) {
         console.warn('🚨 Invalid foliage cluster:', cluster);
       }
+      // Cap maximum foliage size to prevent oversized clusters
+      cluster.size = Math.min(cluster.size, treeHeight * 0.12); // Cap at 12% of tree height
       return isValid;
     });
     
@@ -566,7 +568,9 @@ export class RealisticTreeGenerator {
         const rotation = new THREE.Quaternion().setFromEuler(
           new THREE.Euler(0, Math.random() * Math.PI * 2, 0)
         );
-        const scale = new THREE.Vector3(cluster.size, cluster.size, cluster.size);
+        // Apply additional size reduction multiplier
+        const finalSize = cluster.size * 0.6; // Additional 40% size reduction
+        const scale = new THREE.Vector3(finalSize, finalSize, finalSize);
         
         matrix.compose(position, rotation, scale);
         instancedMesh.setMatrixAt(i, matrix);
@@ -653,8 +657,9 @@ export class RealisticTreeGenerator {
     const endHeight = treeHeight * 0.95;
     const coverageHeight = endHeight - startHeight;
     
-    const bottomConeRadius = treeHeight * 0.35;
-    const topConeRadius = treeHeight * 0.08;
+    // REDUCED pine cone sizes
+    const bottomConeRadius = treeHeight * 0.15; // Reduced from 0.35
+    const topConeRadius = treeHeight * 0.04; // Reduced from 0.08
     
     for (let i = 0; i < coneCount; i++) {
       const heightRatio = i / (coneCount - 1);
@@ -664,7 +669,7 @@ export class RealisticTreeGenerator {
       // Create foliage cluster for this cone level
       foliageClusters.push({
         position: new THREE.Vector3(0, coneY, 0),
-        size: coneRadius * 0.8,
+        size: coneRadius * 0.6, // Reduced from 0.8
         density: 0.95
       });
       
@@ -680,7 +685,7 @@ export class RealisticTreeGenerator {
             coneY + (Math.random() - 0.5) * coneRadius * 0.2,
             Math.sin(angle) * distance
           ),
-          size: coneRadius * (0.3 + Math.random() * 0.2),
+          size: coneRadius * (0.15 + Math.random() * 0.1), // Reduced from 0.3 + 0.2
           density: 0.8
         });
       }
