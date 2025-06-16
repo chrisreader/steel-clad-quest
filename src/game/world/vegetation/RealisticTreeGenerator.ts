@@ -652,7 +652,7 @@ export class RealisticTreeGenerator {
     const branches: THREE.Object3D[] = [];
     const foliageClusters: FoliageCluster[] = [];
     
-    // Formula-based cone generation following the original plan
+    // Formula-based cone generation - create actual cone geometries
     const coneCount = Math.floor(treeHeight / 4) + 2; // Gives 4-8 cones for 15-25 unit trees
     const startHeight = treeHeight * 0.15; // Start at 15% of trunk height
     const endHeight = treeHeight * 0.95; // End at 95% of trunk height
@@ -661,12 +661,12 @@ export class RealisticTreeGenerator {
     // Proper cone sizing with linear taper
     const bottomConeRadius = treeHeight * 0.3; // Bottom cone = 30% of height radius
     const topConeRadius = treeHeight * 0.05; // Top cone = 5% of height radius
-    const coneHeight = treeHeight * 0.25; // All cones same relative height
+    const coneGeometryHeight = treeHeight * 0.35; // Cone geometry height for overlap
     
     // Even vertical spacing with 50% overlap
     const verticalSpacing = coverageHeight / (coneCount - 1);
     
-    console.log(`🌲 Creating pine tree with ${coneCount} cones, height=${treeHeight.toFixed(2)}`);
+    console.log(`🌲 Creating pine tree with ${coneCount} cone geometries, height=${treeHeight.toFixed(2)}`);
     
     for (let i = 0; i < coneCount; i++) {
       const heightRatio = i / (coneCount - 1);
@@ -677,45 +677,27 @@ export class RealisticTreeGenerator {
       // Even distribution with proper spacing
       const coneY = startHeight + (i * verticalSpacing);
       
-      // Create conical geometry using multiple foliage clusters in cone shape
-      const clustersPerCone = Math.max(3, Math.floor(coneRadius * 8)); // More clusters for larger cones
+      // Create actual cone geometry
+      const coneGeometry = new THREE.ConeGeometry(coneRadius, coneGeometryHeight, 8);
+      const coneMaterial = this.getOptimizedFoliageMaterial(TreeSpeciesType.PINE);
+      const coneMesh = new THREE.Mesh(coneGeometry, coneMaterial);
       
-      for (let j = 0; j < clustersPerCone; j++) {
-        const angle = (j / clustersPerCone) * Math.PI * 2;
-        const radiusVariation = 0.7 + Math.random() * 0.3; // Natural variation
-        const clusterRadius = coneRadius * radiusVariation;
-        
-        // Position clusters in cone formation
-        const x = Math.cos(angle) * clusterRadius;
-        const z = Math.sin(angle) * clusterRadius;
-        
-        // Vertical offset for natural cone shape
-        const yOffset = (Math.random() - 0.5) * coneHeight * 0.2;
-        
-        foliageClusters.push({
-          position: new THREE.Vector3(x, coneY + yOffset, z),
-          size: coneRadius * 0.4, // Size proportional to cone radius
-          density: 0.9 + Math.random() * 0.1
-        });
-      }
+      // Position cone properly
+      coneMesh.position.set(0, coneY + (coneGeometryHeight / 2), 0);
+      coneMesh.castShadow = true;
+      coneMesh.receiveShadow = true;
       
-      // Add central cluster for cone core
-      foliageClusters.push({
-        position: new THREE.Vector3(0, coneY, 0),
-        size: coneRadius * 0.6,
-        density: 1.0
-      });
+      // Add slight rotation for natural look
+      coneMesh.rotation.y = Math.random() * Math.PI * 2;
+      
+      // Add cone mesh as a branch (since we return it in branches array)
+      branches.push(coneMesh);
     }
     
-    // Ensure top cone sits exactly at trunk tip
-    const topConeY = endHeight;
-    foliageClusters.push({
-      position: new THREE.Vector3(0, topConeY, 0),
-      size: topConeRadius * 2,
-      density: 1.0
-    });
+    console.log(`🌲 Created pine tree with ${branches.length} cone geometries`);
     
-    console.log(`🌲 Created pine tree with ${foliageClusters.length} foliage clusters across ${coneCount} cone levels`);
+    // No foliage clusters needed - we're using direct cone geometries
+    // No branches needed - pine trees have cones directly attached to trunk
     
     return { branches, foliageClusters };
   }
