@@ -210,10 +210,19 @@ export class RealisticTreeGenerator {
     // Add all branches
     branches.forEach(branch => tree.add(branch));
     
-    // Create optimized unified foliage
+    // Debug: Log foliage cluster information
+    console.log(`🍃 Tree ${species} has ${foliageClusters.length} foliage clusters`);
+    
+    // Create optimized unified foliage with fallback
     const unifiedFoliage = this.createOptimizedFoliage(foliageClusters, species, height);
     if (unifiedFoliage) {
       tree.add(unifiedFoliage);
+      console.log(`🍃 Successfully added foliage to ${species} tree`);
+    } else {
+      console.warn(`🚨 Failed to create foliage for ${species} tree, using fallback`);
+      // Fallback: Create individual foliage meshes
+      const fallbackFoliage = this.createFallbackFoliage(foliageClusters, species);
+      fallbackFoliage.forEach(mesh => tree.add(mesh));
     }
 
     // Position and scale tree
@@ -518,63 +527,99 @@ export class RealisticTreeGenerator {
   }
 
   private createOptimizedFoliage(clusters: FoliageCluster[], species: TreeSpeciesType, treeHeight: number): THREE.Mesh | null {
-    if (clusters.length === 0) return null;
-    
-    // Get base geometry and convert to InstancedBufferGeometry
-    const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!;
-    const instancedGeometry = new THREE.InstancedBufferGeometry();
-    
-    // Copy base geometry attributes to instanced geometry
-    instancedGeometry.setIndex(baseGeometry.getIndex());
-    instancedGeometry.setAttribute('position', baseGeometry.getAttribute('position'));
-    instancedGeometry.setAttribute('normal', baseGeometry.getAttribute('normal'));
-    instancedGeometry.setAttribute('uv', baseGeometry.getAttribute('uv'));
-    
-    // Set instance count
-    instancedGeometry.instanceCount = clusters.length;
-    
-    // Create transformation matrices for each foliage cluster
-    const matrices = new Float32Array(clusters.length * 16);
-    const colors = new Float32Array(clusters.length * 3);
-    
-    for (let i = 0; i < clusters.length; i++) {
-      const cluster = clusters[i];
-      const matrix = new THREE.Matrix4();
-      
-      // Apply position and scale
-      matrix.makeScale(cluster.size, cluster.size, cluster.size);
-      matrix.setPosition(cluster.position);
-      
-      // Add slight random rotation
-      const rotationMatrix = new THREE.Matrix4();
-      rotationMatrix.makeRotationY(Math.random() * Math.PI * 2);
-      matrix.multiply(rotationMatrix);
-      
-      matrix.toArray(matrices, i * 16);
-      
-      // Generate foliage color variation
-      const hue = 0.25 + (Math.random() - 0.5) * 0.05;
-      const saturation = 0.6 + (Math.random() - 0.5) * 0.2;
-      const lightness = 0.35 + (Math.random() - 0.5) * 0.1;
-      const color = new THREE.Color().setHSL(hue, saturation, lightness);
-      
-      colors[i * 3] = color.r;
-      colors[i * 3 + 1] = color.g;
-      colors[i * 3 + 2] = color.b;
+    if (clusters.length === 0) {
+      console.warn('🚨 No foliage clusters provided');
+      return null;
     }
     
-    instancedGeometry.setAttribute('instanceMatrix', new THREE.InstancedBufferAttribute(matrices, 16));
-    instancedGeometry.setAttribute('instanceColor', new THREE.InstancedBufferAttribute(colors, 3));
+    console.log(`🍃 Creating instanced foliage with ${clusters.length} clusters for ${species}`);
     
+    // Validate clusters have reasonable properties
+    const validClusters = clusters.filter(cluster => {
+      const isValid = cluster.position && cluster.size > 0 && cluster.density > 0;
+      if (!isValid) {
+        console.warn('🚨 Invalid foliage cluster:', cluster);
+      }
+      return isValid;
+    });
+    
+    if (validClusters.length === 0) {
+      console.warn('🚨 No valid foliage clusters after filtering');
+      return null;
+    }
+    
+    try {
+      // Get base geometry
+      const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!;
+      
+      // Create instanced mesh directly with base geometry
+      const material = this.getOptimizedFoliageMaterial(species);
+      const instancedMesh = new THREE.InstancedMesh(baseGeometry, material, validClusters.length);
+      
+      // Create transformation matrices for each foliage cluster
+      for (let i = 0; i < validClusters.length; i++) {
+        const cluster = validClusters[i];
+        const matrix = new THREE.Matrix4();
+        
+        // Create proper transformation matrix using compose
+        const position = cluster.position.clone();
+        const rotation = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(0, Math.random() * Math.PI * 2, 0)
+        );
+        const scale = new THREE.Vector3(cluster.size, cluster.size, cluster.size);
+        
+        matrix.compose(position, rotation, scale);
+        instancedMesh.setMatrixAt(i, matrix);
+        
+        // Set instance color with variation
+        const hue = 0.25 + (Math.random() - 0.5) * 0.05;
+        const saturation = 0.6 + (Math.random() - 0.5) * 0.2;
+        const lightness = 0.35 + (Math.random() - 0.5) * 0.1;
+        const color = new THREE.Color().setHSL(hue, saturation, lightness);
+        
+        instancedMesh.setColorAt(i, color);
+      }
+      
+      // Update instance matrices and colors
+      instancedMesh.instanceMatrix.needsUpdate = true;
+      if (instancedMesh.instanceColor) {
+        instancedMesh.instanceColor.needsUpdate = true;
+      }
+      
+      instancedMesh.castShadow = true;
+      instancedMesh.receiveShadow = true;
+      
+      console.log(`🍃 Successfully created instanced foliage with ${validClusters.length} clusters for ${species}`);
+      return instancedMesh;
+      
+    } catch (error) {
+      console.error('🚨 Error creating instanced foliage:', error);
+      return null;
+    }
+  }
+
+  private createFallbackFoliage(clusters: FoliageCluster[], species: TreeSpeciesType): THREE.Mesh[] {
+    console.log(`🍃 Creating fallback foliage with ${clusters.length} individual meshes for ${species}`);
+    
+    const foliageMeshes: THREE.Mesh[] = [];
+    const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!;
     const material = this.getOptimizedFoliageMaterial(species);
-    const instancedMesh = new THREE.Mesh(instancedGeometry, material);
     
-    instancedMesh.castShadow = true;
-    instancedMesh.receiveShadow = true;
+    for (const cluster of clusters) {
+      if (cluster.size <= 0) continue;
+      
+      const mesh = new THREE.Mesh(baseGeometry.clone(), material.clone());
+      mesh.position.copy(cluster.position);
+      mesh.scale.set(cluster.size, cluster.size, cluster.size);
+      mesh.rotation.y = Math.random() * Math.PI * 2;
+      
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      
+      foliageMeshes.push(mesh);
+    }
     
-    console.log(`🍃 Created instanced foliage with ${clusters.length} clusters for ${species}`);
-    
-    return instancedMesh;
+    return foliageMeshes;
   }
 
   private getOptimizedFoliageMaterial(species: TreeSpeciesType): THREE.Material {
@@ -587,7 +632,8 @@ export class RealisticTreeGenerator {
         metalness: 0.0,
         transparent: true,
         opacity: 0.9,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        vertexColors: true // Enable per-instance colors
       });
       this.materialCache.set(materialKey, material);
     }
