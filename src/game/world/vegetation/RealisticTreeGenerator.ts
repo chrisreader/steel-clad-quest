@@ -18,6 +18,15 @@ interface FoliageCluster {
   density: number;
 }
 
+interface PineTreeConfig {
+  height: number;
+  trunkRadius: number;
+  age: number; // 0-1 scale (0=young, 1=mature)
+  health: number; // 0-1 scale (0=diseased, 1=healthy)
+  coneSpacing: number; // Cone vertical spacing factor
+  conesPerLevel: number; // Number of cones at each height level
+}
+
 export class RealisticTreeGenerator {
   private textureCache: Map<string, THREE.Texture> = new Map();
   private foliageGeometryCache: Map<string, THREE.BufferGeometry> = new Map();
@@ -45,6 +54,13 @@ export class RealisticTreeGenerator {
       
       const geometry = new THREE.SphereGeometry(1, segments, rings);
       this.foliageGeometryCache.set(`foliage_lod${lod}`, geometry);
+    }
+
+    // Pre-create pine cone geometries with different segment counts for LOD
+    for (let lod = 0; lod < 3; lod++) {
+      const segments = lod === 0 ? 12 : lod === 1 ? 8 : 6;
+      const geometry = new THREE.ConeGeometry(1, 1, segments);
+      this.foliageGeometryCache.set(`pine_cone_lod${lod}`, geometry);
     }
   }
 
@@ -195,34 +211,52 @@ export class RealisticTreeGenerator {
   public createTree(species: TreeSpeciesType, position: THREE.Vector3): THREE.Object3D {
     const tree = new THREE.Group();
 
-    const height = TreeSpeciesManager.getRandomHeight(species);
-    const baseRadius = TreeSpeciesManager.getRandomTrunkRadius(species);
-
-    console.log(`🌲 Creating realistic ${species} tree: height=${height.toFixed(2)}, radius=${baseRadius.toFixed(2)}`);
-
-    // Create trunk
-    const trunk = this.createRealisticTrunk(species, height, baseRadius);
-    tree.add(trunk);
-
-    // Create complete branch and crown system
-    const { branches, foliageClusters } = this.createRealisticTreeStructure(species, height, baseRadius);
-    
-    // Add all branches
-    branches.forEach(branch => tree.add(branch));
-    
-    // Debug: Log foliage cluster information
-    console.log(`🍃 Tree ${species} has ${foliageClusters.length} foliage clusters`);
-    
-    // Create optimized unified foliage with fallback
-    const unifiedFoliage = this.createOptimizedFoliage(foliageClusters, species, height);
-    if (unifiedFoliage) {
-      tree.add(unifiedFoliage);
-      console.log(`🍃 Successfully added foliage to ${species} tree`);
+    if (species === TreeSpeciesType.PINE) {
+      // Generate realistic pine tree configuration
+      const pineConfig = this.generateRealisticPineConfig();
+      
+      console.log(`🌲 Creating realistic ${species} tree: height=${pineConfig.height.toFixed(2)}, age=${pineConfig.age.toFixed(2)}, health=${pineConfig.health.toFixed(2)}`);
+      
+      // Create trunk
+      const trunk = this.createRealisticTrunk(species, pineConfig.height, pineConfig.trunkRadius);
+      tree.add(trunk);
+      
+      // Create realistic pine structure
+      const { branches } = this.createRealisticPineTreeStructure(pineConfig);
+      branches.forEach(branch => tree.add(branch));
+      
+      console.log(`🌲 Created realistic pine with ${branches.length} cone layers`);
     } else {
-      console.warn(`🚨 Failed to create foliage for ${species} tree, using fallback`);
-      // Fallback: Create individual foliage meshes
-      const fallbackFoliage = this.createFallbackFoliage(foliageClusters, species);
-      fallbackFoliage.forEach(mesh => tree.add(mesh));
+      // Use existing logic for other tree species
+      const height = TreeSpeciesManager.getRandomHeight(species);
+      const baseRadius = TreeSpeciesManager.getRandomTrunkRadius(species);
+
+      console.log(`🌲 Creating realistic ${species} tree: height=${height.toFixed(2)}, radius=${baseRadius.toFixed(2)}`);
+
+      // Create trunk
+      const trunk = this.createRealisticTrunk(species, height, baseRadius);
+      tree.add(trunk);
+
+      // Create complete branch and crown system
+      const { branches, foliageClusters } = this.createRealisticTreeStructure(species, height, baseRadius);
+      
+      // Add all branches
+      branches.forEach(branch => tree.add(branch));
+      
+      // Debug: Log foliage cluster information
+      console.log(`🍃 Tree ${species} has ${foliageClusters.length} foliage clusters`);
+      
+      // Create optimized unified foliage with fallback
+      const unifiedFoliage = this.createOptimizedFoliage(foliageClusters, species, height);
+      if (unifiedFoliage) {
+        tree.add(unifiedFoliage);
+        console.log(`🍃 Successfully added foliage to ${species} tree`);
+      } else {
+        console.warn(`🚨 Failed to create foliage for ${species} tree, using fallback`);
+        // Fallback: Create individual foliage meshes
+        const fallbackFoliage = this.createFallbackFoliage(foliageClusters, species);
+        fallbackFoliage.forEach(mesh => tree.add(mesh));
+      }
     }
 
     // Position and scale tree
@@ -234,16 +268,159 @@ export class RealisticTreeGenerator {
     return tree;
   }
 
+  private generateRealisticPineConfig(): PineTreeConfig {
+    // Generate age (determines overall characteristics)
+    const age = Math.random(); // 0 = young sapling, 1 = ancient tree
+    
+    // Generate health (affects appearance and fullness)
+    const health = 0.6 + Math.random() * 0.4; // Most trees are reasonably healthy
+    
+    // Age-based height scaling
+    let heightRange: { min: number; max: number };
+    if (age < 0.3) {
+      // Young trees (saplings to adolescent)
+      heightRange = { min: 5, max: 12 };
+    } else if (age < 0.7) {
+      // Mature trees
+      heightRange = { min: 12, max: 20 };
+    } else {
+      // Ancient/old growth trees
+      heightRange = { min: 18, max: 28 };
+    }
+    
+    const height = heightRange.min + Math.random() * (heightRange.max - heightRange.min);
+    
+    // Age and health-based trunk radius
+    const baseRadius = age * 0.8 + 0.3; // Age contributes to thickness
+    const healthRadius = baseRadius * (0.8 + health * 0.2); // Health affects final size
+    const trunkRadius = Math.max(0.2, healthRadius * (0.8 + Math.random() * 0.4));
+    
+    // Age-based cone characteristics
+    const coneSpacing = age < 0.4 ? 0.8 : 1.2; // Young trees have tighter spacing
+    const conesPerLevel = Math.floor(1 + age * 2); // More cone layers for older trees
+    
+    return {
+      height,
+      trunkRadius,
+      age,
+      health,
+      coneSpacing,
+      conesPerLevel
+    };
+  }
+
+  private createRealisticPineTreeStructure(config: PineTreeConfig): {
+    branches: THREE.Object3D[];
+    foliageClusters: FoliageCluster[];
+  } {
+    const branches: THREE.Object3D[] = [];
+    const foliageClusters: FoliageCluster[] = [];
+    
+    // Calculate cone distribution based on age and health
+    const minConeCount = Math.max(3, Math.floor(config.height / 6));
+    const maxConeCount = Math.floor(config.height / 3.5);
+    const coneCount = Math.floor(minConeCount + config.age * (maxConeCount - minConeCount));
+    
+    // Vertical coverage area
+    const startHeight = config.height * (config.age < 0.3 ? 0.2 : 0.15); // Young trees start higher
+    const endHeight = config.height * 0.92;
+    const coverageHeight = endHeight - startHeight;
+    
+    // Cone sizing with realistic proportions
+    const bottomConeRadius = config.height * (0.25 + config.age * 0.1) * config.health;
+    const topConeRadius = config.height * 0.04;
+    
+    // Cone height varies with age and position
+    const baseConeHeight = config.height * 0.3;
+    
+    console.log(`🌲 Realistic pine: age=${config.age.toFixed(2)}, ${coneCount} cones, health=${config.health.toFixed(2)}`);
+    
+    for (let i = 0; i < coneCount; i++) {
+      const heightRatio = i / (coneCount - 1);
+      
+      // Non-linear cone sizing for natural taper
+      const sizeTransition = Math.pow(1 - heightRatio, 1.5); // Exponential taper
+      const coneRadius = topConeRadius + (bottomConeRadius - topConeRadius) * sizeTransition;
+      
+      // Variable cone heights (larger at bottom, smaller at top)
+      const coneHeight = baseConeHeight * (0.6 + sizeTransition * 0.4);
+      
+      // Age-based spacing with natural variation
+      const baseSpacing = coverageHeight / Math.max(1, coneCount - 1);
+      const spacingVariation = (Math.random() - 0.5) * baseSpacing * 0.3;
+      const coneY = startHeight + (i * baseSpacing * config.coneSpacing) + spacingVariation;
+      
+      // Health affects cone fullness and shape
+      const healthFactor = 0.7 + config.health * 0.3;
+      const finalRadius = coneRadius * healthFactor;
+      const finalHeight = coneHeight * healthFactor;
+      
+      // Create multiple cones per level for fuller appearance (age-dependent)
+      const conesAtLevel = Math.max(1, Math.floor(config.conesPerLevel * (1 + sizeTransition * 0.5)));
+      
+      for (let j = 0; j < conesAtLevel; j++) {
+        const angle = j * (Math.PI * 2 / conesAtLevel) + Math.random() * 0.3;
+        const offsetRadius = j === 0 ? 0 : finalRadius * 0.2 * Math.random();
+        
+        const x = Math.cos(angle) * offsetRadius;
+        const z = Math.sin(angle) * offsetRadius;
+        
+        // Create cone geometry with appropriate LOD
+        const segments = finalRadius > config.height * 0.15 ? 12 : 8;
+        const coneGeometry = new THREE.ConeGeometry(finalRadius, finalHeight, segments);
+        const coneMaterial = this.getRealisticPineMaterial(config);
+        const coneMesh = new THREE.Mesh(coneGeometry, coneMaterial);
+        
+        // Position cone
+        coneMesh.position.set(x, coneY + (finalHeight / 2), z);
+        coneMesh.castShadow = true;
+        coneMesh.receiveShadow = true;
+        
+        // Natural rotation
+        coneMesh.rotation.y = angle + Math.random() * 0.5;
+        coneMesh.rotation.x = (Math.random() - 0.5) * 0.1; // Slight tilt
+        coneMesh.rotation.z = (Math.random() - 0.5) * 0.1;
+        
+        branches.push(coneMesh);
+      }
+    }
+    
+    console.log(`🌲 Created realistic pine with ${branches.length} cone meshes across ${coneCount} levels`);
+    
+    return { branches, foliageClusters };
+  }
+
+  private getRealisticPineMaterial(config: PineTreeConfig): THREE.Material {
+    const materialKey = `pine_realistic_${Math.floor(config.age * 10)}_${Math.floor(config.health * 10)}`;
+    
+    if (!this.materialCache.has(materialKey)) {
+      // Age and health affect color
+      const baseHue = 0.25; // Green base
+      const ageSaturation = 0.6 + config.age * 0.2; // Older trees more saturated
+      const healthLightness = 0.15 + config.health * 0.15; // Healthier trees brighter
+      
+      const color = new THREE.Color().setHSL(baseHue, ageSaturation, healthLightness);
+      
+      const material = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: 0.9,
+        metalness: 0.0,
+        transparent: false,
+        side: THREE.FrontSide
+      });
+      
+      this.materialCache.set(materialKey, material);
+    }
+    
+    return this.materialCache.get(materialKey)!;
+  }
+
   private createRealisticTreeStructure(species: TreeSpeciesType, treeHeight: number, trunkBaseRadius: number): {
     branches: THREE.Object3D[];
     foliageClusters: FoliageCluster[];
   } {
     const branches: THREE.Object3D[] = [];
     const foliageClusters: FoliageCluster[] = [];
-
-    if (species === TreeSpeciesType.PINE) {
-      return this.createPineTreeStructure(treeHeight, trunkBaseRadius);
-    }
 
     // Create lower trunk branches (20-50% height)
     const lowerBranches = this.createLowerBranches(species, treeHeight, trunkBaseRadius);
@@ -643,63 +820,6 @@ export class RealisticTreeGenerator {
     }
     
     return this.materialCache.get(materialKey)!;
-  }
-
-  private createPineTreeStructure(treeHeight: number, trunkBaseRadius: number): {
-    branches: THREE.Object3D[];
-    foliageClusters: FoliageCluster[];
-  } {
-    const branches: THREE.Object3D[] = [];
-    const foliageClusters: FoliageCluster[] = [];
-    
-    // Formula-based cone generation - create actual cone geometries
-    const coneCount = Math.floor(treeHeight / 4) + 2; // Gives 4-8 cones for 15-25 unit trees
-    const startHeight = treeHeight * 0.15; // Start at 15% of trunk height
-    const endHeight = treeHeight * 0.95; // End at 95% of trunk height
-    const coverageHeight = endHeight - startHeight;
-    
-    // Proper cone sizing with linear taper
-    const bottomConeRadius = treeHeight * 0.3; // Bottom cone = 30% of height radius
-    const topConeRadius = treeHeight * 0.05; // Top cone = 5% of height radius
-    const coneGeometryHeight = treeHeight * 0.35; // Cone geometry height for overlap
-    
-    // Even vertical spacing with 50% overlap
-    const verticalSpacing = coverageHeight / (coneCount - 1);
-    
-    console.log(`🌲 Creating pine tree with ${coneCount} cone geometries, height=${treeHeight.toFixed(2)}`);
-    
-    for (let i = 0; i < coneCount; i++) {
-      const heightRatio = i / (coneCount - 1);
-      
-      // Linear taper from bottom to top
-      const coneRadius = bottomConeRadius * (1 - heightRatio) + topConeRadius * heightRatio;
-      
-      // Even distribution with proper spacing
-      const coneY = startHeight + (i * verticalSpacing);
-      
-      // Create actual cone geometry
-      const coneGeometry = new THREE.ConeGeometry(coneRadius, coneGeometryHeight, 8);
-      const coneMaterial = this.getOptimizedFoliageMaterial(TreeSpeciesType.PINE);
-      const coneMesh = new THREE.Mesh(coneGeometry, coneMaterial);
-      
-      // Position cone properly
-      coneMesh.position.set(0, coneY + (coneGeometryHeight / 2), 0);
-      coneMesh.castShadow = true;
-      coneMesh.receiveShadow = true;
-      
-      // Add slight rotation for natural look
-      coneMesh.rotation.y = Math.random() * Math.PI * 2;
-      
-      // Add cone mesh as a branch (since we return it in branches array)
-      branches.push(coneMesh);
-    }
-    
-    console.log(`🌲 Created pine tree with ${branches.length} cone geometries`);
-    
-    // No foliage clusters needed - we're using direct cone geometries
-    // No branches needed - pine trees have cones directly attached to trunk
-    
-    return { branches, foliageClusters };
   }
 
   private createRealisticTrunk(species: TreeSpeciesType, height: number, baseRadius: number): THREE.Mesh {
