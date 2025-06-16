@@ -70,20 +70,20 @@ export class SceneManager {
       this.ringQuadrantSystem = new RingQuadrantSystem(this.scene, this.physicsManager, new THREE.Vector3(0, 0, 0));
       console.log("🔄 [SceneManager] Ring quadrant system created");
       
-      // Create terrain generator - FIXED constructor call
-      this.terrainGenerator = new TerrainFeatureGenerator(this.scene, this.physicsManager, this.ringQuadrantSystem);
+      // Create terrain generator - FIXED constructor call (only scene and physicsManager)
+      this.terrainGenerator = new TerrainFeatureGenerator(this.scene, this.physicsManager);
       console.log("🏔️ [SceneManager] Terrain generator created");
       
-      // Create structure generator - FIXED constructor call
-      this.structureGenerator = new StructureGenerator(this.scene, this.physicsManager, this.ringQuadrantSystem);
+      // Create structure generator - FIXED constructor call (only scene and physicsManager)
+      this.structureGenerator = new StructureGenerator(this.scene, this.physicsManager);
       console.log("🏗️ [SceneManager] Structure generator created");
       
       // Create tree generator
       this.treeGenerator = new RealisticTreeGenerator();
       console.log("🌳 [SceneManager] Tree generator created");
       
-      // Create cloud spawning system - FIXED constructor call
-      this.cloudSpawningSystem = new DynamicCloudSpawningSystem(this.scene, this.physicsManager);
+      // Create cloud spawning system - FIXED constructor call (only scene)
+      this.cloudSpawningSystem = new DynamicCloudSpawningSystem(this.scene);
       console.log("☁️ [SceneManager] Cloud spawning system created");
       
       // Generate initial world
