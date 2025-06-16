@@ -652,43 +652,32 @@ export class RealisticTreeGenerator {
     const branches: THREE.Object3D[] = [];
     const foliageClusters: FoliageCluster[] = [];
     
-    const coneCount = Math.floor(treeHeight / 3) + 2;
-    const startHeight = treeHeight * 0.25;
-    const endHeight = treeHeight * 0.95;
-    const coverageHeight = endHeight - startHeight;
+    // Create classic pine cone shape - single large cone
+    const coneStartHeight = treeHeight * 0.2; // Start cone at 20% height
+    const coneEndHeight = treeHeight * 0.95; // End cone at 95% height
+    const coneHeight = coneEndHeight - coneStartHeight;
+    const coneBaseRadius = treeHeight * 0.25; // Base of cone radius
+    const coneTopRadius = treeHeight * 0.02; // Tip of cone radius
     
-    // REDUCED pine cone sizes
-    const bottomConeRadius = treeHeight * 0.15; // Reduced from 0.35
-    const topConeRadius = treeHeight * 0.04; // Reduced from 0.08
+    // Create the main cone foliage cluster
+    foliageClusters.push({
+      position: new THREE.Vector3(0, coneStartHeight + (coneHeight * 0.5), 0),
+      size: coneBaseRadius * 1.5, // Make it large enough to form the cone shape
+      density: 1.0
+    });
     
-    for (let i = 0; i < coneCount; i++) {
-      const heightRatio = i / (coneCount - 1);
-      const coneRadius = bottomConeRadius * (1 - heightRatio) + topConeRadius * heightRatio;
-      const coneY = startHeight + (i * (coverageHeight / (coneCount - 1)));
+    // Add a few smaller clusters along the cone height for natural variation
+    const layerCount = 3;
+    for (let i = 0; i < layerCount; i++) {
+      const heightRatio = i / (layerCount - 1);
+      const layerHeight = coneStartHeight + (coneHeight * heightRatio);
+      const layerRadius = coneBaseRadius * (1 - heightRatio * 0.8) + coneTopRadius * (heightRatio * 0.8);
       
-      // Create foliage cluster for this cone level
       foliageClusters.push({
-        position: new THREE.Vector3(0, coneY, 0),
-        size: coneRadius * 0.6, // Reduced from 0.8
-        density: 0.95
+        position: new THREE.Vector3(0, layerHeight, 0),
+        size: layerRadius * 1.2,
+        density: 0.9 - (heightRatio * 0.2)
       });
-      
-      // Add smaller clusters around the main cone for natural variation
-      const subClusterCount = Math.max(3, Math.floor(coneRadius * 1.5));
-      for (let j = 0; j < subClusterCount; j++) {
-        const angle = (j / subClusterCount) * Math.PI * 2;
-        const distance = coneRadius * (0.6 + Math.random() * 0.3);
-        
-        foliageClusters.push({
-          position: new THREE.Vector3(
-            Math.cos(angle) * distance,
-            coneY + (Math.random() - 0.5) * coneRadius * 0.2,
-            Math.sin(angle) * distance
-          ),
-          size: coneRadius * (0.15 + Math.random() * 0.1), // Reduced from 0.3 + 0.2
-          density: 0.8
-        });
-      }
     }
     
     return { branches, foliageClusters };
