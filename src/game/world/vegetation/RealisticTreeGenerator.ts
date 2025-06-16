@@ -520,10 +520,17 @@ export class RealisticTreeGenerator {
   private createOptimizedFoliage(clusters: FoliageCluster[], species: TreeSpeciesType, treeHeight: number): THREE.Mesh | null {
     if (clusters.length === 0) return null;
     
+    // Get base geometry and convert to InstancedBufferGeometry
+    const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!;
     const instancedGeometry = new THREE.InstancedBufferGeometry();
-    const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!.clone();
     
-    instancedGeometry.copy(baseGeometry);
+    // Copy base geometry attributes to instanced geometry
+    instancedGeometry.setIndex(baseGeometry.getIndex());
+    instancedGeometry.setAttribute('position', baseGeometry.getAttribute('position'));
+    instancedGeometry.setAttribute('normal', baseGeometry.getAttribute('normal'));
+    instancedGeometry.setAttribute('uv', baseGeometry.getAttribute('uv'));
+    
+    // Set instance count
     instancedGeometry.instanceCount = clusters.length;
     
     // Create transformation matrices for each foliage cluster
