@@ -449,12 +449,12 @@ export class RealisticTreeGenerator {
     let heightMultiplier: number;
     
     if (heightRatio < 0.5) {
-      // Lower branches: 0.6-0.8x base size (sparse undergrowth)
-      heightMultiplier = 0.6 + (heightRatio / 0.5) * 0.2;
+      // Lower branches: 1.0-1.2x base size (more substantial undergrowth)
+      heightMultiplier = 1.0 + (heightRatio / 0.5) * 0.2;
     } else if (heightRatio < 0.85) {
-      // Mid crown: 0.8-1.3x base size (transition zone)
+      // Mid crown: 1.2-1.5x base size (smooth transition zone)
       const midRatio = (heightRatio - 0.5) / 0.35;
-      heightMultiplier = 0.8 + midRatio * 0.5;
+      heightMultiplier = 1.2 + midRatio * 0.3;
     } else {
       // Upper crown: 1.3-2.0x base size (dense canopy)
       const upperRatio = (heightRatio - 0.85) / 0.15;
