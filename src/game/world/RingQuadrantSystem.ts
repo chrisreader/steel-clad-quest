@@ -27,6 +27,8 @@ export interface Region {
 }
 
 export class RingQuadrantSystem {
+  private scene: THREE.Scene;
+  private physicsManager: any;
   private noise: any;
   private static readonly TRANSITION_ZONE_SIZE = 12; // Reduced for more stable transitions
   
@@ -73,7 +75,9 @@ export class RingQuadrantSystem {
   private worldCenter: THREE.Vector3;
   private activeRegions: Map<string, Region> = new Map();
   
-  constructor(worldCenter: THREE.Vector3 = new THREE.Vector3(0, 0, 0)) {
+  constructor(scene: THREE.Scene, physicsManager: any, worldCenter: THREE.Vector3 = new THREE.Vector3(0, 0, 0)) {
+    this.scene = scene;
+    this.physicsManager = physicsManager;
     this.worldCenter = worldCenter;
     // Initialize noise for terrain generation
     this.noise = new Noise(Math.random());
@@ -184,6 +188,12 @@ export class RingQuadrantSystem {
       }
     }
     return data;
+  }
+
+  // Update method for SceneManager compatibility
+  public update(playerPosition: THREE.Vector3): void {
+    // This can be expanded later for dynamic region loading/unloading
+    // For now, just maintain compatibility
   }
   
   /**
@@ -397,5 +407,18 @@ export class RingQuadrantSystem {
         scene.add(line);
       }
     });
+  }
+
+  // NEW: Add dispose method to fix the runtime error
+  public dispose(): void {
+    console.log("🗑️ [RingQuadrantSystem] Disposing ring quadrant system...");
+    
+    // Clear active regions
+    this.activeRegions.clear();
+    
+    // Clean up noise reference
+    this.noise = null;
+    
+    console.log("🗑️ [RingQuadrantSystem] Ring quadrant system disposed!");
   }
 }

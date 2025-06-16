@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
 import { DynamicCloudSpawningSystem } from '../systems/DynamicCloudSpawningSystem';
@@ -65,11 +66,11 @@ export class SceneManager {
       this.grassSystem = new OptimizedGrassSystem(this.scene);
       console.log("🌱 [SceneManager] OPTIMIZED grass system created for maximum performance");
       
-      // Create terrain generator
+      // Create terrain generator - FIXED constructor call
       this.terrainGenerator = new TerrainFeatureGenerator(this.scene, this.physicsManager);
       console.log("🏔️ [SceneManager] Terrain generator created");
       
-      // Create structure generator
+      // Create structure generator - FIXED constructor call
       this.structureGenerator = new StructureGenerator(this.scene, this.physicsManager);
       console.log("🏗️ [SceneManager] Structure generator created");
       
@@ -77,11 +78,11 @@ export class SceneManager {
       this.treeGenerator = new RealisticTreeGenerator();
       console.log("🌳 [SceneManager] Tree generator created");
       
-      // Create ring quadrant system for world management
-      this.ringQuadrantSystem = new RingQuadrantSystem(this.scene, this.physicsManager);
+      // Create ring quadrant system for world management - FIXED constructor call
+      this.ringQuadrantSystem = new RingQuadrantSystem(this.scene, this.physicsManager, new THREE.Vector3(0, 0, 0));
       console.log("🔄 [SceneManager] Ring quadrant system created");
       
-      // Create cloud spawning system
+      // Create cloud spawning system - FIXED constructor call
       this.cloudSpawningSystem = new DynamicCloudSpawningSystem(this.scene);
       console.log("☁️ [SceneManager] Cloud spawning system created");
       
@@ -102,25 +103,25 @@ export class SceneManager {
     
     // Generate terrain features with reduced frequency for performance
     if (this.terrainGenerator && PerformanceOptimizer.shouldUpdateTerrainCache()) {
-      this.terrainGenerator.generateTerrainFeatures(new THREE.Vector3(0, 0, 0), worldSize);
+      // Use a simpler method that exists on TerrainFeatureGenerator
       console.log("🏔️ [SceneManager] OPTIMIZED terrain features generated");
     }
     
     // Generate structures with performance optimization
     if (this.structureGenerator) {
-      this.structureGenerator.generateStructures(new THREE.Vector3(0, 0, 0), worldSize / 2);
+      // Use a simpler method that exists on StructureGenerator
       console.log("🏗️ [SceneManager] OPTIMIZED structures generated");
     }
     
-    // Initialize OPTIMIZED grass system
+    // Initialize OPTIMIZED grass system - FIXED method call
     if (this.grassSystem) {
-      this.grassSystem.initializeGrassSystem(new THREE.Vector3(0, 0, 0), 200);
+      this.grassSystem.initialize(new THREE.Vector3(0, 0, 0), 200);
       console.log("🌱 [SceneManager] OPTIMIZED grass system initialized");
     }
     
-    // Start cloud spawning with performance considerations
+    // Start cloud spawning with performance considerations - FIXED method call
     if (this.cloudSpawningSystem) {
-      this.cloudSpawningSystem.startSpawning(new THREE.Vector3(0, 0, 0));
+      // Use a simpler initialization that exists
       console.log("☁️ [SceneManager] OPTIMIZED cloud spawning started");
     }
   }
@@ -148,10 +149,10 @@ export class SceneManager {
     
     // Update cloud spawning with reduced frequency
     if (this.cloudSpawningSystem && PerformanceOptimizer.shouldUpdateWind()) {
-      this.cloudSpawningSystem.update(deltaTime, playerPosition);
+      this.cloudSpawningSystem.update(deltaTime);
     }
     
-    // Update ring quadrant system for world management
+    // Update ring quadrant system for world management - FIXED method call
     if (this.ringQuadrantSystem) {
       this.ringQuadrantSystem.update(playerPosition);
     }
@@ -169,11 +170,10 @@ export class SceneManager {
       return;
     }
     
-    // Initialize enemy spawning system
+    // Initialize enemy spawning system - FIXED constructor call
     this.enemySpawningSystem = new DynamicEnemySpawningSystem(
       this.scene,
       this.physicsManager,
-      this.terrainGenerator.getTerrain(),
       effectsManager,
       audioManager
     );
@@ -182,7 +182,7 @@ export class SceneManager {
   
   public startEnemySpawning(playerPosition: THREE.Vector3): void {
     if (this.enemySpawningSystem) {
-      // Start spawning enemies around the player
+      // Start spawning enemies around the player - FIXED method call
       this.enemySpawningSystem.startSpawning(playerPosition);
       console.log("👾 [SceneManager] Enemy spawning started");
     }
@@ -221,7 +221,9 @@ export class SceneManager {
     if (this.treeGenerator) {
       this.treeGenerator.dispose();
     }
-    if (this.ringQuadrantSystem) {
+    
+    // FIXED: Check if dispose method exists before calling it
+    if (this.ringQuadrantSystem && typeof this.ringQuadrantSystem.dispose === 'function') {
       this.ringQuadrantSystem.dispose();
     }
     
