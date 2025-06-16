@@ -5,18 +5,17 @@ import { InputManager } from './InputManager';
 import { EffectsManager } from './EffectsManager';
 import { AudioManager, SoundCategory } from './AudioManager';
 import { CombatSystem } from '../systems/CombatSystem';
-import { OptimizedMovementSystem } from '../systems/OptimizedMovementSystem';
-import { OptimizedRenderEngine } from './OptimizedRenderEngine';
+import { MovementSystem } from '../systems/MovementSystem';
+import { RenderEngine } from './RenderEngine';
 import { StateManager } from './StateManager';
 import { UIIntegrationManager } from './UIIntegrationManager';
 import { PhysicsManager } from './PhysicsManager';
 import { BuildingManager } from '../buildings/BuildingManager';
-import { PerformanceOptimizer } from '../core/PerformanceOptimizer';
 import { GameState, EnemyType } from '../../types/GameTypes';
 
 export class GameEngine {
   // Core managers
-  private renderEngine: OptimizedRenderEngine;
+  private renderEngine: RenderEngine;
   private stateManager: StateManager;
   private uiIntegrationManager: UIIntegrationManager;
   private physicsManager: PhysicsManager;
@@ -28,7 +27,7 @@ export class GameEngine {
   private effectsManager: EffectsManager | null = null;
   private audioManager: AudioManager | null = null;
   private combatSystem: CombatSystem | null = null;
-  private movementSystem: OptimizedMovementSystem | null = null;
+  private movementSystem: MovementSystem | null = null;
   
   // Game entities
   private player: Player | null = null;
@@ -46,13 +45,11 @@ export class GameEngine {
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
     
-    // Initialize managers with OPTIMIZED render engine
-    this.renderEngine = new OptimizedRenderEngine(mountElement);
+    // Initialize managers
+    this.renderEngine = new RenderEngine(mountElement);
     this.stateManager = new StateManager();
     this.uiIntegrationManager = new UIIntegrationManager();
     this.physicsManager = new PhysicsManager();
-    
-    console.log("🚀 [GameEngine] Using OPTIMIZED render engine for maximum performance");
   }
   
   // NEW METHOD: Set UI state from KnightGame
@@ -63,12 +60,11 @@ export class GameEngine {
   public async initialize(): Promise<void> {
     if (this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Starting OPTIMIZED initialization...");
+    console.log("🎮 [GameEngine] Starting initialization...");
     
     try {
-      // Initialize OPTIMIZED render engine
+      // Initialize render engine
       this.renderEngine.initialize();
-      console.log("🚀 [GameEngine] OPTIMIZED render engine initialized");
       
       // Create the building manager
       this.buildingManager = new BuildingManager(this.renderEngine.getScene(), this.physicsManager);
@@ -114,19 +110,18 @@ export class GameEngine {
       }
       
       // CRITICAL: Create the player with extensive debugging
-      console.log("🎮 [GameEngine] Creating player with OPTIMIZED performance...");
+      console.log("🎮 [GameEngine] Creating player with NEW ARM POSITIONING...");
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
-      console.log("🎮 [GameEngine] Player created successfully with optimized performance");
+      console.log("🎮 [GameEngine] Player created successfully with new arm positioning");
       
       // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
       if (playerBody.leftArm) playerBody.leftArm.visible = true;
       if (playerBody.rightArm) playerBody.rightArm.visible = true;
       
-      // Create game systems with OPTIMIZED movement system and physics manager
+      // Create game systems with physics manager
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
-      this.movementSystem = new OptimizedMovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
-      console.log("🚀 [GameEngine] OPTIMIZED movement system initialized");
+      this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
       
       // Initialize enemy spawning system in scene manager
       if (this.sceneManager) {
@@ -139,7 +134,7 @@ export class GameEngine {
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] OPTIMIZED initialization complete with performance monitoring!");
+      console.log("🎮 [GameEngine] Initialization complete with fire animation system!");
       
       // Start the game
       this.start();
@@ -275,10 +270,10 @@ export class GameEngine {
       return;
     }
     
-    console.log("🎮 [GameEngine] Starting OPTIMIZED game...");
+    console.log("🎮 [GameEngine] Starting game with NEW ARM POSITIONING...");
     this.stateManager.start();
     this.animate();
-    console.log("🎮 [GameEngine] OPTIMIZED game started successfully!");
+    console.log("🎮 [GameEngine] Game started successfully with NEW ARM POSITIONING!");
   }
   
   private animate = (): void => {
@@ -292,9 +287,6 @@ export class GameEngine {
       return;
     }
     
-    // Update PerformanceOptimizer first
-    PerformanceOptimizer.updateFrameCount();
-    
     const deltaTime = this.renderEngine.getDeltaTime();
     this.stateManager.update(deltaTime);
     this.update(deltaTime);
@@ -306,7 +298,7 @@ export class GameEngine {
       return;
     }
     
-    // Update OPTIMIZED movement system first
+    // Update movement system first
     this.movementSystem.update(deltaTime);
     
     // Check if player is moving
@@ -359,11 +351,6 @@ export class GameEngine {
     if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
       this.stateManager.setGameOver(this.stateManager.getScore());
     }
-    
-    // Performance logging with PerformanceOptimizer
-    if (PerformanceOptimizer.shouldLogPerformance()) {
-      console.log(`🚀 [OPTIMIZED GameEngine] FPS: ${PerformanceOptimizer.getCurrentFPS().toFixed(1)} | Mode: ${PerformanceOptimizer.getPerformanceMode()}`);
-    }
   }
   
   public pause(): void {
@@ -385,7 +372,7 @@ export class GameEngine {
   public restart(): void {
     if (!this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Restarting OPTIMIZED game and RECREATING PLAYER...");
+    console.log("🎮 [GameEngine] Restarting game and RECREATING PLAYER with NEW ARM POSITIONING...");
     this.stateManager.restart();
     
     // CRITICAL: Recreate player to ensure new arm positioning takes effect
@@ -397,9 +384,9 @@ export class GameEngine {
       }
       
       // Create new player with updated positioning
-      console.log("🔄 [GameEngine] Creating NEW player instance with OPTIMIZED performance...");
+      console.log("🔄 [GameEngine] Creating NEW player instance with updated arm positioning...");
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
-      console.log("🔄 [GameEngine] NEW player instance created with OPTIMIZED performance");
+      console.log("🔄 [GameEngine] NEW player instance created with updated arm positioning");
       
       // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
@@ -412,12 +399,11 @@ export class GameEngine {
       }
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       
-      // Recreate OPTIMIZED movement system with new player and physics manager
+      // Recreate movement system with new player and physics manager
       if (this.movementSystem) {
         this.movementSystem.dispose();
       }
-      this.movementSystem = new OptimizedMovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager!, this.physicsManager);
-      console.log("🚀 [GameEngine] OPTIMIZED movement system recreated");
+      this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager!, this.physicsManager);
       
       // Reset first-person camera
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
@@ -435,7 +421,7 @@ export class GameEngine {
       this.audioManager.play('game_music', true);
     }
     
-    console.log("🎮 [GameEngine] OPTIMIZED game restarted with NEW PLAYER!");
+    console.log("🎮 [GameEngine] Game restarted with NEW PLAYER and ARM POSITIONING!");
   }
   
   public handleInput(type: string, data?: any): void {

@@ -147,7 +147,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   useEffect(() => {
     if (!gameEngine || !gameStarted) return;
 
-    console.log('[KnightGame] 🔄 WEAPON SYNC - Syncing equipped weapons with OPTIMIZED game engine');
+    console.log('[KnightGame] 🔄 WEAPON SYNC - Syncing equipped weapons with game engine');
     console.log('[KnightGame] 🔄 Active slot:', activeWeaponSlot);
     console.log('[KnightGame] 🔄 Equipped weapons:', equippedWeapons);
     
@@ -159,24 +159,24 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
                         equippedWeapons.offhand;
     
     if (activeWeapon && activeWeapon.weaponId) {
-      console.log(`[KnightGame] 🏹 EQUIPPING WEAPON: ${activeWeapon.name} (${activeWeapon.weaponId}) to OPTIMIZED Player entity`);
+      console.log(`[KnightGame] 🏹 EQUIPPING WEAPON: ${activeWeapon.name} (${activeWeapon.weaponId}) to Player entity`);
       player.equipWeapon(activeWeapon.weaponId);
-      console.log(`[KnightGame] ✅ WEAPON EQUIPPED - OPTIMIZED Player should now have ${activeWeapon.name} equipped`);
+      console.log(`[KnightGame] ✅ WEAPON EQUIPPED - Player should now have ${activeWeapon.name} equipped`);
       
       // Additional logging for bow weapons
       if (activeWeapon.subtype === 'bow') {
-        console.log(`[KnightGame] 🏹 BOW EQUIPPED - OPTIMIZED Player should now be able to shoot arrows`);
+        console.log(`[KnightGame] 🏹 BOW EQUIPPED - Player should now be able to shoot arrows`);
         console.log(`[KnightGame] 🏹 isBowEquipped should be: true`);
       }
     } else {
       console.log(`[KnightGame] 🔄 UNEQUIPPING WEAPON - slot ${activeWeaponSlot} is empty`);
       player.unequipWeapon();
-      console.log(`[KnightGame] ✅ WEAPON UNEQUIPPED - OPTIMIZED Player should now have no weapon equipped`);
+      console.log(`[KnightGame] ✅ WEAPON UNEQUIPPED - Player should now have no weapon equipped`);
     }
     
     // Log current player weapon state after syncing
     setTimeout(() => {
-      console.log(`[KnightGame] 🔍 POST-SYNC CHECK - OPTIMIZED Player weapon state:`);
+      console.log(`[KnightGame] 🔍 POST-SYNC CHECK - Player weapon state:`);
       // Note: We can't directly access private properties, but the equip/unequip calls should have set them
     }, 100);
     
@@ -184,7 +184,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Enhanced weapon slot selection with immediate syncing
   const handleEnhancedWeaponSlotSelect = useCallback((slot: 1 | 2 | 3) => {
-    console.log(`[KnightGame] 🎯 SLOT SELECTION - Switching to weapon slot ${slot} in OPTIMIZED engine`);
+    console.log(`[KnightGame] 🎯 SLOT SELECTION - Switching to weapon slot ${slot}`);
     
     // Use the existing slot selection logic
     handleWeaponSlotSelect(slot);
@@ -195,7 +195,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // CRITICAL: Force engine restart when component mounts to ensure new arm positioning
   useEffect(() => {
-    console.log('[KnightGame] Component mounted - will force OPTIMIZED engine restart');
+    console.log('[KnightGame] Component mounted - will force engine restart for new arm positioning');
   }, []);
 
   // Log the initial setup
@@ -223,11 +223,11 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Handler for engine loading completion
   const handleEngineLoadingComplete = useCallback(() => {
-    console.log('🚀 [KnightGame] OPTIMIZED Engine loading completed, setting engineReady to true');
+    console.log('🚀 [KnightGame] Engine loading completed with NEW ARM POSITIONING, setting engineReady to true');
     setEngineReady(true);
     const engine = engineControllerRef.current?.getEngine();
     setGameEngine(engine || null);
-    console.log('🚀 [KnightGame] OPTIMIZED GameEngine instance set:', !!engine);
+    console.log('🚀 [KnightGame] GameEngine instance set with NEW ARM POSITIONING:', !!engine);
     onLoadingComplete?.();
   }, [onLoadingComplete, setEngineReady, setGameEngine]);
 
@@ -302,16 +302,16 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen, forceCursorVisible]);
 
   const startGame = useCallback(() => {
-    console.log('🚀 [KnightGame] Starting OPTIMIZED knight adventure...');
-    console.log('🚀 [KnightGame] OPTIMIZED GameEngine available:', !!gameEngine);
-    console.log('🚀 [KnightGame] Starting with Steel Sword equipped and OPTIMIZED performance');
+    console.log('🚀 [KnightGame] Starting knight adventure with NEW ARM POSITIONING...');
+    console.log('🚀 [KnightGame] GameEngine available:', !!gameEngine);
+    console.log('🚀 [KnightGame] Starting with Steel Sword equipped in primary and NEW ARM POSITIONING');
     
     if (gameEngine) {
-      console.log('🚀 [KnightGame] Starting OPTIMIZED GameEngine...');
+      console.log('🚀 [KnightGame] Starting GameEngine with NEW ARM POSITIONING...');
       gameEngine.start();
-      console.log('🚀 [KnightGame] OPTIMIZED GameEngine started, isRunning:', gameEngine.isRunning());
+      console.log('🚀 [KnightGame] GameEngine started with NEW ARM POSITIONING, isRunning:', gameEngine.isRunning());
     } else {
-      console.error('🚀 [KnightGame] OPTIMIZED GameEngine not available when trying to start game');
+      console.error('🚀 [KnightGame] GameEngine not available when trying to start game');
     }
     
     setGameStarted(true);
@@ -319,14 +319,14 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, [gameEngine, setGameStarted, setIsGameOver]);
 
   const restartGame = useCallback(() => {
-    console.log('🔄 [KnightGame] Restarting OPTIMIZED game - this will force creation of new player...');
+    console.log('🔄 [KnightGame] Restarting game - this will force creation of new player with NEW ARM POSITIONING...');
     gameControllerRef.current?.restartGame();
     engineControllerRef.current?.restart(); // This will trigger GameEngine.restart() which recreates the player
     
     setGameStarted(true);
     setIsGameOver(false);
     setIsPaused(false);
-    console.log('🔄 [KnightGame] OPTIMIZED Game restart initiated - new player will be created');
+    console.log('🔄 [KnightGame] Game restart initiated - new player will be created with NEW ARM POSITIONING');
   }, [setGameStarted, setIsGameOver, setIsPaused]);
 
   const goToMainMenu = useCallback(() => {
