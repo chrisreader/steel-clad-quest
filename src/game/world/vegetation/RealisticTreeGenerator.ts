@@ -652,33 +652,70 @@ export class RealisticTreeGenerator {
     const branches: THREE.Object3D[] = [];
     const foliageClusters: FoliageCluster[] = [];
     
-    // Create classic pine cone shape - single large cone
-    const coneStartHeight = treeHeight * 0.2; // Start cone at 20% height
-    const coneEndHeight = treeHeight * 0.95; // End cone at 95% height
-    const coneHeight = coneEndHeight - coneStartHeight;
-    const coneBaseRadius = treeHeight * 0.25; // Base of cone radius
-    const coneTopRadius = treeHeight * 0.02; // Tip of cone radius
+    // Formula-based cone generation following the original plan
+    const coneCount = Math.floor(treeHeight / 4) + 2; // Gives 4-8 cones for 15-25 unit trees
+    const startHeight = treeHeight * 0.15; // Start at 15% of trunk height
+    const endHeight = treeHeight * 0.95; // End at 95% of trunk height
+    const coverageHeight = endHeight - startHeight;
     
-    // Create the main cone foliage cluster
+    // Proper cone sizing with linear taper
+    const bottomConeRadius = treeHeight * 0.3; // Bottom cone = 30% of height radius
+    const topConeRadius = treeHeight * 0.05; // Top cone = 5% of height radius
+    const coneHeight = treeHeight * 0.25; // All cones same relative height
+    
+    // Even vertical spacing with 50% overlap
+    const verticalSpacing = coverageHeight / (coneCount - 1);
+    
+    console.log(`🌲 Creating pine tree with ${coneCount} cones, height=${treeHeight.toFixed(2)}`);
+    
+    for (let i = 0; i < coneCount; i++) {
+      const heightRatio = i / (coneCount - 1);
+      
+      // Linear taper from bottom to top
+      const coneRadius = bottomConeRadius * (1 - heightRatio) + topConeRadius * heightRatio;
+      
+      // Even distribution with proper spacing
+      const coneY = startHeight + (i * verticalSpacing);
+      
+      // Create conical geometry using multiple foliage clusters in cone shape
+      const clustersPerCone = Math.max(3, Math.floor(coneRadius * 8)); // More clusters for larger cones
+      
+      for (let j = 0; j < clustersPerCone; j++) {
+        const angle = (j / clustersPerCone) * Math.PI * 2;
+        const radiusVariation = 0.7 + Math.random() * 0.3; // Natural variation
+        const clusterRadius = coneRadius * radiusVariation;
+        
+        // Position clusters in cone formation
+        const x = Math.cos(angle) * clusterRadius;
+        const z = Math.sin(angle) * clusterRadius;
+        
+        // Vertical offset for natural cone shape
+        const yOffset = (Math.random() - 0.5) * coneHeight * 0.2;
+        
+        foliageClusters.push({
+          position: new THREE.Vector3(x, coneY + yOffset, z),
+          size: coneRadius * 0.4, // Size proportional to cone radius
+          density: 0.9 + Math.random() * 0.1
+        });
+      }
+      
+      // Add central cluster for cone core
+      foliageClusters.push({
+        position: new THREE.Vector3(0, coneY, 0),
+        size: coneRadius * 0.6,
+        density: 1.0
+      });
+    }
+    
+    // Ensure top cone sits exactly at trunk tip
+    const topConeY = endHeight;
     foliageClusters.push({
-      position: new THREE.Vector3(0, coneStartHeight + (coneHeight * 0.5), 0),
-      size: coneBaseRadius * 1.5, // Make it large enough to form the cone shape
+      position: new THREE.Vector3(0, topConeY, 0),
+      size: topConeRadius * 2,
       density: 1.0
     });
     
-    // Add a few smaller clusters along the cone height for natural variation
-    const layerCount = 3;
-    for (let i = 0; i < layerCount; i++) {
-      const heightRatio = i / (layerCount - 1);
-      const layerHeight = coneStartHeight + (coneHeight * heightRatio);
-      const layerRadius = coneBaseRadius * (1 - heightRatio * 0.8) + coneTopRadius * (heightRatio * 0.8);
-      
-      foliageClusters.push({
-        position: new THREE.Vector3(0, layerHeight, 0),
-        size: layerRadius * 1.2,
-        density: 0.9 - (heightRatio * 0.2)
-      });
-    }
+    console.log(`🌲 Created pine tree with ${foliageClusters.length} foliage clusters across ${coneCount} cone levels`);
     
     return { branches, foliageClusters };
   }
