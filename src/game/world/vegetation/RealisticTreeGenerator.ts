@@ -572,6 +572,8 @@ export class RealisticTreeGenerator {
     instancedMesh.castShadow = true;
     instancedMesh.receiveShadow = true;
     
+    console.log(`🍃 Created instanced foliage with ${clusters.length} clusters for ${species}`);
+    
     return instancedMesh;
   }
 
@@ -585,8 +587,7 @@ export class RealisticTreeGenerator {
         metalness: 0.0,
         transparent: true,
         opacity: 0.9,
-        side: THREE.DoubleSide,
-        vertexColors: true // Enable per-instance colors
+        side: THREE.DoubleSide
       });
       this.materialCache.set(materialKey, material);
     }
