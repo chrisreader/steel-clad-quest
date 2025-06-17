@@ -25,61 +25,11 @@ export class TreeGenerator {
           species, 
           new THREE.Vector3(0, 0, 0)
         );
-        
-        // Fix lighting on tree materials
-        this.enhanceTreeLighting(tree);
-        
         this.treeModels.push(tree);
       }
     }
     
-    console.log(`🌲 Created ${this.treeModels.length} realistic tree variations with enhanced lighting`);
-  }
-
-  private enhanceTreeLighting(tree: THREE.Object3D): void {
-    tree.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        if (child.material) {
-          // Handle both single materials and material arrays
-          const materials = Array.isArray(child.material) ? child.material : [child.material];
-          
-          materials.forEach((material) => {
-            if (material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshPhongMaterial) {
-              // Brighten the material to improve visibility
-              if (material.color) {
-                // Increase the base color brightness for better lighting response
-                material.color.multiplyScalar(1.4);
-                
-                // Ensure the material responds well to lighting
-                if (material instanceof THREE.MeshStandardMaterial) {
-                  material.roughness = Math.min(material.roughness || 0.8, 0.9);
-                  material.metalness = Math.max(material.metalness || 0, 0.1);
-                }
-              }
-              
-              // Enable shadows for better depth
-              material.shadowSide = THREE.DoubleSide;
-              material.needsUpdate = true;
-            } else if (material instanceof THREE.MeshLambertMaterial) {
-              // Convert Lambert materials to Standard for better lighting
-              const standardMaterial = new THREE.MeshStandardMaterial({
-                color: material.color.clone().multiplyScalar(1.4),
-                map: material.map,
-                roughness: 0.8,
-                metalness: 0.1
-              });
-              
-              child.material = standardMaterial;
-              material.dispose(); // Clean up old material
-            }
-          });
-        }
-        
-        // Enable shadow casting and receiving for better lighting interaction
-        child.castShadow = true;
-        child.receiveShadow = true;
-      }
-    });
+    console.log(`🌲 Created ${this.treeModels.length} realistic tree variations across ${allSpecies.length} species`);
   }
 
   public getTreeModels(): THREE.Object3D[] {
@@ -95,9 +45,6 @@ export class TreeGenerator {
       if (ForestBiomeManager.shouldSpawnTree(forestBiome, position)) {
         const species = ForestBiomeManager.selectTreeSpecies(forestBiome);
         const tree = this.realisticTreeGenerator.createTree(species, position);
-        
-        // Enhance lighting for this tree instance
-        this.enhanceTreeLighting(tree);
         
         // Add slight random variations
         const scale = 0.8 + Math.random() * 0.4;
@@ -117,9 +64,6 @@ export class TreeGenerator {
       
       const tree = this.realisticTreeGenerator.createTree(species, position);
       
-      // Enhance lighting for this tree instance
-      this.enhanceTreeLighting(tree);
-      
       const scale = 0.8 + Math.random() * 0.4;
       tree.scale.set(scale, scale, scale);
       tree.rotation.y = Math.random() * Math.PI * 2;
@@ -130,9 +74,6 @@ export class TreeGenerator {
 
   public createSpecificTree(species: TreeSpeciesType, position: THREE.Vector3): THREE.Object3D {
     const tree = this.realisticTreeGenerator.createTree(species, position);
-    
-    // Enhance lighting for this tree instance
-    this.enhanceTreeLighting(tree);
     
     const scale = 0.8 + Math.random() * 0.4;
     tree.scale.set(scale, scale, scale);
