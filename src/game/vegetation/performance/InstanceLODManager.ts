@@ -7,23 +7,25 @@ export interface InstanceLODInfo {
   lastLODLevel: number;
   instanceMatrices: THREE.Matrix4[];
   distanceFromPlayer: number;
+  lastUpdateTime: number;
 }
 
 export class InstanceLODManager {
   private regionInstanceData: Map<string, InstanceLODInfo> = new Map();
-  // Tighter LOD distances for 200-unit optimization
-  private lodDistances: number[] = [40, 80, 120, 200];
-  private readonly DENSITY_UPDATE_THRESHOLD = 0.1; // Lower threshold for smoother updates
-  private readonly POSITION_UPDATE_THRESHOLD = 3; // Lower threshold for responsiveness
-  private readonly CULLING_DISTANCE = 200; // Complete culling beyond this distance
+  // ENHANCED: More aggressive LOD distances
+  private lodDistances: number[] = [25, 50, 100, 150]; // Tighter distances
+  private readonly DENSITY_UPDATE_THRESHOLD = 0.08; // Lower for smoother transitions
+  private readonly POSITION_UPDATE_THRESHOLD = 2; // More responsive
+  private readonly CULLING_DISTANCE = 180; // Reduced from 200
+  private readonly UPDATE_THROTTLE = 50; // ms between updates per region
 
   public calculateInstanceLODDensity(distance: number): number {
-    if (distance >= this.CULLING_DISTANCE) return 0.0; // Complete culling beyond 200 units
+    if (distance >= this.CULLING_DISTANCE) return 0.0;
     if (distance < this.lodDistances[0]) return 1.0;
-    if (distance < this.lodDistances[1]) return 0.7; // More aggressive reduction
-    if (distance < this.lodDistances[2]) return 0.4; // Stronger culling
-    if (distance < this.lodDistances[3]) return 0.15; // Very sparse at distance
-    return 0.0; // Complete culling
+    if (distance < this.lodDistances[1]) return 0.6; // More aggressive
+    if (distance < this.lodDistances[2]) return 0.3; // Even more aggressive
+    if (distance < this.lodDistances[3]) return 0.1; // Very sparse
+    return 0.0;
   }
 
   public updateInstanceVisibility(
@@ -36,18 +38,16 @@ export class InstanceLODManager {
 
     const distanceToPlayer = playerPosition.distanceTo(regionCenter);
     
-    // Immediate culling for distant regions
+    // Immediate culling for very distant regions
     if (distanceToPlayer > this.CULLING_DISTANCE) {
       if (instancedMesh.visible) {
         instancedMesh.visible = false;
-        console.log(`🌱 LOD: Culled ${regionKey} at distance ${distanceToPlayer.toFixed(1)}`);
         return true;
       }
       return false;
     }
     
-    const targetLODDensity = this.calculateInstanceLODDensity(distanceToPlayer);
-    
+    const now = performance.now();
     let lodInfo = this.regionInstanceData.get(regionKey);
     
     // Initialize LOD info if not exists
@@ -55,7 +55,6 @@ export class InstanceLODManager {
       const originalCount = instancedMesh.count;
       const matrices: THREE.Matrix4[] = [];
       
-      // Store original instance matrices
       for (let i = 0; i < originalCount; i++) {
         const matrix = new THREE.Matrix4();
         instancedMesh.getMatrixAt(i, matrix);
@@ -67,46 +66,54 @@ export class InstanceLODManager {
         currentVisibleCount: originalCount,
         lastLODLevel: 1.0,
         instanceMatrices: matrices,
-        distanceFromPlayer: distanceToPlayer
+        distanceFromPlayer: distanceToPlayer,
+        lastUpdateTime: now
       };
       
       this.regionInstanceData.set(regionKey, lodInfo);
     }
 
+    // Throttle updates per region
+    if (now - lodInfo.lastUpdateTime < this.UPDATE_THROTTLE) {
+      return false;
+    }
+
+    const targetLODDensity = this.calculateInstanceLODDensity(distanceToPlayer);
+    
     // Ensure mesh is visible for distances within culling range
     if (!instancedMesh.visible && distanceToPlayer <= this.CULLING_DISTANCE) {
       instancedMesh.visible = true;
     }
 
-    // Check if significant change in distance or LOD level
+    // Check for significant changes
     const distanceChange = Math.abs(lodInfo.distanceFromPlayer - distanceToPlayer);
     const lodChange = Math.abs(lodInfo.lastLODLevel - targetLODDensity);
     
     if (distanceChange < this.POSITION_UPDATE_THRESHOLD && lodChange < this.DENSITY_UPDATE_THRESHOLD) {
-      return false; // No significant change
+      return false;
     }
 
-    // Calculate new visible instance count
+    // Calculate new visible instance count with more aggressive reduction
     const targetVisibleCount = Math.max(0, Math.floor(lodInfo.originalInstanceCount * targetLODDensity));
     
     if (targetVisibleCount !== lodInfo.currentVisibleCount) {
-      this.updateInstanceCount(instancedMesh, lodInfo, targetVisibleCount);
+      this.updateInstanceCountOptimized(instancedMesh, lodInfo, targetVisibleCount);
       lodInfo.currentVisibleCount = targetVisibleCount;
       lodInfo.lastLODLevel = targetLODDensity;
       lodInfo.distanceFromPlayer = distanceToPlayer;
+      lodInfo.lastUpdateTime = now;
       
       if (targetVisibleCount === 0) {
         instancedMesh.visible = false;
       }
       
-      console.log(`🌱 LOD: Updated ${regionKey} instances: ${targetVisibleCount}/${lodInfo.originalInstanceCount} (${targetLODDensity.toFixed(2)}) at ${distanceToPlayer.toFixed(1)}u`);
       return true;
     }
 
     return false;
   }
 
-  private updateInstanceCount(
+  private updateInstanceCountOptimized(
     instancedMesh: THREE.InstancedMesh,
     lodInfo: InstanceLODInfo,
     targetCount: number
@@ -117,26 +124,28 @@ export class InstanceLODManager {
       return;
     }
 
-    // Use distance-based selection for which instances to show
+    // ENHANCED: Smarter instance selection based on distance and importance
     const playerPos = instancedMesh.userData.lastPlayerPosition as THREE.Vector3;
     
     if (playerPos) {
-      // Calculate distances for each instance and sort by proximity
-      const instanceDistances = lodInfo.instanceMatrices.map((matrix, index) => {
+      // Calculate distances and importance scores
+      const instanceData = lodInfo.instanceMatrices.map((matrix, index) => {
         const position = new THREE.Vector3();
         position.setFromMatrixPosition(matrix);
-        return {
-          index,
-          distance: position.distanceTo(playerPos),
-          matrix
-        };
+        const distance = position.distanceTo(playerPos);
+        
+        // Add some randomness to avoid patterns
+        const randomFactor = Math.sin(index * 0.1) * 0.1;
+        const importanceScore = 1 / (distance + 1) + randomFactor;
+        
+        return { index, distance, matrix, importance: importanceScore };
       });
 
-      // Sort by distance (closest first) and take the target count
-      instanceDistances.sort((a, b) => a.distance - b.distance);
-      const selectedInstances = instanceDistances.slice(0, targetCount);
+      // Sort by importance (closer + randomness = higher importance)
+      instanceData.sort((a, b) => b.importance - a.importance);
+      const selectedInstances = instanceData.slice(0, targetCount);
 
-      // Update the instanced mesh with selected instances
+      // Update the instanced mesh
       instancedMesh.count = targetCount;
       
       for (let i = 0; i < targetCount; i++) {
@@ -145,7 +154,7 @@ export class InstanceLODManager {
       
       instancedMesh.instanceMatrix.needsUpdate = true;
     } else {
-      // Fallback: just use the first N instances
+      // Fallback: use first N instances
       instancedMesh.count = targetCount;
       instancedMesh.instanceMatrix.needsUpdate = true;
     }
@@ -163,21 +172,31 @@ export class InstanceLODManager {
     return total;
   }
 
-  public getPerformanceMetrics(): { totalRegions: number; totalInstances: number; culledRegions: number } {
+  public getPerformanceMetrics(): { 
+    totalRegions: number; 
+    totalInstances: number; 
+    culledRegions: number;
+    averageLOD: number;
+  } {
     let totalInstances = 0;
     let culledRegions = 0;
+    let totalLOD = 0;
+    let regionCount = 0;
     
     for (const lodInfo of this.regionInstanceData.values()) {
       totalInstances += lodInfo.currentVisibleCount;
       if (lodInfo.currentVisibleCount === 0) {
         culledRegions++;
       }
+      totalLOD += lodInfo.lastLODLevel;
+      regionCount++;
     }
     
     return {
       totalRegions: this.regionInstanceData.size,
       totalInstances,
-      culledRegions
+      culledRegions,
+      averageLOD: regionCount > 0 ? totalLOD / regionCount : 0
     };
   }
 }

@@ -13,6 +13,10 @@ export class GrassRenderer {
   private grassMaterials: Map<string, THREE.ShaderMaterial> = new Map();
   private groundGrassMaterials: Map<string, THREE.ShaderMaterial> = new Map();
 
+  // PERFORMANCE: Material pooling for better memory usage
+  private materialPool: Map<string, THREE.ShaderMaterial> = new Map();
+  private geometryPool: Map<string, THREE.BufferGeometry> = new Map();
+
   constructor(scene: THREE.Scene) {
     this.scene = scene;
   }
@@ -38,19 +42,24 @@ export class GrassRenderer {
     // Get biome-specific color
     const biomeColor = BiomeManager.getBiomeSpeciesColor(speciesName, biomeInfo);
     
-    // Create or get geometry
-    const geometry = species.clustered 
-      ? GrassGeometry.createGrassCluster(species, isGroundGrass ? 7 : 3, isGroundGrass)
-      : GrassGeometry.createGrassBladeGeometry(species, 1.0, isGroundGrass);
+    // PERFORMANCE: Use pooled geometry
+    const geometryKey = `${speciesName}_${isGroundGrass ? 'ground' : 'tall'}`;
+    let geometry = this.geometryPool.get(geometryKey);
     
-    // Create or get material
-    const materialKey = `${speciesName}${suffix}`;
-    let material = isGroundGrass 
-      ? this.groundGrassMaterials.get(materialKey)
-      : this.grassMaterials.get(materialKey);
+    if (!geometry) {
+      geometry = species.clustered 
+        ? GrassGeometry.createGrassCluster(species, isGroundGrass ? 7 : 3, isGroundGrass)
+        : GrassGeometry.createGrassBladeGeometry(species, 1.0, isGroundGrass);
+      this.geometryPool.set(geometryKey, geometry);
+    }
+    
+    // PERFORMANCE: Use pooled material
+    const materialKey = `${speciesName}_${biomeColor.getHexString()}${suffix}`;
+    let material = this.materialPool.get(materialKey);
     
     if (!material) {
       material = GrassShader.createGrassMaterial(biomeColor, speciesName, isGroundGrass);
+      this.materialPool.set(materialKey, material);
       
       if (isGroundGrass) {
         this.groundGrassMaterials.set(materialKey, material);
@@ -59,23 +68,25 @@ export class GrassRenderer {
       }
     }
     
-    // Apply LOD-based instance count reduction
-    const targetInstanceCount = Math.max(1, Math.floor(speciesData.positions.length * lodLevel));
+    // ENHANCED: More aggressive LOD-based instance reduction
+    const baseReductionFactor = isGroundGrass ? 0.6 : 0.7; // Reduce base instances
+    const targetInstanceCount = Math.max(1, Math.floor(speciesData.positions.length * lodLevel * baseReductionFactor));
     const lodPositions = speciesData.positions.slice(0, targetInstanceCount);
     const lodScales = speciesData.scales.slice(0, targetInstanceCount);
     const lodRotations = speciesData.rotations.slice(0, targetInstanceCount);
     
     const instancedMesh = new THREE.InstancedMesh(geometry, material, lodPositions.length);
     
-    // Set instance data
+    // Set instance data with optimized positioning
     for (let i = 0; i < lodPositions.length; i++) {
       const matrix = new THREE.Matrix4();
       const adjustedPosition = lodPositions[i].clone();
       
+      // Slight Y adjustment for better ground placement
       if (isGroundGrass) {
-        adjustedPosition.y = Math.max(0.05, adjustedPosition.y);
+        adjustedPosition.y = Math.max(0.02, adjustedPosition.y);
       } else {
-        adjustedPosition.y = Math.max(0.1, adjustedPosition.y);
+        adjustedPosition.y = Math.max(0.05, adjustedPosition.y);
       }
       
       matrix.compose(adjustedPosition, lodRotations[i], lodScales[i]);
@@ -83,8 +94,13 @@ export class GrassRenderer {
     }
     
     instancedMesh.instanceMatrix.needsUpdate = true;
-    instancedMesh.castShadow = !isGroundGrass;
+    
+    // PERFORMANCE: Optimize shadow settings
+    instancedMesh.castShadow = !isGroundGrass && lodLevel > 0.5; // Only cast shadows for close, tall grass
     instancedMesh.receiveShadow = true;
+    
+    // PERFORMANCE: Set frustum culling to false to use our custom culling
+    instancedMesh.frustumCulled = false;
     
     instancedMesh.userData = {
       regionKey: `${regionKey}_${speciesName}${suffix}`,
@@ -94,7 +110,8 @@ export class GrassRenderer {
       biomeType: biomeInfo.type,
       biomeStrength: biomeInfo.strength,
       isGroundGrass,
-      lodLevel
+      lodLevel,
+      materialKey // Store for material sharing
     };
     
     this.scene.add(instancedMesh);
@@ -116,7 +133,7 @@ export class GrassRenderer {
       const instancedMesh = this.grassInstances.get(key);
       if (instancedMesh) {
         this.scene.remove(instancedMesh);
-        instancedMesh.geometry.dispose();
+        // Don't dispose geometry as it's pooled
         this.grassInstances.delete(key);
       }
     }
@@ -130,7 +147,7 @@ export class GrassRenderer {
       const instancedMesh = this.groundGrassInstances.get(key);
       if (instancedMesh) {
         this.scene.remove(instancedMesh);
-        instancedMesh.geometry.dispose();
+        // Don't dispose geometry as it's pooled
         this.groundGrassInstances.delete(key);
       }
     }
@@ -152,29 +169,58 @@ export class GrassRenderer {
     return this.groundGrassMaterials;
   }
 
+  // PERFORMANCE: Get performance metrics
+  public getPerformanceMetrics(): {
+    totalInstances: number;
+    visibleInstances: number;
+    pooledMaterials: number;
+    pooledGeometries: number;
+  } {
+    let totalInstances = 0;
+    let visibleInstances = 0;
+    
+    for (const mesh of this.grassInstances.values()) {
+      totalInstances += mesh.count;
+      if (mesh.visible) visibleInstances += mesh.count;
+    }
+    
+    for (const mesh of this.groundGrassInstances.values()) {
+      totalInstances += mesh.count;
+      if (mesh.visible) visibleInstances += mesh.count;
+    }
+    
+    return {
+      totalInstances,
+      visibleInstances,
+      pooledMaterials: this.materialPool.size,
+      pooledGeometries: this.geometryPool.size
+    };
+  }
+
   public dispose(): void {
     // Clean up instances
     for (const [regionKey, instancedMesh] of this.grassInstances.entries()) {
       this.scene.remove(instancedMesh);
-      instancedMesh.geometry.dispose();
     }
     this.grassInstances.clear();
     
     for (const [regionKey, instancedMesh] of this.groundGrassInstances.entries()) {
       this.scene.remove(instancedMesh);
-      instancedMesh.geometry.dispose();
     }
     this.groundGrassInstances.clear();
     
-    // Clean up materials
-    for (const material of this.grassMaterials.values()) {
+    // Clean up pooled resources
+    for (const material of this.materialPool.values()) {
       material.dispose();
     }
-    this.grassMaterials.clear();
+    this.materialPool.clear();
     
-    for (const material of this.groundGrassMaterials.values()) {
-      material.dispose();
+    for (const geometry of this.geometryPool.values()) {
+      geometry.dispose();
     }
+    this.geometryPool.clear();
+    
+    this.grassMaterials.clear();
     this.groundGrassMaterials.clear();
     
     // Clean up cached resources
