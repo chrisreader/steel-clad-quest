@@ -11,6 +11,7 @@ export class EffectsManager {
   private cameraShakeDecay: number = 0.9;
   private cameraOriginalPosition: THREE.Vector3 = new THREE.Vector3();
   private camera: THREE.Camera;
+  private isFirstPersonMode: boolean = true; // Add flag to disable camera shake in first-person
   
   constructor(scene: THREE.Scene, camera?: THREE.Camera) {
     this.scene = scene;
@@ -18,7 +19,18 @@ export class EffectsManager {
     if (camera) {
       this.cameraOriginalPosition.copy(camera.position);
     }
-    console.log('Effects Manager initialized with realistic combat effects');
+    console.log('Effects Manager initialized with first-person compatible effects');
+  }
+  
+  public setFirstPersonMode(enabled: boolean): void {
+    this.isFirstPersonMode = enabled;
+    // Reset camera shake when switching modes
+    if (enabled && this.cameraShakeIntensity > 0) {
+      this.cameraShakeIntensity = 0;
+      if (this.camera) {
+        this.camera.position.copy(this.cameraOriginalPosition);
+      }
+    }
   }
   
   public update(deltaTime: number): void {
@@ -32,8 +44,8 @@ export class EffectsManager {
       }
     });
     
-    // Update camera shake
-    if (this.cameraShakeIntensity > 0.001) {
+    // FIXED: Only apply camera shake in third-person mode to prevent first-person conflicts
+    if (!this.isFirstPersonMode && this.cameraShakeIntensity > 0.001) {
       const shakeX = (Math.random() - 0.5) * this.cameraShakeIntensity;
       const shakeY = (Math.random() - 0.5) * this.cameraShakeIntensity;
       
@@ -43,7 +55,10 @@ export class EffectsManager {
       this.cameraShakeIntensity *= this.cameraShakeDecay;
     } else if (this.cameraShakeIntensity > 0) {
       this.cameraShakeIntensity = 0;
-      this.camera.position.copy(this.cameraOriginalPosition);
+      // Don't reset camera position in first-person mode - let MovementSystem handle it
+      if (!this.isFirstPersonMode && this.camera) {
+        this.camera.position.copy(this.cameraOriginalPosition);
+      }
     }
     
     // Update time-based effects with improved cleanup
@@ -229,8 +244,10 @@ export class EffectsManager {
     painSystem.start();
     this.particleSystems.push(painSystem);
     
-    // Enhanced camera shake for player damage
-    this.shakeCamera(0.04 * intensity);
+    // FIXED: Reduced camera shake intensity and disabled in first-person mode
+    if (!this.isFirstPersonMode) {
+      this.shakeCamera(0.02 * intensity); // Reduced from 0.04
+    }
   }
   
   // UPDATED: Enhanced sword swoosh effect using trail system
@@ -282,7 +299,10 @@ export class EffectsManager {
     bloodSpray.start();
     this.particleSystems.push(bloodSpray);
     
-    this.shakeCamera(0.02);
+    // FIXED: Reduced shake and disabled in first-person
+    if (!this.isFirstPersonMode) {
+      this.shakeCamera(0.01); // Reduced from 0.02
+    }
   }
   
   public createBloodEffect(position: THREE.Vector3, direction: THREE.Vector3): void {
@@ -340,9 +360,12 @@ export class EffectsManager {
   }
   
   public shakeCamera(intensity: number): void {
-    this.cameraShakeIntensity = Math.min(intensity, 0.05);
-    if (this.camera) {
-      this.cameraOriginalPosition.copy(this.camera.position);
+    // FIXED: Only apply camera shake in third-person mode
+    if (!this.isFirstPersonMode) {
+      this.cameraShakeIntensity = Math.min(intensity, 0.03); // Reduced max intensity
+      if (this.camera) {
+        this.cameraOriginalPosition.copy(this.camera.position);
+      }
     }
   }
   
@@ -366,7 +389,7 @@ export class EffectsManager {
     this.swordTrailEffects = [];
     
     this.cameraShakeIntensity = 0;
-    if (this.camera) {
+    if (this.camera && !this.isFirstPersonMode) {
       this.camera.position.copy(this.cameraOriginalPosition);
     }
   }

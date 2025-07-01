@@ -28,7 +28,6 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
-    // Initialize raycast-based surface-following systems
     this.surfaceDetector = new TerrainSurfaceDetector(physicsManager);
     
     console.log("🏃 [MovementSystem] Enhanced with collision detection for trees and walls");
@@ -118,10 +117,10 @@ export class MovementSystem {
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
-      // RESTORED: Normal movement speeds without artificial limitations
-      let speed = 12.0; // Increased from 8.0 for better responsiveness
+      // FIXED: Restored full movement speeds for responsive gameplay
+      let speed = 15.0; // Increased base speed for better responsiveness
       if (this.player.getSprinting() && forwardPressed && !backwardPressed) {
-        speed = 20.0; // Increased from 16.0 for proper sprint speed
+        speed = 25.0; // Increased sprint speed for better feel
       }
       
       // Transform movement direction relative to camera rotation
@@ -149,7 +148,7 @@ export class MovementSystem {
         adjustedSpeed = speed * slopeSpeedMultiplier;
       }
       
-      // Calculate target position - NO artificial delta time limiting
+      // FIXED: Use proper delta time without artificial limitations
       const movementVector = worldMoveDirection.clone().multiplyScalar(adjustedSpeed * deltaTime);
       const targetPosition = currentPosition.clone().add(movementVector);
       
@@ -181,7 +180,6 @@ export class MovementSystem {
   
   public checkInTavern(): boolean {
     const playerPosition = this.player.getPosition();
-    // Updated to match exact tavern bounds (-6 to +6 in both X and Z)
     return playerPosition.x >= -6 && playerPosition.x <= 6 && 
            playerPosition.z >= -6 && playerPosition.z <= 6;
   }

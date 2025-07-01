@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { SKY_COLOR_PALETTES } from '../config/DayNightConfig';
 
@@ -6,6 +7,14 @@ export class SkyboxSystem {
   private skyboxMesh: THREE.Mesh;
   public skyboxMaterial: THREE.ShaderMaterial;
   private timeOfDay: number = 0.25;
+  
+  // OPTIMIZED: Add caching for smooth celestial movement
+  private lastTimeUpdate: number = 0;
+  private lastSunPosition: THREE.Vector3 = new THREE.Vector3();
+  private cachedSunPosition: THREE.Vector3 = new THREE.Vector3();
+  private updateCounter: number = 0;
+  private readonly UPDATE_INTERVAL = 3; // Update every 3 frames instead of every frame
+  private readonly TIME_THRESHOLD = 0.001; // Only update when time changes significantly
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -22,16 +31,12 @@ export class SkyboxSystem {
         // Night colors
         nightZenith: { value: new THREE.Color(SKY_COLOR_PALETTES.night.zenith) },
         nightHorizon: { value: new THREE.Color(SKY_COLOR_PALETTES.night.horizon) },
-        // Dawn colors
         dawnZenith: { value: new THREE.Color(SKY_COLOR_PALETTES.dawn.zenith) },
         dawnHorizon: { value: new THREE.Color(SKY_COLOR_PALETTES.dawn.horizon) },
-        // Day colors
         dayZenith: { value: new THREE.Color(SKY_COLOR_PALETTES.day.zenith) },
         dayHorizon: { value: new THREE.Color(SKY_COLOR_PALETTES.day.horizon) },
-        // Sunset colors
         sunsetZenith: { value: new THREE.Color(SKY_COLOR_PALETTES.sunset.zenith) },
         sunsetHorizon: { value: new THREE.Color(SKY_COLOR_PALETTES.sunset.horizon) },
-        // Twilight colors
         civilTwilightZenith: { value: new THREE.Color(SKY_COLOR_PALETTES.civilTwilight.zenith) },
         civilTwilightHorizon: { value: new THREE.Color(SKY_COLOR_PALETTES.civilTwilight.horizon) },
         nauticalTwilightZenith: { value: new THREE.Color(SKY_COLOR_PALETTES.nauticalTwilight.zenith) },
@@ -56,7 +61,6 @@ export class SkyboxSystem {
         uniform vec3 sunPosition;
         uniform float moonElevation;
         
-        // Color uniforms for all phases
         uniform vec3 nightZenith;
         uniform vec3 nightHorizon;
         uniform vec3 dawnZenith;
@@ -91,63 +95,51 @@ export class SkyboxSystem {
         vec3 getSkyColorForPhase(float time, float heightFactor) {
           vec3 zenithColor, horizonColor;
           
-          // Much more realistic phase transitions with delayed brightening
           if (time >= 0.0 && time < 0.08) {
-            // Deep night - stay dark longer
             zenithColor = nightZenith;
             horizonColor = nightHorizon;
           } else if (time >= 0.08 && time < 0.12) {
-            // Very gradual pre-dawn transition
             float factor = (time - 0.08) / 0.04;
             factor = exponentialDecay(max(0.0, factor - 0.5) / 0.5, 4.0);
             zenithColor = lerpColor(nightZenith, dawnZenith, factor);
             horizonColor = lerpColor(nightHorizon, dawnHorizon, factor);
           } else if (time >= 0.12 && time < 0.25) {
-            // Dawn phase with severe delay in brightening
             float factor = (time - 0.12) / 0.13;
             factor = exponentialDecay(max(0.0, factor - 0.7) / 0.3, 3.0);
             zenithColor = lerpColor(dawnZenith, dayZenith, factor);
             horizonColor = lerpColor(dawnHorizon, dayHorizon, factor);
           } else if (time >= 0.25 && time < 0.65) {
-            // Full day - maintain clean colors longer
             zenithColor = dayZenith;
             horizonColor = dayHorizon;
           } else if (time >= 0.65 && time < 0.75) {
-            // Day to sunset transition
             float factor = (time - 0.65) / 0.1;
             factor = exponentialDecay(factor, 1.5);
             zenithColor = lerpColor(dayZenith, sunsetZenith, factor);
             horizonColor = lerpColor(dayHorizon, sunsetHorizon, factor);
           } else if (time >= 0.75 && time < 0.82) {
-            // Sunset to civil twilight
             float factor = (time - 0.75) / 0.07;
             factor = exponentialDecay(factor, 2.0);
             zenithColor = lerpColor(sunsetZenith, civilTwilightZenith, factor);
             horizonColor = lerpColor(sunsetHorizon, civilTwilightHorizon, factor);
           } else if (time >= 0.82 && time < 0.88) {
-            // Civil to nautical twilight
             float factor = (time - 0.82) / 0.06;
             factor = exponentialDecay(factor, 2.5);
             zenithColor = lerpColor(civilTwilightZenith, nauticalTwilightZenith, factor);
             horizonColor = lerpColor(civilTwilightHorizon, nauticalTwilightHorizon, factor);
           } else if (time >= 0.88 && time < 0.95) {
-            // Nautical to astronomical twilight
             float factor = (time - 0.88) / 0.07;
             factor = exponentialDecay(factor, 3.0);
             zenithColor = lerpColor(nauticalTwilightZenith, astroTwilightZenith, factor);
             horizonColor = lerpColor(nauticalTwilightHorizon, astroTwilightHorizon, factor);
           } else {
-            // Astronomical twilight to night
             float factor = (time - 0.95) / 0.05;
             factor = smoothStep(0.0, 1.0, factor);
             zenithColor = lerpColor(astroTwilightZenith, nightZenith, factor);
             horizonColor = lerpColor(astroTwilightHorizon, nightHorizon, factor);
           }
           
-          // Atmospheric perspective adjusted for more realistic look
           float adjustedHeightFactor = pow(heightFactor, 1.0);
           
-          // Special handling for night and dawn phases
           if (time < 0.25) {
             adjustedHeightFactor = pow(heightFactor, 0.8);
           }
@@ -161,7 +153,6 @@ export class SkyboxSystem {
           
           vec3 skyColor = getSkyColorForPhase(timeOfDay, heightFactor);
           
-          // Enhanced star field during night and twilight phases
           if (timeOfDay < 0.25 || timeOfDay > 0.75) {
             float starField = fract(sin(dot(vDirection.xz * 80.0, vec2(12.9898, 78.233))) * 43758.5453);
             if (starField > 0.9985 && vDirection.y > 0.2) {
@@ -173,7 +164,7 @@ export class SkyboxSystem {
               }
               starVisibility = clamp(starVisibility, 0.0, 1.0);
               
-              float starIntensity = 0.3 + 0.2 * moonElevation; // Reduced star intensity
+              float starIntensity = 0.3 + 0.2 * moonElevation;
               skyColor += vec3(0.8, 0.8, 1.0) * starIntensity * starVisibility;
             }
           }
@@ -194,20 +185,39 @@ export class SkyboxSystem {
   }
 
   public update(timeOfDay: number, playerPosition: THREE.Vector3): void {
-    this.timeOfDay = timeOfDay;
+    this.updateCounter++;
     
-    if (this.skyboxMaterial && this.skyboxMaterial.uniforms) {
-      this.skyboxMaterial.uniforms.timeOfDay.value = timeOfDay;
+    // OPTIMIZED: Only update sun/moon positions every few frames and when time changes significantly
+    const timeChanged = Math.abs(timeOfDay - this.timeOfDay) > this.TIME_THRESHOLD;
+    const shouldUpdate = this.updateCounter % this.UPDATE_INTERVAL === 0 || timeChanged;
+    
+    if (shouldUpdate) {
+      this.timeOfDay = timeOfDay;
       
-      const sunAngle = (timeOfDay - 0.25) * Math.PI * 2;
-      const sunPosition = new THREE.Vector3(
-        Math.cos(sunAngle) * 500,
-        Math.sin(sunAngle) * 500,
-        0
-      );
-      this.skyboxMaterial.uniforms.sunPosition.value.copy(sunPosition);
+      if (this.skyboxMaterial && this.skyboxMaterial.uniforms) {
+        this.skyboxMaterial.uniforms.timeOfDay.value = timeOfDay;
+        
+        // OPTIMIZED: Cache and interpolate sun position for smoother movement
+        const sunAngle = (timeOfDay - 0.25) * Math.PI * 2;
+        const targetSunPosition = new THREE.Vector3(
+          Math.cos(sunAngle) * 500,
+          Math.sin(sunAngle) * 500,
+          0
+        );
+        
+        // Smooth interpolation between positions
+        if (this.lastTimeUpdate !== 0) {
+          this.cachedSunPosition.lerp(targetSunPosition, 0.1);
+        } else {
+          this.cachedSunPosition.copy(targetSunPosition);
+        }
+        
+        this.skyboxMaterial.uniforms.sunPosition.value.copy(this.cachedSunPosition);
+        this.lastTimeUpdate = timeOfDay;
+      }
     }
     
+    // Always update skybox position to follow player
     this.skyboxMesh.position.copy(playerPosition);
   }
 
