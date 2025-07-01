@@ -44,7 +44,7 @@ export class GameEngine {
   
   // ULTRA PERFORMANCE optimization - much less frequent updates
   private systemUpdateCounter: number = 0;
-  private readonly SYSTEM_UPDATE_INTERVAL: number = 6; // Update every 6th frame for better performance
+  private readonly SYSTEM_UPDATE_INTERVAL: number = 2; // Reduced from 6 to 2 for smoother animations
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -285,6 +285,7 @@ export class GameEngine {
       return;
     }
     
+    // FIXED: Remove delta time capping that interfered with smooth animations
     const deltaTime = this.renderEngine.getDeltaTime();
     this.stateManager.update(deltaTime);
     this.update(deltaTime);
@@ -299,8 +300,11 @@ export class GameEngine {
     // Increment system update counter
     this.systemUpdateCounter++;
     
-    // Update movement system every frame (critical for smooth gameplay)
+    // CRITICAL SYSTEMS: Update every frame for smooth gameplay
     this.movementSystem.update(deltaTime);
+    this.combatSystem.update(deltaTime);
+    this.player.update(deltaTime, this.isMoving);
+    this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
     // Check if player is moving
     this.isMoving = this.inputManager.isActionPressed('moveForward') ||
@@ -308,14 +312,7 @@ export class GameEngine {
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
     
-    // Update critical systems every frame
-    this.combatSystem.update(deltaTime);
-    this.player.update(deltaTime, this.isMoving);
-    
-    // Update camera to follow player (critical for smooth first-person)
-    this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
-    
-    // Update less critical systems much less frequently for performance
+    // LESS CRITICAL SYSTEMS: Update every 2nd frame for balance
     if (this.systemUpdateCounter % this.SYSTEM_UPDATE_INTERVAL === 0) {
       // Update building manager (for fire animation)
       if (this.buildingManager) {
@@ -344,8 +341,8 @@ export class GameEngine {
       }
     }
     
-    // Check location changes much less frequently
-    if (this.systemUpdateCounter % 20 === 0) {
+    // NON-CRITICAL SYSTEMS: Update every 10th frame
+    if (this.systemUpdateCounter % 10 === 0) {
       const isInTavern = this.movementSystem.checkInTavern();
       this.stateManager.updateLocationState(isInTavern);
     }

@@ -12,19 +12,19 @@ export interface InstanceLODInfo {
 
 export class InstanceLODManager {
   private regionInstanceData: Map<string, InstanceLODInfo> = new Map();
-  // ULTRA AGGRESSIVE: Much shorter distances and more aggressive culling
-  private lodDistances: number[] = [15, 30, 60, 80]; // Drastically reduced
-  private readonly DENSITY_UPDATE_THRESHOLD = 0.15; // Higher threshold = less frequent updates
-  private readonly POSITION_UPDATE_THRESHOLD = 5; // Less responsive but more performant
-  private readonly CULLING_DISTANCE = 100; // Much shorter culling distance
-  private readonly UPDATE_THROTTLE = 150; // Much longer throttle
+  // BALANCED: Moderate distances for good performance with less pop-in
+  private lodDistances: number[] = [25, 50, 90, 120]; // Increased from ultra-aggressive values
+  private readonly DENSITY_UPDATE_THRESHOLD = 0.1; // Reduced for better responsiveness
+  private readonly POSITION_UPDATE_THRESHOLD = 3; // Reduced for better responsiveness
+  private readonly CULLING_DISTANCE = 140; // Increased from 100
+  private readonly UPDATE_THROTTLE = 100; // Reduced from 150 for better responsiveness
 
   public calculateInstanceLODDensity(distance: number): number {
     if (distance >= this.CULLING_DISTANCE) return 0.0;
     if (distance < this.lodDistances[0]) return 1.0;
-    if (distance < this.lodDistances[1]) return 0.4; // Much more aggressive
-    if (distance < this.lodDistances[2]) return 0.15; // Very aggressive
-    if (distance < this.lodDistances[3]) return 0.05; // Extremely sparse
+    if (distance < this.lodDistances[1]) return 0.6; // Less aggressive than 0.4
+    if (distance < this.lodDistances[2]) return 0.3; // Less aggressive than 0.15
+    if (distance < this.lodDistances[3]) return 0.1; // Less aggressive than 0.05
     return 0.0;
   }
 
@@ -53,7 +53,7 @@ export class InstanceLODManager {
     
     // Initialize LOD info if not exists
     if (!lodInfo) {
-      const originalCount = Math.min(instancedMesh.count, 50); // Cap at 50 instances max
+      const originalCount = Math.min(instancedMesh.count, 80); // Increased from 50 for better quality
       const matrices: THREE.Matrix4[] = [];
       
       for (let i = 0; i < originalCount; i++) {
@@ -74,7 +74,7 @@ export class InstanceLODManager {
       this.regionInstanceData.set(regionKey, lodInfo);
     }
 
-    // Much more aggressive throttling
+    // Balanced throttling
     if (now - lodInfo.lastUpdateTime < this.UPDATE_THROTTLE) {
       return false;
     }
@@ -86,7 +86,7 @@ export class InstanceLODManager {
       instancedMesh.visible = true;
     }
 
-    // Check for significant changes with higher thresholds
+    // Check for significant changes
     const distanceChange = Math.abs(lodInfo.distanceFromPlayer - distanceToPlayer);
     const lodChange = Math.abs(lodInfo.lastLODLevel - targetLODDensity);
     
@@ -94,7 +94,7 @@ export class InstanceLODManager {
       return false;
     }
 
-    // Calculate new visible instance count with extreme reduction
+    // Calculate new visible instance count with balanced reduction
     const targetVisibleCount = Math.max(0, Math.floor(lodInfo.originalInstanceCount * targetLODDensity));
     
     if (targetVisibleCount !== lodInfo.currentVisibleCount) {
