@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class RenderEngine {
@@ -8,12 +7,12 @@ export class RenderEngine {
   private clock: THREE.Clock;
   private mountElement: HTMLDivElement;
   
-  // Camera controls with smoothing
+  // Camera controls with improved smoothing
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private targetRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private mouseSensitivity: number = 0.003;
   private maxPitch: number = Math.PI / 2 - 0.1;
-  private smoothingFactor: number = 0.15;
+  private smoothingFactor: number = 0.08; // Reduced from 0.15 for more responsive controls
   
   // Mouse smoothing
   private mouseVelocity: { x: number; y: number } = { x: 0, y: 0 };
@@ -21,18 +20,13 @@ export class RenderEngine {
   
   private readonly CAMERA_HEIGHT_OFFSET: number = 1.6;
   
-  // ULTRA PERFORMANCE optimizations
+  // Optimized performance settings
   private renderCount: number = 0;
   private lastRenderTime: number = 0;
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 500; // Much less frequent culling updates
-  
-  // Frame rate targeting for smoothness
-  private targetFPS: number = 60;
-  private frameInterval: number = 1000 / this.targetFPS;
-  private lastFrameTime: number = 0;
+  private readonly CULLING_UPDATE_INTERVAL: number = 100; // Reduced from 500ms for faster response
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -40,7 +34,7 @@ export class RenderEngine {
   }
   
   public initialize(): void {
-    console.log("🎨 [RenderEngine] Initializing with ULTRA performance optimizations...");
+    console.log("🎨 [RenderEngine] Initializing with optimized performance settings...");
     
     // Create scene
     this.scene = new THREE.Scene();
@@ -51,29 +45,29 @@ export class RenderEngine {
       75,
       this.mountElement.clientWidth / this.mountElement.clientHeight,
       0.1,
-      500 // Reduced far plane for better performance
+      500
     );
     
     // Set up camera layers
     this.camera.layers.enable(0);
     this.camera.layers.disable(1);
     
-    // Create renderer with maximum performance settings
+    // Create renderer with performance settings
     this.renderer = new THREE.WebGLRenderer({ 
-      antialias: false, // Disable antialiasing for performance
+      antialias: false,
       powerPreference: "high-performance",
       stencil: false,
-      alpha: false // Disable alpha for better performance
+      alpha: false
     });
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
-    this.renderer.shadowMap.enabled = false; // Disable shadows for performance
+    this.renderer.shadowMap.enabled = false;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     
-    // Ultra performance optimizations
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Lower pixel ratio
-    this.renderer.info.autoReset = false; // Disable auto reset for performance
+    // Balanced pixel ratio
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    this.renderer.info.autoReset = false;
     
     // Attach to DOM
     this.mountElement.appendChild(this.renderer.domElement);
@@ -85,7 +79,7 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    console.log("🎨 [RenderEngine] Initialized with ULTRA performance optimizations");
+    console.log("🎨 [RenderEngine] Initialized with balanced performance optimizations");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
@@ -108,7 +102,7 @@ export class RenderEngine {
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
-    // Apply mouse smoothing using exponential moving average
+    // Improved mouse smoothing with better responsiveness
     this.smoothedMouseDelta.x = this.smoothedMouseDelta.x * (1 - this.smoothingFactor) + deltaX * this.smoothingFactor;
     this.smoothedMouseDelta.y = this.smoothedMouseDelta.y * (1 - this.smoothingFactor) + deltaY * this.smoothingFactor;
     
@@ -117,8 +111,8 @@ export class RenderEngine {
     this.targetRotation.pitch -= this.smoothedMouseDelta.y * this.mouseSensitivity;
     this.targetRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.targetRotation.pitch));
     
-    // Interpolate towards target rotation for ultra-smooth movement
-    const lerpFactor = 0.2;
+    // More responsive interpolation for smoother movement
+    const lerpFactor = 0.25; // Increased from 0.2 for better responsiveness
     this.cameraRotation.yaw = THREE.MathUtils.lerp(this.cameraRotation.yaw, this.targetRotation.yaw, lerpFactor);
     this.cameraRotation.pitch = THREE.MathUtils.lerp(this.cameraRotation.pitch, this.targetRotation.pitch, lerpFactor);
     
@@ -170,19 +164,14 @@ export class RenderEngine {
   public render(): void {
     const now = performance.now();
     
-    // Frame rate limiting for smooth performance
-    if (now - this.lastFrameTime < this.frameInterval) {
-      return;
-    }
-    
+    // REMOVED: Frame rate limiting - let browser handle natural timing
     this.renderCount++;
-    this.lastFrameTime = now;
     
-    // Much less frequent frustum culling updates
-    if (this.renderCount % 10 === 0) {
+    // More frequent frustum culling updates (every 3 frames instead of 10)
+    if (this.renderCount % 3 === 0) {
       this.updateFrustumCulling();
       
-      // Apply frustum culling to scene objects less frequently
+      // Apply frustum culling to scene objects
       this.scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
           object.visible = this.isObjectInFrustum(object);
@@ -190,10 +179,10 @@ export class RenderEngine {
       });
     }
     
-    // EXTREMELY reduced logging frequency (every 10800 frames = 3 minutes at 60fps)
-    if (this.renderCount % 10800 === 0) {
-      const fps = 10800 / ((now - this.lastRenderTime) / 1000);
-      console.log("🎨 [RenderEngine] ULTRA Performance:", {
+    // Much less frequent logging (every 3600 frames = 1 minute at 60fps)
+    if (this.renderCount % 3600 === 0) {
+      const fps = 3600 / ((now - this.lastRenderTime) / 1000);
+      console.log("🎨 [RenderEngine] Performance:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
         objects: this.scene.children.length
@@ -205,7 +194,8 @@ export class RenderEngine {
   }
   
   public getDeltaTime(): number {
-    return Math.min(this.clock.getDelta(), 0.016); // Cap at 60fps equivalent
+    // Less aggressive delta time capping - prevent large jumps but don't limit normal movement
+    return Math.min(this.clock.getDelta(), 0.033); // Cap at 30fps minimum instead of 60fps
   }
   
   public getCameraRotation(): { pitch: number; yaw: number } {

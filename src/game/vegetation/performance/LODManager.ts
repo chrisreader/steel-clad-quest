@@ -9,15 +9,15 @@ export interface RegionLODInfo {
 }
 
 export class LODManager {
-  // BALANCED: Moderate distances for good performance with less pop-in
-  private lodDistances: number[] = [30, 60, 100, 140]; // Increased from ultra-aggressive values
+  // IMPROVED: Increased distances to reduce pop-in while maintaining performance
+  private lodDistances: number[] = [50, 100, 150, 200]; // Increased from [30, 60, 100, 140]
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 3; // Reduced from 5 for better responsiveness
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 1; // Reduced from 3 for faster response
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
   private readonly LOD_REGENERATION_THRESHOLD: number = 0.5;
-  private readonly POSITION_UPDATE_THRESHOLD: number = 5; // Reduced for better responsiveness
+  private readonly POSITION_UPDATE_THRESHOLD: number = 3; // Reduced for better responsiveness
 
   private instanceLODManager: InstanceLODManager = new InstanceLODManager();
 
@@ -26,12 +26,12 @@ export class LODManager {
   private lastPlayerUpdateTime: number = 0;
 
   public calculateLODDensity(distance: number): number {
-    // BALANCED: Less aggressive density reduction
+    // IMPROVED: Better density curve to maintain visual quality
     if (distance < this.lodDistances[0]) return 1.0;
-    if (distance < this.lodDistances[1]) return 0.7; // Increased from 0.5
-    if (distance < this.lodDistances[2]) return 0.4; // Increased from 0.2
-    if (distance < this.lodDistances[3]) return 0.15; // Increased from 0.1
-    return 0.0; // Complete culling beyond 140 units
+    if (distance < this.lodDistances[1]) return 0.8; // Increased from 0.7
+    if (distance < this.lodDistances[2]) return 0.5; // Increased from 0.4
+    if (distance < this.lodDistances[3]) return 0.2; // Increased from 0.15
+    return 0.0; // Complete culling beyond 200 units
   }
 
   public updateVisibility(
@@ -42,9 +42,9 @@ export class LODManager {
   ): void {
     this.grassCullingUpdateCounter++;
     
-    // Update velocity calculation
+    // Update velocity calculation more frequently
     const now = performance.now();
-    if (this.lastPlayerUpdateTime === 0 || now - this.lastPlayerUpdateTime > 200) { // More frequent updates
+    if (this.lastPlayerUpdateTime === 0 || now - this.lastPlayerUpdateTime > 100) { // More frequent updates
       const deltaTime = (now - this.lastPlayerUpdateTime) / 1000;
       if (deltaTime > 0) {
         this.playerVelocity.subVectors(playerPosition, this.lastPlayerPosition).divideScalar(deltaTime);
@@ -74,11 +74,11 @@ export class LODManager {
     let visibilityChanges = 0;
     let instanceUpdates = 0;
     
-    // BALANCED: Moderate render distances to prevent pop-in
-    const tallGrassMaxDistance = Math.min(maxDistance * 0.7, 120); // Increased from 80
-    const groundGrassMaxDistance = Math.min(maxDistance * 0.5, 80); // Increased from 50
+    // IMPROVED: Increased render distances to prevent pop-in
+    const tallGrassMaxDistance = Math.min(maxDistance * 0.8, 180); // Increased from 120
+    const groundGrassMaxDistance = Math.min(maxDistance * 0.6, 120); // Increased from 80
     
-    // Update tall grass with balanced culling
+    // Update tall grass with improved culling
     for (const [regionKey, instancedMesh] of grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -93,8 +93,8 @@ export class LODManager {
         visibilityChanges++;
       }
       
-      // Update instances for moderate distance grass
-      if (shouldBeVisible && shouldUpdateInstances && distanceToPlayer <= 60) { // Increased from 40
+      // Update instances for closer grass more frequently
+      if (shouldBeVisible && shouldUpdateInstances && distanceToPlayer <= 100) { // Increased from 60
         instancedMesh.userData.lastPlayerPosition = playerPosition.clone();
         
         const updated = this.instanceLODManager.updateInstanceVisibility(
@@ -109,7 +109,7 @@ export class LODManager {
       }
     }
     
-    // Ground grass with balanced culling
+    // Ground grass with improved culling
     for (const [regionKey, instancedMesh] of groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -124,8 +124,8 @@ export class LODManager {
         visibilityChanges++;
       }
       
-      // Update instances for moderate distance ground grass
-      if (shouldBeVisible && shouldUpdateInstances && distanceToPlayer <= 40) { // Increased from 25
+      // Update instances for closer ground grass
+      if (shouldBeVisible && shouldUpdateInstances && distanceToPlayer <= 60) { // Increased from 40
         instancedMesh.userData.lastPlayerPosition = playerPosition.clone();
         
         const updated = this.instanceLODManager.updateInstanceVisibility(
@@ -140,9 +140,9 @@ export class LODManager {
       }
     }
     
-    // Reduced logging frequency but keep some feedback
-    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 50 === 0) {
-      console.log(`🌱 BALANCED LOD: ${visibilityChanges} visibility, ${instanceUpdates} instance updates`);
+    // Much less frequent logging
+    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 300 === 0) {
+      console.log(`🌱 LOD: ${visibilityChanges} visibility, ${instanceUpdates} instance updates`);
     }
   }
 

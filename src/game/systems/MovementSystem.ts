@@ -64,10 +64,10 @@ export class MovementSystem {
       this.physicsManager.clearTerrainCache();
     }
     
-    // Enhanced debugging every 60 frames
-    if (this.frameCount % 60 === 0) {
+    // Much less frequent debugging (every 300 frames instead of 60)
+    if (this.frameCount % 300 === 0) {
       const currentPos = this.player.getPosition();
-      console.log(`\n🏔️ === COLLISION-AWARE MOVEMENT DEBUG ===`);
+      console.log(`\n🏔️ === MOVEMENT DEBUG ===`);
       console.log(`🏔️ Player Position: (${currentPos.x.toFixed(1)}, ${currentPos.y.toFixed(1)}, ${currentPos.z.toFixed(1)})`);
       
       const terrainData = this.physicsManager.getTerrainDataAtPosition(currentPos);
@@ -118,10 +118,10 @@ export class MovementSystem {
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
-      // FIXED: Restored normal movement speeds (was too fast before)
-      let speed = 8.0; // Increased base movement speed from 5.0
+      // RESTORED: Normal movement speeds without artificial limitations
+      let speed = 12.0; // Increased from 8.0 for better responsiveness
       if (this.player.getSprinting() && forwardPressed && !backwardPressed) {
-        speed = 16.0; // Balanced sprint speed (was 25.0, now 2x base speed)
+        speed = 20.0; // Increased from 16.0 for proper sprint speed
       }
       
       // Transform movement direction relative to camera rotation
@@ -149,20 +149,21 @@ export class MovementSystem {
         adjustedSpeed = speed * slopeSpeedMultiplier;
       }
       
-      // Calculate target position
+      // Calculate target position - NO artificial delta time limiting
       const movementVector = worldMoveDirection.clone().multiplyScalar(adjustedSpeed * deltaTime);
       const targetPosition = currentPosition.clone().add(movementVector);
       
-      // CRITICAL: Use PhysicsManager's collision-aware movement instead of just surface calculation
+      // Use PhysicsManager's collision-aware movement
       const finalPosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.5);
       
       // Apply the collision-checked position
       this.player.setPosition(finalPosition);
       
-      if (this.frameCount % 30 === 0) { // Less frequent logging
+      // Much less frequent movement logging (every 180 frames instead of 30)
+      if (this.frameCount % 180 === 0) {
         const moved = !finalPosition.equals(targetPosition);
         const debugInfo = moved ? 'COLLISION_BLOCKED' : 'NORMAL_MOVEMENT';
-        console.log(`🏃 COLLISION-AWARE MOVEMENT: ${debugInfo}`);
+        console.log(`🏃 MOVEMENT: ${debugInfo}`);
         console.log(`🏃 Target: (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
         console.log(`🏃 Final: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
       }

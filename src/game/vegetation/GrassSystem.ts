@@ -19,18 +19,18 @@ export class GrassSystem {
   private windSystem: WindSystem;
   private bubbleManager: GrassRenderBubbleManager;
   
-  // ULTRA PERFORMANCE: Much less frequent updates
+  // BALANCED: Performance optimizations with better responsiveness
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 30; // Much less frequent
-  private readonly FOG_CHECK_INTERVAL: number = 1000; // Much less frequent
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 10; // Reduced from 30 for better responsiveness
+  private readonly FOG_CHECK_INTERVAL: number = 500; // Reduced from 1000
   
-  // Performance monitoring with longer intervals
+  // Performance monitoring with better intervals
   private lastPerformanceReport: number = 0;
-  private readonly PERFORMANCE_REPORT_INTERVAL: number = 3000; // Every 3000 frames
+  private readonly PERFORMANCE_REPORT_INTERVAL: number = 1800; // Reduced from 3000 frames
   private frameTimeHistory: number[] = [];
-  private readonly MAX_FRAME_TIME_SAMPLES: number = 10; // Fewer samples
+  private readonly MAX_FRAME_TIME_SAMPLES: number = 15; // Increased from 10
   
   // Player tracking
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -49,21 +49,21 @@ export class GrassSystem {
     DeterministicBiomeManager.setWorldSeed(Date.now());
     DeterministicBiomeManager.forceRegenerateAllBiomes();
     
-    console.log('🌱 ULTRA PERFORMANCE GRASS SYSTEM: Initialized with extreme optimization');
+    console.log('🌱 BALANCED GRASS SYSTEM: Initialized with optimized responsiveness');
   }
   
-  public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 100): void {
-    console.log(`🌱 ULTRA PERFORMANCE: Initializing with ${coverageRadius}-unit ultra-optimized rendering`);
+  public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 150): void {
+    console.log(`🌱 BALANCED: Initializing with ${coverageRadius}-unit optimized rendering`);
     
     // Force biome regeneration
     DeterministicBiomeManager.clearCache();
     
-    // Much smaller coverage radius for extreme performance
+    // Increased coverage radius for better visual quality
     this.bubbleManager.initializeWithCoverage(playerPosition, coverageRadius);
     this.lastPlayerPosition.copy(playerPosition);
     
     const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
-    console.log(`🌱 ULTRA OPTIMIZED BIOME: ${debugInfo.biomeData.biomeType} biome loaded`);
+    console.log(`🌱 OPTIMIZED BIOME: ${debugInfo.biomeData.biomeType} biome loaded`);
   }
   
   public generateGrassForRegion(
@@ -85,25 +85,25 @@ export class GrassSystem {
     
     this.updateCounter++;
     
-    // Track player movement less frequently
-    if (this.updateCounter % 3 === 0) {
-      this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / (deltaTime * 3);
+    // Track player movement more frequently
+    if (this.updateCounter % 2 === 0) {
+      this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / (deltaTime * 2);
       this.isPlayerMoving = this.playerVelocity > 0.2;
       this.lastPlayerPosition.copy(playerPosition);
     }
     
-    // Update bubble manager less frequently
-    if (this.updateCounter % 3 === 0) {
+    // Update bubble manager more frequently
+    if (this.updateCounter % 2 === 0) {
       this.bubbleManager.update(playerPosition);
     }
     
-    // Much less frequent wind system updates
-    const windUpdateInterval = this.isPlayerMoving ? 8 : 12;
+    // More responsive wind system updates
+    const windUpdateInterval = this.isPlayerMoving ? 4 : 6; // Reduced from 8:12
     if (this.updateCounter % windUpdateInterval === 0) {
       this.windSystem.update(deltaTime * windUpdateInterval);
     }
     
-    // Much less frequent material updates
+    // More frequent material updates
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
       let nightFactor = 0;
       let dayFactor = 1;
@@ -113,9 +113,9 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // Extremely staggered material updates
-      const shouldUpdateTallGrass = this.updateCounter % 60 === 0;
-      const shouldUpdateGroundGrass = this.updateCounter % 60 === 30;
+      // More responsive material updates
+      const shouldUpdateTallGrass = this.updateCounter % 20 === 0; // Reduced from 60
+      const shouldUpdateGroundGrass = this.updateCounter % 20 === 10; // Reduced from 60
       
       if (shouldUpdateTallGrass) {
         this.updateGrassMaterials(this.renderer.getGrassMaterials(), nightFactor, dayFactor, false);
@@ -125,22 +125,22 @@ export class GrassSystem {
         this.updateGrassMaterials(this.renderer.getGroundGrassMaterials(), nightFactor, dayFactor, true);
       }
       
-      // Much less frequent fog updates
-      if (this.updateCounter % 100 === 0 && this.checkFogChanges() && this.cachedFogValues) {
+      // More frequent fog updates
+      if (this.updateCounter % 50 === 0 && this.checkFogChanges() && this.cachedFogValues) { // Reduced from 100
         this.updateFogUniforms();
       }
     }
     
-    // Performance monitoring with much longer intervals
+    // Performance monitoring with better sampling
     const frameTime = performance.now() - frameStartTime;
-    if (this.updateCounter % 10 === 0) { // Only sample every 10th frame
+    if (this.updateCounter % 5 === 0) { // Sample every 5th frame instead of 10th
       this.frameTimeHistory.push(frameTime);
       if (this.frameTimeHistory.length > this.MAX_FRAME_TIME_SAMPLES) {
         this.frameTimeHistory.shift();
       }
     }
     
-    // Much less frequent performance reporting
+    // More frequent performance reporting
     if (this.updateCounter - this.lastPerformanceReport >= this.PERFORMANCE_REPORT_INTERVAL) {
       this.reportPerformanceMetrics();
       this.lastPerformanceReport = this.updateCounter;
