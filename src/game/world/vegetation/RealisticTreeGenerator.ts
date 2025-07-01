@@ -605,9 +605,9 @@ export class RealisticTreeGenerator {
     if (!this.materialCache.has(materialKey)) {
       const texture = this.textureCache.get(species === TreeSpeciesType.PINE ? 'pine' : 'bark');
       const material = new THREE.MeshStandardMaterial({
-        color: 0x8B4513,
+        color: 0xA0522D, // Brighter bark color
         map: texture,
-        roughness: 0.9,
+        roughness: 0.8, // Slightly less rough for better light reflection
         metalness: 0.0
       });
       this.materialCache.set(materialKey, material);
@@ -624,7 +624,7 @@ export class RealisticTreeGenerator {
     
     console.log(`🍃 Creating instanced foliage with ${clusters.length} clusters for ${species}`);
     
-    // Validate clusters - no size capping needed since we now calculate appropriate sizes
+    // Validate clusters
     const validClusters = clusters.filter(cluster => {
       const isValid = cluster.position && cluster.size > 0 && cluster.density > 0;
       if (!isValid) {
@@ -657,19 +657,18 @@ export class RealisticTreeGenerator {
           new THREE.Euler(0, Math.random() * Math.PI * 2, 0)
         );
         
-        // Use the calculated size directly - no additional reductions
         const scale = new THREE.Vector3(cluster.size, cluster.size, cluster.size);
         
         matrix.compose(position, rotation, scale);
         instancedMesh.setMatrixAt(i, matrix);
         
-        // Set instance color with height-based variation for more realism
+        // Set instance color with height-based variation for more realism and better lighting
         const heightRatio = cluster.heightRatio || (cluster.position.y / treeHeight);
         
-        // Higher foliage is slightly lighter (more sun exposure)
-        const lightnessFactor = 0.35 + heightRatio * 0.15;
-        const hue = 0.25 + (Math.random() - 0.5) * 0.05;
-        const saturation = 0.6 + (Math.random() - 0.5) * 0.2;
+        // Much brighter foliage colors that respond well to lighting
+        const lightnessFactor = 0.45 + heightRatio * 0.25; // Increased brightness
+        const hue = 0.28 + (Math.random() - 0.5) * 0.08; // Slightly more varied green hues
+        const saturation = 0.65 + (Math.random() - 0.5) * 0.15;
         const color = new THREE.Color().setHSL(hue, saturation, lightnessFactor);
         
         instancedMesh.setColorAt(i, color);
@@ -722,11 +721,11 @@ export class RealisticTreeGenerator {
     
     if (!this.materialCache.has(materialKey)) {
       const material = new THREE.MeshStandardMaterial({
-        color: 0x2d5016,
-        roughness: 0.9,
+        color: 0x4A7C59, // Much brighter base green color
+        roughness: 0.7, // Reduced roughness for better light reflection
         metalness: 0.0,
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.95, // Slightly more opaque
         side: THREE.DoubleSide,
         vertexColors: true // Enable per-instance colors
       });
@@ -863,13 +862,22 @@ export class RealisticTreeGenerator {
     const textureType = species === TreeSpeciesType.PINE ? 'pine' : config.textureType;
     const texture = this.textureCache.get(textureType);
 
+    // Brighter trunk colors that respond better to lighting
+    let trunkColor = config.trunkColor;
+    
+    // Brighten the trunk color by increasing lightness
+    const color = new THREE.Color(trunkColor);
+    const hsl = { h: 0, s: 0, l: 0 };
+    color.getHSL(hsl);
+    color.setHSL(hsl.h, hsl.s, Math.min(1.0, hsl.l * 1.4)); // Increase lightness by 40%
+
     return new THREE.MeshStandardMaterial({
-      color: config.trunkColor,
+      color: color,
       map: texture,
-      roughness: 0.9,
+      roughness: 0.8, // Slightly less rough for better light reflection
       metalness: 0.0,
       bumpMap: texture,
-      bumpScale: 0.3
+      bumpScale: 0.2 // Reduced bump scale for more even lighting
     });
   }
 
