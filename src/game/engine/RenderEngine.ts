@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 
 export class RenderEngine {
@@ -22,13 +21,18 @@ export class RenderEngine {
   // FIXED: Consistent camera height
   private readonly CAMERA_HEIGHT_OFFSET: number = 1.6; // Standard eye height
   
-  // Performance optimizations
+  // Performance optimizations - ENHANCED
   private renderCount: number = 0;
   private lastRenderTime: number = 0;
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 100; // Update culling every 100ms
+  private readonly CULLING_UPDATE_INTERVAL: number = 200; // Reduced frequency for better performance
+  
+  // Frame rate limiting
+  private targetFPS: number = 60;
+  private frameInterval: number = 1000 / this.targetFPS;
+  private lastFrameTime: number = 0;
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -36,7 +40,7 @@ export class RenderEngine {
   }
   
   public initialize(): void {
-    console.log("🎨 [RenderEngine] Initializing with performance optimizations...");
+    console.log("🎨 [RenderEngine] Initializing with enhanced performance optimizations...");
     
     // Create scene
     this.scene = new THREE.Scene();
@@ -55,13 +59,20 @@ export class RenderEngine {
     this.camera.layers.disable(1);
     
     // Create renderer with optimized settings
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      powerPreference: "high-performance", // Use high-performance GPU
+      stencil: false // Disable stencil buffer for better performance
+    });
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    
+    // Performance optimizations
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio
     
     // Attach to DOM
     this.mountElement.appendChild(this.renderer.domElement);
@@ -73,7 +84,7 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    console.log("🎨 [RenderEngine] Initialized with performance optimizations");
+    console.log("🎨 [RenderEngine] Initialized with enhanced performance optimizations");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
@@ -89,7 +100,10 @@ export class RenderEngine {
     this.targetRotation.yaw = 0;
     this.updateCameraRotation();
     
-    console.log("📹 [RenderEngine] First-person camera positioned with consistent height offset:", this.camera.position);
+    // Only log once during setup
+    if (this.renderCount === 0) {
+      console.log("📹 [RenderEngine] First-person camera positioned with consistent height offset:", this.camera.position);
+    }
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
@@ -153,8 +167,15 @@ export class RenderEngine {
   }
   
   public render(): void {
-    this.renderCount++;
     const now = performance.now();
+    
+    // Frame rate limiting for smooth performance
+    if (now - this.lastFrameTime < this.frameInterval) {
+      return; // Skip this frame to maintain target FPS
+    }
+    
+    this.renderCount++;
+    this.lastFrameTime = now;
     
     // Update frustum culling less frequently for performance
     this.updateFrustumCulling();
@@ -166,9 +187,9 @@ export class RenderEngine {
       }
     });
     
-    // Reduced logging frequency for better performance (every 300 frames instead of 60)
-    if (this.renderCount % 300 === 0) {
-      const fps = 300 / ((now - this.lastRenderTime) / 1000);
+    // MASSIVELY reduced logging frequency for better performance (every 1800 frames = 30 seconds at 60fps)
+    if (this.renderCount % 1800 === 0) {
+      const fps = 1800 / ((now - this.lastRenderTime) / 1000);
       console.log("🎨 [RenderEngine] Performance:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),

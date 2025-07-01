@@ -42,6 +42,10 @@ export class GameEngine {
   // Attack state tracking
   private isAttackPressed: boolean = false;
   
+  // Performance optimization - reduce update frequency for non-critical systems
+  private systemUpdateCounter: number = 0;
+  private readonly SYSTEM_UPDATE_INTERVAL: number = 3; // Update every 3rd frame for better performance
+  
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
     
@@ -298,7 +302,10 @@ export class GameEngine {
       return;
     }
     
-    // Update movement system first
+    // Increment system update counter
+    this.systemUpdateCounter++;
+    
+    // Update movement system every frame (critical for smooth gameplay)
     this.movementSystem.update(deltaTime);
     
     // Check if player is moving
@@ -307,49 +314,54 @@ export class GameEngine {
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
     
-    // Update building manager (critical for fire animation)
-    if (this.buildingManager) {
-      this.buildingManager.update(deltaTime);
-    }
-    
-    // Sync enemies from scene manager to combat system
-    if (this.sceneManager) {
-      const sceneEnemies = this.sceneManager.getEnemies();
-      // Update combat system with current enemies
-      sceneEnemies.forEach(enemy => {
-        if (!this.combatSystem!.getEnemies().includes(enemy)) {
-          this.combatSystem!.addEnemy(enemy);
-        }
-      });
-    }
-    
-    // Update combat system
+    // Update critical systems every frame
     this.combatSystem.update(deltaTime);
-    
-    // Update effects
-    this.effectsManager.update(deltaTime);
-    
-    // Update audio
-    this.audioManager.update();
-    
-    // Update player
     this.player.update(deltaTime, this.isMoving);
     
-    // Update camera to follow player
+    // Update camera to follow player (critical for smooth first-person)
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // NEW: Update scene manager with player position for ring-quadrant system
-    if (this.sceneManager) {
-      this.sceneManager.update(deltaTime, this.player.getPosition());
+    // Update less critical systems less frequently for performance
+    if (this.systemUpdateCounter % this.SYSTEM_UPDATE_INTERVAL === 0) {
+      // Update building manager (for fire animation)
+      if (this.buildingManager) {
+        this.buildingManager.update(deltaTime * this.SYSTEM_UPDATE_INTERVAL); // Compensate for reduced frequency
+      }
+      
+      // Update effects
+      this.effectsManager.update(deltaTime * this.SYSTEM_UPDATE_INTERVAL);
+      
+      // Update audio
+      this.audioManager.update();
+      
+      // Update scene manager with player position for ring-quadrant system
+      if (this.sceneManager) {
+        this.sceneManager.update(deltaTime * this.SYSTEM_UPDATE_INTERVAL, this.player.getPosition());
+      }
+      
+      // Sync enemies from scene manager to combat system
+      if (this.sceneManager) {
+        const sceneEnemies = this.sceneManager.getEnemies();
+        // Update combat system with current enemies
+        sceneEnemies.forEach(enemy => {
+          if (!this.combatSystem!.getEnemies().includes(enemy)) {
+            this.combatSystem!.addEnemy(enemy);
+          }
+        });
+      }
     }
     
-    // Check location changes
-    const isInTavern = this.movementSystem.checkInTavern();
-    this.stateManager.updateLocationState(isInTavern);
+    // Check location changes (less frequent)
+    if (this.systemUpdateCounter % 10 === 0) { // Every 10th frame
+      const isInTavern = this.movementSystem.checkInTavern();
+      this.stateManager.updateLocationState(isInTavern);
+    }
     
-    // Check for game over
-    if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
-      this.stateManager.setGameOver(this.stateManager.getScore());
+    // Check for game over (less frequent)
+    if (this.systemUpdateCounter % 30 === 0) { // Every 30th frame
+      if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
+        this.stateManager.setGameOver(this.stateManager.getScore());
+      }
     }
   }
   
