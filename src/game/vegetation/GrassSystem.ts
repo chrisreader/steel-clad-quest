@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GrassConfig, DEFAULT_GRASS_CONFIG } from './core/GrassConfig';
 import { GrassRenderer } from './core/GrassRenderer';
@@ -20,20 +19,20 @@ export class GrassSystem {
   private windSystem: WindSystem;
   private bubbleManager: GrassRenderBubbleManager;
   
-  // ENHANCED: Performance optimization with adaptive updates
+  // ULTRA PERFORMANCE: Much less frequent updates
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 15; // Reduced frequency
-  private readonly FOG_CHECK_INTERVAL: number = 300; // Less frequent fog checks
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 30; // Much less frequent
+  private readonly FOG_CHECK_INTERVAL: number = 1000; // Much less frequent
   
-  // PERFORMANCE: Smart update system
+  // Performance monitoring with longer intervals
   private lastPerformanceReport: number = 0;
-  private readonly PERFORMANCE_REPORT_INTERVAL: number = 1000; // Every 1000 frames
+  private readonly PERFORMANCE_REPORT_INTERVAL: number = 3000; // Every 3000 frames
   private frameTimeHistory: number[] = [];
-  private readonly MAX_FRAME_TIME_SAMPLES: number = 30;
+  private readonly MAX_FRAME_TIME_SAMPLES: number = 10; // Fewer samples
   
-  // Player tracking with velocity
+  // Player tracking
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private playerVelocity: number = 0;
   private isPlayerMoving: boolean = false;
@@ -50,21 +49,21 @@ export class GrassSystem {
     DeterministicBiomeManager.setWorldSeed(Date.now());
     DeterministicBiomeManager.forceRegenerateAllBiomes();
     
-    console.log('🌱 ENHANCED PERFORMANCE GRASS SYSTEM: Initialized with adaptive LOD and smart culling');
+    console.log('🌱 ULTRA PERFORMANCE GRASS SYSTEM: Initialized with extreme optimization');
   }
   
-  public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 180): void {
-    console.log(`🌱 PERFORMANCE OPTIMIZED: Initializing with ${coverageRadius}-unit smart rendering`);
+  public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 100): void {
+    console.log(`🌱 ULTRA PERFORMANCE: Initializing with ${coverageRadius}-unit ultra-optimized rendering`);
     
     // Force biome regeneration
     DeterministicBiomeManager.clearCache();
     
-    // ENHANCED: Reduced coverage radius for better performance
+    // Much smaller coverage radius for extreme performance
     this.bubbleManager.initializeWithCoverage(playerPosition, coverageRadius);
     this.lastPlayerPosition.copy(playerPosition);
     
     const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
-    console.log(`🌱 OPTIMIZED BIOME: ${debugInfo.biomeData.biomeType} biome loaded with performance enhancements`);
+    console.log(`🌱 ULTRA OPTIMIZED BIOME: ${debugInfo.biomeData.biomeType} biome loaded`);
   }
   
   public generateGrassForRegion(
@@ -75,8 +74,8 @@ export class GrassSystem {
     currentPlayerPosition?: THREE.Vector3
   ): void {
     if (!this.bubbleManager.isLoadingComplete() && currentPlayerPosition) {
-      // PERFORMANCE: Reduced coverage radius
-      const coverageRadius = Math.min(size, 350);
+      // Much smaller coverage radius
+      const coverageRadius = Math.min(size, 150);
       this.initializeGrassSystem(currentPlayerPosition, coverageRadius);
     }
   }
@@ -86,21 +85,25 @@ export class GrassSystem {
     
     this.updateCounter++;
     
-    // ENHANCED: Track player movement and velocity
-    this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / deltaTime;
-    this.isPlayerMoving = this.playerVelocity > 0.1;
-    this.lastPlayerPosition.copy(playerPosition);
+    // Track player movement less frequently
+    if (this.updateCounter % 3 === 0) {
+      this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / (deltaTime * 3);
+      this.isPlayerMoving = this.playerVelocity > 0.2;
+      this.lastPlayerPosition.copy(playerPosition);
+    }
     
-    // PERFORMANCE: Update bubble manager with movement prediction
-    this.bubbleManager.update(playerPosition);
+    // Update bubble manager less frequently
+    if (this.updateCounter % 3 === 0) {
+      this.bubbleManager.update(playerPosition);
+    }
     
-    // ENHANCED: Adaptive wind system updates
-    const windUpdateInterval = this.isPlayerMoving ? 2 : 4; // More frequent when moving
+    // Much less frequent wind system updates
+    const windUpdateInterval = this.isPlayerMoving ? 8 : 12;
     if (this.updateCounter % windUpdateInterval === 0) {
       this.windSystem.update(deltaTime * windUpdateInterval);
     }
     
-    // PERFORMANCE: Less frequent material updates
+    // Much less frequent material updates
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
       let nightFactor = 0;
       let dayFactor = 1;
@@ -110,9 +113,9 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // ENHANCED: Staggered material updates for better performance
-      const shouldUpdateTallGrass = this.updateCounter % 30 === 0;
-      const shouldUpdateGroundGrass = this.updateCounter % 30 === 15;
+      // Extremely staggered material updates
+      const shouldUpdateTallGrass = this.updateCounter % 60 === 0;
+      const shouldUpdateGroundGrass = this.updateCounter % 60 === 30;
       
       if (shouldUpdateTallGrass) {
         this.updateGrassMaterials(this.renderer.getGrassMaterials(), nightFactor, dayFactor, false);
@@ -122,20 +125,22 @@ export class GrassSystem {
         this.updateGrassMaterials(this.renderer.getGroundGrassMaterials(), nightFactor, dayFactor, true);
       }
       
-      // PERFORMANCE: Less frequent fog updates
-      if (this.checkFogChanges() && this.cachedFogValues) {
+      // Much less frequent fog updates
+      if (this.updateCounter % 100 === 0 && this.checkFogChanges() && this.cachedFogValues) {
         this.updateFogUniforms();
       }
     }
     
-    // ENHANCED: Performance monitoring and adaptive quality
+    // Performance monitoring with much longer intervals
     const frameTime = performance.now() - frameStartTime;
-    this.frameTimeHistory.push(frameTime);
-    if (this.frameTimeHistory.length > this.MAX_FRAME_TIME_SAMPLES) {
-      this.frameTimeHistory.shift();
+    if (this.updateCounter % 10 === 0) { // Only sample every 10th frame
+      this.frameTimeHistory.push(frameTime);
+      if (this.frameTimeHistory.length > this.MAX_FRAME_TIME_SAMPLES) {
+        this.frameTimeHistory.shift();
+      }
     }
     
-    // Performance reporting
+    // Much less frequent performance reporting
     if (this.updateCounter - this.lastPerformanceReport >= this.PERFORMANCE_REPORT_INTERVAL) {
       this.reportPerformanceMetrics();
       this.lastPerformanceReport = this.updateCounter;
@@ -158,11 +163,13 @@ export class GrassSystem {
   
   // ENHANCED: Performance monitoring
   private reportPerformanceMetrics(): void {
+    if (this.frameTimeHistory.length === 0) return;
+    
     const avgFrameTime = this.frameTimeHistory.reduce((a, b) => a + b, 0) / this.frameTimeHistory.length;
     const maxFrameTime = Math.max(...this.frameTimeHistory);
     const rendererMetrics = this.renderer.getPerformanceMetrics();
     
-    console.log(`🌱 PERFORMANCE REPORT:`, {
+    console.log(`🌱 ULTRA PERFORMANCE REPORT:`, {
       instances: `${rendererMetrics.visibleInstances}/${rendererMetrics.totalInstances}`,
       materials: rendererMetrics.pooledMaterials,
       geometries: rendererMetrics.pooledGeometries,
@@ -224,7 +231,7 @@ export class GrassSystem {
   public setSeason(season: 'spring' | 'summer' | 'autumn' | 'winter'): void {
     this.currentSeason = season;
     
-    // Batch update all materials
+    // Batch update all materials less frequently
     const allMaterials = [
       ...this.renderer.getGrassMaterials().values(),
       ...this.renderer.getGroundGrassMaterials().values()
@@ -277,17 +284,17 @@ export class GrassSystem {
   public dispose(): void {
     this.bubbleManager.dispose();
     this.renderer.dispose();
-    console.log('🌱 Enhanced performance grass system disposed');
+    console.log('🌱 Ultra performance grass system disposed');
   }
   
   public debugBiomeAtPosition(position: THREE.Vector3): void {
     const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(position);
-    console.log('🔍 OPTIMIZED BIOME DEBUG:', debugInfo);
+    console.log('🔍 ULTRA OPTIMIZED BIOME DEBUG:', debugInfo);
   }
   
   public regenerateOrganicBiomes(): void {
     DeterministicBiomeManager.setWorldSeed(Date.now());
-    console.log('🔄 PERFORMANCE BIOME: Regenerated with enhanced fractal boundaries');
+    console.log('🔄 ULTRA PERFORMANCE BIOME: Regenerated');
   }
 }
 

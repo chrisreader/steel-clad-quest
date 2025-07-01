@@ -12,19 +12,19 @@ export interface InstanceLODInfo {
 
 export class InstanceLODManager {
   private regionInstanceData: Map<string, InstanceLODInfo> = new Map();
-  // ENHANCED: More aggressive LOD distances
-  private lodDistances: number[] = [25, 50, 100, 150]; // Tighter distances
-  private readonly DENSITY_UPDATE_THRESHOLD = 0.08; // Lower for smoother transitions
-  private readonly POSITION_UPDATE_THRESHOLD = 2; // More responsive
-  private readonly CULLING_DISTANCE = 180; // Reduced from 200
-  private readonly UPDATE_THROTTLE = 50; // ms between updates per region
+  // ULTRA AGGRESSIVE: Much shorter distances and more aggressive culling
+  private lodDistances: number[] = [15, 30, 60, 80]; // Drastically reduced
+  private readonly DENSITY_UPDATE_THRESHOLD = 0.15; // Higher threshold = less frequent updates
+  private readonly POSITION_UPDATE_THRESHOLD = 5; // Less responsive but more performant
+  private readonly CULLING_DISTANCE = 100; // Much shorter culling distance
+  private readonly UPDATE_THROTTLE = 150; // Much longer throttle
 
   public calculateInstanceLODDensity(distance: number): number {
     if (distance >= this.CULLING_DISTANCE) return 0.0;
     if (distance < this.lodDistances[0]) return 1.0;
-    if (distance < this.lodDistances[1]) return 0.6; // More aggressive
-    if (distance < this.lodDistances[2]) return 0.3; // Even more aggressive
-    if (distance < this.lodDistances[3]) return 0.1; // Very sparse
+    if (distance < this.lodDistances[1]) return 0.4; // Much more aggressive
+    if (distance < this.lodDistances[2]) return 0.15; // Very aggressive
+    if (distance < this.lodDistances[3]) return 0.05; // Extremely sparse
     return 0.0;
   }
 
@@ -38,10 +38,11 @@ export class InstanceLODManager {
 
     const distanceToPlayer = playerPosition.distanceTo(regionCenter);
     
-    // Immediate culling for very distant regions
+    // Immediate culling for distant regions
     if (distanceToPlayer > this.CULLING_DISTANCE) {
       if (instancedMesh.visible) {
         instancedMesh.visible = false;
+        instancedMesh.count = 0;
         return true;
       }
       return false;
@@ -52,7 +53,7 @@ export class InstanceLODManager {
     
     // Initialize LOD info if not exists
     if (!lodInfo) {
-      const originalCount = instancedMesh.count;
+      const originalCount = Math.min(instancedMesh.count, 50); // Cap at 50 instances max
       const matrices: THREE.Matrix4[] = [];
       
       for (let i = 0; i < originalCount; i++) {
@@ -73,7 +74,7 @@ export class InstanceLODManager {
       this.regionInstanceData.set(regionKey, lodInfo);
     }
 
-    // Throttle updates per region
+    // Much more aggressive throttling
     if (now - lodInfo.lastUpdateTime < this.UPDATE_THROTTLE) {
       return false;
     }
@@ -85,7 +86,7 @@ export class InstanceLODManager {
       instancedMesh.visible = true;
     }
 
-    // Check for significant changes
+    // Check for significant changes with higher thresholds
     const distanceChange = Math.abs(lodInfo.distanceFromPlayer - distanceToPlayer);
     const lodChange = Math.abs(lodInfo.lastLODLevel - targetLODDensity);
     
@@ -93,7 +94,7 @@ export class InstanceLODManager {
       return false;
     }
 
-    // Calculate new visible instance count with more aggressive reduction
+    // Calculate new visible instance count with extreme reduction
     const targetVisibleCount = Math.max(0, Math.floor(lodInfo.originalInstanceCount * targetLODDensity));
     
     if (targetVisibleCount !== lodInfo.currentVisibleCount) {
@@ -124,40 +125,9 @@ export class InstanceLODManager {
       return;
     }
 
-    // ENHANCED: Smarter instance selection based on distance and importance
-    const playerPos = instancedMesh.userData.lastPlayerPosition as THREE.Vector3;
-    
-    if (playerPos) {
-      // Calculate distances and importance scores
-      const instanceData = lodInfo.instanceMatrices.map((matrix, index) => {
-        const position = new THREE.Vector3();
-        position.setFromMatrixPosition(matrix);
-        const distance = position.distanceTo(playerPos);
-        
-        // Add some randomness to avoid patterns
-        const randomFactor = Math.sin(index * 0.1) * 0.1;
-        const importanceScore = 1 / (distance + 1) + randomFactor;
-        
-        return { index, distance, matrix, importance: importanceScore };
-      });
-
-      // Sort by importance (closer + randomness = higher importance)
-      instanceData.sort((a, b) => b.importance - a.importance);
-      const selectedInstances = instanceData.slice(0, targetCount);
-
-      // Update the instanced mesh
-      instancedMesh.count = targetCount;
-      
-      for (let i = 0; i < targetCount; i++) {
-        instancedMesh.setMatrixAt(i, selectedInstances[i].matrix);
-      }
-      
-      instancedMesh.instanceMatrix.needsUpdate = true;
-    } else {
-      // Fallback: use first N instances
-      instancedMesh.count = targetCount;
-      instancedMesh.instanceMatrix.needsUpdate = true;
-    }
+    // Simple selection - just use first N instances for performance
+    instancedMesh.count = targetCount;
+    instancedMesh.instanceMatrix.needsUpdate = true;
   }
 
   public clearRegionData(regionKey: string): void {

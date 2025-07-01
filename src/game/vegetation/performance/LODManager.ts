@@ -1,4 +1,3 @@
-
 import * as THREE from 'three';
 import { GradientDensity } from '../../utils/math/GradientDensity';
 import { InstanceLODManager } from './InstanceLODManager';
@@ -10,30 +9,29 @@ export interface RegionLODInfo {
 }
 
 export class LODManager {
-  // ENHANCED: More aggressive LOD distances for better performance
-  private lodDistances: number[] = [30, 60, 120, 180]; // Tighter distances
+  // ULTRA AGGRESSIVE: Much shorter distances for extreme performance
+  private lodDistances: number[] = [20, 40, 80, 120]; // Much shorter
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 2; // More frequent for responsiveness
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // Less frequent updates
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
-  private readonly LOD_REGENERATION_THRESHOLD: number = 0.3;
-  private readonly POSITION_UPDATE_THRESHOLD: number = 3;
+  private readonly LOD_REGENERATION_THRESHOLD: number = 0.5;
+  private readonly POSITION_UPDATE_THRESHOLD: number = 8; // Much higher threshold
 
-  // Enhanced instance-level LOD manager
   private instanceLODManager: InstanceLODManager = new InstanceLODManager();
 
-  // PERFORMANCE: Predictive loading based on player movement
+  // Player velocity tracking with reduced precision
   private playerVelocity: THREE.Vector3 = new THREE.Vector3();
   private lastPlayerUpdateTime: number = 0;
 
   public calculateLODDensity(distance: number): number {
-    // More aggressive LOD for better performance
+    // Much more aggressive density reduction
     if (distance < this.lodDistances[0]) return 1.0;
-    if (distance < this.lodDistances[1]) return 0.75;
-    if (distance < this.lodDistances[2]) return 0.5;
-    if (distance < this.lodDistances[3]) return 0.25;
-    return 0.0; // Complete culling beyond 180 units
+    if (distance < this.lodDistances[1]) return 0.5;
+    if (distance < this.lodDistances[2]) return 0.2;
+    if (distance < this.lodDistances[3]) return 0.1;
+    return 0.0; // Complete culling beyond 120 units
   }
 
   public updateVisibility(
@@ -44,19 +42,22 @@ export class LODManager {
   ): void {
     this.grassCullingUpdateCounter++;
     
-    // Calculate player velocity for predictive loading
+    // Much less frequent velocity calculation
     const now = performance.now();
-    if (this.lastPlayerUpdateTime > 0) {
+    if (this.lastPlayerUpdateTime === 0 || now - this.lastPlayerUpdateTime > 500) {
       const deltaTime = (now - this.lastPlayerUpdateTime) / 1000;
-      this.playerVelocity.subVectors(playerPosition, this.lastPlayerPosition).divideScalar(deltaTime);
+      if (deltaTime > 0) {
+        this.playerVelocity.subVectors(playerPosition, this.lastPlayerPosition).divideScalar(deltaTime);
+      }
+      this.lastPlayerUpdateTime = now;
     }
-    this.lastPlayerUpdateTime = now;
     
     const playerMovement = this.lastPlayerPosition.distanceTo(playerPosition);
     const shouldUpdateInstances = playerMovement > this.POSITION_UPDATE_THRESHOLD;
     
     this.lastPlayerPosition.copy(playerPosition);
     
+    // Much less frequent grass visibility updates
     if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
       this.updateGrassVisibilityOptimized(playerPosition, grassInstances, groundGrassInstances, maxDistance, shouldUpdateInstances);
       this.grassCullingUpdateCounter = 0;
@@ -73,34 +74,27 @@ export class LODManager {
     let visibilityChanges = 0;
     let instanceUpdates = 0;
     
-    // ENHANCED: Frustum-based culling with camera direction
-    const playerDirection = this.playerVelocity.length() > 0.1 
-      ? this.playerVelocity.clone().normalize() 
-      : new THREE.Vector3(0, 0, -1);
+    // Drastically reduced render distances
+    const tallGrassMaxDistance = Math.min(maxDistance * 0.5, 80); // Much shorter
+    const groundGrassMaxDistance = Math.min(maxDistance * 0.3, 50); // Even shorter
     
-    // Update tall grass with enhanced culling
+    // Update tall grass with much more aggressive culling
     for (const [regionKey, instancedMesh] of grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
       
-      // PERFORMANCE: Directional culling - prioritize regions in movement direction
-      const directionToRegion = regionCenter.clone().sub(playerPosition).normalize();
-      const alignmentWithMovement = directionToRegion.dot(playerDirection);
-      
-      // Adjust max distance based on alignment
-      const adjustedMaxDistance = alignmentWithMovement > 0 
-        ? maxDistance 
-        : maxDistance * 0.7; // Reduce distance for regions behind player
-      
-      const shouldBeVisible = distanceToPlayer <= adjustedMaxDistance;
+      const shouldBeVisible = distanceToPlayer <= tallGrassMaxDistance;
       
       if (instancedMesh.visible !== shouldBeVisible) {
         instancedMesh.visible = shouldBeVisible;
+        if (!shouldBeVisible) {
+          instancedMesh.count = 0; // Immediately hide all instances
+        }
         visibilityChanges++;
       }
       
-      // Enhanced instance-level LOD
-      if (shouldBeVisible && shouldUpdateInstances) {
+      // Only update instances for very close grass
+      if (shouldBeVisible && shouldUpdateInstances && distanceToPlayer <= 40) {
         instancedMesh.userData.lastPlayerPosition = playerPosition.clone();
         
         const updated = this.instanceLODManager.updateInstanceVisibility(
@@ -113,34 +107,25 @@ export class LODManager {
           instanceUpdates++;
         }
       }
-      
-      // Dynamic material opacity based on LOD
-      const newLodDensity = this.calculateLODDensity(distanceToPlayer);
-      if (instancedMesh.userData.lodLevel !== newLodDensity && shouldBeVisible) {
-        instancedMesh.userData.lodLevel = newLodDensity;
-        if (instancedMesh.material && newLodDensity < 0.8) {
-          (instancedMesh.material as THREE.ShaderMaterial).transparent = true;
-          if ((instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity) {
-            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.3, newLodDensity);
-          }
-        }
-      }
     }
     
-    // Ground grass with more aggressive culling
-    const groundRenderDistance = Math.min(maxDistance * 0.6, 120);
+    // Ground grass with extreme culling
     for (const [regionKey, instancedMesh] of groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
       
-      const shouldBeVisible = distanceToPlayer <= groundRenderDistance;
+      const shouldBeVisible = distanceToPlayer <= groundGrassMaxDistance;
       
       if (instancedMesh.visible !== shouldBeVisible) {
         instancedMesh.visible = shouldBeVisible;
+        if (!shouldBeVisible) {
+          instancedMesh.count = 0; // Immediately hide all instances
+        }
         visibilityChanges++;
       }
       
-      if (shouldBeVisible && shouldUpdateInstances) {
+      // Only update instances for very close ground grass
+      if (shouldBeVisible && shouldUpdateInstances && distanceToPlayer <= 25) {
         instancedMesh.userData.lastPlayerPosition = playerPosition.clone();
         
         const updated = this.instanceLODManager.updateInstanceVisibility(
@@ -155,9 +140,9 @@ export class LODManager {
       }
     }
     
-    // Reduced logging frequency
-    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 30 === 0) {
-      console.log(`🌱 ENHANCED LOD: ${visibilityChanges} visibility, ${instanceUpdates} instance updates`);
+    // Much less frequent logging
+    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 100 === 0) {
+      console.log(`🌱 ULTRA PERFORMANCE LOD: ${visibilityChanges} visibility, ${instanceUpdates} instance updates`);
     }
   }
 
