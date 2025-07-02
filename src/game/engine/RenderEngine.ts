@@ -1,5 +1,8 @@
 
 import * as THREE from 'three';
+import { PredictiveLoader } from '../utils/PredictiveLoader';
+import { PerformanceCache } from '../utils/PerformanceCache';
+import { AdaptivePerformanceManager } from '../utils/AdaptivePerformanceManager';
 
 export class RenderEngine {
   private scene: THREE.Scene;
@@ -28,7 +31,13 @@ export class RenderEngine {
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 30; // Much more responsive culling for smooth turning
+  private readonly CULLING_UPDATE_INTERVAL: number = 15; // Ultra-responsive culling (15ms)
+  
+  // Advanced performance systems
+  private predictiveLoader: PredictiveLoader | null = null;
+  private performanceManager: AdaptivePerformanceManager = new AdaptivePerformanceManager();
+  private preWarmObjects: Set<THREE.Object3D> = new Set();
+  private hysteresisMargin: number = 5; // Units of hysteresis for object visibility
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -72,6 +81,9 @@ export class RenderEngine {
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
+    
+    // Initialize predictive loader
+    this.predictiveLoader = new PredictiveLoader(this.camera, this.scene);
     
     console.log("🎨 [RenderEngine] Initialized with performance optimizations");
   }
@@ -145,16 +157,33 @@ export class RenderEngine {
       return false;
     }
     
+    // Pre-warm objects - keep objects just outside frustum loaded
+    const distance = PerformanceCache.getCachedDistance(this.camera.position, object.position);
+    if (this.preWarmObjects.has(object) && distance < 250) {
+      return true; // Keep pre-warmed objects visible longer
+    }
+    
     // Fast bounding sphere pre-check before expensive frustum test
     if (object instanceof THREE.Mesh && object.geometry) {
       const sphere = object.geometry.boundingSphere;
       if (sphere) {
-        // Quick distance check first (cheaper than frustum test)
-        const distance = this.camera.position.distanceTo(object.position);
-        if (distance > 200) return false; // Cull very distant objects immediately
+        // Adaptive distance culling based on performance
+        const maxDistance = this.performanceManager.getGrassRenderDistance() * 2;
+        if (distance > maxDistance) return false;
         
         const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
-        return this.frustum.intersectsSphere(worldSphere);
+        const inFrustum = this.frustum.intersectsSphere(worldSphere);
+        
+        // Add hysteresis to prevent flickering
+        if (inFrustum || distance < this.hysteresisMargin) {
+          this.preWarmObjects.add(object);
+          return true;
+        } else if (distance > this.hysteresisMargin * 2) {
+          this.preWarmObjects.delete(object);
+          return false;
+        }
+        
+        return object.visible; // Maintain current state in hysteresis zone
       }
     }
     
@@ -163,27 +192,36 @@ export class RenderEngine {
   
   public render(): void {
     this.renderCount++;
-    const now = performance.now();
+    const deltaTime = this.getDeltaTime();
     
-    // Update frustum culling less frequently for performance
+    // Update performance management
+    this.performanceManager.update();
+    
+    // Update predictive loader for object pre-loading
+    if (this.predictiveLoader) {
+      this.predictiveLoader.update(deltaTime);
+    }
+    
+    // Update frustum culling with ultra-responsive timing
     this.updateFrustumCulling();
     
-    // Apply frustum culling to scene objects
+    // Apply optimized frustum culling to scene objects
     this.scene.traverse((object) => {
       if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
         object.visible = this.isObjectInFrustum(object);
       }
     });
     
-    // Reduced logging frequency for better performance (every 300 frames instead of 60)
-    if (this.renderCount % 300 === 0) {
-      const fps = 300 / ((now - this.lastRenderTime) / 1000);
-      console.log("🎨 [RenderEngine] Performance:", {
+    // Performance-responsive logging (every 900 frames for smooth performance)
+    if (this.renderCount % 900 === 0) {
+      const avgFPS = this.performanceManager.getAverageFPS();
+      console.log("🎨 [RenderEngine] Advanced Performance:", {
         frame: this.renderCount,
-        fps: fps.toFixed(1),
-        objects: this.scene.children.length
+        avgFPS: avgFPS.toFixed(1),
+        quality: this.performanceManager.getQualityLevel().toFixed(2),
+        preWarmObjects: this.preWarmObjects.size,
+        grassDistance: this.performanceManager.getGrassRenderDistance()
       });
-      this.lastRenderTime = now;
     }
     
     this.renderer.render(this.scene, this.camera);
@@ -214,8 +252,19 @@ export class RenderEngine {
     return this.renderer;
   }
   
+  public getPerformanceManager(): AdaptivePerformanceManager {
+    return this.performanceManager;
+  }
+
   public dispose(): void {
     console.log("🎨 [RenderEngine] Disposing...");
+    
+    if (this.predictiveLoader) {
+      this.predictiveLoader.dispose();
+    }
+    
+    PerformanceCache.clearAll();
+    this.preWarmObjects.clear();
     
     if (this.renderer) {
       this.renderer.dispose();
