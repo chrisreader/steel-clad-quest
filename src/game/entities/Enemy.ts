@@ -8,6 +8,7 @@ import { EnemyBodyParts } from './EnemyBody';
 import { EnemyAnimationSystem } from '../animation/EnemyAnimationSystem';
 import { OrcEnemy } from './humanoid/OrcEnemy';
 import { PassiveNPCBehavior, PassiveBehaviorState } from '../ai/PassiveNPCBehavior';
+import { EnemyStateManager, EnemyAIState } from '../systems/EnemyStateManager';
 
 // Enhanced enemy states for better movement control
 enum EnemyMovementState {
@@ -43,12 +44,13 @@ export class Enemy {
   private rotationSpeed: number = 3.0;
   private hasInitialOrientation: boolean = false;
 
-  // Enhanced passive behavior with AI for legacy enemies
-  private isPassive: boolean = false;
+  // Enhanced MMORPG-style AI behavior
+  private isPassive: boolean = true; // Start passive, become aggressive based on state
   private lastPassiveStateChange: number = 0;
   private passiveAI: PassiveNPCBehavior | null = null;
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
+  private stateManager: EnemyStateManager | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -74,17 +76,27 @@ export class Enemy {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created legacy goblin enemy");
       
-      // Initialize AI behavior for legacy enemies
+      // Initialize MMORPG-style AI behavior for legacy enemies
       this.passiveAI = new PassiveNPCBehavior(
         position,
         this.maxWanderDistance,
         new THREE.Vector3(0, 0, 0), // Safe zone center
         8 // Safe zone radius
       );
+      
+      // Initialize state manager for enhanced AI
+      this.stateManager = new EnemyStateManager(position, {
+        awarenessRange: type === EnemyType.GOBLIN ? 25 : 30,
+        aggressionRange: type === EnemyType.GOBLIN ? 15 : 20,
+        maxPursuitDistance: type === EnemyType.GOBLIN ? 60 : 70,
+        patrolRadius: 20,
+        investigationTime: 6000,
+        retreatHealthThreshold: type === EnemyType.GOBLIN ? 0.25 : 0.15
+      });
     }
     
     // Set knockback resistance based on enemy type
-    this.knockbackResistance = type === EnemyType.ORC ? 0.7 : 1.0;
+    this.knockbackResistance = type === EnemyType.GOBLIN ? 1.0 : 0.7;
     
     // Add to scene (only for legacy enemies, humanoid enemies handle their own scene management)
     if (!this.isHumanoidEnemy) {
@@ -420,15 +432,95 @@ export class Enemy {
       this.enemy.isHit = false;
     }
     
-    // Choose behavior based on passive state
-    if (this.isPassive) {
-      this.handleAdvancedPassiveMovement(deltaTime);
+    // Use MMORPG-style state management for better behavior
+    if (this.stateManager) {
+      this.handleMMORPGMovement(deltaTime, playerPosition, now);
     } else {
-      const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
-      this.handleNormalMovement(deltaTime, playerPosition, distanceToPlayer, now);
+      // Fallback to old behavior for compatibility
+      if (this.isPassive) {
+        this.handleAdvancedPassiveMovement(deltaTime);
+      } else {
+        const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
+        this.handleNormalMovement(deltaTime, playerPosition, distanceToPlayer, now);
+      }
     }
     
     this.updateRotation(deltaTime);
+  }
+
+  private handleMMORPGMovement(deltaTime: number, playerPosition: THREE.Vector3, now: number): void {
+    if (!this.stateManager) return;
+
+    // Update state manager with current conditions
+    const currentState = this.stateManager.update(
+      deltaTime,
+      this.enemy.mesh.position,
+      playerPosition,
+      this.enemy.health,
+      this.enemy.maxHealth,
+      this.isPlayerInSafeZone()
+    );
+
+    // Get movement target and speed based on current state
+    const movementTarget = this.stateManager.getMovementTarget(
+      this.enemy.mesh.position,
+      playerPosition
+    );
+    const movementSpeed = this.stateManager.getMovementSpeed();
+
+    // Handle movement based on state
+    if (movementTarget && currentState !== EnemyAIState.SPAWNING) {
+      const direction = new THREE.Vector3()
+        .subVectors(movementTarget, this.enemy.mesh.position)
+        .normalize();
+      direction.y = 0;
+
+      // Set target rotation
+      this.targetRotation = Math.atan2(direction.x, direction.z);
+
+      // Move towards target
+      const moveAmount = this.enemy.speed * movementSpeed * deltaTime;
+      const newPosition = this.enemy.mesh.position.clone();
+      newPosition.add(direction.multiplyScalar(moveAmount));
+      newPosition.y = 0;
+
+      // Check distance to target to avoid overshooting
+      const distanceToTarget = this.enemy.mesh.position.distanceTo(movementTarget);
+      if (distanceToTarget > 1.0) {
+        this.enemy.mesh.position.copy(newPosition);
+        this.updateLegacyWalkAnimation(deltaTime);
+      } else {
+        this.updateLegacyIdleAnimation();
+      }
+
+      // Handle attacks when aggressive and in range
+      if (currentState === EnemyAIState.AGGRESSIVE) {
+        const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
+        if (distanceToPlayer <= this.enemy.damageRange && 
+            now - this.enemy.lastAttackTime > this.enemy.attackCooldown) {
+          this.attack(playerPosition);
+          this.enemy.lastAttackTime = now;
+        }
+      }
+    } else {
+      // Idle behavior when no movement target
+      this.updateLegacyIdleAnimation();
+    }
+
+    // Update passive state based on AI state for compatibility
+    const wasPassive = this.isPassive;
+    this.isPassive = !this.stateManager.isAggressive();
+    
+    if (wasPassive !== this.isPassive) {
+      this.lastPassiveStateChange = now;
+    }
+  }
+
+  private isPlayerInSafeZone(): boolean {
+    // Updated to use rectangular safe zone bounds
+    const playerPos = this.enemy.mesh.position;
+    return playerPos.x >= -6 && playerPos.x <= 6 && 
+           playerPos.z >= -6 && playerPos.z <= 6;
   }
 
   private handleAdvancedPassiveMovement(deltaTime: number): void {
