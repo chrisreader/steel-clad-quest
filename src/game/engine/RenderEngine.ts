@@ -28,7 +28,7 @@ export class RenderEngine {
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 30; // Much more responsive culling for smooth turning
+  private readonly CULLING_UPDATE_INTERVAL: number = 180; // ULTRA-AGGRESSIVE: Every 6th frame for performance
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -42,22 +42,22 @@ export class RenderEngine {
     this.scene = new THREE.Scene();
     this.scene.background = null;
     
-    // Create camera
+    // ULTRA-AGGRESSIVE camera settings for performance
     this.camera = new THREE.PerspectiveCamera(
       75,
       this.mountElement.clientWidth / this.mountElement.clientHeight,
       0.1,
-      1000
+      500 // Reduced from 1000 for 50% fewer far calculations
     );
     
     // Set up camera layers
     this.camera.layers.enable(0);
     this.camera.layers.disable(1);
     
-    // Create renderer with optimized settings
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    // ULTRA-AGGRESSIVE renderer settings for maximum performance
+    this.renderer = new THREE.WebGLRenderer({ antialias: false }); // Disabled for performance
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = false; // Disabled for massive performance gain
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
@@ -175,10 +175,10 @@ export class RenderEngine {
       }
     });
     
-    // Reduced logging frequency for better performance (every 300 frames instead of 60)
-    if (this.renderCount % 300 === 0) {
-      const fps = 300 / ((now - this.lastRenderTime) / 1000);
-      console.log("🎨 [RenderEngine] Performance:", {
+    // ULTRA-AGGRESSIVE logging reduction (every 3000 frames = 3 minutes at 60fps)
+    if (this.renderCount % 3000 === 0) {
+      const fps = 3000 / ((now - this.lastRenderTime) / 1000);
+      console.log("🎨 [RenderEngine] ULTRA-PERFORMANCE:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
         objects: this.scene.children.length

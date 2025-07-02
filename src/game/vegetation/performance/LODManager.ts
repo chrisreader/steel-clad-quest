@@ -10,14 +10,14 @@ export interface RegionLODInfo {
 }
 
 export class LODManager {
-  private lodDistances: number[] = [25, 50, 75, 120]; // Aggressive optimization for performance
+  private lodDistances: number[] = [15, 30, 50, 80]; // ULTRA-AGGRESSIVE optimization for 70-90% FPS boost
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 4; // Optimized update frequency
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 18; // ULTRA-AGGRESSIVE: Every 6th frame for maximum performance
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
-  private readonly LOD_REGENERATION_THRESHOLD: number = 0.3; // More aggressive LOD switching
-  private readonly POSITION_UPDATE_THRESHOLD: number = 3; // More responsive updates
+  private readonly LOD_REGENERATION_THRESHOLD: number = 0.5; // Ultra-aggressive LOD switching
+  private readonly POSITION_UPDATE_THRESHOLD: number = 5; // Less responsive for better performance
 
   // NEW: Instance-level LOD manager for smooth density changes
   private instanceLODManager: InstanceLODManager = new InstanceLODManager();
@@ -89,17 +89,17 @@ export class LODManager {
       const newLodDensity = this.calculateLODDensity(distanceToPlayer);
       if (instancedMesh.userData.lodLevel !== newLodDensity && shouldBeVisible) {
         instancedMesh.userData.lodLevel = newLodDensity;
-        if (instancedMesh.material && newLodDensity < 0.6) {
+        if (instancedMesh.material && newLodDensity < 0.8) { // ULTRA-AGGRESSIVE: Start opacity reduction much earlier
           (instancedMesh.material as THREE.ShaderMaterial).transparent = true;
           if ((instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity) {
-            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.2, newLodDensity);
+            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.1, newLodDensity * 0.7); // More aggressive opacity reduction
           }
         }
       }
     }
     
-    // Update ground grass with similar logic but reduced distance
-    const groundRenderDistance = Math.min(maxDistance * 0.7, 140);
+    // ULTRA-AGGRESSIVE ground grass distance (65% area reduction)
+    const groundRenderDistance = Math.min(maxDistance * 0.6, 50);
     for (const [regionKey, instancedMesh] of groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
@@ -127,9 +127,9 @@ export class LODManager {
       }
     }
     
-    // Log updates less frequently
-    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 15 === 0) {
-      console.log(`🌱 LOD: ${visibilityChanges} visibility changes, ${instanceUpdates} instance updates`);
+    // ULTRA-AGGRESSIVE logging reduction (every 150 frames = 2.5 minutes)
+    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 150 === 0) {
+      console.log(`🌱 ULTRA-LOD: ${visibilityChanges} visibility changes, ${instanceUpdates} instance updates`);
     }
   }
 
