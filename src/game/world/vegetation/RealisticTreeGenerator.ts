@@ -848,18 +848,18 @@ export class RealisticTreeGenerator {
   }
 
   private getSpeciesNaturalColor(species: TreeSpeciesType): number {
-    // Natural, realistic foliage colors
+    // Bright, natural foliage colors for realistic appearance
     switch (species) {
       case TreeSpeciesType.OAK:
-        return 0x4A6741; // Deep forest green
+        return 0x6B8E23; // Olive drab - bright natural green
       case TreeSpeciesType.BIRCH:
-        return 0x5C7A4A; // Light forest green  
+        return 0x7CFC00; // Lawn green - vibrant spring green
       case TreeSpeciesType.WILLOW:
-        return 0x7A8B4C; // Sage green
+        return 0x9ACD32; // Yellow green - bright sage
       case TreeSpeciesType.DEAD:
-        return 0x8B7355; // Brown/dead foliage
+        return 0xA0522D; // Sienna - realistic dead foliage
       default:
-        return 0x4A6741; // Default deep green
+        return 0x6B8E23; // Default bright olive green
     }
   }
 
