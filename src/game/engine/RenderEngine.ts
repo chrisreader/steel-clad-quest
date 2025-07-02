@@ -28,7 +28,7 @@ export class RenderEngine {
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 180; // ULTRA-AGGRESSIVE: Every 6th frame for performance
+  private readonly CULLING_UPDATE_INTERVAL: number = 6; // RESPONSIVE: Every 6 frames for smooth turning while maintaining performance
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;

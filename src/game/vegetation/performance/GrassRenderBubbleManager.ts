@@ -20,7 +20,7 @@ export class GrassRenderBubbleManager {
   private readonly UNLOAD_RADIUS = 100; // Reduced from 150
   private readonly CHUNK_SIZE = 64;
   private readonly MAX_CHUNKS_PER_FRAME = 2; // Ultra-reduced from 3 for maximum smoothness
-  private readonly MOVEMENT_THRESHOLD = 2.0; // Slightly less responsive for performance
+  private readonly MOVEMENT_THRESHOLD = 0.8; // RESPONSIVE: More sensitive to camera turns for immediate loading
   
   // Chunk tracking
   private loadedChunks: Map<string, LoadedChunk> = new Map();

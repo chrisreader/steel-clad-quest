@@ -13,7 +13,7 @@ export class LODManager {
   private lodDistances: number[] = [15, 30, 50, 80]; // ULTRA-AGGRESSIVE optimization for 70-90% FPS boost
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 18; // ULTRA-AGGRESSIVE: Every 6th frame for maximum performance
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 3; // RESPONSIVE: Every 3 frames for immediate turn response
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
   private readonly LOD_REGENERATION_THRESHOLD: number = 0.5; // Ultra-aggressive LOD switching
