@@ -721,12 +721,12 @@ export class RealisticTreeGenerator {
     
     if (!this.materialCache.has(materialKey)) {
       const material = new THREE.MeshStandardMaterial({
-        color: 0x4A7C59, // Much brighter base green color
-        roughness: 0.7, // Reduced roughness for better light reflection
+        color: 0x6BA070, // Much brighter green for better visibility
+        roughness: 0.6, // Reduced roughness for better light reflection
         metalness: 0.0,
         transparent: true,
         opacity: 0.95, // Slightly more opaque
-        side: THREE.DoubleSide,
+        side: THREE.DoubleSide, // Better lighting from all angles
         vertexColors: true // Enable per-instance colors
       });
       this.materialCache.set(materialKey, material);
