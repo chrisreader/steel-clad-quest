@@ -338,11 +338,6 @@ export class GameEngine {
     // Update camera to follow player
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // Share performance manager with scene manager via camera userData
-    if (this.renderEngine.getCamera()) {
-      this.renderEngine.getCamera().userData.renderEngine = this.renderEngine;
-    }
-    
     // NEW: Update scene manager with player position for ring-quadrant system
     if (this.sceneManager) {
       this.sceneManager.update(deltaTime, this.player.getPosition());

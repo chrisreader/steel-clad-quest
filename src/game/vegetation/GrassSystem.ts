@@ -8,7 +8,6 @@ import { TIME_PHASES } from '../config/DayNightConfig';
 import { GrassShader } from './core/GrassShader';
 import { GrassRenderBubbleManager } from './performance/GrassRenderBubbleManager';
 import { DeterministicBiomeManager } from './biomes/DeterministicBiomeManager';
-import { AdaptivePerformanceManager } from '../utils/AdaptivePerformanceManager';
 
 export class GrassSystem {
   private scene: THREE.Scene;
@@ -24,9 +23,8 @@ export class GrassSystem {
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 30; // Reasonable update frequency
-  private readonly FOG_CHECK_INTERVAL: number = 500; // Less frequent fog checks
-  private performanceManager: AdaptivePerformanceManager | null = null;
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 16; // Reduced frequency for performance
+  private readonly FOG_CHECK_INTERVAL: number = 300; // Less frequent fog checks
   
   // Player tracking
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -76,30 +74,21 @@ export class GrassSystem {
     console.log(`🌱 Legacy region converted to position-based fractal system`);
   }
   
-  public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number, performanceManager?: AdaptivePerformanceManager): void {
+  public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
     this.updateCounter++;
-    
-    if (performanceManager) {
-      this.performanceManager = performanceManager;
-    }
     
     // Track player velocity
     this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / deltaTime;
     this.lastPlayerPosition.copy(playerPosition);
     
-    // Update bubble manager with adaptive render distance
-    const renderDistance = this.performanceManager ? this.performanceManager.getGrassRenderDistance() : 120;
-    this.bubbleManager.updateWithAdaptiveDistance(playerPosition, renderDistance);
+    // Update bubble manager with position-based biome queries
+    this.bubbleManager.update(playerPosition);
     
-    // Adaptive system updates based on performance
-    const shouldUpdateWind = !this.performanceManager || this.performanceManager.shouldUpdateSystem('visual', this.updateCounter);
-    if (shouldUpdateWind) {
-      this.windSystem.update(deltaTime);
-    }
+    // Update wind system
+    this.windSystem.update(deltaTime);
     
-    // Adaptive material updates based on performance
-    const shouldUpdateMaterials = !this.performanceManager || this.performanceManager.shouldUpdateSystem('visual', this.updateCounter);
-    if (shouldUpdateMaterials && this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
+    // Update materials less frequently for better performance
+    if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
       let nightFactor = 0;
       let dayFactor = 1;
       
@@ -108,12 +97,8 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // Adaptive update intervals based on performance
-      const qualityLevel = this.performanceManager ? this.performanceManager.getQualityLevel() : 1.0;
-      const updateInterval = Math.floor(16 / qualityLevel); // Faster updates for higher quality
-      
-      const shouldUpdateTallGrass = this.updateCounter % updateInterval === 0;
-      const shouldUpdateGroundGrass = this.updateCounter % updateInterval === Math.floor(updateInterval / 2);
+      const shouldUpdateTallGrass = this.updateCounter % 32 === 0; // Less frequent updates
+      const shouldUpdateGroundGrass = this.updateCounter % 32 === 16;
       
       if (shouldUpdateTallGrass) {
         for (const material of this.renderer.getGrassMaterials().values()) {
@@ -136,11 +121,11 @@ export class GrassSystem {
       }
     }
     
-    // Performance-adaptive reporting
-    const reportInterval = this.performanceManager ? Math.floor(600 / this.performanceManager.getQualityLevel()) : 600;
-    if (this.updateCounter % reportInterval === 0) {
-      const currentFPS = this.performanceManager ? this.performanceManager.getCurrentFPS() : 60;
-      console.log(`🌱 ADAPTIVE PERFORMANCE: ${this.bubbleManager.getRenderedInstanceCount()} instances, ${currentFPS.toFixed(1)}fps, distance: ${renderDistance}`);
+    // Report performance metrics less frequently
+    if (this.updateCounter % 600 === 0) {
+      console.log(`🌱 OPTIMIZED PERFORMANCE: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 120-unit radius`);
+      const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
+      console.log(`🌱 POSITION BIOME: Currently in ${debugInfo.biomeData.biomeType} (${debugInfo.organicBiomeCount} fractal biomes nearby)`);
     }
   }
   

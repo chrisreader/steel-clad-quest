@@ -10,10 +10,10 @@ export interface RegionLODInfo {
 }
 
 export class LODManager {
-  private lodDistances: number[] = [20, 40, 70, 120]; // Tighter LOD bands for better performance
+  private lodDistances: number[] = [25, 50, 75, 120]; // Aggressive optimization for performance
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // More stable updates
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 4; // Optimized update frequency
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
   private readonly LOD_REGENERATION_THRESHOLD: number = 0.3; // More aggressive LOD switching
@@ -23,12 +23,7 @@ export class LODManager {
   private instanceLODManager: InstanceLODManager = new InstanceLODManager();
 
   public calculateLODDensity(distance: number): number {
-    // Progressive quality reduction for better performance
-    if (distance < this.lodDistances[0]) return 1.0;     // Full detail 0-20
-    if (distance < this.lodDistances[1]) return 0.75;    // High detail 20-40
-    if (distance < this.lodDistances[2]) return 0.5;     // Medium detail 40-70
-    if (distance < this.lodDistances[3]) return 0.25;    // Low detail 70-120
-    return 0.1; // Minimal detail beyond 120
+    return GradientDensity.calculateLODDensity(distance, this.lodDistances);
   }
 
   public updateVisibility(

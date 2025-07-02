@@ -15,7 +15,7 @@ export class GrassRenderBubbleManager {
   private renderer: GrassRenderer;
   
   // Aggressive performance optimization for smooth 60fps gameplay
-  private RENDER_RADIUS = 120; // Adaptive radius for performance optimization
+  private readonly RENDER_RADIUS = 120; // Reduced from 200 for 64% area reduction
   private readonly DATA_LOAD_RADIUS = 300; // Reduced from 600 for faster loading
   private readonly UNLOAD_RADIUS = 150; // Reduced from 250
   private readonly CHUNK_SIZE = 64;
@@ -77,15 +77,8 @@ export class GrassRenderBubbleManager {
   }
 
   public update(playerPosition: THREE.Vector3): void {
-    this.updateWithAdaptiveDistance(playerPosition, this.RENDER_RADIUS);
-  }
-
-  public updateWithAdaptiveDistance(playerPosition: THREE.Vector3, renderDistance: number): void {
     this.frameCounter++;
     this.loadingThisFrame = 0;
-    
-    // Update render radius dynamically for adaptive performance
-    this.RENDER_RADIUS = renderDistance;
     
     // If not initialized, skip movement-based updates
     if (!this.isInitialized) {
@@ -99,7 +92,7 @@ export class GrassRenderBubbleManager {
     
     this.lastPlayerPosition.copy(playerPosition);
     
-    // Update chunk visibility with adaptive radius system
+    // Update chunk visibility with dual-radius system
     this.updateChunkVisibility(playerPosition);
     
     // Process loading queue
