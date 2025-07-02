@@ -999,7 +999,11 @@ export abstract class EnemyHumanoid {
       
       this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
       
-      if (distanceToPlayer > this.config.damageRange) {
+      // Define optimal combat distance (slightly larger than damage range to avoid walking into player)
+      const optimalCombatDistance = this.config.damageRange + 0.8; // Add buffer distance
+      
+      // Only move closer if we're further than optimal combat distance
+      if (distanceToPlayer > optimalCombatDistance) {
         const moveAmount = this.config.speed * deltaTime;
         const newPosition = this.mesh.position.clone();
         newPosition.add(directionToPlayer.multiplyScalar(moveAmount));
@@ -1007,8 +1011,12 @@ export abstract class EnemyHumanoid {
         
         this.mesh.position.copy(newPosition);
         this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
+      } else {
+        // We're at optimal distance - stop moving and just face the player
+        this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
       }
       
+      // Attack if within damage range and attack cooldown is ready
       if (distanceToPlayer <= this.config.damageRange && now - this.lastAttackTime > this.config.attackCooldown) {
         this.movementState = EnemyMovementState.ATTACKING;
         this.attack(playerPosition);
