@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { TreeSpeciesType, TreeSpeciesManager } from './TreeSpecies';
+import { OrganicFoliageGenerator } from './OrganicFoliageGenerator';
 
 interface BranchConfig {
   length: number;
@@ -616,13 +617,13 @@ export class RealisticTreeGenerator {
     return this.materialCache.get(materialKey)!;
   }
 
-  private createOptimizedFoliage(clusters: FoliageCluster[], species: TreeSpeciesType, treeHeight: number): THREE.Mesh | null {
+  private createOptimizedFoliage(clusters: FoliageCluster[], species: TreeSpeciesType, treeHeight: number): THREE.Group | null {
     if (clusters.length === 0) {
       console.warn('🚨 No foliage clusters provided');
       return null;
     }
     
-    console.log(`🍃 Creating instanced foliage with ${clusters.length} clusters for ${species}`);
+    console.log(`🍃 Creating organic foliage with ${clusters.length} clusters for ${species}`);
     
     // Validate clusters
     const validClusters = clusters.filter(cluster => {
@@ -639,55 +640,67 @@ export class RealisticTreeGenerator {
     }
     
     try {
-      // Get base geometry
-      const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!;
-      
-      // Create instanced mesh directly with base geometry
+      const foliageGroup = new THREE.Group();
       const material = this.getOptimizedFoliageMaterial(species);
-      const instancedMesh = new THREE.InstancedMesh(baseGeometry, material, validClusters.length);
       
-      // Create transformation matrices for each foliage cluster
+      // Create organic foliage clusters for each position
       for (let i = 0; i < validClusters.length; i++) {
         const cluster = validClusters[i];
-        const matrix = new THREE.Matrix4();
         
-        // Create proper transformation matrix using compose
-        const position = cluster.position.clone();
-        const rotation = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(0, Math.random() * Math.PI * 2, 0)
-        );
+        // Create multiple small organic shapes per cluster for realistic appearance
+        const subClustersCount = Math.max(1, Math.floor(cluster.density * 3));
         
-        const scale = new THREE.Vector3(cluster.size, cluster.size, cluster.size);
-        
-        matrix.compose(position, rotation, scale);
-        instancedMesh.setMatrixAt(i, matrix);
-        
-        // Set instance color with height-based variation for more realism and better lighting
-        const heightRatio = cluster.heightRatio || (cluster.position.y / treeHeight);
-        
-        // Ultra-bright foliage colors that respond excellently to lighting
-        const lightnessFactor = 0.65 + heightRatio * 0.2; // Ultra-bright base
-        const hue = 0.28 + (Math.random() - 0.5) * 0.06; // Consistent green hues
-        const saturation = 0.75 + (Math.random() - 0.5) * 0.1; // High saturation
-        const color = new THREE.Color().setHSL(hue, saturation, lightnessFactor);
-        
-        instancedMesh.setColorAt(i, color);
+        for (let j = 0; j < subClustersCount; j++) {
+          // Create organic geometry for this sub-cluster
+          const organicGeometry = OrganicFoliageGenerator.createOrganicFoliageGeometry({
+            species,
+            size: cluster.size * (0.7 + Math.random() * 0.6), // Vary sub-cluster sizes
+            irregularity: 0.4 + Math.random() * 0.4,
+            subdivisions: 12
+          });
+          
+          const mesh = new THREE.Mesh(organicGeometry, material);
+          
+          // Position with random offset for organic clustering
+          const offsetRadius = cluster.size * 0.3;
+          const offsetAngle = Math.random() * Math.PI * 2;
+          const offsetHeight = (Math.random() - 0.5) * cluster.size * 0.2;
+          
+          mesh.position.copy(cluster.position);
+          mesh.position.x += Math.cos(offsetAngle) * offsetRadius * Math.random();
+          mesh.position.z += Math.sin(offsetAngle) * offsetRadius * Math.random();
+          mesh.position.y += offsetHeight;
+          
+          // Asymmetric scaling for natural irregularity
+          const scaleX = 0.8 + Math.random() * 0.4;
+          const scaleY = 0.8 + Math.random() * 0.4;
+          const scaleZ = 0.8 + Math.random() * 0.4;
+          mesh.scale.set(scaleX, scaleY, scaleZ);
+          
+          // Random rotation
+          mesh.rotation.set(
+            Math.random() * Math.PI * 0.2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 0.2
+          );
+          
+          // Natural color variation based on height and species
+          const heightRatio = cluster.heightRatio || (cluster.position.y / treeHeight);
+          const color = this.getSpeciesRealisticColor(species, heightRatio);
+          (mesh.material as THREE.MeshStandardMaterial).color.copy(color);
+          
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          
+          foliageGroup.add(mesh);
+        }
       }
       
-      // Update instance matrices and colors
-      instancedMesh.instanceMatrix.needsUpdate = true;
-      if (instancedMesh.instanceColor) {
-        instancedMesh.instanceColor.needsUpdate = true;
-      }
-      
-      instancedMesh.castShadow = true;
-      instancedMesh.receiveShadow = true;
-      
-      console.log(`🍃 Successfully created instanced foliage with ${validClusters.length} clusters for ${species}`);
-      return instancedMesh;
+      console.log(`🍃 Successfully created organic foliage with ${foliageGroup.children.length} meshes for ${species}`);
+      return foliageGroup;
       
     } catch (error) {
-      console.error('🚨 Error creating instanced foliage:', error);
+      console.error('🚨 Error creating organic foliage:', error);
       return null;
     }
   }
@@ -696,16 +709,33 @@ export class RealisticTreeGenerator {
     console.log(`🍃 Creating fallback foliage with ${clusters.length} individual meshes for ${species}`);
     
     const foliageMeshes: THREE.Mesh[] = [];
-    const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!;
     const material = this.getOptimizedFoliageMaterial(species);
     
     for (const cluster of clusters) {
       if (cluster.size <= 0) continue;
       
-      const mesh = new THREE.Mesh(baseGeometry.clone(), material.clone());
+      // Use organic geometry instead of sphere
+      const organicGeometry = OrganicFoliageGenerator.createOrganicFoliageGeometry({
+        species,
+        size: cluster.size,
+        irregularity: 0.5,
+        subdivisions: 10
+      });
+      
+      const mesh = new THREE.Mesh(organicGeometry, material.clone());
       mesh.position.copy(cluster.position);
-      mesh.scale.set(cluster.size, cluster.size, cluster.size);
-      mesh.rotation.y = Math.random() * Math.PI * 2;
+      
+      // Asymmetric scaling for natural look
+      const scaleX = 0.8 + Math.random() * 0.4;
+      const scaleY = 0.8 + Math.random() * 0.4;  
+      const scaleZ = 0.8 + Math.random() * 0.4;
+      mesh.scale.set(scaleX, scaleY, scaleZ);
+      
+      mesh.rotation.set(
+        Math.random() * Math.PI * 0.3,
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 0.3
+      );
       
       mesh.castShadow = true;
       mesh.receiveShadow = true;
@@ -720,19 +750,64 @@ export class RealisticTreeGenerator {
     const materialKey = `foliage_${species}`;
     
     if (!this.materialCache.has(materialKey)) {
+      const baseColor = this.getSpeciesRealisticColor(species, 0.7); // Mid-height base color
+      
       const material = new THREE.MeshStandardMaterial({
-        color: 0x70B870, // Ultra-bright base green color
-        roughness: 0.55, // Lower roughness for excellent light reflection
+        color: baseColor,
+        roughness: 0.85 + Math.random() * 0.1, // 0.85-0.95 for matte, realistic foliage
         metalness: 0.0,
-        transparent: false, // Remove transparency for better lighting
+        transparent: false,
         side: THREE.DoubleSide,
-        vertexColors: true, // Enable per-instance colors
-        emissive: new THREE.Color(0x0A2A0A), // Subtle green self-illumination
+        // Removed emissive for natural appearance
       });
       this.materialCache.set(materialKey, material);
     }
     
     return this.materialCache.get(materialKey)!;
+  }
+
+  private getSpeciesRealisticColor(species: TreeSpeciesType, heightRatio: number): THREE.Color {
+    let baseHue: number;
+    let saturation: number;
+    let lightness: number;
+
+    switch (species) {
+      case TreeSpeciesType.OAK:
+        // Oak: Rich, deep greens with slight brown undertones
+        baseHue = 0.25 + (Math.random() - 0.5) * 0.05; // Green with variation
+        saturation = 0.4 + Math.random() * 0.3; // 0.4-0.7
+        lightness = 0.3 + heightRatio * 0.2 + Math.random() * 0.1; // 0.3-0.6
+        break;
+        
+      case TreeSpeciesType.BIRCH:
+        // Birch: Lighter, more yellow-green, delicate
+        baseHue = 0.27 + (Math.random() - 0.5) * 0.03; // Slightly more yellow
+        saturation = 0.3 + Math.random() * 0.2; // 0.3-0.5, less saturated
+        lightness = 0.4 + heightRatio * 0.15 + Math.random() * 0.1; // 0.4-0.65, lighter
+        break;
+        
+      case TreeSpeciesType.WILLOW:
+        // Willow: Soft, muted greens with slight gray tones
+        baseHue = 0.26 + (Math.random() - 0.5) * 0.04;
+        saturation = 0.35 + Math.random() * 0.25; // 0.35-0.6
+        lightness = 0.35 + heightRatio * 0.15 + Math.random() * 0.1; // 0.35-0.6
+        break;
+        
+      case TreeSpeciesType.DEAD:
+        // Dead: Browns, grays, muted colors
+        baseHue = 0.1 + (Math.random() - 0.5) * 0.15; // Brown/tan range
+        saturation = 0.1 + Math.random() * 0.2; // 0.1-0.3, very muted
+        lightness = 0.25 + Math.random() * 0.2; // 0.25-0.45, darker
+        break;
+        
+      default:
+        // Generic natural green
+        baseHue = 0.25 + (Math.random() - 0.5) * 0.04;
+        saturation = 0.4 + Math.random() * 0.3;
+        lightness = 0.3 + heightRatio * 0.2 + Math.random() * 0.1;
+    }
+
+    return new THREE.Color().setHSL(baseHue, saturation, lightness);
   }
 
   private createPineTreeStructure(treeHeight: number, trunkBaseRadius: number): {
