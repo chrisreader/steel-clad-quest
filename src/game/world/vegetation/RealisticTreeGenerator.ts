@@ -648,7 +648,7 @@ export class RealisticTreeGenerator {
       
       // Larger birch foliage clusters for better visibility
       const baseSize = this.calculateFoliageSize(treeHeight, heightRatio, TreeSpeciesType.BIRCH);
-      const clusterSize = baseSize * (2.0 + Math.random() * 1.5); // Significantly increased to 200-350% for realistic birch foliage
+      const clusterSize = baseSize * (1.6 + Math.random() * 0.6); // Adjusted to 160-220% for balanced birch foliage
       
       // Lower density to create natural gaps
       const density = 0.6 + Math.random() * 0.3; // 60-90% density
@@ -673,7 +673,7 @@ export class RealisticTreeGenerator {
     // Species-specific size adjustments
     switch (species) {
       case TreeSpeciesType.BIRCH:
-        baseSize *= 1.8; // Birch gets significantly larger foliage clusters
+        baseSize *= 1.4; // Birch gets moderately larger foliage clusters
         break;
       case TreeSpeciesType.OAK:
         baseSize *= 1.0;
