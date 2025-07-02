@@ -47,7 +47,6 @@ export class Enemy {
   // Enhanced MMORPG-style AI behavior
   private isPassive: boolean = true; // Start passive, become aggressive based on state
   private lastPassiveStateChange: number = 0;
-  private passiveAI: PassiveNPCBehavior | null = null;
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
   private maxWanderDistance: number = 25;
   private stateManager: EnemyStateManager | null = null;
@@ -74,24 +73,16 @@ export class Enemy {
       console.log(`🗡️ [Enemy] Created humanoid orc with preserved functionality`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created legacy goblin enemy");
+      console.log("🗡️ [Enemy] Created legacy goblin enemy with MMORPG AI");
       
-      // Initialize MMORPG-style AI behavior for legacy enemies
-      this.passiveAI = new PassiveNPCBehavior(
-        position,
-        this.maxWanderDistance,
-        new THREE.Vector3(0, 0, 0), // Safe zone center
-        8 // Safe zone radius
-      );
-      
-      // Initialize state manager for enhanced AI
+      // Initialize state manager for enhanced MMORPG-style AI
       this.stateManager = new EnemyStateManager(position, {
-        awarenessRange: type === EnemyType.GOBLIN ? 25 : 30,
-        aggressionRange: type === EnemyType.GOBLIN ? 15 : 20,
-        maxPursuitDistance: type === EnemyType.GOBLIN ? 60 : 70,
-        patrolRadius: 20,
-        investigationTime: 6000,
-        retreatHealthThreshold: type === EnemyType.GOBLIN ? 0.25 : 0.15
+        awarenessRange: type === EnemyType.GOBLIN ? 28 : 32,
+        aggressionRange: type === EnemyType.GOBLIN ? 18 : 22,
+        maxPursuitDistance: type === EnemyType.GOBLIN ? 70 : 80,
+        patrolRadius: 15,
+        investigationTime: 8000, // Longer investigation time
+        retreatHealthThreshold: type === EnemyType.GOBLIN ? 0.2 : 0.15
       });
     }
     
@@ -432,17 +423,13 @@ export class Enemy {
       this.enemy.isHit = false;
     }
     
-    // Use MMORPG-style state management for better behavior
+    // Use MMORPG-style state management for all enemies
     if (this.stateManager) {
       this.handleMMORPGMovement(deltaTime, playerPosition, now);
     } else {
-      // Fallback to old behavior for compatibility
-      if (this.isPassive) {
-        this.handleAdvancedPassiveMovement(deltaTime);
-      } else {
-        const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
-        this.handleNormalMovement(deltaTime, playerPosition, distanceToPlayer, now);
-      }
+      // Simple fallback for enemies without state management
+      const distanceToPlayer = this.enemy.mesh.position.distanceTo(playerPosition);
+      this.handleBasicMovement(deltaTime, playerPosition, distanceToPlayer, now);
     }
     
     this.updateRotation(deltaTime);
@@ -460,6 +447,15 @@ export class Enemy {
       this.enemy.maxHealth,
       this.isPlayerInSafeZone()
     );
+
+    // Sync passive mode with AI state - enemies become aggressive when AI state changes
+    const shouldBePassive = currentState === EnemyAIState.SPAWNING || 
+                           currentState === EnemyAIState.WANDERING || 
+                           currentState === EnemyAIState.PATROLLING;
+    
+    if (this.isPassive !== shouldBePassive) {
+      this.setPassiveMode(shouldBePassive);
+    }
 
     // Get movement target and speed based on current state
     const movementTarget = this.stateManager.getMovementTarget(
@@ -523,62 +519,61 @@ export class Enemy {
            playerPos.z >= -6 && playerPos.z <= 6;
   }
 
-  private handleAdvancedPassiveMovement(deltaTime: number): void {
-    if (!this.passiveAI) return;
-
-    const currentPosition = this.enemy.mesh.position.clone();
-    const aiDecision = this.passiveAI.update(deltaTime, currentPosition);
-
-    // Handle different AI behaviors
-    if (aiDecision.shouldMove && aiDecision.targetPosition) {
-      const direction = new THREE.Vector3()
-        .subVectors(aiDecision.targetPosition, currentPosition)
+  private handleBasicMovement(deltaTime: number, playerPosition: THREE.Vector3, distanceToPlayer: number, now: number): void {
+    // Simple fallback movement for enemies without state management
+    this.enemy.idleTime += deltaTime;
+    
+    // Check if we should avoid safe zone when in aggressive mode
+    const isInSafeZone = this.enemy.mesh.position.x >= -6 && this.enemy.mesh.position.x <= 6 && 
+                        this.enemy.mesh.position.z >= -6 && this.enemy.mesh.position.z <= 6;
+    
+    if (isInSafeZone) {
+      // Move away from safe zone instead of towards player
+      const safeZoneCenter = new THREE.Vector3(0, 0, 0);
+      const directionAwayFromSafeZone = new THREE.Vector3()
+        .subVectors(this.enemy.mesh.position, safeZoneCenter)
         .normalize();
-      direction.y = 0;
-
-      // Calculate movement based on AI speed
-      const baseSpeed = this.enemy.speed * 0.4; // Base passive speed
-      const aiSpeed = baseSpeed * aiDecision.movementSpeed;
+      directionAwayFromSafeZone.y = 0;
       
-      const movement = direction.multiplyScalar(aiSpeed * deltaTime);
-      const newPosition = currentPosition.add(movement);
+      this.targetRotation = Math.atan2(directionAwayFromSafeZone.x, directionAwayFromSafeZone.z);
+      
+      const moveAmount = this.enemy.speed * deltaTime;
+      const newPosition = this.enemy.mesh.position.clone().add(directionAwayFromSafeZone.multiplyScalar(moveAmount));
       newPosition.y = 0;
-
-      // Safety checks
-      const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
       
-      // Updated to use rectangular safe zone bounds
-      const isInSafeZone = newPosition.x >= -6 && newPosition.x <= 6 && 
-                          newPosition.z >= -6 && newPosition.z <= 6;
-
-      if (distanceFromSpawn < this.maxWanderDistance && !isInSafeZone) {
+      this.enemy.mesh.position.copy(newPosition);
+      this.updateLegacyWalkAnimation(deltaTime);
+      return;
+    }
+    
+    // Basic pursuit behavior
+    if (distanceToPlayer <= this.enemy.attackRange) {
+      this.movementState = EnemyMovementState.PURSUING;
+      
+      const directionToPlayer = new THREE.Vector3()
+        .subVectors(playerPosition, this.enemy.mesh.position)
+        .normalize();
+      directionToPlayer.y = 0;
+      
+      this.targetRotation = Math.atan2(directionToPlayer.x, directionToPlayer.z);
+      
+      if (distanceToPlayer > this.enemy.damageRange) {
+        const moveAmount = this.enemy.speed * deltaTime;
+        const newPosition = this.enemy.mesh.position.clone();
+        newPosition.add(directionToPlayer.multiplyScalar(moveAmount));
+        newPosition.y = 0;
+      
         this.enemy.mesh.position.copy(newPosition);
-        
-        // Set rotation to face movement direction
-        this.targetRotation = Math.atan2(direction.x, direction.z);
-        
-        // Use legacy animation system
         this.updateLegacyWalkAnimation(deltaTime);
-        
-        // Debug log for behavior state changes
-        const currentState = aiDecision.behaviorState;
-        if (Math.random() < 0.01) { // 1% chance to log current behavior
-          console.log(`🤖 [Enemy] ${this.enemy.type} behavior: ${currentState}, speed: ${aiSpeed.toFixed(2)}`);
-        }
+      }
+      
+      if (distanceToPlayer <= this.enemy.damageRange && now - this.enemy.lastAttackTime > this.enemy.attackCooldown) {
+        this.movementState = EnemyMovementState.ATTACKING;
+        this.attack(playerPosition);
+        this.enemy.lastAttackTime = now;
       }
     } else {
-      // Handle stationary behaviors (resting, etc.)
-      const currentState = aiDecision.behaviorState;
-      
-      if (currentState === PassiveBehaviorState.RESTING) {
-        // Occasionally look around while resting
-        if (Math.random() < 0.02) {
-          const lookDirection = aiDecision.lookDirection;
-          this.targetRotation = Math.atan2(lookDirection.x, lookDirection.z);
-        }
-      }
-      
-      // Use idle animation when not moving
+      this.movementState = EnemyMovementState.IDLE;
       this.updateLegacyIdleAnimation();
     }
   }
@@ -595,11 +590,7 @@ export class Enemy {
       this.lastPassiveStateChange = Date.now();
       
       if (passive) {
-        console.log(`🛡️ [Enemy] Switching ${this.enemy.type} to passive mode - starting advanced AI behavior`);
-        // Regenerate waypoints when entering passive mode
-        if (this.passiveAI) {
-          this.passiveAI.regenerateWaypoints();
-        }
+        console.log(`🛡️ [Enemy] Switching ${this.enemy.type} to passive mode - using state manager AI`);
       } else {
         console.log(`⚔️ [Enemy] Switching ${this.enemy.type} to aggressive mode - will pursue player`);
         this.movementState = EnemyMovementState.IDLE;
@@ -1035,17 +1026,18 @@ export class Enemy {
 
   // Get AI behavior info for debugging (for legacy enemies)
   public getAIBehaviorInfo(): {
-    currentState: PassiveBehaviorState | null;
+    currentState: string | null;
     personality: any;
   } | null {
     if (this.isHumanoidEnemy && this.humanoidEnemy) {
       return this.humanoidEnemy.getAIBehaviorInfo();
     }
     
-    if (this.passiveAI) {
+    // For legacy enemies, return state manager info instead
+    if (this.stateManager) {
       return {
-        currentState: this.passiveAI.getCurrentState(),
-        personality: this.passiveAI.getPersonality()
+        currentState: null, // PassiveBehaviorState not used anymore
+        personality: { currentAIState: this.stateManager.getCurrentState() }
       };
     }
     

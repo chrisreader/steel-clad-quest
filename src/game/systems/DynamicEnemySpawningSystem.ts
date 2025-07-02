@@ -67,8 +67,9 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   private lineOfSightDetector: LineOfSightDetector;
   private isPlayerInSafeZone: boolean = false;
   private lastSpawnTime: number = 0;
-  private spawnCooldown: number = 18000; // 18 seconds between spawns
+  private spawnCooldown: number = 15000; // 15 seconds between spawns
   private playerRotation: number = 0;
+  private hasInitialSpawn: boolean = false;
 
   constructor(
     scene: THREE.Scene, 
@@ -77,17 +78,17 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     config?: Partial<SpawningConfig>
   ) {
     const defaultConfig: SpawningConfig = {
-      playerMovementThreshold: 10, // Reduced movement sensitivity 
-      fadeInDistance: 30,
-      fadeOutDistance: 80,
-      maxEntityDistance: 150, // Increased cleanup distance
-      minSpawnDistance: 45, // Far enough to be out of sight
-      maxSpawnDistance: 90, // MMORPG-style spawn range
-      maxEntities: 7, // More enemies for engaging gameplay
-      baseSpawnInterval: 18000, // Fixed interval spawning
+      playerMovementThreshold: 15, // Increased to prevent constant spawning 
+      fadeInDistance: 35,
+      fadeOutDistance: 90,
+      maxEntityDistance: 180, // Increased cleanup distance
+      minSpawnDistance: 35, // Initial spawn safe distance
+      maxSpawnDistance: 60, // Initial spawn max distance  
+      maxEntities: 8, // More enemies for engaging gameplay
+      baseSpawnInterval: 15000, // Fixed interval spawning
       spawnCountPerTrigger: 1, // Single enemy spawns
-      aggressiveCleanupDistance: 120,
-      fadedOutTimeout: 15000
+      aggressiveCleanupDistance: 140,
+      fadedOutTimeout: 20000
     };
     
     super(scene, { ...defaultConfig, ...config });
@@ -110,6 +111,17 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     );
     
     console.log(`[DynamicEnemySpawningSystem] Initialized MMORPG-style spawning (${this.config.maxEntities} enemies max, ${this.spawnCooldown/1000}s intervals)`);
+  }
+
+  // Override base class initialize to use MMORPG-style initial spawning
+  public initialize(playerPosition?: THREE.Vector3): void {
+    if (playerPosition) {
+      this.lastPlayerPosition.copy(playerPosition);
+      // Trigger initial spawn immediately
+      this.performInitialSpawn(playerPosition);
+      this.hasInitialSpawn = true;
+      console.log(`[DynamicEnemySpawningSystem] MMORPG initial spawn completed with ${this.entities.length} enemies`);
+    }
   }
 
   private onPlayerEnterSafeZone(): void {
@@ -142,14 +154,20 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       this.safeZoneManager.updatePlayerPosition(playerPosition);
     }
 
-    // MMORPG-style fixed interval spawning
+    // Initial spawn on game load - spawn 3-4 enemies around player immediately
+    if (!this.hasInitialSpawn && playerPosition) {
+      this.performInitialSpawn(playerPosition);
+      this.hasInitialSpawn = true;
+    }
+
+    // MMORPG-style fixed interval spawning (45-90 unit range for ongoing spawns)
     const timeSinceLastSpawn = now - this.lastSpawnTime;
     const shouldSpawn = timeSinceLastSpawn >= this.spawnCooldown && 
                        this.entities.length < this.config.maxEntities &&
                        playerPosition;
 
     if (shouldSpawn) {
-      this.spawnEnemyMMORPGStyle(playerPosition!);
+      this.spawnEnemyMMORPGStyle(playerPosition!, true); // true for ongoing spawn
       this.lastSpawnTime = now;
     }
 
@@ -160,43 +178,88 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     this.cleanupEntities();
   }
 
-  private spawnEnemyMMORPGStyle(playerPosition: THREE.Vector3): void {
-    // Get optimal spawn position using line-of-sight detection
-    const spawnPosition = this.lineOfSightDetector.getBestSpawnPosition(
-      playerPosition,
-      this.playerRotation,
-      this.config.minSpawnDistance,
-      this.config.maxSpawnDistance
-    );
+  private performInitialSpawn(playerPosition: THREE.Vector3): void {
+    const initialEnemyCount = 3 + Math.floor(Math.random() * 2); // 3-4 enemies
+    console.log(`🚀 [MMORPG Initial Spawn] Creating ${initialEnemyCount} enemies around player on game start`);
+    
+    for (let i = 0; i < initialEnemyCount; i++) {
+      // Spawn in a ring around player at safe initial distances
+      const angle = (i / initialEnemyCount) * Math.PI * 2 + Math.random() * 0.5; // Add randomness
+      const distance = this.config.minSpawnDistance + Math.random() * (this.config.maxSpawnDistance - this.config.minSpawnDistance);
+      
+      const spawnPosition = new THREE.Vector3(
+        playerPosition.x + Math.cos(angle) * distance,
+        0,
+        playerPosition.z + Math.sin(angle) * distance
+      );
+      
+      // Ensure not in safe zone
+      const finalPosition = this.isInSafeZone(spawnPosition) ? 
+        this.safeZoneManager.generateSafeSpawnPosition(
+          this.config.minSpawnDistance,
+          this.config.maxSpawnDistance,
+          spawnPosition
+        ) : spawnPosition;
+      
+      this.spawnEnemyAtPosition(finalPosition, false); // false for initial spawn
+    }
+  }
+
+  private spawnEnemyMMORPGStyle(playerPosition: THREE.Vector3, isOngoingSpawn: boolean = true): void {
+    let spawnPosition: THREE.Vector3;
+    
+    if (isOngoingSpawn) {
+      // Ongoing spawns use line-of-sight detection and larger distances (45-90 units)
+      spawnPosition = this.lineOfSightDetector.getBestSpawnPosition(
+        playerPosition,
+        this.playerRotation,
+        45, // Increased min distance for ongoing spawns
+        90  // Increased max distance for ongoing spawns
+      );
+    } else {
+      // Initial spawns use closer, visible distances (35-60 units)
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 35 + Math.random() * 25; // 35-60 units
+      spawnPosition = new THREE.Vector3(
+        playerPosition.x + Math.cos(angle) * distance,
+        0,
+        playerPosition.z + Math.sin(angle) * distance
+      );
+    }
     
     // Ensure spawn position avoids safe zone
     const finalPosition = this.isInSafeZone(spawnPosition) ? 
       this.safeZoneManager.generateSafeSpawnPosition(
-        this.config.minSpawnDistance,
-        this.config.maxSpawnDistance,
+        isOngoingSpawn ? 45 : 35,
+        isOngoingSpawn ? 90 : 60,
         new THREE.Vector3(spawnPosition.x, spawnPosition.y, spawnPosition.z)
       ) : spawnPosition;
     
+    this.spawnEnemyAtPosition(finalPosition, isOngoingSpawn);
+  }
+
+  private spawnEnemyAtPosition(position: THREE.Vector3, isOngoingSpawn: boolean): void {
     // Create the enemy
     const enemy = Enemy.createRandomEnemy(
       this.scene,
-      finalPosition,
+      position,
       this.effectsManager,
       this.audioManager,
       this.difficulty
     );
 
-    // Enemies start in wandering state, not immediately aggressive
+    // All enemies start passive and transition to aggressive based on AI state management
     enemy.setPassiveMode(true);
     
     // Wrap it in the spawnable interface
     const wrapper = new SpawnableEnemyWrapper(enemy);
-    wrapper.initialize(finalPosition);
+    wrapper.initialize(position);
     
     // Add to entities list and scene
     this.entities.push(wrapper);
     
-    console.log(`🗡️ [MMORPG Spawning] Created enemy at position:`, finalPosition, `Distance: ${finalPosition.distanceTo(playerPosition).toFixed(1)}`);
+    const spawnType = isOngoingSpawn ? "ongoing" : "initial";
+    console.log(`🗡️ [MMORPG ${spawnType} spawn] Created enemy at distance: ${position.distanceTo(new THREE.Vector3()).toFixed(1)}`);
   }
 
   protected createEntity(isInitial: boolean, playerPosition?: THREE.Vector3): SpawnableEnemyWrapper {
@@ -263,6 +326,13 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   
   public updatePlayerRotation(rotation: number): void {
     this.playerRotation = rotation;
+  }
+  
+  public forceInitialSpawn(playerPosition: THREE.Vector3): void {
+    if (!this.hasInitialSpawn) {
+      this.performInitialSpawn(playerPosition);
+      this.hasInitialSpawn = true;
+    }
   }
   
   public getLineOfSightDetector(): LineOfSightDetector {
