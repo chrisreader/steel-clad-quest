@@ -1211,20 +1211,35 @@ export class RealisticTreeGenerator {
     console.log(`🍃 Day/Night update called - dayFactor: ${dayFactor}, nightFactor: ${nightFactor}`);
     
     for (const material of this.activeFoliageMaterials) {
-      // Get original species color
-      const originalColor = new THREE.Color(material.color);
-      console.log(`🍃 Material original color:`, originalColor.getHexString());
+      // Get the material's current color - NOT the original color which is being overwritten
+      const currentColor = new THREE.Color(material.color);
+      console.log(`🍃 Material current color:`, currentColor.getHexString());
+      
+      // Get the species from material cache to restore proper base color
+      let baseColor = new THREE.Color(0x8BC34A); // Default bright green
+      
+      // Try to find the original species color from material cache key
+      for (const [key, cachedMaterial] of this.materialCache.entries()) {
+        if (cachedMaterial === material && key.includes('_')) {
+          const species = key.split('_')[2] as TreeSpeciesType;
+          const colorVariants = this.getSpeciesColorVariants(species);
+          baseColor = new THREE.Color(colorVariants[0]); // Use first variant as base
+          break;
+        }
+      }
+      
+      console.log(`🍃 Using base color:`, baseColor.getHexString());
       
       // Create night version - darker but still visible
-      const nightColor = originalColor.clone().multiplyScalar(0.5);
+      const nightColor = baseColor.clone().multiplyScalar(0.6); // Increased from 0.5 to keep more color
       
       // Blend between day and night colors
-      const currentColor = originalColor.clone().lerp(nightColor, nightFactor);
-      material.color.copy(currentColor);
-      console.log(`🍃 Material updated color:`, currentColor.getHexString());
+      const blendedColor = baseColor.clone().lerp(nightColor, nightFactor);
+      material.color.copy(blendedColor);
+      console.log(`🍃 Material updated color:`, blendedColor.getHexString());
       
       // Adjust material properties for lighting conditions
-      const baseRoughness = 0.85;
+      const baseRoughness = 0.65;
       material.roughness = baseRoughness + (nightFactor * 0.1); // Slightly rougher at night
       
       // Remove emissive completely to prevent glow
