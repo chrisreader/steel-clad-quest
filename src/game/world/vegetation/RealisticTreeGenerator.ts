@@ -708,29 +708,13 @@ export class RealisticTreeGenerator {
         matrix.compose(position, rotation, asymmetricScale);
         instancedMesh.setMatrixAt(i, matrix);
         
-        // Set natural instance color with height-based variation
-        const heightRatio = cluster.heightRatio || (cluster.position.y / treeHeight);
+        // Since vertexColors is now disabled, skip instance color variations
+        // The bright base material color will be used instead
+        console.log(`🍃 Skipping instance colors - using bright base material color for ${species}`);
         
-        // Use bright base colors with minimal instance variation
-        const baseColor = new THREE.Color(this.getSpeciesNaturalColor(species));
-        console.log(`🍃 Base color for ${species}:`, baseColor.getHexString());
-        
-        // Very minimal variation to preserve the bright green colors
-        const hsl = { h: 0, s: 0, l: 0 };
-        baseColor.getHSL(hsl);
-        
-        // Minimal height-based variation
-        const lightnessMod = (heightRatio - 0.5) * 0.05; // ±2.5% variation
-        const randomMod = (Math.random() - 0.5) * 0.03; // ±1.5% random variation
-        
-        // Keep hue and saturation close to original bright colors
-        hsl.h += (Math.random() - 0.5) * 0.005; // Very minimal hue shift
-        hsl.s = Math.max(0.6, Math.min(1.0, hsl.s + (Math.random() - 0.5) * 0.05)); // Keep saturation high
-        hsl.l = Math.max(0.45, Math.min(0.85, hsl.l + lightnessMod + randomMod)); // BRIGHT lightness range (45%-85%)
-        
-        const color = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
-        console.log(`🍃 Final instance color for ${species}:`, color.getHexString());
-        instancedMesh.setColorAt(i, color);
+        // Optional: Still set a bright instance color as backup
+        const brightColor = new THREE.Color(this.getSpeciesNaturalColor(species));
+        instancedMesh.setColorAt(i, brightColor);
       }
       
       // Update instance matrices and colors
@@ -841,13 +825,15 @@ export class RealisticTreeGenerator {
       
       const material = new THREE.MeshStandardMaterial({
         color: baseColor,
-        roughness: 0.85 + Math.random() * 0.1, // High roughness for matte foliage (0.85-0.95)
+        roughness: 0.65, // Reduced roughness for better light reflection
         metalness: 0.0,
         transparent: false,
         side: THREE.FrontSide, // Single-sided for better performance and lighting
-        vertexColors: true, // Enable per-instance colors
+        vertexColors: false, // DISABLED - this was overriding the bright base colors!
         // No emissive - removed to eliminate glow
       });
+      
+      console.log(`🍃 Material created with vertexColors DISABLED for bright foliage`);
       
       // Store reference for day/night updates
       this.activeFoliageMaterials.add(material);
@@ -1028,9 +1014,12 @@ export class RealisticTreeGenerator {
    * Update foliage materials for day/night lighting
    */
   public updateDayNightLighting(dayFactor: number, nightFactor: number): void {
+    console.log(`🍃 Day/Night update called - dayFactor: ${dayFactor}, nightFactor: ${nightFactor}`);
+    
     for (const material of this.activeFoliageMaterials) {
       // Get original species color
       const originalColor = new THREE.Color(material.color);
+      console.log(`🍃 Material original color:`, originalColor.getHexString());
       
       // Create night version - darker but still visible
       const nightColor = originalColor.clone().multiplyScalar(0.5);
@@ -1038,6 +1027,7 @@ export class RealisticTreeGenerator {
       // Blend between day and night colors
       const currentColor = originalColor.clone().lerp(nightColor, nightFactor);
       material.color.copy(currentColor);
+      console.log(`🍃 Material updated color:`, currentColor.getHexString());
       
       // Adjust material properties for lighting conditions
       const baseRoughness = 0.85;
