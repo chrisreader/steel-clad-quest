@@ -1868,4 +1868,13 @@ export class TerrainFeatureGenerator {
     this.treeGenerator.dispose();
     this.bushGenerator.dispose();
   }
+
+  /**
+   * Update tree foliage materials for day/night lighting
+   */
+  public updateTreeDayNightLighting(dayFactor: number, nightFactor: number): void {
+    if (this.treeGenerator) {
+      this.treeGenerator.updateDayNightLighting(dayFactor, nightFactor);
+    }
+  }
 }

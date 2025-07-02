@@ -594,6 +594,13 @@ export class SceneManager {
       this.grassSystem.update(deltaTime, playerPosition, this.timeOfDay);
     }
     
+    // Update tree foliage materials for day/night lighting
+    if (this.terrainFeatureGenerator && this.timeOfDay !== undefined) {
+      const dayFactor = TimeUtils.getDayFactor(this.timeOfDay, TIME_PHASES);
+      const nightFactor = TimeUtils.getSynchronizedNightFactor(this.timeOfDay, TIME_PHASES);
+      this.terrainFeatureGenerator.updateTreeDayNightLighting(dayFactor, nightFactor);
+    }
+    
     if (playerPosition) {
       this.updateShadowCamera(playerPosition);
       

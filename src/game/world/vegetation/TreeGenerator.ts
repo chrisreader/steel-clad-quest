@@ -82,6 +82,20 @@ export class TreeGenerator {
     return tree;
   }
 
+  /**
+   * Update all tree foliage materials for day/night lighting
+   */
+  public updateDayNightLighting(dayFactor: number, nightFactor: number): void {
+    this.realisticTreeGenerator.updateDayNightLighting(dayFactor, nightFactor);
+  }
+
+  /**
+   * Get all active foliage materials for external updates
+   */
+  public getFoliageMaterials(): Set<THREE.MeshStandardMaterial> {
+    return this.realisticTreeGenerator.getFoliageMaterials();
+  }
+
   public dispose(): void {
     this.treeModels.forEach(tree => {
       tree.traverse(child => {

@@ -24,6 +24,7 @@ export class RealisticTreeGenerator {
   private textureCache: Map<string, THREE.Texture> = new Map();
   private foliageGeometryCache: Map<string, THREE.BufferGeometry> = new Map();
   private materialCache: Map<string, THREE.Material> = new Map();
+  private activeFoliageMaterials: Set<THREE.MeshStandardMaterial> = new Set();
   private debugMode: boolean = false;
 
   constructor() {
@@ -715,13 +716,13 @@ export class RealisticTreeGenerator {
         const hsl = { h: 0, s: 0, l: 0 };
         baseColor.getHSL(hsl);
         
-        // Much subtler height-based variation - no aggressive darkening
-        const lightnessMod = (heightRatio - 0.5) * 0.05; // ±2.5% lightness variation (reduced from ±7.5%)
-        const randomMod = (Math.random() - 0.5) * 0.03; // ±1.5% random variation (reduced from ±5%)
+        // Very subtle natural variation - much more conservative
+        const lightnessMod = (heightRatio - 0.5) * 0.02; // ±1% lightness variation (further reduced)
+        const randomMod = (Math.random() - 0.5) * 0.015; // ±0.75% random variation (further reduced)
         
-        hsl.h += (Math.random() - 0.5) * 0.02; // ±1% hue variation
-        hsl.s = Math.max(0.4, Math.min(0.9, hsl.s + (Math.random() - 0.5) * 0.05)); // Brighter saturation range
-        hsl.l = Math.max(0.4, Math.min(0.9, hsl.l + lightnessMod + randomMod)); // BRIGHT lightness range (40%-90% instead of 20%-60%)
+        hsl.h += (Math.random() - 0.5) * 0.01; // ±0.5% hue variation (reduced)
+        hsl.s = Math.max(0.3, Math.min(0.7, hsl.s + (Math.random() - 0.5) * 0.02)); // More muted saturation range
+        hsl.l = Math.max(0.25, Math.min(0.65, hsl.l + lightnessMod + randomMod)); // Realistic lightness range (25%-65%)
         
         const color = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
         instancedMesh.setColorAt(i, color);
@@ -734,7 +735,7 @@ export class RealisticTreeGenerator {
       }
       
       instancedMesh.castShadow = true;
-      instancedMesh.receiveShadow = false; // Disable shadow receiving for brighter foliage
+      instancedMesh.receiveShadow = true; // Re-enable shadow receiving for realistic lighting
       
       console.log(`🍃 Successfully created instanced foliage with ${validClusters.length} clusters for ${species}`);
       return instancedMesh;
@@ -765,7 +766,7 @@ export class RealisticTreeGenerator {
       mesh.rotation.y = Math.random() * Math.PI * 2;
       
       mesh.castShadow = true;
-      mesh.receiveShadow = false; // Disable shadow receiving for brighter foliage
+      mesh.receiveShadow = true; // Re-enable shadow receiving for realistic lighting
       
       foliageMeshes.push(mesh);
     }
@@ -834,13 +835,16 @@ export class RealisticTreeGenerator {
       
       const material = new THREE.MeshStandardMaterial({
         color: baseColor,
-        roughness: 0.7 + Math.random() * 0.1, // Reduced roughness for better light reflection (0.7-0.8)
+        roughness: 0.85 + Math.random() * 0.1, // High roughness for matte foliage (0.85-0.95)
         metalness: 0.0,
         transparent: false,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide, // Single-sided for better performance and lighting
         vertexColors: true, // Enable per-instance colors
-        emissive: new THREE.Color(baseColor).multiplyScalar(0.05), // Slight emissive for visibility
+        // No emissive - removed to eliminate glow
       });
+      
+      // Store reference for day/night updates
+      this.activeFoliageMaterials.add(material);
       this.materialCache.set(materialKey, material);
     }
     
@@ -848,18 +852,18 @@ export class RealisticTreeGenerator {
   }
 
   private getSpeciesNaturalColor(species: TreeSpeciesType): number {
-    // Bright, natural foliage colors for realistic appearance
+    // Realistic, muted foliage colors - natural forest greens
     switch (species) {
       case TreeSpeciesType.OAK:
-        return 0x6B8E23; // Olive drab - bright natural green
+        return 0x355E3B; // Hunter green - dark, muted forest green
       case TreeSpeciesType.BIRCH:
-        return 0x7CFC00; // Lawn green - vibrant spring green
+        return 0x4F7942; // Fern green - natural, not too bright
       case TreeSpeciesType.WILLOW:
-        return 0x9ACD32; // Yellow green - bright sage
+        return 0x3E6B4A; // Dark sea green - muted sage
       case TreeSpeciesType.DEAD:
-        return 0xA0522D; // Sienna - realistic dead foliage
+        return 0x8B7355; // Shadow brown - realistic dead foliage
       default:
-        return 0x6B8E23; // Default bright olive green
+        return 0x355E3B; // Default dark forest green
     }
   }
 
@@ -908,7 +912,7 @@ export class RealisticTreeGenerator {
       // Position cone properly
       coneMesh.position.set(0, coneY + (coneGeometryHeight / 2), 0);
       coneMesh.castShadow = true;
-      coneMesh.receiveShadow = false; // Disable shadow receiving for brighter pine needles
+      coneMesh.receiveShadow = true; // Re-enable shadow receiving for realistic lighting
       
       // Add slight rotation for natural look
       coneMesh.rotation.y = Math.random() * Math.PI * 2;
@@ -1014,6 +1018,38 @@ export class RealisticTreeGenerator {
     });
   }
 
+  /**
+   * Update foliage materials for day/night lighting
+   */
+  public updateDayNightLighting(dayFactor: number, nightFactor: number): void {
+    for (const material of this.activeFoliageMaterials) {
+      // Get original species color
+      const originalColor = new THREE.Color(material.color);
+      
+      // Create night version - much darker and muted
+      const nightColor = originalColor.clone().multiplyScalar(0.3);
+      
+      // Blend between day and night colors
+      const currentColor = originalColor.clone().lerp(nightColor, nightFactor);
+      material.color.copy(currentColor);
+      
+      // Adjust material properties for lighting conditions
+      const baseRoughness = 0.85;
+      material.roughness = baseRoughness + (nightFactor * 0.1); // Slightly rougher at night
+      
+      // Update emissive for very subtle night visibility (much less than before)
+      const emissiveIntensity = nightFactor * 0.01; // Very subtle - only 1% at full night
+      material.emissive.copy(originalColor).multiplyScalar(emissiveIntensity);
+    }
+  }
+  
+  /**
+   * Get all active foliage materials for external updates
+   */
+  public getFoliageMaterials(): Set<THREE.MeshStandardMaterial> {
+    return this.activeFoliageMaterials;
+  }
+
   public dispose(): void {
     // Dispose textures
     for (const texture of this.textureCache.values()) {
@@ -1032,5 +1068,8 @@ export class RealisticTreeGenerator {
       material.dispose();
     }
     this.materialCache.clear();
+    
+    // Clear active materials set
+    this.activeFoliageMaterials.clear();
   }
 }
