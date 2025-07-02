@@ -711,20 +711,25 @@ export class RealisticTreeGenerator {
         // Set natural instance color with height-based variation
         const heightRatio = cluster.heightRatio || (cluster.position.y / treeHeight);
         
-        // Natural foliage colors based on species - BRIGHT and visible
+        // Use bright base colors with minimal instance variation
         const baseColor = new THREE.Color(this.getSpeciesNaturalColor(species));
+        console.log(`🍃 Base color for ${species}:`, baseColor.getHexString());
+        
+        // Very minimal variation to preserve the bright green colors
         const hsl = { h: 0, s: 0, l: 0 };
         baseColor.getHSL(hsl);
         
-        // Very subtle natural variation - much more conservative
-        const lightnessMod = (heightRatio - 0.5) * 0.02; // ±1% lightness variation (further reduced)
-        const randomMod = (Math.random() - 0.5) * 0.015; // ±0.75% random variation (further reduced)
+        // Minimal height-based variation
+        const lightnessMod = (heightRatio - 0.5) * 0.05; // ±2.5% variation
+        const randomMod = (Math.random() - 0.5) * 0.03; // ±1.5% random variation
         
-        hsl.h += (Math.random() - 0.5) * 0.01; // ±0.5% hue variation (reduced)
-        hsl.s = Math.max(0.3, Math.min(0.7, hsl.s + (Math.random() - 0.5) * 0.02)); // More muted saturation range
-        hsl.l = Math.max(0.25, Math.min(0.65, hsl.l + lightnessMod + randomMod)); // Realistic lightness range (25%-65%)
+        // Keep hue and saturation close to original bright colors
+        hsl.h += (Math.random() - 0.5) * 0.005; // Very minimal hue shift
+        hsl.s = Math.max(0.6, Math.min(1.0, hsl.s + (Math.random() - 0.5) * 0.05)); // Keep saturation high
+        hsl.l = Math.max(0.45, Math.min(0.85, hsl.l + lightnessMod + randomMod)); // BRIGHT lightness range (45%-85%)
         
         const color = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
+        console.log(`🍃 Final instance color for ${species}:`, color.getHexString());
         instancedMesh.setColorAt(i, color);
       }
       
@@ -832,6 +837,7 @@ export class RealisticTreeGenerator {
     if (!this.materialCache.has(materialKey)) {
       // Get natural colors per species
       const baseColor = this.getSpeciesNaturalColor(species);
+      console.log(`🍃 Creating material for ${species} with base color:`, new THREE.Color(baseColor).getHexString());
       
       const material = new THREE.MeshStandardMaterial({
         color: baseColor,
