@@ -852,18 +852,18 @@ export class RealisticTreeGenerator {
   }
 
   private getSpeciesNaturalColor(species: TreeSpeciesType): number {
-    // Realistic, muted foliage colors - natural forest greens
+    // Bright, natural foliage colors that look like real trees
     switch (species) {
       case TreeSpeciesType.OAK:
-        return 0x355E3B; // Hunter green - dark, muted forest green
+        return 0x6B8E23; // Olive drab - natural bright green
       case TreeSpeciesType.BIRCH:
-        return 0x4F7942; // Fern green - natural, not too bright
+        return 0x90EE90; // Light green - fresh spring foliage
       case TreeSpeciesType.WILLOW:
-        return 0x3E6B4A; // Dark sea green - muted sage
+        return 0x9ACD32; // Yellow green - bright willow color
       case TreeSpeciesType.DEAD:
-        return 0x8B7355; // Shadow brown - realistic dead foliage
+        return 0xA0522D; // Sienna - realistic dead foliage
       default:
-        return 0x355E3B; // Default dark forest green
+        return 0x6B8E23; // Default bright olive green
     }
   }
 
@@ -1026,8 +1026,8 @@ export class RealisticTreeGenerator {
       // Get original species color
       const originalColor = new THREE.Color(material.color);
       
-      // Create night version - much darker and muted
-      const nightColor = originalColor.clone().multiplyScalar(0.3);
+      // Create night version - darker but still visible
+      const nightColor = originalColor.clone().multiplyScalar(0.5);
       
       // Blend between day and night colors
       const currentColor = originalColor.clone().lerp(nightColor, nightFactor);
@@ -1037,9 +1037,8 @@ export class RealisticTreeGenerator {
       const baseRoughness = 0.85;
       material.roughness = baseRoughness + (nightFactor * 0.1); // Slightly rougher at night
       
-      // Update emissive for very subtle night visibility (much less than before)
-      const emissiveIntensity = nightFactor * 0.01; // Very subtle - only 1% at full night
-      material.emissive.copy(originalColor).multiplyScalar(emissiveIntensity);
+      // Remove emissive completely to prevent glow
+      material.emissive.setRGB(0, 0, 0);
     }
   }
   
