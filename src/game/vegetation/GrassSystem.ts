@@ -24,8 +24,8 @@ export class GrassSystem {
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 8; // More responsive updates
-  private readonly FOG_CHECK_INTERVAL: number = 200; // Faster fog response
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 30; // Reasonable update frequency
+  private readonly FOG_CHECK_INTERVAL: number = 500; // Less frequent fog checks
   private performanceManager: AdaptivePerformanceManager | null = null;
   
   // Player tracking

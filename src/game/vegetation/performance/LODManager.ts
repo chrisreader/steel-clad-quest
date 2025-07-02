@@ -13,7 +13,7 @@ export class LODManager {
   private lodDistances: number[] = [20, 40, 70, 120]; // Tighter LOD bands for better performance
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 2; // Ultra-responsive updates
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // More stable updates
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
   private readonly LOD_REGENERATION_THRESHOLD: number = 0.3; // More aggressive LOD switching

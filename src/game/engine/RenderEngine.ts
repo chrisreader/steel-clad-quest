@@ -31,7 +31,7 @@ export class RenderEngine {
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 15; // Ultra-responsive culling (15ms)
+  private readonly CULLING_UPDATE_INTERVAL: number = 100; // More reasonable culling interval
   
   // Advanced performance systems
   private predictiveLoader: PredictiveLoader | null = null;

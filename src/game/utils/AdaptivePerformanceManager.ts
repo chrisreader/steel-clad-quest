@@ -2,12 +2,12 @@ import { PerformanceCache } from './PerformanceCache';
 
 export class AdaptivePerformanceManager {
   private frameRates: number[] = [];
-  private readonly FRAME_HISTORY_SIZE = 30;
+  private readonly FRAME_HISTORY_SIZE = 60;
   private lastFrameTime = performance.now();
   private currentQualityLevel = 1.0;
-  private grassRenderDistance = 120;
-  private readonly MIN_FPS = 45;
-  private readonly TARGET_FPS = 60;
+  private grassRenderDistance = 180;
+  private readonly MIN_FPS = 30;
+  private readonly TARGET_FPS = 45;
   
   // System update intervals (frames between updates)
   private systemIntervals = {
