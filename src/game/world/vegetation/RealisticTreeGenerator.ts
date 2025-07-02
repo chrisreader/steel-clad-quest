@@ -646,9 +646,9 @@ export class RealisticTreeGenerator {
         Math.sin(angle) * radius
       );
       
-      // Realistically sized birch foliage clusters
+      // Larger birch foliage clusters for better visibility
       const baseSize = this.calculateFoliageSize(treeHeight, heightRatio, TreeSpeciesType.BIRCH);
-      const clusterSize = baseSize * (0.9 + Math.random() * 0.6); // Reduced to 90-150% for realistic birch proportions
+      const clusterSize = baseSize * (1.3 + Math.random() * 0.8); // Increased to 130-210% for more prominent birch foliage
       
       // Lower density to create natural gaps
       const density = 0.6 + Math.random() * 0.3; // 60-90% density
@@ -666,39 +666,24 @@ export class RealisticTreeGenerator {
     // Base size calculation - realistic proportions
     let baseSize = treeHeight * 0.05; // Reduced from 0.08 to more realistic 0.05
     
-    // Height-based scaling - creates the realistic canopy layers
-    let heightMultiplier: number;
+    // Height-based scaling for natural density distribution
+    const heightFactor = 0.5 + heightRatio * 1.5; // Scale from 50% at bottom to 200% at top
+    baseSize *= heightFactor;
     
-    if (heightRatio < 0.5) {
-      // Lower branches: 1.0-1.2x base size (more substantial undergrowth)
-      heightMultiplier = 1.0 + (heightRatio / 0.5) * 0.2;
-    } else if (heightRatio < 0.85) {
-      // Mid crown: 1.2-1.5x base size (smooth transition zone)
-      const midRatio = (heightRatio - 0.5) / 0.35;
-      heightMultiplier = 1.2 + midRatio * 0.3;
-    } else {
-      // Upper crown: 1.3-2.0x base size (dense canopy)
-      const upperRatio = (heightRatio - 0.85) / 0.15;
-      heightMultiplier = 1.3 + upperRatio * 0.7;
-    }
-    
-    // Species-specific adjustments
+    // Species-specific size adjustments
     switch (species) {
-      case TreeSpeciesType.OAK:
-        // Oak trees have broader, more pronounced canopies
-        heightMultiplier *= heightRatio > 0.7 ? 1.2 : 1.0;
-        break;
       case TreeSpeciesType.BIRCH:
-        // Birch trees have more elegant, less dramatic size variation
-        heightMultiplier = 0.8 + (heightMultiplier - 0.8) * 0.7;
+        baseSize *= 1.2; // Birch gets larger base foliage size
+        break;
+      case TreeSpeciesType.OAK:
+        baseSize *= 1.0;
         break;
       case TreeSpeciesType.WILLOW:
-        // Willow trees have larger drooping foliage
-        heightMultiplier *= 1.1;
+        baseSize *= 1.1;
         break;
     }
     
-    return baseSize * heightMultiplier;
+    return baseSize;
   }
 
   private calculateFoliageDensity(heightRatio: number, species: TreeSpeciesType): number {
