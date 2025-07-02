@@ -54,10 +54,10 @@ export class RenderEngine {
     this.camera.layers.enable(0);
     this.camera.layers.disable(1);
     
-    // Balanced renderer settings - keep shadows for proper foliage lighting
-    this.renderer = new THREE.WebGLRenderer({ antialias: false }); // Keep disabled for performance
+    // ULTRA-AGGRESSIVE renderer settings for maximum performance
+    this.renderer = new THREE.WebGLRenderer({ antialias: false }); // Disabled for performance
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
-    this.renderer.shadowMap.enabled = true; // Re-enabled for proper tree/foliage lighting
+    this.renderer.shadowMap.enabled = false; // Disabled for massive performance gain
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;

@@ -24,8 +24,8 @@ export class OptimizedMaterialGenerator {
       color,
       roughness: 0.6 + Math.random() * 0.2, // 0.6-0.8 for more realistic sheen
       metalness: 0.0,
-      transparent: true, // Re-enable for DoubleSide rendering
-      side: THREE.DoubleSide, // Better lighting response from all angles
+      transparent: false, // Remove transparency for better performance
+      side: THREE.FrontSide, // Use front side only for better performance
     });
 
     this.materialCache.set(cacheKey, material);

@@ -3,18 +3,18 @@ import * as THREE from 'three';
 
 export class RealisticMaterialGenerator {
   private static readonly FOLIAGE_COLORS = [
-    '#4a7c59', // Brighter forest green
-    '#5e8c64', // Earthy green
-    '#6ba070', // Medium bright green
-    '#78b47c', // Olive bright green
-    '#6b9c6e', // Deep bright green
+    '#2d4a2b', // Dark forest green
+    '#3c5e2e', // Earthy dark green
+    '#486d34', // Medium forest green
+    '#547a3a', // Olive green
+    '#4a6b32', // Deep woodland green
   ];
 
   private static readonly SEASONAL_VARIATIONS = {
-    spring: { hue: 0.25, saturation: 0.7, lightness: 0.65 }, // Much brighter
-    summer: { hue: 0.28, saturation: 0.6, lightness: 0.6 }, // Much brighter
-    autumn: { hue: 0.15, saturation: 0.5, lightness: 0.55 }, // Much brighter
-    winter: { hue: 0.22, saturation: 0.4, lightness: 0.5 } // Much brighter
+    spring: { hue: 0.25, saturation: 0.7, lightness: 0.45 },
+    summer: { hue: 0.28, saturation: 0.6, lightness: 0.4 },
+    autumn: { hue: 0.15, saturation: 0.5, lightness: 0.35 },
+    winter: { hue: 0.22, saturation: 0.4, lightness: 0.3 }
   };
 
   /**
