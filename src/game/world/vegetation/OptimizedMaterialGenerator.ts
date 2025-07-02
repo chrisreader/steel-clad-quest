@@ -22,11 +22,11 @@ export class OptimizedMaterialGenerator {
 
     const material = new THREE.MeshStandardMaterial({
       color,
-      roughness: 0.8 + Math.random() * 0.15, // 0.8-0.95 for realistic matte foliage
+      roughness: 0.5 + Math.random() * 0.15, // 0.5-0.65 for better light reflection
       metalness: 0.0,
-      transparent: false,
-      side: THREE.DoubleSide,
-      // Removed emissive for natural appearance
+      transparent: false, // Remove transparency for better performance
+      side: THREE.DoubleSide, // DoubleSide for consistent lighting
+      emissive: new THREE.Color(color).multiplyScalar(0.05), // Subtle self-illumination
     });
 
     this.materialCache.set(cacheKey, material);
@@ -37,46 +37,46 @@ export class OptimizedMaterialGenerator {
     switch (species) {
       case BushSpeciesType.DENSE_ROUND:
         return [
-          new THREE.Color(0x6b8e23), // Realistic olive drab
-          new THREE.Color(0x708238), // Natural forest green  
-          new THREE.Color(0x7a8450), // Muted sage green
-          new THREE.Color(0x556b2f), // Dark olive green
-          new THREE.Color(0x6b7c32)  // Natural meadow green
+          new THREE.Color(0x9dd470), // Ultra-bright spring green
+          new THREE.Color(0xb8e085), // Luminous forest green
+          new THREE.Color(0xc8f090), // Brilliant lime green
+          new THREE.Color(0x8cb85f), // Vivid grass green
+          new THREE.Color(0xa8d470)  // Radiant meadow green
         ];
       case BushSpeciesType.SPRAWLING_GROUND:
         return [
-          new THREE.Color(0x8fbc8f), // Natural dark sea green
-          new THREE.Color(0x7a9b7a), // Muted green
-          new THREE.Color(0x698b69), // Dim gray green
-          new THREE.Color(0x8b9d83), // Natural herb green
-          new THREE.Color(0x6b8f6b)  // Realistic natural green
+          new THREE.Color(0xb8d485), // Brilliant sage green
+          new THREE.Color(0xd0e890), // Luminous olive green
+          new THREE.Color(0xe8f8a0), // Ultra-bright olive
+          new THREE.Color(0xc0d580), // Radiant herb green
+          new THREE.Color(0xa8c470)  // Vibrant natural green
         ];
       case BushSpeciesType.TALL_UPRIGHT:
         return [
-          new THREE.Color(0x228b22), // Realistic forest green
-          new THREE.Color(0x32cd32), // Natural lime green
-          new THREE.Color(0x2e8b57), // Sea green
-          new THREE.Color(0x3cb371), // Medium sea green
-          new THREE.Color(0x228b22)  // Classic forest green
+          new THREE.Color(0x70b850), // Bright vibrant green
+          new THREE.Color(0x85d065), // Luminous pine needle green
+          new THREE.Color(0x9ae875), // Brilliant woodland green
+          new THREE.Color(0x78c058), // Radiant forest canopy green
+          new THREE.Color(0x70c050)  // Bright emerald green
         ];
       case BushSpeciesType.WILD_BERRY:
         return [
-          new THREE.Color(0x6b8e23), // Natural olive drab
-          new THREE.Color(0x7a8450), // Realistic leaf green
-          new THREE.Color(0x8fbc8f), // Natural sea green
-          new THREE.Color(0x556b2f), // Dark natural green
-          new THREE.Color(0x6b7c32)  // Realistic foliage green
+          new THREE.Color(0x90c468), // Bright berry bush green
+          new THREE.Color(0xa8d975), // Luminous berry leaf
+          new THREE.Color(0xc0e885), // Ultra-vibrant leaf green
+          new THREE.Color(0x85b860), // Brilliant berry green
+          new THREE.Color(0x98d070)  // Radiant berry foliage
         ];
       case BushSpeciesType.FLOWERING_ORNAMENTAL:
         return [
-          new THREE.Color(0x9acd32), // Natural yellow green
-          new THREE.Color(0x7cfc00), // Bright lawn green
-          new THREE.Color(0x32cd32), // Natural lime green
-          new THREE.Color(0x6b8e23), // Olive drab green
-          new THREE.Color(0x7a8450)  // Natural garden green
+          new THREE.Color(0xa8e065), // Ultra-bright ornamental green
+          new THREE.Color(0xc0f875), // Brilliant spring bloom green
+          new THREE.Color(0xd8ff90), // Luminous flower green
+          new THREE.Color(0x98d860), // Radiant garden green
+          new THREE.Color(0xb0e570)  // Ultra-lush ornamental green
         ];
       default:
-        return [new THREE.Color(0x6b8e23)];
+        return [new THREE.Color(0x7fb055)];
     }
   }
 
@@ -88,21 +88,21 @@ export class OptimizedMaterialGenerator {
     const hsl = { h: 0, s: 0, l: 0 };
     color.getHSL(hsl);
     
-    // Natural lightness variation for realistic foliage
-    const lightnessMod = layerIndex === 0 ? 0.05 : -layerIndex * 0.02;
-    hsl.l = Math.max(0.25, Math.min(0.65, hsl.l + lightnessMod)); // Natural range
+    // Make outer layers brighter, inner layers slightly darker but still vibrant
+    const lightnessMod = layerIndex === 0 ? 0.15 : -layerIndex * 0.01;
+    hsl.l = Math.max(0.55, Math.min(0.85, hsl.l + lightnessMod)); // Ultra-bright range
     
-    // Moderate saturation for realistic colors
-    hsl.s = Math.min(0.8, hsl.s + 0.1);
+    // Increase saturation for more vibrant colors
+    hsl.s = Math.min(1.0, hsl.s + 0.2);
     
-    // Add natural variation
-    hsl.h += (Math.random() - 0.5) * 0.03; // ±1.5% hue variation
-    hsl.s += (Math.random() - 0.5) * 0.15; // ±7.5% saturation variation  
-    hsl.l += (Math.random() - 0.5) * 0.1;  // ±5% lightness variation
+    // Add slight random variation while keeping it vibrant
+    hsl.h += (Math.random() - 0.5) * 0.015; // ±0.75% hue variation
+    hsl.s += (Math.random() - 0.5) * 0.08;  // ±4% saturation variation
+    hsl.l += (Math.random() - 0.5) * 0.04;  // ±2% lightness variation
     
-    // Clamp to natural ranges
-    hsl.s = Math.max(0.3, Math.min(0.8, hsl.s)); // Natural saturation
-    hsl.l = Math.max(0.25, Math.min(0.65, hsl.l)); // Natural lightness
+    // Clamp values to keep them vibrant
+    hsl.s = Math.max(0.6, Math.min(1.0, hsl.s)); // Higher saturation floor
+    hsl.l = Math.max(0.55, Math.min(0.85, hsl.l)); // Ultra-bright lightness range
     
     color.setHSL(hsl.h, hsl.s, hsl.l);
   }
