@@ -734,7 +734,7 @@ export class RealisticTreeGenerator {
       }
       
       instancedMesh.castShadow = true;
-      instancedMesh.receiveShadow = true;
+      instancedMesh.receiveShadow = false; // Disable shadow receiving for brighter foliage
       
       console.log(`🍃 Successfully created instanced foliage with ${validClusters.length} clusters for ${species}`);
       return instancedMesh;
@@ -765,7 +765,7 @@ export class RealisticTreeGenerator {
       mesh.rotation.y = Math.random() * Math.PI * 2;
       
       mesh.castShadow = true;
-      mesh.receiveShadow = true;
+      mesh.receiveShadow = false; // Disable shadow receiving for brighter foliage
       
       foliageMeshes.push(mesh);
     }
@@ -834,12 +834,12 @@ export class RealisticTreeGenerator {
       
       const material = new THREE.MeshStandardMaterial({
         color: baseColor,
-        roughness: 0.85 + Math.random() * 0.1, // High roughness for matte foliage (0.85-0.95)
+        roughness: 0.7 + Math.random() * 0.1, // Reduced roughness for better light reflection (0.7-0.8)
         metalness: 0.0,
         transparent: false,
         side: THREE.DoubleSide,
         vertexColors: true, // Enable per-instance colors
-        // Remove emissive for natural appearance
+        emissive: new THREE.Color(baseColor).multiplyScalar(0.05), // Slight emissive for visibility
       });
       this.materialCache.set(materialKey, material);
     }
@@ -908,7 +908,7 @@ export class RealisticTreeGenerator {
       // Position cone properly
       coneMesh.position.set(0, coneY + (coneGeometryHeight / 2), 0);
       coneMesh.castShadow = true;
-      coneMesh.receiveShadow = true;
+      coneMesh.receiveShadow = false; // Disable shadow receiving for brighter pine needles
       
       // Add slight rotation for natural look
       coneMesh.rotation.y = Math.random() * Math.PI * 2;
