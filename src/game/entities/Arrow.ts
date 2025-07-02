@@ -25,7 +25,7 @@ export class Arrow {
   private maxTrailLength: number = 40;
   
   private flightTime: number = 0;
-  private minFlightTime: number = 0.1; // Reduced from 0.2
+  private minFlightTime: number = 0.2;
   private maxFlightTime: number = 60.0;
   private hasMovedSignificantly: boolean = false;
   private initialPosition: THREE.Vector3;
@@ -55,8 +55,7 @@ export class Arrow {
       direction = new THREE.Vector3(0, 0, -1);
     }
     
-    // FIXED: Much faster arrow speed - multiply by 2.5 for responsiveness
-    this.velocity = direction.clone().normalize().multiplyScalar(speed * 2.5);
+    this.velocity = direction.clone().normalize().multiplyScalar(speed);
     
     this.position = startPosition.clone();
     this.initialPosition = startPosition.clone();
@@ -211,8 +210,7 @@ export class Arrow {
   public update(deltaTime: number): boolean {
     if (!this.isActive) return false;
     
-    // FIXED: Cap deltaTime but don't make it too restrictive for arrows
-    const safeDeltatime = Math.min(deltaTime, 0.05); // Increased from 0.1 to 0.05 for smoother arrow movement
+    const safeDeltatime = Math.min(deltaTime, 0.1);
     
     if (this.isGrounded || this.isStuck) {
       this.groundTimer += safeDeltatime * 1000;
@@ -226,10 +224,10 @@ export class Arrow {
     this.flightTime += safeDeltatime;
     this.windOffset += this.windSpeed * safeDeltatime;
     
-    // Apply physics - FIXED: Use consistent gravity application
+    // Apply physics
     this.velocity.y += this.gravity * safeDeltatime;
     
-    // FIXED: Calculate movement with proper arrow speed (no additional deltaTime scaling)
+    // Calculate next position
     const deltaPosition = this.velocity.clone().multiplyScalar(safeDeltatime);
     const nextPosition = this.position.clone().add(deltaPosition);
     
@@ -273,7 +271,7 @@ export class Arrow {
     this.position.copy(nextPosition);
     
     const distanceFromStart = this.position.distanceTo(this.initialPosition);
-    if (distanceFromStart > 0.3) { // Reduced threshold for faster response
+    if (distanceFromStart > 0.5) {
       this.hasMovedSignificantly = true;
     }
     
@@ -290,7 +288,7 @@ export class Arrow {
       this.removeTrail();
     }
     
-    // Ground collision - FIXED: Faster ground collision detection
+    // Ground collision
     const groundPlaneY = 0.0;
     const canHitGround = this.flightTime >= this.minFlightTime && this.hasMovedSignificantly;
     

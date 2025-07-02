@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { OrganicFireParticleGenerator } from './components/OrganicFireParticleGenerator';
 import { FireLightingSystem } from './components/FireLightingSystem';
@@ -17,9 +18,6 @@ export class FireEffectsManager {
   
   private isActive: boolean = false;
 
-  private updateCounter: number = 0;
-  private readonly UPDATE_INTERVAL: number = 2; // Update every 2nd frame
-
   constructor(scene: THREE.Scene, audioManager: AudioManager, position: THREE.Vector3, config: FireConfig) {
     this.scene = scene;
     this.audioManager = audioManager;
@@ -30,36 +28,33 @@ export class FireEffectsManager {
   public start(): void {
     if (this.isActive) return;
 
-    // Reduce console logging for performance
-    if (Math.random() < 0.1) { // Only log 10% of the time
-      console.log('🔥 Starting enhanced organic fire effects at position:', this.position);
-    }
+    console.log('🔥 Starting enhanced organic fire effects at position:', this.position);
 
     // Initialize ONLY organic particle generator - no static fire system
     this.particleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
     
-    // Reduce particle counts for better performance while maintaining visual quality
+    // Add different particle types based on config
     const flameConfig = { ...FIREPLACE_PARTICLE_CONFIGS.flames };
-    flameConfig.count = Math.floor(this.config.particleCount * 0.4); // Reduced from 0.55
+    flameConfig.count = Math.floor(this.config.particleCount * 0.55);
     this.particleGenerator.addParticleType('flames', flameConfig);
 
     if (this.config.smokeEnabled) {
       const smokeConfig = { ...FIREPLACE_PARTICLE_CONFIGS.smoke };
-      smokeConfig.count = Math.floor(this.config.particleCount * 0.25); // Reduced from 0.33
+      smokeConfig.count = Math.floor(this.config.particleCount * 0.33);
       this.particleGenerator.addParticleType('smoke', smokeConfig);
     }
 
     const emberConfig = { ...FIREPLACE_PARTICLE_CONFIGS.embers };
-    emberConfig.count = Math.floor(this.config.emberCount * 0.7); // Reduced ember count
+    emberConfig.count = this.config.emberCount;
     this.particleGenerator.addParticleType('embers', emberConfig);
 
-    // Initialize lighting system (unchanged for visual quality)
+    // Initialize massive lighting system with tavern-wide coverage
     const lightConfig: FireLightConfig = {
       color: this.config.lightColor,
-      baseIntensity: this.config.lightIntensity,
-      maxIntensity: this.config.lightIntensity * 1.5,
+      baseIntensity: this.config.lightIntensity, // Now 5.0 from config
+      maxIntensity: this.config.lightIntensity * 1.5, // 7.5 max intensity
       flickerSpeed: this.config.flickerSpeed,
-      distance: this.config.lightDistance,
+      distance: this.config.lightDistance, // Now 40 from config
       castShadow: true
     };
     this.lightingSystem = new FireLightingSystem(this.scene, this.position, lightConfig);
@@ -76,26 +71,18 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    
-    // Reduce console logging for performance
-    if (Math.random() < 0.1) { // Only log 10% of the time
-      console.log('🔥 Fire effects system initialized with performance optimizations');
-    }
+    console.log('🔥 Massive fire effects system fully initialized - lights entire tavern + exterior with time-aware intensity');
   }
 
   public update(deltaTime: number): void {
     if (!this.isActive) return;
 
-    this.updateCounter++;
-    
-    // Update particle generator every frame for smooth animation
     if (this.particleGenerator) {
       this.particleGenerator.update(deltaTime);
     }
 
-    // Update lighting system less frequently for performance
-    if (this.lightingSystem && this.updateCounter % this.UPDATE_INTERVAL === 0) {
-      this.lightingSystem.update(deltaTime * this.UPDATE_INTERVAL);
+    if (this.lightingSystem) {
+      this.lightingSystem.update(deltaTime);
     }
   }
 

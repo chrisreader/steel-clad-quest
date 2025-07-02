@@ -28,6 +28,7 @@ export class MovementSystem {
     this.inputManager = inputManager;
     this.physicsManager = physicsManager;
     
+    // Initialize raycast-based surface-following systems
     this.surfaceDetector = new TerrainSurfaceDetector(physicsManager);
     
     console.log("🏃 [MovementSystem] Enhanced with collision detection for trees and walls");
@@ -63,10 +64,10 @@ export class MovementSystem {
       this.physicsManager.clearTerrainCache();
     }
     
-    // Much less frequent debugging (every 300 frames instead of 60)
-    if (this.frameCount % 300 === 0) {
+    // Enhanced debugging every 60 frames
+    if (this.frameCount % 60 === 0) {
       const currentPos = this.player.getPosition();
-      console.log(`\n🏔️ === MOVEMENT DEBUG ===`);
+      console.log(`\n🏔️ === COLLISION-AWARE MOVEMENT DEBUG ===`);
       console.log(`🏔️ Player Position: (${currentPos.x.toFixed(1)}, ${currentPos.y.toFixed(1)}, ${currentPos.z.toFixed(1)})`);
       
       const terrainData = this.physicsManager.getTerrainDataAtPosition(currentPos);
@@ -117,10 +118,10 @@ export class MovementSystem {
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
       
-      // FIXED: Restored full movement speeds for responsive gameplay
-      let speed = 15.0; // Increased base speed for better responsiveness
+      // Apply sprint multiplier - INCREASED from 1.5x to 5x faster
+      let speed = 5.0; // Base movement speed
       if (this.player.getSprinting() && forwardPressed && !backwardPressed) {
-        speed = 25.0; // Increased sprint speed for better feel
+        speed = 25.0; // CHANGED: 5x faster sprint speed (5.0 * 5 = 25.0)
       }
       
       // Transform movement direction relative to camera rotation
@@ -148,21 +149,20 @@ export class MovementSystem {
         adjustedSpeed = speed * slopeSpeedMultiplier;
       }
       
-      // FIXED: Use proper delta time without artificial limitations
+      // Calculate target position
       const movementVector = worldMoveDirection.clone().multiplyScalar(adjustedSpeed * deltaTime);
       const targetPosition = currentPosition.clone().add(movementVector);
       
-      // Use PhysicsManager's collision-aware movement
+      // CRITICAL: Use PhysicsManager's collision-aware movement instead of just surface calculation
       const finalPosition = this.physicsManager.checkPlayerMovement(currentPosition, targetPosition, 0.5);
       
       // Apply the collision-checked position
       this.player.setPosition(finalPosition);
       
-      // Much less frequent movement logging (every 180 frames instead of 30)
-      if (this.frameCount % 180 === 0) {
+      if (this.frameCount % 30 === 0) { // Less frequent logging
         const moved = !finalPosition.equals(targetPosition);
         const debugInfo = moved ? 'COLLISION_BLOCKED' : 'NORMAL_MOVEMENT';
-        console.log(`🏃 MOVEMENT: ${debugInfo}`);
+        console.log(`🏃 COLLISION-AWARE MOVEMENT: ${debugInfo}`);
         console.log(`🏃 Target: (${targetPosition.x.toFixed(2)}, ${targetPosition.y.toFixed(2)}, ${targetPosition.z.toFixed(2)})`);
         console.log(`🏃 Final: (${finalPosition.x.toFixed(2)}, ${finalPosition.y.toFixed(2)}, ${finalPosition.z.toFixed(2)})`);
       }
@@ -180,6 +180,7 @@ export class MovementSystem {
   
   public checkInTavern(): boolean {
     const playerPosition = this.player.getPosition();
+    // Updated to match exact tavern bounds (-6 to +6 in both X and Z)
     return playerPosition.x >= -6 && playerPosition.x <= 6 && 
            playerPosition.z >= -6 && playerPosition.z <= 6;
   }

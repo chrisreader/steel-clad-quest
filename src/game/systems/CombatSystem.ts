@@ -137,10 +137,9 @@ export class CombatSystem {
       .add(cameraDirection.clone().multiplyScalar(1.0));
     
     const damage = currentWeapon.getConfig().stats.damage;
-    // FIXED: Increased arrow speed significantly for responsive gameplay
-    const speed = 80; // Increased from 50 to 80 for much faster arrows
+    const speed = 50;
     
-    console.log(`🏹 [CombatSystem] Firing fast arrow with collision detection - damage: ${damage}, speed: ${speed}`);
+    console.log(`🏹 [CombatSystem] Firing arrow with collision detection - damage: ${damage}, speed: ${speed}`);
     
     this.projectileSystem.shootArrow(arrowStartPos, cameraDirection, speed, damage);
     

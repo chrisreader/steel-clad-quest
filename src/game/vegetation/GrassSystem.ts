@@ -19,23 +19,16 @@ export class GrassSystem {
   private windSystem: WindSystem;
   private bubbleManager: GrassRenderBubbleManager;
   
-  // BALANCED: Performance optimizations with better responsiveness
+  // Performance optimization
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 10; // Reduced from 30 for better responsiveness
-  private readonly FOG_CHECK_INTERVAL: number = 500; // Reduced from 1000
-  
-  // Performance monitoring with better intervals
-  private lastPerformanceReport: number = 0;
-  private readonly PERFORMANCE_REPORT_INTERVAL: number = 1800; // Reduced from 3000 frames
-  private frameTimeHistory: number[] = [];
-  private readonly MAX_FRAME_TIME_SAMPLES: number = 15; // Increased from 10
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 12;
+  private readonly FOG_CHECK_INTERVAL: number = 200;
   
   // Player tracking
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private playerVelocity: number = 0;
-  private isPlayerMoving: boolean = false;
   
   constructor(scene: THREE.Scene, config?: Partial<GrassConfig>) {
     this.scene = scene;
@@ -45,25 +38,25 @@ export class GrassSystem {
     this.windSystem = new WindSystem();
     this.bubbleManager = new GrassRenderBubbleManager(scene, this.renderer);
     
-    // Initialize position-based biome system
+    // Initialize position-based biome system with enhanced organic biomes
     DeterministicBiomeManager.setWorldSeed(Date.now());
     DeterministicBiomeManager.forceRegenerateAllBiomes();
     
-    console.log('🌱 BALANCED GRASS SYSTEM: Initialized with optimized responsiveness');
+    console.log('🌱 POSITION-BASED GRASS SYSTEM: Initialized with fractal organic biome generation');
   }
   
-  public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 150): void {
-    console.log(`🌱 BALANCED: Initializing with ${coverageRadius}-unit optimized rendering`);
+  public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 200): void {
+    console.log(`🌱 FRACTAL ORGANIC GRASS: Initializing with position-based biome queries`);
     
-    // Force biome regeneration
+    // Force biome regeneration for fractal shapes
     DeterministicBiomeManager.clearCache();
     
-    // Increased coverage radius for better visual quality
-    this.bubbleManager.initializeWithCoverage(playerPosition, coverageRadius);
+    this.bubbleManager.initializeWithCoverage(playerPosition, 200);
     this.lastPlayerPosition.copy(playerPosition);
     
+    // Debug current position-based biome
     const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
-    console.log(`🌱 OPTIMIZED BIOME: ${debugInfo.biomeData.biomeType} biome loaded`);
+    console.log(`🌱 POSITION-BASED GRASS: Player in ${debugInfo.biomeData.biomeType} biome (${debugInfo.organicBiomeCount} organic biomes nearby)`);
   }
   
   public generateGrassForRegion(
@@ -74,36 +67,27 @@ export class GrassSystem {
     currentPlayerPosition?: THREE.Vector3
   ): void {
     if (!this.bubbleManager.isLoadingComplete() && currentPlayerPosition) {
-      // Much smaller coverage radius
-      const coverageRadius = Math.min(size, 150);
+      const coverageRadius = Math.max(size, 400);
       this.initializeGrassSystem(currentPlayerPosition, coverageRadius);
     }
+    
+    console.log(`🌱 Legacy region converted to position-based fractal system`);
   }
   
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
-    const frameStartTime = performance.now();
-    
     this.updateCounter++;
     
-    // Track player movement more frequently
-    if (this.updateCounter % 2 === 0) {
-      this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / (deltaTime * 2);
-      this.isPlayerMoving = this.playerVelocity > 0.2;
-      this.lastPlayerPosition.copy(playerPosition);
-    }
+    // Track player velocity
+    this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / deltaTime;
+    this.lastPlayerPosition.copy(playerPosition);
     
-    // Update bubble manager more frequently
-    if (this.updateCounter % 2 === 0) {
-      this.bubbleManager.update(playerPosition);
-    }
+    // Update bubble manager with position-based biome queries
+    this.bubbleManager.update(playerPosition);
     
-    // More responsive wind system updates
-    const windUpdateInterval = this.isPlayerMoving ? 4 : 6; // Reduced from 8:12
-    if (this.updateCounter % windUpdateInterval === 0) {
-      this.windSystem.update(deltaTime * windUpdateInterval);
-    }
+    // Update wind system
+    this.windSystem.update(deltaTime);
     
-    // More frequent material updates
+    // Update materials less frequently for better performance
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
       let nightFactor = 0;
       let dayFactor = 1;
@@ -113,73 +97,36 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // More responsive material updates
-      const shouldUpdateTallGrass = this.updateCounter % 20 === 0; // Reduced from 60
-      const shouldUpdateGroundGrass = this.updateCounter % 20 === 10; // Reduced from 60
+      const shouldUpdateTallGrass = this.updateCounter % 24 === 0;
+      const shouldUpdateGroundGrass = this.updateCounter % 24 === 12;
       
       if (shouldUpdateTallGrass) {
-        this.updateGrassMaterials(this.renderer.getGrassMaterials(), nightFactor, dayFactor, false);
+        for (const material of this.renderer.getGrassMaterials().values()) {
+          this.windSystem.updateMaterialWind(material, false);
+          GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
+          GrassShader.updateSeasonalVariation(material, this.currentSeason);
+        }
       }
       
       if (shouldUpdateGroundGrass) {
-        this.updateGrassMaterials(this.renderer.getGroundGrassMaterials(), nightFactor, dayFactor, true);
+        for (const material of this.renderer.getGroundGrassMaterials().values()) {
+          this.windSystem.updateMaterialWind(material, true);
+          GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
+          GrassShader.updateSeasonalVariation(material, this.currentSeason);
+        }
       }
       
-      // More frequent fog updates
-      if (this.updateCounter % 50 === 0 && this.checkFogChanges() && this.cachedFogValues) { // Reduced from 100
+      if (this.checkFogChanges() && this.cachedFogValues) {
         this.updateFogUniforms();
       }
     }
     
-    // Performance monitoring with better sampling
-    const frameTime = performance.now() - frameStartTime;
-    if (this.updateCounter % 5 === 0) { // Sample every 5th frame instead of 10th
-      this.frameTimeHistory.push(frameTime);
-      if (this.frameTimeHistory.length > this.MAX_FRAME_TIME_SAMPLES) {
-        this.frameTimeHistory.shift();
-      }
+    // Report performance metrics less frequently
+    if (this.updateCounter % 600 === 0) {
+      console.log(`🌱 FRACTAL PERFORMANCE: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 200-unit radius`);
+      const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
+      console.log(`🌱 POSITION BIOME: Currently in ${debugInfo.biomeData.biomeType} (${debugInfo.organicBiomeCount} fractal biomes nearby)`);
     }
-    
-    // More frequent performance reporting
-    if (this.updateCounter - this.lastPerformanceReport >= this.PERFORMANCE_REPORT_INTERVAL) {
-      this.reportPerformanceMetrics();
-      this.lastPerformanceReport = this.updateCounter;
-    }
-  }
-  
-  // PERFORMANCE: Batch material updates
-  private updateGrassMaterials(
-    materials: Map<string, THREE.ShaderMaterial>, 
-    nightFactor: number, 
-    dayFactor: number, 
-    isGroundGrass: boolean
-  ): void {
-    for (const material of materials.values()) {
-      this.windSystem.updateMaterialWind(material, isGroundGrass);
-      GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
-      GrassShader.updateSeasonalVariation(material, this.currentSeason);
-    }
-  }
-  
-  // ENHANCED: Performance monitoring
-  private reportPerformanceMetrics(): void {
-    if (this.frameTimeHistory.length === 0) return;
-    
-    const avgFrameTime = this.frameTimeHistory.reduce((a, b) => a + b, 0) / this.frameTimeHistory.length;
-    const maxFrameTime = Math.max(...this.frameTimeHistory);
-    const rendererMetrics = this.renderer.getPerformanceMetrics();
-    
-    console.log(`🌱 ULTRA PERFORMANCE REPORT:`, {
-      instances: `${rendererMetrics.visibleInstances}/${rendererMetrics.totalInstances}`,
-      materials: rendererMetrics.pooledMaterials,
-      geometries: rendererMetrics.pooledGeometries,
-      avgFrameTime: `${avgFrameTime.toFixed(2)}ms`,
-      maxFrameTime: `${maxFrameTime.toFixed(2)}ms`,
-      playerVelocity: this.playerVelocity.toFixed(2)
-    });
-    
-    // Reset frame time history
-    this.frameTimeHistory = [];
   }
   
   private checkFogChanges(): boolean {
@@ -231,19 +178,17 @@ export class GrassSystem {
   public setSeason(season: 'spring' | 'summer' | 'autumn' | 'winter'): void {
     this.currentSeason = season;
     
-    // Batch update all materials less frequently
-    const allMaterials = [
-      ...this.renderer.getGrassMaterials().values(),
-      ...this.renderer.getGroundGrassMaterials().values()
-    ];
+    for (const material of this.renderer.getGrassMaterials().values()) {
+      GrassShader.updateSeasonalVariation(material, season);
+    }
     
-    for (const material of allMaterials) {
+    for (const material of this.renderer.getGroundGrassMaterials().values()) {
       GrassShader.updateSeasonalVariation(material, season);
     }
   }
   
   public removeGrassForRegion(region: RegionCoordinates): void {
-    // Position-based system handles this automatically
+    console.log(`🌱 Legacy region removal ignored - position-based system handles this automatically`);
   }
   
   public getLoadedChunkCount(): number {
@@ -258,43 +203,20 @@ export class GrassSystem {
     return this.bubbleManager.isLoadingComplete();
   }
   
-  // PERFORMANCE: Get comprehensive performance metrics
-  public getPerformanceMetrics(): {
-    grassSystem: any;
-    renderer: any;
-    avgFrameTime: number;
-    playerVelocity: number;
-  } {
-    const avgFrameTime = this.frameTimeHistory.length > 0 
-      ? this.frameTimeHistory.reduce((a, b) => a + b, 0) / this.frameTimeHistory.length 
-      : 0;
-    
-    return {
-      grassSystem: {
-        loadedChunks: this.getLoadedChunkCount(),
-        renderedInstances: this.getRenderedInstanceCount(),
-        isReady: this.isGrassSystemReady()
-      },
-      renderer: this.renderer.getPerformanceMetrics(),
-      avgFrameTime,
-      playerVelocity: this.playerVelocity
-    };
-  }
-  
   public dispose(): void {
     this.bubbleManager.dispose();
     this.renderer.dispose();
-    console.log('🌱 Ultra performance grass system disposed');
+    console.log('🌱 Position-based grass system disposed');
   }
   
   public debugBiomeAtPosition(position: THREE.Vector3): void {
     const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(position);
-    console.log('🔍 ULTRA OPTIMIZED BIOME DEBUG:', debugInfo);
+    console.log('🔍 POSITION-BASED BIOME DEBUG:', debugInfo);
   }
   
   public regenerateOrganicBiomes(): void {
     DeterministicBiomeManager.setWorldSeed(Date.now());
-    console.log('🔄 ULTRA PERFORMANCE BIOME: Regenerated');
+    console.log('🔄 FRACTAL BIOME: Regenerated with new fractal boundaries');
   }
 }
 

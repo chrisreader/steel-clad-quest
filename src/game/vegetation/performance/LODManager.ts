@@ -1,3 +1,4 @@
+
 import * as THREE from 'three';
 import { GradientDensity } from '../../utils/math/GradientDensity';
 import { InstanceLODManager } from './InstanceLODManager';
@@ -9,29 +10,20 @@ export interface RegionLODInfo {
 }
 
 export class LODManager {
-  // IMPROVED: Increased distances to reduce pop-in while maintaining performance
-  private lodDistances: number[] = [50, 100, 150, 200]; // Increased from [30, 60, 100, 140]
+  private lodDistances: number[] = [50, 100, 150, 200]; // More granular for smoother transitions
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 1; // Reduced from 3 for faster response
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 3; // More frequent updates
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
-  private readonly LOD_REGENERATION_THRESHOLD: number = 0.5;
-  private readonly POSITION_UPDATE_THRESHOLD: number = 3; // Reduced for better responsiveness
+  private readonly LOD_REGENERATION_THRESHOLD: number = 0.4; // Higher threshold to avoid constant regeneration
+  private readonly POSITION_UPDATE_THRESHOLD: number = 5; // Much lower for responsive updates
 
+  // NEW: Instance-level LOD manager for smooth density changes
   private instanceLODManager: InstanceLODManager = new InstanceLODManager();
 
-  // Player velocity tracking
-  private playerVelocity: THREE.Vector3 = new THREE.Vector3();
-  private lastPlayerUpdateTime: number = 0;
-
   public calculateLODDensity(distance: number): number {
-    // IMPROVED: Better density curve to maintain visual quality
-    if (distance < this.lodDistances[0]) return 1.0;
-    if (distance < this.lodDistances[1]) return 0.8; // Increased from 0.7
-    if (distance < this.lodDistances[2]) return 0.5; // Increased from 0.4
-    if (distance < this.lodDistances[3]) return 0.2; // Increased from 0.15
-    return 0.0; // Complete culling beyond 200 units
+    return GradientDensity.calculateLODDensity(distance, this.lodDistances);
   }
 
   public updateVisibility(
@@ -42,29 +34,19 @@ export class LODManager {
   ): void {
     this.grassCullingUpdateCounter++;
     
-    // Update velocity calculation more frequently
-    const now = performance.now();
-    if (this.lastPlayerUpdateTime === 0 || now - this.lastPlayerUpdateTime > 100) { // More frequent updates
-      const deltaTime = (now - this.lastPlayerUpdateTime) / 1000;
-      if (deltaTime > 0) {
-        this.playerVelocity.subVectors(playerPosition, this.lastPlayerPosition).divideScalar(deltaTime);
-      }
-      this.lastPlayerUpdateTime = now;
-    }
-    
+    // Check if player has moved significantly
     const playerMovement = this.lastPlayerPosition.distanceTo(playerPosition);
     const shouldUpdateInstances = playerMovement > this.POSITION_UPDATE_THRESHOLD;
     
     this.lastPlayerPosition.copy(playerPosition);
     
-    // More frequent grass visibility updates
     if (this.grassCullingUpdateCounter >= this.GRASS_CULLING_UPDATE_INTERVAL) {
-      this.updateGrassVisibilityOptimized(playerPosition, grassInstances, groundGrassInstances, maxDistance, shouldUpdateInstances);
+      this.updateGrassVisibility(playerPosition, grassInstances, groundGrassInstances, maxDistance, shouldUpdateInstances);
       this.grassCullingUpdateCounter = 0;
     }
   }
 
-  private updateGrassVisibilityOptimized(
+  private updateGrassVisibility(
     playerPosition: THREE.Vector3,
     grassInstances: Map<string, THREE.InstancedMesh>,
     groundGrassInstances: Map<string, THREE.InstancedMesh>,
@@ -74,27 +56,22 @@ export class LODManager {
     let visibilityChanges = 0;
     let instanceUpdates = 0;
     
-    // IMPROVED: Increased render distances to prevent pop-in
-    const tallGrassMaxDistance = Math.min(maxDistance * 0.8, 180); // Increased from 120
-    const groundGrassMaxDistance = Math.min(maxDistance * 0.6, 120); // Increased from 80
-    
-    // Update tall grass with improved culling
+    // Update tall grass visibility and instance-level LOD
     for (const [regionKey, instancedMesh] of grassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
       
-      const shouldBeVisible = distanceToPlayer <= tallGrassMaxDistance;
+      const shouldBeVisible = distanceToPlayer <= maxDistance;
       
+      // Update visibility
       if (instancedMesh.visible !== shouldBeVisible) {
         instancedMesh.visible = shouldBeVisible;
-        if (!shouldBeVisible) {
-          instancedMesh.count = 0;
-        }
         visibilityChanges++;
       }
       
-      // Update instances for closer grass more frequently
-      if (shouldBeVisible && shouldUpdateInstances && distanceToPlayer <= 100) { // Increased from 60
+      // Update instance-level LOD for visible regions
+      if (shouldBeVisible && shouldUpdateInstances) {
+        // Store player position for instance distance calculations
         instancedMesh.userData.lastPlayerPosition = playerPosition.clone();
         
         const updated = this.instanceLODManager.updateInstanceVisibility(
@@ -107,25 +84,35 @@ export class LODManager {
           instanceUpdates++;
         }
       }
+      
+      // Update material opacity for distant grass
+      const newLodDensity = this.calculateLODDensity(distanceToPlayer);
+      if (instancedMesh.userData.lodLevel !== newLodDensity && shouldBeVisible) {
+        instancedMesh.userData.lodLevel = newLodDensity;
+        if (instancedMesh.material && newLodDensity < 0.6) {
+          (instancedMesh.material as THREE.ShaderMaterial).transparent = true;
+          if ((instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity) {
+            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.2, newLodDensity);
+          }
+        }
+      }
     }
     
-    // Ground grass with improved culling
+    // Update ground grass with similar logic but reduced distance
+    const groundRenderDistance = Math.min(maxDistance * 0.7, 140);
     for (const [regionKey, instancedMesh] of groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
       
-      const shouldBeVisible = distanceToPlayer <= groundGrassMaxDistance;
+      const shouldBeVisible = distanceToPlayer <= groundRenderDistance;
       
       if (instancedMesh.visible !== shouldBeVisible) {
         instancedMesh.visible = shouldBeVisible;
-        if (!shouldBeVisible) {
-          instancedMesh.count = 0;
-        }
         visibilityChanges++;
       }
       
-      // Update instances for closer ground grass
-      if (shouldBeVisible && shouldUpdateInstances && distanceToPlayer <= 60) { // Increased from 40
+      // Update ground grass instance LOD
+      if (shouldBeVisible && shouldUpdateInstances) {
         instancedMesh.userData.lastPlayerPosition = playerPosition.clone();
         
         const updated = this.instanceLODManager.updateInstanceVisibility(
@@ -140,14 +127,15 @@ export class LODManager {
       }
     }
     
-    // Much less frequent logging
-    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 300 === 0) {
-      console.log(`🌱 LOD: ${visibilityChanges} visibility, ${instanceUpdates} instance updates`);
+    // Log updates less frequently
+    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 15 === 0) {
+      console.log(`🌱 LOD: ${visibilityChanges} visibility changes, ${instanceUpdates} instance updates`);
     }
   }
 
+  // Remove regeneration methods as we're now using instance-level updates
   public getPendingRegenerations(): string[] {
-    return [];
+    return []; // No longer using region regeneration
   }
 
   public markRegionRegenerated(regionKey: string): void {
@@ -163,9 +151,5 @@ export class LODManager {
     this.regionLODState.delete(regionKey + '_ground');
     this.instanceLODManager.clearRegionData(regionKey);
     this.instanceLODManager.clearRegionData(regionKey + '_ground');
-  }
-
-  public getPlayerVelocity(): THREE.Vector3 {
-    return this.playerVelocity.clone();
   }
 }

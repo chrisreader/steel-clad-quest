@@ -42,10 +42,6 @@ export class GameEngine {
   // Attack state tracking
   private isAttackPressed: boolean = false;
   
-  // ULTRA PERFORMANCE optimization - much less frequent updates
-  private systemUpdateCounter: number = 0;
-  private readonly SYSTEM_UPDATE_INTERVAL: number = 2; // Reduced from 6 to 2 for smoother animations
-  
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
     
@@ -56,6 +52,7 @@ export class GameEngine {
     this.physicsManager = new PhysicsManager();
   }
   
+  // NEW METHOD: Set UI state from KnightGame
   public setUIState(isUIOpen: boolean): void {
     this.uiIntegrationManager.setUIState(isUIOpen);
   }
@@ -63,7 +60,7 @@ export class GameEngine {
   public async initialize(): Promise<void> {
     if (this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Starting ULTRA PERFORMANCE initialization...");
+    console.log("🎮 [GameEngine] Starting initialization...");
     
     try {
       // Initialize render engine
@@ -76,9 +73,9 @@ export class GameEngine {
       // Create the scene manager using the render engine's scene and physics manager
       this.sceneManager = new SceneManager(this.renderEngine.getScene(), this.physicsManager);
       
-      // Set camera reference in SceneManager for proper sun glow calculations
+      // FIXED: Set camera reference in SceneManager for proper sun glow calculations
       this.sceneManager.setCamera(this.renderEngine.getCamera());
-      console.log("📹 [GameEngine] Camera reference passed to SceneManager");
+      console.log("📹 [GameEngine] Camera reference passed to SceneManager for sun glow calculations");
       
       // Create default world
       this.sceneManager.createDefaultWorld();
@@ -112,10 +109,10 @@ export class GameEngine {
         console.warn("🎮 [GameEngine] Audio preloading failed, continuing:", audioError);
       }
       
-      // Create the player
-      console.log("🎮 [GameEngine] Creating player...");
+      // CRITICAL: Create the player with extensive debugging
+      console.log("🎮 [GameEngine] Creating player with NEW ARM POSITIONING...");
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
-      console.log("🎮 [GameEngine] Player created successfully");
+      console.log("🎮 [GameEngine] Player created successfully with new arm positioning");
       
       // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
@@ -137,21 +134,22 @@ export class GameEngine {
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] ULTRA PERFORMANCE initialization complete!");
+      console.log("🎮 [GameEngine] Initialization complete with fire animation system!");
       
       // Start the game
       this.start();
     } catch (error) {
       console.error("🎮 [GameEngine] Initialization error:", error);
-      this.isInitialized = true;
+      this.isInitialized = true; // Still mark as initialized
     }
   }
   
   private createBuildings(): void {
     if (!this.buildingManager) return;
     
-    console.log("🏗️ [GameEngine] Creating buildings...");
+    console.log("🏗️ [GameEngine] Creating buildings with animated fireplaces...");
     
+    // Create tavern at origin with fireplace
     const tavernBuilding = this.buildingManager.createBuilding({
       type: 'tavern',
       position: new THREE.Vector3(0, 0, 0),
@@ -159,13 +157,14 @@ export class GameEngine {
     });
     
     if (tavernBuilding) {
-      console.log("🔥 [GameEngine] Tavern created successfully");
+      console.log("🔥 [GameEngine] Tavern with animated fireplace created successfully");
     }
   }
   
   private setupMouseLookControls(): void {
     console.log("🎮 [GameEngine] Setting up mouse look controls...");
     
+    // Listen for mouse look input
     document.addEventListener('gameInput', (event: Event) => {
       const customEvent = event as CustomEvent;
       const { type, data } = customEvent.detail;
@@ -184,6 +183,7 @@ export class GameEngine {
       }
     });
     
+    // Request pointer lock on canvas click
     const handleCanvasClick = () => {
       this.requestPointerLockSafely();
     };
@@ -215,8 +215,10 @@ export class GameEngine {
       return;
     }
     
+    console.log("📹 [GameEngine] Processing mouse look:", deltaX, deltaY);
     this.renderEngine.handleMouseLook(deltaX, deltaY);
     
+    // Update player visual rotation
     if (this.player && typeof this.player.setVisualRotation === 'function') {
       const cameraRotation = this.renderEngine.getCameraRotation();
       this.player.setVisualRotation(cameraRotation.yaw, cameraRotation.pitch);
@@ -268,10 +270,10 @@ export class GameEngine {
       return;
     }
     
-    console.log("🎮 [GameEngine] Starting ULTRA PERFORMANCE game...");
+    console.log("🎮 [GameEngine] Starting game with NEW ARM POSITIONING...");
     this.stateManager.start();
     this.animate();
-    console.log("🎮 [GameEngine] Game started successfully!");
+    console.log("🎮 [GameEngine] Game started successfully with NEW ARM POSITIONING!");
   }
   
   private animate = (): void => {
@@ -285,7 +287,6 @@ export class GameEngine {
       return;
     }
     
-    // FIXED: Remove delta time capping that interfered with smooth animations
     const deltaTime = this.renderEngine.getDeltaTime();
     this.stateManager.update(deltaTime);
     this.update(deltaTime);
@@ -297,14 +298,8 @@ export class GameEngine {
       return;
     }
     
-    // Increment system update counter
-    this.systemUpdateCounter++;
-    
-    // CRITICAL SYSTEMS: Update every frame for smooth gameplay
+    // Update movement system first
     this.movementSystem.update(deltaTime);
-    this.combatSystem.update(deltaTime);
-    this.player.update(deltaTime, this.isMoving);
-    this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
     // Check if player is moving
     this.isMoving = this.inputManager.isActionPressed('moveForward') ||
@@ -312,46 +307,49 @@ export class GameEngine {
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
     
-    // LESS CRITICAL SYSTEMS: Update every 2nd frame for balance
-    if (this.systemUpdateCounter % this.SYSTEM_UPDATE_INTERVAL === 0) {
-      // Update building manager (for fire animation)
-      if (this.buildingManager) {
-        this.buildingManager.update(deltaTime * this.SYSTEM_UPDATE_INTERVAL);
-      }
-      
-      // Update effects
-      this.effectsManager.update(deltaTime * this.SYSTEM_UPDATE_INTERVAL);
-      
-      // Update audio
-      this.audioManager.update();
-      
-      // Update scene manager with player position
-      if (this.sceneManager) {
-        this.sceneManager.update(deltaTime * this.SYSTEM_UPDATE_INTERVAL, this.player.getPosition());
-      }
-      
-      // Sync enemies from scene manager to combat system
-      if (this.sceneManager) {
-        const sceneEnemies = this.sceneManager.getEnemies();
-        sceneEnemies.forEach(enemy => {
-          if (!this.combatSystem!.getEnemies().includes(enemy)) {
-            this.combatSystem!.addEnemy(enemy);
-          }
-        });
-      }
+    // Update building manager (critical for fire animation)
+    if (this.buildingManager) {
+      this.buildingManager.update(deltaTime);
     }
     
-    // NON-CRITICAL SYSTEMS: Update every 10th frame
-    if (this.systemUpdateCounter % 10 === 0) {
-      const isInTavern = this.movementSystem.checkInTavern();
-      this.stateManager.updateLocationState(isInTavern);
+    // Sync enemies from scene manager to combat system
+    if (this.sceneManager) {
+      const sceneEnemies = this.sceneManager.getEnemies();
+      // Update combat system with current enemies
+      sceneEnemies.forEach(enemy => {
+        if (!this.combatSystem!.getEnemies().includes(enemy)) {
+          this.combatSystem!.addEnemy(enemy);
+        }
+      });
     }
     
-    // Check for game over much less frequently
-    if (this.systemUpdateCounter % 60 === 0) {
-      if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
-        this.stateManager.setGameOver(this.stateManager.getScore());
-      }
+    // Update combat system
+    this.combatSystem.update(deltaTime);
+    
+    // Update effects
+    this.effectsManager.update(deltaTime);
+    
+    // Update audio
+    this.audioManager.update();
+    
+    // Update player
+    this.player.update(deltaTime, this.isMoving);
+    
+    // Update camera to follow player
+    this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
+    
+    // NEW: Update scene manager with player position for ring-quadrant system
+    if (this.sceneManager) {
+      this.sceneManager.update(deltaTime, this.player.getPosition());
+    }
+    
+    // Check location changes
+    const isInTavern = this.movementSystem.checkInTavern();
+    this.stateManager.updateLocationState(isInTavern);
+    
+    // Check for game over
+    if (!this.player.isAlive() && !this.stateManager.isGameOver()) {
+      this.stateManager.setGameOver(this.stateManager.getScore());
     }
   }
   
@@ -374,47 +372,56 @@ export class GameEngine {
   public restart(): void {
     if (!this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Restarting game...");
+    console.log("🎮 [GameEngine] Restarting game and RECREATING PLAYER with NEW ARM POSITIONING...");
     this.stateManager.restart();
     
+    // CRITICAL: Recreate player to ensure new arm positioning takes effect
     if (this.effectsManager && this.audioManager) {
+      // Dispose old player
       if (this.player) {
         this.player.dispose();
         this.renderEngine.getScene().remove(this.player.getGroup());
       }
       
-      console.log("🔄 [GameEngine] Creating NEW player instance...");
+      // Create new player with updated positioning
+      console.log("🔄 [GameEngine] Creating NEW player instance with updated arm positioning...");
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
-      console.log("🔄 [GameEngine] NEW player instance created");
+      console.log("🔄 [GameEngine] NEW player instance created with updated arm positioning");
       
+      // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
       if (playerBody.leftArm) playerBody.leftArm.visible = true;
       if (playerBody.rightArm) playerBody.rightArm.visible = true;
       
+      // Recreate combat system with new player, camera, and physics manager
       if (this.combatSystem) {
         this.combatSystem.dispose();
       }
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       
+      // Recreate movement system with new player and physics manager
       if (this.movementSystem) {
         this.movementSystem.dispose();
       }
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager!, this.physicsManager);
       
+      // Reset first-person camera
       this.renderEngine.setupFirstPersonCamera(this.player.getPosition());
     }
     
+    // Restart enemy spawning
     if (this.sceneManager && this.effectsManager && this.audioManager) {
       this.sceneManager.initializeEnemySpawning(this.effectsManager, this.audioManager);
       this.sceneManager.startEnemySpawning(this.player!.getPosition());
     }
     
+    // Start ambient sounds
     if (this.audioManager) {
       this.audioManager.play('tavern_ambience', true);
       this.audioManager.play('game_music', true);
     }
     
-    console.log("🎮 [GameEngine] Game restarted!");
+    console.log("🎮 [GameEngine] Game restarted with NEW PLAYER and ARM POSITIONING!");
   }
   
   public handleInput(type: string, data?: any): void {
@@ -423,6 +430,7 @@ export class GameEngine {
       return;
     }
     
+    // Handle pointer lock requests even when game is paused
     if (type === 'requestPointerLock' || type === 'requestPointerUnlock') {
       if (type === 'requestPointerLock' && this.inputManager) {
         this.inputManager.requestPointerLock();
@@ -432,6 +440,7 @@ export class GameEngine {
       return;
     }
     
+    // For other inputs, check if game is ready
     if (!this.stateManager.isPlaying() || this.stateManager.isPaused()) {
       return;
     }
@@ -466,6 +475,7 @@ export class GameEngine {
     }
   }
   
+  // Callback setters - delegate to state manager
   public setOnUpdateHealth(callback: (health: number) => void): void {
     this.stateManager.setOnUpdateHealth(callback);
   }
@@ -490,6 +500,7 @@ export class GameEngine {
     this.stateManager.setOnLocationChange(callback);
   }
   
+  // Getters - delegate to appropriate managers
   public getGameState(): GameState {
     return this.stateManager.getGameState();
   }
@@ -525,14 +536,17 @@ export class GameEngine {
   public dispose(): void {
     console.log("🎮 [GameEngine] Disposing game engine...");
     
+    // Dispose managers (check for null to avoid runtime errors)
     this.stateManager.dispose();
     this.uiIntegrationManager.dispose();
     this.renderEngine.dispose();
     
+    // Dispose building manager
     if (this.buildingManager) {
       this.buildingManager.dispose();
     }
     
+    // Dispose systems (check for null to avoid runtime errors)
     if (this.movementSystem) {
       this.movementSystem.dispose();
     }

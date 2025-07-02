@@ -1,48 +1,28 @@
+
 import { ColorUtils } from './ColorUtils';
 
 export class TimeUtils {
-  // Add caching for smooth calculations
-  private static lastCalculatedTime: number = -1;
-  private static cachedPhase: string = '';
-  private static cachedTransition: { phase: string, nextPhase: string, factor: number } = { phase: '', nextPhase: '', factor: 0 };
-  private static readonly CALCULATION_THRESHOLD = 0.001; // Only recalculate when time changes significantly
-  
   static getCurrentPhase(time: number, timePhases: any): string {
-    // OPTIMIZED: Cache phase calculations to reduce stuttering
-    if (Math.abs(time - this.lastCalculatedTime) < this.CALCULATION_THRESHOLD && this.cachedPhase) {
-      return this.cachedPhase;
-    }
-    
     const normalizedTime = time % 1;
     
-    let phase: string;
     if (normalizedTime >= timePhases.NIGHT_START && normalizedTime < timePhases.DAWN_START) {
-      phase = 'night';
+      return 'night';
     } else if (normalizedTime >= timePhases.DAWN_START && normalizedTime < timePhases.DAY_START) {
-      phase = 'dawn';
+      return 'dawn';
     } else if (normalizedTime >= timePhases.DAY_START && normalizedTime < timePhases.SUNSET_START) {
-      phase = 'day';
+      return 'day';
     } else if (normalizedTime >= timePhases.SUNSET_START && normalizedTime < timePhases.CIVIL_TWILIGHT_START) {
-      phase = 'sunset';
+      return 'sunset';
     } else if (normalizedTime >= timePhases.CIVIL_TWILIGHT_START && normalizedTime < timePhases.NAUTICAL_TWILIGHT_START) {
-      phase = 'civilTwilight';
+      return 'civilTwilight';
     } else if (normalizedTime >= timePhases.NAUTICAL_TWILIGHT_START && normalizedTime < timePhases.ASTRONOMICAL_TWILIGHT_START) {
-      phase = 'nauticalTwilight';
+      return 'nauticalTwilight';
     } else {
-      phase = 'astronomicalTwilight';
+      return 'astronomicalTwilight';
     }
-    
-    this.lastCalculatedTime = time;
-    this.cachedPhase = phase;
-    return phase;
   }
 
   static getPhaseTransitionFactor(time: number, timePhases: any): { phase: string, nextPhase: string, factor: number } {
-    // OPTIMIZED: Cache transition calculations
-    if (Math.abs(time - this.lastCalculatedTime) < this.CALCULATION_THRESHOLD && this.cachedTransition.phase) {
-      return this.cachedTransition;
-    }
-    
     const normalizedTime = time % 1;
     const currentPhase = this.getCurrentPhase(time, timePhases);
     
@@ -79,10 +59,7 @@ export class TimeUtils {
     }
     
     const factor = (normalizedTime - phaseStart) / (phaseEnd - phaseStart);
-    const result = { phase: currentPhase, nextPhase, factor: Math.max(0, Math.min(1, factor)) };
-    
-    this.cachedTransition = result;
-    return result;
+    return { phase: currentPhase, nextPhase, factor: Math.max(0, Math.min(1, factor)) };
   }
 
   static getSynchronizedAmbientIntensityForTime(
@@ -95,9 +72,11 @@ export class TimeUtils {
     
     switch (phase) {
       case 'night':
+        // Much darker night with minimal moon influence
         return 0.05 + (0.1 * moonElevation);
       case 'dawn':
         const { factor: dawnFactor } = this.getPhaseTransitionFactor(time, timePhases);
+        // Very gradual brightening that starts late in dawn phase
         const delayedDawnFactor = ColorUtils.exponentialDecay(Math.max(0, dawnFactor - 0.6) / 0.4, 3);
         return 0.15 + (0.8 * delayedDawnFactor);
       case 'day':
@@ -163,12 +142,5 @@ export class TimeUtils {
       default:
         return 0.0;
     }
-  }
-  
-  // Add method to clear cache when needed
-  static clearCache(): void {
-    this.lastCalculatedTime = -1;
-    this.cachedPhase = '';
-    this.cachedTransition = { phase: '', nextPhase: '', factor: 0 };
   }
 }

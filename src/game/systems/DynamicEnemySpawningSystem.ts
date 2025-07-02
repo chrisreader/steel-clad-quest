@@ -70,7 +70,6 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     audioManager: AudioManager,
     config?: Partial<SpawningConfig>
   ) {
-    // FIXED: Restored balanced enemy spawning (was too aggressive before)
     const defaultConfig: SpawningConfig = {
       playerMovementThreshold: 5,
       fadeInDistance: 15,
@@ -78,9 +77,9 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       maxEntityDistance: 80,
       minSpawnDistance: 20,
       maxSpawnDistance: 40,
-      maxEntities: 6, // Restored from 3 to 6 (balanced)
-      baseSpawnInterval: 8000, // Reduced from 16000 to 8000 (balanced)
-      spawnCountPerTrigger: 1, // Keep at 1 for balance
+      maxEntities: 3, // Reduced from 8 to 3 (approx 70% reduction)
+      baseSpawnInterval: 16000, // Increased from 5000 to 16000 (3.2x slower, 70% reduction in frequency)
+      spawnCountPerTrigger: 1, // Reduced from 2 to 1 (50% reduction)
       aggressiveCleanupDistance: 100,
       fadedOutTimeout: 10000
     };
@@ -103,7 +102,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       () => this.onPlayerExitSafeZone()
     );
     
-    console.log(`[DynamicEnemySpawningSystem] Initialized with balanced spawning`);
+    console.log(`[DynamicEnemySpawningSystem] Initialized with reduced spawning (70% decrease)`);
   }
 
   private onPlayerEnterSafeZone(): void {
@@ -134,10 +133,10 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       this.safeZoneManager.updatePlayerPosition(playerPosition);
     }
 
-    // FIXED: Restored normal spawn rate timing
+    // Reduce spawn rate when player is in safe zone (even more reduction)
     if (this.isPlayerInSafeZone) {
-      // Slower spawning in safe zone (5x slower instead of 20x)
-      this.spawnTimer += deltaTime * 1000 * 0.2;
+      // Much slower spawning in safe zone (20x slower instead of 10x)
+      this.spawnTimer += deltaTime * 1000 * 0.05;
     } else {
       this.spawnTimer += deltaTime * 1000;
     }
