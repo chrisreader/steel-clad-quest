@@ -14,13 +14,13 @@ export class GrassRenderBubbleManager {
   private scene: THREE.Scene;
   private renderer: GrassRenderer;
   
-  // Optimized render bubble configuration for 200-unit viewable area
-  private readonly RENDER_RADIUS = 200; // Reduced from 600 for FPS optimization
-  private readonly DATA_LOAD_RADIUS = 600; // Keep chunk data loaded for smooth re-entry
-  private readonly UNLOAD_RADIUS = 250; // Reduced from 700
+  // Aggressive performance optimization for smooth 60fps gameplay
+  private readonly RENDER_RADIUS = 120; // Reduced from 200 for 64% area reduction
+  private readonly DATA_LOAD_RADIUS = 300; // Reduced from 600 for faster loading
+  private readonly UNLOAD_RADIUS = 150; // Reduced from 250
   private readonly CHUNK_SIZE = 64;
-  private readonly MAX_CHUNKS_PER_FRAME = 6; // Reduced from 8
-  private readonly MOVEMENT_THRESHOLD = 2;
+  private readonly MAX_CHUNKS_PER_FRAME = 3; // Reduced from 6 for smoother loading
+  private readonly MOVEMENT_THRESHOLD = 1.5; // More responsive loading
   
   // Chunk tracking
   private loadedChunks: Map<string, LoadedChunk> = new Map();
@@ -40,8 +40,8 @@ export class GrassRenderBubbleManager {
     this.renderer = renderer;
   }
 
-  public initializeWithCoverage(playerPosition: THREE.Vector3, coverageRadius: number = 200): void {
-    console.log(`🌱 Initializing grass system with 200-unit render radius for FPS optimization`);
+  public initializeWithCoverage(playerPosition: THREE.Vector3, coverageRadius: number = 120): void {
+    console.log(`🌱 Initializing grass system with 120-unit render radius for maximum FPS optimization`);
     
     this.lastPlayerPosition.copy(playerPosition);
     
@@ -73,7 +73,7 @@ export class GrassRenderBubbleManager {
     this.loadQueue.push(...initialChunks);
     this.isInitialized = true;
     
-    console.log(`🌱 Queued ${initialChunks.length} chunks for 200-unit render area`);
+    console.log(`🌱 Queued ${initialChunks.length} chunks for 120-unit optimized render area`);
   }
 
   public update(playerPosition: THREE.Vector3): void {
@@ -324,7 +324,7 @@ export class GrassRenderBubbleManager {
   }
 
   private reportPerformanceMetrics(): void {
-    console.log(`🌱 Performance: ${this.renderedInstanceCount} grass instances rendered within 200 units`);
+    console.log(`🌱 Performance: ${this.renderedInstanceCount} grass instances rendered within 120 units`);
   }
 
   public getLoadedChunkCount(): number {

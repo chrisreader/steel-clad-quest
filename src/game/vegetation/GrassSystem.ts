@@ -23,8 +23,8 @@ export class GrassSystem {
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 12;
-  private readonly FOG_CHECK_INTERVAL: number = 200;
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 16; // Reduced frequency for performance
+  private readonly FOG_CHECK_INTERVAL: number = 300; // Less frequent fog checks
   
   // Player tracking
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -51,7 +51,7 @@ export class GrassSystem {
     // Force biome regeneration for fractal shapes
     DeterministicBiomeManager.clearCache();
     
-    this.bubbleManager.initializeWithCoverage(playerPosition, 200);
+    this.bubbleManager.initializeWithCoverage(playerPosition, 120);
     this.lastPlayerPosition.copy(playerPosition);
     
     // Debug current position-based biome
@@ -97,8 +97,8 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      const shouldUpdateTallGrass = this.updateCounter % 24 === 0;
-      const shouldUpdateGroundGrass = this.updateCounter % 24 === 12;
+      const shouldUpdateTallGrass = this.updateCounter % 32 === 0; // Less frequent updates
+      const shouldUpdateGroundGrass = this.updateCounter % 32 === 16;
       
       if (shouldUpdateTallGrass) {
         for (const material of this.renderer.getGrassMaterials().values()) {
@@ -123,7 +123,7 @@ export class GrassSystem {
     
     // Report performance metrics less frequently
     if (this.updateCounter % 600 === 0) {
-      console.log(`🌱 FRACTAL PERFORMANCE: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 200-unit radius`);
+      console.log(`🌱 OPTIMIZED PERFORMANCE: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 120-unit radius`);
       const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
       console.log(`🌱 POSITION BIOME: Currently in ${debugInfo.biomeData.biomeType} (${debugInfo.organicBiomeCount} fractal biomes nearby)`);
     }

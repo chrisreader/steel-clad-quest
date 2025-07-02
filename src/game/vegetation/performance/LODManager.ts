@@ -10,14 +10,14 @@ export interface RegionLODInfo {
 }
 
 export class LODManager {
-  private lodDistances: number[] = [50, 100, 150, 200]; // More granular for smoother transitions
+  private lodDistances: number[] = [25, 50, 75, 120]; // Aggressive optimization for performance
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 3; // More frequent updates
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 4; // Optimized update frequency
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
-  private readonly LOD_REGENERATION_THRESHOLD: number = 0.4; // Higher threshold to avoid constant regeneration
-  private readonly POSITION_UPDATE_THRESHOLD: number = 5; // Much lower for responsive updates
+  private readonly LOD_REGENERATION_THRESHOLD: number = 0.3; // More aggressive LOD switching
+  private readonly POSITION_UPDATE_THRESHOLD: number = 3; // More responsive updates
 
   // NEW: Instance-level LOD manager for smooth density changes
   private instanceLODManager: InstanceLODManager = new InstanceLODManager();

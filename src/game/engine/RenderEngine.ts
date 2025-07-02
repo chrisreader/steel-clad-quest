@@ -28,7 +28,7 @@ export class RenderEngine {
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 100; // Update culling every 100ms
+  private readonly CULLING_UPDATE_INTERVAL: number = 30; // Much more responsive culling for smooth turning
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -140,10 +140,19 @@ export class RenderEngine {
     // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
     if (object instanceof THREE.InstancedMesh) return true;
     
-    // Simple sphere-based frustum culling with proper type checking
+    // Hierarchical culling - check parent objects first for performance
+    if (object.parent && object.parent !== this.scene && !this.isObjectInFrustum(object.parent)) {
+      return false;
+    }
+    
+    // Fast bounding sphere pre-check before expensive frustum test
     if (object instanceof THREE.Mesh && object.geometry) {
       const sphere = object.geometry.boundingSphere;
       if (sphere) {
+        // Quick distance check first (cheaper than frustum test)
+        const distance = this.camera.position.distanceTo(object.position);
+        if (distance > 200) return false; // Cull very distant objects immediately
+        
         const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
         return this.frustum.intersectsSphere(worldSphere);
       }

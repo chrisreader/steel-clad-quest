@@ -75,12 +75,12 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       fadeInDistance: 15,
       fadeOutDistance: 50,
       maxEntityDistance: 80,
-      minSpawnDistance: 20,
-      maxSpawnDistance: 40,
-      maxEntities: 3, // Reduced from 8 to 3 (approx 70% reduction)
-      baseSpawnInterval: 16000, // Increased from 5000 to 16000 (3.2x slower, 70% reduction in frequency)
-      spawnCountPerTrigger: 1, // Reduced from 2 to 1 (50% reduction)
-      aggressiveCleanupDistance: 100,
+      minSpawnDistance: 15, // Closer to player for better performance
+      maxSpawnDistance: 30, // Reduced from 40 to 30 for closer spawning
+      maxEntities: 2, // Further reduced from 3 to 2 for maximum performance
+      baseSpawnInterval: 25000, // Increased from 16000 to 25000 (56% slower than before)
+      spawnCountPerTrigger: 1, // Keep at 1 for performance
+      aggressiveCleanupDistance: 70, // Reduced cleanup distance for better performance
       fadedOutTimeout: 10000
     };
     
@@ -102,7 +102,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       () => this.onPlayerExitSafeZone()
     );
     
-    console.log(`[DynamicEnemySpawningSystem] Initialized with reduced spawning (70% decrease)`);
+    console.log(`[DynamicEnemySpawningSystem] Initialized with maximum performance optimization (2 enemies max, 25s intervals)`);
   }
 
   private onPlayerEnterSafeZone(): void {
