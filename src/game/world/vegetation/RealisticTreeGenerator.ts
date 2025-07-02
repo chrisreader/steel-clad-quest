@@ -665,10 +665,10 @@ export class RealisticTreeGenerator {
         // Set instance color with height-based variation for more realism and better lighting
         const heightRatio = cluster.heightRatio || (cluster.position.y / treeHeight);
         
-        // Much brighter foliage colors that respond well to lighting
-        const lightnessFactor = 0.45 + heightRatio * 0.25; // Increased brightness
-        const hue = 0.28 + (Math.random() - 0.5) * 0.08; // Slightly more varied green hues
-        const saturation = 0.65 + (Math.random() - 0.5) * 0.15;
+        // Ultra-bright foliage colors that respond excellently to lighting
+        const lightnessFactor = 0.65 + heightRatio * 0.2; // Ultra-bright base
+        const hue = 0.28 + (Math.random() - 0.5) * 0.06; // Consistent green hues
+        const saturation = 0.75 + (Math.random() - 0.5) * 0.1; // High saturation
         const color = new THREE.Color().setHSL(hue, saturation, lightnessFactor);
         
         instancedMesh.setColorAt(i, color);
@@ -721,13 +721,13 @@ export class RealisticTreeGenerator {
     
     if (!this.materialCache.has(materialKey)) {
       const material = new THREE.MeshStandardMaterial({
-        color: 0x4A7C59, // Much brighter base green color
-        roughness: 0.7, // Reduced roughness for better light reflection
+        color: 0x70B870, // Ultra-bright base green color
+        roughness: 0.55, // Lower roughness for excellent light reflection
         metalness: 0.0,
-        transparent: true,
-        opacity: 0.95, // Slightly more opaque
+        transparent: false, // Remove transparency for better lighting
         side: THREE.DoubleSide,
-        vertexColors: true // Enable per-instance colors
+        vertexColors: true, // Enable per-instance colors
+        emissive: new THREE.Color(0x0A2A0A), // Subtle green self-illumination
       });
       this.materialCache.set(materialKey, material);
     }

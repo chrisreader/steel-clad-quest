@@ -57,7 +57,7 @@ export class RenderEngine {
     // ULTRA-AGGRESSIVE renderer settings for maximum performance
     this.renderer = new THREE.WebGLRenderer({ antialias: false }); // Disabled for performance
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
-    this.renderer.shadowMap.enabled = false; // Disabled for massive performance gain
+    this.renderer.shadowMap.enabled = true; // Re-enabled for proper foliage lighting
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;

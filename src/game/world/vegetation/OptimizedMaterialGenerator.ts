@@ -22,10 +22,11 @@ export class OptimizedMaterialGenerator {
 
     const material = new THREE.MeshStandardMaterial({
       color,
-      roughness: 0.6 + Math.random() * 0.2, // 0.6-0.8 for more realistic sheen
+      roughness: 0.5 + Math.random() * 0.15, // 0.5-0.65 for better light reflection
       metalness: 0.0,
       transparent: false, // Remove transparency for better performance
-      side: THREE.FrontSide, // Use front side only for better performance
+      side: THREE.DoubleSide, // DoubleSide for consistent lighting
+      emissive: new THREE.Color(color).multiplyScalar(0.05), // Subtle self-illumination
     });
 
     this.materialCache.set(cacheKey, material);
@@ -36,43 +37,43 @@ export class OptimizedMaterialGenerator {
     switch (species) {
       case BushSpeciesType.DENSE_ROUND:
         return [
-          new THREE.Color(0x6b9d4a), // Vibrant spring green
-          new THREE.Color(0x7fb055), // Bright forest green
-          new THREE.Color(0x8fc460), // Fresh lime green
-          new THREE.Color(0x5d8f3f), // Rich grass green
-          new THREE.Color(0x77a64b)  // Lush meadow green
+          new THREE.Color(0x9dd470), // Ultra-bright spring green
+          new THREE.Color(0xb8e085), // Luminous forest green
+          new THREE.Color(0xc8f090), // Brilliant lime green
+          new THREE.Color(0x8cb85f), // Vivid grass green
+          new THREE.Color(0xa8d470)  // Radiant meadow green
         ];
       case BushSpeciesType.SPRAWLING_GROUND:
         return [
-          new THREE.Color(0x8fa862), // Light sage green
-          new THREE.Color(0xa3bd70), // Warm olive green
-          new THREE.Color(0xb6d27e), // Bright olive
-          new THREE.Color(0x94af66), // Fresh herb green
-          new THREE.Color(0x7f9958)  // Natural green
+          new THREE.Color(0xb8d485), // Brilliant sage green
+          new THREE.Color(0xd0e890), // Luminous olive green
+          new THREE.Color(0xe8f8a0), // Ultra-bright olive
+          new THREE.Color(0xc0d580), // Radiant herb green
+          new THREE.Color(0xa8c470)  // Vibrant natural green
         ];
       case BushSpeciesType.TALL_UPRIGHT:
         return [
-          new THREE.Color(0x4a7f32), // Deep vibrant green
-          new THREE.Color(0x5a9542), // Pine needle green
-          new THREE.Color(0x6aab52), // Woodland green
-          new THREE.Color(0x548540), // Forest canopy green
-          new THREE.Color(0x4d8838)  // Emerald green
+          new THREE.Color(0x70b850), // Bright vibrant green
+          new THREE.Color(0x85d065), // Luminous pine needle green
+          new THREE.Color(0x9ae875), // Brilliant woodland green
+          new THREE.Color(0x78c058), // Radiant forest canopy green
+          new THREE.Color(0x70c050)  // Bright emerald green
         ];
       case BushSpeciesType.WILD_BERRY:
         return [
-          new THREE.Color(0x6a8f48), // Berry bush green
-          new THREE.Color(0x7ba354), // Fresh berry leaf
-          new THREE.Color(0x8cb760), // Vibrant leaf green
-          new THREE.Color(0x5c7f3e), // Deep berry green
-          new THREE.Color(0x71944c)  // Natural berry foliage
+          new THREE.Color(0x90c468), // Bright berry bush green
+          new THREE.Color(0xa8d975), // Luminous berry leaf
+          new THREE.Color(0xc0e885), // Ultra-vibrant leaf green
+          new THREE.Color(0x85b860), // Brilliant berry green
+          new THREE.Color(0x98d070)  // Radiant berry foliage
         ];
       case BushSpeciesType.FLOWERING_ORNAMENTAL:
         return [
-          new THREE.Color(0x7db045), // Bright ornamental green
-          new THREE.Color(0x8ec955), // Spring bloom green
-          new THREE.Color(0x9fe265), // Fresh flower green
-          new THREE.Color(0x6f9f3f), // Rich garden green
-          new THREE.Color(0x85b54a)  // Lush ornamental green
+          new THREE.Color(0xa8e065), // Ultra-bright ornamental green
+          new THREE.Color(0xc0f875), // Brilliant spring bloom green
+          new THREE.Color(0xd8ff90), // Luminous flower green
+          new THREE.Color(0x98d860), // Radiant garden green
+          new THREE.Color(0xb0e570)  // Ultra-lush ornamental green
         ];
       default:
         return [new THREE.Color(0x7fb055)];
@@ -88,11 +89,11 @@ export class OptimizedMaterialGenerator {
     color.getHSL(hsl);
     
     // Make outer layers brighter, inner layers slightly darker but still vibrant
-    const lightnessMod = layerIndex === 0 ? 0.08 : -layerIndex * 0.02;
-    hsl.l = Math.max(0.3, Math.min(0.75, hsl.l + lightnessMod)); // Keep it bright
+    const lightnessMod = layerIndex === 0 ? 0.15 : -layerIndex * 0.01;
+    hsl.l = Math.max(0.55, Math.min(0.85, hsl.l + lightnessMod)); // Ultra-bright range
     
     // Increase saturation for more vibrant colors
-    hsl.s = Math.min(1.0, hsl.s + 0.1);
+    hsl.s = Math.min(1.0, hsl.s + 0.2);
     
     // Add slight random variation while keeping it vibrant
     hsl.h += (Math.random() - 0.5) * 0.015; // ±0.75% hue variation
@@ -100,8 +101,8 @@ export class OptimizedMaterialGenerator {
     hsl.l += (Math.random() - 0.5) * 0.04;  // ±2% lightness variation
     
     // Clamp values to keep them vibrant
-    hsl.s = Math.max(0.4, Math.min(1.0, hsl.s)); // Keep saturation high
-    hsl.l = Math.max(0.3, Math.min(0.75, hsl.l)); // Keep lightness in vibrant range
+    hsl.s = Math.max(0.6, Math.min(1.0, hsl.s)); // Higher saturation floor
+    hsl.l = Math.max(0.55, Math.min(0.85, hsl.l)); // Ultra-bright lightness range
     
     color.setHSL(hsl.h, hsl.s, hsl.l);
   }
