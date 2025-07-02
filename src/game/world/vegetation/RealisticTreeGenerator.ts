@@ -710,18 +710,18 @@ export class RealisticTreeGenerator {
         // Set natural instance color with height-based variation
         const heightRatio = cluster.heightRatio || (cluster.position.y / treeHeight);
         
-        // Natural foliage colors based on species
+        // Natural foliage colors based on species - BRIGHT and visible
         const baseColor = new THREE.Color(this.getSpeciesNaturalColor(species));
         const hsl = { h: 0, s: 0, l: 0 };
         baseColor.getHSL(hsl);
         
-        // Subtle height-based variation for natural light distribution
-        const lightnessMod = (heightRatio - 0.5) * 0.15; // ±7.5% lightness variation based on height
-        const randomMod = (Math.random() - 0.5) * 0.1; // ±5% random variation
+        // Much subtler height-based variation - no aggressive darkening
+        const lightnessMod = (heightRatio - 0.5) * 0.05; // ±2.5% lightness variation (reduced from ±7.5%)
+        const randomMod = (Math.random() - 0.5) * 0.03; // ±1.5% random variation (reduced from ±5%)
         
-        hsl.h += (Math.random() - 0.5) * 0.03; // ±1.5% hue variation
-        hsl.s = Math.max(0.3, Math.min(0.8, hsl.s + (Math.random() - 0.5) * 0.1)); // Natural saturation range
-        hsl.l = Math.max(0.2, Math.min(0.6, hsl.l + lightnessMod + randomMod)); // Natural lightness range
+        hsl.h += (Math.random() - 0.5) * 0.02; // ±1% hue variation
+        hsl.s = Math.max(0.4, Math.min(0.9, hsl.s + (Math.random() - 0.5) * 0.05)); // Brighter saturation range
+        hsl.l = Math.max(0.4, Math.min(0.9, hsl.l + lightnessMod + randomMod)); // BRIGHT lightness range (40%-90% instead of 20%-60%)
         
         const color = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
         instancedMesh.setColorAt(i, color);
