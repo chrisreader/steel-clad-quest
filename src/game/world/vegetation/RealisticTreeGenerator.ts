@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../../utils';
 import { TreeSpeciesType, TreeSpeciesManager } from './TreeSpecies';
+import { OrganicShapeGenerator } from './OrganicShapeGenerator';
 
 interface BranchConfig {
   length: number;
@@ -59,92 +60,93 @@ export class RealisticTreeGenerator {
   }
 
   private createOrganicFoliageGeometry(segments: number, rings: number, variant: number): THREE.BufferGeometry {
-    const baseGeometry = new THREE.SphereGeometry(1, segments, rings);
+    // Use OrganicShapeGenerator for much more realistic foliage shapes
+    const baseRadius = 1;
     
-    // Apply organic deformation based on variant
-    const positions = baseGeometry.attributes.position;
-    const vertex = new THREE.Vector3();
-    
-    for (let i = 0; i < positions.count; i++) {
-      vertex.fromBufferAttribute(positions, i);
-      
-      // Different organic deformation patterns per variant
-      switch (variant) {
-        case 0: // Slightly flattened, natural
-          vertex.y *= 0.85;
-          vertex.x += Math.sin(vertex.y * 3 + vertex.z * 2) * 0.1;
-          vertex.z += Math.cos(vertex.y * 2 + vertex.x * 3) * 0.1;
-          break;
-        case 1: // Asymmetric, drooping
-          vertex.y *= 0.9;
-          vertex.x *= 1.1;
-          vertex.z += Math.sin(vertex.x * 4) * 0.08;
-          break;
-        case 2: // Compact, dense
-          const length = vertex.length();
-          vertex.normalize().multiplyScalar(length * (0.9 + Math.sin(length * 8) * 0.1));
-          break;
-        case 3: // Irregular, natural variation
-          vertex.x += (Math.random() - 0.5) * 0.15;
-          vertex.y += (Math.random() - 0.5) * 0.1;
-          vertex.z += (Math.random() - 0.5) * 0.15;
-          break;
-      }
-      
-      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    // Different organic patterns per variant for species differentiation
+    switch (variant) {
+      case 0: // Oak-style: broad, flattened canopy masses
+        return OrganicShapeGenerator.createOrganicSphere(
+          baseRadius, 
+          segments, 
+          0.15, // Higher noise intensity for natural variation
+          2.8   // Medium frequency for broad shapes
+        );
+        
+      case 1: // Willow-style: drooping, asymmetric masses
+        const willowGeometry = OrganicShapeGenerator.createOrganicSphere(
+          baseRadius, 
+          segments, 
+          0.18, // More variation for drooping effect
+          3.2
+        );
+        // Additional vertical stretching for drooping effect
+        const willowPositions = willowGeometry.attributes.position;
+        for (let i = 0; i < willowPositions.count; i++) {
+          const y = willowPositions.getY(i);
+          willowPositions.setY(i, y * 1.2); // Stretch vertically
+        }
+        willowGeometry.computeVertexNormals();
+        return willowGeometry;
+        
+      case 2: // Dense, compact masses with natural gaps
+        return OrganicShapeGenerator.createOrganicSphere(
+          baseRadius, 
+          segments, 
+          0.20, // High variation for natural density
+          4.0   // Higher frequency for detailed surface
+        );
+        
+      case 3: // Highly irregular, natural masses
+        return OrganicShapeGenerator.createOrganicSphere(
+          baseRadius, 
+          segments, 
+          0.22, // Maximum variation for irregular shapes
+          3.5   // Balanced frequency
+        );
+        
+      default:
+        return OrganicShapeGenerator.createOrganicSphere(baseRadius, segments);
     }
-    
-    baseGeometry.computeVertexNormals();
-    return baseGeometry;
   }
 
   private createBirchIrregularFoliageGeometry(segments: number, rings: number): THREE.BufferGeometry {
-    const baseGeometry = new THREE.SphereGeometry(1, segments, rings);
+    // Use OrganicShapeGenerator for birch-specific irregular shapes
+    const birchGeometry = OrganicShapeGenerator.createOrganicSphere(
+      1,        // Base radius
+      segments, // Geometry detail level
+      0.25,     // High noise intensity for maximum irregularity
+      4.5       // Higher frequency for fine detail
+    );
     
-    // Apply special birch irregular deformation for more realistic, less circular foliage
-    const positions = baseGeometry.attributes.position;
+    // Additional birch-specific modifications for delicate, irregular appearance
+    const positions = birchGeometry.attributes.position;
     const vertex = new THREE.Vector3();
     
     for (let i = 0; i < positions.count; i++) {
       vertex.fromBufferAttribute(positions, i);
       
-      // Create irregular, asymmetric birch foliage shape
-      // Birch foliage tends to be more delicate and irregular, not perfectly spherical
+      // Birch-specific vertical compression for flatter canopy
+      vertex.y *= 0.75 + Math.random() * 0.15; // 75-90% height
       
-      // Flatten vertically for more realistic birch canopy shape
-      vertex.y *= 0.7 + Math.random() * 0.2; // 70-90% of original height
-      
-      // Create irregular horizontal bulges and indentations
+      // Create natural gaps and indentations specific to birch foliage
       const angle = Math.atan2(vertex.z, vertex.x);
-      const irregularityFactor = Math.sin(angle * 5) * 0.15 + Math.cos(angle * 3) * 0.1;
-      vertex.x *= 1.0 + irregularityFactor;
-      vertex.z *= 1.0 + irregularityFactor;
-      
-      // Add natural drooping effect at the bottom
-      if (vertex.y < 0) {
-        const droopFactor = Math.abs(vertex.y) * 0.3;
-        vertex.x *= 1.0 + droopFactor;
-        vertex.z *= 1.0 + droopFactor;
+      const gapPattern = Math.sin(angle * 6) * Math.cos(vertex.y * 8);
+      if (gapPattern > 0.4) {
+        // Reduce size to create gaps
+        vertex.multiplyScalar(0.85 + Math.random() * 0.1);
       }
       
-      // Create gaps and indentations for natural appearance
-      const gapNoise = Math.sin(vertex.x * 8) * Math.cos(vertex.z * 6) * Math.sin(vertex.y * 4);
-      if (gapNoise > 0.3) {
-        // Create small gaps in the foliage
-        const shrinkFactor = 0.8 + (gapNoise - 0.3) * 0.3;
-        vertex.multiplyScalar(shrinkFactor);
-      }
-      
-      // Add fine detail noise for organic surface
-      vertex.x += (Math.random() - 0.5) * 0.08;
-      vertex.y += (Math.random() - 0.5) * 0.05;
-      vertex.z += (Math.random() - 0.5) * 0.08;
+      // Asymmetric horizontal bulging for natural irregular shape
+      const bulgeNoise = Math.sin(angle * 4) * 0.12;
+      vertex.x += bulgeNoise;
+      vertex.z += Math.cos(angle * 4) * 0.08;
       
       positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
     }
     
-    baseGeometry.computeVertexNormals();
-    return baseGeometry;
+    birchGeometry.computeVertexNormals();
+    return birchGeometry;
   }
 
   private createOakBarkTexture(): THREE.Texture {
@@ -369,20 +371,20 @@ export class RealisticTreeGenerator {
     const branches: THREE.Object3D[] = [];
     const foliageClusters: FoliageCluster[] = [];
     
-    // Species-specific branch counts - reduce birch branch density by 25%
+    // Significantly reduced branch counts to avoid over-clustering
     let branchCount: number;
     switch (species) {
       case TreeSpeciesType.OAK:
-        branchCount = 4;
+        branchCount = 2; // Reduced from 4 - fewer, larger foliage masses
         break;
       case TreeSpeciesType.WILLOW:
-        branchCount = 6;
+        branchCount = 3; // Reduced from 6
         break;
       case TreeSpeciesType.BIRCH:
-        branchCount = 2; // Reduced from 3 for more delicate appearance
+        branchCount = 1; // Reduced from 2 for minimal lower foliage
         break;
       default:
-        branchCount = 3;
+        branchCount = 2;
     }
     
     for (let i = 0; i < branchCount; i++) {
@@ -442,20 +444,20 @@ export class RealisticTreeGenerator {
     const branches: THREE.Object3D[] = [];
     const foliageClusters: FoliageCluster[] = [];
     
-    // Species-specific branch counts - reduce birch branch density
+    // Dramatically reduced branch counts to create fewer, larger foliage masses
     let branchCount: number;
     switch (species) {
       case TreeSpeciesType.OAK:
-        branchCount = 8;
+        branchCount = 4; // Reduced from 8 - creates 4 large foliage masses
         break;
       case TreeSpeciesType.WILLOW:
-        branchCount = 10;
+        branchCount = 5; // Reduced from 10
         break;
       case TreeSpeciesType.BIRCH:
-        branchCount = 4; // Reduced from 6 for more delicate appearance
+        branchCount = 3; // Reduced from 4 for clean, minimal appearance
         break;
       default:
-        branchCount = 6;
+        branchCount = 4;
     }
     
     for (let i = 0; i < branchCount; i++) {
@@ -517,17 +519,17 @@ export class RealisticTreeGenerator {
       return { branches, foliageClusters }; // Dead trees don't have upper crowns
     }
     
-    // Species-specific branch counts for upper crown
+    // Reduced upper crown branch counts for larger foliage masses
     let branchCount: number;
     switch (species) {
       case TreeSpeciesType.OAK:
-        branchCount = 8; // Dense oak canopy
+        branchCount = 3; // Reduced from 8 - creates 3 large upper masses
         break;
       case TreeSpeciesType.BIRCH:
-        branchCount = 3; // Reduced birch upper crown density
+        branchCount = 2; // Reduced from 3 for minimal upper foliage
         break;
       default:
-        branchCount = 6;
+        branchCount = 3;
     }
     
     for (let i = 0; i < branchCount; i++) {
@@ -587,22 +589,22 @@ export class RealisticTreeGenerator {
       // Birch: Create multiple smaller, scattered foliage clusters instead of large central ones
       this.createBirchUpperFoliageClusters(foliageClusters, treeHeight);
     } else {
-      // Oak and other species: Large overlapping central crown clusters
+      // Oak and other species: Large overlapping central crown clusters - reduced count
       const centralHeightStart = 0.8;
       const centralHeightEnd = 0.95;
-      const centralClusterCount = species === TreeSpeciesType.OAK ? 4 : 3;
+      const centralClusterCount = species === TreeSpeciesType.OAK ? 2 : 2; // Reduced from 4/3 to 2/2
       
       for (let i = 0; i < centralClusterCount; i++) {
         const heightRatio = centralHeightStart + (i / (centralClusterCount - 1)) * (centralHeightEnd - centralHeightStart);
         const centralHeight = treeHeight * heightRatio;
         
-        // Calculate size based on height and species
+        // Calculate size based on height and species - much larger sizes
         const baseSize = this.calculateFoliageSize(treeHeight, heightRatio, species);
-        let centralFoliageSize = baseSize * (2.0 + Math.random() * 0.5); // Large central canopy
+        let centralFoliageSize = baseSize * (3.0 + Math.random() * 1.0); // Much larger central canopy (3-4x vs 2-2.5x)
         
-        // Oak trees get even larger canopies
+        // Oak trees get even larger canopies to reduce clustering appearance
         if (species === TreeSpeciesType.OAK) {
-          centralFoliageSize *= 1.2;
+          centralFoliageSize *= 1.5; // Increased from 1.2 to 1.5
         }
         
         // Add slight horizontal offset for natural variation
@@ -627,8 +629,8 @@ export class RealisticTreeGenerator {
   }
   
   private createBirchUpperFoliageClusters(foliageClusters: FoliageCluster[], treeHeight: number): void {
-    // Create irregular, smaller foliage clusters for realistic birch canopy
-    const clusterCount = 6 + Math.floor(Math.random() * 4); // 6-9 clusters
+    // Create irregular, fewer foliage clusters for realistic birch canopy
+    const clusterCount = 3 + Math.floor(Math.random() * 2); // Reduced from 6-9 to 3-4 clusters
     
     for (let i = 0; i < clusterCount; i++) {
       const heightRatio = 0.75 + Math.random() * 0.2; // 75-95% height
@@ -644,9 +646,9 @@ export class RealisticTreeGenerator {
         Math.sin(angle) * radius
       );
       
-      // Smaller, more varied foliage clusters
+      // Larger birch foliage clusters to reduce small-circle appearance
       const baseSize = this.calculateFoliageSize(treeHeight, heightRatio, TreeSpeciesType.BIRCH);
-      const clusterSize = baseSize * (0.7 + Math.random() * 0.6); // 70-130% of base size
+      const clusterSize = baseSize * (1.2 + Math.random() * 0.8); // Increased from 70-130% to 120-200% of base size
       
       // Lower density to create natural gaps
       const density = 0.6 + Math.random() * 0.3; // 60-90% density
@@ -661,8 +663,8 @@ export class RealisticTreeGenerator {
   }
 
   private calculateFoliageSize(treeHeight: number, heightRatio: number, species: TreeSpeciesType): number {
-    // Base size calculation
-    let baseSize = treeHeight * 0.04; // Reduced base size
+    // Base size calculation - significantly increased for larger foliage masses
+    let baseSize = treeHeight * 0.08; // Increased from 0.04 to 0.08 (doubled)
     
     // Height-based scaling - creates the realistic canopy layers
     let heightMultiplier: number;
