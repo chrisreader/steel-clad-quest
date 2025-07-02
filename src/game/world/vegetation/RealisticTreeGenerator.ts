@@ -40,14 +40,57 @@ export class RealisticTreeGenerator {
   }
 
   private preloadOptimizedGeometries(): void {
-    // Pre-create optimized foliage geometries for different LOD levels
+    // Pre-create organic foliage geometries for different LOD levels and species
     for (let lod = 0; lod < 3; lod++) {
       const segments = lod === 0 ? 16 : lod === 1 ? 12 : 8;
       const rings = lod === 0 ? 12 : lod === 1 ? 8 : 6;
       
-      const geometry = new THREE.SphereGeometry(1, segments, rings);
-      this.foliageGeometryCache.set(`foliage_lod${lod}`, geometry);
+      // Create multiple organic shape variations
+      for (let variant = 0; variant < 4; variant++) {
+        const geometry = this.createOrganicFoliageGeometry(segments, rings, variant);
+        this.foliageGeometryCache.set(`foliage_lod${lod}_v${variant}`, geometry);
+      }
     }
+  }
+
+  private createOrganicFoliageGeometry(segments: number, rings: number, variant: number): THREE.BufferGeometry {
+    const baseGeometry = new THREE.SphereGeometry(1, segments, rings);
+    
+    // Apply organic deformation based on variant
+    const positions = baseGeometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    
+    for (let i = 0; i < positions.count; i++) {
+      vertex.fromBufferAttribute(positions, i);
+      
+      // Different organic deformation patterns per variant
+      switch (variant) {
+        case 0: // Slightly flattened, natural
+          vertex.y *= 0.85;
+          vertex.x += Math.sin(vertex.y * 3 + vertex.z * 2) * 0.1;
+          vertex.z += Math.cos(vertex.y * 2 + vertex.x * 3) * 0.1;
+          break;
+        case 1: // Asymmetric, drooping
+          vertex.y *= 0.9;
+          vertex.x *= 1.1;
+          vertex.z += Math.sin(vertex.x * 4) * 0.08;
+          break;
+        case 2: // Compact, dense
+          const length = vertex.length();
+          vertex.normalize().multiplyScalar(length * (0.9 + Math.sin(length * 8) * 0.1));
+          break;
+        case 3: // Irregular, natural variation
+          vertex.x += (Math.random() - 0.5) * 0.15;
+          vertex.y += (Math.random() - 0.5) * 0.1;
+          vertex.z += (Math.random() - 0.5) * 0.15;
+          break;
+      }
+      
+      positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
+    }
+    
+    baseGeometry.computeVertexNormals();
+    return baseGeometry;
   }
 
   private createOakBarkTexture(): THREE.Texture {
@@ -639,11 +682,12 @@ export class RealisticTreeGenerator {
     }
     
     try {
-      // Get base geometry
-      const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!;
+      // Select organic geometry variant based on species
+      const variantIndex = this.getSpeciesGeometryVariant(species);
+      const baseGeometry = this.foliageGeometryCache.get(`foliage_lod0_v${variantIndex}`)!;
       
-      // Create instanced mesh directly with base geometry
-      const material = this.getOptimizedFoliageMaterial(species);
+      // Create instanced mesh with organic geometry
+      const material = this.getRealisticFoliageMaterial(species);
       const instancedMesh = new THREE.InstancedMesh(baseGeometry, material, validClusters.length);
       
       // Create transformation matrices for each foliage cluster
@@ -657,20 +701,29 @@ export class RealisticTreeGenerator {
           new THREE.Euler(0, Math.random() * Math.PI * 2, 0)
         );
         
-        const scale = new THREE.Vector3(cluster.size, cluster.size, cluster.size);
+        // Apply asymmetric scaling based on species for organic appearance
+        const asymmetricScale = this.getSpeciesAsymmetricScale(species, cluster.size);
         
-        matrix.compose(position, rotation, scale);
+        matrix.compose(position, rotation, asymmetricScale);
         instancedMesh.setMatrixAt(i, matrix);
         
-        // Set instance color with height-based variation for more realism and better lighting
+        // Set natural instance color with height-based variation
         const heightRatio = cluster.heightRatio || (cluster.position.y / treeHeight);
         
-        // Ultra-bright foliage colors that respond excellently to lighting
-        const lightnessFactor = 0.65 + heightRatio * 0.2; // Ultra-bright base
-        const hue = 0.28 + (Math.random() - 0.5) * 0.06; // Consistent green hues
-        const saturation = 0.75 + (Math.random() - 0.5) * 0.1; // High saturation
-        const color = new THREE.Color().setHSL(hue, saturation, lightnessFactor);
+        // Natural foliage colors based on species
+        const baseColor = new THREE.Color(this.getSpeciesNaturalColor(species));
+        const hsl = { h: 0, s: 0, l: 0 };
+        baseColor.getHSL(hsl);
         
+        // Subtle height-based variation for natural light distribution
+        const lightnessMod = (heightRatio - 0.5) * 0.15; // ±7.5% lightness variation based on height
+        const randomMod = (Math.random() - 0.5) * 0.1; // ±5% random variation
+        
+        hsl.h += (Math.random() - 0.5) * 0.03; // ±1.5% hue variation
+        hsl.s = Math.max(0.3, Math.min(0.8, hsl.s + (Math.random() - 0.5) * 0.1)); // Natural saturation range
+        hsl.l = Math.max(0.2, Math.min(0.6, hsl.l + lightnessMod + randomMod)); // Natural lightness range
+        
+        const color = new THREE.Color().setHSL(hsl.h, hsl.s, hsl.l);
         instancedMesh.setColorAt(i, color);
       }
       
@@ -696,15 +749,19 @@ export class RealisticTreeGenerator {
     console.log(`🍃 Creating fallback foliage with ${clusters.length} individual meshes for ${species}`);
     
     const foliageMeshes: THREE.Mesh[] = [];
-    const baseGeometry = this.foliageGeometryCache.get('foliage_lod0')!;
-    const material = this.getOptimizedFoliageMaterial(species);
+    const variantIndex = this.getSpeciesGeometryVariant(species);
+    const baseGeometry = this.foliageGeometryCache.get(`foliage_lod0_v${variantIndex}`)!;
+    const material = this.getRealisticFoliageMaterial(species);
     
     for (const cluster of clusters) {
       if (cluster.size <= 0) continue;
       
+      // Create organic scaling based on species
+      const asymmetricScale = this.getSpeciesAsymmetricScale(species, cluster.size);
+      
       const mesh = new THREE.Mesh(baseGeometry.clone(), material.clone());
       mesh.position.copy(cluster.position);
-      mesh.scale.set(cluster.size, cluster.size, cluster.size);
+      mesh.scale.copy(asymmetricScale);
       mesh.rotation.y = Math.random() * Math.PI * 2;
       
       mesh.castShadow = true;
@@ -716,23 +773,99 @@ export class RealisticTreeGenerator {
     return foliageMeshes;
   }
 
-  private getOptimizedFoliageMaterial(species: TreeSpeciesType): THREE.Material {
-    const materialKey = `foliage_${species}`;
+  private getSpeciesAsymmetricScale(species: TreeSpeciesType, baseSize: number): THREE.Vector3 {
+    // Create species-specific scaling to break perfect spheres
+    switch (species) {
+      case TreeSpeciesType.OAK:
+        // Broad, flattened canopy
+        return new THREE.Vector3(
+          baseSize * (1.1 + Math.random() * 0.3),
+          baseSize * (0.8 + Math.random() * 0.2),
+          baseSize * (1.0 + Math.random() * 0.3)
+        );
+      case TreeSpeciesType.WILLOW:
+        // Drooping, asymmetric foliage
+        return new THREE.Vector3(
+          baseSize * (0.9 + Math.random() * 0.2),
+          baseSize * (1.2 + Math.random() * 0.3),
+          baseSize * (0.8 + Math.random() * 0.2)
+        );
+      case TreeSpeciesType.BIRCH:
+        // Delicate, compact foliage
+        return new THREE.Vector3(
+          baseSize * (0.9 + Math.random() * 0.1),
+          baseSize * (0.95 + Math.random() * 0.1),
+          baseSize * (0.9 + Math.random() * 0.1)
+        );
+      case TreeSpeciesType.DEAD:
+        // Irregular, sparse foliage
+        return new THREE.Vector3(
+          baseSize * (0.7 + Math.random() * 0.4),
+          baseSize * (0.6 + Math.random() * 0.3),
+          baseSize * (0.8 + Math.random() * 0.4)
+        );
+      default:
+        return new THREE.Vector3(baseSize, baseSize, baseSize);
+    }
+  }
+
+  private getSpeciesGeometryVariant(species: TreeSpeciesType): number {
+    // Select geometry variant based on species characteristics
+    switch (species) {
+      case TreeSpeciesType.OAK:
+        return 0; // Natural, slightly flattened
+      case TreeSpeciesType.WILLOW:
+        return 1; // Asymmetric, drooping
+      case TreeSpeciesType.BIRCH:
+        return 2; // Compact, dense
+      case TreeSpeciesType.DEAD:
+        return 3; // Irregular, natural variation
+      default:
+        return 0;
+    }
+  }
+
+  private getRealisticFoliageMaterial(species: TreeSpeciesType): THREE.Material {
+    const materialKey = `realistic_foliage_${species}`;
     
     if (!this.materialCache.has(materialKey)) {
+      // Get natural colors per species
+      const baseColor = this.getSpeciesNaturalColor(species);
+      
       const material = new THREE.MeshStandardMaterial({
-        color: 0x70B870, // Ultra-bright base green color
-        roughness: 0.55, // Lower roughness for excellent light reflection
+        color: baseColor,
+        roughness: 0.85 + Math.random() * 0.1, // High roughness for matte foliage (0.85-0.95)
         metalness: 0.0,
-        transparent: false, // Remove transparency for better lighting
+        transparent: false,
         side: THREE.DoubleSide,
         vertexColors: true, // Enable per-instance colors
-        emissive: new THREE.Color(0x0A2A0A), // Subtle green self-illumination
+        // Remove emissive for natural appearance
       });
       this.materialCache.set(materialKey, material);
     }
     
     return this.materialCache.get(materialKey)!;
+  }
+
+  private getSpeciesNaturalColor(species: TreeSpeciesType): number {
+    // Natural, realistic foliage colors
+    switch (species) {
+      case TreeSpeciesType.OAK:
+        return 0x4A6741; // Deep forest green
+      case TreeSpeciesType.BIRCH:
+        return 0x5C7A4A; // Light forest green  
+      case TreeSpeciesType.WILLOW:
+        return 0x7A8B4C; // Sage green
+      case TreeSpeciesType.DEAD:
+        return 0x8B7355; // Brown/dead foliage
+      default:
+        return 0x4A6741; // Default deep green
+    }
+  }
+
+  private getOptimizedFoliageMaterial(species: TreeSpeciesType): THREE.Material {
+    // For backward compatibility - redirect to realistic material
+    return this.getRealisticFoliageMaterial(species);
   }
 
   private createPineTreeStructure(treeHeight: number, trunkBaseRadius: number): {
