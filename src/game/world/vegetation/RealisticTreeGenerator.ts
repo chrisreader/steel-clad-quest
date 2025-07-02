@@ -598,13 +598,13 @@ export class RealisticTreeGenerator {
         const heightRatio = centralHeightStart + (i / (centralClusterCount - 1)) * (centralHeightEnd - centralHeightStart);
         const centralHeight = treeHeight * heightRatio;
         
-        // Calculate size based on height and species - much larger sizes
+        // Calculate size based on height and species - realistic central canopy
         const baseSize = this.calculateFoliageSize(treeHeight, heightRatio, species);
-        let centralFoliageSize = baseSize * (3.0 + Math.random() * 1.0); // Much larger central canopy (3-4x vs 2-2.5x)
+        let centralFoliageSize = baseSize * (1.8 + Math.random() * 0.7); // Reduced to 1.8-2.5x for realistic proportions
         
-        // Oak trees get even larger canopies to reduce clustering appearance
+        // Oak trees get slightly larger canopies but still realistic
         if (species === TreeSpeciesType.OAK) {
-          centralFoliageSize *= 1.5; // Increased from 1.2 to 1.5
+          centralFoliageSize *= 1.1; // Reduced from 1.5 to 1.1
         }
         
         // Add slight horizontal offset for natural variation
@@ -646,9 +646,9 @@ export class RealisticTreeGenerator {
         Math.sin(angle) * radius
       );
       
-      // Larger birch foliage clusters to reduce small-circle appearance
+      // Realistically sized birch foliage clusters
       const baseSize = this.calculateFoliageSize(treeHeight, heightRatio, TreeSpeciesType.BIRCH);
-      const clusterSize = baseSize * (1.2 + Math.random() * 0.8); // Increased from 70-130% to 120-200% of base size
+      const clusterSize = baseSize * (0.9 + Math.random() * 0.6); // Reduced to 90-150% for realistic birch proportions
       
       // Lower density to create natural gaps
       const density = 0.6 + Math.random() * 0.3; // 60-90% density
@@ -663,8 +663,8 @@ export class RealisticTreeGenerator {
   }
 
   private calculateFoliageSize(treeHeight: number, heightRatio: number, species: TreeSpeciesType): number {
-    // Base size calculation - significantly increased for larger foliage masses
-    let baseSize = treeHeight * 0.08; // Increased from 0.04 to 0.08 (doubled)
+    // Base size calculation - realistic proportions
+    let baseSize = treeHeight * 0.05; // Reduced from 0.08 to more realistic 0.05
     
     // Height-based scaling - creates the realistic canopy layers
     let heightMultiplier: number;
