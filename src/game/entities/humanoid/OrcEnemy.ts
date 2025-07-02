@@ -4,7 +4,7 @@ import { EffectsManager } from '../../engine/EffectsManager';
 import { AudioManager } from '../../engine/AudioManager';
 import { TextureGenerator } from '../../utils';
 import { EnemyHumanoid, HumanoidConfig } from './EnemyHumanoid';
-import { PassiveNPCBehavior, PassiveBehaviorState } from '../../ai/PassiveNPCBehavior';
+import { EnemyStateManager, EnemyAIState } from '../../systems/EnemyStateManager';
 
 export class OrcEnemy extends EnemyHumanoid {
   private static readonly ORC_CONFIG: HumanoidConfig = {
@@ -59,11 +59,9 @@ export class OrcEnemy extends EnemyHumanoid {
     }
   };
 
-  // Enhanced passive mode with simple wandering
-  private isPassive: boolean = false;
+  // Enhanced AI using EnemyStateManager like Goblins
+  private stateManager: EnemyStateManager;
   private spawnPosition: THREE.Vector3 = new THREE.Vector3();
-  private maxWanderDistance: number = 25;
-  private wanderTarget: THREE.Vector3 | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -74,113 +72,66 @@ export class OrcEnemy extends EnemyHumanoid {
     super(scene, OrcEnemy.ORC_CONFIG, position, effectsManager, audioManager);
     this.spawnPosition.copy(position);
     
-    console.log("🗡️ [OrcEnemy] Created enhanced orc with simple wandering AI");
+    // Initialize state manager with same config as Goblins
+    this.stateManager = new EnemyStateManager(position, {
+      awarenessRange: 28,
+      aggressionRange: 18,
+      maxPursuitDistance: 60,
+      patrolRadius: 15,
+      investigationTime: 5000,
+      retreatHealthThreshold: 0.2
+    });
+    
+    console.log("🗡️ [OrcEnemy] Created enhanced orc with EnemyStateManager AI");
   }
 
   public setPassiveMode(passive: boolean): void {
-    if (this.isPassive !== passive) {
-      this.isPassive = passive;
-      
-      if (passive) {
-        console.log(`🛡️ [OrcEnemy] Switching to passive mode - starting simple wandering`);
-        this.wanderTarget = null; // Reset wander target
-      } else {
-        console.log(`⚔️ [OrcEnemy] Switching to aggressive mode - will pursue player`);
-      }
-    }
+    // Legacy method for compatibility - EnemyStateManager handles states internally
+    console.log(`🗡️ [OrcEnemy] SetPassiveMode called (${passive}) - using EnemyStateManager instead`);
   }
 
   public getPassiveMode(): boolean {
-    return this.isPassive;
-  }
-
-  private handleSimpleWandering(deltaTime: number): void {
-    // Simple wandering movement when in passive mode
-    const currentPosition = this.mesh.position.clone();
-    
-    // Generate a random direction every few seconds
-    if (Math.random() < 0.02) { // 2% chance to change direction
-      const angle = Math.random() * Math.PI * 2;
-      const distance = 5 + Math.random() * 15; // 5-20 units
-      
-      this.wanderTarget = new THREE.Vector3(
-        this.spawnPosition.x + Math.cos(angle) * distance,
-        0,
-        this.spawnPosition.z + Math.sin(angle) * distance
-      );
-    }
-    
-    if (this.wanderTarget) {
-      const direction = new THREE.Vector3()
-        .subVectors(this.wanderTarget, currentPosition)
-        .normalize();
-      direction.y = 0;
-
-      const distanceToTarget = currentPosition.distanceTo(this.wanderTarget);
-      
-      // Check if we've reached the target or should stop
-      if (distanceToTarget < 2.0) {
-        this.wanderTarget = null;
-        this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
-        return;
-      }
-
-      // Calculate movement
-      const baseSpeed = this.config.speed * 0.3; // Slow wandering speed
-      const movement = direction.multiplyScalar(baseSpeed * deltaTime);
-      const newPosition = currentPosition.add(movement);
-      newPosition.y = 0;
-
-      // Safety checks - ensure we don't wander too far or into safe zone
-      const distanceFromSpawn = newPosition.distanceTo(this.spawnPosition);
-      const isInSafeZone = newPosition.x >= -6 && newPosition.x <= 6 && 
-                          newPosition.z >= -6 && newPosition.z <= 6;
-
-      if (distanceFromSpawn < this.maxWanderDistance && !isInSafeZone) {
-        this.mesh.position.copy(newPosition);
-        
-        // Set rotation to face movement direction
-        const targetRotation = Math.atan2(direction.x, direction.z);
-        this.mesh.rotation.y = targetRotation;
-        
-        // Use animation system
-        this.animationSystem.updateWalkAnimation(deltaTime, true, baseSpeed);
-      } else {
-        // Stop moving if we hit a boundary
-        this.wanderTarget = null;
-        this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
-      }
-    } else {
-      // Idle behavior - occasionally look around
-      if (Math.random() < 0.01) {
-        const lookAngle = Math.random() * Math.PI * 2;
-        this.mesh.rotation.y = lookAngle;
-      }
-      
-      this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
-    }
+    // Return true if not in aggressive state
+    return !this.stateManager.isAggressive();
   }
 
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
     if (this.isDead) {
-      // Call parent's update to handle death animation properly
       super.update(deltaTime, playerPosition);
       return;
     }
 
-    // Handle simple wandering if in passive mode
-    if (this.isPassive) {
-      this.handleSimpleWandering(deltaTime);
-      return;
-    }
-
-    // Check if we should avoid safe zone when in aggressive mode
-    // Updated to use rectangular safe zone bounds
+    // Check if in safe zone
     const isInSafeZone = this.mesh.position.x >= -6 && this.mesh.position.x <= 6 && 
                         this.mesh.position.z >= -6 && this.mesh.position.z <= 6;
     
-    if (isInSafeZone) {
-      // Move away from safe zone instead of towards player
+    // Update state manager with current conditions
+    const currentState = this.stateManager.update(
+      deltaTime,
+      this.mesh.position,
+      playerPosition,
+      this.health,
+      this.config.maxHealth,
+      isInSafeZone
+    );
+
+    // Handle movement based on AI state
+    this.handleStateBasedMovement(deltaTime, playerPosition, currentState, isInSafeZone);
+    
+    // Handle attacks when in aggressive state - call parent update for attack handling
+    if (currentState === EnemyAIState.AGGRESSIVE) {
+      super.update(deltaTime, playerPosition);
+    }
+  }
+
+  private handleStateBasedMovement(
+    deltaTime: number, 
+    playerPosition: THREE.Vector3, 
+    currentState: EnemyAIState,
+    isInSafeZone: boolean
+  ): void {
+    // If in safe zone, move away from it
+    if (isInSafeZone && currentState !== EnemyAIState.WANDERING) {
       const safeZoneCenter = new THREE.Vector3(0, 0, 0);
       const directionAwayFromSafeZone = new THREE.Vector3()
         .subVectors(this.mesh.position, safeZoneCenter)
@@ -192,13 +143,42 @@ export class OrcEnemy extends EnemyHumanoid {
       newPosition.y = 0;
       
       this.mesh.position.copy(newPosition);
-      // Use animation system for movement animation
       this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
       return;
     }
 
-    // Normal aggressive behavior
-    super.update(deltaTime, playerPosition);
+    // Get movement target from state manager
+    const movementTarget = this.stateManager.getMovementTarget(this.mesh.position, playerPosition);
+    const speedMultiplier = this.stateManager.getMovementSpeed();
+    
+    if (movementTarget && currentState !== EnemyAIState.SPAWNING) {
+      const direction = new THREE.Vector3()
+        .subVectors(movementTarget, this.mesh.position)
+        .normalize();
+      direction.y = 0;
+
+      const speed = this.config.speed * speedMultiplier;
+      const movement = direction.multiplyScalar(speed * deltaTime);
+      const newPosition = this.mesh.position.clone().add(movement);
+      newPosition.y = 0;
+
+      // Update position and rotation
+      this.mesh.position.copy(newPosition);
+      const targetRotation = Math.atan2(direction.x, direction.z);
+      this.mesh.rotation.y = targetRotation;
+      
+      // Update animation
+      this.animationSystem.updateWalkAnimation(deltaTime, true, speed);
+    } else {
+      // Idle state
+      this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
+      
+      // Occasionally look around when idle
+      if (Math.random() < 0.01) {
+        const lookAngle = Math.random() * Math.PI * 2;
+        this.mesh.rotation.y = lookAngle;
+      }
+    }
   }
 
   protected createWeapon(woodTexture: THREE.Texture, metalTexture: THREE.Texture): THREE.Group {
@@ -246,8 +226,11 @@ export class OrcEnemy extends EnemyHumanoid {
     personality: any;
   } {
     return {
-      currentState: this.isPassive ? "wandering" : "aggressive",
-      personality: { wanderTarget: this.wanderTarget?.clone() }
+      currentState: this.stateManager.getCurrentState(),
+      personality: { 
+        patrolTarget: this.stateManager.getPatrolTarget(),
+        investigationTarget: this.stateManager.getInvestigationTarget()
+      }
     };
   }
 
