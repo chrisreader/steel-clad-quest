@@ -321,22 +321,19 @@ export class BirdAnimationController {
           this.bodyParts.head.rotation.y = (Math.random() - 0.5) * 0.8;
         }
         break;
-      default:
-        // Preening and other states
-        if (birdState === 'preening') {
-          const preenAngle = Math.sin(this.animationState.preenchCycle) * 0.6;
-          this.bodyParts.head.rotation.z = preenAngle;
-          this.bodyParts.neck.rotation.z = preenAngle * 0.5;
-          return;
-        }
-        break;
+      case 'preening':
+        // Preening head movements
+        const preenAngle = Math.sin(this.animationState.preenchCycle) * 0.6;
+        this.bodyParts.head.rotation.z = preenAngle;
+        this.bodyParts.neck.rotation.z = preenAngle * 0.5;
+        return;
     }
 
     // Apply head bob
     this.bodyParts.head.position.x = 0.6 + bobOffset;
     
-    // Smooth return of head rotation when not preening  
-    if (birdState !== BirdState.PREENING) {
+    // Smooth return of head rotation when not preening
+    if (birdState !== 'preening') {
       this.bodyParts.head.rotation.z = THREE.MathUtils.lerp(
         this.bodyParts.head.rotation.z, 0, 0.1
       );
