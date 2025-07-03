@@ -127,6 +127,13 @@ export enum EnemyType {
   BOSS = 'boss'
 }
 
+// Bird types enum
+export enum BirdType {
+  CROW = 'crow',
+  RAVEN = 'raven',
+  SPARROW = 'sparrow'
+}
+
 // Enemy interface for the game entity
 export interface Enemy {
   mesh: THREE.Group;
