@@ -48,9 +48,9 @@ export const useGameManager = () => {
     gameEngine,
     engineReady,
     inventory,
+    setInventory,
     setGameEngine,
     setEngineReady,
-    setInventory,
     handleEngineReady,
     handleUseItem
   };

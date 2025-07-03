@@ -78,6 +78,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     gameEngine,
     engineReady,
     inventory,
+    setInventory,
     setGameEngine,
     setEngineReady,
     handleEngineReady,
@@ -284,22 +285,44 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     });
   }, []);
 
-  // Inventory management functions
+  // Inventory management functions that actually update the inventory
   const handleAddItemToInventory = useCallback((item: Item) => {
     console.log('💰 [KnightGame] Adding item to inventory:', item.name);
-    // Add item to the main inventory state here
-    // This would typically be handled by the game manager
-  }, []);
+    // Find first empty slot or add to existing stack
+    const currentInventory = [...inventory];
+    const emptySlotIndex = currentInventory.findIndex(slot => slot === undefined || slot === null);
+    
+    if (emptySlotIndex !== -1) {
+      // Add to empty slot
+      currentInventory[emptySlotIndex] = item;
+      setInventory(currentInventory);
+      console.log('💰 [KnightGame] Item added to slot', emptySlotIndex);
+    } else {
+      // Add to end if no empty slots found
+      currentInventory.push(item);
+      setInventory(currentInventory);
+      console.log('💰 [KnightGame] Item added to end of inventory');
+    }
+  }, [inventory, setInventory]);
 
   const handleRemoveItemFromInventory = useCallback((index: number) => {
     console.log('💰 [KnightGame] Removing item from inventory at index:', index);
-    // Remove item from inventory logic here
-  }, []);
+    const currentInventory = [...inventory];
+    currentInventory.splice(index, 1); // Remove the item
+    setInventory(currentInventory);
+  }, [inventory, setInventory]);
 
   const handleMoveItemInInventory = useCallback((fromIndex: number, toIndex: number) => {
     console.log('💰 [KnightGame] Moving item in inventory from', fromIndex, 'to', toIndex);
-    // Move item within inventory logic here
-  }, []);
+    const currentInventory = [...inventory];
+    const fromItem = currentInventory[fromIndex];
+    const toItem = currentInventory[toIndex];
+    
+    // Swap items
+    currentInventory[fromIndex] = toItem;
+    currentInventory[toIndex] = fromItem;
+    setInventory(currentInventory);
+  }, [inventory, setInventory]);
 
   // Toggle pause function
   const togglePause = useCallback(() => {
