@@ -10,6 +10,7 @@ interface ChestInventoryUIProps {
   onClose: () => void;
   onTakeItem: (item: Item, index: number) => void;
   onTakeAll: () => void;
+  onDragStart?: (event: React.DragEvent, item: Item, index: number) => void;
 }
 
 export const ChestInventoryUI: React.FC<ChestInventoryUIProps> = ({
@@ -18,7 +19,8 @@ export const ChestInventoryUI: React.FC<ChestInventoryUIProps> = ({
   chestType,
   onClose,
   onTakeItem,
-  onTakeAll
+  onTakeAll,
+  onDragStart
 }) => {
   if (!isOpen) return null;
 
@@ -100,7 +102,7 @@ export const ChestInventoryUI: React.FC<ChestInventoryUIProps> = ({
                   isSelected={false}
                   onItemClick={handleSlotClick}
                   onSlotClick={() => {}}
-                  onDragStart={() => {}} // Disable dragging from chest for now
+                  onDragStart={onDragStart ? (event, item, slotId) => onDragStart(event, item, slotId) : () => {}}
                   onDrop={handleDrop}
                   isChestSlot={true}
                 />

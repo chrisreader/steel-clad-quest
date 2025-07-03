@@ -8,7 +8,7 @@ interface InventoryGridProps {
   selectedItem: {
     item: Item;
     slotId: number;
-    source: 'inventory' | 'equipment';
+    source: 'inventory' | 'equipment' | 'chest';
   } | null;
   onItemClick: (item: Item, slotId: number) => void;
   onSlotClick: (slotId: number) => void;

@@ -1,7 +1,11 @@
 import React from 'react';
 import { Item, WeaponSlots } from '../../../types/GameTypes';
 import { ChestInventoryUI } from './ChestInventoryUI';
-import { InventorySystem } from '../systems/InventorySystem';
+import { EquipmentPanel } from '../components/EquipmentPanel';
+import { InventoryGrid } from '../components/InventoryGrid';
+import { EquipmentStats } from '../components/EquipmentStats';
+import { useInventoryManagement } from '../hooks/useInventoryManagement';
+import { X } from 'lucide-react';
 
 interface DualInventoryViewProps {
   isOpen: boolean;
@@ -34,7 +38,87 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
   onEquipWeapon,
   onUnequipWeapon
 }) => {
+  const {
+    inventorySlots,
+    setInventorySlots,
+    selectedItem,
+    setSelectedItem,
+    draggedItem,
+    setDraggedItem,
+    moveSelectedItemToSlot
+  } = useInventoryManagement(playerItems);
+
   if (!isOpen) return null;
+
+  // Handle chest item drag start
+  const handleChestDragStart = (event: React.DragEvent, item: Item, index: number) => {
+    setDraggedItem({ item, source: 'chest', sourceId: index });
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Handle inventory item interactions (reuse existing logic)
+  const handleItemClick = (item: Item, slotId: number) => {
+    if (selectedItem) {
+      if (selectedItem.slotId === slotId && selectedItem.source === 'inventory') {
+        setSelectedItem(null);
+      } else {
+        moveSelectedItemToSlot(slotId);
+      }
+    } else {
+      setSelectedItem({
+        item,
+        slotId,
+        source: 'inventory'
+      });
+    }
+  };
+
+  const handleSlotClick = (slotId: number) => {
+    if (selectedItem) {
+      moveSelectedItemToSlot(slotId);
+    }
+  };
+
+  const handleInventoryDragStart = (event: React.DragEvent, item: Item, slotId: number) => {
+    setDraggedItem({ item, source: 'inventory', sourceId: slotId });
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Handle dropping items from chest to inventory
+  const handleInventoryDrop = (event: React.DragEvent, targetSlotId: number) => {
+    event.preventDefault();
+    if (!draggedItem) return;
+
+    if (draggedItem.source === 'chest') {
+      // Move from chest to inventory
+      const targetSlot = inventorySlots[targetSlotId];
+      
+      setInventorySlots(prev => prev.map(slot =>
+        slot.id === targetSlotId
+          ? { ...slot, item: draggedItem.item, isEmpty: false }
+          : slot
+      ));
+
+      // Remove from chest
+      onTakeItem(draggedItem.item, draggedItem.sourceId as number);
+    } else if (draggedItem.source === 'inventory') {
+      // Handle inventory to inventory moves
+      const sourceSlotId = draggedItem.sourceId as number;
+      const sourceSlot = inventorySlots[sourceSlotId];
+      const targetSlot = inventorySlots[targetSlotId];
+      
+      setInventorySlots(prev => prev.map(slot => {
+        if (slot.id === sourceSlotId) {
+          return { ...slot, item: targetSlot.item, isEmpty: !targetSlot.item };
+        } else if (slot.id === targetSlotId) {
+          return { ...slot, item: sourceSlot.item, isEmpty: !sourceSlot.item };
+        }
+        return slot;
+      }));
+    }
+
+    setDraggedItem(null);
+  };
 
   return (
     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -48,10 +132,11 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
             onClose={onCloseChest}
             onTakeItem={onTakeItem}
             onTakeAll={onTakeAll}
+            onDragStart={handleChestDragStart}
           />
         </div>
 
-        {/* Player Inventory - Right Side, Inline (Not Modal) */}
+        {/* Player Inventory - Right Side */}
         <div className="flex-1 max-w-4xl">
           <div className="bg-gray-900 rounded-lg p-6 text-white border-2 border-gray-700 h-full">
             <div className="flex justify-between items-center mb-6">
@@ -60,86 +145,44 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
                 onClick={onCloseChest}
                 className="text-gray-400 hover:text-white text-xl"
               >
-                ×
+                <X size={20} />
               </button>
             </div>
             
+            {selectedItem && (
+              <div className="mb-4 p-3 bg-blue-900 bg-opacity-50 rounded-lg border border-blue-500">
+                <p className="text-sm text-blue-300">
+                  <span className="font-semibold">{selectedItem.item.name}</span> selected. 
+                  Click another slot to move it there, or press ESC to cancel.
+                </p>
+              </div>
+            )}
+            
             <div className="flex gap-8 h-full overflow-hidden">
               {/* Equipment Panel */}
-              <div className="w-64 flex-shrink-0">
-                <h3 className="text-lg font-semibold mb-4">Equipment</h3>
-                
-                {/* Armor Equipment */}
-                <div className="space-y-3 mb-6">
-                  <div className="text-sm text-gray-300 mb-2">Armor</div>
-                  <div className="grid grid-cols-1 gap-2 max-w-16">
-                    {['helmet', 'chestplate', 'leggings', 'boots'].map((slot) => (
-                      <div key={slot} className="w-12 h-12 border-2 border-gray-600 bg-gray-800 rounded-lg flex items-center justify-center">
-                        <div className="w-8 h-8 border border-gray-700 rounded"></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Weapon Equipment */}
-                <div className="space-y-3">
-                  <div className="text-sm text-gray-300 mb-2">Weapons</div>
-                  <div className="space-y-2">
-                    {(['primary', 'secondary', 'offhand'] as const).map((slotType) => (
-                      <div key={slotType} className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 w-16 capitalize">{slotType}</span>
-                        <div className="w-12 h-12 border-2 border-gray-600 bg-gray-800 rounded-lg flex items-center justify-center">
-                          {equippedWeapons[slotType] ? (
-                            <div className="w-6 h-6 text-gray-300 text-xs">⚔</div>
-                          ) : (
-                            <div className="w-8 h-8 border border-gray-700 rounded"></div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <EquipmentPanel
+                equippedWeapons={equippedWeapons}
+                onUnequip={(slotType) => {
+                  // Handle unequipping logic here
+                }}
+                onDrop={(event, targetSlotType) => {
+                  // Handle equipment drops here
+                }}
+              />
               
               {/* Main Inventory Grid */}
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold mb-4">Inventory</h3>
-                <div className="grid grid-cols-3 gap-2 max-w-48">
-                  {Array.from({ length: 9 }, (_, index) => {
-                    const item = playerItems[index] || null;
-                    return (
-                      <div
-                        key={index}
-                        className={`
-                          w-12 h-12 border-2 rounded-lg flex items-center justify-center cursor-pointer
-                          transition-all duration-200 relative
-                          ${item 
-                            ? 'border-gray-500 bg-gray-700 hover:bg-gray-600' 
-                            : 'border-gray-600 bg-gray-800 hover:border-gray-500'
-                          }
-                        `}
-                        onClick={() => item && onUseItem(item)}
-                      >
-                        {item ? (
-                          <>
-                            <div className="w-6 h-6 bg-gray-600 rounded flex items-center justify-center text-xs font-bold">
-                              {item.name.charAt(0).toUpperCase()}
-                            </div>
-                            {item.quantity > 1 && (
-                              <span className="absolute bottom-0 right-0 text-xs text-green-400 bg-gray-900 rounded px-1">
-                                {item.quantity}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <div className="w-8 h-8 border border-gray-700 rounded"></div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <InventoryGrid
+                inventorySlots={inventorySlots}
+                selectedItem={selectedItem}
+                onItemClick={handleItemClick}
+                onSlotClick={handleSlotClick}
+                onDragStart={handleInventoryDragStart}
+                onDrop={handleInventoryDrop}
+              />
             </div>
+            
+            {/* Equipment Stats Display */}
+            <EquipmentStats equippedWeapons={equippedWeapons} />
           </div>
         </div>
       </div>

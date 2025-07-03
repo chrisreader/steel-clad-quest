@@ -292,12 +292,12 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     }
   }, [gameEngine, isPaused, setIsPaused]);
 
-  // Notify GameEngine about UI state changes and manage cursor
+  // Notify GameEngine about UI state changes and manage cursor (include chest UI)
   useEffect(() => {
     if (!gameEngine) return;
     
-    const anyUIOpen = isAnyUIOpen();
-    console.log(`🎮 [KnightGame] Notifying GameEngine - UI state: ${anyUIOpen ? 'OPEN' : 'CLOSED'}`);
+    const anyUIOpen = isAnyUIOpen() || chestUIState.isOpen;
+    console.log(`🎮 [KnightGame] Notifying GameEngine - UI state: ${anyUIOpen ? 'OPEN' : 'CLOSED'} (chest: ${chestUIState.isOpen})`);
     gameEngine.setUIState(anyUIOpen);
     
     if (anyUIOpen) {
@@ -305,14 +305,14 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     } else {
       resetCursorForGame();
     }
-  }, [gameEngine, isAnyUIOpen, forceCursorVisible, resetCursorForGame]);
+  }, [gameEngine, isAnyUIOpen, forceCursorVisible, resetCursorForGame, chestUIState.isOpen]);
 
-  // Pointer lock management with UI state awareness
+  // Pointer lock management with UI state awareness (include chest UI)
   useEffect(() => {
     if (!gameEngine || !gameStarted) return;
 
-    const anyUIOpen = isAnyUIOpen();
-    console.log('[KnightGame] Pointer lock management - UI open:', anyUIOpen);
+    const anyUIOpen = isAnyUIOpen() || chestUIState.isOpen;
+    console.log('[KnightGame] Pointer lock management - UI open:', anyUIOpen, '(chest:', chestUIState.isOpen, ')');
 
     if (anyUIOpen) {
       console.log('[KnightGame] UI opened - releasing pointer lock');
@@ -344,7 +344,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     } else {
       console.log('[KnightGame] All UIs closed - preparing to request pointer lock');
       setTimeout(() => {
-        if (!isAnyUIOpen() && gameStarted && !isGameOver) {
+        if (!isAnyUIOpen() && !chestUIState.isOpen && gameStarted && !isGameOver) {
           console.log('[KnightGame] Re-locking pointer after UI close');
           gameEngine.handleInput('requestPointerLock');
         } else {
@@ -352,7 +352,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         }
       }, 100);
     }
-  }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen, forceCursorVisible]);
+  }, [gameEngine, gameStarted, isGameOver, isAnyUIOpen, forceCursorVisible, chestUIState.isOpen]);
 
   const startGame = useCallback(() => {
     console.log('🚀 [KnightGame] Starting knight adventure with NEW ARM POSITIONING...');

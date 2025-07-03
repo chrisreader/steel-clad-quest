@@ -16,16 +16,15 @@ export const useInventoryManagement = (items: Item[]) => {
     return slots;
   });
 
-  // Selection state for click-to-move functionality
   const [selectedItem, setSelectedItem] = useState<{
     item: Item;
     slotId: number;
-    source: 'inventory' | 'equipment';
+    source: 'inventory' | 'equipment' | 'chest';
   } | null>(null);
 
   const [draggedItem, setDraggedItem] = useState<{ 
     item: Item; 
-    source: 'inventory' | 'equipment'; 
+    source: 'inventory' | 'equipment' | 'chest'; 
     sourceId: number | string;
   } | null>(null);
 
