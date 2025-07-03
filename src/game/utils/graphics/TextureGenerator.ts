@@ -413,6 +413,118 @@ export class TextureGenerator {
   }
 
   /**
+   * Creates a realistic wooden plank texture for chests
+   */
+  static createWoodenPlankTexture(
+    baseColor: number = 0x8B4513,
+    plankWidth: number = 80,
+    plankVariation: number = 0.2
+  ): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Base wood color
+    const r = (baseColor >> 16) & 255;
+    const g = (baseColor >> 8) & 255;
+    const b = baseColor & 255;
+    
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fillRect(0, 0, 256, 256);
+    
+    // Draw horizontal planks
+    const plankCount = Math.floor(256 / plankWidth);
+    for (let i = 0; i < plankCount; i++) {
+      const plankY = i * plankWidth;
+      const plankHeight = plankWidth - 2; // Small gap between planks
+      
+      // Vary each plank color slightly
+      const variation = (Math.random() - 0.5) * plankVariation;
+      const plankR = Math.max(0, Math.min(255, r + variation * 100));
+      const plankG = Math.max(0, Math.min(255, g + variation * 80));
+      const plankB = Math.max(0, Math.min(255, b + variation * 60));
+      
+      ctx.fillStyle = `rgb(${plankR}, ${plankG}, ${plankB})`;
+      ctx.fillRect(0, plankY, 256, plankHeight);
+      
+      // Add wood grain lines
+      for (let j = 0; j < 8; j++) {
+        const grainY = plankY + (j / 8) * plankHeight;
+        const grainOpacity = Math.random() * 0.3 + 0.1;
+        ctx.strokeStyle = `rgba(${plankR * 0.8}, ${plankG * 0.8}, ${plankB * 0.8}, ${grainOpacity})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, grainY);
+        ctx.lineTo(256, grainY + Math.random() * 4 - 2);
+        ctx.stroke();
+      }
+      
+      // Add plank edges (darker)
+      ctx.strokeStyle = `rgba(${plankR * 0.6}, ${plankG * 0.6}, ${plankB * 0.6}, 0.8)`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, plankY);
+      ctx.lineTo(256, plankY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, plankY + plankHeight);
+      ctx.lineTo(256, plankY + plankHeight);
+      ctx.stroke();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    return texture;
+  }
+
+  /**
+   * Creates a realistic steel accent texture
+   */
+  static createSteelTexture(
+    baseColor: number = 0x708090,
+    scratches: number = 15,
+    wear: number = 0.3
+  ): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 128;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Base steel color
+    const r = (baseColor >> 16) & 255;
+    const g = (baseColor >> 8) & 255;
+    const b = baseColor & 255;
+    
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fillRect(0, 0, 128, 128);
+    
+    // Add metallic scratches
+    for (let i = 0; i < scratches; i++) {
+      const scratchOpacity = Math.random() * 0.4 + 0.2;
+      const brightness = Math.random() * 0.6 + 0.4;
+      ctx.strokeStyle = `rgba(${r * brightness}, ${g * brightness}, ${b * brightness}, ${scratchOpacity})`;
+      ctx.lineWidth = Math.random() * 2 + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(Math.random() * 128, Math.random() * 128);
+      ctx.lineTo(Math.random() * 128, Math.random() * 128);
+      ctx.stroke();
+    }
+    
+    // Add wear patterns
+    for (let i = 0; i < 20; i++) {
+      const wearOpacity = Math.random() * wear * 0.3;
+      const wearSize = Math.random() * 10 + 5;
+      ctx.fillStyle = `rgba(${r * 0.7}, ${g * 0.7}, ${b * 0.7}, ${wearOpacity})`;
+      ctx.beginPath();
+      ctx.arc(Math.random() * 128, Math.random() * 128, wearSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    return texture;
+  }
+
+  /**
    * Creates a smoke/fog texture
    */
   static createSmokeTexture(

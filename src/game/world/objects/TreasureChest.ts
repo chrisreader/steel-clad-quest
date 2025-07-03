@@ -20,7 +20,7 @@ export class TreasureChest {
   private config: ChestConfig;
   private isOpen: boolean = false;
   private isAnimating: boolean = false;
-  private openRotation: number = -Math.PI / 3; // 60 degrees open
+  private openRotation: number = Math.PI / 3; // 60 degrees open
   private animationDuration: number = 0.5;
   private animationStartTime: number = 0;
   private loot: ChestLoot;
@@ -149,83 +149,213 @@ export class TreasureChest {
   private createChestModel(): void {
     const isRare = this.config.type === 'rare';
     
-    // Base chest body
-    const baseGeometry = new THREE.BoxGeometry(1, 0.6, 0.7);
-    const baseMaterial = new THREE.MeshLambertMaterial({
-      color: 0x8B4513,
-      map: TextureGenerator.createWoodTexture()
-    });
-    this.base = new THREE.Mesh(baseGeometry, baseMaterial);
-    this.base.position.y = 0.3;
-    this.group.add(this.base);
-
-    // Chest lid
-    const lidGeometry = new THREE.BoxGeometry(1.05, 0.1, 0.75);
-    const lidMaterial = new THREE.MeshLambertMaterial({
-      color: 0x8B4513,
-      map: TextureGenerator.createWoodTexture()
-    });
-    const lid = new THREE.Mesh(lidGeometry, lidMaterial);
-    lid.position.y = 0.05;
-    lid.position.z = -0.3; // Hinge point at back
-    this.lid.add(lid);
-
-    // Add gold trim for rare chests
     if (isRare) {
-      this.addGoldTrim();
+      this.createRareTreasureChest();
+    } else {
+      this.createCommonWoodenChest();
     }
-
-    // Position lid for hinge rotation
-    this.lid.position.set(0, 0.6, 0.3);
-    this.group.add(this.lid);
-
-    // Add chest details
-    this.addChestDetails(isRare);
   }
 
-  private addGoldTrim(): void {
+  private createCommonWoodenChest(): void {
+    // Create realistic wooden plank chest
+    const plankTexture = TextureGenerator.createWoodenPlankTexture(0x8B4513);
+    
+    // Main chest body - more rectangular, realistic proportions
+    const baseGeometry = new THREE.BoxGeometry(1.2, 0.8, 0.8);
+    const baseMaterial = new THREE.MeshLambertMaterial({
+      color: 0x8B4513,
+      map: plankTexture
+    });
+    this.base = new THREE.Mesh(baseGeometry, baseMaterial);
+    this.base.position.y = 0.4;
+    this.group.add(this.base);
+
+    // Chest lid with proper proportions
+    const lidGeometry = new THREE.BoxGeometry(1.25, 0.15, 0.85);
+    const lidMaterial = new THREE.MeshLambertMaterial({
+      color: 0x8B4513,
+      map: plankTexture
+    });
+    const lid = new THREE.Mesh(lidGeometry, lidMaterial);
+    lid.position.y = 0.075;
+    lid.position.z = -0.35; // Hinge point at back
+    this.lid.add(lid);
+
+    // Position lid for proper hinge rotation
+    this.lid.position.set(0, 0.8, 0.35);
+    this.group.add(this.lid);
+
+    // Add steel reinforcements
+    this.addSteelReinforcementsCommon();
+  }
+
+  private createRareTreasureChest(): void {
+    // Create traditional treasure chest with curved top
+    const goldColor = 0xDAA520;
+    const darkWood = 0x654321;
+    
+    // Main chest body - wider and more robust
+    const baseGeometry = new THREE.BoxGeometry(1.4, 0.9, 1.0);
+    const baseMaterial = new THREE.MeshLambertMaterial({
+      color: darkWood,
+      map: TextureGenerator.createWoodenPlankTexture(darkWood)
+    });
+    this.base = new THREE.Mesh(baseGeometry, baseMaterial);
+    this.base.position.y = 0.45;
+    this.group.add(this.base);
+
+    // Curved treasure chest lid using cylinder geometry
+    const lidRadius = 0.7;
+    const lidGeometry = new THREE.CylinderGeometry(lidRadius, lidRadius, 1.05, 16, 1, false, 0, Math.PI);
+    const lidMaterial = new THREE.MeshLambertMaterial({
+      color: darkWood,
+      map: TextureGenerator.createWoodenPlankTexture(darkWood)
+    });
+    const lid = new THREE.Mesh(lidGeometry, lidMaterial);
+    lid.rotation.z = Math.PI / 2;
+    lid.position.y = 0;
+    lid.position.z = -0.4; // Hinge point at back
+    this.lid.add(lid);
+
+    // Position lid for proper hinge rotation
+    this.lid.position.set(0, 0.9, 0.4);
+    this.group.add(this.lid);
+
+    // Add ornate gold decorations
+    this.addGoldOrnamentation();
+  }
+
+  private addSteelReinforcementsCommon(): void {
+    const steelMaterial = new THREE.MeshLambertMaterial({
+      color: 0x708090,
+      map: TextureGenerator.createSteelTexture()
+    });
+
+    // Corner reinforcements on base
+    const cornerGeometry = new THREE.BoxGeometry(0.08, 0.8, 0.08);
+    const cornerPositions = [
+      [-0.56, 0.4, -0.36], [0.56, 0.4, -0.36],
+      [-0.56, 0.4, 0.36], [0.56, 0.4, 0.36]
+    ];
+
+    cornerPositions.forEach(pos => {
+      const corner = new THREE.Mesh(cornerGeometry, steelMaterial);
+      corner.position.set(pos[0], pos[1], pos[2]);
+      this.group.add(corner);
+    });
+
+    // Steel bands around chest
+    const bandGeometry = new THREE.BoxGeometry(1.3, 0.05, 0.85);
+    const topBand = new THREE.Mesh(bandGeometry, steelMaterial);
+    topBand.position.set(0, 0.75, 0);
+    this.group.add(topBand);
+
+    const bottomBand = new THREE.Mesh(bandGeometry, steelMaterial);
+    bottomBand.position.set(0, 0.1, 0);
+    this.group.add(bottomBand);
+
+    // Hinges - properly attached to both base and lid
+    const hingeGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.9, 8);
+    
+    const leftHinge = new THREE.Mesh(hingeGeometry, steelMaterial);
+    leftHinge.rotation.z = Math.PI / 2;
+    leftHinge.position.set(-0.5, 0.8, -0.35);
+    this.group.add(leftHinge);
+
+    const rightHinge = new THREE.Mesh(hingeGeometry, steelMaterial);
+    rightHinge.rotation.z = Math.PI / 2;
+    rightHinge.position.set(0.5, 0.8, -0.35);
+    this.group.add(rightHinge);
+
+    // Lock mechanism
+    const lockBodyGeometry = new THREE.BoxGeometry(0.2, 0.15, 0.1);
+    const lockBody = new THREE.Mesh(lockBodyGeometry, steelMaterial);
+    lockBody.position.set(0, 0.5, 0.45);
+    this.group.add(lockBody);
+
+    const keyholeGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.12, 8);
+    const keyhole = new THREE.Mesh(keyholeGeometry, new THREE.MeshLambertMaterial({ color: 0x000000 }));
+    keyhole.rotation.z = Math.PI / 2;
+    keyhole.position.set(0, 0.5, 0.46);
+    this.group.add(keyhole);
+  }
+
+  private addGoldOrnamentation(): void {
     const goldMaterial = new THREE.MeshLambertMaterial({ 
       color: 0xFFD700,
       emissive: 0x332200
     });
 
-    // Gold corner reinforcements
-    const cornerGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-    const corners = [
-      [-0.5, 0.05, -0.35], [0.5, 0.05, -0.35],
-      [-0.5, 0.05, 0.35], [0.5, 0.05, 0.35]
+    // Ornate corner decorations on base
+    const ornateCornerGeometry = new THREE.BoxGeometry(0.12, 0.9, 0.12);
+    const ornateCornerPositions = [
+      [-0.64, 0.45, -0.44], [0.64, 0.45, -0.44],
+      [-0.64, 0.45, 0.44], [0.64, 0.45, 0.44]
     ];
 
-    corners.forEach(pos => {
-      const corner = new THREE.Mesh(cornerGeometry, goldMaterial);
+    ornateCornerPositions.forEach(pos => {
+      const corner = new THREE.Mesh(ornateCornerGeometry, goldMaterial);
       corner.position.set(pos[0], pos[1], pos[2]);
-      this.lid.add(corner);
+      this.group.add(corner);
     });
 
-    // Gold lock
-    const lockGeometry = new THREE.BoxGeometry(0.15, 0.1, 0.05);
-    const lock = new THREE.Mesh(lockGeometry, goldMaterial);
-    lock.position.set(0, 0.05, 0.36);
-    this.lid.add(lock);
-  }
+    // Decorative gold bands with engravings
+    const decorativeBandGeometry = new THREE.BoxGeometry(1.5, 0.08, 1.05);
+    
+    const topBand = new THREE.Mesh(decorativeBandGeometry, goldMaterial);
+    topBand.position.set(0, 0.85, 0);
+    this.group.add(topBand);
 
-  private addChestDetails(isRare: boolean): void {
-    const metalMaterial = new THREE.MeshLambertMaterial({ 
-      color: isRare ? 0xC0C0C0 : 0x696969 
-    });
+    const middleBand = new THREE.Mesh(decorativeBandGeometry, goldMaterial);
+    middleBand.position.set(0, 0.45, 0);
+    this.group.add(middleBand);
 
-    // Hinges
-    const hingeGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 6);
-    const leftHinge = new THREE.Mesh(hingeGeometry, metalMaterial);
+    const bottomBand = new THREE.Mesh(decorativeBandGeometry, goldMaterial);
+    bottomBand.position.set(0, 0.05, 0);
+    this.group.add(bottomBand);
+
+    // Ornate hinges
+    const ornateHingeGeometry = new THREE.CylinderGeometry(0.06, 0.06, 1.1, 12);
+    
+    const leftHinge = new THREE.Mesh(ornateHingeGeometry, goldMaterial);
     leftHinge.rotation.z = Math.PI / 2;
-    leftHinge.position.set(-0.4, 0.6, -0.3);
+    leftHinge.position.set(-0.6, 0.9, -0.4);
     this.group.add(leftHinge);
 
-    const rightHinge = new THREE.Mesh(hingeGeometry, metalMaterial);
+    const rightHinge = new THREE.Mesh(ornateHingeGeometry, goldMaterial);
     rightHinge.rotation.z = Math.PI / 2;
-    rightHinge.position.set(0.4, 0.6, -0.3);
+    rightHinge.position.set(0.6, 0.9, -0.4);
     this.group.add(rightHinge);
+
+    // Elaborate lock with gems
+    const lockBaseGeometry = new THREE.BoxGeometry(0.3, 0.25, 0.15);
+    const lockBase = new THREE.Mesh(lockBaseGeometry, goldMaterial);
+    lockBase.position.set(0, 0.6, 0.55);
+    this.group.add(lockBase);
+
+    // Add decorative gems
+    const gemMaterial = new THREE.MeshLambertMaterial({ 
+      color: 0xFF0000,
+      emissive: 0x440000 
+    });
+    const gemGeometry = new THREE.SphereGeometry(0.03, 8, 8);
+    
+    const gem1 = new THREE.Mesh(gemGeometry, gemMaterial);
+    gem1.position.set(-0.08, 0.65, 0.56);
+    this.group.add(gem1);
+
+    const gem2 = new THREE.Mesh(gemGeometry, gemMaterial);
+    gem2.position.set(0.08, 0.65, 0.56);
+    this.group.add(gem2);
+
+    // Central keyhole
+    const keyholeGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.16, 8);
+    const keyhole = new THREE.Mesh(keyholeGeometry, new THREE.MeshLambertMaterial({ color: 0x000000 }));
+    keyhole.rotation.z = Math.PI / 2;
+    keyhole.position.set(0, 0.6, 0.56);
+    this.group.add(keyhole);
   }
+
 
   private addGlowEffect(): void {
     this.glowEffect = new THREE.PointLight(0xFFD700, 0.3, 3, 2);
