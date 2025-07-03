@@ -255,7 +255,7 @@ export class TreasureChest {
     this.group.add(bottomBand);
 
     // Hinges - properly attached to both base and lid
-    const hingeGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.9, 8);
+    const hingeGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.7, 8);
     
     const leftHinge = new THREE.Mesh(hingeGeometry, steelMaterial);
     leftHinge.rotation.z = Math.PI / 2;
@@ -315,7 +315,7 @@ export class TreasureChest {
     this.group.add(bottomBand);
 
     // Ornate hinges
-    const ornateHingeGeometry = new THREE.CylinderGeometry(0.06, 0.06, 1.1, 12);
+    const ornateHingeGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.8, 12);
     
     const leftHinge = new THREE.Mesh(ornateHingeGeometry, goldMaterial);
     leftHinge.rotation.z = Math.PI / 2;
@@ -412,11 +412,11 @@ export class TreasureChest {
 
       if (this.isOpen) {
         // Closing animation
-        const rotation = this.openRotation * (1 - easedProgress);
+        const rotation = -this.openRotation * (1 - easedProgress);
         this.lid.rotation.x = rotation;
       } else {
-        // Opening animation
-        const rotation = this.openRotation * easedProgress;
+        // Opening animation  
+        const rotation = -this.openRotation * easedProgress;
         this.lid.rotation.x = rotation;
       }
 
