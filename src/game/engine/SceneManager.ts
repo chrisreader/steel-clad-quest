@@ -5,6 +5,7 @@ import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionMana
 import { PhysicsManager } from './PhysicsManager';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
+import { BirdSpawningSystem } from '../systems/BirdSpawningSystem';
 import { RingQuadrantSystem, RegionCoordinates, Region } from '../world/RingQuadrantSystem';
 import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
 import { StructureGenerator } from '../world/StructureGenerator';
@@ -83,6 +84,9 @@ export class SceneManager {
   // Enemy spawning system
   private enemySpawningSystem: DynamicEnemySpawningSystem | null = null;
   
+  // Bird spawning system
+  private birdSpawningSystem: BirdSpawningSystem | null = null;
+  
   // Volumetric fog system
   private volumetricFogSystem: VolumetricFogSystem | null = null;
   
@@ -131,6 +135,10 @@ export class SceneManager {
     
     // Initialize cloud spawning system
     this.cloudSpawningSystem = new DynamicCloudSpawningSystem(this.scene);
+    
+    // Initialize bird spawning system
+    this.birdSpawningSystem = new BirdSpawningSystem(this.scene);
+    console.log('🐦 [SceneManager] Bird spawning system initialized');
     
     // Initialize environment collision manager
     this.environmentCollisionManager = new EnvironmentCollisionManager(this.scene, this.physicsManager);
@@ -587,6 +595,11 @@ export class SceneManager {
     
     if (this.enemySpawningSystem && playerPosition) {
       this.enemySpawningSystem.update(deltaTime, playerPosition);
+    }
+    
+    // Update bird spawning system
+    if (this.birdSpawningSystem && playerPosition) {
+      this.birdSpawningSystem.update(deltaTime, playerPosition);
     }
     
     // Update 3D grass system with game time for day/night color changes
@@ -1183,6 +1196,11 @@ export class SceneManager {
     if (this.enemySpawningSystem) {
       this.enemySpawningSystem.dispose();
       this.enemySpawningSystem = null;
+    }
+    
+    if (this.birdSpawningSystem) {
+      this.birdSpawningSystem.dispose();
+      this.birdSpawningSystem = null;
     }
     
     for (const [regionKey, region] of this.loadedRegions.entries()) {
