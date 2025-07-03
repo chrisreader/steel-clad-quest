@@ -412,11 +412,11 @@ export class TreasureChest {
 
       if (this.isOpen) {
         // Closing animation
-        const rotation = this.openRotation * (1 - easedProgress);
+        const rotation = -this.openRotation * (1 - easedProgress);
         this.lid.rotation.x = rotation;
       } else {
         // Opening animation  
-        const rotation = this.openRotation * easedProgress;
+        const rotation = -this.openRotation * easedProgress;
         this.lid.rotation.x = rotation;
       }
 
