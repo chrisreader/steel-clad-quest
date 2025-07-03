@@ -155,46 +155,90 @@ export class CrowBird extends BaseBird {
 
   private createSimpleWing(isLeft: boolean): THREE.Group {
     const wingGroup = new THREE.Group();
+    const side = isLeft ? 1 : -1;
     
-    // Shoulder bone
-    const shoulderGroup = new THREE.Group();
-    const shoulderGeometry = new THREE.CapsuleGeometry(0.04, 0.3, 6, 8);
-    const shoulder = new THREE.Mesh(shoulderGeometry, this.materials!.feather);
-    shoulder.rotation.z = isLeft ? Math.PI / 6 : -Math.PI / 6;
-    shoulderGroup.add(shoulder);
-    wingGroup.add(shoulderGroup);
+    // Humerus (upper arm) - attaches to shoulder, points backward and down
+    const humerusGroup = new THREE.Group();
+    const humerusGeometry = new THREE.CapsuleGeometry(0.04, 0.35, 6, 8);
+    const humerus = new THREE.Mesh(humerusGeometry, this.materials!.feather);
+    
+    // Position humerus along its length (half length offset)
+    humerus.position.set(0, -0.175, 0);
+    humerus.rotation.z = side * Math.PI / 6; // Angle backward naturally
+    humerusGroup.add(humerus);
+    wingGroup.add(humerusGroup);
 
-    // Forearm bone - connected to shoulder
+    // Forearm (radius/ulna) - attaches to end of humerus
     const forearmGroup = new THREE.Group();
     const forearmGeometry = new THREE.CapsuleGeometry(0.03, 0.4, 6, 8);
     const forearm = new THREE.Mesh(forearmGeometry, this.materials!.feather);
-    forearm.rotation.z = isLeft ? Math.PI / 8 : -Math.PI / 8;
+    
+    // Position forearm relative to humerus end
+    forearm.position.set(0, -0.2, 0);
+    forearm.rotation.z = side * Math.PI / 8; // Folds back naturally
     forearmGroup.add(forearm);
-    forearmGroup.position.set(isLeft ? 0.25 : -0.25, 0, isLeft ? 0.1 : -0.1);
-    shoulderGroup.add(forearmGroup);
+    
+    // Attach forearm to end of humerus
+    forearmGroup.position.set(0, -0.35, 0);
+    humerusGroup.add(forearmGroup);
 
-    // Hand bone - connected to forearm
+    // Hand/Carpometacarpus - attaches to end of forearm
     const handGroup = new THREE.Group();
-    const handGeometry = new THREE.CapsuleGeometry(0.02, 0.3, 6, 8);
+    const handGeometry = new THREE.CapsuleGeometry(0.025, 0.25, 6, 8);
     const hand = new THREE.Mesh(handGeometry, this.materials!.feather);
+    
+    // Position hand along its length
+    hand.position.set(0, -0.125, 0);
     handGroup.add(hand);
-    handGroup.position.set(isLeft ? 0.3 : -0.3, 0, isLeft ? 0.05 : -0.05);
+    
+    // Attach hand to end of forearm
+    handGroup.position.set(0, -0.4, 0);
     forearmGroup.add(handGroup);
 
-    // Wing membrane (primary feathers as single surface)
-    const wingMembraneGeometry = new THREE.PlaneGeometry(0.6, 0.3);
+    // Wing membranes - connect bones and create wing surface
+    // Leading edge membrane (propatagium) - shoulder to wrist
+    const leadingMembraneGeometry = new THREE.PlaneGeometry(0.15, 0.4);
+    const leadingMembrane = new THREE.Mesh(leadingMembraneGeometry, this.materials!.feather);
+    leadingMembrane.position.set(side * 0.075, -0.4, 0);
+    leadingMembrane.rotation.z = side * Math.PI / 12;
+    humerusGroup.add(leadingMembrane);
+
+    // Main wing surface - connects all bones
+    const wingMembraneGeometry = new THREE.PlaneGeometry(0.8, 0.4);
     const wingMembrane = new THREE.Mesh(wingMembraneGeometry, this.materials!.feather);
-    wingMembrane.position.set(isLeft ? 0.4 : -0.4, 0, isLeft ? 0.15 : -0.15);
-    wingMembrane.rotation.y = isLeft ? -0.2 : 0.2;
-    handGroup.add(wingMembrane);
+    wingMembrane.position.set(side * 0.4, -0.2, 0);
+    wingMembrane.rotation.y = side * 0.1;
+    forearmGroup.add(wingMembrane);
+
+    // Primary feathers - attach to hand area
+    const primaryFeathers: THREE.Mesh[] = [];
+    for (let i = 0; i < 5; i++) {
+      const featherGeometry = new THREE.PlaneGeometry(0.08, 0.3);
+      const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      feather.position.set(side * (0.05 + i * 0.04), -0.15 - i * 0.02, 0);
+      feather.rotation.z = side * i * 0.1;
+      handGroup.add(feather);
+      primaryFeathers.push(feather);
+    }
+
+    // Secondary feathers - attach along forearm
+    const secondaryFeathers: THREE.Mesh[] = [];
+    for (let i = 0; i < 4; i++) {
+      const featherGeometry = new THREE.PlaneGeometry(0.06, 0.25);
+      const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      feather.position.set(side * 0.03, -0.1 - i * 0.08, 0);
+      feather.rotation.z = side * i * 0.05;
+      forearmGroup.add(feather);
+      secondaryFeathers.push(feather);
+    }
 
     // Store wing segments for animation
     const segments: WingSegments = {
-      upperArm: shoulder,
+      upperArm: humerus,
       forearm: forearm,
       hand: hand,
-      primaryFeathers: [wingMembrane],
-      secondaryFeathers: []
+      primaryFeathers: primaryFeathers,
+      secondaryFeathers: secondaryFeathers
     };
 
     if (!this.wingSegments) {
