@@ -284,6 +284,23 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     });
   }, []);
 
+  // Inventory management functions
+  const handleAddItemToInventory = useCallback((item: Item) => {
+    console.log('💰 [KnightGame] Adding item to inventory:', item.name);
+    // Add item to the main inventory state here
+    // This would typically be handled by the game manager
+  }, []);
+
+  const handleRemoveItemFromInventory = useCallback((index: number) => {
+    console.log('💰 [KnightGame] Removing item from inventory at index:', index);
+    // Remove item from inventory logic here
+  }, []);
+
+  const handleMoveItemInInventory = useCallback((fromIndex: number, toIndex: number) => {
+    console.log('💰 [KnightGame] Moving item in inventory from', fromIndex, 'to', toIndex);
+    // Move item within inventory logic here
+  }, []);
+
   // Toggle pause function
   const togglePause = useCallback(() => {
     if (gameEngine) {
@@ -561,6 +578,9 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         onTakeAll={handleTakeAll}
         playerItems={inventory}
         onUseItem={handleUseItem}
+        onAddItemToInventory={handleAddItemToInventory}
+        onRemoveItemFromInventory={handleRemoveItemFromInventory}
+        onMoveItemInInventory={handleMoveItemInInventory}
         equippedWeapons={equippedWeapons}
         onEquippedWeaponsChange={setEquippedWeapons}
         onEquipWeapon={handleEquipWeapon}

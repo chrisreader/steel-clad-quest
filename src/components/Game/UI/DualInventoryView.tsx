@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Item, WeaponSlots } from '../../../types/GameTypes';
 import { ChestInventoryUI } from './ChestInventoryUI';
 import { EquipmentPanel } from '../components/EquipmentPanel';
@@ -18,6 +18,9 @@ interface DualInventoryViewProps {
   // Player inventory props
   playerItems: Item[];
   onUseItem: (item: Item) => void;
+  onAddItemToInventory: (item: Item) => void;
+  onRemoveItemFromInventory: (index: number) => void;
+  onMoveItemInInventory: (fromIndex: number, toIndex: number) => void;
   equippedWeapons: WeaponSlots;
   onEquippedWeaponsChange: (weapons: WeaponSlots) => void;
   onEquipWeapon?: (item: Item) => void;
@@ -33,20 +36,26 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
   onTakeAll,
   playerItems,
   onUseItem,
+  onAddItemToInventory,
+  onRemoveItemFromInventory,
+  onMoveItemInInventory,
   equippedWeapons,
   onEquippedWeaponsChange,
   onEquipWeapon,
   onUnequipWeapon
 }) => {
-  const {
-    inventorySlots,
-    setInventorySlots,
-    selectedItem,
-    setSelectedItem,
-    draggedItem,
-    setDraggedItem,
-    moveSelectedItemToSlot
-  } = useInventoryManagement(playerItems);
+  // State for drag and drop functionality
+  const [selectedItem, setSelectedItem] = useState<{
+    item: Item;
+    slotId: number;
+    source: 'inventory' | 'chest';
+  } | null>(null);
+
+  const [draggedItem, setDraggedItem] = useState<{ 
+    item: Item; 
+    source: 'inventory' | 'chest'; 
+    sourceId: number;
+  } | null>(null);
 
   if (!isOpen) return null;
 
@@ -56,13 +65,17 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  // Handle inventory item interactions (reuse existing logic)
+  // Handle inventory item interactions
   const handleItemClick = (item: Item, slotId: number) => {
     if (selectedItem) {
       if (selectedItem.slotId === slotId && selectedItem.source === 'inventory') {
         setSelectedItem(null);
       } else {
-        moveSelectedItemToSlot(slotId);
+        // Move item to this slot
+        if (selectedItem.source === 'inventory') {
+          onMoveItemInInventory(selectedItem.slotId, slotId);
+        }
+        setSelectedItem(null);
       }
     } else {
       setSelectedItem({
@@ -75,7 +88,14 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
 
   const handleSlotClick = (slotId: number) => {
     if (selectedItem) {
-      moveSelectedItemToSlot(slotId);
+      if (selectedItem.source === 'inventory') {
+        onMoveItemInInventory(selectedItem.slotId, slotId);
+      } else if (selectedItem.source === 'chest') {
+        // Move from chest to inventory
+        onAddItemToInventory(selectedItem.item);
+        onTakeItem(selectedItem.item, selectedItem.slotId);
+      }
+      setSelectedItem(null);
     }
   };
 
@@ -91,34 +111,22 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
 
     if (draggedItem.source === 'chest') {
       // Move from chest to inventory
-      const targetSlot = inventorySlots[targetSlotId];
-      
-      setInventorySlots(prev => prev.map(slot =>
-        slot.id === targetSlotId
-          ? { ...slot, item: draggedItem.item, isEmpty: false }
-          : slot
-      ));
-
-      // Remove from chest
-      onTakeItem(draggedItem.item, draggedItem.sourceId as number);
+      onAddItemToInventory(draggedItem.item);
+      onTakeItem(draggedItem.item, draggedItem.sourceId);
     } else if (draggedItem.source === 'inventory') {
       // Handle inventory to inventory moves
-      const sourceSlotId = draggedItem.sourceId as number;
-      const sourceSlot = inventorySlots[sourceSlotId];
-      const targetSlot = inventorySlots[targetSlotId];
-      
-      setInventorySlots(prev => prev.map(slot => {
-        if (slot.id === sourceSlotId) {
-          return { ...slot, item: targetSlot.item, isEmpty: !targetSlot.item };
-        } else if (slot.id === targetSlotId) {
-          return { ...slot, item: sourceSlot.item, isEmpty: !sourceSlot.item };
-        }
-        return slot;
-      }));
+      onMoveItemInInventory(draggedItem.sourceId, targetSlotId);
     }
 
     setDraggedItem(null);
   };
+
+  // Create inventory slots from playerItems
+  const inventorySlots = Array.from({ length: 9 }, (_, index) => ({
+    id: index,
+    item: playerItems[index] || null,
+    isEmpty: !playerItems[index]
+  }));
 
   return (
     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
