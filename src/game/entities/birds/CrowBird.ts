@@ -157,82 +157,119 @@ export class CrowBird extends BaseBird {
     const wingGroup = new THREE.Group();
     const side = isLeft ? 1 : -1;
     
-    // Humerus (upper arm) - attaches to shoulder, points backward and down
+    // SHOULDER/SCAPULA - Base attachment point
+    const shoulderGroup = new THREE.Group();
+    wingGroup.add(shoulderGroup);
+    
+    // HUMERUS - Upper arm bone (shoulder to elbow)
     const humerusGroup = new THREE.Group();
-    const humerusGeometry = new THREE.CapsuleGeometry(0.04, 0.35, 6, 8);
+    const humerusGeometry = new THREE.CapsuleGeometry(0.04, 0.28, 6, 8);
     const humerus = new THREE.Mesh(humerusGeometry, this.materials!.feather);
     
-    // Position humerus along its length (half length offset)
-    humerus.position.set(0, -0.175, 0);
-    humerus.rotation.z = side * Math.PI / 6; // Angle backward naturally
+    // Position humerus properly - extends outward from shoulder
+    humerus.position.set(side * 0.14, 0, 0); // Half length offset outward
+    humerus.rotation.z = side * Math.PI / 2; // Horizontal orientation
+    humerus.rotation.y = side * -0.2; // Slight backward angle
     humerusGroup.add(humerus);
-    wingGroup.add(humerusGroup);
+    shoulderGroup.add(humerusGroup);
 
-    // Forearm (radius/ulna) - attaches to end of humerus
+    // FOREARM - Radius/Ulna bones (elbow to wrist)
     const forearmGroup = new THREE.Group();
-    const forearmGeometry = new THREE.CapsuleGeometry(0.03, 0.4, 6, 8);
+    const forearmGeometry = new THREE.CapsuleGeometry(0.03, 0.32, 6, 8);
     const forearm = new THREE.Mesh(forearmGeometry, this.materials!.feather);
     
     // Position forearm relative to humerus end
-    forearm.position.set(0, -0.2, 0);
-    forearm.rotation.z = side * Math.PI / 8; // Folds back naturally
+    forearm.position.set(side * 0.16, 0, 0); // Half length offset from joint
+    forearm.rotation.z = side * Math.PI / 2; // Keep horizontal
     forearmGroup.add(forearm);
     
-    // Attach forearm to end of humerus
-    forearmGroup.position.set(0, -0.35, 0);
+    // Attach forearm to end of humerus (elbow joint)
+    forearmGroup.position.set(side * 0.28, 0, 0); // At end of humerus
     humerusGroup.add(forearmGroup);
 
-    // Hand/Carpometacarpus - attaches to end of forearm
+    // HAND/CARPOMETACARPUS - Wrist to wingtip
     const handGroup = new THREE.Group();
-    const handGeometry = new THREE.CapsuleGeometry(0.025, 0.25, 6, 8);
+    const handGeometry = new THREE.CapsuleGeometry(0.02, 0.18, 6, 8);
     const hand = new THREE.Mesh(handGeometry, this.materials!.feather);
     
-    // Position hand along its length
-    hand.position.set(0, -0.125, 0);
+    // Position hand relative to forearm end
+    hand.position.set(side * 0.09, 0, 0); // Half length offset from joint
+    hand.rotation.z = side * Math.PI / 2; // Keep horizontal
     handGroup.add(hand);
     
-    // Attach hand to end of forearm
-    handGroup.position.set(0, -0.4, 0);
+    // Attach hand to end of forearm (wrist joint)
+    handGroup.position.set(side * 0.32, 0, 0); // At end of forearm
     forearmGroup.add(handGroup);
 
-    // Wing membranes - connect bones and create wing surface
-    // Leading edge membrane (propatagium) - shoulder to wrist
-    const leadingMembraneGeometry = new THREE.PlaneGeometry(0.15, 0.4);
-    const leadingMembrane = new THREE.Mesh(leadingMembraneGeometry, this.materials!.feather);
-    leadingMembrane.position.set(side * 0.075, -0.4, 0);
-    leadingMembrane.rotation.z = side * Math.PI / 12;
-    humerusGroup.add(leadingMembrane);
+    // WING MEMBRANES - Create wing surface
+    // Propatagium - Leading edge membrane (shoulder to wrist)
+    const propatagiumGeometry = new THREE.PlaneGeometry(0.5, 0.12);
+    const propatagium = new THREE.Mesh(propatagiumGeometry, this.materials!.feather);
+    propatagium.position.set(side * 0.25, 0.06, 0);
+    propatagium.rotation.x = -Math.PI / 2; // Horizontal
+    shoulderGroup.add(propatagium);
 
-    // Main wing surface - connects all bones
-    const wingMembraneGeometry = new THREE.PlaneGeometry(0.8, 0.4);
-    const wingMembrane = new THREE.Mesh(wingMembraneGeometry, this.materials!.feather);
-    wingMembrane.position.set(side * 0.4, -0.2, 0);
-    wingMembrane.rotation.y = side * 0.1;
-    forearmGroup.add(wingMembrane);
+    // Main wing membrane - Connects humerus to forearm
+    const mainMembraneGeometry = new THREE.PlaneGeometry(0.6, 0.25);
+    const mainMembrane = new THREE.Mesh(mainMembraneGeometry, this.materials!.feather);
+    mainMembrane.position.set(side * 0.3, -0.125, 0);
+    mainMembrane.rotation.x = -Math.PI / 2; // Horizontal
+    humerusGroup.add(mainMembrane);
 
-    // Primary feathers - attach to hand area
+    // Wing tip membrane - Hand area
+    const tipMembraneGeometry = new THREE.PlaneGeometry(0.35, 0.15);
+    const tipMembrane = new THREE.Mesh(tipMembraneGeometry, this.materials!.feather);
+    tipMembrane.position.set(side * 0.175, -0.075, 0);
+    tipMembrane.rotation.x = -Math.PI / 2; // Horizontal
+    forearmGroup.add(tipMembrane);
+
+    // PRIMARY FEATHERS - Attach to hand (flight control)
     const primaryFeathers: THREE.Mesh[] = [];
-    for (let i = 0; i < 5; i++) {
-      const featherGeometry = new THREE.PlaneGeometry(0.08, 0.3);
+    for (let i = 0; i < 6; i++) {
+      const featherLength = 0.25 - (i * 0.02); // Decreasing length
+      const featherGeometry = new THREE.PlaneGeometry(0.04, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
-      feather.position.set(side * (0.05 + i * 0.04), -0.15 - i * 0.02, 0);
-      feather.rotation.z = side * i * 0.1;
+      
+      // Position feathers along hand
+      const featherOffset = (i / 5) * 0.16;
+      feather.position.set(side * (0.02 + featherOffset), -featherLength / 2, 0);
+      feather.rotation.x = -Math.PI / 2; // Horizontal
+      feather.rotation.z = side * i * 0.05; // Slight fan
+      
       handGroup.add(feather);
       primaryFeathers.push(feather);
     }
 
-    // Secondary feathers - attach along forearm
+    // SECONDARY FEATHERS - Attach along forearm (lift generation)
     const secondaryFeathers: THREE.Mesh[] = [];
-    for (let i = 0; i < 4; i++) {
-      const featherGeometry = new THREE.PlaneGeometry(0.06, 0.25);
+    for (let i = 0; i < 5; i++) {
+      const featherLength = 0.2 - (i * 0.015);
+      const featherGeometry = new THREE.PlaneGeometry(0.035, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
-      feather.position.set(side * 0.03, -0.1 - i * 0.08, 0);
-      feather.rotation.z = side * i * 0.05;
+      
+      // Position feathers along forearm
+      const featherOffset = (i / 4) * 0.28;
+      feather.position.set(side * (0.04 + featherOffset), -featherLength / 2, 0);
+      feather.rotation.x = -Math.PI / 2; // Horizontal
+      feather.rotation.z = side * i * 0.03; // Slight overlap
+      
       forearmGroup.add(feather);
       secondaryFeathers.push(feather);
     }
 
-    // Store wing segments for animation
+    // COVERT FEATHERS - Small feathers along humerus
+    for (let i = 0; i < 3; i++) {
+      const covertGeometry = new THREE.PlaneGeometry(0.025, 0.12);
+      const covert = new THREE.Mesh(covertGeometry, this.materials!.feather);
+      
+      const covertOffset = (i / 2) * 0.24;
+      covert.position.set(side * (0.04 + covertOffset), -0.06, 0);
+      covert.rotation.x = -Math.PI / 2;
+      
+      humerusGroup.add(covert);
+    }
+
+    // Store wing segments for animation with proper group references
     const segments: WingSegments = {
       upperArm: humerus,
       forearm: forearm,
@@ -240,6 +277,11 @@ export class CrowBird extends BaseBird {
       primaryFeathers: primaryFeathers,
       secondaryFeathers: secondaryFeathers
     };
+
+    // Store group references for joint animation
+    humerusGroup.userData = { type: 'shoulder', segment: humerus };
+    forearmGroup.userData = { type: 'elbow', segment: forearm };
+    handGroup.userData = { type: 'wrist', segment: hand };
 
     if (!this.wingSegments) {
       this.wingSegments = { left: segments, right: segments };
@@ -548,36 +590,332 @@ export class CrowBird extends BaseBird {
   }
 
   private animateWings(): void {
-    if (!this.wingSegments) return;
+    if (!this.wingSegments || !this.bodyParts) return;
 
-    if (this.isFlapping) {
-      // Flapping animation
-      const flapIntensity = this.flightMode === FlightMode.GROUNDED ? 0.3 : 0.8;
-      const wingAngle = Math.sin(this.flapCycle) * flapIntensity;
+    // Get wing groups to access joint structure
+    const leftWingGroup = this.bodyParts.leftWing.children[0] as THREE.Group; // Main wing group
+    const rightWingGroup = this.bodyParts.rightWing.children[0] as THREE.Group;
+    
+    if (!leftWingGroup || !rightWingGroup) return;
 
-      this.bodyParts!.leftWing.rotation.z = wingAngle;
-      this.bodyParts!.rightWing.rotation.z = -wingAngle;
+    // Access joint groups properly
+    const leftShoulder = leftWingGroup.children[0] as THREE.Group; // Shoulder group
+    const rightShoulder = rightWingGroup.children[0] as THREE.Group;
+    
+    if (!leftShoulder || !rightShoulder) return;
 
-      // Feather spread during flap
-      this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-        feather.rotation.y = -Math.PI / 12 * i + wingAngle * 0.5;
-      });
-      this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-        feather.rotation.y = Math.PI / 12 * i - wingAngle * 0.5;
-      });
-    } else {
-      // Soaring position - wings spread
-      this.bodyParts!.leftWing.rotation.z = 0.1;
-      this.bodyParts!.rightWing.rotation.z = -0.1;
+    const leftHumerus = leftShoulder.children[0] as THREE.Group; // Humerus group  
+    const rightHumerus = rightShoulder.children[0] as THREE.Group;
+    
+    if (!leftHumerus || !rightHumerus) return;
 
-      // Feathers extended for soaring
-      this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-        feather.rotation.y = -Math.PI / 24 * i;
-      });
-      this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-        feather.rotation.y = Math.PI / 24 * i;
-      });
+    const leftForearm = leftHumerus.children.find(child => child.userData?.type === 'elbow') as THREE.Group;
+    const rightForearm = rightHumerus.children.find(child => child.userData?.type === 'elbow') as THREE.Group;
+    
+    const leftHand = leftForearm?.children.find(child => child.userData?.type === 'wrist') as THREE.Group;
+    const rightHand = rightForearm?.children.find(child => child.userData?.type === 'wrist') as THREE.Group;
+
+    // Apply state-specific wing animations
+    switch (this.birdState) {
+      case BirdState.IDLE:
+      case BirdState.WALKING:
+      case BirdState.FORAGING:
+        this.animateGroundedWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        break;
+        
+      case BirdState.ALERT:
+        this.animateAlertWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm);
+        break;
+        
+      case BirdState.TAKING_OFF:
+        this.animateTakeoffWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        break;
+        
+      case BirdState.FLYING:
+        this.animateFlappingWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        break;
+        
+      case BirdState.SOARING:
+        this.animateSoaringWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        break;
+        
+      case BirdState.LANDING:
+        this.animateLandingWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        break;
     }
+  }
+
+  private animateGroundedWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    // Wings folded against body in natural Z-fold pattern
+    
+    // Shoulder position - neutral
+    leftShoulder.rotation.set(0, 0, 0);
+    rightShoulder.rotation.set(0, 0, 0);
+    
+    // Humerus - angled back and slightly down
+    leftHumerus.rotation.set(0, -0.3, -0.2);
+    rightHumerus.rotation.set(0, 0.3, 0.2);
+    
+    // Forearm - folded back against body
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, 0.8, 0);
+      rightForearm.rotation.set(0, -0.8, 0);
+    }
+    
+    // Hand - tucked under
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(0, 0.4, 0);
+      rightHand.rotation.set(0, -0.4, 0);
+    }
+    
+    // Animate feathers tight against body
+    this.animateFeathersForRest();
+  }
+
+  private animateAlertWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group
+  ): void {
+    // Slight wing lift, ready for takeoff
+    
+    leftShoulder.rotation.set(0, 0, 0.1);
+    rightShoulder.rotation.set(0, 0, -0.1);
+    
+    // Humerus slightly extended
+    leftHumerus.rotation.set(0, -0.2, -0.1);
+    rightHumerus.rotation.set(0, 0.2, 0.1);
+    
+    // Forearm partially extended
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, 0.5, 0);
+      rightForearm.rotation.set(0, -0.5, 0);
+    }
+  }
+
+  private animateTakeoffWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    // Powerful upstroke for takeoff
+    const takeoffIntensity = 1.2;
+    const wingBeat = Math.sin(this.flapCycle) * takeoffIntensity;
+    
+    // Strong shoulder movement
+    leftShoulder.rotation.set(0, 0, wingBeat * 0.5);
+    rightShoulder.rotation.set(0, 0, -wingBeat * 0.5);
+    
+    // Humerus drives main power
+    leftHumerus.rotation.set(0, -0.1, wingBeat);
+    rightHumerus.rotation.set(0, 0.1, -wingBeat);
+    
+    // Coordinated forearm extension
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, -wingBeat * 0.3, 0);
+      rightForearm.rotation.set(0, wingBeat * 0.3, 0);
+    }
+    
+    // Hand provides fine control
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(0, -wingBeat * 0.2, 0);
+      rightHand.rotation.set(0, wingBeat * 0.2, 0);
+    }
+    
+    this.animateFeathersForPowerFlight(wingBeat);
+  }
+
+  private animateFlappingWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    // Regular flapping flight
+    const flapIntensity = 0.8;
+    const wingBeat = Math.sin(this.flapCycle) * flapIntensity;
+    
+    // Shoulder provides base rhythm
+    leftShoulder.rotation.set(0, 0, wingBeat * 0.3);
+    rightShoulder.rotation.set(0, 0, -wingBeat * 0.3);
+    
+    // Humerus main stroke
+    leftHumerus.rotation.set(0, -0.1, wingBeat * 0.7);
+    rightHumerus.rotation.set(0, 0.1, -wingBeat * 0.7);
+    
+    // Forearm follows with delay
+    const forearmPhase = Math.sin(this.flapCycle - 0.2) * flapIntensity;
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, -forearmPhase * 0.4, 0);
+      rightForearm.rotation.set(0, forearmPhase * 0.4, 0);
+    }
+    
+    // Hand fine-tunes wingtip
+    const handPhase = Math.sin(this.flapCycle - 0.4) * flapIntensity;
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(0, -handPhase * 0.3, 0);
+      rightHand.rotation.set(0, handPhase * 0.3, 0);
+    }
+    
+    this.animateFeathersForFlight(wingBeat);
+  }
+
+  private animateSoaringWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    // Wings fully extended for maximum lift
+    
+    // Shoulders spread wide
+    leftShoulder.rotation.set(0, 0, 0.2);
+    rightShoulder.rotation.set(0, 0, -0.2);
+    
+    // Humerus extended horizontally
+    leftHumerus.rotation.set(0, -0.05, 0.1);
+    rightHumerus.rotation.set(0, 0.05, -0.1);
+    
+    // Forearm fully extended
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, -0.1, 0);
+      rightForearm.rotation.set(0, 0.1, 0);
+    }
+    
+    // Hand extended for maximum span
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(0, -0.05, 0);
+      rightHand.rotation.set(0, 0.05, 0);
+    }
+    
+    // Subtle air current adjustments
+    const airCurrent = Math.sin(this.flapCycle * 0.3) * 0.05;
+    leftShoulder.rotation.z += airCurrent;
+    rightShoulder.rotation.z -= airCurrent;
+    
+    this.animateFeathersForSoaring();
+  }
+
+  private animateLandingWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    // Wings spread wide for air braking
+    
+    // Shoulders lifted for air brake
+    leftShoulder.rotation.set(0, 0, 0.4);
+    rightShoulder.rotation.set(0, 0, -0.4);
+    
+    // Humerus angled up for drag
+    leftHumerus.rotation.set(0, -0.2, 0.3);
+    rightHumerus.rotation.set(0, 0.2, -0.3);
+    
+    // Forearm spread for maximum surface area
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, -0.3, 0);
+      rightForearm.rotation.set(0, 0.3, 0);
+    }
+    
+    // Hand spread wide
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(0, -0.2, 0);
+      rightHand.rotation.set(0, 0.2, 0);
+    }
+    
+    this.animateFeathersForLanding();
+  }
+
+  private animateFeathersForRest(): void {
+    if (!this.wingSegments) return;
+    
+    // Feathers tight against body
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.z = -i * 0.02; // Overlapped
+      feather.scale.y = 0.8; // Slightly contracted
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.z = i * 0.02;
+      feather.scale.y = 0.8;
+    });
+  }
+
+  private animateFeathersForPowerFlight(wingBeat: number): void {
+    if (!this.wingSegments) return;
+    
+    // Feathers spread and angled for maximum thrust
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.y = -Math.PI / 8 * i + wingBeat * 0.6;
+      feather.rotation.z = -wingBeat * 0.3;
+      feather.scale.y = 1.0;
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.y = Math.PI / 8 * i - wingBeat * 0.6;
+      feather.rotation.z = wingBeat * 0.3;
+      feather.scale.y = 1.0;
+    });
+  }
+
+  private animateFeathersForFlight(wingBeat: number): void {
+    if (!this.wingSegments) return;
+    
+    // Normal flight feather positions
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.4;
+      feather.rotation.z = -wingBeat * 0.2;
+      feather.scale.y = 1.0;
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.4;
+      feather.rotation.z = wingBeat * 0.2;
+      feather.scale.y = 1.0;
+    });
+  }
+
+  private animateFeathersForSoaring(): void {
+    if (!this.wingSegments) return;
+    
+    const airFlow = Math.sin(this.flapCycle * 0.2) * 0.03;
+    
+    // Feathers fully extended and slightly adjusting to air currents
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.y = -Math.PI / 16 * i;
+      feather.rotation.z = airFlow + i * 0.01;
+      feather.scale.y = 1.1; // Slightly extended
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.y = Math.PI / 16 * i;
+      feather.rotation.z = -airFlow - i * 0.01;
+      feather.scale.y = 1.1;
+    });
+  }
+
+  private animateFeathersForLanding(): void {
+    if (!this.wingSegments) return;
+    
+    // Feathers spread wide for air braking
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.y = -Math.PI / 6 * i;
+      feather.rotation.z = -0.3;
+      feather.scale.y = 1.2; // Maximum extension for drag
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.y = Math.PI / 6 * i;
+      feather.rotation.z = 0.3;
+      feather.scale.y = 1.2;
+    });
   }
 
   private animateHeadBob(): void {
