@@ -286,22 +286,40 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, []);
 
   // Inventory management functions that actually update the inventory
-  const handleAddItemToInventory = useCallback((item: Item) => {
-    console.log('💰 [KnightGame] Adding item to inventory:', item.name);
-    // Find first empty slot or add to existing stack
+  const handleAddItemToInventory = useCallback((item: Item, targetSlot?: number) => {
+    console.log('💰 [KnightGame] Adding item to inventory:', item.name, 'target slot:', targetSlot);
     const currentInventory = [...inventory];
-    const emptySlotIndex = currentInventory.findIndex(slot => slot === undefined || slot === null);
     
-    if (emptySlotIndex !== -1) {
-      // Add to empty slot
-      currentInventory[emptySlotIndex] = item;
+    if (targetSlot !== undefined) {
+      // Place item in specific slot
+      const existingItem = currentInventory[targetSlot];
+      if (existingItem) {
+        // If slot is occupied, try to find an empty slot for the displaced item
+        const emptySlotIndex = currentInventory.findIndex((slot, index) => 
+          index !== targetSlot && (slot === undefined || slot === null)
+        );
+        if (emptySlotIndex !== -1) {
+          currentInventory[emptySlotIndex] = existingItem;
+        } else {
+          // If no empty slot, add displaced item to end
+          currentInventory.push(existingItem);
+        }
+      }
+      currentInventory[targetSlot] = item;
       setInventory(currentInventory);
-      console.log('💰 [KnightGame] Item added to slot', emptySlotIndex);
+      console.log('💰 [KnightGame] Item placed in slot', targetSlot);
     } else {
-      // Add to end if no empty slots found
-      currentInventory.push(item);
-      setInventory(currentInventory);
-      console.log('💰 [KnightGame] Item added to end of inventory');
+      // Original logic for auto-placement
+      const emptySlotIndex = currentInventory.findIndex(slot => slot === undefined || slot === null);
+      if (emptySlotIndex !== -1) {
+        currentInventory[emptySlotIndex] = item;
+        setInventory(currentInventory);
+        console.log('💰 [KnightGame] Item added to slot', emptySlotIndex);
+      } else {
+        currentInventory.push(item);
+        setInventory(currentInventory);
+        console.log('💰 [KnightGame] Item added to end of inventory');
+      }
     }
   }, [inventory, setInventory]);
 

@@ -18,7 +18,7 @@ interface DualInventoryViewProps {
   // Player inventory props
   playerItems: Item[];
   onUseItem: (item: Item) => void;
-  onAddItemToInventory: (item: Item) => void;
+  onAddItemToInventory: (item: Item, targetSlot?: number) => void;
   onRemoveItemFromInventory: (index: number) => void;
   onMoveItemInInventory: (fromIndex: number, toIndex: number) => void;
   equippedWeapons: WeaponSlots;
@@ -91,8 +91,8 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
       if (selectedItem.source === 'inventory') {
         onMoveItemInInventory(selectedItem.slotId, slotId);
       } else if (selectedItem.source === 'chest') {
-        // Move from chest to inventory
-        onAddItemToInventory(selectedItem.item);
+        // Move from chest to specific inventory slot
+        onAddItemToInventory(selectedItem.item, slotId);
         onTakeItem(selectedItem.item, selectedItem.slotId);
       }
       setSelectedItem(null);
@@ -110,8 +110,8 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
     if (!draggedItem) return;
 
     if (draggedItem.source === 'chest') {
-      // Move from chest to inventory
-      onAddItemToInventory(draggedItem.item);
+      // Move from chest to specific inventory slot
+      onAddItemToInventory(draggedItem.item, targetSlotId);
       onTakeItem(draggedItem.item, draggedItem.sourceId);
     } else if (draggedItem.source === 'inventory') {
       // Handle inventory to inventory moves
