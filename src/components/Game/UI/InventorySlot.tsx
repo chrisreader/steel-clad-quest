@@ -13,6 +13,7 @@ interface InventorySlotProps {
   onDragStart?: (event: React.DragEvent, item: Item, slotId: number) => void;
   onDrop?: (event: React.DragEvent, slotId: number) => void;
   onDragOver?: (event: React.DragEvent) => void;
+  isChestSlot?: boolean;
 }
 
 export const InventorySlot: React.FC<InventorySlotProps> = ({
@@ -23,7 +24,8 @@ export const InventorySlot: React.FC<InventorySlotProps> = ({
   onSlotClick,
   onDragStart,
   onDrop,
-  onDragOver
+  onDragOver,
+  isChestSlot = false
 }) => {
   const getItemIcon = (item: Item) => {
     switch (item.subtype) {

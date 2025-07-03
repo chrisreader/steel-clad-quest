@@ -11,6 +11,7 @@ import { StateManager } from './StateManager';
 import { UIIntegrationManager } from './UIIntegrationManager';
 import { PhysicsManager } from './PhysicsManager';
 import { BuildingManager } from '../buildings/BuildingManager';
+import { ChestInteractionSystem } from '../systems/ChestInteractionSystem';
 import { GameState, EnemyType } from '../../types/GameTypes';
 
 export class GameEngine {
@@ -28,6 +29,7 @@ export class GameEngine {
   private audioManager: AudioManager | null = null;
   private combatSystem: CombatSystem | null = null;
   private movementSystem: MovementSystem | null = null;
+  private chestInteractionSystem: ChestInteractionSystem | null = null;
   
   // Game entities
   private player: Player | null = null;
@@ -123,6 +125,10 @@ export class GameEngine {
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
       
+      // Create chest interaction system
+      this.chestInteractionSystem = new ChestInteractionSystem(this.renderEngine.getScene(), this.player);
+      this.setupChestsInTavern();
+      
       // Initialize enemy spawning system in scene manager
       if (this.sceneManager) {
         this.sceneManager.initializeEnemySpawning(this.effectsManager, this.audioManager);
@@ -159,6 +165,28 @@ export class GameEngine {
     if (tavernBuilding) {
       console.log("🔥 [GameEngine] Tavern with animated fireplace created successfully");
     }
+  }
+  
+  private setupChestsInTavern(): void {
+    if (!this.chestInteractionSystem) return;
+    
+    console.log("💰 [GameEngine] Setting up treasure chests in tavern...");
+    
+    // Create common chest near the table
+    this.chestInteractionSystem.createChest({
+      type: 'common',
+      position: new THREE.Vector3(-4.5, 0, -3),
+      id: 'tavern_common_chest'
+    });
+    
+    // Create rare chest in the corner
+    this.chestInteractionSystem.createChest({
+      type: 'rare',
+      position: new THREE.Vector3(4.5, 0, -4.5),
+      id: 'tavern_rare_chest'
+    });
+    
+    console.log("💰 [GameEngine] Treasure chests created in tavern for testing");
   }
   
   private setupMouseLookControls(): void {
@@ -310,6 +338,11 @@ export class GameEngine {
     // Update building manager (critical for fire animation)
     if (this.buildingManager) {
       this.buildingManager.update(deltaTime);
+    }
+    
+    // Update chest interaction system
+    if (this.chestInteractionSystem) {
+      this.chestInteractionSystem.update(deltaTime);
     }
     
     // Sync enemies from scene manager to combat system
@@ -467,6 +500,15 @@ export class GameEngine {
         }
         break;
         
+      case 'interact':
+        if (this.chestInteractionSystem) {
+          const success = this.chestInteractionSystem.handleInteraction();
+          if (success) {
+            console.log("💰 [GameEngine] Player interacted with chest successfully");
+          }
+        }
+        break;
+        
       case 'pointerLockChange':
         break;
         
@@ -564,6 +606,9 @@ export class GameEngine {
     }
     if (this.sceneManager) {
       this.sceneManager.dispose();
+    }
+    if (this.chestInteractionSystem) {
+      this.chestInteractionSystem.dispose();
     }
     
     console.log("🎮 [GameEngine] Game engine disposed!");

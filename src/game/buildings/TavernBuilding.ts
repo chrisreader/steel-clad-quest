@@ -128,7 +128,7 @@ export class TavernBuilding extends BaseBuilding {
       this.addComponent(leg, `table_leg_${index + 1}`, 'wood');
     });
     
-    // Add a couple of chairs around the table
+    // Add a couple of chairs around the table (moved slightly to make room for chests)
     const chairMaterial = new THREE.MeshLambertMaterial({ 
       color: 0x8B4513,
       map: TextureGenerator.createWoodTexture()
@@ -136,12 +136,12 @@ export class TavernBuilding extends BaseBuilding {
     
     // Chair 1
     const chair1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), chairMaterial);
-    chair1.position.set(-2, 0.5, -2);
+    chair1.position.set(-2, 0.5, -1.5);
     this.addComponent(chair1, 'chair_1', 'wood');
     
-    // Chair 2
+    // Chair 2  
     const chair2 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.4), chairMaterial.clone());
-    chair2.position.set(-4, 0.5, -2);
+    chair2.position.set(-4, 0.5, -1.5);
     this.addComponent(chair2, 'chair_2', 'wood');
   }
   
