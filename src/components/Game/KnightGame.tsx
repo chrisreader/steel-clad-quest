@@ -4,6 +4,7 @@ import { GameOverScreen } from './UI/GameOverScreen';
 import { GameMenu } from './UI/GameMenu';
 import { GameControls } from './UI/GameControls';
 import { InventorySystem } from './systems/InventorySystem';
+import { DualInventoryView } from './UI/DualInventoryView';
 import { SkillTreeUI } from './UI/SkillTreeUI';
 import { QuestLogUI } from './UI/QuestLogUI';
 import { CraftingUI } from './UI/CraftingUI';
@@ -133,6 +134,13 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     // The inventory will be updated through the useGameManager hook
   }, []);
 
+  // Chest interaction state
+  const [chestUIState, setChestUIState] = useState({
+    isOpen: false,
+    chestItems: [] as Item[],
+    chestType: 'common' as 'common' | 'rare'
+  });
+
   const [mountReady, setMountReady] = useState(false);
   const gameControllerRef = useRef<GameControllerRef>(null);
   const engineControllerRef = useRef<GameEngineControllerRef>(null);
@@ -227,9 +235,54 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     setEngineReady(true);
     const engine = engineControllerRef.current?.getEngine();
     setGameEngine(engine || null);
+    
+    // Set up chest callbacks
+    if (engine) {
+      const chestSystem = (engine as any).chestInteractionSystem;
+      if (chestSystem) {
+        chestSystem.setChestOpenCallback((chest: any, loot: any) => {
+          console.log('💰 [KnightGame] Chest opened, showing UI:', loot);
+          setChestUIState({
+            isOpen: true,
+            chestItems: loot.items,
+            chestType: chest.getType()
+          });
+        });
+      }
+    }
+    
     console.log('🚀 [KnightGame] GameEngine instance set with NEW ARM POSITIONING:', !!engine);
     onLoadingComplete?.();
   }, [onLoadingComplete, setEngineReady, setGameEngine]);
+
+  // Chest interaction handlers
+  const handleCloseChest = useCallback(() => {
+    setChestUIState({
+      isOpen: false,
+      chestItems: [],
+      chestType: 'common'
+    });
+  }, []);
+
+  const handleTakeItem = useCallback((item: Item, index: number) => {
+    // Add item to player inventory
+    console.log('💰 [KnightGame] Taking item from chest:', item.name);
+    // Remove from chest items
+    setChestUIState(prev => ({
+      ...prev,
+      chestItems: prev.chestItems.filter((_, i) => i !== index)
+    }));
+  }, []);
+
+  const handleTakeAll = useCallback(() => {
+    console.log('💰 [KnightGame] Taking all items from chest');
+    // Add all items to player inventory here
+    setChestUIState({
+      isOpen: false,
+      chestItems: [],
+      chestType: 'common'
+    });
+  }, []);
 
   // Toggle pause function
   const togglePause = useCallback(() => {
@@ -497,6 +550,22 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           }}
         />
       )}
+
+      {/* Chest Inventory UI */}
+      <DualInventoryView
+        isOpen={chestUIState.isOpen}
+        chestItems={chestUIState.chestItems}
+        chestType={chestUIState.chestType}
+        onCloseChest={handleCloseChest}
+        onTakeItem={handleTakeItem}
+        onTakeAll={handleTakeAll}
+        playerItems={inventory}
+        onUseItem={handleUseItem}
+        equippedWeapons={equippedWeapons}
+        onEquippedWeaponsChange={setEquippedWeapons}
+        onEquipWeapon={handleEquipWeapon}
+        onUnequipWeapon={handleUnequipWeapon}
+      />
     </div>
   );
 };
