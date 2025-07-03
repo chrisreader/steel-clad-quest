@@ -178,11 +178,11 @@ export class TreasureChest {
     });
     const lid = new THREE.Mesh(lidGeometry, lidMaterial);
     lid.position.y = 0.075;
-    lid.position.z = -0.35; // Hinge point at back
+    lid.position.z = 0.35; // Hinge point at front
     this.lid.add(lid);
 
     // Position lid for proper hinge rotation
-    this.lid.position.set(0, 0.8, 0.35);
+    this.lid.position.set(0, 0.8, -0.35);
     this.group.add(this.lid);
 
     // Add steel reinforcements
@@ -214,11 +214,11 @@ export class TreasureChest {
     const lid = new THREE.Mesh(lidGeometry, lidMaterial);
     lid.rotation.z = Math.PI / 2;
     lid.position.y = 0;
-    lid.position.z = -0.4; // Hinge point at back
+    lid.position.z = 0.4; // Hinge point at front
     this.lid.add(lid);
 
     // Position lid for proper hinge rotation
-    this.lid.position.set(0, 0.9, 0.4);
+    this.lid.position.set(0, 0.9, -0.4);
     this.group.add(this.lid);
 
     // Add ornate gold decorations
@@ -259,12 +259,12 @@ export class TreasureChest {
     
     const leftHinge = new THREE.Mesh(hingeGeometry, steelMaterial);
     leftHinge.rotation.z = Math.PI / 2;
-    leftHinge.position.set(-0.5, 0.8, -0.35);
+    leftHinge.position.set(-0.5, 0.8, 0.35); // Hinge at front
     this.group.add(leftHinge);
 
     const rightHinge = new THREE.Mesh(hingeGeometry, steelMaterial);
     rightHinge.rotation.z = Math.PI / 2;
-    rightHinge.position.set(0.5, 0.8, -0.35);
+    rightHinge.position.set(0.5, 0.8, 0.35); // Hinge at front
     this.group.add(rightHinge);
 
     // Lock mechanism
@@ -319,12 +319,12 @@ export class TreasureChest {
     
     const leftHinge = new THREE.Mesh(ornateHingeGeometry, goldMaterial);
     leftHinge.rotation.z = Math.PI / 2;
-    leftHinge.position.set(-0.6, 0.9, -0.4);
+    leftHinge.position.set(-0.6, 0.9, 0.4); // Hinge at front
     this.group.add(leftHinge);
 
     const rightHinge = new THREE.Mesh(ornateHingeGeometry, goldMaterial);
     rightHinge.rotation.z = Math.PI / 2;
-    rightHinge.position.set(0.6, 0.9, -0.4);
+    rightHinge.position.set(0.6, 0.9, 0.4); // Hinge at front
     this.group.add(rightHinge);
 
     // Elaborate lock with gems
@@ -412,11 +412,11 @@ export class TreasureChest {
 
       if (this.isOpen) {
         // Closing animation
-        const rotation = -this.openRotation * (1 - easedProgress);
+        const rotation = this.openRotation * (1 - easedProgress);
         this.lid.rotation.x = rotation;
       } else {
         // Opening animation  
-        const rotation = -this.openRotation * easedProgress;
+        const rotation = this.openRotation * easedProgress;
         this.lid.rotation.x = rotation;
       }
 
