@@ -103,6 +103,8 @@ export class MovementSystem {
     }
     
     // Handle sprint logic
+    const shiftPressed = this.inputManager.isActionPressed('sprint');
+    
     if (this.isSprintActivatedByDoubleTap) {
       if (forwardPressed && !backwardPressed) {
         if (!this.player.getSprinting()) {
@@ -110,6 +112,18 @@ export class MovementSystem {
         }
       } else {
         this.isSprintActivatedByDoubleTap = false;
+        this.player.stopSprint();
+      }
+    }
+    
+    // Handle shift-key sprinting (only while holding shift)
+    if (shiftPressed && forwardPressed && !backwardPressed && hasMovementInput) {
+      if (!this.player.getSprinting()) {
+        this.player.startSprint();
+      }
+    } else if (!this.isSprintActivatedByDoubleTap) {
+      // Stop sprinting if shift is not held (unless double-tap sprint is active)
+      if (this.player.getSprinting()) {
         this.player.stopSprint();
       }
     }
