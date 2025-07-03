@@ -139,7 +139,8 @@ export class CrowBird extends BaseBird {
     // Create simple materials for better performance and clarity
     this.materials = {
       feather: new THREE.MeshLambertMaterial({
-        color: 0x1a1a1a
+        color: 0x1a1a1a,
+        side: THREE.DoubleSide // Make feathers visible from both sides
       }),
       beak: new THREE.MeshLambertMaterial({
         color: 0x2a2a2a
@@ -223,48 +224,54 @@ export class CrowBird extends BaseBird {
     tipMembrane.rotation.y = side * Math.PI / 2; // Align with Z-axis wing extension
     forearmGroup.add(tipMembrane);
 
-    // PRIMARY FEATHERS - Attach to hand (flight control) - aligned with Z-axis
+    // PRIMARY FEATHERS - Attach to hand (flight control) - properly aligned with wing bones
     const primaryFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 6; i++) {
       const featherLength = 0.25 - (i * 0.02); // Decreasing length
       const featherGeometry = new THREE.PlaneGeometry(0.04, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers along hand Z-axis
+      // Position feathers extending outward from hand bone
       const featherOffset = (i / 5) * 0.16;
       feather.position.set(0, -featherLength / 2, side * (0.02 + featherOffset));
-      feather.rotation.y = side * Math.PI / 2; // Align with Z-axis
-      feather.rotation.x = side * i * 0.05; // Slight fan
+      
+      // Align feathers with wing extension - they should extend outward from wing
+      feather.rotation.x = -Math.PI / 2; // Flat horizontal like wing surface
+      feather.rotation.z = side * i * 0.05; // Slight fan spread
       
       handGroup.add(feather);
       primaryFeathers.push(feather);
     }
 
-    // SECONDARY FEATHERS - Attach along forearm (lift generation) - aligned with Z-axis
+    // SECONDARY FEATHERS - Attach along forearm (lift generation) - properly aligned
     const secondaryFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 5; i++) {
       const featherLength = 0.2 - (i * 0.015);
       const featherGeometry = new THREE.PlaneGeometry(0.035, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers along forearm Z-axis
+      // Position feathers extending outward from forearm bone
       const featherOffset = (i / 4) * 0.28;
       feather.position.set(0, -featherLength / 2, side * (0.04 + featherOffset));
-      feather.rotation.y = side * Math.PI / 2; // Align with Z-axis
-      feather.rotation.x = side * i * 0.03; // Slight overlap
+      
+      // Align feathers with wing extension
+      feather.rotation.x = -Math.PI / 2; // Flat horizontal
+      feather.rotation.z = side * i * 0.03; // Slight overlap
       
       forearmGroup.add(feather);
       secondaryFeathers.push(feather);
     }
 
-    // COVERT FEATHERS - Small feathers along humerus - aligned with Z-axis
+    // COVERT FEATHERS - Small feathers along humerus - properly aligned
     for (let i = 0; i < 3; i++) {
       const covertGeometry = new THREE.PlaneGeometry(0.025, 0.12);
       const covert = new THREE.Mesh(covertGeometry, this.materials!.feather);
       
       const covertOffset = (i / 2) * 0.24;
       covert.position.set(0, -0.06, side * (0.04 + covertOffset));
-      covert.rotation.y = side * Math.PI / 2; // Align with Z-axis
+      
+      // Align covert feathers with wing surface
+      covert.rotation.x = -Math.PI / 2; // Flat horizontal
       
       humerusGroup.add(covert);
     }
