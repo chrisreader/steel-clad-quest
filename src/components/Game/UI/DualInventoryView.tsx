@@ -38,9 +38,9 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
 
   return (
     <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="flex gap-6 max-w-7xl w-full mx-4">
-        {/* Chest Inventory */}
-        <div className="flex-shrink-0">
+      <div className="flex gap-4 max-w-6xl w-full mx-4 h-[80vh]">
+        {/* Chest Inventory - Right Side */}
+        <div className="w-80 flex-shrink-0">
           <ChestInventoryUI
             isOpen={true}
             chestItems={chestItems}
@@ -51,18 +51,20 @@ export const DualInventoryView: React.FC<DualInventoryViewProps> = ({
           />
         </div>
 
-        {/* Player Inventory */}
-        <div className="flex-1">
-          <InventorySystem
-            items={playerItems}
-            isOpen={true}
-            onClose={onCloseChest}
-            onUseItem={onUseItem}
-            equippedWeapons={equippedWeapons}
-            onEquippedWeaponsChange={onEquippedWeaponsChange}
-            onEquipWeapon={onEquipWeapon}
-            onUnequipWeapon={onUnequipWeapon}
-          />
+        {/* Player Inventory - Left Side, Cropped */}
+        <div className="flex-1 max-w-3xl">
+          <div className="bg-gray-900 rounded-lg border-2 border-gray-700 h-full overflow-hidden">
+            <InventorySystem
+              items={playerItems}
+              isOpen={true}
+              onClose={onCloseChest}
+              onUseItem={onUseItem}
+              equippedWeapons={equippedWeapons}
+              onEquippedWeaponsChange={onEquippedWeaponsChange}
+              onEquipWeapon={onEquipWeapon}
+              onUnequipWeapon={onUnequipWeapon}
+            />
+          </div>
         </div>
       </div>
     </div>

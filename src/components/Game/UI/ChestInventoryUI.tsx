@@ -40,10 +40,8 @@ export const ChestInventoryUI: React.FC<ChestInventoryUIProps> = ({
     return chestType === 'rare' ? 'Treasure Chest' : 'Wooden Chest';
   };
 
-  const getChestIconStyle = () => {
-    return chestType === 'rare' 
-      ? 'text-yellow-400' 
-      : 'text-amber-600';
+  const getChestIcon = () => {
+    return chestType === 'rare' ? '[CHEST]' : '[BOX]';
   };
 
   return (
@@ -51,8 +49,8 @@ export const ChestInventoryUI: React.FC<ChestInventoryUIProps> = ({
       {/* Header */}
       <div className="flex justify-between items-center p-4 border-b border-gray-700">
         <div className="flex items-center gap-2">
-          <div className={`text-2xl ${getChestIconStyle()}`}>
-            📦
+          <div className={`text-lg font-mono ${chestType === 'rare' ? 'text-yellow-400' : 'text-amber-600'}`}>
+            {getChestIcon()}
           </div>
           <h3 className="text-lg font-semibold text-white">
             {getChestTitle()}
@@ -80,7 +78,7 @@ export const ChestInventoryUI: React.FC<ChestInventoryUIProps> = ({
       <div className="p-4">
         {chestItems.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
-            <div className="text-4xl mb-2">📭</div>
+            <div className="text-2xl mb-2 font-mono">[EMPTY]</div>
             <p>This chest is empty</p>
           </div>
         ) : (
