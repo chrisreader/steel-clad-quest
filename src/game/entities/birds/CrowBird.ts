@@ -161,15 +161,15 @@ export class CrowBird extends BaseBird {
     const shoulderGroup = new THREE.Group();
     wingGroup.add(shoulderGroup);
     
-    // HUMERUS - Upper arm bone (shoulder to elbow)
+    // HUMERUS - Upper arm bone (shoulder to elbow) - extends laterally (Z-axis)
     const humerusGroup = new THREE.Group();
     const humerusGeometry = new THREE.CapsuleGeometry(0.04, 0.28, 6, 8);
     const humerus = new THREE.Mesh(humerusGeometry, this.materials!.feather);
     
-    // Position humerus properly - extends outward from shoulder
-    humerus.position.set(side * 0.14, 0, 0); // Half length offset outward
-    humerus.rotation.z = side * Math.PI / 2; // Horizontal orientation
-    humerus.rotation.y = side * -0.2; // Slight backward angle
+    // Position humerus to extend laterally outward from shoulder
+    humerus.position.set(0, 0, side * 0.14); // Half length offset laterally
+    humerus.rotation.x = side * Math.PI / 2; // Rotate to align with Z-axis
+    humerus.rotation.y = side * -0.15; // Slight backward angle for natural positioning
     humerusGroup.add(humerus);
     shoulderGroup.add(humerusGroup);
 
@@ -178,13 +178,13 @@ export class CrowBird extends BaseBird {
     const forearmGeometry = new THREE.CapsuleGeometry(0.03, 0.32, 6, 8);
     const forearm = new THREE.Mesh(forearmGeometry, this.materials!.feather);
     
-    // Position forearm relative to humerus end
-    forearm.position.set(side * 0.16, 0, 0); // Half length offset from joint
-    forearm.rotation.z = side * Math.PI / 2; // Keep horizontal
+    // Position forearm extending from humerus end
+    forearm.position.set(0, 0, side * 0.16); // Half length offset laterally
+    forearm.rotation.x = side * Math.PI / 2; // Align with Z-axis
     forearmGroup.add(forearm);
     
     // Attach forearm to end of humerus (elbow joint)
-    forearmGroup.position.set(side * 0.28, 0, 0); // At end of humerus
+    forearmGroup.position.set(0, 0, side * 0.28); // At end of humerus
     humerusGroup.add(forearmGroup);
 
     // HAND/CARPOMETACARPUS - Wrist to wingtip
@@ -192,79 +192,79 @@ export class CrowBird extends BaseBird {
     const handGeometry = new THREE.CapsuleGeometry(0.02, 0.18, 6, 8);
     const hand = new THREE.Mesh(handGeometry, this.materials!.feather);
     
-    // Position hand relative to forearm end
-    hand.position.set(side * 0.09, 0, 0); // Half length offset from joint
-    hand.rotation.z = side * Math.PI / 2; // Keep horizontal
+    // Position hand extending from forearm end
+    hand.position.set(0, 0, side * 0.09); // Half length offset laterally
+    hand.rotation.x = side * Math.PI / 2; // Align with Z-axis
     handGroup.add(hand);
     
     // Attach hand to end of forearm (wrist joint)
-    handGroup.position.set(side * 0.32, 0, 0); // At end of forearm
+    handGroup.position.set(0, 0, side * 0.32); // At end of forearm
     forearmGroup.add(handGroup);
 
-    // WING MEMBRANES - Create wing surface
+    // WING MEMBRANES - Create wing surface aligned with Z-axis bones
     // Propatagium - Leading edge membrane (shoulder to wrist)
-    const propatagiumGeometry = new THREE.PlaneGeometry(0.5, 0.12);
+    const propatagiumGeometry = new THREE.PlaneGeometry(0.12, 0.5);
     const propatagium = new THREE.Mesh(propatagiumGeometry, this.materials!.feather);
-    propatagium.position.set(side * 0.25, 0.06, 0);
-    propatagium.rotation.x = -Math.PI / 2; // Horizontal
+    propatagium.position.set(0, 0.06, side * 0.25);
+    propatagium.rotation.y = side * Math.PI / 2; // Align with Z-axis wing extension
     shoulderGroup.add(propatagium);
 
     // Main wing membrane - Connects humerus to forearm
-    const mainMembraneGeometry = new THREE.PlaneGeometry(0.6, 0.25);
+    const mainMembraneGeometry = new THREE.PlaneGeometry(0.25, 0.6);
     const mainMembrane = new THREE.Mesh(mainMembraneGeometry, this.materials!.feather);
-    mainMembrane.position.set(side * 0.3, -0.125, 0);
-    mainMembrane.rotation.x = -Math.PI / 2; // Horizontal
+    mainMembrane.position.set(0, -0.125, side * 0.3);
+    mainMembrane.rotation.y = side * Math.PI / 2; // Align with Z-axis wing extension
     humerusGroup.add(mainMembrane);
 
     // Wing tip membrane - Hand area
-    const tipMembraneGeometry = new THREE.PlaneGeometry(0.35, 0.15);
+    const tipMembraneGeometry = new THREE.PlaneGeometry(0.15, 0.35);
     const tipMembrane = new THREE.Mesh(tipMembraneGeometry, this.materials!.feather);
-    tipMembrane.position.set(side * 0.175, -0.075, 0);
-    tipMembrane.rotation.x = -Math.PI / 2; // Horizontal
+    tipMembrane.position.set(0, -0.075, side * 0.175);
+    tipMembrane.rotation.y = side * Math.PI / 2; // Align with Z-axis wing extension
     forearmGroup.add(tipMembrane);
 
-    // PRIMARY FEATHERS - Attach to hand (flight control)
+    // PRIMARY FEATHERS - Attach to hand (flight control) - aligned with Z-axis
     const primaryFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 6; i++) {
       const featherLength = 0.25 - (i * 0.02); // Decreasing length
       const featherGeometry = new THREE.PlaneGeometry(0.04, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers along hand
+      // Position feathers along hand Z-axis
       const featherOffset = (i / 5) * 0.16;
-      feather.position.set(side * (0.02 + featherOffset), -featherLength / 2, 0);
-      feather.rotation.x = -Math.PI / 2; // Horizontal
-      feather.rotation.z = side * i * 0.05; // Slight fan
+      feather.position.set(0, -featherLength / 2, side * (0.02 + featherOffset));
+      feather.rotation.y = side * Math.PI / 2; // Align with Z-axis
+      feather.rotation.x = side * i * 0.05; // Slight fan
       
       handGroup.add(feather);
       primaryFeathers.push(feather);
     }
 
-    // SECONDARY FEATHERS - Attach along forearm (lift generation)
+    // SECONDARY FEATHERS - Attach along forearm (lift generation) - aligned with Z-axis
     const secondaryFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 5; i++) {
       const featherLength = 0.2 - (i * 0.015);
       const featherGeometry = new THREE.PlaneGeometry(0.035, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers along forearm
+      // Position feathers along forearm Z-axis
       const featherOffset = (i / 4) * 0.28;
-      feather.position.set(side * (0.04 + featherOffset), -featherLength / 2, 0);
-      feather.rotation.x = -Math.PI / 2; // Horizontal
-      feather.rotation.z = side * i * 0.03; // Slight overlap
+      feather.position.set(0, -featherLength / 2, side * (0.04 + featherOffset));
+      feather.rotation.y = side * Math.PI / 2; // Align with Z-axis
+      feather.rotation.x = side * i * 0.03; // Slight overlap
       
       forearmGroup.add(feather);
       secondaryFeathers.push(feather);
     }
 
-    // COVERT FEATHERS - Small feathers along humerus
+    // COVERT FEATHERS - Small feathers along humerus - aligned with Z-axis
     for (let i = 0; i < 3; i++) {
       const covertGeometry = new THREE.PlaneGeometry(0.025, 0.12);
       const covert = new THREE.Mesh(covertGeometry, this.materials!.feather);
       
       const covertOffset = (i / 2) * 0.24;
-      covert.position.set(side * (0.04 + covertOffset), -0.06, 0);
-      covert.rotation.x = -Math.PI / 2;
+      covert.position.set(0, -0.06, side * (0.04 + covertOffset));
+      covert.rotation.y = side * Math.PI / 2; // Align with Z-axis
       
       humerusGroup.add(covert);
     }
@@ -651,26 +651,26 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Wings folded against body in natural Z-fold pattern
+    // Wings folded against body in natural Z-fold pattern with Z-axis bones
     
     // Shoulder position - neutral
     leftShoulder.rotation.set(0, 0, 0);
     rightShoulder.rotation.set(0, 0, 0);
     
-    // Humerus - angled back and slightly down
-    leftHumerus.rotation.set(0, -0.3, -0.2);
-    rightHumerus.rotation.set(0, 0.3, 0.2);
+    // Humerus - folded back against body (Z-axis alignment)
+    leftHumerus.rotation.set(-0.2, 0.3, 0); // Rotated to fold back
+    rightHumerus.rotation.set(0.2, -0.3, 0); // Mirror for right wing
     
-    // Forearm - folded back against body
+    // Forearm - folded inward toward body
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0.8, 0);
-      rightForearm.rotation.set(0, -0.8, 0);
+      leftForearm.rotation.set(0, 0, -0.8); // Fold inward along Z-axis
+      rightForearm.rotation.set(0, 0, 0.8); // Mirror for right wing
     }
     
-    // Hand - tucked under
+    // Hand - tucked close to body
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0.4, 0);
-      rightHand.rotation.set(0, -0.4, 0);
+      leftHand.rotation.set(0, 0, -0.4); // Fold inward
+      rightHand.rotation.set(0, 0, 0.4); // Mirror for right wing
     }
     
     // Animate feathers tight against body
@@ -682,19 +682,20 @@ export class CrowBird extends BaseBird {
     leftHumerus: THREE.Group, rightHumerus: THREE.Group,
     leftForearm: THREE.Group, rightForearm: THREE.Group
   ): void {
-    // Slight wing lift, ready for takeoff
+    // Slight wing lift, ready for takeoff - Z-axis aligned
     
+    // Shoulders slightly raised
     leftShoulder.rotation.set(0, 0, 0.1);
     rightShoulder.rotation.set(0, 0, -0.1);
     
-    // Humerus slightly extended
-    leftHumerus.rotation.set(0, -0.2, -0.1);
-    rightHumerus.rotation.set(0, 0.2, 0.1);
+    // Humerus partially extended laterally
+    leftHumerus.rotation.set(-0.1, 0.2, 0);
+    rightHumerus.rotation.set(0.1, -0.2, 0);
     
     // Forearm partially extended
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0.5, 0);
-      rightForearm.rotation.set(0, -0.5, 0);
+      leftForearm.rotation.set(0, 0, -0.5);
+      rightForearm.rotation.set(0, 0, 0.5);
     }
   }
 
@@ -704,28 +705,28 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Powerful upstroke for takeoff
+    // Powerful upstroke for takeoff - Z-axis aligned
     const takeoffIntensity = 1.2;
     const wingBeat = Math.sin(this.flapCycle) * takeoffIntensity;
     
-    // Strong shoulder movement
-    leftShoulder.rotation.set(0, 0, wingBeat * 0.5);
-    rightShoulder.rotation.set(0, 0, -wingBeat * 0.5);
+    // Strong shoulder movement - vertical flapping motion
+    leftShoulder.rotation.set(wingBeat * 0.5, 0, 0);
+    rightShoulder.rotation.set(-wingBeat * 0.5, 0, 0);
     
-    // Humerus drives main power
-    leftHumerus.rotation.set(0, -0.1, wingBeat);
-    rightHumerus.rotation.set(0, 0.1, -wingBeat);
+    // Humerus drives main power - lateral extension with vertical beat
+    leftHumerus.rotation.set(wingBeat * 0.7, 0.1, 0);
+    rightHumerus.rotation.set(-wingBeat * 0.7, -0.1, 0);
     
     // Coordinated forearm extension
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, -wingBeat * 0.3, 0);
-      rightForearm.rotation.set(0, wingBeat * 0.3, 0);
+      leftForearm.rotation.set(wingBeat * 0.3, 0, -0.3);
+      rightForearm.rotation.set(-wingBeat * 0.3, 0, 0.3);
     }
     
     // Hand provides fine control
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, -wingBeat * 0.2, 0);
-      rightHand.rotation.set(0, wingBeat * 0.2, 0);
+      leftHand.rotation.set(wingBeat * 0.2, 0, -0.2);
+      rightHand.rotation.set(-wingBeat * 0.2, 0, 0.2);
     }
     
     this.animateFeathersForPowerFlight(wingBeat);
@@ -737,30 +738,30 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Regular flapping flight
+    // Regular flapping flight - Z-axis aligned
     const flapIntensity = 0.8;
     const wingBeat = Math.sin(this.flapCycle) * flapIntensity;
     
-    // Shoulder provides base rhythm
-    leftShoulder.rotation.set(0, 0, wingBeat * 0.3);
-    rightShoulder.rotation.set(0, 0, -wingBeat * 0.3);
+    // Shoulder provides base rhythm - vertical flapping
+    leftShoulder.rotation.set(wingBeat * 0.3, 0, 0);
+    rightShoulder.rotation.set(-wingBeat * 0.3, 0, 0);
     
-    // Humerus main stroke
-    leftHumerus.rotation.set(0, -0.1, wingBeat * 0.7);
-    rightHumerus.rotation.set(0, 0.1, -wingBeat * 0.7);
+    // Humerus main stroke - lateral extension with vertical beat
+    leftHumerus.rotation.set(wingBeat * 0.5, 0.1, 0);
+    rightHumerus.rotation.set(-wingBeat * 0.5, -0.1, 0);
     
     // Forearm follows with delay
     const forearmPhase = Math.sin(this.flapCycle - 0.2) * flapIntensity;
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, -forearmPhase * 0.4, 0);
-      rightForearm.rotation.set(0, forearmPhase * 0.4, 0);
+      leftForearm.rotation.set(forearmPhase * 0.4, 0, -0.4);
+      rightForearm.rotation.set(-forearmPhase * 0.4, 0, 0.4);
     }
     
     // Hand fine-tunes wingtip
     const handPhase = Math.sin(this.flapCycle - 0.4) * flapIntensity;
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, -handPhase * 0.3, 0);
-      rightHand.rotation.set(0, handPhase * 0.3, 0);
+      leftHand.rotation.set(handPhase * 0.3, 0, -0.3);
+      rightHand.rotation.set(-handPhase * 0.3, 0, 0.3);
     }
     
     this.animateFeathersForFlight(wingBeat);
@@ -772,32 +773,32 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Wings fully extended for maximum lift
+    // Wings fully extended for maximum lift - Z-axis aligned
     
-    // Shoulders spread wide
-    leftShoulder.rotation.set(0, 0, 0.2);
-    rightShoulder.rotation.set(0, 0, -0.2);
+    // Shoulders spread wide - lifted for lift generation
+    leftShoulder.rotation.set(0.2, 0, 0);
+    rightShoulder.rotation.set(-0.2, 0, 0);
     
-    // Humerus extended horizontally
-    leftHumerus.rotation.set(0, -0.05, 0.1);
-    rightHumerus.rotation.set(0, 0.05, -0.1);
+    // Humerus extended laterally
+    leftHumerus.rotation.set(0.1, 0.05, 0);
+    rightHumerus.rotation.set(-0.1, -0.05, 0);
     
     // Forearm fully extended
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, -0.1, 0);
-      rightForearm.rotation.set(0, 0.1, 0);
+      leftForearm.rotation.set(0, 0, -0.1);
+      rightForearm.rotation.set(0, 0, 0.1);
     }
     
     // Hand extended for maximum span
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, -0.05, 0);
-      rightHand.rotation.set(0, 0.05, 0);
+      leftHand.rotation.set(0, 0, -0.05);
+      rightHand.rotation.set(0, 0, 0.05);
     }
     
     // Subtle air current adjustments
     const airCurrent = Math.sin(this.flapCycle * 0.3) * 0.05;
-    leftShoulder.rotation.z += airCurrent;
-    rightShoulder.rotation.z -= airCurrent;
+    leftShoulder.rotation.x += airCurrent;
+    rightShoulder.rotation.x -= airCurrent;
     
     this.animateFeathersForSoaring();
   }
@@ -808,26 +809,26 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Wings spread wide for air braking
+    // Wings spread wide for air braking - Z-axis aligned
     
-    // Shoulders lifted for air brake
-    leftShoulder.rotation.set(0, 0, 0.4);
-    rightShoulder.rotation.set(0, 0, -0.4);
+    // Shoulders lifted high for air brake
+    leftShoulder.rotation.set(0.4, 0, 0);
+    rightShoulder.rotation.set(-0.4, 0, 0);
     
     // Humerus angled up for drag
-    leftHumerus.rotation.set(0, -0.2, 0.3);
-    rightHumerus.rotation.set(0, 0.2, -0.3);
+    leftHumerus.rotation.set(0.3, 0.2, 0);
+    rightHumerus.rotation.set(-0.3, -0.2, 0);
     
     // Forearm spread for maximum surface area
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, -0.3, 0);
-      rightForearm.rotation.set(0, 0.3, 0);
+      leftForearm.rotation.set(0, 0, -0.3);
+      rightForearm.rotation.set(0, 0, 0.3);
     }
     
     // Hand spread wide
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, -0.2, 0);
-      rightHand.rotation.set(0, 0.2, 0);
+      leftHand.rotation.set(0, 0, -0.2);
+      rightHand.rotation.set(0, 0, 0.2);
     }
     
     this.animateFeathersForLanding();
