@@ -988,6 +988,14 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
+    // Get the main wing groups and extend them outward for takeoff
+    const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
+    const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
+    
+    // Reset wing group rotations to extend wings outward
+    leftWingGroup.rotation.set(0, 0, 0);
+    rightWingGroup.rotation.set(0, 0, 0);
+    
     const takeoffIntensity = 1.2;
     const wingBeat = Math.sin(this.flapCycle) * takeoffIntensity;
     
@@ -1015,6 +1023,14 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
+    // Get the main wing groups and extend them outward for flight
+    const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
+    const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
+    
+    // Reset wing group rotations to extend wings outward
+    leftWingGroup.rotation.set(0, 0, 0);
+    rightWingGroup.rotation.set(0, 0, 0);
+    
     const flapIntensity = 0.8;
     const wingBeat = Math.sin(this.flapCycle) * flapIntensity;
     
@@ -1044,6 +1060,14 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
+    // Get the main wing groups and extend them outward for soaring
+    const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
+    const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
+    
+    // Reset wing group rotations to extend wings outward
+    leftWingGroup.rotation.set(0, 0, 0);
+    rightWingGroup.rotation.set(0, 0, 0);
+    
     leftShoulder.rotation.set(0.2, 0, 0);
     rightShoulder.rotation.set(-0.2, 0, 0);
     leftHumerus.rotation.set(0.1, 0.05, 0);
@@ -1072,6 +1096,14 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
+    // Get the main wing groups and extend them outward for landing
+    const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
+    const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
+    
+    // Reset wing group rotations to extend wings outward
+    leftWingGroup.rotation.set(0, 0, 0);
+    rightWingGroup.rotation.set(0, 0, 0);
+    
     leftShoulder.rotation.set(0.4, 0, 0);
     rightShoulder.rotation.set(-0.4, 0, 0);
     leftHumerus.rotation.set(0.3, 0.2, 0);
