@@ -782,32 +782,38 @@ export class CrowBird extends BaseBird {
     const leftHand = leftForearm?.children.find(child => child.userData?.type === 'wrist') as THREE.Group;
     const rightHand = rightForearm?.children.find(child => child.userData?.type === 'wrist') as THREE.Group;
 
-    // Apply state-specific wing animations
+    // Apply state-specific wing animations - use soaring feather look for all states
     switch (this.birdState) {
       case BirdState.IDLE:
       case BirdState.WALKING:
       case BirdState.FORAGING:
         this.animateGroundedWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Use soaring feather look
         break;
         
       case BirdState.ALERT:
         this.animateAlertWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm);
+        this.animateFeathersForSoaring(); // Use soaring feather look
         break;
         
       case BirdState.TAKING_OFF:
         this.animateTakeoffWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Use soaring feather look
         break;
         
       case BirdState.FLYING:
         this.animateFlappingWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Use soaring feather look
         break;
         
       case BirdState.SOARING:
         this.animateSoaringWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Keep existing soaring feather look
         break;
         
       case BirdState.LANDING:
         this.animateLandingWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Use soaring feather look
         break;
     }
   }
