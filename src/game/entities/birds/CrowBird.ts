@@ -1256,37 +1256,31 @@ export class CrowBird extends BaseBird {
 
   private animateLegs(): void {
     if (!this.bodyParts) return;
-
-    // Access leg groups
-    const leftLeg = this.bodyParts.leftLeg.children[0] as THREE.Group; // Thigh group
-    const rightLeg = this.bodyParts.rightLeg.children[0] as THREE.Group;
     
-    if (!leftLeg || !rightLeg) return;
-
-    // Access thigh meshes for rotation
-    const leftThigh = leftLeg.children[0] as THREE.Mesh;
-    const rightThigh = rightLeg.children[0] as THREE.Mesh;
+    const leftLegGroup = this.bodyParts.leftLeg;
+    const rightLegGroup = this.bodyParts.rightLeg;
     
-    // Access shin groups
-    const leftShinGroup = leftLeg.children[1] as THREE.Group;
-    const rightShinGroup = rightLeg.children[1] as THREE.Group;
-    
-    if (!leftShinGroup || !rightShinGroup) return;
+    if (!leftLegGroup || !rightLegGroup) return;
 
     if (this.flightMode !== FlightMode.GROUNDED) {
-      // Flight leg position - tuck legs backward toward tail
-      leftThigh.rotation.x = -Math.PI / 3; // 60 degrees backward toward tail
-      rightThigh.rotation.x = -Math.PI / 3;
-      
-      // Bend shins to complete the tuck
-      leftShinGroup.rotation.x = -Math.PI / 4; // Additional bend backward
-      rightShinGroup.rotation.x = -Math.PI / 4;
+      // Flight leg position - fold entire leg groups backward toward tail
+      leftLegGroup.rotation.x = -Math.PI / 4; // 45 degrees backward toward tail
+      rightLegGroup.rotation.x = -Math.PI / 4;
     } else {
-      // Ground leg position - legs extended for standing/walking
-      leftThigh.rotation.x = 0;
-      rightThigh.rotation.x = 0;
-      leftShinGroup.rotation.x = 0;
-      rightShinGroup.rotation.x = 0;
+      // Ground leg position - legs in natural standing position
+      leftLegGroup.rotation.x = 0;
+      rightLegGroup.rotation.x = 0;
+      
+      // Walking animation
+      if (this.birdState === BirdState.WALKING) {
+        const walkDelta = 0.016; // Approximate deltaTime for leg animation
+        this.walkCycle += walkDelta * 3;
+        const leftLegPhase = Math.sin(this.walkCycle);
+        const rightLegPhase = Math.sin(this.walkCycle + Math.PI);
+        
+        leftLegGroup.rotation.x = leftLegPhase * 0.3;
+        rightLegGroup.rotation.x = rightLegPhase * 0.3;
+      }
     }
   }
 

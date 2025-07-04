@@ -307,7 +307,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.velocity.z = direction.z * speed;
     
     // Make bird face its flight direction
-    const targetRotationY = Math.atan2(direction.x, direction.z);
+    const targetRotationY = Math.atan2(-direction.x, -direction.z);
     this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetRotationY, deltaTime * 2);
     
     // Apply banking angle for realistic turns
