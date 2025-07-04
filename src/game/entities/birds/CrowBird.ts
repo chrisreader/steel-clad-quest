@@ -939,26 +939,43 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Fold wings naturally against body sides like real resting birds
+    // Reset bone orientations to lay flat against body
     
-    // Shoulder joint: Pull wings close to body, rotate inward toward body centerline
-    leftShoulder.rotation.set(-0.2, 0.8, -0.3);   // Pull left wing toward body center
-    rightShoulder.rotation.set(-0.2, -0.8, 0.3);  // Pull right wing toward body center
+    // Get actual bone meshes from the groups
+    const leftHumerusBone = leftHumerus.children[0] as THREE.Mesh;
+    const rightHumerusBone = rightHumerus.children[0] as THREE.Mesh;
+    const leftForearmBone = leftForearm?.children[0] as THREE.Mesh;
+    const rightForearmBone = rightForearm?.children[0] as THREE.Mesh;
+    const leftHandBone = leftHand?.children[0] as THREE.Mesh;
+    const rightHandBone = rightHand?.children[0] as THREE.Mesh;
     
-    // Humerus: Point backward along body axis (toward tail) instead of outward
-    leftHumerus.rotation.set(-0.1, 1.2, -0.8);    // Point toward tail, close to body
-    rightHumerus.rotation.set(-0.1, -1.2, 0.8);   // Point toward tail, close to body
+    // Orient humerus bones along body X-axis instead of outward Z-axis
+    if (leftHumerusBone) leftHumerusBone.rotation.x = 0; // Align along X-axis (body direction)
+    if (rightHumerusBone) rightHumerusBone.rotation.x = 0;
     
-    // Forearm: Fold tightly against humerus, creating compact wing fold
+    // Orient forearm bones to continue along body
+    if (leftForearmBone) leftForearmBone.rotation.x = 0;
+    if (rightForearmBone) rightForearmBone.rotation.x = 0;
+    
+    // Orient hand bones to continue along body
+    if (leftHandBone) leftHandBone.rotation.x = 0;
+    if (rightHandBone) rightHandBone.rotation.x = 0;
+    
+    // Subtle group rotations to bring wings closer to body sides
+    leftShoulder.rotation.set(0, 0, 0.1);   // Slight downward tilt
+    rightShoulder.rotation.set(0, 0, -0.1);
+    
+    leftHumerus.rotation.set(0, 0.2, 0);    // Slight inward rotation
+    rightHumerus.rotation.set(0, -0.2, 0);
+    
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0.2, 0.5, -2.2);   // Fold inward and back
-      rightForearm.rotation.set(0.2, -0.5, 2.2);  // Fold inward and back
+      leftForearm.rotation.set(0, 0, -0.3);   // Fold slightly against body
+      rightForearm.rotation.set(0, 0, 0.3);
     }
     
-    // Hand/wingtip: Tuck under body toward tail for compact resting pose
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0.1, 0.8, -1.8);      // Tuck wingtip under/back
-      rightHand.rotation.set(0.1, -0.8, 1.8);     // Tuck wingtip under/back
+      leftHand.rotation.set(0, 0, -0.2);      // Slight tuck
+      rightHand.rotation.set(0, 0, 0.2);
     }
     
     this.animateFeathersForRest();
