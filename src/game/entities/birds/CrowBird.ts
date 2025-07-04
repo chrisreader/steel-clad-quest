@@ -162,18 +162,17 @@ export class CrowBird extends BaseBird {
     const shoulderGroup = new THREE.Group();
     wingGroup.add(shoulderGroup);
     
-    // HUMERUS - Upper arm bone (shoulder to elbow) - extends laterally
+    // HUMERUS - Upper arm bone (shoulder to elbow) - extends forward from body
     const humerusGroup = new THREE.Group();
     const humerusGeometry = new THREE.CapsuleGeometry(0.03, 0.24, 6, 8);
     const humerus = new THREE.Mesh(humerusGeometry, this.materials!.feather);
     
-    // Position humerus bone properly within its group
-    humerus.rotation.z = Math.PI / 2; // Horizontal orientation
-    humerus.position.set(0, 0, 0.12); // Center the bone in group
+    // Position bone at origin within group, oriented along X-axis (forward/back)
+    humerus.rotation.z = Math.PI / 2; // Align along X-axis
+    humerus.position.set(0.12, 0, 0); // Extend forward from group origin
     humerusGroup.add(humerus);
     
-    // Position humerus group to extend laterally from shoulder
-    humerusGroup.position.set(0, 0, side * 0.12);
+    // Position humerus group at shoulder (no offset needed - attached to body)
     shoulderGroup.add(humerusGroup);
 
     // FOREARM - Radius/Ulna bones (elbow to wrist) 
@@ -181,13 +180,13 @@ export class CrowBird extends BaseBird {
     const forearmGeometry = new THREE.CapsuleGeometry(0.025, 0.28, 6, 8);
     const forearm = new THREE.Mesh(forearmGeometry, this.materials!.feather);
     
-    // Position forearm bone properly within its group
-    forearm.rotation.z = Math.PI / 2; // Horizontal orientation
-    forearm.position.set(0, 0, 0.14); // Center the bone in group
+    // Position bone at origin within group, continuing X-axis extension
+    forearm.rotation.z = Math.PI / 2; // Align along X-axis
+    forearm.position.set(0.14, 0, 0); // Extend forward from group origin
     forearmGroup.add(forearm);
     
-    // Attach forearm group to end of humerus bone (elbow joint)
-    forearmGroup.position.set(0, 0, side * 0.24); // At end of humerus
+    // Position forearm group at end of humerus bone (elbow joint)
+    forearmGroup.position.set(0.24, 0, 0); // At end of humerus
     humerusGroup.add(forearmGroup);
 
     // HAND/CARPOMETACARPUS - Wrist to wingtip
@@ -195,13 +194,13 @@ export class CrowBird extends BaseBird {
     const handGeometry = new THREE.CapsuleGeometry(0.02, 0.16, 6, 8);
     const hand = new THREE.Mesh(handGeometry, this.materials!.feather);
     
-    // Position hand bone properly within its group
-    hand.rotation.z = Math.PI / 2; // Horizontal orientation
-    hand.position.set(0, 0, 0.08); // Center the bone in group
+    // Position bone at origin within group, continuing X-axis extension
+    hand.rotation.z = Math.PI / 2; // Align along X-axis
+    hand.position.set(0.08, 0, 0); // Extend forward from group origin
     handGroup.add(hand);
     
-    // Attach hand group to end of forearm bone (wrist joint)
-    handGroup.position.set(0, 0, side * 0.28); // At end of forearm
+    // Position hand group at end of forearm bone (wrist joint)
+    handGroup.position.set(0.28, 0, 0); // At end of forearm
     forearmGroup.add(handGroup);
 
     // PRIMARY FEATHERS - Extend from hand bone to create wing surface
