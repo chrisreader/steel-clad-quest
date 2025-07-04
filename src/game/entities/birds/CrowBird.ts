@@ -10,6 +10,10 @@ export class CrowBird extends BaseBird {
     beak: THREE.Material;
     eye: THREE.Material;
     leg: THREE.Material;
+    body?: THREE.Material;
+    belly?: THREE.Material;
+    wingFeather?: THREE.Material;
+    primaryFeather?: THREE.Material;
   } | null = null;
   
   // Enhanced flight systems
@@ -175,30 +179,78 @@ export class CrowBird extends BaseBird {
   }
 
   private createSimpleMaterials(): void {
-    // Create realistic crow materials with proper lighting response
+    // Create highly realistic crow materials with iridescence and proper coloration
     this.materials = {
       feather: new THREE.MeshPhongMaterial({
-        color: 0x2d2d2d,        // Dark charcoal instead of pure black
-        specular: 0x1a1a1a,     // Subtle sheen for feather texture
-        shininess: 10,          // Low shininess for natural look
+        color: 0x1a1a1a,        // Natural crow black with slight warmth
+        specular: 0x4a4a6a,     // Blue-purple iridescent sheen like real crows
+        shininess: 25,          // Higher shininess for feather sheen
         side: THREE.DoubleSide  // Make feathers visible from both sides
       }),
       beak: new THREE.MeshPhongMaterial({
-        color: 0x4a4a4a,        // Lighter grey for beak visibility
-        specular: 0x666666,
-        shininess: 30
+        color: 0x2a2a2a,        // Dark but visible beak
+        specular: 0x4a4a4a,     // Subtle shine on beak
+        shininess: 40,          // Beaks have natural shine
+        emissive: 0x0a0a0a      // Slight emission for visibility
       }),
       eye: new THREE.MeshPhongMaterial({
-        color: 0x0a0a0a,        // Very dark but not pure black
-        specular: 0x333333,
-        shininess: 50
+        color: 0x1a1a1a,        // Dark eye with some depth
+        specular: 0xffffff,     // High specular for eye shine
+        shininess: 100,         // Very shiny eyes
+        emissive: 0x0a0505      // Dark red emission for life-like eyes
       }),
       leg: new THREE.MeshPhongMaterial({
-        color: 0x4a3a2a,        // Dark brown for crow legs
-        specular: 0x2a2a2a,
-        shininess: 20
+        color: 0x2a2a2a,        // Dark grey crow legs (not brown)
+        specular: 0x1a1a1a,     // Minimal shine on legs
+        shininess: 15           // Low shininess for scaly texture
       })
     };
+
+    // Create specialized materials for different body parts
+    this.createBodyGradientMaterials();
+    this.createWingMaterials();
+  }
+
+  private createBodyGradientMaterials(): void {
+    // Create gradient materials for realistic crow body coloration
+    const bodyMaterial = new THREE.MeshPhongMaterial({
+      color: 0x0f0f0f,          // Very dark base for crow body
+      specular: 0x3a3a5a,       // Purple-blue iridescence
+      shininess: 30,
+      side: THREE.DoubleSide
+    });
+
+    const bellyMaterial = new THREE.MeshPhongMaterial({
+      color: 0x1a1a1a,          // Slightly lighter belly
+      specular: 0x2a2a4a,       // Less iridescence on belly
+      shininess: 20,
+      side: THREE.DoubleSide
+    });
+
+    // Store gradient materials for body parts
+    this.materials.body = bodyMaterial;
+    this.materials.belly = bellyMaterial;
+  }
+
+  private createWingMaterials(): void {
+    // Create specialized wing materials with realistic iridescence
+    const wingFeatherMaterial = new THREE.MeshPhongMaterial({
+      color: 0x0a0a0a,          // Deeper black for wing feathers
+      specular: 0x4a4a7a,       // Strong blue-purple iridescence on wings
+      shininess: 35,            // Higher shine for flight feathers
+      side: THREE.DoubleSide
+    });
+
+    const primaryFeatherMaterial = new THREE.MeshPhongMaterial({
+      color: 0x050505,          // Almost black for primary flight feathers
+      specular: 0x5a5a8a,       // Strongest iridescence on primary feathers
+      shininess: 40,            // Highest shine for primary feathers
+      side: THREE.DoubleSide
+    });
+
+    // Store wing materials
+    this.materials.wingFeather = wingFeatherMaterial;
+    this.materials.primaryFeather = primaryFeatherMaterial;
   }
 
   private createTaperedFeatherGeometry(baseWidth: number, tipWidth: number, length: number): THREE.BufferGeometry {
@@ -311,7 +363,7 @@ export class CrowBird extends BaseBird {
       const tipWidth = baseWidth * 0.4; // Less tapering for body coverage
       
       const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
-      const covert = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      const covert = new THREE.Mesh(featherGeometry, this.materials!.feather); // Use standard feather material
       
       // Position along humerus closer to body, feathers extend along X-axis
       const alongBone = i * 0.035; // Spaced along bone length (Z-axis)
@@ -337,7 +389,7 @@ export class CrowBird extends BaseBird {
       const tipWidth = baseWidth * 0.3; // More pointed than coverts
       
       const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
-      const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      const feather = new THREE.Mesh(featherGeometry, this.materials!.wingFeather || this.materials!.feather); // Use wing feather material
       
       // Position along forearm bone, feathers extend along X-axis
       const alongBone = i * 0.03; // Spaced along forearm (Z-axis)
@@ -363,7 +415,7 @@ export class CrowBird extends BaseBird {
       const tipWidth = baseWidth * 0.2; // Highly pointed for aerodynamics
       
       const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
-      const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      const feather = new THREE.Mesh(featherGeometry, this.materials!.primaryFeather || this.materials!.feather); // Use primary feather material
       
       // Position along hand bone, feathers extend along X-axis
       const alongBone = i * 0.015; // Close spacing for wingtip control (Z-axis)
