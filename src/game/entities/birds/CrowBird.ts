@@ -1274,13 +1274,13 @@ export class CrowBird extends BaseBird {
     if (!leftShinGroup || !rightShinGroup) return;
 
     if (this.flightMode !== FlightMode.GROUNDED) {
-      // Flight leg position - tuck legs up against body
-      leftThigh.rotation.x = Math.PI / 3; // 60 degrees forward
-      rightThigh.rotation.x = Math.PI / 3;
+      // Flight leg position - tuck legs backward toward tail
+      leftThigh.rotation.x = -Math.PI / 3; // 60 degrees backward toward tail
+      rightThigh.rotation.x = -Math.PI / 3;
       
-      // Bend shins back
-      leftShinGroup.rotation.x = -Math.PI / 2; // 90 degrees back
-      rightShinGroup.rotation.x = -Math.PI / 2;
+      // Bend shins to complete the tuck
+      leftShinGroup.rotation.x = -Math.PI / 4; // Additional bend backward
+      rightShinGroup.rotation.x = -Math.PI / 4;
     } else {
       // Ground leg position - legs extended for standing/walking
       leftThigh.rotation.x = 0;
