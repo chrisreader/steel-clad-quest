@@ -107,8 +107,8 @@ export abstract class BaseBird implements SpawnableEntity {
     // Detect actual ground level using raycast
     this.groundLevel = this.detectGroundLevel(position);
     
-    // Position bird so feet touch ground (legs + feet extend 0.43 units below body center)
-    const feetToBodyDistance = 0.43;
+    // Position bird so bottom of feet touch ground (legs + feet + foot thickness)
+    const feetToBodyDistance = 0.48;
     this.position.y = this.groundLevel + feetToBodyDistance;
     this.mesh.position.copy(this.position);
     
@@ -158,7 +158,7 @@ export abstract class BaseBird implements SpawnableEntity {
   protected updatePhysics(deltaTime: number): void {
     if (this.flightMode === FlightMode.GROUNDED) {
       // Ground physics - ensure bird feet stay on ground
-      const feetToBodyDistance = 0.43;
+      const feetToBodyDistance = 0.48;
       this.position.y = this.groundLevel + feetToBodyDistance;
       // Clear any upward velocity when grounded
       if (this.velocity.y > 0) {
@@ -174,7 +174,7 @@ export abstract class BaseBird implements SpawnableEntity {
     
     // Force ground contact when grounded (safety check with feet positioning)
     if (this.flightMode === FlightMode.GROUNDED) {
-      const feetToBodyDistance = 0.43;
+      const feetToBodyDistance = 0.48;
       this.position.y = this.groundLevel + feetToBodyDistance;
     }
   }

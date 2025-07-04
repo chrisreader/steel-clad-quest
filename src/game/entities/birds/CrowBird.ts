@@ -489,7 +489,7 @@ export class CrowBird extends BaseBird {
     this.velocity.x *= 0.95;
     this.velocity.z *= 0.95;
     
-    const feetToBodyDistance = 0.43;
+    const feetToBodyDistance = 0.48;
     if (this.position.y <= this.groundLevel + feetToBodyDistance + 1) {
       this.forceGrounding();
     }
@@ -497,7 +497,7 @@ export class CrowBird extends BaseBird {
   
   private forceGrounding(): void {
     this.flightMode = FlightMode.GROUNDED;
-    const feetToBodyDistance = 0.43;
+    const feetToBodyDistance = 0.48;
     this.position.y = this.groundLevel + feetToBodyDistance;
     this.velocity.set(0, 0, 0);
     this.mesh.rotation.z = 0;
@@ -696,7 +696,7 @@ export class CrowBird extends BaseBird {
     }
     
     // Land when close to ground
-    const feetToBodyDistance = 0.43;
+    const feetToBodyDistance = 0.48;
     if (this.position.y <= this.groundLevel + feetToBodyDistance + 0.5) {
       this.flightMode = FlightMode.GROUNDED;
       this.position.y = this.groundLevel + feetToBodyDistance; // Position properly with feet touching ground
