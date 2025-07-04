@@ -118,9 +118,9 @@ export class CrowBird extends BaseBird {
     leftWingGroup.add(leftWing);
     rightWingGroup.add(rightWing);
     
-    // Attach wings to upper shoulders - scaled for larger body
-    leftWingGroup.position.set(0.2, 0.16, 0.22);  // Left shoulder, scaled up
-    rightWingGroup.position.set(0.2, 0.16, -0.22); // Right shoulder, scaled up
+    // Attach wings to upper shoulders - connected to body surface
+    leftWingGroup.position.set(0.2, 0.16, 0.16);  // Left shoulder, connected to body
+    rightWingGroup.position.set(0.2, 0.16, -0.16); // Right shoulder, connected to body
     
     bodyGroup.add(leftWingGroup);
     bodyGroup.add(rightWingGroup);
@@ -300,11 +300,11 @@ export class CrowBird extends BaseBird {
     handGroup.position.set(0, 0, side * 0.28); // At end of forearm
     forearmGroup.add(handGroup);
 
-    // COVERT FEATHERS - Small body coverage feathers (shortest, narrowest base)
+    // COVERT FEATHERS - Small body coverage feathers (shortest, narrowest base) - THICKER
     const covertFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 6; i++) {
       const featherLength = 0.12 + (i * 0.008); // Small, gradually increasing
-      const baseWidth = 0.03 + (i * 0.002); // Small base width
+      const baseWidth = (0.03 + (i * 0.002)) * 1.8; // Small base width - THICKER
       const tipWidth = baseWidth * 0.4; // Less tapering for body coverage
       
       const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
@@ -326,11 +326,11 @@ export class CrowBird extends BaseBird {
       covertFeathers.push(covert);
     }
 
-    // SECONDARY FEATHERS - Main wing surface (medium size, proper progression)
+    // SECONDARY FEATHERS - Main wing surface (medium size, proper progression) - THICKER
     const secondaryFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 8; i++) {
       const featherLength = 0.25 + (i * 0.02); // Gradually increasing toward outer wing
-      const baseWidth = 0.06 + (i * 0.004); // Medium base width, getting wider
+      const baseWidth = (0.06 + (i * 0.004)) * 1.6; // Medium base width, getting wider - THICKER
       const tipWidth = baseWidth * 0.3; // More pointed than coverts
       
       const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
@@ -352,11 +352,11 @@ export class CrowBird extends BaseBird {
       secondaryFeathers.push(feather);
     }
 
-    // PRIMARY FEATHERS - Wing control surfaces (largest, longest)
+    // PRIMARY FEATHERS - Wing control surfaces (largest, longest) - THICKER
     const primaryFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 10; i++) {
       const featherLength = 0.30 + (i * 0.015); // Longest feathers at wingtip
-      const baseWidth = 0.08 + (i * 0.004); // Large base width for flight control
+      const baseWidth = (0.08 + (i * 0.004)) * 1.5; // Large base width for flight control - THICKER
       const tipWidth = baseWidth * 0.2; // Highly pointed for aerodynamics
       
       const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
@@ -619,7 +619,10 @@ export class CrowBird extends BaseBird {
   }
 
   private setRandomTargetPosition(range: number = 8): void {
-    const angle = Math.random() * Math.PI * 2;
+    // Forward-biased movement: generate targets in a forward arc (±60° from facing direction)
+    const currentDirection = this.mesh.rotation.y;
+    const forwardBias = (Math.random() - 0.5) * (Math.PI / 3); // ±60° spread
+    const angle = currentDirection + forwardBias;
     const distance = Math.random() * range;
     
     this.targetPosition.set(
@@ -654,14 +657,19 @@ export class CrowBird extends BaseBird {
     centerPoint.y = this.config.flightAltitude.min + 
       Math.random() * (this.config.flightAltitude.max - this.config.flightAltitude.min);
     
+    // Forward-biased flight path: bias flight direction forward
+    const currentDirection = this.mesh.rotation.y;
+    
     for (let i = 0; i < pathLength; i++) {
-      const angle = (i / pathLength) * Math.PI * 2 + Math.random() * 0.5;
-      const radius = this.config.territoryRadius * (0.5 + Math.random() * 0.5);
+      // Create forward-biased angle: mostly forward with gentle turns
+      const forwardBias = (Math.random() - 0.5) * (Math.PI / 4); // ±45° spread
+      const progressiveAngle = currentDirection + (i * 0.2) + forwardBias; // Progressive forward movement
+      const radius = this.config.territoryRadius * (0.3 + Math.random() * 0.7);
       
       const point = new THREE.Vector3(
-        centerPoint.x + Math.cos(angle) * radius,
+        centerPoint.x + Math.cos(progressiveAngle) * radius,
         centerPoint.y + (Math.random() - 0.5) * 5,
-        centerPoint.z + Math.sin(angle) * radius
+        centerPoint.z + Math.sin(progressiveAngle) * radius
       );
       
       this.flightPath.push(point);
