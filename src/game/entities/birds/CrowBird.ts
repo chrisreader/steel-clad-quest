@@ -34,28 +34,97 @@ export class CrowBird extends BaseBird {
     
     const bodyGroup = new THREE.Group();
     
-    // Create anatomically correct bird body (oriented along X-axis: head=+X, tail=-X)
-    const bodyGeometry = new THREE.CylinderGeometry(0.15, 0.18, 0.8, 12, 1);
-    bodyGeometry.rotateZ(Math.PI / 2); // Rotate to align along X-axis
+    // Create anatomically correct bird body - egg-shaped torso
+    const bodyGeometry = new THREE.SphereGeometry(1, 16, 12);
+    // Scale to create realistic bird torso: wider chest, narrower tail, compressed vertically
+    bodyGeometry.scale(0.8, 0.6, 0.7); // X: front-back length, Y: top-bottom height, Z: side-to-side width
+    
+    // Create chest bulge for realistic bird anatomy
+    const positions = bodyGeometry.attributes.position;
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const y = positions.getY(i);
+      const z = positions.getZ(i);
+      
+      // Add chest bulge at front of bird (+X direction)
+      if (x > 0.2) {
+        const bulgeIntensity = Math.max(0, (x - 0.2) / 0.6) * 0.15;
+        positions.setY(i, y - bulgeIntensity); // Lower chest area
+        positions.setZ(i, z * (1 + bulgeIntensity * 0.3)); // Slightly wider chest
+      }
+      
+      // Taper body toward tail (-X direction)
+      if (x < -0.1) {
+        const taperIntensity = Math.abs(x + 0.1) / 0.7;
+        positions.setY(i, y * (1 - taperIntensity * 0.2)); // Compress tail area
+        positions.setZ(i, z * (1 - taperIntensity * 0.3)); // Narrow tail area
+      }
+    }
+    positions.needsUpdate = true;
+    bodyGeometry.computeVertexNormals();
+    
     const body = new THREE.Mesh(bodyGeometry, this.materials.feather);
     bodyGroup.add(body);
 
-    // Create neck - extends forward from body
+    // Create seamlessly integrated neck - multiple segments for smooth curve
     const neckGroup = new THREE.Group();
-    const neckGeometry = new THREE.CylinderGeometry(0.08, 0.12, 0.25, 8, 1);
-    neckGeometry.rotateZ(Math.PI / 2); // Align along X-axis
-    const neck = new THREE.Mesh(neckGeometry, this.materials.feather);
-    neckGroup.add(neck);
-    neckGroup.position.set(0.52, 0.05, 0); // Forward from body front
+    
+    // Neck base - blends with body front
+    const neckBaseGeometry = new THREE.SphereGeometry(0.12, 8, 6);
+    neckBaseGeometry.scale(0.8, 0.9, 0.8); // Slightly compressed
+    const neckBase = new THREE.Mesh(neckBaseGeometry, this.materials.feather);
+    neckBase.position.set(0.0, 0.05, 0); // Positioned to blend with body
+    neckGroup.add(neckBase);
+    
+    // Neck middle - transition segment
+    const neckMidGeometry = new THREE.SphereGeometry(0.10, 8, 6);
+    neckMidGeometry.scale(0.7, 0.8, 0.7);
+    const neckMid = new THREE.Mesh(neckMidGeometry, this.materials.feather);
+    neckMid.position.set(0.12, 0.08, 0);
+    neckGroup.add(neckMid);
+    
+    // Neck top - connects to head
+    const neckTopGeometry = new THREE.SphereGeometry(0.08, 8, 6);
+    neckTopGeometry.scale(0.6, 0.7, 0.6);
+    const neckTop = new THREE.Mesh(neckTopGeometry, this.materials.feather);
+    neckTop.position.set(0.20, 0.10, 0);
+    neckGroup.add(neckTop);
+    
+    neckGroup.position.set(0.45, 0.0, 0); // Position neck at body front
     bodyGroup.add(neckGroup);
 
-    // Create head - at end of neck
+    // Create realistic head - streamlined bird shape
     const headGroup = new THREE.Group();
-    const headGeometry = new THREE.SphereGeometry(0.12, 8, 6);
-    headGeometry.scale(1.3, 1.1, 0.9); // Slightly elongated
+    const headGeometry = new THREE.SphereGeometry(0.12, 12, 8);
+    // Scale for realistic crow head: streamlined, slightly flattened
+    headGeometry.scale(1.4, 0.9, 0.85); // Elongated front-back, flattened top-bottom
+    
+    // Refine head shape for bird-like appearance
+    const headPositions = headGeometry.attributes.position;
+    for (let i = 0; i < headPositions.count; i++) {
+      const x = headPositions.getX(i);
+      const y = headPositions.getY(i);
+      const z = headPositions.getZ(i);
+      
+      // Create more pointed beak area (+X direction)
+      if (x > 0.08) {
+        const pointIntensity = (x - 0.08) / 0.08;
+        headPositions.setY(i, y * (1 - pointIntensity * 0.4)); // Compress vertically toward beak
+        headPositions.setZ(i, z * (1 - pointIntensity * 0.3)); // Narrow toward beak
+      }
+      
+      // Create rounded back of head (-X direction)
+      if (x < -0.05) {
+        const roundIntensity = Math.abs(x + 0.05) / 0.07;
+        headPositions.setY(i, y * (1 + roundIntensity * 0.1)); // Slightly bulge back of head
+      }
+    }
+    headPositions.needsUpdate = true;
+    headGeometry.computeVertexNormals();
+    
     const head = new THREE.Mesh(headGeometry, this.materials.feather);
     headGroup.add(head);
-    headGroup.position.set(0.18, 0, 0); // At end of neck
+    headGroup.position.set(0.25, 0.02, 0); // Position at end of neck
     neckGroup.add(headGroup);
     
     // Create beak - pointing forward
@@ -74,14 +143,42 @@ export class CrowBird extends BaseBird {
     headGroup.add(leftEye);
     headGroup.add(rightEye);
 
-    // Create tail - extends backward from body
+    // Create tail - seamlessly integrated with body rear
     const tailGroup = new THREE.Group();
-    const tailGeometry = new THREE.ConeGeometry(0.12, 0.35, 8);
-    tailGeometry.scale(1.2, 1, 0.4); // Flattened and wide
-    const tail = new THREE.Mesh(tailGeometry, this.materials.feather);
-    tail.rotation.z = Math.PI / 2; // Point backward along -X
-    tailGroup.add(tail);
-    tailGroup.position.set(-0.58, 0.02, 0); // Behind body
+    
+    // Tail base - blends smoothly with body
+    const tailBaseGeometry = new THREE.SphereGeometry(0.08, 8, 6);
+    tailBaseGeometry.scale(0.6, 0.7, 0.8); // Compressed to blend with body
+    const tailBase = new THREE.Mesh(tailBaseGeometry, this.materials.feather);
+    tailBase.position.set(0.0, 0.0, 0); // Connect to body
+    tailGroup.add(tailBase);
+    
+    // Tail fan - realistic crow tail shape
+    const tailFanGeometry = new THREE.SphereGeometry(0.12, 8, 6);
+    tailFanGeometry.scale(0.8, 0.4, 1.2); // Wide and flattened for crow tail
+    
+    // Shape the tail fan
+    const tailPositions = tailFanGeometry.attributes.position;
+    for (let i = 0; i < tailPositions.count; i++) {
+      const x = tailPositions.getX(i);
+      const y = tailPositions.getY(i);
+      const z = tailPositions.getZ(i);
+      
+      // Create fan shape extending backward
+      if (x < -0.05) {
+        const fanIntensity = Math.abs(x + 0.05) / 0.07;
+        tailPositions.setY(i, y * (1 - fanIntensity * 0.3)); // Flatten toward tip
+        tailPositions.setZ(i, z * (1 + fanIntensity * 0.4)); // Spread wider toward tip
+      }
+    }
+    tailPositions.needsUpdate = true;
+    tailFanGeometry.computeVertexNormals();
+    
+    const tailFan = new THREE.Mesh(tailFanGeometry, this.materials.feather);
+    tailFan.position.set(-0.15, 0.0, 0); // Extend backward from base
+    tailGroup.add(tailFan);
+    
+    tailGroup.position.set(-0.45, 0.0, 0); // Position at body rear
     bodyGroup.add(tailGroup);
 
     // Create wings extending outward from body (perpendicular to body axis)
