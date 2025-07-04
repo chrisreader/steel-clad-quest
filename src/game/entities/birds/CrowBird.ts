@@ -893,29 +893,30 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Wings completely folded parallel to body like real birds at rest
+    // Wings naturally folded back against body pointing toward tail like real birds
     
-    // Shoulder - slight inward rotation to start folding against body
-    leftShoulder.rotation.set(-0.1, -0.2, 0.2); // Slight down, slight inward tuck
-    rightShoulder.rotation.set(-0.1, -0.2, -0.2); // Slight down, slight inward tuck
+    // Shoulder position - point wings backward and slightly down against body
+    leftShoulder.rotation.set(-0.1, -0.4, 0); // Slight down, back toward tail
+    rightShoulder.rotation.set(-0.1, -0.4, 0); // Slight down, back toward tail
     
-    // Humerus - fold completely backward parallel to body length 
-    leftHumerus.rotation.set(0, -1.4, -0.3); // Almost perpendicular backward, inward tuck
-    rightHumerus.rotation.set(0, -1.4, 0.3); // Almost perpendicular backward, inward tuck
+    // Humerus - folded back along body length with slight inward tuck
+    leftHumerus.rotation.set(0, -0.5, -0.2); // Back along body, slight inward tuck
+    rightHumerus.rotation.set(0, -0.5, 0.2); // Back along body, slight inward tuck
     
-    // Forearm - fold tightly against body with strong inward rotation
+    // Forearm - increased backward fold to tuck tightly against body
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -2.0); // Tighter fold against body
-      rightForearm.rotation.set(0, 0, 2.0); // Tighter fold against body
+      leftForearm.rotation.set(0, 0, -1.7); // Increased backward fold
+      rightForearm.rotation.set(0, 0, 1.7); // Increased backward fold
     }
     
-    // Hand/wing tips - complete the parallel folding
+    // Hand/wing tips - point toward tail and tuck close to body
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, -0.5, -1.2); // Final fold to parallel body
-      rightHand.rotation.set(0, -0.5, 1.2); // Final fold to parallel body
+      leftHand.rotation.set(0, -0.3, -1.0); // Point toward tail, tucked close
+      rightHand.rotation.set(0, -0.3, 1.0); // Point toward tail, tucked close
     }
     
-    // Keep soaring feather orientation (removed animateFeathersForRest call)
+    // Animate feathers to lay flat along folded wings
+    this.animateFeathersForRest();
   }
 
   private animateAlertWings(
