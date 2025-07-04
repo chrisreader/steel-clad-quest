@@ -943,9 +943,9 @@ export class CrowBird extends BaseBird {
     const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
     const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
     
-    // Primary wing folding - rotate entire wing assembly inward against body
-    leftWingGroup.rotation.set(0, Math.PI / 2, 0);  // +90° to fold left wing inward
-    rightWingGroup.rotation.set(0, -Math.PI / 2, 0); // -90° to fold right wing inward
+    // Primary wing folding - rotate entire wing assembly backward against body
+    leftWingGroup.rotation.set(0, -Math.PI / 2, 0);  // -90° to fold left wing backward
+    rightWingGroup.rotation.set(0, Math.PI / 2, 0);   // +90° to fold right wing backward
     
     // Reset all joint rotations to neutral since main rotation handles folding
     leftShoulder.rotation.set(0, 0, 0);
