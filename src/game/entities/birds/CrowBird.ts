@@ -118,9 +118,9 @@ export class CrowBird extends BaseBird {
     leftWingGroup.add(leftWing);
     rightWingGroup.add(rightWing);
     
-    // Attach wings to upper shoulders - connected to body surface
-    leftWingGroup.position.set(0.2, 0.16, 0.16);  // Left shoulder, connected to body
-    rightWingGroup.position.set(0.2, 0.16, -0.16); // Right shoulder, connected to body
+    // Attach wings to upper shoulders - connected to body surface at body level
+    leftWingGroup.position.set(0.2, 0.05, 0.16);  // Left shoulder, at body level
+    rightWingGroup.position.set(0.2, 0.05, -0.16); // Right shoulder, at body level
     
     bodyGroup.add(leftWingGroup);
     bodyGroup.add(rightWingGroup);
