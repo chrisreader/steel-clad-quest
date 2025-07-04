@@ -167,23 +167,26 @@ export class CrowBird extends BaseBird {
     const humerusGeometry = new THREE.CapsuleGeometry(0.03, 0.24, 6, 8);
     const humerus = new THREE.Mesh(humerusGeometry, this.materials!.feather);
     
-    // Position humerus to extend laterally from shoulder
-    humerus.rotation.z = side * Math.PI / 2; // Align bone horizontally along Z-axis
-    humerus.position.set(0, 0, side * 0.12); // Extend outward
+    // Position humerus bone properly within its group
+    humerus.rotation.z = Math.PI / 2; // Horizontal orientation
+    humerus.position.set(0, 0, 0.12); // Center the bone in group
     humerusGroup.add(humerus);
+    
+    // Position humerus group to extend laterally from shoulder
+    humerusGroup.position.set(0, 0, side * 0.12);
     shoulderGroup.add(humerusGroup);
 
-    // FOREARM - Radius/Ulna bones (elbow to wrist)
+    // FOREARM - Radius/Ulna bones (elbow to wrist) 
     const forearmGroup = new THREE.Group();
     const forearmGeometry = new THREE.CapsuleGeometry(0.025, 0.28, 6, 8);
     const forearm = new THREE.Mesh(forearmGeometry, this.materials!.feather);
     
-    // Position forearm extending from humerus end
-    forearm.rotation.z = side * Math.PI / 2; // Align bone along Z-axis
-    forearm.position.set(0, 0, side * 0.14); // Extend further outward
+    // Position forearm bone properly within its group
+    forearm.rotation.z = Math.PI / 2; // Horizontal orientation
+    forearm.position.set(0, 0, 0.14); // Center the bone in group
     forearmGroup.add(forearm);
     
-    // Attach forearm to end of humerus (elbow joint)
+    // Attach forearm group to end of humerus bone (elbow joint)
     forearmGroup.position.set(0, 0, side * 0.24); // At end of humerus
     humerusGroup.add(forearmGroup);
 
@@ -192,12 +195,12 @@ export class CrowBird extends BaseBird {
     const handGeometry = new THREE.CapsuleGeometry(0.02, 0.16, 6, 8);
     const hand = new THREE.Mesh(handGeometry, this.materials!.feather);
     
-    // Position hand extending from forearm end
-    hand.rotation.z = side * Math.PI / 2; // Align bone along Z-axis
-    hand.position.set(0, 0, side * 0.08); // Extend to wingtip
+    // Position hand bone properly within its group
+    hand.rotation.z = Math.PI / 2; // Horizontal orientation
+    hand.position.set(0, 0, 0.08); // Center the bone in group
     handGroup.add(hand);
     
-    // Attach hand to end of forearm (wrist joint)
+    // Attach hand group to end of forearm bone (wrist joint)
     handGroup.position.set(0, 0, side * 0.28); // At end of forearm
     forearmGroup.add(handGroup);
 
