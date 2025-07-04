@@ -70,7 +70,7 @@ export class CrowBird extends BaseBird {
     tailGroup.add(tail);
     bodyGroup.add(tailGroup);
 
-    // Create wings using wing factory
+    // Create wings using wing factory - but store segments properly for animation
     const leftWingGroup = new THREE.Group();
     const rightWingGroup = new THREE.Group();
     
@@ -80,7 +80,7 @@ export class CrowBird extends BaseBird {
     leftWingGroup.add(leftWingResult.wing);
     rightWingGroup.add(rightWingResult.wing);
     
-    // Store wing segments for animation
+    // CRITICAL: Store wing segments exactly like the original for proper animation
     this.wingSegments = {
       left: leftWingResult.segments,
       right: rightWingResult.segments
