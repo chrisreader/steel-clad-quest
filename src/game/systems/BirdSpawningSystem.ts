@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CrowBird } from '../birds/species/CrowBird';
+import { CrowBird } from '../entities/birds/CrowBird';
 import { SpawnableEntity, SpawningConfig } from '../../types/SpawnableEntity';
 import { BirdType } from '../../types/GameTypes';
 
