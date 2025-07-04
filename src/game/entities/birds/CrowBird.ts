@@ -881,24 +881,24 @@ export class CrowBird extends BaseBird {
     const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
     const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
     
-    // Fold wings naturally against body (not fully backward)
-    leftWingGroup.rotation.set(0, -Math.PI / 3, 0);  // -60° natural fold
-    rightWingGroup.rotation.set(0, Math.PI / 3, 0);   // +60° natural fold
+    // Fold wings tightly against body - like real birds at rest
+    leftWingGroup.rotation.set(0, -Math.PI / 2, 0);   // -90° tight fold
+    rightWingGroup.rotation.set(0, Math.PI / 2, 0);    // +90° tight fold
     
-    // Natural resting joint positions
-    leftShoulder.rotation.set(0.1, 0, 0);
-    rightShoulder.rotation.set(-0.1, 0, 0);
-    leftHumerus.rotation.set(0, 0.2, 0);
-    rightHumerus.rotation.set(0, -0.2, 0);
+    // Tighter resting joint positions for more natural tucked appearance
+    leftShoulder.rotation.set(0.2, 0, 0.1);   // Slightly raised and angled
+    rightShoulder.rotation.set(-0.2, 0, -0.1);
+    leftHumerus.rotation.set(0, 0.4, 0);      // More tucked toward body
+    rightHumerus.rotation.set(0, -0.4, 0);
     
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.8);  // Folded against body
-      rightForearm.rotation.set(0, 0, 0.8);
+      leftForearm.rotation.set(0, 0, -1.0);   // Forearm tightly folded
+      rightForearm.rotation.set(0, 0, 1.0);
     }
     
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.3);     // Wingtips tucked
-      rightHand.rotation.set(0, 0, 0.3);
+      leftHand.rotation.set(0, 0, -0.5);      // Wingtips completely tucked back
+      rightHand.rotation.set(0, 0, 0.5);
     }
     
     this.animateFeathersForRest();
