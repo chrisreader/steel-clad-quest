@@ -1263,9 +1263,9 @@ export class CrowBird extends BaseBird {
     if (!leftLegGroup || !rightLegGroup) return;
 
     if (this.flightMode !== FlightMode.GROUNDED) {
-      // Flight leg position - fold entire leg groups backward toward tail (Z-axis rotation)
+      // Flight leg position - fold both leg groups backward toward tail (same direction)
       leftLegGroup.rotation.z = Math.PI / 4; // 45 degrees backward toward tail
-      rightLegGroup.rotation.z = -Math.PI / 4; // Mirror for right leg
+      rightLegGroup.rotation.z = Math.PI / 4; // Same direction for both legs
     } else {
       // Ground leg position - legs in natural standing position
       leftLegGroup.rotation.z = 0;
