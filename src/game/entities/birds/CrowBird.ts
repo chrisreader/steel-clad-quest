@@ -939,20 +939,26 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Wings naturally folded back against body pointing toward tail like real birds
-    leftShoulder.rotation.set(-0.1, -0.4, 0);
-    rightShoulder.rotation.set(-0.1, -0.4, 0);
-    leftHumerus.rotation.set(0, -0.5, -0.2);
-    rightHumerus.rotation.set(0, -0.5, 0.2);
+    // Fold wings naturally against body sides like real resting birds
     
+    // Shoulder joint: Pull wings close to body, rotate inward toward body centerline
+    leftShoulder.rotation.set(-0.2, 0.8, -0.3);   // Pull left wing toward body center
+    rightShoulder.rotation.set(-0.2, -0.8, 0.3);  // Pull right wing toward body center
+    
+    // Humerus: Point backward along body axis (toward tail) instead of outward
+    leftHumerus.rotation.set(-0.1, 1.2, -0.8);    // Point toward tail, close to body
+    rightHumerus.rotation.set(-0.1, -1.2, 0.8);   // Point toward tail, close to body
+    
+    // Forearm: Fold tightly against humerus, creating compact wing fold
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -1.7);
-      rightForearm.rotation.set(0, 0, 1.7);
+      leftForearm.rotation.set(0.2, 0.5, -2.2);   // Fold inward and back
+      rightForearm.rotation.set(0.2, -0.5, 2.2);  // Fold inward and back
     }
     
+    // Hand/wingtip: Tuck under body toward tail for compact resting pose
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, -0.3, -1.0);
-      rightHand.rotation.set(0, -0.3, 1.0);
+      leftHand.rotation.set(0.1, 0.8, -1.8);      // Tuck wingtip under/back
+      rightHand.rotation.set(0.1, -0.8, 1.8);     // Tuck wingtip under/back
     }
     
     this.animateFeathersForRest();
