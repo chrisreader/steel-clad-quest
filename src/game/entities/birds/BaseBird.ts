@@ -41,6 +41,7 @@ export interface WingSegments {
   hand: THREE.Mesh;
   primaryFeathers: THREE.Mesh[];
   secondaryFeathers: THREE.Mesh[];
+  covertFeathers?: THREE.Mesh[];
 }
 
 export interface BirdConfig {

@@ -267,19 +267,23 @@ export class CrowBird extends BaseBird {
     handGroup.position.set(0, 0, side * 0.28); // At end of forearm
     forearmGroup.add(handGroup);
 
-    // PRIMARY FEATHERS - Create wing surface extending from wingtip backward
+    // PRIMARY FEATHERS - Create wing surface along wing bones
     const primaryFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 6; i++) {
       const featherLength = 0.3 - (i * 0.03); // Longest at wingtip
       const featherGeometry = new THREE.PlaneGeometry(0.06, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers extending backward from hand bone
-      feather.position.set(-featherLength / 2, 0, side * (i * 0.02)); // Spread along hand
+      // Position feathers along hand bone, following wing direction
+      feather.position.set(-featherLength / 3, 0, side * (i * 0.02)); // Spread along hand
       
-      // Orient feathers to create wing surface extending backward
-      feather.rotation.y = side * Math.PI / 2; // Face along wing span direction
-      feather.rotation.z = -i * 0.05; // Slight fan spread
+      // Orient feathers to lay along wing surface initially (grounded position)
+      feather.rotation.x = -Math.PI / 2; // Lay flat along wing surface
+      feather.rotation.y = side * 0.1; // Slight angle following wing curve
+      feather.rotation.z = -i * 0.02; // Slight overlap pattern
+      
+      // Store original rotations for animation
+      feather.userData.originalRotation = { x: feather.rotation.x, y: feather.rotation.y, z: feather.rotation.z };
       
       handGroup.add(feather);
       primaryFeathers.push(feather);
@@ -292,30 +296,41 @@ export class CrowBird extends BaseBird {
       const featherGeometry = new THREE.PlaneGeometry(0.05, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position along forearm bone, extending backward
-      feather.position.set(-featherLength / 2, 0, side * (i * 0.04)); 
+      // Position along forearm bone, following wing direction
+      feather.position.set(-featherLength / 3, 0, side * (i * 0.04)); 
       
-      // Orient to create continuous wing surface
-      feather.rotation.y = side * Math.PI / 2; // Face along wing span
-      feather.rotation.z = -i * 0.03; // Slight overlap
+      // Orient to lay along wing surface initially (grounded position)
+      feather.rotation.x = -Math.PI / 2; // Lay flat along wing surface
+      feather.rotation.y = side * 0.08; // Slight angle following wing curve
+      feather.rotation.z = -i * 0.02; // Slight overlap pattern
+      
+      // Store original rotations for animation
+      feather.userData.originalRotation = { x: feather.rotation.x, y: feather.rotation.y, z: feather.rotation.z };
       
       forearmGroup.add(feather);
       secondaryFeathers.push(feather);
     }
 
     // COVERT FEATHERS - Small feathers covering the shoulder/humerus junction
+    const covertFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 4; i++) {
       const featherLength = 0.15 - (i * 0.01);
       const covertGeometry = new THREE.PlaneGeometry(0.04, featherLength);
       const covert = new THREE.Mesh(covertGeometry, this.materials!.feather);
       
       // Position along humerus bone
-      covert.position.set(-featherLength / 3, 0, side * (i * 0.03));
+      covert.position.set(-featherLength / 4, 0, side * (i * 0.03));
       
-      // Orient to cover wing base
-      covert.rotation.y = side * Math.PI / 2;
+      // Orient to lay along wing base initially (grounded position)
+      covert.rotation.x = -Math.PI / 2; // Lay flat along wing surface
+      covert.rotation.y = side * 0.05; // Slight angle following wing curve
+      covert.rotation.z = -i * 0.01; // Slight overlap
+      
+      // Store original rotations for animation
+      covert.userData.originalRotation = { x: covert.rotation.x, y: covert.rotation.y, z: covert.rotation.z };
       
       humerusGroup.add(covert);
+      covertFeathers.push(covert);
     }
 
     // Store wing segments for animation
@@ -324,7 +339,8 @@ export class CrowBird extends BaseBird {
       forearm: forearm,
       hand: hand,
       primaryFeathers: primaryFeathers,
-      secondaryFeathers: secondaryFeathers
+      secondaryFeathers: secondaryFeathers,
+      covertFeathers: covertFeathers
     };
 
     // Store group references for joint animation
@@ -942,31 +958,81 @@ export class CrowBird extends BaseBird {
   private animateFeathersForRest(): void {
     if (!this.wingSegments) return;
     
-    // Feathers tight against body
+    // Feathers lay flat along wing surface, tight against body
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.z = -i * 0.02; // Overlapped
-      feather.scale.y = 0.8; // Slightly contracted
+      feather.rotation.x = -Math.PI / 2; // Lay flat along wing
+      feather.rotation.y = 0.1; // Slight curve following wing
+      feather.rotation.z = -i * 0.02; // Overlapped pattern
+      feather.scale.y = 0.9; // Slightly contracted
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.z = i * 0.02;
-      feather.scale.y = 0.8;
+      feather.rotation.x = -Math.PI / 2; // Lay flat along wing
+      feather.rotation.y = -0.1; // Slight curve following wing
+      feather.rotation.z = i * 0.02; // Overlapped pattern
+      feather.scale.y = 0.9;
     });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -Math.PI / 2;
+      feather.rotation.y = 0.08;
+      feather.rotation.z = -i * 0.02;
+      feather.scale.y = 0.9;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -Math.PI / 2;
+      feather.rotation.y = -0.08;
+      feather.rotation.z = i * 0.02;
+      feather.scale.y = 0.9;
+    });
+    
+    if (this.wingSegments.left.covertFeathers) {
+      this.wingSegments.left.covertFeathers.forEach((feather, i) => {
+        feather.rotation.x = -Math.PI / 2;
+        feather.rotation.y = 0.05;
+        feather.rotation.z = -i * 0.01;
+      });
+    }
+    
+    if (this.wingSegments.right.covertFeathers) {
+      this.wingSegments.right.covertFeathers.forEach((feather, i) => {
+        feather.rotation.x = -Math.PI / 2;
+        feather.rotation.y = -0.05;
+        feather.rotation.z = i * 0.01;
+      });
+    }
   }
 
   private animateFeathersForPowerFlight(wingBeat: number): void {
     if (!this.wingSegments) return;
     
-    // Feathers spread and angled for maximum thrust
+    // Feathers perpendicular to wing surface for maximum thrust
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.y = -Math.PI / 8 * i + wingBeat * 0.6;
-      feather.rotation.z = -wingBeat * 0.3;
-      feather.scale.y = 1.0;
+      feather.rotation.x = wingBeat * 0.3; // Dynamic angle for thrust
+      feather.rotation.y = -Math.PI / 8 * i + wingBeat * 0.4;
+      feather.rotation.z = -wingBeat * 0.2;
+      feather.scale.y = 1.1; // Extended for power
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.y = Math.PI / 8 * i - wingBeat * 0.6;
-      feather.rotation.z = wingBeat * 0.3;
+      feather.rotation.x = -wingBeat * 0.3; // Dynamic angle for thrust
+      feather.rotation.y = Math.PI / 8 * i - wingBeat * 0.4;
+      feather.rotation.z = wingBeat * 0.2;
+      feather.scale.y = 1.1;
+    });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = wingBeat * 0.2;
+      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3;
+      feather.rotation.z = -wingBeat * 0.15;
+      feather.scale.y = 1.0;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -wingBeat * 0.2;
+      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3;
+      feather.rotation.z = wingBeat * 0.15;
       feather.scale.y = 1.0;
     });
   }
@@ -974,16 +1040,32 @@ export class CrowBird extends BaseBird {
   private animateFeathersForFlight(wingBeat: number): void {
     if (!this.wingSegments) return;
     
-    // Normal flight feather positions
+    // Feathers perpendicular to wing for lift generation
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.4;
-      feather.rotation.z = -wingBeat * 0.2;
+      feather.rotation.x = wingBeat * 0.2; // Less aggressive than takeoff
+      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3;
+      feather.rotation.z = -wingBeat * 0.15;
       feather.scale.y = 1.0;
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.4;
-      feather.rotation.z = wingBeat * 0.2;
+      feather.rotation.x = -wingBeat * 0.2; // Less aggressive than takeoff
+      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3;
+      feather.rotation.z = wingBeat * 0.15;
+      feather.scale.y = 1.0;
+    });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = wingBeat * 0.15;
+      feather.rotation.y = -Math.PI / 16 * i + wingBeat * 0.2;
+      feather.rotation.z = -wingBeat * 0.1;
+      feather.scale.y = 1.0;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -wingBeat * 0.15;
+      feather.rotation.y = Math.PI / 16 * i - wingBeat * 0.2;
+      feather.rotation.z = wingBeat * 0.1;
       feather.scale.y = 1.0;
     });
   }
@@ -993,34 +1075,66 @@ export class CrowBird extends BaseBird {
     
     const airFlow = Math.sin(this.flapCycle * 0.2) * 0.03;
     
-    // Feathers fully extended and slightly adjusting to air currents
+    // Feathers perpendicular to wing for maximum lift with slight air adjustments
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = 0.1 + airFlow; // Slight upward angle for lift
       feather.rotation.y = -Math.PI / 16 * i;
       feather.rotation.z = airFlow + i * 0.01;
-      feather.scale.y = 1.1; // Slightly extended
+      feather.scale.y = 1.1; // Extended for lift
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -0.1 - airFlow; // Slight upward angle for lift
       feather.rotation.y = Math.PI / 16 * i;
       feather.rotation.z = -airFlow - i * 0.01;
       feather.scale.y = 1.1;
+    });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = 0.05 + airFlow * 0.5;
+      feather.rotation.y = -Math.PI / 20 * i;
+      feather.rotation.z = airFlow * 0.5;
+      feather.scale.y = 1.05;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -0.05 - airFlow * 0.5;
+      feather.rotation.y = Math.PI / 20 * i;
+      feather.rotation.z = -airFlow * 0.5;
+      feather.scale.y = 1.05;
     });
   }
 
   private animateFeathersForLanding(): void {
     if (!this.wingSegments) return;
     
-    // Feathers spread wide for air braking
+    // Feathers perpendicular and spread wide for maximum air braking
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = 0.4; // Strong upward angle for braking
       feather.rotation.y = -Math.PI / 6 * i;
       feather.rotation.z = -0.3;
       feather.scale.y = 1.2; // Maximum extension for drag
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -0.4; // Strong upward angle for braking
       feather.rotation.y = Math.PI / 6 * i;
       feather.rotation.z = 0.3;
       feather.scale.y = 1.2;
+    });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = 0.3;
+      feather.rotation.y = -Math.PI / 8 * i;
+      feather.rotation.z = -0.2;
+      feather.scale.y = 1.15;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -0.3;
+      feather.rotation.y = Math.PI / 8 * i;
+      feather.rotation.z = 0.2;
+      feather.scale.y = 1.15;
     });
   }
 
