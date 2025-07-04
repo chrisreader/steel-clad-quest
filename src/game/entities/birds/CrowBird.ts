@@ -939,43 +939,20 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Reset bone orientations to lay flat against body
-    
-    // Get actual bone meshes from the groups
-    const leftHumerusBone = leftHumerus.children[0] as THREE.Mesh;
-    const rightHumerusBone = rightHumerus.children[0] as THREE.Mesh;
-    const leftForearmBone = leftForearm?.children[0] as THREE.Mesh;
-    const rightForearmBone = rightForearm?.children[0] as THREE.Mesh;
-    const leftHandBone = leftHand?.children[0] as THREE.Mesh;
-    const rightHandBone = rightHand?.children[0] as THREE.Mesh;
-    
-    // Orient humerus bones along body X-axis instead of outward Z-axis
-    if (leftHumerusBone) leftHumerusBone.rotation.x = 0; // Align along X-axis (body direction)
-    if (rightHumerusBone) rightHumerusBone.rotation.x = 0;
-    
-    // Orient forearm bones to continue along body
-    if (leftForearmBone) leftForearmBone.rotation.x = 0;
-    if (rightForearmBone) rightForearmBone.rotation.x = 0;
-    
-    // Orient hand bones to continue along body
-    if (leftHandBone) leftHandBone.rotation.x = 0;
-    if (rightHandBone) rightHandBone.rotation.x = 0;
-    
-    // Subtle group rotations to bring wings closer to body sides
-    leftShoulder.rotation.set(0, 0, 0.1);   // Slight downward tilt
-    rightShoulder.rotation.set(0, 0, -0.1);
-    
-    leftHumerus.rotation.set(0, 0.2, 0);    // Slight inward rotation
-    rightHumerus.rotation.set(0, -0.2, 0);
+    // Wings naturally folded back against body pointing toward tail like real birds
+    leftShoulder.rotation.set(-0.1, -0.4, 0);
+    rightShoulder.rotation.set(-0.1, -0.4, 0);
+    leftHumerus.rotation.set(0, -0.5, -0.2);
+    rightHumerus.rotation.set(0, -0.5, 0.2);
     
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.3);   // Fold slightly against body
-      rightForearm.rotation.set(0, 0, 0.3);
+      leftForearm.rotation.set(0, 0, -1.7);
+      rightForearm.rotation.set(0, 0, 1.7);
     }
     
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.2);      // Slight tuck
-      rightHand.rotation.set(0, 0, 0.2);
+      leftHand.rotation.set(0, -0.3, -1.0);
+      rightHand.rotation.set(0, -0.3, 1.0);
     }
     
     this.animateFeathersForRest();
