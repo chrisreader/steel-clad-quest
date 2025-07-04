@@ -558,6 +558,13 @@ export class SceneManager {
     return [];
   }
   
+  public getBirds(): any[] {
+    if (this.birdSpawningSystem) {
+      return this.birdSpawningSystem.getAllLivingBirds();
+    }
+    return [];
+  }
+  
   public updateDistanceFog(playerPosition: THREE.Vector3): void {
     this.lastPlayerPosition.copy(playerPosition);
     this.updateShadowCamera(playerPosition);

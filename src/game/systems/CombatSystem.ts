@@ -11,6 +11,7 @@ import { BaseBow } from '../weapons';
 export class CombatSystem {
   private player: Player;
   private enemies: Enemy[] = [];
+  private birds: any[] = []; // Store birds for combat detection
   private gold: Gold[] = [];
   private scene: THREE.Scene;
   private effectsManager: EffectsManager;
@@ -81,8 +82,9 @@ export class CombatSystem {
     }
     
     // FIXED: Only check attacks during slash phase with dynamic hitbox positioning
-    if (this.player.isAttacking() && !this.bowReadyToFire && this.enemies.length > 0) {
+    if (this.player.isAttacking() && !this.bowReadyToFire && (this.enemies.length > 0 || this.birds.length > 0)) {
       this.checkDynamicSwordAttacks();
+      this.checkBirdAttacks();
     }
     
     if (this.gold.length > 0) {
@@ -297,6 +299,65 @@ export class CombatSystem {
     }
   }
   
+  private checkBirdAttacks(): void {
+    const currentWeapon = this.player.getEquippedWeapon();
+    if (!currentWeapon || !['sword', 'axe', 'mace'].includes(currentWeapon.getConfig().type)) {
+      return;
+    }
+
+    // Get swing progress from player animation
+    const swingData = this.player.getSwordSwing();
+    if (!swingData || !swingData.isActive) {
+      return;
+    }
+
+    // Calculate swing progress (0 = start, 1 = end)
+    const elapsed = swingData.clock.getElapsedTime() - swingData.startTime;
+    const slashStart = swingData.phases.windup;
+    const slashEnd = swingData.phases.windup + swingData.phases.slash;
+    
+    // Only check collisions during the actual slash phase
+    if (elapsed < slashStart || elapsed > slashEnd) {
+      return;
+    }
+
+    // Check sword hitbox against bird hitboxes
+    const swordHitBox = this.player.getSwordHitBox();
+    const swordBox = new THREE.Box3().setFromObject(swordHitBox);
+    
+    let birdHit = false;
+    
+    this.birds.forEach(bird => {
+      if (bird.isDead) return; // Skip dead birds
+      
+      const birdHitBox = bird.getHitBox();
+      if (!birdHitBox) return;
+      
+      const birdBox = new THREE.Box3().setFromObject(birdHitBox);
+      
+      if (swordBox.intersectsBox(birdBox)) {
+        birdHit = true;
+        
+        // Deal 1 damage (instant kill for birds)
+        bird.takeDamage(1);
+        
+        // Create small blood effect
+        const birdPosition = bird.getPosition();
+        const playerPosition = this.player.getPosition();
+        const hitDirection = birdPosition.clone().sub(playerPosition).normalize();
+        
+        this.effectsManager.createRealisticBloodEffect(birdPosition, hitDirection, 0.3);
+        this.audioManager.play('sword_hit');
+        
+        console.log(`⚔️🐦 [CombatSystem] Bird hit and killed with sword`);
+      }
+    });
+    
+    if (birdHit) {
+      console.log(`⚔️🐦 [CombatSystem] Bird combat collision detected`);
+    }
+  }
+  
   public handlePlayerDamage(damage: number, damageSource: THREE.Vector3): void {
     const playerPosition = this.player.getPosition();
     const damageDirection = damageSource.clone().sub(playerPosition).normalize();
@@ -373,6 +434,10 @@ export class CombatSystem {
   
   public addEnemy(enemy: Enemy): void {
     this.enemies.push(enemy);
+  }
+  
+  public setBirds(birds: any[]): void {
+    this.birds = birds.filter(bird => !bird.isDead); // Only track living birds
   }
   
   public getEnemies(): Enemy[] {

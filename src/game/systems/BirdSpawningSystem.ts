@@ -13,6 +13,7 @@ export interface BirdSpawningConfig extends SpawningConfig {
 export class BirdSpawningSystem {
   private scene: THREE.Scene;
   private birds: Map<string, SpawnableEntity> = new Map();
+  private birdCorpses: Map<string, SpawnableEntity> = new Map();
   private config: BirdSpawningConfig;
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private playerMovementAccumulator: number = 0;
@@ -76,9 +77,25 @@ export class BirdSpawningSystem {
       // Handle opacity fading based on distance
       this.updateBirdOpacity(bird, playerPosition);
       
+      // Check if bird died and became corpse
+      if ((bird as any).isDead && (bird as any).birdState === 'dead') {
+        console.log(`🐦💀 [BirdSpawningSystem] Bird ${id} died, moving to corpses`);
+        this.birdCorpses.set(id, bird);
+        this.birds.delete(id);
+        return;
+      }
+      
       // Mark for cleanup if needed
       if (bird.state === 'despawning' || bird.state === 'dead') {
         this.removeBird(id);
+      }
+    });
+    
+    // Update corpses (they just wait for cleanup timer)
+    this.birdCorpses.forEach((corpse, id) => {
+      corpse.update(deltaTime, playerPosition);
+      if (corpse.state === 'despawning') {
+        this.removeCorpse(id);
       }
     });
   }
@@ -254,6 +271,17 @@ export class BirdSpawningSystem {
       console.log(`🐦 [BirdSpawningSystem] Removed bird: ${birdId}`);
     }
   }
+  
+  private removeCorpse(corpseId: string): void {
+    const corpse = this.birdCorpses.get(corpseId);
+    if (corpse) {
+      this.scene.remove(corpse.mesh);
+      corpse.dispose();
+      this.birdCorpses.delete(corpseId);
+      
+      console.log(`🐦💀 [BirdSpawningSystem] Removed corpse: ${corpseId}`);
+    }
+  }
 
   public getBirdCount(): number {
     return this.birds.size;
@@ -262,12 +290,24 @@ export class BirdSpawningSystem {
   public getAllBirds(): SpawnableEntity[] {
     return Array.from(this.birds.values());
   }
+  
+  public getAllLivingBirds(): SpawnableEntity[] {
+    return Array.from(this.birds.values()).filter(bird => !(bird as any).isDead);
+  }
+  
+  public getCorpseCount(): number {
+    return this.birdCorpses.size;
+  }
 
   public dispose(): void {
     this.birds.forEach((bird, id) => {
       this.removeBird(id);
     });
     
-    console.log('🐦 [BirdSpawningSystem] Disposed all birds');
+    this.birdCorpses.forEach((corpse, id) => {
+      this.removeCorpse(id);
+    });
+    
+    console.log('🐦 [BirdSpawningSystem] Disposed all birds and corpses');
   }
 }

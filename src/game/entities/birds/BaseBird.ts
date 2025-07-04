@@ -10,7 +10,8 @@ export enum BirdState {
   FLYING = 'flying',
   SOARING = 'soaring',
   LANDING = 'landing',
-  PREENING = 'preening'
+  PREENING = 'preening',
+  DEAD = 'dead'
 }
 
 export enum FlightMode {
@@ -74,6 +75,13 @@ export abstract class BaseBird implements SpawnableEntity {
   public bodyParts: BirdBodyParts | null = null;
   public config: BirdConfig;
   
+  // Combat properties
+  public health: number = 1;
+  public maxHealth: number = 1;
+  public isDead: boolean = false;
+  public deathTime: number = 0;
+  public hitBox: THREE.Mesh | null = null;
+  
   // Animation properties
   protected walkCycle: number = 0;
   protected flapCycle: number = 0;
@@ -119,6 +127,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.mesh.position.copy(this.position);
     
     this.createBirdBody();
+    this.createHitBox();
     this.state = EntityLifecycleState.ACTIVE;
     this.scheduleNextStateChange();
     
@@ -130,14 +139,59 @@ export abstract class BaseBird implements SpawnableEntity {
   }
 
   protected abstract createBirdBody(): void;
+  protected abstract createHitBox(): void;
   protected abstract updateBirdBehavior(deltaTime: number, playerPosition: THREE.Vector3): void;
   protected abstract updateAnimation(deltaTime: number): void;
+  
+  public takeDamage(damage: number): void {
+    if (this.isDead) return;
+    
+    this.health -= damage;
+    if (this.health <= 0) {
+      this.health = 0;
+      this.die();
+    }
+  }
+  
+  public die(): void {
+    if (this.isDead) return;
+    
+    this.isDead = true;
+    this.deathTime = Date.now();
+    this.birdState = BirdState.DEAD;
+    this.velocity.set(0, 0, 0);
+    
+    // Transform to corpse position - lay flat on ground
+    if (this.bodyParts) {
+      this.bodyParts.body.rotation.z = Math.PI / 2; // Rotate 90 degrees to lie on side
+      this.position.y = this.groundLevel + 0.1; // Place on ground
+      this.mesh.position.copy(this.position);
+    }
+    
+    console.log(`🐦💀 [${this.config.species}] Died and became corpse`);
+  }
+  
+  public getHitBox(): THREE.Mesh | null {
+    return this.hitBox;
+  }
+  
+  public getPosition(): THREE.Vector3 {
+    return this.position.clone();
+  }
 
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
     if (this.state !== EntityLifecycleState.ACTIVE) return;
 
     this.age += deltaTime;
     this.distanceFromPlayer = this.position.distanceTo(playerPosition);
+    
+    // Handle dead bird corpse timer
+    if (this.isDead) {
+      if (Date.now() - this.deathTime > 30000) { // 30 seconds
+        this.state = EntityLifecycleState.DESPAWNING;
+      }
+      return; // Dead birds don't update behavior or physics
+    }
     
     this.updateBirdBehavior(deltaTime, playerPosition);
     this.updatePhysics(deltaTime);

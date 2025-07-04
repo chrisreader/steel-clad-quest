@@ -354,6 +354,10 @@ export class GameEngine {
           this.combatSystem!.addEnemy(enemy);
         }
       });
+      
+      // Update combat system with current birds
+      const sceneBirds = this.sceneManager.getBirds();
+      this.combatSystem.setBirds(sceneBirds);
     }
     
     // Update combat system

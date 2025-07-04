@@ -176,6 +176,25 @@ export class CrowBird extends BaseBird {
 
 
     this.mesh.add(bodyGroup);
+    
+    console.log(`🐦 [CrowBird] Created realistic crow body with anatomical wings and legs`);
+  }
+
+  protected createHitBox(): void {
+    // Create invisible hitbox around bird body
+    const hitBoxGeometry = new THREE.BoxGeometry(0.8, 0.6, 0.8);
+    const hitBoxMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xff0000, 
+      transparent: true, 
+      opacity: 0, // Invisible by default
+      wireframe: true 
+    });
+    
+    this.hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
+    this.hitBox.position.set(0, 0, 0); // Center on bird body
+    this.mesh.add(this.hitBox);
+    
+    console.log(`🐦 [CrowBird] Created hitbox for combat detection`);
   }
 
   private createSimpleMaterials(): void {
