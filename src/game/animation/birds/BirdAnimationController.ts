@@ -172,10 +172,8 @@ export class BirdAnimationController {
         0.05
       );
 
-      // Gentle feather adjustments for air currents
-      if (flightMode !== FlightMode.GROUNDED) {
-        this.animateFeathersForSoaring();
-      }
+      // Apply soaring feather positioning for both flight and ground
+      this.animateFeathersForSoaring();
     }
 
     // Landing/takeoff specific wing positions
