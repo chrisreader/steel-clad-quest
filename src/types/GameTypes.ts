@@ -134,14 +134,6 @@ export enum BirdType {
   SPARROW = 'sparrow'
 }
 
-// Dragon types enum
-export enum DragonType {
-  RED = 'red',
-  BLUE = 'blue',
-  GREEN = 'green',
-  BLACK = 'black'
-}
-
 // Enemy interface for the game entity
 export interface Enemy {
   mesh: THREE.Group;

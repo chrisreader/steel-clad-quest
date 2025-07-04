@@ -6,7 +6,6 @@ import { PhysicsManager } from './PhysicsManager';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
 import { BirdSpawningSystem } from '../systems/BirdSpawningSystem';
-import { DragonSpawningSystem } from '../systems/DragonSpawningSystem';
 import { RingQuadrantSystem, RegionCoordinates, Region } from '../world/RingQuadrantSystem';
 import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
 import { StructureGenerator } from '../world/StructureGenerator';
@@ -88,9 +87,6 @@ export class SceneManager {
   // Bird spawning system
   private birdSpawningSystem: BirdSpawningSystem | null = null;
   
-  // Dragon spawning system
-  private dragonSpawningSystem: DragonSpawningSystem | null = null;
-  
   // Volumetric fog system
   private volumetricFogSystem: VolumetricFogSystem | null = null;
   
@@ -143,10 +139,6 @@ export class SceneManager {
     // Initialize bird spawning system
     this.birdSpawningSystem = new BirdSpawningSystem(this.scene);
     console.log('🐦 [SceneManager] Bird spawning system initialized');
-    
-    // Initialize dragon spawning system
-    this.dragonSpawningSystem = new DragonSpawningSystem(this.scene);
-    console.log('🐉 [SceneManager] Dragon spawning system initialized');
     
     // Initialize environment collision manager
     this.environmentCollisionManager = new EnvironmentCollisionManager(this.scene, this.physicsManager);
@@ -608,11 +600,6 @@ export class SceneManager {
     // Update bird spawning system
     if (this.birdSpawningSystem && playerPosition) {
       this.birdSpawningSystem.update(deltaTime, playerPosition);
-    }
-    
-    // Update dragon spawning system
-    if (this.dragonSpawningSystem && playerPosition) {
-      this.dragonSpawningSystem.update(deltaTime, playerPosition);
     }
     
     // Update 3D grass system with game time for day/night color changes
@@ -1214,11 +1201,6 @@ export class SceneManager {
     if (this.birdSpawningSystem) {
       this.birdSpawningSystem.dispose();
       this.birdSpawningSystem = null;
-    }
-    
-    if (this.dragonSpawningSystem) {
-      this.dragonSpawningSystem.dispose();
-      this.dragonSpawningSystem = null;
     }
     
     for (const [regionKey, region] of this.loadedRegions.entries()) {
