@@ -268,14 +268,10 @@ export abstract class BaseBird implements SpawnableEntity {
       return;
     }
     
-    const toTarget = currentWaypoint.clone().sub(this.position);
-    toTarget.y = 0;
+    // Calculate direction to target (including Y component for proper 3D flight)
+    const toTarget = currentWaypoint.clone().sub(this.position).normalize();
     
-    if (toTarget.length() < 0.1) {
-      this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
-      return;
-    }
-    
+    // Update heading based on horizontal movement only
     this.targetHeading = Math.atan2(toTarget.z, toTarget.x);
     
     let headingDiff = this.targetHeading - this.currentHeading;
@@ -286,8 +282,11 @@ export abstract class BaseBird implements SpawnableEntity {
     const headingChange = THREE.MathUtils.clamp(headingDiff, -maxTurnRate, maxTurnRate);
     
     this.currentHeading += headingChange;
+    
+    // CRITICAL: Set mesh rotation to match flight direction
     this.mesh.rotation.y = this.currentHeading;
     
+    // Set velocity to move bird forward in its facing direction
     const forwardDirection = new THREE.Vector3(
       Math.cos(this.currentHeading),
       0,
@@ -298,6 +297,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.velocity.x = forwardDirection.x * speed;
     this.velocity.z = forwardDirection.z * speed;
     
+    // Handle altitude separately
     const altitudeDiff = currentWaypoint.y - this.position.y;
     if (Math.abs(altitudeDiff) > 1) {
       const climbRate = THREE.MathUtils.clamp(altitudeDiff * 0.3, -1.5, 1.5);
@@ -309,18 +309,20 @@ export abstract class BaseBird implements SpawnableEntity {
       this.wingBeatIntensity = 1.0;
     }
     
-    const targetBankAngle = headingChange * 1.5;
+    // Calculate banking angle for visual effect only (don't apply to wings)
     this.visualBankAngle = THREE.MathUtils.lerp(
       this.visualBankAngle, 
-      targetBankAngle, 
+      headingChange * 1.5, 
       deltaTime * 4
     );
     
-    if (this.bodyParts?.leftWing && this.bodyParts?.rightWing) {
-      const clampedBanking = THREE.MathUtils.clamp(this.visualBankAngle, -0.3, 0.3);
-      this.bodyParts.leftWing.rotation.z = clampedBanking;
-      this.bodyParts.rightWing.rotation.z = -clampedBanking;
+    // Apply subtle body banking without affecting wing animations
+    if (this.bodyParts?.body) {
+      const clampedBanking = THREE.MathUtils.clamp(this.visualBankAngle, -0.2, 0.2);
+      this.bodyParts.body.rotation.z = clampedBanking;
     }
+    
+    console.log(`🐦 [${this.config.species}] Flying: heading=${(this.currentHeading * 180/Math.PI).toFixed(1)}°, velocity=(${this.velocity.x.toFixed(1)}, ${this.velocity.z.toFixed(1)}) speed=${speed}`);
   }
 
   public dispose(): void {

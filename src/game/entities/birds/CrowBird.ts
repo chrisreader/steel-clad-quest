@@ -717,49 +717,6 @@ export class CrowBird extends BaseBird {
     super.generateFlightPath();
   }
 
-  private generateOldFlightPath(): void {
-    this.flightPath = [];
-    this.currentPathIndex = 0;
-    
-    const pathLength = 3 + Math.floor(Math.random() * 3); // 3-5 points (shorter paths)
-    const centerPoint = this.homePosition.clone();
-    
-    // Constrain altitude to safe levels
-    const targetAltitude = this.config.flightAltitude.min + 
-      Math.random() * (this.config.flightAltitude.max - this.config.flightAltitude.min);
-    centerPoint.y = Math.min(targetAltitude, this.maxAltitude - 5); // Safety margin
-    
-    // Circular patrol pattern around home territory
-    const currentDirection = this.mesh.rotation.y;
-    
-    for (let i = 0; i < pathLength; i++) {
-      // Create circular patrol with limited radius
-      const angleIncrement = (Math.PI * 2) / pathLength;
-      const angle = currentDirection + (i * angleIncrement) + (Math.random() - 0.5) * 0.5;
-      const radius = Math.min(this.config.territoryRadius * 0.7, 10); // Limit patrol radius
-      
-      // Conservative altitude changes
-      let altitudeVariation: number;
-      if (this.birdState === BirdState.SOARING && !this.isFlapping) {
-        // Soaring: gradual descent
-        altitudeVariation = -Math.random() * 2;
-      } else {
-        // Normal flight: minimal altitude change
-        altitudeVariation = (Math.random() - 0.5) * 3;
-      }
-      
-      const point = new THREE.Vector3(
-        this.homePosition.x + Math.cos(angle) * radius,
-        Math.max(this.groundLevel + 5, Math.min(centerPoint.y + altitudeVariation, this.maxAltitude - 3)),
-        this.homePosition.z + Math.sin(angle) * radius
-      );
-      
-      this.flightPath.push(point);
-    }
-    
-    console.log(`🐦 [CrowBird] Generated flight path with ${pathLength} points, max altitude: ${Math.max(...this.flightPath.map(p => p.y)).toFixed(1)}`);
-  }
-
   protected updateAnimation(deltaTime: number): void {
     if (!this.bodyParts || !this.wingSegments) return;
 
@@ -779,7 +736,7 @@ export class CrowBird extends BaseBird {
       this.animateWalk();
     }
 
-    // Animate wings
+    // Animate wings (without banking interference)
     this.animateWings();
 
     // Animate head bobbing
