@@ -281,57 +281,94 @@ export class RedDragon extends BaseDragon {
     
     // Wing arm bone (humerus equivalent) - extends outward
     const wingArmGroup = new THREE.Group();
-    const wingArmGeometry = new THREE.CapsuleGeometry(0.3, 4.0, 12, 16); // Much larger than bird
+    const wingArmGeometry = new THREE.CapsuleGeometry(0.4, 5.0, 12, 16);
     const wingArm = new THREE.Mesh(wingArmGeometry, this.materials!.scales);
     
     wingArm.rotation.x = Math.PI / 2;
-    wingArm.position.set(0, 0, side * 2.0);
+    wingArm.position.set(0, 0, side * 2.5);
     wingArmGroup.add(wingArm);
     shoulderGroup.add(wingArmGroup);
 
-    // Wing forearm - continues extension
+    // Wing forearm - continues extension at angle
     const forearmGroup = new THREE.Group();
-    const forearmGeometry = new THREE.CapsuleGeometry(0.25, 5.0, 12, 16);
+    const forearmGeometry = new THREE.CapsuleGeometry(0.3, 6.0, 12, 16);
     const forearm = new THREE.Mesh(forearmGeometry, this.materials!.scales);
     
     forearm.rotation.x = Math.PI / 2;
-    forearm.position.set(0, 0, side * 2.5);
+    forearm.rotation.z = side * -0.3; // Angle outward
+    forearm.position.set(-1.0, 0, side * 3.0);
     forearmGroup.add(forearm);
     
-    forearmGroup.position.set(0, 0, side * 4.0);
+    forearmGroup.position.set(0, 0, side * 5.0);
     wingArmGroup.add(forearmGroup);
 
-    // Wing finger bones - dragon wings have finger bones extending from forearm
+    // Wing finger bones - properly positioned and angled
     const fingerBones: THREE.Mesh[] = [];
+    const fingerPositions: THREE.Vector3[] = [];
+    
     for (let i = 0; i < 4; i++) {
-      const fingerGeometry = new THREE.CapsuleGeometry(0.1, 3.0, 8, 12);
+      const fingerGeometry = new THREE.CapsuleGeometry(0.08, 4.0 - i * 0.3, 8, 12);
       const fingerBone = new THREE.Mesh(fingerGeometry, this.materials!.scales);
       
+      // Calculate natural finger spread
+      const angle = (i - 1.5) * 0.4; // More natural spread
+      const length = 4.0 - i * 0.3; // Decreasing length
+      
       fingerBone.rotation.x = Math.PI / 2;
-      fingerBone.position.set(-1.5 + i * 0.5, 0, side * 1.5);
-      fingerBone.rotation.z = (i - 1.5) * 0.3; // Spread fingers
+      fingerBone.rotation.z = side * angle;
+      
+      const baseX = -2.0 - i * 0.8;
+      const baseZ = side * (2.0 + i * 0.5);
+      fingerBone.position.set(baseX, 0, baseZ);
+      
+      // Store finger tip positions for membrane creation
+      const tipX = baseX - Math.cos(angle) * length;
+      const tipZ = baseZ + side * Math.sin(angle) * length;
+      fingerPositions.push(new THREE.Vector3(tipX, 0, tipZ));
       
       forearmGroup.add(fingerBone);
       fingerBones.push(fingerBone);
     }
 
-    // Wing membranes - stretched between finger bones
-    const upperMembraneGeometry = new THREE.PlaneGeometry(8, 6); // Large membrane
-    const upperMembrane = new THREE.Mesh(upperMembraneGeometry, this.materials!.membrane);
-    upperMembrane.position.set(-2, 0, side * 4);
-    upperMembrane.rotation.y = side * Math.PI / 2;
-    forearmGroup.add(upperMembrane);
+    // Create organic wing membranes between finger bones
+    const membranes: THREE.Mesh[] = [];
     
-    const lowerMembraneGeometry = new THREE.PlaneGeometry(6, 4);
-    const lowerMembrane = new THREE.Mesh(lowerMembraneGeometry, this.materials!.membrane);
-    lowerMembrane.position.set(-4, -2, side * 3);
-    lowerMembrane.rotation.y = side * Math.PI / 2;
-    forearmGroup.add(lowerMembrane);
+    // Main membrane from wing arm to first finger
+    const mainMembrane = this.createWingMembraneGeometry([
+      new THREE.Vector3(0, 0, side * 2.5), // Wing arm base
+      new THREE.Vector3(-1.0, 0, side * 5.0), // Forearm connection
+      fingerPositions[0], // First finger tip
+      new THREE.Vector3(-1.0, -1.5, side * 3.0) // Lower attachment
+    ], side);
+    forearmGroup.add(mainMembrane);
+    membranes.push(mainMembrane);
+    
+    // Membranes between each finger bone
+    for (let i = 0; i < fingerPositions.length - 1; i++) {
+      const membrane = this.createWingMembraneGeometry([
+        fingerPositions[i],
+        fingerPositions[i + 1],
+        new THREE.Vector3(fingerPositions[i + 1].x, -2.0, fingerPositions[i + 1].z * 0.7),
+        new THREE.Vector3(fingerPositions[i].x, -2.0, fingerPositions[i].z * 0.7)
+      ], side);
+      forearmGroup.add(membrane);
+      membranes.push(membrane);
+    }
+    
+    // Trailing edge membrane from last finger to body
+    const trailingMembrane = this.createWingMembraneGeometry([
+      fingerPositions[fingerPositions.length - 1],
+      new THREE.Vector3(-8.0, -1.0, side * 2.0), // Body connection
+      new THREE.Vector3(-6.0, -3.0, side * 1.0), // Lower body
+      new THREE.Vector3(fingerPositions[fingerPositions.length - 1].x, -2.5, fingerPositions[fingerPositions.length - 1].z * 0.5)
+    ], side);
+    forearmGroup.add(trailingMembrane);
+    membranes.push(trailingMembrane);
 
     // Store wing segments for animation
     const wingMembranes: DragonWingMembranes = {
-      upperMembrane,
-      lowerMembrane,
+      upperMembrane: membranes[0],
+      lowerMembrane: membranes[membranes.length - 1],
       fingerBones,
       wingArm,
       wingForearm: forearm
@@ -344,6 +381,75 @@ export class RedDragon extends BaseDragon {
     }
 
     return wingGroup;
+  }
+
+  private createWingMembraneGeometry(points: THREE.Vector3[], side: number): THREE.Mesh {
+    // Create organic curved membrane between points
+    const width = 16;
+    const height = 16;
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+    
+    // Generate vertices with natural membrane sag
+    for (let i = 0; i <= height; i++) {
+      for (let j = 0; j <= width; j++) {
+        const u = j / width;
+        const v = i / height;
+        
+        // Bilinear interpolation between the four corner points
+        const x1 = points[0].x * (1 - u) + points[1].x * u;
+        const y1 = points[0].y * (1 - u) + points[1].y * u;
+        const z1 = points[0].z * (1 - u) + points[1].z * u;
+        
+        const x2 = points[3].x * (1 - u) + points[2].x * u;
+        const y2 = points[3].y * (1 - u) + points[2].y * u;
+        const z2 = points[3].z * (1 - u) + points[2].z * u;
+        
+        const x = x1 * (1 - v) + x2 * v;
+        const y = y1 * (1 - v) + y2 * v;
+        const z = z1 * (1 - v) + z2 * v;
+        
+        // Add natural membrane sag (parabolic curve)
+        const sagAmount = 0.3;
+        const distanceFromEdge = Math.min(u, 1 - u, v, 1 - v);
+        const sag = sagAmount * (1 - distanceFromEdge * 4) * Math.sin(u * Math.PI) * Math.sin(v * Math.PI);
+        
+        vertices.push(x, y - Math.abs(sag), z);
+        uvs.push(u, v);
+      }
+    }
+    
+    // Generate faces
+    for (let i = 0; i < height; i++) {
+      for (let j = 0; j < width; j++) {
+        const a = i * (width + 1) + j;
+        const b = a + width + 1;
+        
+        // Two triangles per quad
+        indices.push(a, b, a + 1);
+        indices.push(b, b + 1, a + 1);
+      }
+    }
+    
+    const geometry = new THREE.BufferGeometry();
+    geometry.setIndex(indices);
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.computeVertexNormals();
+    
+    // Enhanced membrane material with organic properties
+    const membraneMaterial = new THREE.MeshPhongMaterial({
+      color: 0x5D1A1A,          // Darker red for realism
+      specular: 0x2D0A0A,       // Subtle specular
+      shininess: 5,             // Low shininess for skin-like texture
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.85,            // Slightly more opaque
+      emissive: 0x0A0000,       // Very subtle red glow
+    });
+    
+    return new THREE.Mesh(geometry, membraneMaterial);
   }
 
   private createDragonLeg(): THREE.Group {
