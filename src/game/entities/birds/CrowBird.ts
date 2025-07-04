@@ -231,12 +231,12 @@ export class CrowBird extends BaseBird {
       const featherGeometry = new THREE.PlaneGeometry(0.04, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers extending outward from hand bone
+      // Position feathers extending outward along wing Z-axis
       const featherOffset = (i / 5) * 0.16;
-      feather.position.set(0, -featherLength / 2, side * (0.02 + featherOffset));
+      feather.position.set(0, -0.02, side * (0.09 + featherOffset)); // Position along Z-axis extension
       
-      // Align feathers with wing extension - they should extend outward from wing
-      feather.rotation.x = -Math.PI / 2; // Flat horizontal like wing surface
+      // Align feathers with wing coordinate system - lay flat along wing surface
+      feather.rotation.y = side * Math.PI / 2; // Match wing membrane orientation
       feather.rotation.z = side * i * 0.05; // Slight fan spread
       
       handGroup.add(feather);
@@ -250,12 +250,12 @@ export class CrowBird extends BaseBird {
       const featherGeometry = new THREE.PlaneGeometry(0.035, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers extending outward from forearm bone
+      // Position feathers extending outward along wing Z-axis
       const featherOffset = (i / 4) * 0.28;
-      feather.position.set(0, -featherLength / 2, side * (0.04 + featherOffset));
+      feather.position.set(0, -0.02, side * (0.04 + featherOffset)); // Position along Z-axis extension
       
-      // Align feathers with wing extension
-      feather.rotation.x = -Math.PI / 2; // Flat horizontal
+      // Align feathers with wing coordinate system
+      feather.rotation.y = side * Math.PI / 2; // Match wing membrane orientation
       feather.rotation.z = side * i * 0.03; // Slight overlap
       
       forearmGroup.add(feather);
@@ -268,10 +268,10 @@ export class CrowBird extends BaseBird {
       const covert = new THREE.Mesh(covertGeometry, this.materials!.feather);
       
       const covertOffset = (i / 2) * 0.24;
-      covert.position.set(0, -0.06, side * (0.04 + covertOffset));
+      covert.position.set(0, -0.02, side * (0.04 + covertOffset)); // Position along Z-axis extension
       
-      // Align covert feathers with wing surface
-      covert.rotation.x = -Math.PI / 2; // Flat horizontal
+      // Align covert feathers with wing coordinate system
+      covert.rotation.y = side * Math.PI / 2; // Match wing membrane orientation
       
       humerusGroup.add(covert);
     }
