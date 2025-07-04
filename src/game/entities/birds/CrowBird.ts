@@ -317,7 +317,7 @@ export class CrowBird extends BaseBird {
       
       // Orient feathers to point backward along bird's body (negative X)
       covert.rotation.x = 0; // No rotation around X since feathers are X-aligned
-      covert.rotation.y = (0.1 - i * 0.01); // Remove Math.PI to make tips point backward
+      covert.rotation.y = -(0.1 - i * 0.01); // Flip Y rotation for flipped geometry
       covert.rotation.z = (i * 0.08); // Gradually lift from body
       
       covert.userData.originalRotation = { x: covert.rotation.x, y: covert.rotation.y, z: covert.rotation.z };
@@ -343,7 +343,7 @@ export class CrowBird extends BaseBird {
       
       // Orient feathers to point backward along bird's body (negative X)
       feather.rotation.x = 0; // No rotation around X since feathers are X-aligned
-      feather.rotation.y = (0.15 - i * 0.005); // Remove Math.PI to make tips point backward
+      feather.rotation.y = -(0.15 - i * 0.005); // Flip Y rotation for flipped geometry
       feather.rotation.z = (i * 0.04); // Gradual lift creating wing curve
       
       feather.userData.originalRotation = { x: feather.rotation.x, y: feather.rotation.y, z: feather.rotation.z };
@@ -370,7 +370,7 @@ export class CrowBird extends BaseBird {
       // Orient feathers to point backward along bird's body (negative X)
       const tipEffect = i / 9; // 0 to 1 from body to tip
       feather.rotation.x = 0; // No rotation around X since feathers are X-aligned
-      feather.rotation.y = (0.2 + tipEffect * 0.1); // Remove Math.PI to make tips point backward
+      feather.rotation.y = -(0.2 + tipEffect * 0.1); // Flip Y rotation for flipped geometry
       feather.rotation.z = (tipEffect * 0.3); // More lift toward tip
       
       feather.userData.originalRotation = { x: feather.rotation.x, y: feather.rotation.y, z: feather.rotation.z };
@@ -1013,28 +1013,28 @@ export class CrowBird extends BaseBird {
     // Feathers lay flat along wing surface, tight against body
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -Math.PI / 2; // Lay flat along wing
-      feather.rotation.y = 0.1; // Slight curve following wing
+      feather.rotation.y = -0.1; // Flip Y rotation for flipped geometry
       feather.rotation.z = -i * 0.02; // Overlapped pattern
       feather.scale.y = 0.9; // Slightly contracted
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -Math.PI / 2; // Lay flat along wing
-      feather.rotation.y = -0.1; // Slight curve following wing
+      feather.rotation.y = 0.1; // Flip Y rotation for flipped geometry
       feather.rotation.z = i * 0.02; // Overlapped pattern
       feather.scale.y = 0.9;
     });
     
     this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -Math.PI / 2;
-      feather.rotation.y = 0.08;
+      feather.rotation.y = -0.08; // Flip Y rotation for flipped geometry
       feather.rotation.z = -i * 0.02;
       feather.scale.y = 0.9;
     });
     
     this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -Math.PI / 2;
-      feather.rotation.y = -0.08;
+      feather.rotation.y = 0.08; // Flip Y rotation for flipped geometry
       feather.rotation.z = i * 0.02;
       feather.scale.y = 0.9;
     });
@@ -1042,7 +1042,7 @@ export class CrowBird extends BaseBird {
     if (this.wingSegments.left.covertFeathers) {
       this.wingSegments.left.covertFeathers.forEach((feather, i) => {
         feather.rotation.x = -Math.PI / 2;
-        feather.rotation.y = 0.05;
+        feather.rotation.y = -0.05; // Flip Y rotation for flipped geometry
         feather.rotation.z = -i * 0.01;
       });
     }
@@ -1050,7 +1050,7 @@ export class CrowBird extends BaseBird {
     if (this.wingSegments.right.covertFeathers) {
       this.wingSegments.right.covertFeathers.forEach((feather, i) => {
         feather.rotation.x = -Math.PI / 2;
-        feather.rotation.y = -0.05;
+        feather.rotation.y = 0.05; // Flip Y rotation for flipped geometry
         feather.rotation.z = i * 0.01;
       });
     }
@@ -1062,28 +1062,28 @@ export class CrowBird extends BaseBird {
     // Feathers perpendicular to wing surface for maximum thrust
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = wingBeat * 0.3; // Dynamic angle for thrust
-      feather.rotation.y = -Math.PI / 8 * i + wingBeat * 0.4;
+      feather.rotation.y = Math.PI / 8 * i - wingBeat * 0.4; // Flip Y rotation for flipped geometry
       feather.rotation.z = -wingBeat * 0.2;
       feather.scale.y = 1.1; // Extended for power
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -wingBeat * 0.3; // Dynamic angle for thrust
-      feather.rotation.y = Math.PI / 8 * i - wingBeat * 0.4;
+      feather.rotation.y = -Math.PI / 8 * i + wingBeat * 0.4; // Flip Y rotation for flipped geometry
       feather.rotation.z = wingBeat * 0.2;
       feather.scale.y = 1.1;
     });
     
     this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = wingBeat * 0.2;
-      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3;
+      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3; // Flip Y rotation for flipped geometry
       feather.rotation.z = -wingBeat * 0.15;
       feather.scale.y = 1.0;
     });
     
     this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -wingBeat * 0.2;
-      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3;
+      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3; // Flip Y rotation for flipped geometry
       feather.rotation.z = wingBeat * 0.15;
       feather.scale.y = 1.0;
     });
@@ -1095,28 +1095,28 @@ export class CrowBird extends BaseBird {
     // Feathers perpendicular to wing for lift generation
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = wingBeat * 0.2; // Less aggressive than takeoff
-      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3;
+      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3; // Flip Y rotation for flipped geometry
       feather.rotation.z = -wingBeat * 0.15;
       feather.scale.y = 1.0;
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -wingBeat * 0.2; // Less aggressive than takeoff
-      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3;
+      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3; // Flip Y rotation for flipped geometry
       feather.rotation.z = wingBeat * 0.15;
       feather.scale.y = 1.0;
     });
     
     this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = wingBeat * 0.15;
-      feather.rotation.y = -Math.PI / 16 * i + wingBeat * 0.2;
+      feather.rotation.y = Math.PI / 16 * i - wingBeat * 0.2; // Flip Y rotation for flipped geometry
       feather.rotation.z = -wingBeat * 0.1;
       feather.scale.y = 1.0;
     });
     
     this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -wingBeat * 0.15;
-      feather.rotation.y = Math.PI / 16 * i - wingBeat * 0.2;
+      feather.rotation.y = -Math.PI / 16 * i + wingBeat * 0.2; // Flip Y rotation for flipped geometry
       feather.rotation.z = wingBeat * 0.1;
       feather.scale.y = 1.0;
     });
@@ -1130,28 +1130,28 @@ export class CrowBird extends BaseBird {
     // Feathers perpendicular to wing for maximum lift with slight air adjustments
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = 0.1 + airFlow; // Slight upward angle for lift
-      feather.rotation.y = -Math.PI / 16 * i;
+      feather.rotation.y = Math.PI / 16 * i; // Flip Y rotation for flipped geometry
       feather.rotation.z = airFlow + i * 0.01;
       feather.scale.y = 1.1; // Extended for lift
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -0.1 - airFlow; // Slight upward angle for lift
-      feather.rotation.y = Math.PI / 16 * i;
+      feather.rotation.y = -Math.PI / 16 * i; // Flip Y rotation for flipped geometry
       feather.rotation.z = -airFlow - i * 0.01;
       feather.scale.y = 1.1;
     });
     
     this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = 0.05 + airFlow * 0.5;
-      feather.rotation.y = -Math.PI / 20 * i;
+      feather.rotation.y = Math.PI / 20 * i; // Flip Y rotation for flipped geometry
       feather.rotation.z = airFlow * 0.5;
       feather.scale.y = 1.05;
     });
     
     this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -0.05 - airFlow * 0.5;
-      feather.rotation.y = Math.PI / 20 * i;
+      feather.rotation.y = -Math.PI / 20 * i; // Flip Y rotation for flipped geometry
       feather.rotation.z = -airFlow * 0.5;
       feather.scale.y = 1.05;
     });
@@ -1163,28 +1163,28 @@ export class CrowBird extends BaseBird {
     // Feathers perpendicular and spread wide for maximum air braking
     this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = 0.4; // Strong upward angle for braking
-      feather.rotation.y = -Math.PI / 6 * i;
+      feather.rotation.y = Math.PI / 6 * i; // Flip Y rotation for flipped geometry
       feather.rotation.z = -0.3;
       feather.scale.y = 1.2; // Maximum extension for drag
     });
     
     this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -0.4; // Strong upward angle for braking
-      feather.rotation.y = Math.PI / 6 * i;
+      feather.rotation.y = -Math.PI / 6 * i; // Flip Y rotation for flipped geometry
       feather.rotation.z = 0.3;
       feather.scale.y = 1.2;
     });
     
     this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = 0.3;
-      feather.rotation.y = -Math.PI / 8 * i;
+      feather.rotation.y = Math.PI / 8 * i; // Flip Y rotation for flipped geometry
       feather.rotation.z = -0.2;
       feather.scale.y = 1.15;
     });
     
     this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
       feather.rotation.x = -0.3;
-      feather.rotation.y = Math.PI / 8 * i;
+      feather.rotation.y = -Math.PI / 8 * i; // Flip Y rotation for flipped geometry
       feather.rotation.z = 0.2;
       feather.scale.y = 1.15;
     });
