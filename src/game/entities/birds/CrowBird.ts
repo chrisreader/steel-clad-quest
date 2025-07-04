@@ -1263,13 +1263,13 @@ export class CrowBird extends BaseBird {
     if (!leftLegGroup || !rightLegGroup) return;
 
     if (this.flightMode !== FlightMode.GROUNDED) {
-      // Flight leg position - fold entire leg groups backward toward tail
-      leftLegGroup.rotation.x = -Math.PI / 4; // 45 degrees backward toward tail
-      rightLegGroup.rotation.x = -Math.PI / 4;
+      // Flight leg position - fold entire leg groups backward toward tail (Z-axis rotation)
+      leftLegGroup.rotation.z = Math.PI / 4; // 45 degrees backward toward tail
+      rightLegGroup.rotation.z = -Math.PI / 4; // Mirror for right leg
     } else {
       // Ground leg position - legs in natural standing position
-      leftLegGroup.rotation.x = 0;
-      rightLegGroup.rotation.x = 0;
+      leftLegGroup.rotation.z = 0;
+      rightLegGroup.rotation.z = 0;
       
       // Walking animation
       if (this.birdState === BirdState.WALKING) {
@@ -1278,8 +1278,8 @@ export class CrowBird extends BaseBird {
         const leftLegPhase = Math.sin(this.walkCycle);
         const rightLegPhase = Math.sin(this.walkCycle + Math.PI);
         
-        leftLegGroup.rotation.x = leftLegPhase * 0.3;
-        rightLegGroup.rotation.x = rightLegPhase * 0.3;
+        leftLegGroup.rotation.z = leftLegPhase * 0.1;
+        rightLegGroup.rotation.z = rightLegPhase * -0.1; // Mirror for right leg
       }
     }
   }
