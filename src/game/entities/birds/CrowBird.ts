@@ -34,31 +34,31 @@ export class CrowBird extends BaseBird {
     
     const bodyGroup = new THREE.Group();
     
-    // Create realistic oval body geometry
-    const bodyGeometry = new THREE.SphereGeometry(0.12, 16, 12);
+    // Create realistic oval body geometry - larger and more substantial
+    const bodyGeometry = new THREE.SphereGeometry(0.2, 16, 12);
     // Scale to create oval bird body proportions (length, height, width)
-    bodyGeometry.scale(1.4, 0.8, 1.0);
+    bodyGeometry.scale(1.6, 0.9, 1.1);
     const body = new THREE.Mesh(bodyGeometry, this.materials.feather);
     bodyGroup.add(body);
 
-    // Create realistic curved neck with multiple segments for flexibility
+    // Create realistic curved neck with multiple segments for flexibility - scaled proportionally
     const neckGroup = new THREE.Group();
-    const neckGeometry = new THREE.CapsuleGeometry(0.05, 0.18, 8, 12);
+    const neckGeometry = new THREE.CapsuleGeometry(0.07, 0.22, 8, 12);
     neckGeometry.rotateZ(Math.PI / 2); // Orient along X-axis
     const neck = new THREE.Mesh(neckGeometry, this.materials.feather);
-    neck.position.set(0.25, 0.06, 0); // Connected to front of body, slightly above
+    neck.position.set(0.3, 0.08, 0); // Connected to front of body, slightly above
     neckGroup.add(neck);
     bodyGroup.add(neckGroup);
 
-    // Create realistic head with proper proportions
+    // Create realistic head with proper proportions - scaled proportionally
     const headGroup = new THREE.Group();
-    const headGeometry = new THREE.SphereGeometry(0.06, 12, 10);
+    const headGeometry = new THREE.SphereGeometry(0.08, 12, 10);
     headGeometry.scale(1.5, 1.0, 0.9); // Elongated for realistic bird head
     const head = new THREE.Mesh(headGeometry, this.materials.feather);
     headGroup.add(head);
     
     // Dynamic head positioning - starts in walking position (above body)
-    headGroup.position.set(0.42, 0.12, 0); // Above body level for walking
+    headGroup.position.set(0.52, 0.15, 0); // Above body level for walking, scaled up
     bodyGroup.add(headGroup);
     
     // Create beak - pointing forward
@@ -80,9 +80,9 @@ export class CrowBird extends BaseBird {
     // Create seamlessly integrated tail
     const tailGroup = new THREE.Group();
     
-    // Tail seamlessly flows from oval body
-    const tailGeometry = new THREE.SphereGeometry(0.09, 12, 8);
-    tailGeometry.scale(1.8, 0.6, 1.3); // Elongated and flattened crow tail
+    // Tail seamlessly flows from oval body - scaled proportionally
+    const tailGeometry = new THREE.SphereGeometry(0.12, 12, 8);
+    tailGeometry.scale(2.0, 0.7, 1.4); // Elongated and flattened crow tail
     
     // Shape tail to flow naturally from body oval
     const tailPositions = tailGeometry.attributes.position;
@@ -102,13 +102,13 @@ export class CrowBird extends BaseBird {
     tailGeometry.computeVertexNormals();
     
     const tail = new THREE.Mesh(tailGeometry, this.materials.feather);
-    tail.position.set(-0.25, -0.02, 0); // Overlaps with body rear for seamless connection
+    tail.position.set(-0.3, -0.03, 0); // Overlaps with body rear for seamless connection, scaled up
     tailGroup.add(tail);
     
     tailGroup.position.set(0, 0, 0); // Attached directly to body
     bodyGroup.add(tailGroup);
 
-    // Create wings extending outward from body (perpendicular to body axis)
+    // Create wings extending outward from body (perpendicular to body axis) - scaled positions
     const leftWingGroup = new THREE.Group();
     const rightWingGroup = new THREE.Group();
     
@@ -118,14 +118,14 @@ export class CrowBird extends BaseBird {
     leftWingGroup.add(leftWing);
     rightWingGroup.add(rightWing);
     
-    // Attach wings to upper shoulders (slightly forward of body center)
-    leftWingGroup.position.set(0.15, 0.12, 0.18);  // Left shoulder
-    rightWingGroup.position.set(0.15, 0.12, -0.18); // Right shoulder
+    // Attach wings to upper shoulders - scaled for larger body
+    leftWingGroup.position.set(0.2, 0.16, 0.22);  // Left shoulder, scaled up
+    rightWingGroup.position.set(0.2, 0.16, -0.22); // Right shoulder, scaled up
     
     bodyGroup.add(leftWingGroup);
     bodyGroup.add(rightWingGroup);
 
-    // Create legs under body center
+    // Create legs under body center - properly attached for larger body
     const leftLegGroup = new THREE.Group();
     const rightLegGroup = new THREE.Group();
     
@@ -135,9 +135,9 @@ export class CrowBird extends BaseBird {
     leftLegGroup.add(leftLeg);
     rightLegGroup.add(rightLeg);
     
-    // Position legs properly attached to body underside
-    leftLegGroup.position.set(0.05, -0.15, 0.08);  // Left leg - closer to body
-    rightLegGroup.position.set(0.05, -0.15, -0.08); // Right leg - closer to body
+    // Position legs properly attached to body underside - closer to body, scaled
+    leftLegGroup.position.set(0.08, -0.18, 0.1);  // Left leg - attached to larger body
+    rightLegGroup.position.set(0.08, -0.18, -0.1); // Right leg - attached to larger body
     
     bodyGroup.add(leftLegGroup);
     bodyGroup.add(rightLegGroup);
@@ -535,8 +535,8 @@ export class CrowBird extends BaseBird {
       const direction = target.clone().sub(this.position).normalize();
       this.velocity.copy(direction.multiplyScalar(this.config.flightSpeed));
       
-      // Face movement direction smoothly (only Y-axis rotation for bird turning)
-      const targetDirection = Math.atan2(direction.x, direction.z);
+      // Face movement direction smoothly (corrected for +X-facing bird)
+      const targetDirection = Math.atan2(direction.z, direction.x);
       this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.1);
       
       if (this.position.distanceTo(target) < 2) {
@@ -575,8 +575,8 @@ export class CrowBird extends BaseBird {
       direction.normalize();
       this.velocity.copy(direction.multiplyScalar(speed));
       
-      // Face movement direction smoothly (only Y-axis rotation for bird turning)
-      const targetDirection = Math.atan2(direction.x, direction.z);
+      // Face movement direction smoothly (corrected for +X-facing bird)
+      const targetDirection = Math.atan2(direction.z, direction.x);
       this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.15);
     } else {
       this.velocity.set(0, 0, 0);
@@ -642,23 +642,23 @@ export class CrowBird extends BaseBird {
       case BirdState.FORAGING:
       case BirdState.PREENING:
       case BirdState.ALERT:
-        // Ground states: head above body for alert, upright posture
-        targetY = 0.12;
-        targetX = 0.42;
+        // Ground states: head above body for alert, upright posture - scaled for larger body
+        targetY = 0.15;
+        targetX = 0.52;
         break;
         
       case BirdState.TAKING_OFF:
-        // Transitioning: gradually align head with body
-        targetY = 0.06;
-        targetX = 0.38;
+        // Transitioning: gradually align head with body - scaled for larger body
+        targetY = 0.08;
+        targetX = 0.47;
         break;
         
       case BirdState.FLYING:
       case BirdState.SOARING:
       case BirdState.LANDING:
-        // Flight states: head inline with body for aerodynamic streamlined flight
+        // Flight states: head inline with body for aerodynamic streamlined flight - scaled for larger body
         targetY = 0.0;
-        targetX = 0.35;
+        targetX = 0.42;
         break;
         
       default:
