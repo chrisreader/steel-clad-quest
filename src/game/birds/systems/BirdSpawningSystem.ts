@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { CrowBird } from '../entities/birds/CrowBird';
-import { SpawnableEntity, SpawningConfig } from '../../types/SpawnableEntity';
-import { BirdType } from '../../types/GameTypes';
+import { CrowBird } from '../species/CrowBird';
+import { SpawnableEntity, SpawningConfig } from '../../../types/SpawnableEntity';
+import { BirdType } from '../../../types/GameTypes';
 
 export interface BirdSpawningConfig extends SpawningConfig {
   birdTypes: BirdType[];

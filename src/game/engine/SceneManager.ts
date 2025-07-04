@@ -5,7 +5,7 @@ import { EnvironmentCollisionManager } from '../systems/EnvironmentCollisionMana
 import { PhysicsManager } from './PhysicsManager';
 import { Level, TerrainConfig, TerrainFeature, LightingConfig } from '../../types/GameTypes';
 import { DynamicEnemySpawningSystem } from '../systems/DynamicEnemySpawningSystem';
-import { BirdSpawningSystem } from '../systems/BirdSpawningSystem';
+import { BirdSpawningSystem } from '../birds/systems/BirdSpawningSystem';
 import { RingQuadrantSystem, RegionCoordinates, Region } from '../world/RingQuadrantSystem';
 import { TerrainFeatureGenerator } from '../world/TerrainFeatureGenerator';
 import { StructureGenerator } from '../world/StructureGenerator';
