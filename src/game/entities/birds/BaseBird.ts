@@ -103,14 +103,26 @@ export abstract class BaseBird implements SpawnableEntity {
     this.position.copy(position);
     this.homePosition.copy(position);
     this.targetPosition.copy(position);
-    this.groundLevel = position.y;
-    this.mesh.position.copy(position);
+    
+    // Detect actual ground level using raycast
+    this.groundLevel = this.detectGroundLevel(position);
+    
+    // Position bird at ground level with body height offset
+    const birdBodyHeight = 0.3; // Approximate bird body height to ground
+    this.position.y = this.groundLevel + birdBodyHeight;
+    this.mesh.position.copy(this.position);
     
     this.createBirdBody();
     this.state = EntityLifecycleState.ACTIVE;
     this.scheduleNextStateChange();
     
-    console.log(`🐦 [${this.config.species}] Spawned at position:`, position);
+    console.log(`🐦 [${this.config.species}] Spawned at ground level ${this.groundLevel}, bird position: ${this.position.y}`);
+  }
+
+  protected detectGroundLevel(position: THREE.Vector3): number {
+    // For now, assume ground level is 0 since we don't have terrain system integration
+    // TODO: Add raycast ground detection when terrain system is available
+    return 0;
   }
 
   protected abstract createBirdBody(): void;
@@ -145,8 +157,9 @@ export abstract class BaseBird implements SpawnableEntity {
 
   protected updatePhysics(deltaTime: number): void {
     if (this.flightMode === FlightMode.GROUNDED) {
-      // Ground physics - ensure bird stays on ground
-      this.position.y = this.groundLevel;
+      // Ground physics - ensure bird stays on ground with body height offset
+      const birdBodyHeight = 0.3;
+      this.position.y = this.groundLevel + birdBodyHeight;
       // Clear any upward velocity when grounded
       if (this.velocity.y > 0) {
         this.velocity.y = 0;
@@ -159,9 +172,10 @@ export abstract class BaseBird implements SpawnableEntity {
     // Apply velocity
     this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
     
-    // Force ground contact when grounded (safety check)
+    // Force ground contact when grounded (safety check with body height)
     if (this.flightMode === FlightMode.GROUNDED) {
-      this.position.y = this.groundLevel;
+      const birdBodyHeight = 0.3;
+      this.position.y = this.groundLevel + birdBodyHeight;
     }
   }
 

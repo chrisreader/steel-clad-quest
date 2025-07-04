@@ -44,7 +44,7 @@ export class BirdSpawningSystem {
       // Bird-specific settings
       birdTypes: [BirdType.CROW],
       birdDensity: 0.3,
-      preferredHeights: { min: 0, max: 5 },
+      preferredHeights: { min: 0, max: 0 }, // Spawn birds at ground level only
       territorySize: 15,
       
       ...config
