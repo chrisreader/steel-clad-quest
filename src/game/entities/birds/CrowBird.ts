@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { BaseBird, BirdState, FlightMode, BirdBodyParts, WingSegments, BirdConfig } from './BaseBird';
-import { BirdAnimationController } from '../../animation/birds/BirdAnimationController';
 import { TextureGenerator } from '../../utils';
 
 export class CrowBird extends BaseBird {
@@ -18,9 +17,6 @@ export class CrowBird extends BaseBird {
   private flightTimer: number = 0;
   private maxAltitude: number = 25;
   private emergencyLanding: boolean = false;
-  
-  // Animation system
-  private animationController: BirdAnimationController | null = null;
 
   constructor(id: string) {
     const crowConfig: BirdConfig = {
@@ -172,8 +168,6 @@ export class CrowBird extends BaseBird {
       rightEye: rightEye
     };
 
-    // Initialize animation controller
-    this.animationController = new BirdAnimationController(this.bodyParts, this.wingSegments);
 
     this.mesh.add(bodyGroup);
   }
@@ -786,24 +780,481 @@ export class CrowBird extends BaseBird {
   }
 
   protected updateAnimation(deltaTime: number): void {
-    if (!this.animationController) return;
+    if (!this.bodyParts || !this.wingSegments) return;
 
-    this.animationController.update(
-      deltaTime,
-      this.birdState,
-      this.flightMode,
-      this.isFlapping,
-      this.velocity
+    // Update animation cycles
+    this.walkCycle += deltaTime * 4;
+    this.flapCycle += deltaTime * (this.isFlapping ? 15 : 2);
+    this.headBobCycle += deltaTime * 6;
+
+    // Dynamic head positioning based on state
+    this.updateDynamicHeadPosition(deltaTime);
+
+    // Animate walking
+    if (this.birdState === BirdState.WALKING && this.velocity.length() > 0.1) {
+      this.animateWalk();
+    }
+
+    // Animate wings
+    this.animateWings();
+
+    // Animate head bobbing
+    this.animateHeadBob();
+  }
+
+  private updateDynamicHeadPosition(deltaTime: number): void {
+    if (!this.bodyParts) return;
+
+    // Determine target head position based on bird state
+    let targetY: number;
+    let targetX: number;
+
+    switch (this.birdState) {
+      case BirdState.IDLE:
+      case BirdState.WALKING:
+      case BirdState.FORAGING:
+      case BirdState.PREENING:
+      case BirdState.ALERT:
+        // Ground states: head above body for alert, upright posture - scaled for larger body
+        targetY = 0.15;
+        targetX = 0.52;
+        break;
+        
+      case BirdState.TAKING_OFF:
+        // Transitioning: gradually align head with body - scaled for larger body
+        targetY = 0.08;
+        targetX = 0.47;
+        break;
+        
+      case BirdState.FLYING:
+      case BirdState.SOARING:
+      case BirdState.LANDING:
+        // Flight states: head inline with body for aerodynamic streamlined flight - scaled for larger body
+        targetY = 0.0;
+        targetX = 0.42;
+        break;
+        
+      default:
+        targetY = 0.12;
+        targetX = 0.42;
+    }
+
+    // Smooth transition to target position
+    const lerpSpeed = 2.0; // Transition speed
+    this.bodyParts.head.position.y = THREE.MathUtils.lerp(
+      this.bodyParts.head.position.y, 
+      targetY, 
+      deltaTime * lerpSpeed
+    );
+    this.bodyParts.head.position.x = THREE.MathUtils.lerp(
+      this.bodyParts.head.position.x, 
+      targetX, 
+      deltaTime * lerpSpeed
     );
   }
 
-  // Note: CrowBird.ts was getting too long. Consider refactoring into smaller focused files for:
-  // - Wing geometry creation
-  // - Flight behavior logic  
-  // - Animation integration
+  private animateWalk(): void {
+    if (!this.bodyParts) return;
+
+    // Leg movement
+    const leftLegSwing = Math.sin(this.walkCycle) * 0.3;
+    const rightLegSwing = Math.sin(this.walkCycle + Math.PI) * 0.3;
+
+    this.bodyParts.leftLeg.rotation.x = leftLegSwing;
+    this.bodyParts.rightLeg.rotation.x = rightLegSwing;
+
+    // Subtle forward/backward body movement instead of floating bob
+    this.bodyParts.body.position.x = Math.sin(this.walkCycle * 2) * 0.02;
+    this.bodyParts.body.position.y = 0; // Keep firmly on ground
+  }
+
+  private animateWings(): void {
+    if (!this.wingSegments || !this.bodyParts) return;
+
+    // Get wing groups to access joint structure
+    const leftWingGroup = this.bodyParts.leftWing.children[0] as THREE.Group; // Main wing group
+    const rightWingGroup = this.bodyParts.rightWing.children[0] as THREE.Group;
+    
+    if (!leftWingGroup || !rightWingGroup) return;
+
+    // Access joint groups properly
+    const leftShoulder = leftWingGroup.children[0] as THREE.Group; // Shoulder group
+    const rightShoulder = rightWingGroup.children[0] as THREE.Group;
+    
+    if (!leftShoulder || !rightShoulder) return;
+
+    const leftHumerus = leftShoulder.children[0] as THREE.Group; // Humerus group  
+    const rightHumerus = rightShoulder.children[0] as THREE.Group;
+    
+    if (!leftHumerus || !rightHumerus) return;
+
+    const leftForearm = leftHumerus.children.find(child => child.userData?.type === 'elbow') as THREE.Group;
+    const rightForearm = rightHumerus.children.find(child => child.userData?.type === 'elbow') as THREE.Group;
+    
+    const leftHand = leftForearm?.children.find(child => child.userData?.type === 'wrist') as THREE.Group;
+    const rightHand = rightForearm?.children.find(child => child.userData?.type === 'wrist') as THREE.Group;
+
+    // Apply state-specific wing animations - use soaring feather look for all states
+    switch (this.birdState) {
+      case BirdState.IDLE:
+      case BirdState.WALKING:
+      case BirdState.FORAGING:
+        this.animateGroundedWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Use soaring feather look
+        break;
+        
+      case BirdState.ALERT:
+        this.animateAlertWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm);
+        this.animateFeathersForSoaring(); // Use soaring feather look
+        break;
+        
+      case BirdState.TAKING_OFF:
+        this.animateTakeoffWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Use soaring feather look
+        break;
+        
+      case BirdState.FLYING:
+        this.animateFlappingWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Use soaring feather look
+        break;
+        
+      case BirdState.SOARING:
+        this.animateSoaringWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Keep existing soaring feather look
+        break;
+        
+      case BirdState.LANDING:
+        this.animateLandingWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
+        this.animateFeathersForSoaring(); // Use soaring feather look
+        break;
+    }
+  }
+
+  private animateGroundedWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    // Wings naturally folded back against body pointing toward tail like real birds
+    leftShoulder.rotation.set(-0.1, -0.4, 0);
+    rightShoulder.rotation.set(-0.1, -0.4, 0);
+    leftHumerus.rotation.set(0, -0.5, -0.2);
+    rightHumerus.rotation.set(0, -0.5, 0.2);
+    
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, 0, -1.7);
+      rightForearm.rotation.set(0, 0, 1.7);
+    }
+    
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(0, -0.3, -1.0);
+      rightHand.rotation.set(0, -0.3, 1.0);
+    }
+    
+    this.animateFeathersForRest();
+  }
+
+  private animateAlertWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group
+  ): void {
+    leftShoulder.rotation.set(0, 0, 0.1);
+    rightShoulder.rotation.set(0, 0, -0.1);
+    leftHumerus.rotation.set(-0.1, 0.2, 0);
+    rightHumerus.rotation.set(0.1, -0.2, 0);
+    
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, 0, -0.5);
+      rightForearm.rotation.set(0, 0, 0.5);
+    }
+  }
+
+  private animateTakeoffWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    const takeoffIntensity = 1.2;
+    const wingBeat = Math.sin(this.flapCycle) * takeoffIntensity;
+    
+    leftShoulder.rotation.set(wingBeat * 0.5, 0, 0);
+    rightShoulder.rotation.set(-wingBeat * 0.5, 0, 0);
+    leftHumerus.rotation.set(wingBeat * 0.7, 0.1, 0);
+    rightHumerus.rotation.set(-wingBeat * 0.7, -0.1, 0);
+    
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(wingBeat * 0.3, 0, -0.3);
+      rightForearm.rotation.set(-wingBeat * 0.3, 0, 0.3);
+    }
+    
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(wingBeat * 0.2, 0, -0.2);
+      rightHand.rotation.set(-wingBeat * 0.2, 0, 0.2);
+    }
+    
+    this.animateFeathersForPowerFlight(wingBeat);
+  }
+
+  private animateFlappingWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    const flapIntensity = 0.8;
+    const wingBeat = Math.sin(this.flapCycle) * flapIntensity;
+    
+    leftShoulder.rotation.set(wingBeat * 0.3, 0, 0);
+    rightShoulder.rotation.set(-wingBeat * 0.3, 0, 0);
+    leftHumerus.rotation.set(wingBeat * 0.5, 0.1, 0);
+    rightHumerus.rotation.set(-wingBeat * 0.5, -0.1, 0);
+    
+    const forearmPhase = Math.sin(this.flapCycle - 0.2) * flapIntensity;
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(forearmPhase * 0.4, 0, -0.4);
+      rightForearm.rotation.set(-forearmPhase * 0.4, 0, 0.4);
+    }
+    
+    const handPhase = Math.sin(this.flapCycle - 0.4) * flapIntensity;
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(handPhase * 0.3, 0, -0.3);
+      rightHand.rotation.set(-handPhase * 0.3, 0, 0.3);
+    }
+    
+    this.animateFeathersForFlight(wingBeat);
+  }
+
+  private animateSoaringWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    leftShoulder.rotation.set(0.2, 0, 0);
+    rightShoulder.rotation.set(-0.2, 0, 0);
+    leftHumerus.rotation.set(0.1, 0.05, 0);
+    rightHumerus.rotation.set(-0.1, -0.05, 0);
+    
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, 0, -0.1);
+      rightForearm.rotation.set(0, 0, 0.1);
+    }
+    
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(0, 0, -0.05);
+      rightHand.rotation.set(0, 0, 0.05);
+    }
+    
+    const airCurrent = Math.sin(this.flapCycle * 0.3) * 0.05;
+    leftShoulder.rotation.x += airCurrent;
+    rightShoulder.rotation.x -= airCurrent;
+    
+    this.animateFeathersForSoaring();
+  }
+
+  private animateLandingWings(
+    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
+    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
+    leftForearm: THREE.Group, rightForearm: THREE.Group,
+    leftHand: THREE.Group, rightHand: THREE.Group
+  ): void {
+    leftShoulder.rotation.set(0.4, 0, 0);
+    rightShoulder.rotation.set(-0.4, 0, 0);
+    leftHumerus.rotation.set(0.3, 0.2, 0);
+    rightHumerus.rotation.set(-0.3, -0.2, 0);
+    
+    if (leftForearm && rightForearm) {
+      leftForearm.rotation.set(0, 0, -0.3);
+      rightForearm.rotation.set(0, 0, 0.3);
+    }
+    
+    if (leftHand && rightHand) {
+      leftHand.rotation.set(0, 0, -0.2);
+      rightHand.rotation.set(0, 0, 0.2);
+    }
+    
+    this.animateFeathersForLanding();
+  }
+
+  private animateFeathersForRest(): void {
+    if (!this.wingSegments) return;
+    
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -Math.PI / 2;
+      feather.rotation.y = -0.1;
+      feather.rotation.z = -i * 0.02;
+      feather.scale.y = 0.9;
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -Math.PI / 2;
+      feather.rotation.y = 0.1;
+      feather.rotation.z = i * 0.02;
+      feather.scale.y = 0.9;
+    });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -Math.PI / 2;
+      feather.rotation.y = -0.08;
+      feather.rotation.z = -i * 0.02;
+      feather.scale.y = 0.9;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -Math.PI / 2;
+      feather.rotation.y = 0.08;
+      feather.rotation.z = i * 0.02;
+      feather.scale.y = 0.9;
+    });
+  }
+
+  private animateFeathersForPowerFlight(wingBeat: number): void {
+    if (!this.wingSegments) return;
+    
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = wingBeat * 0.3;
+      feather.rotation.y = Math.PI / 8 * i - wingBeat * 0.4;
+      feather.rotation.z = -wingBeat * 0.2;
+      feather.scale.y = 1.1;
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -wingBeat * 0.3;
+      feather.rotation.y = -Math.PI / 8 * i + wingBeat * 0.4;
+      feather.rotation.z = wingBeat * 0.2;
+      feather.scale.y = 1.1;
+    });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = wingBeat * 0.2;
+      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3;
+      feather.rotation.z = -wingBeat * 0.15;
+      feather.scale.y = 1.0;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -wingBeat * 0.2;
+      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3;
+      feather.rotation.z = wingBeat * 0.15;
+      feather.scale.y = 1.0;
+    });
+  }
+
+  private animateFeathersForFlight(wingBeat: number): void {
+    if (!this.wingSegments) return;
+    
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = wingBeat * 0.2;
+      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3;
+      feather.rotation.z = -wingBeat * 0.15;
+      feather.scale.y = 1.0;
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -wingBeat * 0.2;
+      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3;
+      feather.rotation.z = wingBeat * 0.15;
+      feather.scale.y = 1.0;
+    });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = wingBeat * 0.15;
+      feather.rotation.y = Math.PI / 16 * i - wingBeat * 0.2;
+      feather.rotation.z = -wingBeat * 0.1;
+      feather.scale.y = 1.0;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -wingBeat * 0.15;
+      feather.rotation.y = -Math.PI / 16 * i + wingBeat * 0.2;
+      feather.rotation.z = wingBeat * 0.1;
+      feather.scale.y = 1.0;
+    });
+  }
+
+  private animateFeathersForSoaring(): void {
+    if (!this.wingSegments) return;
+    
+    const airFlow = Math.sin(this.flapCycle * 0.2) * 0.03;
+    
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = 0.1 + airFlow;
+      feather.rotation.y = Math.PI / 16 * i;
+      feather.rotation.z = airFlow + i * 0.01;
+      feather.scale.y = 1.1;
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -0.1 - airFlow;
+      feather.rotation.y = -Math.PI / 16 * i;
+      feather.rotation.z = -airFlow - i * 0.01;
+      feather.scale.y = 1.1;
+    });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = 0.05 + airFlow * 0.5;
+      feather.rotation.y = Math.PI / 20 * i;
+      feather.rotation.z = airFlow * 0.5;
+      feather.scale.y = 1.05;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -0.05 - airFlow * 0.5;
+      feather.rotation.y = -Math.PI / 20 * i;
+      feather.rotation.z = -airFlow * 0.5;
+      feather.scale.y = 1.05;
+    });
+  }
+
+  private animateFeathersForLanding(): void {
+    if (!this.wingSegments) return;
+    
+    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = 0.4;
+      feather.rotation.y = Math.PI / 6 * i;
+      feather.rotation.z = 0.3;
+      feather.scale.y = 1.2;
+    });
+    
+    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -0.4;
+      feather.rotation.y = -Math.PI / 6 * i;
+      feather.rotation.z = -0.3;
+      feather.scale.y = 1.2;
+    });
+    
+    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = 0.3;
+      feather.rotation.y = Math.PI / 8 * i;
+      feather.rotation.z = 0.2;
+      feather.scale.y = 1.15;
+    });
+    
+    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
+      feather.rotation.x = -0.3;
+      feather.rotation.y = -Math.PI / 8 * i;
+      feather.rotation.z = 0.2;
+      feather.scale.y = 1.15;
+    });
+  }
+
+  private animateHeadBob(): void {
+    if (!this.bodyParts) return;
+
+    if (this.birdState === BirdState.WALKING || this.birdState === BirdState.FORAGING) {
+      this.bodyParts.head.position.x = 0.6 + Math.sin(this.headBobCycle) * 0.05;
+      this.bodyParts.head.rotation.x = Math.sin(this.headBobCycle) * 0.1;
+    } else {
+      if (Math.random() < 0.01) {
+        this.bodyParts.head.rotation.y = (Math.random() - 0.5) * 0.5;
+      }
+    }
+  }
 
   public dispose(): void {
-    this.animationController?.dispose();
     super.dispose();
   }
 }
