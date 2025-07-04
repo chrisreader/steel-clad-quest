@@ -877,29 +877,29 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Wings fully folded parallel to body for natural resting position
+    // Wings naturally folded back against body pointing toward tail like real birds
     
-    // Shoulder position - completely neutral for parallel fold
-    leftShoulder.rotation.set(0, 0, 0);
-    rightShoulder.rotation.set(0, 0, 0);
+    // Shoulder position - point wings backward and slightly down against body
+    leftShoulder.rotation.set(-0.1, -0.4, 0); // Slight down, back toward tail
+    rightShoulder.rotation.set(-0.1, -0.4, 0); // Slight down, back toward tail
     
-    // Humerus - folded parallel to body along Y-axis (no outward spread)
-    leftHumerus.rotation.set(0, 0, 0); // Completely parallel to body
-    rightHumerus.rotation.set(0, 0, 0); // Mirror alignment
+    // Humerus - folded back along body length with slight inward tuck
+    leftHumerus.rotation.set(0, -0.5, -0.2); // Back along body, slight inward tuck
+    rightHumerus.rotation.set(0, -0.5, 0.2); // Back along body, slight inward tuck
     
-    // Forearm - folded tightly inward along body
+    // Forearm - increased backward fold to tuck tightly against body
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -1.2); // Tight fold against body
-      rightForearm.rotation.set(0, 0, 1.2); // Mirror tight fold
+      leftForearm.rotation.set(0, 0, -1.7); // Increased backward fold
+      rightForearm.rotation.set(0, 0, 1.7); // Increased backward fold
     }
     
-    // Hand - completely tucked parallel to body
+    // Hand/wing tips - point toward tail and tuck close to body
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.8); // Full parallel tuck
-      rightHand.rotation.set(0, 0, 0.8); // Mirror full tuck
+      leftHand.rotation.set(0, -0.3, -1.0); // Point toward tail, tucked close
+      rightHand.rotation.set(0, -0.3, 1.0); // Point toward tail, tucked close
     }
     
-    // Animate feathers tight against body
+    // Animate feathers to lay flat along folded wings
     this.animateFeathersForRest();
   }
 
