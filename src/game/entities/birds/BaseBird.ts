@@ -81,6 +81,8 @@ export abstract class BaseBird implements SpawnableEntity {
   protected isFlapping: boolean = false;
   protected targetAltitude: number = 0;
   protected groundLevel: number = 0;
+  protected wingBeatIntensity: number = 1.0; // Variable wing beat intensity
+  protected bankingAngle: number = 0; // Current banking angle during turns
   
   // AI properties
   protected stateTimer: number = 0;
@@ -89,6 +91,8 @@ export abstract class BaseBird implements SpawnableEntity {
   protected targetPosition: THREE.Vector3;
   protected flightPath: THREE.Vector3[] = [];
   protected currentPathIndex: number = 0;
+  protected flightPathProgress: number = 0; // Progress along current path segment
+  protected soaringAltitudeLoss: number = 0; // Track altitude loss during soaring
 
   constructor(id: string, config: BirdConfig) {
     this.id = id;
@@ -184,10 +188,30 @@ export abstract class BaseBird implements SpawnableEntity {
     const gravity = -9.8 * deltaTime;
     this.velocity.y += gravity;
     
-    // Apply lift when flapping
+    // Apply lift when flapping with variable intensity
     if (this.isFlapping) {
-      const liftForce = 12 * deltaTime; // Counter gravity plus climb
+      const liftForce = 12 * this.wingBeatIntensity * deltaTime;
       this.velocity.y += liftForce;
+    }
+    
+    // Realistic soaring physics - gradual altitude loss without flapping
+    if (this.birdState === BirdState.SOARING && !this.isFlapping) {
+      this.soaringAltitudeLoss += deltaTime;
+      // Add extra gravity during soaring to simulate energy loss
+      const soaringDrag = -2.5 * deltaTime;
+      this.velocity.y += soaringDrag;
+      
+      // If altitude drops too much, start flapping to regain height
+      if (this.soaringAltitudeLoss > 3.0 && this.position.y < this.targetAltitude - 2) {
+        this.isFlapping = true;
+        this.wingBeatIntensity = 1.2; // Extra effort to regain altitude
+        console.log(`🐦 [${this.config.species}] Starting to flap during soaring to regain altitude`);
+      }
+    }
+    
+    // Reset soaring loss when actively flapping
+    if (this.isFlapping) {
+      this.soaringAltitudeLoss = 0;
     }
     
     // Limit velocities to realistic ranges
@@ -214,6 +238,8 @@ export abstract class BaseBird implements SpawnableEntity {
     this.flightMode = FlightMode.ASCENDING;
     this.targetAltitude = this.groundLevel + Math.random() * 15 + 8; // 8-23 units high (reduced)
     this.isFlapping = true;
+    this.wingBeatIntensity = 1.3; // Higher intensity for takeoff
+    this.generateFlightPath();
     this.changeState(BirdState.TAKING_OFF);
     console.log(`🐦 [${this.config.species}] Starting flight, target altitude: ${this.targetAltitude.toFixed(1)}`);
   }
@@ -223,7 +249,81 @@ export abstract class BaseBird implements SpawnableEntity {
     this.targetAltitude = this.groundLevel;
     this.changeState(BirdState.LANDING);
     this.isFlapping = false; // Stop flapping to begin descent
+    this.wingBeatIntensity = 1.0; // Reset intensity
+    this.bankingAngle = 0; // Reset banking for landing
     console.log(`🐦 [${this.config.species}] Starting landing from altitude: ${this.position.y.toFixed(1)}`);
+  }
+
+  protected generateFlightPath(): void {
+    this.flightPath = [];
+    this.currentPathIndex = 0;
+    this.flightPathProgress = 0;
+    
+    const numPoints = 6 + Math.floor(Math.random() * 4); // 6-9 waypoints
+    const baseRadius = this.config.territoryRadius * 0.8;
+    
+    for (let i = 0; i < numPoints; i++) {
+      const angle = (i / numPoints) * Math.PI * 2 + Math.random() * 0.5 - 0.25; // Add randomness
+      const radius = baseRadius + (Math.random() - 0.5) * baseRadius * 0.4; // Vary radius
+      const altitude = this.targetAltitude + (Math.random() - 0.5) * 8; // Vary altitude by ±4 units
+      
+      const x = this.homePosition.x + Math.cos(angle) * radius;
+      const z = this.homePosition.z + Math.sin(angle) * radius;
+      const y = Math.max(this.groundLevel + 5, altitude); // Ensure minimum height
+      
+      this.flightPath.push(new THREE.Vector3(x, y, z));
+    }
+    
+    // Close the path by connecting back to first point
+    this.flightPath.push(this.flightPath[0].clone());
+  }
+
+  protected followFlightPath(deltaTime: number): void {
+    if (this.flightPath.length === 0) return;
+    
+    const currentWaypoint = this.flightPath[this.currentPathIndex];
+    if (!currentWaypoint) return;
+    
+    const distanceToWaypoint = this.position.distanceTo(currentWaypoint);
+    
+    // Move towards current waypoint with natural undulating motion
+    const direction = currentWaypoint.clone().sub(this.position).normalize();
+    const speed = this.config.flightSpeed;
+    
+    // Add undulating motion for realistic flight
+    const undulationFreq = 0.3; // Slow undulation
+    const undulationAmplitude = 1.5;
+    const undulation = Math.sin(this.age * undulationFreq) * undulationAmplitude * deltaTime;
+    direction.y += undulation;
+    
+    // Calculate banking angle based on turn direction
+    const nextWaypoint = this.flightPath[this.currentPathIndex + 1] || this.flightPath[0];
+    const futureDirection = nextWaypoint.clone().sub(currentWaypoint).normalize();
+    const turnAngle = direction.clone().cross(futureDirection).y;
+    this.bankingAngle = THREE.MathUtils.lerp(this.bankingAngle, turnAngle * 0.5, deltaTime * 2);
+    
+    // Apply movement
+    this.velocity.x = direction.x * speed;
+    this.velocity.z = direction.z * speed;
+    
+    // Adjust wing beat intensity based on altitude difference
+    const altitudeDiff = currentWaypoint.y - this.position.y;
+    if (altitudeDiff > 1) {
+      this.wingBeatIntensity = 1.4; // Climbing
+      this.isFlapping = true;
+    } else if (altitudeDiff < -1) {
+      this.wingBeatIntensity = 0.8; // Descending
+      this.isFlapping = false; // Glide down
+    } else {
+      this.wingBeatIntensity = 1.0; // Level flight
+      this.isFlapping = true;
+    }
+    
+    // Move to next waypoint when close enough
+    if (distanceToWaypoint < 3) {
+      this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
+      this.flightPathProgress = 0;
+    }
   }
 
   public dispose(): void {

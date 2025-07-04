@@ -597,13 +597,7 @@ export class CrowBird extends BaseBird {
 
   private executeTakeoff(deltaTime: number): void {
     this.isFlapping = true;
-    
-    // More realistic takeoff physics
-    const liftForce = 4 * deltaTime;
-    this.velocity.y += liftForce;
-    
-    // Limit takeoff velocity
-    this.velocity.y = Math.min(this.velocity.y, 2);
+    this.wingBeatIntensity = 1.3; // High intensity for takeoff
     
     // Transition to flying when airborne
     if (this.position.y > this.groundLevel + 2) {
@@ -615,10 +609,10 @@ export class CrowBird extends BaseBird {
 
   private executeFlying(deltaTime: number): void {
     this.isFlapping = true;
+    this.wingBeatIntensity = 1.0; // Normal flight intensity
     
     // Determine if should switch to soaring
     if (Math.random() < 0.02) { // 2% chance per frame
-      this.isFlapping = false;
       this.changeState(BirdState.SOARING);
     }
     
@@ -626,48 +620,16 @@ export class CrowBird extends BaseBird {
   }
 
   private executeSoaring(deltaTime: number): void {
+    // Don't flap during soaring unless needed for altitude
     this.isFlapping = false;
-    
-    // Occasionally flap to maintain altitude
-    if (Math.random() < 0.01) {
-      this.isFlapping = true;
-      this.changeState(BirdState.FLYING);
-    }
+    this.wingBeatIntensity = 1.0; // Reset intensity when not flapping
     
     this.executeCruiseFlight(deltaTime);
   }
 
   private executeCruiseFlight(deltaTime: number): void {
-    // Generate flight path if needed
-    if (this.flightPath.length === 0 || this.currentPathIndex >= this.flightPath.length) {
-      this.generateFlightPath();
-    }
-    
-    // Move along flight path
-    if (this.currentPathIndex < this.flightPath.length) {
-      const target = this.flightPath[this.currentPathIndex];
-      const direction = target.clone().sub(this.position).normalize();
-      
-      // Smooth velocity transitions instead of instant changes
-      const targetVelocity = direction.multiplyScalar(this.config.flightSpeed);
-      this.velocity.lerp(targetVelocity, deltaTime * 2);
-      
-      // Much smoother turning - realistic bird banking
-      const targetDirection = Math.atan2(direction.z, direction.x) + Math.PI;
-      this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.02);
-      
-      // Very subtle banking during sharp turns only
-      const turnRate = Math.abs(this.mesh.rotation.y - targetDirection);
-      if (turnRate > 0.5) {
-        this.mesh.rotation.z = THREE.MathUtils.lerp(this.mesh.rotation.z, Math.sign(direction.z) * 0.1, 0.05);
-      } else {
-        this.mesh.rotation.z = THREE.MathUtils.lerp(this.mesh.rotation.z, 0, 0.1);
-      }
-      
-      if (this.position.distanceTo(target) < 2) {
-        this.currentPathIndex++;
-      }
-    }
+    // Use enhanced flight path following from base class
+    this.followFlightPath(deltaTime);
   }
 
   private executeLanding(deltaTime: number): void {
@@ -739,7 +701,12 @@ export class CrowBird extends BaseBird {
     }
   }
 
-  private generateFlightPath(): void {
+  protected generateFlightPath(): void {
+    // Use enhanced flight path from base class
+    super.generateFlightPath();
+  }
+
+  private generateOldFlightPath(): void {
     this.flightPath = [];
     this.currentPathIndex = 0;
     
@@ -785,13 +752,16 @@ export class CrowBird extends BaseBird {
   protected updateAnimation(deltaTime: number): void {
     if (!this.bodyParts || !this.wingSegments) return;
 
-    // Update animation cycles
+    // Update animation cycles with variable wing beat intensity
     this.walkCycle += deltaTime * 4;
-    this.flapCycle += deltaTime * (this.isFlapping ? 15 : 2);
+    this.flapCycle += deltaTime * (this.isFlapping ? 15 * this.wingBeatIntensity : 2);
     this.headBobCycle += deltaTime * 6;
 
     // Dynamic head positioning based on state
     this.updateDynamicHeadPosition(deltaTime);
+
+    // Animate legs (including flight leg tucking)
+    this.animateLegs();
 
     // Animate walking
     if (this.birdState === BirdState.WALKING && this.velocity.length() > 0.1) {
@@ -1282,6 +1252,42 @@ export class CrowBird extends BaseBird {
       feather.rotation.z = 0.2;
       feather.scale.y = 1.15;
     });
+  }
+
+  private animateLegs(): void {
+    if (!this.bodyParts) return;
+
+    // Access leg groups
+    const leftLeg = this.bodyParts.leftLeg.children[0] as THREE.Group; // Thigh group
+    const rightLeg = this.bodyParts.rightLeg.children[0] as THREE.Group;
+    
+    if (!leftLeg || !rightLeg) return;
+
+    // Access thigh meshes for rotation
+    const leftThigh = leftLeg.children[0] as THREE.Mesh;
+    const rightThigh = rightLeg.children[0] as THREE.Mesh;
+    
+    // Access shin groups
+    const leftShinGroup = leftLeg.children[1] as THREE.Group;
+    const rightShinGroup = rightLeg.children[1] as THREE.Group;
+    
+    if (!leftShinGroup || !rightShinGroup) return;
+
+    if (this.flightMode !== FlightMode.GROUNDED) {
+      // Flight leg position - tuck legs up against body
+      leftThigh.rotation.x = Math.PI / 3; // 60 degrees forward
+      rightThigh.rotation.x = Math.PI / 3;
+      
+      // Bend shins back
+      leftShinGroup.rotation.x = -Math.PI / 2; // 90 degrees back
+      rightShinGroup.rotation.x = -Math.PI / 2;
+    } else {
+      // Ground leg position - legs extended for standing/walking
+      leftThigh.rotation.x = 0;
+      rightThigh.rotation.x = 0;
+      leftShinGroup.rotation.x = 0;
+      rightShinGroup.rotation.x = 0;
+    }
   }
 
   private animateHeadBob(): void {
