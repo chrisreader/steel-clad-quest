@@ -705,7 +705,7 @@ export class CrowBird extends BaseBird {
       this.velocity.copy(direction.multiplyScalar(speed));
       
       // Face movement direction smoothly (bird should face direction of travel)
-      const targetDirection = Math.atan2(direction.z, direction.x) + Math.PI;
+      const targetDirection = Math.atan2(direction.z, direction.x);
       this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.15);
     } else {
       this.velocity.set(0, 0, 0);
