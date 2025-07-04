@@ -470,6 +470,11 @@ export class CrowBird extends BaseBird {
   protected updateBirdBehavior(deltaTime: number, playerPosition: THREE.Vector3): void {
     this.stateTimer += deltaTime;
     
+    // Debug logging every few seconds
+    if (Math.floor(this.stateTimer) % 3 === 0 && this.stateTimer % 1 < deltaTime) {
+      console.log(`🐦 [CrowBird] Debug - State: ${this.birdState}, FlightMode: ${this.flightMode}, Position Y: ${this.position.y.toFixed(2)}, Ground: ${this.groundLevel.toFixed(2)}, Distance: ${this.distanceFromPlayer.toFixed(1)}`);
+    }
+    
     // Check player distance for alert behavior
     if (this.distanceFromPlayer < this.config.alertDistance && this.flightMode === FlightMode.GROUNDED) {
       if (this.distanceFromPlayer < 3) {
@@ -639,16 +644,27 @@ export class CrowBird extends BaseBird {
   }
 
   private executeLanding(deltaTime: number): void {
-    this.isFlapping = false;
+    // Approach landing with controlled descent
+    this.flapCycle += deltaTime * 6;
+    this.isFlapping = true;
     
-    if (this.position.y <= this.groundLevel + 0.1) {
-      this.position.y = this.groundLevel;
+    // Reduce forward speed for landing approach
+    this.velocity.x *= 0.95;
+    this.velocity.z *= 0.95;
+    
+    // Control descent rate - force downward movement
+    this.velocity.y = -1.0; // Strong downward velocity
+    
+    // Land when close to ground
+    if (this.position.y <= this.groundLevel + 0.5) {
       this.flightMode = FlightMode.GROUNDED;
+      this.position.y = this.groundLevel; // Force ground contact
       this.velocity.set(0, 0, 0);
       // Reset rotations when landing
       this.mesh.rotation.z = 0;
       this.mesh.rotation.x = 0;
       this.changeState(BirdState.IDLE);
+      console.log(`🐦 [CrowBird] Successfully landed at Y: ${this.position.y}`);
     }
   }
 
