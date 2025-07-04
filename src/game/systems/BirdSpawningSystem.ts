@@ -148,6 +148,19 @@ export class BirdSpawningSystem {
     // Check bird count
     const hasSpaceForMore = this.birds.size < this.config.maxEntities;
     
+    // Debug logging every 5 seconds
+    if (now % 5000 < 100) {
+      console.log(`🐦 [BirdSpawningSystem] Status - Birds: ${this.birds.size}/${this.config.maxEntities}, Movement: ${this.playerMovementAccumulator.toFixed(1)}/${this.config.playerMovementThreshold}, Time since spawn: ${((now - this.lastSpawnTime) / 1000).toFixed(1)}s`);
+    }
+    
+    // Force spawn at least one bird for testing if none exist
+    if (this.birds.size === 0 && now - this.lastSpawnTime > 2000) {
+      console.log('🐦 [BirdSpawningSystem] Force spawning bird for testing');
+      this.spawnBirds(playerPosition);
+      this.lastSpawnTime = now;
+      return;
+    }
+    
     if ((shouldSpawnByMovement || shouldSpawnByTime) && hasSpaceForMore) {
       this.spawnBirds(playerPosition);
       this.playerMovementAccumulator = 0;
