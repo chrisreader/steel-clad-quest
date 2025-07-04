@@ -300,79 +300,83 @@ export class CrowBird extends BaseBird {
     handGroup.position.set(0, 0, side * 0.28); // At end of forearm
     forearmGroup.add(handGroup);
 
-    // PRIMARY FEATHERS - Create realistic tapered wing surface (narrowest, longest)
-    const primaryFeathers: THREE.Mesh[] = [];
+    // COVERT FEATHERS - Small body coverage feathers (shortest, narrowest base)
+    const covertFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 6; i++) {
-      const featherLength = 0.35 - (i * 0.04); // Longest at wingtip, shorter inward
-      const baseWidth = 0.035 - (i * 0.003); // Narrow base, getting slightly wider inward
-      const tipWidth = 0.015 - (i * 0.001); // Very narrow tips
+      const featherLength = 0.12 + (i * 0.008); // Small, gradually increasing
+      const baseWidth = 0.03 + (i * 0.002); // Small base width
+      const tipWidth = baseWidth * 0.4; // Less tapering for body coverage
       
       const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
-      const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      const covert = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers along hand bone with proper spacing
-      feather.position.set(-featherLength / 3, 0, side * (i * 0.025)); // Better spacing
+      // Position along humerus closer to body, creating overlap layers
+      const offsetFromBone = -0.05 - (i * 0.015); // Layered outward from bone
+      const alongBone = i * 0.035; // Spaced along bone length
+      covert.position.set(offsetFromBone, -0.02, side * alongBone);
       
-      // Orient feathers to lay along wing surface initially
-      feather.rotation.x = -Math.PI / 2; // Lay flat along wing surface
-      feather.rotation.y = side * (0.05 + i * 0.02); // Progressive angle outward
-      feather.rotation.z = -i * 0.015; // Slight overlap
+      // Orient to create overlapping body coverage
+      covert.rotation.x = -Math.PI / 2 + (i * 0.08); // Gradually lift from body
+      covert.rotation.y = side * (0.1 - i * 0.01); // Fan slightly inward
+      covert.rotation.z = -i * 0.03; // Overlap like roof shingles
       
-      // Store original rotations for animation
-      feather.userData.originalRotation = { x: feather.rotation.x, y: feather.rotation.y, z: feather.rotation.z };
+      covert.userData.originalRotation = { x: covert.rotation.x, y: covert.rotation.y, z: covert.rotation.z };
       
-      handGroup.add(feather);
-      primaryFeathers.push(feather);
+      humerusGroup.add(covert);
+      covertFeathers.push(covert);
     }
 
-    // SECONDARY FEATHERS - Wing surface along forearm (medium width, medium length)
+    // SECONDARY FEATHERS - Main wing surface (medium size, proper progression)
     const secondaryFeathers: THREE.Mesh[] = [];
-    for (let i = 0; i < 5; i++) {
-      const featherLength = 0.28 - (i * 0.025); // Medium length, tapering inward
-      const baseWidth = 0.055 - (i * 0.005); // Wider than primaries
-      const tipWidth = 0.025 - (i * 0.002); // Medium tip width
+    for (let i = 0; i < 8; i++) {
+      const featherLength = 0.25 + (i * 0.02); // Gradually increasing toward outer wing
+      const baseWidth = 0.06 + (i * 0.004); // Medium base width, getting wider
+      const tipWidth = baseWidth * 0.3; // More pointed than coverts
       
       const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position along forearm bone with proper spacing
-      feather.position.set(-featherLength / 3, 0, side * (i * 0.035)); 
+      // Position along forearm bone creating wing surface
+      const offsetFromBone = -0.08 - (i * 0.02); // Extended outward from bone
+      const alongBone = i * 0.03; // Spaced along forearm
+      feather.position.set(offsetFromBone, -0.01, side * alongBone);
       
-      // Orient to lay along wing surface initially
-      feather.rotation.x = -Math.PI / 2; // Lay flat along wing surface
-      feather.rotation.y = side * (0.03 + i * 0.015); // Progressive angle
-      feather.rotation.z = -i * 0.02; // Overlap pattern
+      // Create natural wing curve and overlap
+      feather.rotation.x = -Math.PI / 2 + (i * 0.04); // Gradual lift creating wing curve
+      feather.rotation.y = side * (0.15 - i * 0.005); // Slight backward sweep
+      feather.rotation.z = -i * 0.02; // Overlapping pattern
       
-      // Store original rotations for animation
       feather.userData.originalRotation = { x: feather.rotation.x, y: feather.rotation.y, z: feather.rotation.z };
       
       forearmGroup.add(feather);
       secondaryFeathers.push(feather);
     }
 
-    // COVERT FEATHERS - Body connection feathers (widest, shortest)
-    const covertFeathers: THREE.Mesh[] = [];
-    for (let i = 0; i < 4; i++) {
-      const featherLength = 0.18 - (i * 0.015); // Shortest feathers
-      const baseWidth = 0.08 - (i * 0.008); // Widest feathers for body connection
-      const tipWidth = 0.04 - (i * 0.005); // Moderate tip width
+    // PRIMARY FEATHERS - Wing control surfaces (largest, longest)
+    const primaryFeathers: THREE.Mesh[] = [];
+    for (let i = 0; i < 10; i++) {
+      const featherLength = 0.30 + (i * 0.015); // Longest feathers at wingtip
+      const baseWidth = 0.08 + (i * 0.004); // Large base width for flight control
+      const tipWidth = baseWidth * 0.2; // Highly pointed for aerodynamics
       
       const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
-      const covert = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position along humerus bone closer to body
-      covert.position.set(-featherLength / 4, 0, side * (i * 0.04));
+      // Position along hand bone extending to wingtip
+      const offsetFromBone = -0.10 - (i * 0.025); // Well extended from bone structure
+      const alongBone = i * 0.015; // Close spacing for wingtip control
+      feather.position.set(offsetFromBone, 0, side * alongBone);
       
-      // Orient to lay along wing base initially
-      covert.rotation.x = -Math.PI / 2; // Lay flat along wing surface
-      covert.rotation.y = side * (0.02 + i * 0.01); // Slight progressive angle
-      covert.rotation.z = -i * 0.01; // Slight overlap
+      // Create classic wingtip shape - narrow body, wide mid-wing, pointed tip
+      const tipEffect = i / 9; // 0 to 1 from body to tip
+      feather.rotation.x = -Math.PI / 2 + (tipEffect * 0.3); // More lift toward tip
+      feather.rotation.y = side * (0.2 + tipEffect * 0.1); // Swept back toward tip
+      feather.rotation.z = -i * 0.015; // Tight overlap for control
       
-      // Store original rotations for animation
-      covert.userData.originalRotation = { x: covert.rotation.x, y: covert.rotation.y, z: covert.rotation.z };
+      feather.userData.originalRotation = { x: feather.rotation.x, y: feather.rotation.y, z: feather.rotation.z };
       
-      humerusGroup.add(covert);
-      covertFeathers.push(covert);
+      handGroup.add(feather);
+      primaryFeathers.push(feather);
     }
 
     // Store wing segments for animation
