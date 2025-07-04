@@ -300,7 +300,7 @@ export abstract class BaseBird implements SpawnableEntity {
     const targetDirection = toTarget.normalize();
     
     // Calculate desired rotation angle using atan2 for stability
-    const desiredAngle = Math.atan2(targetDirection.x, targetDirection.z);
+    const desiredAngle = Math.atan2(targetDirection.z, targetDirection.x);
     
     // Get current angle and calculate shortest rotation
     let currentAngle = this.mesh.rotation.y;
@@ -330,9 +330,9 @@ export abstract class BaseBird implements SpawnableEntity {
     
     // Set velocity based on current mesh orientation (head-first movement)
     const currentFacing = new THREE.Vector3(
-      Math.sin(this.mesh.rotation.y),
+      Math.cos(this.mesh.rotation.y),
       0,
-      Math.cos(this.mesh.rotation.y)
+      Math.sin(this.mesh.rotation.y)
     );
     
     const speed = this.config.flightSpeed;
