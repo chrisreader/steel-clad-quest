@@ -150,7 +150,7 @@ export class BirdAnimationController {
       const flapIntensity = this.getFlapIntensity(flightMode, birdState);
       const wingAngle = Math.sin(this.animationState.flapCycle) * flapIntensity;
       
-      // Base wing rotation
+      // Base wing rotation - no conflicts with CrowBird's system
       this.bodyParts.leftWing.rotation.z = wingAngle + 0.2;
       this.bodyParts.rightWing.rotation.z = -wingAngle - 0.2;
 

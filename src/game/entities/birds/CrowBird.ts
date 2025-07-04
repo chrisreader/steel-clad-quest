@@ -881,24 +881,24 @@ export class CrowBird extends BaseBird {
     const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
     const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
     
-    // Fold wings tightly against body - like real birds at rest
-    leftWingGroup.rotation.set(0, -Math.PI / 2, 0);   // -90° tight fold
-    rightWingGroup.rotation.set(0, Math.PI / 2, 0);    // +90° tight fold
+    // FIXED: Don't rotate wing groups - use joint-based folding only
+    leftWingGroup.rotation.set(0, 0, 0);
+    rightWingGroup.rotation.set(0, 0, 0);
     
-    // Tighter resting joint positions for more natural tucked appearance
-    leftShoulder.rotation.set(0.2, 0, 0.1);   // Slightly raised and angled
-    rightShoulder.rotation.set(-0.2, 0, -0.1);
-    leftHumerus.rotation.set(0, 0.4, 0);      // More tucked toward body
-    rightHumerus.rotation.set(0, -0.4, 0);
+    // Natural folded wing positions using joint-based folding
+    leftShoulder.rotation.set(0.1, 0, 0.3);     // Fold shoulder toward body
+    rightShoulder.rotation.set(-0.1, 0, -0.3);
+    leftHumerus.rotation.set(0, 0.2, 0.5);      // Fold upper arm back
+    rightHumerus.rotation.set(0, -0.2, -0.5);
     
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -1.0);   // Forearm tightly folded
-      rightForearm.rotation.set(0, 0, 1.0);
+      leftForearm.rotation.set(0, 0, -0.8);     // Fold forearm toward body
+      rightForearm.rotation.set(0, 0, 0.8);
     }
     
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.5);      // Wingtips completely tucked back
-      rightHand.rotation.set(0, 0, 0.5);
+      leftHand.rotation.set(0, 0, -0.4);        // Fold wingtips back
+      rightHand.rotation.set(0, 0, 0.4);
     }
     
     this.animateFeathersForRest();
@@ -1275,41 +1275,64 @@ export class CrowBird extends BaseBird {
   private animateHeadBob(): void {
     if (!this.bodyParts) return;
 
-    // Flight states: align head with flight direction for realism
+    // Unified head orientation system
     if (this.flightMode !== FlightMode.GROUNDED) {
+      // Flight states: head aligned with flight direction
       this.animateFlightHeadOrientation();
-    } 
-    // Ground states: natural head movements
-    else if (this.birdState === BirdState.WALKING || this.birdState === BirdState.FORAGING) {
-      this.bodyParts.head.position.x = 0.6 + Math.sin(this.headBobCycle) * 0.05;
-      this.bodyParts.head.rotation.x = Math.sin(this.headBobCycle) * 0.1;
-      // Reset head Y rotation for ground states
-      this.bodyParts.head.rotation.y = THREE.MathUtils.lerp(
-        this.bodyParts.head.rotation.y, 0, 0.1
-      );
     } else {
-      // Alert and idle states on ground - occasional head turns
-      if (Math.random() < 0.01) {
-        this.bodyParts.head.rotation.y = (Math.random() - 0.5) * 0.5;
-      }
+      // Ground states: natural head movements
+      this.animateGroundHeadMovement();
     }
+  }
+
+  private animateGroundHeadMovement(): void {
+    if (!this.bodyParts) return;
+
+    // Different head behaviors for different ground states
+    switch (this.birdState) {
+      case BirdState.WALKING:
+      case BirdState.FORAGING:
+        // Head bobbing during ground movement
+        this.bodyParts.head.position.x = 0.6 + Math.sin(this.headBobCycle) * 0.05;
+        this.bodyParts.head.rotation.x = Math.sin(this.headBobCycle) * 0.1;
+        break;
+        
+      case BirdState.ALERT:
+        // Quick alert head movements
+        if (Math.random() < 0.02) {
+          this.bodyParts.head.rotation.y = (Math.random() - 0.5) * 0.8;
+        }
+        break;
+        
+      case BirdState.IDLE:
+      default:
+        // Occasional casual head turns
+        if (Math.random() < 0.01) {
+          this.bodyParts.head.rotation.y = (Math.random() - 0.5) * 0.5;
+        }
+        break;
+    }
+
+    // Gradually return head Y rotation to center for ground states
+    this.bodyParts.head.rotation.y = THREE.MathUtils.lerp(
+      this.bodyParts.head.rotation.y, 0, 0.05
+    );
   }
 
   private animateFlightHeadOrientation(): void {
     if (!this.bodyParts) return;
 
     // Head should point in flight direction during flight
-    // Bird model faces +X, so head should align with flight heading
     const targetHeadRotation = 0; // Head aligned with body direction (which follows currentHeading)
     
     // Smooth head alignment with flight direction
     this.bodyParts.head.rotation.y = THREE.MathUtils.lerp(
       this.bodyParts.head.rotation.y,
       targetHeadRotation,
-      0.05
+      0.08
     );
 
-    // Optional: slight anticipatory head movement during turns
+    // Anticipatory head movement during turns for realism
     if (this.birdState === BirdState.FLYING || this.birdState === BirdState.SOARING) {
       const headingDiff = this.targetHeading - this.currentHeading;
       
@@ -1318,14 +1341,19 @@ export class CrowBird extends BaseBird {
       if (normalizedDiff > Math.PI) normalizedDiff -= 2 * Math.PI;
       if (normalizedDiff < -Math.PI) normalizedDiff += 2 * Math.PI;
       
-      // Subtle anticipatory head turn (look ahead during turns)
-      const anticipatoryTurn = THREE.MathUtils.clamp(normalizedDiff * 0.3, -0.2, 0.2);
+      // Birds look ahead when turning - anticipatory head movement
+      const anticipatoryTurn = THREE.MathUtils.clamp(normalizedDiff * 0.4, -0.25, 0.25);
       this.bodyParts.head.rotation.y += anticipatoryTurn;
     }
 
-    // Reduce head bobbing during flight for streamlined appearance
+    // Streamlined head position during flight
     this.bodyParts.head.rotation.x = THREE.MathUtils.lerp(
-      this.bodyParts.head.rotation.x, 0, 0.05
+      this.bodyParts.head.rotation.x, 0, 0.08
+    );
+    
+    // Keep head position stable during flight
+    this.bodyParts.head.position.x = THREE.MathUtils.lerp(
+      this.bodyParts.head.position.x, 0.6, 0.05
     );
   }
 

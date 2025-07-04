@@ -179,8 +179,8 @@ export abstract class BaseBird implements SpawnableEntity {
       this.velocity.y += liftForce;
     }
     
-    // Enhanced soaring physics
-    if (this.birdState === BirdState.SOARING) {
+    // Enhanced soaring physics - ONLY apply during SOARING state
+    if (this.birdState === BirdState.SOARING && this.flightMode !== FlightMode.GROUNDED) {
       this.soaringAltitudeLoss += deltaTime;
       
       // Realistic soaring: minimal energy loss with occasional thermals
@@ -305,8 +305,8 @@ export abstract class BaseBird implements SpawnableEntity {
     const actualTurn = THREE.MathUtils.clamp(headingDiff, -maxTurnRate, maxTurnRate);
     this.currentHeading += actualTurn;
     
-    // FIXED: Always orient mesh to face flight direction (bird model faces +X)
-    this.mesh.rotation.y = this.currentHeading - Math.PI / 2;
+    // FIXED: Always orient mesh to face flight direction (bird model faces forward along +X axis)
+    this.mesh.rotation.y = this.currentHeading;
     
     // FIXED: Always move in the direction the bird is visually facing
     const moveDirection = new THREE.Vector3(
