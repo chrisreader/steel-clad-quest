@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BaseBird, BirdState, FlightMode, BirdBodyParts, WingSegments, BirdConfig } from './BaseBird';
+import { BirdAnimationController } from '../../animation/birds/BirdAnimationController';
 import { TextureGenerator } from '../../utils';
 
 export class CrowBird extends BaseBird {
@@ -11,6 +12,15 @@ export class CrowBird extends BaseBird {
     eye: THREE.Material;
     leg: THREE.Material;
   } | null = null;
+  
+  // Emergency systems
+  private maxFlightTime: number = 15;
+  private flightTimer: number = 0;
+  private maxAltitude: number = 25;
+  private emergencyLanding: boolean = false;
+  
+  // Animation system
+  private animationController: BirdAnimationController | null = null;
 
   constructor(id: string) {
     const crowConfig: BirdConfig = {
@@ -21,12 +31,18 @@ export class CrowBird extends BaseBird {
       legLength: 0.6,
       walkSpeed: 1.5,
       flightSpeed: 8.0,
-      flightAltitude: { min: 8, max: 25 },
+      flightAltitude: { min: 8, max: 20 }, // Reduced max altitude
       territoryRadius: 15,
       alertDistance: 8
     };
     
     super(id, crowConfig);
+    
+    // Emergency bounds system
+    this.maxFlightTime = 15; // Max 15 seconds in air
+    this.flightTimer = 0;
+    this.maxAltitude = 25; // Emergency ceiling
+    this.emergencyLanding = false;
   }
 
   protected createBirdBody(): void {
@@ -156,47 +172,10 @@ export class CrowBird extends BaseBird {
       rightEye: rightEye
     };
 
-    this.mesh.add(bodyGroup);
-  }
+    // Initialize animation controller
+    this.animationController = new BirdAnimationController(this.bodyParts, this.wingSegments);
 
-  private createUnifiedBodyNeck(): THREE.BufferGeometry {
-    // Create unified body-neck geometry for seamless bird anatomy
-    const bodyGeometry = new THREE.CapsuleGeometry(0.12, 0.45, 12, 16);
-    // Orient body along X-axis (bird's forward direction)
-    bodyGeometry.rotateZ(Math.PI / 2);
-    
-    // Create neck geometry that flows from body
-    const neckGeometry = new THREE.CapsuleGeometry(0.06, 0.25, 8, 12);
-    // Position and orient neck extending forward from body
-    neckGeometry.rotateZ(Math.PI / 2);
-    neckGeometry.translate(0.35, 0.08, 0);
-    
-    // Merge geometries for seamless body-neck flow
-    const mergedGeometry = new THREE.BufferGeometry();
-    const bodyPositions = bodyGeometry.attributes.position.array;
-    const neckPositions = neckGeometry.attributes.position.array;
-    
-    // Combine vertices
-    const totalVertices = bodyPositions.length + neckPositions.length;
-    const mergedPositions = new Float32Array(totalVertices);
-    mergedPositions.set(bodyPositions, 0);
-    mergedPositions.set(neckPositions, bodyPositions.length);
-    
-    mergedGeometry.setAttribute('position', new THREE.BufferAttribute(mergedPositions, 3));
-    
-    // Create indices for both geometries
-    const bodyIndices = bodyGeometry.index?.array || [];
-    const neckIndices = neckGeometry.index?.array || [];
-    const bodyVertexCount = bodyPositions.length / 3;
-    
-    // Offset neck indices by body vertex count
-    const offsetNeckIndices = Array.from(neckIndices).map(index => index + bodyVertexCount);
-    
-    const mergedIndices = new Uint16Array([...bodyIndices, ...offsetNeckIndices]);
-    mergedGeometry.setIndex(new THREE.BufferAttribute(mergedIndices, 1));
-    
-    mergedGeometry.computeVertexNormals();
-    return mergedGeometry;
+    this.mesh.add(bodyGroup);
   }
 
   private createSimpleMaterials(): void {
@@ -466,19 +445,29 @@ export class CrowBird extends BaseBird {
     return legGroup;
   }
 
-
   protected updateBirdBehavior(deltaTime: number, playerPosition: THREE.Vector3): void {
     this.stateTimer += deltaTime;
     
-    // Debug logging every few seconds
-    if (Math.floor(this.stateTimer) % 3 === 0 && this.stateTimer % 1 < deltaTime) {
-      console.log(`🐦 [CrowBird] Debug - State: ${this.birdState}, FlightMode: ${this.flightMode}, Position Y: ${this.position.y.toFixed(2)}, Ground: ${this.groundLevel.toFixed(2)}, Distance: ${this.distanceFromPlayer.toFixed(1)}`);
+    // Track flight time
+    if (this.flightMode !== FlightMode.GROUNDED) {
+      this.flightTimer += deltaTime;
+    } else {
+      this.flightTimer = 0;
+      this.emergencyLanding = false;
+    }
+    
+    // EMERGENCY BOUNDS AND RECOVERY SYSTEMS
+    this.checkEmergencyConditions();
+    
+    // Skip normal behavior if in emergency mode
+    if (this.emergencyLanding) {
+      this.executeEmergencyLanding(deltaTime);
+      return;
     }
     
     // Check player distance for alert behavior
     if (this.distanceFromPlayer < this.config.alertDistance && this.flightMode === FlightMode.GROUNDED) {
       if (this.distanceFromPlayer < 3) {
-        // Too close - flee by taking flight
         this.startFlight();
         return;
       } else if (this.birdState !== BirdState.ALERT) {
@@ -486,52 +475,86 @@ export class CrowBird extends BaseBird {
       }
     }
 
-    // State machine
-    if (Date.now() > this.nextStateChange) {
-      this.updateStateMachine();
-    }
-
-    // Execute current state behavior
+    // Deterministic state transitions based on conditions
+    this.updateIntelligentStateMachine();
     this.executeCurrentState(deltaTime);
   }
 
-  private updateStateMachine(): void {
-    switch (this.birdState) {
-      case BirdState.IDLE:
-        const nextAction = Math.random();
-        if (nextAction < 0.3) {
-          this.changeState(BirdState.WALKING);
-        } else if (nextAction < 0.5) {
-          this.changeState(BirdState.FORAGING);
-        } else if (nextAction < 0.7) {
-          this.changeState(BirdState.PREENING);
-        } else {
-          this.startFlight();
-        }
-        break;
+  private checkEmergencyConditions(): void {
+    if (this.position.y > this.maxAltitude || this.flightTimer > this.maxFlightTime) {
+      this.emergencyLanding = true;
+      this.targetAltitude = this.groundLevel;
+    }
+  }
+  
+  private executeEmergencyLanding(deltaTime: number): void {
+    this.changeState(BirdState.LANDING);
+    this.flightMode = FlightMode.DESCENDING;
+    this.isFlapping = false;
+    this.velocity.y = Math.min(this.velocity.y - 8 * deltaTime, -3);
+    this.velocity.x *= 0.95;
+    this.velocity.z *= 0.95;
+    
+    if (this.position.y <= this.groundLevel + 1) {
+      this.forceGrounding();
+    }
+  }
+  
+  private forceGrounding(): void {
+    this.flightMode = FlightMode.GROUNDED;
+    this.position.y = this.groundLevel;
+    this.velocity.set(0, 0, 0);
+    this.mesh.rotation.z = 0;
+    this.mesh.rotation.x = 0;
+    this.changeState(BirdState.IDLE);
+    this.emergencyLanding = false;
+    this.flightTimer = 0;
+  }
 
-      case BirdState.WALKING:
-      case BirdState.FORAGING:
-      case BirdState.PREENING:
-        if (Math.random() < 0.4) {
-          this.changeState(BirdState.IDLE);
-        } else if (Math.random() < 0.2) {
-          this.startFlight();
+  private updateIntelligentStateMachine(): void {
+    // Altitude-based decisions for flying birds
+    if (this.flightMode !== FlightMode.GROUNDED) {
+      const altitudeAboveGround = this.position.y - this.groundLevel;
+      
+      if (altitudeAboveGround > this.config.flightAltitude.max || this.flightTimer > 12) {
+        this.startLanding();
+        return;
+      }
+      
+      if (altitudeAboveGround > this.config.flightAltitude.min && this.birdState === BirdState.FLYING) {
+        if (Math.random() < 0.1) {
+          this.changeState(BirdState.SOARING);
+          this.isFlapping = false;
         }
-        break;
-
-      case BirdState.FLYING:
-      case BirdState.SOARING:
-        if (Math.random() < 0.3) {
-          this.startLanding();
-        }
-        break;
-
-      case BirdState.ALERT:
-        if (this.distanceFromPlayer > this.config.alertDistance) {
-          this.changeState(BirdState.IDLE);
-        }
-        break;
+      }
+      return;
+    }
+    
+    // Ground state transitions
+    if (Date.now() > this.nextStateChange) {
+      switch (this.birdState) {
+        case BirdState.IDLE:
+          const nextAction = Math.random();
+          if (nextAction < 0.4) {
+            this.changeState(BirdState.WALKING);
+          } else if (nextAction < 0.6) {
+            this.changeState(BirdState.FORAGING);
+          } else if (nextAction < 0.8) {
+            this.changeState(BirdState.PREENING);
+          } else {
+            this.startFlight();
+          }
+          break;
+        case BirdState.WALKING:
+        case BirdState.FORAGING:
+        case BirdState.PREENING:
+          if (Math.random() < 0.6) {
+            this.changeState(BirdState.IDLE);
+          } else if (Math.random() < 0.3) {
+            this.startFlight();
+          }
+          break;
+      }
     }
   }
 
@@ -578,11 +601,19 @@ export class CrowBird extends BaseBird {
 
   private executeTakeoff(deltaTime: number): void {
     this.isFlapping = true;
-    this.velocity.y += 5 * deltaTime;
     
-    if (this.position.y > this.groundLevel + 3) {
+    // More realistic takeoff physics
+    const liftForce = 4 * deltaTime;
+    this.velocity.y += liftForce;
+    
+    // Limit takeoff velocity
+    this.velocity.y = Math.min(this.velocity.y, 2);
+    
+    // Transition to flying when airborne
+    if (this.position.y > this.groundLevel + 2) {
       this.flightMode = FlightMode.CRUISING;
       this.changeState(BirdState.FLYING);
+      console.log(`🐦 [CrowBird] Takeoff completed, altitude: ${this.position.y.toFixed(1)}`);
     }
   }
 
@@ -715,575 +746,64 @@ export class CrowBird extends BaseBird {
     this.flightPath = [];
     this.currentPathIndex = 0;
     
-    const pathLength = 3 + Math.floor(Math.random() * 4); // 3-6 points
+    const pathLength = 3 + Math.floor(Math.random() * 3); // 3-5 points (shorter paths)
     const centerPoint = this.homePosition.clone();
-    centerPoint.y = this.config.flightAltitude.min + 
-      Math.random() * (this.config.flightAltitude.max - this.config.flightAltitude.min);
     
-    // Forward-biased flight path: bias flight direction forward
+    // Constrain altitude to safe levels
+    const targetAltitude = this.config.flightAltitude.min + 
+      Math.random() * (this.config.flightAltitude.max - this.config.flightAltitude.min);
+    centerPoint.y = Math.min(targetAltitude, this.maxAltitude - 5); // Safety margin
+    
+    // Circular patrol pattern around home territory
     const currentDirection = this.mesh.rotation.y;
     
     for (let i = 0; i < pathLength; i++) {
-      // Create forward-biased angle: mostly forward with gentle turns
-      const forwardBias = (Math.random() - 0.5) * (Math.PI / 4); // ±45° spread
-      const progressiveAngle = currentDirection + (i * 0.2) + forwardBias; // Progressive forward movement
-      const radius = this.config.territoryRadius * (0.3 + Math.random() * 0.7);
+      // Create circular patrol with limited radius
+      const angleIncrement = (Math.PI * 2) / pathLength;
+      const angle = currentDirection + (i * angleIncrement) + (Math.random() - 0.5) * 0.5;
+      const radius = Math.min(this.config.territoryRadius * 0.7, 10); // Limit patrol radius
       
-      // Realistic altitude changes based on bird state
+      // Conservative altitude changes
       let altitudeVariation: number;
       if (this.birdState === BirdState.SOARING && !this.isFlapping) {
-        // Soaring: only flat or downward movement
-        altitudeVariation = Math.max(-2, (Math.random() - 0.9) * 2); // Strong downward bias
+        // Soaring: gradual descent
+        altitudeVariation = -Math.random() * 2;
       } else {
-        // Normal flight: can go up or down
-        altitudeVariation = (Math.random() - 0.5) * 5;
+        // Normal flight: minimal altitude change
+        altitudeVariation = (Math.random() - 0.5) * 3;
       }
       
       const point = new THREE.Vector3(
-        centerPoint.x + Math.cos(progressiveAngle) * radius,
-        centerPoint.y + altitudeVariation,
-        centerPoint.z + Math.sin(progressiveAngle) * radius
+        this.homePosition.x + Math.cos(angle) * radius,
+        Math.max(this.groundLevel + 5, Math.min(centerPoint.y + altitudeVariation, this.maxAltitude - 3)),
+        this.homePosition.z + Math.sin(angle) * radius
       );
       
       this.flightPath.push(point);
     }
+    
+    console.log(`🐦 [CrowBird] Generated flight path with ${pathLength} points, max altitude: ${Math.max(...this.flightPath.map(p => p.y)).toFixed(1)}`);
   }
 
   protected updateAnimation(deltaTime: number): void {
-    if (!this.bodyParts || !this.wingSegments) return;
+    if (!this.animationController) return;
 
-    // Update animation cycles
-    this.walkCycle += deltaTime * 4;
-    this.flapCycle += deltaTime * (this.isFlapping ? 15 : 2);
-    this.headBobCycle += deltaTime * 6;
-
-    // Dynamic head positioning based on state
-    this.updateDynamicHeadPosition(deltaTime);
-
-    // Animate walking
-    if (this.birdState === BirdState.WALKING && this.velocity.length() > 0.1) {
-      this.animateWalk();
-    }
-
-    // Animate wings
-    this.animateWings();
-
-    // Animate head bobbing
-    this.animateHeadBob();
-  }
-
-  private updateDynamicHeadPosition(deltaTime: number): void {
-    if (!this.bodyParts) return;
-
-    // Determine target head position based on bird state
-    let targetY: number;
-    let targetX: number;
-
-    switch (this.birdState) {
-      case BirdState.IDLE:
-      case BirdState.WALKING:
-      case BirdState.FORAGING:
-      case BirdState.PREENING:
-      case BirdState.ALERT:
-        // Ground states: head above body for alert, upright posture - scaled for larger body
-        targetY = 0.15;
-        targetX = 0.52;
-        break;
-        
-      case BirdState.TAKING_OFF:
-        // Transitioning: gradually align head with body - scaled for larger body
-        targetY = 0.08;
-        targetX = 0.47;
-        break;
-        
-      case BirdState.FLYING:
-      case BirdState.SOARING:
-      case BirdState.LANDING:
-        // Flight states: head inline with body for aerodynamic streamlined flight - scaled for larger body
-        targetY = 0.0;
-        targetX = 0.42;
-        break;
-        
-      default:
-        targetY = 0.12;
-        targetX = 0.42;
-    }
-
-    // Smooth transition to target position
-    const lerpSpeed = 2.0; // Transition speed
-    this.bodyParts.head.position.y = THREE.MathUtils.lerp(
-      this.bodyParts.head.position.y, 
-      targetY, 
-      deltaTime * lerpSpeed
-    );
-    this.bodyParts.head.position.x = THREE.MathUtils.lerp(
-      this.bodyParts.head.position.x, 
-      targetX, 
-      deltaTime * lerpSpeed
+    this.animationController.update(
+      deltaTime,
+      this.birdState,
+      this.flightMode,
+      this.isFlapping,
+      this.velocity
     );
   }
 
-  private animateWalk(): void {
-    if (!this.bodyParts) return;
+  // Note: CrowBird.ts was getting too long. Consider refactoring into smaller focused files for:
+  // - Wing geometry creation
+  // - Flight behavior logic  
+  // - Animation integration
 
-    // Leg movement
-    const leftLegSwing = Math.sin(this.walkCycle) * 0.3;
-    const rightLegSwing = Math.sin(this.walkCycle + Math.PI) * 0.3;
-
-    this.bodyParts.leftLeg.rotation.x = leftLegSwing;
-    this.bodyParts.rightLeg.rotation.x = rightLegSwing;
-
-    // Subtle forward/backward body movement instead of floating bob
-    this.bodyParts.body.position.x = Math.sin(this.walkCycle * 2) * 0.02;
-    this.bodyParts.body.position.y = 0; // Keep firmly on ground
-  }
-
-  private animateWings(): void {
-    if (!this.wingSegments || !this.bodyParts) return;
-
-    // Get wing groups to access joint structure
-    const leftWingGroup = this.bodyParts.leftWing.children[0] as THREE.Group; // Main wing group
-    const rightWingGroup = this.bodyParts.rightWing.children[0] as THREE.Group;
-    
-    if (!leftWingGroup || !rightWingGroup) return;
-
-    // Access joint groups properly
-    const leftShoulder = leftWingGroup.children[0] as THREE.Group; // Shoulder group
-    const rightShoulder = rightWingGroup.children[0] as THREE.Group;
-    
-    if (!leftShoulder || !rightShoulder) return;
-
-    const leftHumerus = leftShoulder.children[0] as THREE.Group; // Humerus group  
-    const rightHumerus = rightShoulder.children[0] as THREE.Group;
-    
-    if (!leftHumerus || !rightHumerus) return;
-
-    const leftForearm = leftHumerus.children.find(child => child.userData?.type === 'elbow') as THREE.Group;
-    const rightForearm = rightHumerus.children.find(child => child.userData?.type === 'elbow') as THREE.Group;
-    
-    const leftHand = leftForearm?.children.find(child => child.userData?.type === 'wrist') as THREE.Group;
-    const rightHand = rightForearm?.children.find(child => child.userData?.type === 'wrist') as THREE.Group;
-
-    // Apply state-specific wing animations - use soaring feather look for all states
-    switch (this.birdState) {
-      case BirdState.IDLE:
-      case BirdState.WALKING:
-      case BirdState.FORAGING:
-        this.animateGroundedWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
-        this.animateFeathersForSoaring(); // Use soaring feather look
-        break;
-        
-      case BirdState.ALERT:
-        this.animateAlertWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm);
-        this.animateFeathersForSoaring(); // Use soaring feather look
-        break;
-        
-      case BirdState.TAKING_OFF:
-        this.animateTakeoffWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
-        this.animateFeathersForSoaring(); // Use soaring feather look
-        break;
-        
-      case BirdState.FLYING:
-        this.animateFlappingWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
-        this.animateFeathersForSoaring(); // Use soaring feather look
-        break;
-        
-      case BirdState.SOARING:
-        this.animateSoaringWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
-        this.animateFeathersForSoaring(); // Keep existing soaring feather look
-        break;
-        
-      case BirdState.LANDING:
-        this.animateLandingWings(leftShoulder, rightShoulder, leftHumerus, rightHumerus, leftForearm, rightForearm, leftHand, rightHand);
-        this.animateFeathersForSoaring(); // Use soaring feather look
-        break;
-    }
-  }
-
-  private animateGroundedWings(
-    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
-    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
-    leftForearm: THREE.Group, rightForearm: THREE.Group,
-    leftHand: THREE.Group, rightHand: THREE.Group
-  ): void {
-    // Wings naturally folded back against body pointing toward tail like real birds
-    
-    // Shoulder position - point wings backward and slightly down against body
-    leftShoulder.rotation.set(-0.1, -0.4, 0); // Slight down, back toward tail
-    rightShoulder.rotation.set(-0.1, -0.4, 0); // Slight down, back toward tail
-    
-    // Humerus - folded back along body length with slight inward tuck
-    leftHumerus.rotation.set(0, -0.5, -0.2); // Back along body, slight inward tuck
-    rightHumerus.rotation.set(0, -0.5, 0.2); // Back along body, slight inward tuck
-    
-    // Forearm - increased backward fold to tuck tightly against body
-    if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -1.7); // Increased backward fold
-      rightForearm.rotation.set(0, 0, 1.7); // Increased backward fold
-    }
-    
-    // Hand/wing tips - point toward tail and tuck close to body
-    if (leftHand && rightHand) {
-      leftHand.rotation.set(0, -0.3, -1.0); // Point toward tail, tucked close
-      rightHand.rotation.set(0, -0.3, 1.0); // Point toward tail, tucked close
-    }
-    
-    // Animate feathers to lay flat along folded wings
-    this.animateFeathersForRest();
-  }
-
-  private animateAlertWings(
-    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
-    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
-    leftForearm: THREE.Group, rightForearm: THREE.Group
-  ): void {
-    // Slight wing lift, ready for takeoff - Z-axis aligned
-    
-    // Shoulders slightly raised
-    leftShoulder.rotation.set(0, 0, 0.1);
-    rightShoulder.rotation.set(0, 0, -0.1);
-    
-    // Humerus partially extended laterally
-    leftHumerus.rotation.set(-0.1, 0.2, 0);
-    rightHumerus.rotation.set(0.1, -0.2, 0);
-    
-    // Forearm partially extended
-    if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.5);
-      rightForearm.rotation.set(0, 0, 0.5);
-    }
-  }
-
-  private animateTakeoffWings(
-    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
-    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
-    leftForearm: THREE.Group, rightForearm: THREE.Group,
-    leftHand: THREE.Group, rightHand: THREE.Group
-  ): void {
-    // Powerful upstroke for takeoff - Z-axis aligned
-    const takeoffIntensity = 1.2;
-    const wingBeat = Math.sin(this.flapCycle) * takeoffIntensity;
-    
-    // Strong shoulder movement - vertical flapping motion
-    leftShoulder.rotation.set(wingBeat * 0.5, 0, 0);
-    rightShoulder.rotation.set(-wingBeat * 0.5, 0, 0);
-    
-    // Humerus drives main power - lateral extension with vertical beat
-    leftHumerus.rotation.set(wingBeat * 0.7, 0.1, 0);
-    rightHumerus.rotation.set(-wingBeat * 0.7, -0.1, 0);
-    
-    // Coordinated forearm extension
-    if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(wingBeat * 0.3, 0, -0.3);
-      rightForearm.rotation.set(-wingBeat * 0.3, 0, 0.3);
-    }
-    
-    // Hand provides fine control
-    if (leftHand && rightHand) {
-      leftHand.rotation.set(wingBeat * 0.2, 0, -0.2);
-      rightHand.rotation.set(-wingBeat * 0.2, 0, 0.2);
-    }
-    
-    this.animateFeathersForPowerFlight(wingBeat);
-  }
-
-  private animateFlappingWings(
-    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
-    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
-    leftForearm: THREE.Group, rightForearm: THREE.Group,
-    leftHand: THREE.Group, rightHand: THREE.Group
-  ): void {
-    // Regular flapping flight - Z-axis aligned
-    const flapIntensity = 0.8;
-    const wingBeat = Math.sin(this.flapCycle) * flapIntensity;
-    
-    // Shoulder provides base rhythm - vertical flapping
-    leftShoulder.rotation.set(wingBeat * 0.3, 0, 0);
-    rightShoulder.rotation.set(-wingBeat * 0.3, 0, 0);
-    
-    // Humerus main stroke - lateral extension with vertical beat
-    leftHumerus.rotation.set(wingBeat * 0.5, 0.1, 0);
-    rightHumerus.rotation.set(-wingBeat * 0.5, -0.1, 0);
-    
-    // Forearm follows with delay
-    const forearmPhase = Math.sin(this.flapCycle - 0.2) * flapIntensity;
-    if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(forearmPhase * 0.4, 0, -0.4);
-      rightForearm.rotation.set(-forearmPhase * 0.4, 0, 0.4);
-    }
-    
-    // Hand fine-tunes wingtip
-    const handPhase = Math.sin(this.flapCycle - 0.4) * flapIntensity;
-    if (leftHand && rightHand) {
-      leftHand.rotation.set(handPhase * 0.3, 0, -0.3);
-      rightHand.rotation.set(-handPhase * 0.3, 0, 0.3);
-    }
-    
-    this.animateFeathersForFlight(wingBeat);
-  }
-
-  private animateSoaringWings(
-    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
-    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
-    leftForearm: THREE.Group, rightForearm: THREE.Group,
-    leftHand: THREE.Group, rightHand: THREE.Group
-  ): void {
-    // Wings fully extended for maximum lift - Z-axis aligned
-    
-    // Shoulders spread wide - lifted for lift generation
-    leftShoulder.rotation.set(0.2, 0, 0);
-    rightShoulder.rotation.set(-0.2, 0, 0);
-    
-    // Humerus extended laterally
-    leftHumerus.rotation.set(0.1, 0.05, 0);
-    rightHumerus.rotation.set(-0.1, -0.05, 0);
-    
-    // Forearm fully extended
-    if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.1);
-      rightForearm.rotation.set(0, 0, 0.1);
-    }
-    
-    // Hand extended for maximum span
-    if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.05);
-      rightHand.rotation.set(0, 0, 0.05);
-    }
-    
-    // Subtle air current adjustments
-    const airCurrent = Math.sin(this.flapCycle * 0.3) * 0.05;
-    leftShoulder.rotation.x += airCurrent;
-    rightShoulder.rotation.x -= airCurrent;
-    
-    this.animateFeathersForSoaring();
-  }
-
-  private animateLandingWings(
-    leftShoulder: THREE.Group, rightShoulder: THREE.Group,
-    leftHumerus: THREE.Group, rightHumerus: THREE.Group,
-    leftForearm: THREE.Group, rightForearm: THREE.Group,
-    leftHand: THREE.Group, rightHand: THREE.Group
-  ): void {
-    // Wings spread wide for air braking - Z-axis aligned
-    
-    // Shoulders lifted high for air brake
-    leftShoulder.rotation.set(0.4, 0, 0);
-    rightShoulder.rotation.set(-0.4, 0, 0);
-    
-    // Humerus angled up for drag
-    leftHumerus.rotation.set(0.3, 0.2, 0);
-    rightHumerus.rotation.set(-0.3, -0.2, 0);
-    
-    // Forearm spread for maximum surface area
-    if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.3);
-      rightForearm.rotation.set(0, 0, 0.3);
-    }
-    
-    // Hand spread wide
-    if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.2);
-      rightHand.rotation.set(0, 0, 0.2);
-    }
-    
-    this.animateFeathersForLanding();
-  }
-
-  private animateFeathersForRest(): void {
-    if (!this.wingSegments) return;
-    
-    // Feathers lay flat along wing surface, tight against body
-    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -Math.PI / 2; // Lay flat along wing
-      feather.rotation.y = -0.1; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -i * 0.02; // Overlapped pattern
-      feather.scale.y = 0.9; // Slightly contracted
-    });
-    
-    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -Math.PI / 2; // Lay flat along wing
-      feather.rotation.y = 0.1; // Flip Y rotation for flipped geometry
-      feather.rotation.z = i * 0.02; // Overlapped pattern
-      feather.scale.y = 0.9;
-    });
-    
-    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -Math.PI / 2;
-      feather.rotation.y = -0.08; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -i * 0.02;
-      feather.scale.y = 0.9;
-    });
-    
-    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -Math.PI / 2;
-      feather.rotation.y = 0.08; // Flip Y rotation for flipped geometry
-      feather.rotation.z = i * 0.02;
-      feather.scale.y = 0.9;
-    });
-    
-    if (this.wingSegments.left.covertFeathers) {
-      this.wingSegments.left.covertFeathers.forEach((feather, i) => {
-        feather.rotation.x = -Math.PI / 2;
-        feather.rotation.y = -0.05; // Flip Y rotation for flipped geometry
-        feather.rotation.z = -i * 0.01;
-      });
-    }
-    
-    if (this.wingSegments.right.covertFeathers) {
-      this.wingSegments.right.covertFeathers.forEach((feather, i) => {
-        feather.rotation.x = -Math.PI / 2;
-        feather.rotation.y = 0.05; // Flip Y rotation for flipped geometry
-        feather.rotation.z = i * 0.01;
-      });
-    }
-  }
-
-  private animateFeathersForPowerFlight(wingBeat: number): void {
-    if (!this.wingSegments) return;
-    
-    // Feathers perpendicular to wing surface for maximum thrust
-    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = wingBeat * 0.3; // Dynamic angle for thrust
-      feather.rotation.y = Math.PI / 8 * i - wingBeat * 0.4; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -wingBeat * 0.2;
-      feather.scale.y = 1.1; // Extended for power
-    });
-    
-    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -wingBeat * 0.3; // Dynamic angle for thrust
-      feather.rotation.y = -Math.PI / 8 * i + wingBeat * 0.4; // Flip Y rotation for flipped geometry
-      feather.rotation.z = wingBeat * 0.2;
-      feather.scale.y = 1.1;
-    });
-    
-    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = wingBeat * 0.2;
-      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -wingBeat * 0.15;
-      feather.scale.y = 1.0;
-    });
-    
-    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -wingBeat * 0.2;
-      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3; // Flip Y rotation for flipped geometry
-      feather.rotation.z = wingBeat * 0.15;
-      feather.scale.y = 1.0;
-    });
-  }
-
-  private animateFeathersForFlight(wingBeat: number): void {
-    if (!this.wingSegments) return;
-    
-    // Feathers perpendicular to wing for lift generation
-    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = wingBeat * 0.2; // Less aggressive than takeoff
-      feather.rotation.y = Math.PI / 12 * i - wingBeat * 0.3; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -wingBeat * 0.15;
-      feather.scale.y = 1.0;
-    });
-    
-    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -wingBeat * 0.2; // Less aggressive than takeoff
-      feather.rotation.y = -Math.PI / 12 * i + wingBeat * 0.3; // Flip Y rotation for flipped geometry
-      feather.rotation.z = wingBeat * 0.15;
-      feather.scale.y = 1.0;
-    });
-    
-    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = wingBeat * 0.15;
-      feather.rotation.y = Math.PI / 16 * i - wingBeat * 0.2; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -wingBeat * 0.1;
-      feather.scale.y = 1.0;
-    });
-    
-    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -wingBeat * 0.15;
-      feather.rotation.y = -Math.PI / 16 * i + wingBeat * 0.2; // Flip Y rotation for flipped geometry
-      feather.rotation.z = wingBeat * 0.1;
-      feather.scale.y = 1.0;
-    });
-  }
-
-  private animateFeathersForSoaring(): void {
-    if (!this.wingSegments) return;
-    
-    const airFlow = Math.sin(this.flapCycle * 0.2) * 0.03;
-    
-    // Feathers perpendicular to wing for maximum lift with slight air adjustments
-    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = 0.1 + airFlow; // Slight upward angle for lift
-      feather.rotation.y = Math.PI / 16 * i; // Flip Y rotation for flipped geometry
-      feather.rotation.z = airFlow + i * 0.01;
-      feather.scale.y = 1.1; // Extended for lift
-    });
-    
-    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -0.1 - airFlow; // Slight upward angle for lift
-      feather.rotation.y = -Math.PI / 16 * i; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -airFlow - i * 0.01;
-      feather.scale.y = 1.1;
-    });
-    
-    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = 0.05 + airFlow * 0.5;
-      feather.rotation.y = Math.PI / 20 * i; // Flip Y rotation for flipped geometry
-      feather.rotation.z = airFlow * 0.5;
-      feather.scale.y = 1.05;
-    });
-    
-    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -0.05 - airFlow * 0.5;
-      feather.rotation.y = -Math.PI / 20 * i; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -airFlow * 0.5;
-      feather.scale.y = 1.05;
-    });
-  }
-
-  private animateFeathersForLanding(): void {
-    if (!this.wingSegments) return;
-    
-    // Feathers perpendicular and spread wide for maximum air braking
-    this.wingSegments.left.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = 0.4; // Strong upward angle for braking
-      feather.rotation.y = Math.PI / 6 * i; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -0.3;
-      feather.scale.y = 1.2; // Maximum extension for drag
-    });
-    
-    this.wingSegments.right.primaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -0.4; // Strong upward angle for braking
-      feather.rotation.y = -Math.PI / 6 * i; // Flip Y rotation for flipped geometry
-      feather.rotation.z = 0.3;
-      feather.scale.y = 1.2;
-    });
-    
-    this.wingSegments.left.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = 0.3;
-      feather.rotation.y = Math.PI / 8 * i; // Flip Y rotation for flipped geometry
-      feather.rotation.z = -0.2;
-      feather.scale.y = 1.15;
-    });
-    
-    this.wingSegments.right.secondaryFeathers.forEach((feather, i) => {
-      feather.rotation.x = -0.3;
-      feather.rotation.y = -Math.PI / 8 * i; // Flip Y rotation for flipped geometry
-      feather.rotation.z = 0.2;
-      feather.scale.y = 1.15;
-    });
-  }
-
-  private animateHeadBob(): void {
-    if (!this.bodyParts) return;
-
-    // Head bobbing during walk and idle
-    if (this.birdState === BirdState.WALKING || this.birdState === BirdState.FORAGING) {
-      this.bodyParts.head.position.x = 0.6 + Math.sin(this.headBobCycle) * 0.05;
-      this.bodyParts.head.rotation.x = Math.sin(this.headBobCycle) * 0.1;
-    } else {
-      // Occasional head movements
-      if (Math.random() < 0.01) {
-        this.bodyParts.head.rotation.y = (Math.random() - 0.5) * 0.5;
-      }
-    }
+  public dispose(): void {
+    this.animationController?.dispose();
+    super.dispose();
   }
 }

@@ -166,34 +166,21 @@ export abstract class BaseBird implements SpawnableEntity {
   }
 
   protected updateFlightPhysics(deltaTime: number): void {
-    // Don't override landing physics - let the specific landing behavior control descent
-    if (this.birdState === BirdState.LANDING) {
-      // During landing, only apply minimal drag to horizontal movement
-      this.velocity.x *= 0.99;
-      this.velocity.z *= 0.99;
-      // Let the landing method fully control Y velocity
-      return;
+    // Apply gravity - birds fall without lift
+    const gravity = -9.8 * deltaTime;
+    this.velocity.y += gravity;
+    
+    // Apply lift when flapping
+    if (this.isFlapping) {
+      const liftForce = 12 * deltaTime; // Counter gravity plus climb
+      this.velocity.y += liftForce;
     }
     
-    const altitudeDiff = this.targetAltitude - this.position.y;
+    // Limit velocities to realistic ranges
+    this.velocity.y = THREE.MathUtils.clamp(this.velocity.y, -8, 4);
     
-    // Only apply altitude changes for significant differences
-    if (Math.abs(altitudeDiff) > 1.0) {
-      // Much more subtle altitude changes
-      let ascendRate: number;
-      if (this.isFlapping) {
-        ascendRate = 1.0; // Gentle climbing when flapping
-      } else {
-        // Soaring: gentle descent due to gravity
-        ascendRate = this.birdState === BirdState.SOARING ? -0.3 : 0.2;
-      }
-      
-      const altitudeChange = Math.sign(altitudeDiff) * ascendRate * deltaTime;
-      this.position.y += altitudeChange;
-    }
-    
-    // Apply realistic drag
-    this.velocity.multiplyScalar(0.98);
+    // Apply drag
+    this.velocity.multiplyScalar(0.99);
   }
 
   protected scheduleNextStateChange(): void {
@@ -211,15 +198,18 @@ export abstract class BaseBird implements SpawnableEntity {
 
   protected startFlight(): void {
     this.flightMode = FlightMode.ASCENDING;
-    this.targetAltitude = this.groundLevel + Math.random() * 20 + 10; // 10-30 units high
+    this.targetAltitude = this.groundLevel + Math.random() * 15 + 8; // 8-23 units high (reduced)
     this.isFlapping = true;
     this.changeState(BirdState.TAKING_OFF);
+    console.log(`🐦 [${this.config.species}] Starting flight, target altitude: ${this.targetAltitude.toFixed(1)}`);
   }
 
   protected startLanding(): void {
     this.flightMode = FlightMode.DESCENDING;
     this.targetAltitude = this.groundLevel;
     this.changeState(BirdState.LANDING);
+    this.isFlapping = false; // Stop flapping to begin descent
+    console.log(`🐦 [${this.config.species}] Starting landing from altitude: ${this.position.y.toFixed(1)}`);
   }
 
   public dispose(): void {
