@@ -644,16 +644,29 @@ export class CrowBird extends BaseBird {
   }
 
   private executeLanding(deltaTime: number): void {
-    // Approach landing with controlled descent
+    // Natural gliding approach with declining ramp
     this.flapCycle += deltaTime * 6;
     this.isFlapping = true;
     
-    // Reduce forward speed for landing approach
-    this.velocity.x *= 0.95;
-    this.velocity.z *= 0.95;
+    // Calculate glide approach - maintain forward momentum during most of descent
+    const altitudeToGround = this.position.y - this.groundLevel;
+    const isNearGround = altitudeToGround < 3.0;
     
-    // Control descent rate - force downward movement
-    this.velocity.y = -1.0; // Strong downward velocity
+    if (isNearGround) {
+      // Landing flare - reduce speed and gentle descent
+      this.velocity.x *= 0.92;
+      this.velocity.z *= 0.92;
+      this.velocity.y = Math.max(this.velocity.y - 1.5 * deltaTime, -0.8);
+    } else {
+      // Maintain glide speed with controlled descent angle (15-20° glide slope)
+      this.velocity.x *= 0.98; // Minimal speed reduction during glide
+      this.velocity.z *= 0.98;
+      
+      // Natural glide descent rate based on physics
+      const glideAngle = 0.3; // Realistic glide slope (about 17°)
+      const currentSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+      this.velocity.y = Math.max(this.velocity.y - 0.8 * deltaTime, -currentSpeed * glideAngle);
+    }
     
     // Land when close to ground
     if (this.position.y <= this.groundLevel + 0.5) {
