@@ -162,116 +162,95 @@ export class CrowBird extends BaseBird {
     const shoulderGroup = new THREE.Group();
     wingGroup.add(shoulderGroup);
     
-    // HUMERUS - Upper arm bone (shoulder to elbow) - extends laterally (Z-axis)
+    // HUMERUS - Upper arm bone (shoulder to elbow) - extends laterally
     const humerusGroup = new THREE.Group();
-    const humerusGeometry = new THREE.CapsuleGeometry(0.04, 0.28, 6, 8);
+    const humerusGeometry = new THREE.CapsuleGeometry(0.03, 0.24, 6, 8);
     const humerus = new THREE.Mesh(humerusGeometry, this.materials!.feather);
     
-    // Position humerus to extend laterally outward from shoulder
-    humerus.position.set(0, 0, side * 0.14); // Half length offset laterally
-    humerus.rotation.x = side * Math.PI / 2; // Rotate to align with Z-axis
-    humerus.rotation.y = side * -0.15; // Slight backward angle for natural positioning
+    // Position humerus to extend laterally from shoulder
+    humerus.rotation.z = side * Math.PI / 2; // Align bone horizontally along Z-axis
+    humerus.position.set(0, 0, side * 0.12); // Extend outward
     humerusGroup.add(humerus);
     shoulderGroup.add(humerusGroup);
 
     // FOREARM - Radius/Ulna bones (elbow to wrist)
     const forearmGroup = new THREE.Group();
-    const forearmGeometry = new THREE.CapsuleGeometry(0.03, 0.32, 6, 8);
+    const forearmGeometry = new THREE.CapsuleGeometry(0.025, 0.28, 6, 8);
     const forearm = new THREE.Mesh(forearmGeometry, this.materials!.feather);
     
     // Position forearm extending from humerus end
-    forearm.position.set(0, 0, side * 0.16); // Half length offset laterally
-    forearm.rotation.x = side * Math.PI / 2; // Align with Z-axis
+    forearm.rotation.z = side * Math.PI / 2; // Align bone along Z-axis
+    forearm.position.set(0, 0, side * 0.14); // Extend further outward
     forearmGroup.add(forearm);
     
     // Attach forearm to end of humerus (elbow joint)
-    forearmGroup.position.set(0, 0, side * 0.28); // At end of humerus
+    forearmGroup.position.set(0, 0, side * 0.24); // At end of humerus
     humerusGroup.add(forearmGroup);
 
     // HAND/CARPOMETACARPUS - Wrist to wingtip
     const handGroup = new THREE.Group();
-    const handGeometry = new THREE.CapsuleGeometry(0.02, 0.18, 6, 8);
+    const handGeometry = new THREE.CapsuleGeometry(0.02, 0.16, 6, 8);
     const hand = new THREE.Mesh(handGeometry, this.materials!.feather);
     
     // Position hand extending from forearm end
-    hand.position.set(0, 0, side * 0.09); // Half length offset laterally
-    hand.rotation.x = side * Math.PI / 2; // Align with Z-axis
+    hand.rotation.z = side * Math.PI / 2; // Align bone along Z-axis
+    hand.position.set(0, 0, side * 0.08); // Extend to wingtip
     handGroup.add(hand);
     
     // Attach hand to end of forearm (wrist joint)
-    handGroup.position.set(0, 0, side * 0.32); // At end of forearm
+    handGroup.position.set(0, 0, side * 0.28); // At end of forearm
     forearmGroup.add(handGroup);
 
-    // WING MEMBRANES - Create wing surface aligned with Z-axis bones
-    // Propatagium - Leading edge membrane (shoulder to wrist)
-    const propatagiumGeometry = new THREE.PlaneGeometry(0.12, 0.5);
-    const propatagium = new THREE.Mesh(propatagiumGeometry, this.materials!.feather);
-    propatagium.position.set(0, 0.06, side * 0.25);
-    propatagium.rotation.y = side * Math.PI / 2; // Align with Z-axis wing extension
-    shoulderGroup.add(propatagium);
-
-    // Main wing membrane - Connects humerus to forearm
-    const mainMembraneGeometry = new THREE.PlaneGeometry(0.25, 0.6);
-    const mainMembrane = new THREE.Mesh(mainMembraneGeometry, this.materials!.feather);
-    mainMembrane.position.set(0, -0.125, side * 0.3);
-    mainMembrane.rotation.y = side * Math.PI / 2; // Align with Z-axis wing extension
-    humerusGroup.add(mainMembrane);
-
-    // Wing tip membrane - Hand area
-    const tipMembraneGeometry = new THREE.PlaneGeometry(0.15, 0.35);
-    const tipMembrane = new THREE.Mesh(tipMembraneGeometry, this.materials!.feather);
-    tipMembrane.position.set(0, -0.075, side * 0.175);
-    tipMembrane.rotation.y = side * Math.PI / 2; // Align with Z-axis wing extension
-    forearmGroup.add(tipMembrane);
-
-    // PRIMARY FEATHERS - Attach to hand (flight control) - properly aligned with wing bones
+    // PRIMARY FEATHERS - Extend from hand bone to create wing surface
     const primaryFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 6; i++) {
-      const featherLength = 0.25 - (i * 0.02); // Decreasing length
-      const featherGeometry = new THREE.PlaneGeometry(0.04, featherLength);
+      const featherLength = 0.3 - (i * 0.03); // Decreasing length toward body
+      const featherGeometry = new THREE.PlaneGeometry(0.06, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers extending outward along wing Z-axis
-      const featherOffset = (i / 5) * 0.16;
-      feather.position.set(0, -0.02, side * (0.09 + featherOffset)); // Position along Z-axis extension
+      // Position feathers along the hand bone, extending backward
+      const bonePosition = (i / 5) * 0.16; // Along bone length
+      feather.position.set(-featherLength / 2, 0, side * bonePosition); // Extend backward from bone
       
-      // Align feathers with wing coordinate system - lay flat along wing surface
-      feather.rotation.y = side * Math.PI / 2; // Match wing membrane orientation
+      // Rotate feathers to lay flat along wing surface (extending backward)
+      feather.rotation.y = side * -Math.PI / 2; // Face backward along X-axis
       feather.rotation.z = side * i * 0.05; // Slight fan spread
       
       handGroup.add(feather);
       primaryFeathers.push(feather);
     }
 
-    // SECONDARY FEATHERS - Attach along forearm (lift generation) - properly aligned
+    // SECONDARY FEATHERS - Extend from forearm bone
     const secondaryFeathers: THREE.Mesh[] = [];
     for (let i = 0; i < 5; i++) {
-      const featherLength = 0.2 - (i * 0.015);
-      const featherGeometry = new THREE.PlaneGeometry(0.035, featherLength);
+      const featherLength = 0.25 - (i * 0.02);
+      const featherGeometry = new THREE.PlaneGeometry(0.05, featherLength);
       const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
       
-      // Position feathers extending outward along wing Z-axis
-      const featherOffset = (i / 4) * 0.28;
-      feather.position.set(0, -0.02, side * (0.04 + featherOffset)); // Position along Z-axis extension
+      // Position feathers along the forearm bone, extending backward
+      const bonePosition = (i / 4) * 0.28;
+      feather.position.set(-featherLength / 2, 0, side * bonePosition); // Extend backward from bone
       
-      // Align feathers with wing coordinate system
-      feather.rotation.y = side * Math.PI / 2; // Match wing membrane orientation
+      // Rotate feathers to lay flat along wing surface
+      feather.rotation.y = side * -Math.PI / 2; // Face backward along X-axis
       feather.rotation.z = side * i * 0.03; // Slight overlap
       
       forearmGroup.add(feather);
       secondaryFeathers.push(feather);
     }
 
-    // COVERT FEATHERS - Small feathers along humerus - properly aligned
-    for (let i = 0; i < 3; i++) {
-      const covertGeometry = new THREE.PlaneGeometry(0.025, 0.12);
+    // COVERT FEATHERS - Small feathers along humerus
+    for (let i = 0; i < 4; i++) {
+      const featherLength = 0.15 - (i * 0.01);
+      const covertGeometry = new THREE.PlaneGeometry(0.04, featherLength);
       const covert = new THREE.Mesh(covertGeometry, this.materials!.feather);
       
-      const covertOffset = (i / 2) * 0.24;
-      covert.position.set(0, -0.02, side * (0.04 + covertOffset)); // Position along Z-axis extension
+      // Position covert feathers along humerus bone
+      const bonePosition = (i / 3) * 0.24;
+      covert.position.set(-featherLength / 2, 0, side * bonePosition); // Extend backward from bone
       
-      // Align covert feathers with wing coordinate system
-      covert.rotation.y = side * Math.PI / 2; // Match wing membrane orientation
+      // Rotate to lay flat along wing surface
+      covert.rotation.y = side * -Math.PI / 2; // Face backward along X-axis
       
       humerusGroup.add(covert);
     }
