@@ -166,6 +166,15 @@ export abstract class BaseBird implements SpawnableEntity {
   }
 
   protected updateFlightPhysics(deltaTime: number): void {
+    // Don't override landing physics - let the specific landing behavior control descent
+    if (this.birdState === BirdState.LANDING) {
+      // During landing, only apply minimal drag to horizontal movement
+      this.velocity.x *= 0.99;
+      this.velocity.z *= 0.99;
+      // Let the landing method fully control Y velocity
+      return;
+    }
+    
     const altitudeDiff = this.targetAltitude - this.position.y;
     
     // Only apply altitude changes for significant differences
