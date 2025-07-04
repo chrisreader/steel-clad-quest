@@ -34,98 +34,21 @@ export class CrowBird extends BaseBird {
     
     const bodyGroup = new THREE.Group();
     
-    // Create anatomically correct bird body - egg-shaped torso
-    const bodyGeometry = new THREE.SphereGeometry(0.3, 16, 12);
-    // Scale to create realistic bird torso: elongated front-back, compressed top-bottom, moderate width
-    bodyGeometry.scale(1.3, 0.45, 0.65); // X: front-back length, Y: top-bottom height, Z: side-to-side width
-    
-    // Create chest bulge for realistic bird anatomy
-    const positions = bodyGeometry.attributes.position;
-    for (let i = 0; i < positions.count; i++) {
-      const x = positions.getX(i);
-      const y = positions.getY(i);
-      const z = positions.getZ(i);
-      
-      // Add chest bulge at front of bird (+X direction)
-      if (x > 0.2) {
-        const bulgeIntensity = Math.max(0, (x - 0.2) / 0.6) * 0.15;
-        positions.setY(i, y - bulgeIntensity); // Lower chest area
-        positions.setZ(i, z * (1 + bulgeIntensity * 0.3)); // Slightly wider chest
-      }
-      
-      // Taper body toward tail (-X direction)
-      if (x < -0.1) {
-        const taperIntensity = Math.abs(x + 0.1) / 0.7;
-        positions.setY(i, y * (1 - taperIntensity * 0.2)); // Compress tail area
-        positions.setZ(i, z * (1 - taperIntensity * 0.3)); // Narrow tail area
-      }
-    }
-    positions.needsUpdate = true;
-    bodyGeometry.computeVertexNormals();
-    
-    const body = new THREE.Mesh(bodyGeometry, this.materials.feather);
-    bodyGroup.add(body);
+    // Create unified body-neck geometry using capsule for seamless flow
+    const bodyNeckGeometry = this.createUnifiedBodyNeck();
+    const bodyNeck = new THREE.Mesh(bodyNeckGeometry, this.materials.feather);
+    bodyGroup.add(bodyNeck);
 
-    // Create seamlessly integrated neck - multiple segments for smooth curve
-    const neckGroup = new THREE.Group();
-    
-    // Neck base - blends with body front
-    const neckBaseGeometry = new THREE.SphereGeometry(0.12, 8, 6);
-    neckBaseGeometry.scale(0.8, 0.9, 0.8); // Slightly compressed
-    const neckBase = new THREE.Mesh(neckBaseGeometry, this.materials.feather);
-    neckBase.position.set(0.0, 0.05, 0); // Positioned to blend with body
-    neckGroup.add(neckBase);
-    
-    // Neck middle - transition segment
-    const neckMidGeometry = new THREE.SphereGeometry(0.10, 8, 6);
-    neckMidGeometry.scale(0.7, 0.8, 0.7);
-    const neckMid = new THREE.Mesh(neckMidGeometry, this.materials.feather);
-    neckMid.position.set(0.12, 0.08, 0);
-    neckGroup.add(neckMid);
-    
-    // Neck top - connects to head
-    const neckTopGeometry = new THREE.SphereGeometry(0.08, 8, 6);
-    neckTopGeometry.scale(0.6, 0.7, 0.6);
-    const neckTop = new THREE.Mesh(neckTopGeometry, this.materials.feather);
-    neckTop.position.set(0.20, 0.10, 0);
-    neckGroup.add(neckTop);
-    
-    neckGroup.position.set(0.45, 0.0, 0); // Position neck at body front
-    bodyGroup.add(neckGroup);
-
-    // Create realistic head - streamlined bird shape
+    // Create streamlined head using capsule geometry
     const headGroup = new THREE.Group();
-    const headGeometry = new THREE.SphereGeometry(0.12, 12, 8);
-    // Scale for realistic crow head: streamlined, slightly flattened
-    headGeometry.scale(1.4, 0.9, 0.85); // Elongated front-back, flattened top-bottom
-    
-    // Refine head shape for bird-like appearance
-    const headPositions = headGeometry.attributes.position;
-    for (let i = 0; i < headPositions.count; i++) {
-      const x = headPositions.getX(i);
-      const y = headPositions.getY(i);
-      const z = headPositions.getZ(i);
-      
-      // Create more pointed beak area (+X direction)
-      if (x > 0.08) {
-        const pointIntensity = (x - 0.08) / 0.08;
-        headPositions.setY(i, y * (1 - pointIntensity * 0.4)); // Compress vertically toward beak
-        headPositions.setZ(i, z * (1 - pointIntensity * 0.3)); // Narrow toward beak
-      }
-      
-      // Create rounded back of head (-X direction)
-      if (x < -0.05) {
-        const roundIntensity = Math.abs(x + 0.05) / 0.07;
-        headPositions.setY(i, y * (1 + roundIntensity * 0.1)); // Slightly bulge back of head
-      }
-    }
-    headPositions.needsUpdate = true;
-    headGeometry.computeVertexNormals();
+    const headGeometry = new THREE.CapsuleGeometry(0.08, 0.16, 8, 16);
+    // Orient head along X-axis (forward direction)
+    headGeometry.rotateZ(Math.PI / 2);
     
     const head = new THREE.Mesh(headGeometry, this.materials.feather);
     headGroup.add(head);
-    headGroup.position.set(0.25, 0.02, 0); // Position at end of neck
-    neckGroup.add(headGroup);
+    headGroup.position.set(0.5, 0.08, 0); // Position at front of neck
+    bodyGroup.add(headGroup);
     
     // Create beak - pointing forward
     const beakGeometry = new THREE.ConeGeometry(0.025, 0.12, 6);
@@ -218,7 +141,7 @@ export class CrowBird extends BaseBird {
     this.bodyParts = {
       body: bodyGroup,
       head: headGroup,
-      neck: neckGroup,
+      neck: bodyGroup, // Unified body-neck, so neck reference points to body
       tail: tailGroup,
       leftWing: leftWingGroup,
       rightWing: rightWingGroup,
@@ -230,6 +153,46 @@ export class CrowBird extends BaseBird {
     };
 
     this.mesh.add(bodyGroup);
+  }
+
+  private createUnifiedBodyNeck(): THREE.BufferGeometry {
+    // Create unified body-neck geometry for seamless bird anatomy
+    const bodyGeometry = new THREE.CapsuleGeometry(0.12, 0.45, 12, 16);
+    // Orient body along X-axis (bird's forward direction)
+    bodyGeometry.rotateZ(Math.PI / 2);
+    
+    // Create neck geometry that flows from body
+    const neckGeometry = new THREE.CapsuleGeometry(0.06, 0.25, 8, 12);
+    // Position and orient neck extending forward from body
+    neckGeometry.rotateZ(Math.PI / 2);
+    neckGeometry.translate(0.35, 0.08, 0);
+    
+    // Merge geometries for seamless body-neck flow
+    const mergedGeometry = new THREE.BufferGeometry();
+    const bodyPositions = bodyGeometry.attributes.position.array;
+    const neckPositions = neckGeometry.attributes.position.array;
+    
+    // Combine vertices
+    const totalVertices = bodyPositions.length + neckPositions.length;
+    const mergedPositions = new Float32Array(totalVertices);
+    mergedPositions.set(bodyPositions, 0);
+    mergedPositions.set(neckPositions, bodyPositions.length);
+    
+    mergedGeometry.setAttribute('position', new THREE.BufferAttribute(mergedPositions, 3));
+    
+    // Create indices for both geometries
+    const bodyIndices = bodyGeometry.index?.array || [];
+    const neckIndices = neckGeometry.index?.array || [];
+    const bodyVertexCount = bodyPositions.length / 3;
+    
+    // Offset neck indices by body vertex count
+    const offsetNeckIndices = Array.from(neckIndices).map(index => index + bodyVertexCount);
+    
+    const mergedIndices = new Uint16Array([...bodyIndices, ...offsetNeckIndices]);
+    mergedGeometry.setIndex(new THREE.BufferAttribute(mergedIndices, 1));
+    
+    mergedGeometry.computeVertexNormals();
+    return mergedGeometry;
   }
 
   private createSimpleMaterials(): void {
@@ -568,8 +531,9 @@ export class CrowBird extends BaseBird {
       const direction = target.clone().sub(this.position).normalize();
       this.velocity.copy(direction.multiplyScalar(this.config.flightSpeed));
       
-      // Face movement direction
-      this.mesh.lookAt(this.position.clone().add(this.velocity));
+      // Face movement direction smoothly (only Y-axis rotation for bird turning)
+      const targetDirection = Math.atan2(direction.x, direction.z);
+      this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.1);
       
       if (this.position.distanceTo(target) < 2) {
         this.currentPathIndex++;
@@ -607,8 +571,9 @@ export class CrowBird extends BaseBird {
       direction.normalize();
       this.velocity.copy(direction.multiplyScalar(speed));
       
-      // Face movement direction
-      this.mesh.lookAt(this.position.clone().add(direction));
+      // Face movement direction smoothly (only Y-axis rotation for bird turning)
+      const targetDirection = Math.atan2(direction.x, direction.z);
+      this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.15);
     } else {
       this.velocity.set(0, 0, 0);
     }
