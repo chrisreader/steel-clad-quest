@@ -319,26 +319,32 @@ export class BirdAnimationController {
           this.bodyParts.head.rotation.y = (Math.random() - 0.5) * 0.8;
         }
         break;
-      case 'preening':
+      case BirdState.PREENING:
         // Preening head movements
         const preenAngle = Math.sin(this.animationState.preenchCycle) * 0.6;
         this.bodyParts.head.rotation.z = preenAngle;
         this.bodyParts.neck.rotation.z = preenAngle * 0.5;
         return;
+      case BirdState.IDLE:
+      case BirdState.TAKING_OFF:
+      case BirdState.FLYING:
+      case BirdState.SOARING:
+      case BirdState.LANDING:
+        // Default bobbing for other states
+        bobOffset = Math.sin(this.animationState.headBobCycle) * bobIntensity;
+        break;
     }
 
     // Apply head bob
     this.bodyParts.head.position.x = 0.6 + bobOffset;
     
-    // Smooth return of head rotation when not preening
-    if (birdState !== 'preening') {
-      this.bodyParts.head.rotation.z = THREE.MathUtils.lerp(
-        this.bodyParts.head.rotation.z, 0, 0.1
-      );
-      this.bodyParts.neck.rotation.z = THREE.MathUtils.lerp(
-        this.bodyParts.neck.rotation.z, 0, 0.1
-      );
-    }
+    // Smooth return of head rotation (preening case already handled above with return)
+    this.bodyParts.head.rotation.z = THREE.MathUtils.lerp(
+      this.bodyParts.head.rotation.z, 0, 0.1
+    );
+    this.bodyParts.neck.rotation.z = THREE.MathUtils.lerp(
+      this.bodyParts.neck.rotation.z, 0, 0.1
+    );
 
     // Neck stretching when alert
     if (this.animationState.alertLevel > 0) {

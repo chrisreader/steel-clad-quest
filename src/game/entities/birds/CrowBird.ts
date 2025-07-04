@@ -1275,14 +1275,58 @@ export class CrowBird extends BaseBird {
   private animateHeadBob(): void {
     if (!this.bodyParts) return;
 
-    if (this.birdState === BirdState.WALKING || this.birdState === BirdState.FORAGING) {
+    // Flight states: align head with flight direction for realism
+    if (this.flightMode !== FlightMode.GROUNDED) {
+      this.animateFlightHeadOrientation();
+    } 
+    // Ground states: natural head movements
+    else if (this.birdState === BirdState.WALKING || this.birdState === BirdState.FORAGING) {
       this.bodyParts.head.position.x = 0.6 + Math.sin(this.headBobCycle) * 0.05;
       this.bodyParts.head.rotation.x = Math.sin(this.headBobCycle) * 0.1;
+      // Reset head Y rotation for ground states
+      this.bodyParts.head.rotation.y = THREE.MathUtils.lerp(
+        this.bodyParts.head.rotation.y, 0, 0.1
+      );
     } else {
+      // Alert and idle states on ground - occasional head turns
       if (Math.random() < 0.01) {
         this.bodyParts.head.rotation.y = (Math.random() - 0.5) * 0.5;
       }
     }
+  }
+
+  private animateFlightHeadOrientation(): void {
+    if (!this.bodyParts) return;
+
+    // Head should point in flight direction during flight
+    // Bird model faces +X, so head should align with flight heading
+    const targetHeadRotation = 0; // Head aligned with body direction (which follows currentHeading)
+    
+    // Smooth head alignment with flight direction
+    this.bodyParts.head.rotation.y = THREE.MathUtils.lerp(
+      this.bodyParts.head.rotation.y,
+      targetHeadRotation,
+      0.05
+    );
+
+    // Optional: slight anticipatory head movement during turns
+    if (this.birdState === BirdState.FLYING || this.birdState === BirdState.SOARING) {
+      const headingDiff = this.targetHeading - this.currentHeading;
+      
+      // Handle angle wrapping for anticipatory look
+      let normalizedDiff = headingDiff;
+      if (normalizedDiff > Math.PI) normalizedDiff -= 2 * Math.PI;
+      if (normalizedDiff < -Math.PI) normalizedDiff += 2 * Math.PI;
+      
+      // Subtle anticipatory head turn (look ahead during turns)
+      const anticipatoryTurn = THREE.MathUtils.clamp(normalizedDiff * 0.3, -0.2, 0.2);
+      this.bodyParts.head.rotation.y += anticipatoryTurn;
+    }
+
+    // Reduce head bobbing during flight for streamlined appearance
+    this.bodyParts.head.rotation.x = THREE.MathUtils.lerp(
+      this.bodyParts.head.rotation.x, 0, 0.05
+    );
   }
 
   public dispose(): void {
