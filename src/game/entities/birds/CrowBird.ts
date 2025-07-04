@@ -939,20 +939,22 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Wings naturally folded back against body pointing toward tail like real birds
-    leftShoulder.rotation.set(-0.1, -0.4, 0);
-    rightShoulder.rotation.set(-0.1, -0.4, 0);
-    leftHumerus.rotation.set(0, -0.5, -0.2);
-    rightHumerus.rotation.set(0, -0.5, 0.2);
+    // Primary wing folding at shoulder joint - rotate entire wing inward against body
+    leftShoulder.rotation.set(0, Math.PI / 2, 0);  // +90° to fold left wing inward
+    rightShoulder.rotation.set(0, -Math.PI / 2, 0); // -90° to fold right wing inward
+    
+    // Minimal secondary adjustments for natural folding
+    leftHumerus.rotation.set(0, 0, -0.3);  // Slight downward fold
+    rightHumerus.rotation.set(0, 0, 0.3);   // Slight downward fold
     
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -1.7);
-      rightForearm.rotation.set(0, 0, 1.7);
+      leftForearm.rotation.set(0, 0, -0.4);  // Fold forearm closer to body
+      rightForearm.rotation.set(0, 0, 0.4);   // Fold forearm closer to body
     }
     
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, -0.3, -1.0);
-      rightHand.rotation.set(0, -0.3, 1.0);
+      leftHand.rotation.set(0, 0, -0.2);  // Slight hand fold
+      rightHand.rotation.set(0, 0, 0.2);   // Slight hand fold
     }
     
     this.animateFeathersForRest();
