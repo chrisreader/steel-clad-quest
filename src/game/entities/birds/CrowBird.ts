@@ -624,9 +624,13 @@ export class CrowBird extends BaseBird {
       const targetDirection = Math.atan2(direction.z, direction.x) + Math.PI;
       this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.02);
       
-      // Add banking during turns
+      // Very subtle banking during sharp turns only
       const turnRate = Math.abs(this.mesh.rotation.y - targetDirection);
-      this.mesh.rotation.z = THREE.MathUtils.lerp(this.mesh.rotation.z, turnRate * 0.5, 0.1);
+      if (turnRate > 0.5) {
+        this.mesh.rotation.z = THREE.MathUtils.lerp(this.mesh.rotation.z, Math.sign(direction.z) * 0.1, 0.05);
+      } else {
+        this.mesh.rotation.z = THREE.MathUtils.lerp(this.mesh.rotation.z, 0, 0.1);
+      }
       
       if (this.position.distanceTo(target) < 2) {
         this.currentPathIndex++;
@@ -641,6 +645,9 @@ export class CrowBird extends BaseBird {
       this.position.y = this.groundLevel;
       this.flightMode = FlightMode.GROUNDED;
       this.velocity.set(0, 0, 0);
+      // Reset rotations when landing
+      this.mesh.rotation.z = 0;
+      this.mesh.rotation.x = 0;
       this.changeState(BirdState.IDLE);
     }
   }
@@ -697,7 +704,7 @@ export class CrowBird extends BaseBird {
       let altitudeVariation: number;
       if (this.birdState === BirdState.SOARING && !this.isFlapping) {
         // Soaring: only flat or downward movement
-        altitudeVariation = Math.max(-3, (Math.random() - 0.8) * 4); // Bias downward
+        altitudeVariation = Math.max(-2, (Math.random() - 0.9) * 2); // Strong downward bias
       } else {
         // Normal flight: can go up or down
         altitudeVariation = (Math.random() - 0.5) * 5;

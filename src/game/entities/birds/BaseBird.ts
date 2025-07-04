@@ -145,8 +145,12 @@ export abstract class BaseBird implements SpawnableEntity {
 
   protected updatePhysics(deltaTime: number): void {
     if (this.flightMode === FlightMode.GROUNDED) {
-      // Ground physics
+      // Ground physics - ensure bird stays on ground
       this.position.y = this.groundLevel;
+      // Clear any upward velocity when grounded
+      if (this.velocity.y > 0) {
+        this.velocity.y = 0;
+      }
     } else {
       // Flight physics
       this.updateFlightPhysics(deltaTime);
@@ -154,19 +158,25 @@ export abstract class BaseBird implements SpawnableEntity {
     
     // Apply velocity
     this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+    
+    // Force ground contact when grounded (safety check)
+    if (this.flightMode === FlightMode.GROUNDED) {
+      this.position.y = this.groundLevel;
+    }
   }
 
   protected updateFlightPhysics(deltaTime: number): void {
     const altitudeDiff = this.targetAltitude - this.position.y;
     
-    if (Math.abs(altitudeDiff) > 0.1) {
-      // Realistic soaring physics - birds lose altitude when not flapping
+    // Only apply altitude changes for significant differences
+    if (Math.abs(altitudeDiff) > 1.0) {
+      // Much more subtle altitude changes
       let ascendRate: number;
       if (this.isFlapping) {
-        ascendRate = 3.0; // Powered flight can climb
+        ascendRate = 1.0; // Gentle climbing when flapping
       } else {
-        // Soaring: apply gravity - birds gradually lose altitude
-        ascendRate = this.birdState === BirdState.SOARING ? -1.5 : 0.5;
+        // Soaring: gentle descent due to gravity
+        ascendRate = this.birdState === BirdState.SOARING ? -0.3 : 0.2;
       }
       
       const altitudeChange = Math.sign(altitudeDiff) * ascendRate * deltaTime;
