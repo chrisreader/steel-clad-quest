@@ -12,10 +12,11 @@ export class CrowBird extends BaseBird {
     leg: THREE.Material;
   } | null = null;
   
-  // Emergency systems
-  private maxFlightTime: number = 15;
+  // Enhanced flight systems
+  private maxFlightTime: number = 30; // Extended flight duration
+  private minFlightTime: number = 10; // Minimum flight before landing allowed
   private flightTimer: number = 0;
-  private maxAltitude: number = 25;
+  private maxAltitude: number = 35; // Higher ceiling
   private emergencyLanding: boolean = false;
 
   constructor(id: string) {
@@ -27,17 +28,18 @@ export class CrowBird extends BaseBird {
       legLength: 0.6,
       walkSpeed: 1.5,
       flightSpeed: 8.0,
-      flightAltitude: { min: 8, max: 20 }, // Reduced max altitude
-      territoryRadius: 15,
+      flightAltitude: { min: 15, max: 35 }, // Extended altitude range
+      territoryRadius: 25, // Larger territory for more interesting flights
       alertDistance: 8
     };
     
     super(id, crowConfig);
     
-    // Emergency bounds system
-    this.maxFlightTime = 15; // Max 15 seconds in air
+    // Enhanced flight bounds system
+    this.maxFlightTime = 30; // Max 30 seconds in air
+    this.minFlightTime = 10; // Min 10 seconds before landing
     this.flightTimer = 0;
-    this.maxAltitude = 25; // Emergency ceiling
+    this.maxAltitude = 35; // Higher ceiling
     this.emergencyLanding = false;
   }
 
@@ -512,7 +514,9 @@ export class CrowBird extends BaseBird {
     if (this.flightMode !== FlightMode.GROUNDED) {
       const altitudeAboveGround = this.position.y - this.groundLevel;
       
-      if (altitudeAboveGround > this.config.flightAltitude.max || this.flightTimer > 12) {
+      // Only allow landing after minimum flight time has passed
+      if ((altitudeAboveGround > this.config.flightAltitude.max || this.flightTimer > 25) && 
+          this.flightTimer > this.minFlightTime) {
         this.startLanding();
         return;
       }
@@ -633,41 +637,48 @@ export class CrowBird extends BaseBird {
   }
 
   private executeLanding(deltaTime: number): void {
-    // Natural gliding approach with declining ramp
+    // Landing approach with extended wings (no flapping)
     this.flapCycle += deltaTime * 6;
-    this.isFlapping = true;
+    this.isFlapping = false; // CRITICAL: No flapping during landing - wings should stay extended
+    this.wingBeatIntensity = 0.5; // Keep wings extended but relaxed
     
-    // Calculate glide approach - maintain forward momentum during most of descent
+    // Calculate glide approach - smooth descent with extended wings
     const altitudeToGround = this.position.y - this.groundLevel;
-    const isNearGround = altitudeToGround < 3.0;
+    const isLandingFlare = altitudeToGround < 5.0; // Start flare higher for realistic approach
     
-    if (isNearGround) {
-      // Landing flare - reduce speed and gentle descent
-      this.velocity.x *= 0.92;
-      this.velocity.z *= 0.92;
-      this.velocity.y = Math.max(this.velocity.y - 1.5 * deltaTime, -0.8);
-    } else {
-      // Maintain glide speed with controlled descent angle (15-20° glide slope)
-      this.velocity.x *= 0.98; // Minimal speed reduction during glide
-      this.velocity.z *= 0.98;
+    if (isLandingFlare) {
+      // Landing flare - reduce speed and gentle descent with fully extended wings
+      this.velocity.x *= 0.94; // Gradual speed reduction
+      this.velocity.z *= 0.94;
+      this.velocity.y = Math.max(this.velocity.y - 1.2 * deltaTime, -1.0);
       
-      // Natural glide descent rate based on physics
-      const glideAngle = 0.3; // Realistic glide slope (about 17°)
+      // Pitch up slightly for landing flare
+      this.mesh.rotation.x = THREE.MathUtils.lerp(this.mesh.rotation.x, 0.1, deltaTime * 2);
+    } else {
+      // Maintain steady glide approach with extended wings
+      this.velocity.x *= 0.99; // Maintain glide speed
+      this.velocity.z *= 0.99;
+      
+      // Steady descent on glide path
+      const glideAngle = 0.25; // Shallow glide slope (~14°)
       const currentSpeed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
-      this.velocity.y = Math.max(this.velocity.y - 0.8 * deltaTime, -currentSpeed * glideAngle);
+      this.velocity.y = Math.max(this.velocity.y - 0.6 * deltaTime, -currentSpeed * glideAngle);
+      
+      // Slight nose-down attitude for glide
+      this.mesh.rotation.x = THREE.MathUtils.lerp(this.mesh.rotation.x, -0.05, deltaTime);
     }
     
     // Land when close to ground
     const feetToBodyDistance = 0.48;
-    if (this.position.y <= this.groundLevel + feetToBodyDistance + 0.5) {
+    if (this.position.y <= this.groundLevel + feetToBodyDistance + 0.3) {
       this.flightMode = FlightMode.GROUNDED;
-      this.position.y = this.groundLevel + feetToBodyDistance; // Position properly with feet touching ground
+      this.position.y = this.groundLevel + feetToBodyDistance;
       this.velocity.set(0, 0, 0);
       // Reset rotations when landing
       this.mesh.rotation.z = 0;
       this.mesh.rotation.x = 0;
       this.changeState(BirdState.IDLE);
-      console.log(`🐦 [CrowBird] Successfully landed with feet at ground level ${this.groundLevel}, bird position: ${this.position.y}`);
+      console.log(`🐦 [CrowBird] Successfully landed with extended wings - feet at ground level ${this.groundLevel}`);
     }
   }
 

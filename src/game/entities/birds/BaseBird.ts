@@ -236,7 +236,7 @@ export abstract class BaseBird implements SpawnableEntity {
 
   protected startFlight(): void {
     this.flightMode = FlightMode.ASCENDING;
-    this.targetAltitude = this.groundLevel + Math.random() * 15 + 8; // 8-23 units high (reduced)
+    this.targetAltitude = this.groundLevel + Math.random() * 20 + 15; // 15-35 units high (extended)
     this.isFlapping = true;
     this.wingBeatIntensity = 1.3; // Higher intensity for takeoff
     this.generateFlightPath();
@@ -245,13 +245,13 @@ export abstract class BaseBird implements SpawnableEntity {
   }
 
   protected startLanding(): void {
-    this.flightMode = FlightMode.DESCENDING;
+    this.flightMode = FlightMode.LANDING_APPROACH;
     this.targetAltitude = this.groundLevel;
     this.changeState(BirdState.LANDING);
-    this.isFlapping = false; // Stop flapping to begin descent
+    this.isFlapping = false; // Stop flapping to begin glide approach
     this.wingBeatIntensity = 1.0; // Reset intensity
     this.bankingAngle = 0; // Reset banking for landing
-    console.log(`🐦 [${this.config.species}] Starting landing from altitude: ${this.position.y.toFixed(1)}`);
+    console.log(`🐦 [${this.config.species}] Starting landing approach from altitude: ${this.position.y.toFixed(1)}`);
   }
 
   protected generateFlightPath(): void {
@@ -259,23 +259,24 @@ export abstract class BaseBird implements SpawnableEntity {
     this.currentPathIndex = 0;
     this.flightPathProgress = 0;
     
-    const numPoints = 6 + Math.floor(Math.random() * 4); // 6-9 waypoints
-    const baseRadius = this.config.territoryRadius * 0.8;
+    const numPoints = 8 + Math.floor(Math.random() * 5); // 8-12 waypoints for longer flights
+    const baseRadius = this.config.territoryRadius * 1.2; // Larger territory coverage
     
     for (let i = 0; i < numPoints; i++) {
-      const angle = (i / numPoints) * Math.PI * 2 + Math.random() * 0.5 - 0.25; // Add randomness
-      const radius = baseRadius + (Math.random() - 0.5) * baseRadius * 0.4; // Vary radius
-      const altitude = this.targetAltitude + (Math.random() - 0.5) * 8; // Vary altitude by ±4 units
+      const angle = (i / numPoints) * Math.PI * 2 + Math.random() * 0.8 - 0.4; // More randomness
+      const radius = baseRadius + (Math.random() - 0.5) * baseRadius * 0.6; // Greater radius variation
+      const altitude = this.targetAltitude + (Math.random() - 0.5) * 12; // Vary altitude by ±6 units
       
       const x = this.homePosition.x + Math.cos(angle) * radius;
       const z = this.homePosition.z + Math.sin(angle) * radius;
-      const y = Math.max(this.groundLevel + 5, altitude); // Ensure minimum height
+      const y = Math.max(this.groundLevel + 8, altitude); // Ensure minimum height of 8 units
       
       this.flightPath.push(new THREE.Vector3(x, y, z));
     }
     
     // Close the path by connecting back to first point
     this.flightPath.push(this.flightPath[0].clone());
+    console.log(`🐦 [${this.config.species}] Generated extended flight path with ${numPoints} waypoints`);
   }
 
   protected followFlightPath(deltaTime: number): void {
