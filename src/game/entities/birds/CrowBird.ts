@@ -34,20 +34,31 @@ export class CrowBird extends BaseBird {
     
     const bodyGroup = new THREE.Group();
     
-    // Create unified body-neck geometry using capsule for seamless flow
-    const bodyNeckGeometry = this.createUnifiedBodyNeck();
-    const bodyNeck = new THREE.Mesh(bodyNeckGeometry, this.materials.feather);
-    bodyGroup.add(bodyNeck);
+    // Create realistic oval body geometry
+    const bodyGeometry = new THREE.SphereGeometry(0.12, 16, 12);
+    // Scale to create oval bird body proportions (length, height, width)
+    bodyGeometry.scale(1.4, 0.8, 1.0);
+    const body = new THREE.Mesh(bodyGeometry, this.materials.feather);
+    bodyGroup.add(body);
 
-    // Create streamlined head using capsule geometry
+    // Create realistic curved neck with multiple segments for flexibility
+    const neckGroup = new THREE.Group();
+    const neckGeometry = new THREE.CapsuleGeometry(0.05, 0.18, 8, 12);
+    neckGeometry.rotateZ(Math.PI / 2); // Orient along X-axis
+    const neck = new THREE.Mesh(neckGeometry, this.materials.feather);
+    neck.position.set(0.25, 0.06, 0); // Connected to front of body, slightly above
+    neckGroup.add(neck);
+    bodyGroup.add(neckGroup);
+
+    // Create realistic head with proper proportions
     const headGroup = new THREE.Group();
-    const headGeometry = new THREE.CapsuleGeometry(0.08, 0.16, 8, 16);
-    // Orient head along X-axis (forward direction)
-    headGeometry.rotateZ(Math.PI / 2);
-    
+    const headGeometry = new THREE.SphereGeometry(0.06, 12, 10);
+    headGeometry.scale(1.5, 1.0, 0.9); // Elongated for realistic bird head
     const head = new THREE.Mesh(headGeometry, this.materials.feather);
     headGroup.add(head);
-    headGroup.position.set(0.5, 0.08, 0); // Position at front of neck
+    
+    // Dynamic head positioning - starts in walking position (above body)
+    headGroup.position.set(0.42, 0.12, 0); // Above body level for walking
     bodyGroup.add(headGroup);
     
     // Create beak - pointing forward
@@ -66,42 +77,35 @@ export class CrowBird extends BaseBird {
     headGroup.add(leftEye);
     headGroup.add(rightEye);
 
-    // Create tail - seamlessly integrated with body rear
+    // Create seamlessly integrated tail
     const tailGroup = new THREE.Group();
     
-    // Tail base - blends smoothly with body
-    const tailBaseGeometry = new THREE.SphereGeometry(0.08, 8, 6);
-    tailBaseGeometry.scale(0.6, 0.7, 0.8); // Compressed to blend with body
-    const tailBase = new THREE.Mesh(tailBaseGeometry, this.materials.feather);
-    tailBase.position.set(0.0, 0.0, 0); // Connect to body
-    tailGroup.add(tailBase);
+    // Tail seamlessly flows from oval body
+    const tailGeometry = new THREE.SphereGeometry(0.09, 12, 8);
+    tailGeometry.scale(1.8, 0.6, 1.3); // Elongated and flattened crow tail
     
-    // Tail fan - realistic crow tail shape
-    const tailFanGeometry = new THREE.SphereGeometry(0.12, 8, 6);
-    tailFanGeometry.scale(0.8, 0.4, 1.2); // Wide and flattened for crow tail
-    
-    // Shape the tail fan
-    const tailPositions = tailFanGeometry.attributes.position;
+    // Shape tail to flow naturally from body oval
+    const tailPositions = tailGeometry.attributes.position;
     for (let i = 0; i < tailPositions.count; i++) {
       const x = tailPositions.getX(i);
       const y = tailPositions.getY(i);
       const z = tailPositions.getZ(i);
       
-      // Create fan shape extending backward
-      if (x < -0.05) {
-        const fanIntensity = Math.abs(x + 0.05) / 0.07;
-        tailPositions.setY(i, y * (1 - fanIntensity * 0.3)); // Flatten toward tip
-        tailPositions.setZ(i, z * (1 + fanIntensity * 0.4)); // Spread wider toward tip
+      // Create natural tail taper that extends from body
+      if (x < 0) {
+        const tailIntensity = Math.abs(x) / 0.16;
+        tailPositions.setY(i, y * (1 - tailIntensity * 0.4)); // Flatten toward tip
+        tailPositions.setZ(i, z * (1 + tailIntensity * 0.3)); // Slight fan spread
       }
     }
     tailPositions.needsUpdate = true;
-    tailFanGeometry.computeVertexNormals();
+    tailGeometry.computeVertexNormals();
     
-    const tailFan = new THREE.Mesh(tailFanGeometry, this.materials.feather);
-    tailFan.position.set(-0.15, 0.0, 0); // Extend backward from base
-    tailGroup.add(tailFan);
+    const tail = new THREE.Mesh(tailGeometry, this.materials.feather);
+    tail.position.set(-0.25, -0.02, 0); // Overlaps with body rear for seamless connection
+    tailGroup.add(tail);
     
-    tailGroup.position.set(-0.45, 0.0, 0); // Position at body rear
+    tailGroup.position.set(0, 0, 0); // Attached directly to body
     bodyGroup.add(tailGroup);
 
     // Create wings extending outward from body (perpendicular to body axis)
@@ -131,9 +135,9 @@ export class CrowBird extends BaseBird {
     leftLegGroup.add(leftLeg);
     rightLegGroup.add(rightLeg);
     
-    // Position legs under body center
-    leftLegGroup.position.set(0.1, -0.22, 0.08);  // Left leg
-    rightLegGroup.position.set(0.1, -0.22, -0.08); // Right leg
+    // Position legs properly attached to body underside
+    leftLegGroup.position.set(0.05, -0.15, 0.08);  // Left leg - closer to body
+    rightLegGroup.position.set(0.05, -0.15, -0.08); // Right leg - closer to body
     
     bodyGroup.add(leftLegGroup);
     bodyGroup.add(rightLegGroup);
@@ -610,6 +614,9 @@ export class CrowBird extends BaseBird {
     this.flapCycle += deltaTime * (this.isFlapping ? 15 : 2);
     this.headBobCycle += deltaTime * 6;
 
+    // Dynamic head positioning based on state
+    this.updateDynamicHeadPosition(deltaTime);
+
     // Animate walking
     if (this.birdState === BirdState.WALKING && this.velocity.length() > 0.1) {
       this.animateWalk();
@@ -620,6 +627,57 @@ export class CrowBird extends BaseBird {
 
     // Animate head bobbing
     this.animateHeadBob();
+  }
+
+  private updateDynamicHeadPosition(deltaTime: number): void {
+    if (!this.bodyParts) return;
+
+    // Determine target head position based on bird state
+    let targetY: number;
+    let targetX: number;
+
+    switch (this.birdState) {
+      case BirdState.IDLE:
+      case BirdState.WALKING:
+      case BirdState.FORAGING:
+      case BirdState.PREENING:
+      case BirdState.ALERT:
+        // Ground states: head above body for alert, upright posture
+        targetY = 0.12;
+        targetX = 0.42;
+        break;
+        
+      case BirdState.TAKING_OFF:
+        // Transitioning: gradually align head with body
+        targetY = 0.06;
+        targetX = 0.38;
+        break;
+        
+      case BirdState.FLYING:
+      case BirdState.SOARING:
+      case BirdState.LANDING:
+        // Flight states: head inline with body for aerodynamic streamlined flight
+        targetY = 0.0;
+        targetX = 0.35;
+        break;
+        
+      default:
+        targetY = 0.12;
+        targetX = 0.42;
+    }
+
+    // Smooth transition to target position
+    const lerpSpeed = 2.0; // Transition speed
+    this.bodyParts.head.position.y = THREE.MathUtils.lerp(
+      this.bodyParts.head.position.y, 
+      targetY, 
+      deltaTime * lerpSpeed
+    );
+    this.bodyParts.head.position.x = THREE.MathUtils.lerp(
+      this.bodyParts.head.position.x, 
+      targetX, 
+      deltaTime * lerpSpeed
+    );
   }
 
   private animateWalk(): void {
