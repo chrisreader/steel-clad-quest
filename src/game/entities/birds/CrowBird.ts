@@ -597,8 +597,8 @@ export class CrowBird extends BaseBird {
       const direction = target.clone().sub(this.position).normalize();
       this.velocity.copy(direction.multiplyScalar(this.config.flightSpeed));
       
-      // Face movement direction smoothly (corrected for +X-facing bird)
-      const targetDirection = Math.atan2(direction.z, direction.x);
+      // Face movement direction smoothly (bird should face direction of travel)
+      const targetDirection = Math.atan2(direction.z, direction.x) + Math.PI;
       this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.1);
       
       if (this.position.distanceTo(target) < 2) {
@@ -637,8 +637,8 @@ export class CrowBird extends BaseBird {
       direction.normalize();
       this.velocity.copy(direction.multiplyScalar(speed));
       
-      // Face movement direction smoothly (corrected for +X-facing bird)
-      const targetDirection = Math.atan2(direction.z, direction.x);
+      // Face movement direction smoothly (bird should face direction of travel)
+      const targetDirection = Math.atan2(direction.z, direction.x) + Math.PI;
       this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.15);
     } else {
       this.velocity.set(0, 0, 0);
