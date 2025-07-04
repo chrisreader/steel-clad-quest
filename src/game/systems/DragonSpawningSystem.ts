@@ -24,18 +24,18 @@ export class DragonSpawningSystem {
     this.scene = scene;
     this.config = {
       // Movement tracking
-      playerMovementThreshold: 50, // Higher threshold for dragon spawning
+      playerMovementThreshold: 1, // Immediate spawn
       
       // Distance settings
       fadeInDistance: 100,
       fadeOutDistance: 150,
       maxEntityDistance: 200,
-      minSpawnDistance: 60, // Spawn further away
-      maxSpawnDistance: 120,
+      minSpawnDistance: 15, // Spawn within spawn circle
+      maxSpawnDistance: 30, // Close to player
       
       // Spawn settings
       maxEntities: 1, // Only one dragon
-      baseSpawnInterval: 30000, // 30 seconds
+      baseSpawnInterval: 1000, // 1 second
       spawnCountPerTrigger: 1,
       
       // Cleanup settings
@@ -46,7 +46,7 @@ export class DragonSpawningSystem {
       dragonTypes: [DragonType.RED],
       dragonTerritorySize: 100,
       spawnHeightOffset: 0, // Spawn at ground level
-      minDistanceFromPlayer: 80, // Minimum distance from player
+      minDistanceFromPlayer: 15, // Close to player
       
       ...config
     };
@@ -124,9 +124,9 @@ export class DragonSpawningSystem {
       console.log(`🐉 [DragonSpawningSystem] Status - Dragon: ${this.dragon ? 'exists' : 'none'}, Movement: ${this.playerMovementAccumulator.toFixed(1)}/${this.config.playerMovementThreshold}, Time since spawn: ${((now - this.lastSpawnTime) / 1000).toFixed(1)}s, Conditions: movement=${shouldSpawnByMovement}, time=${shouldSpawnByTime}`);
     }
     
-    // Force spawn dragon for testing if none exists and some time has passed
-    if (!this.dragon && now - this.lastSpawnTime > 5000) {
-      console.log('🐉 [DragonSpawningSystem] Force spawning dragon for testing');
+    // Force spawn dragon immediately for testing if none exists
+    if (!this.dragon && now - this.lastSpawnTime > 100) { // Almost immediate
+      console.log('🐉 [DragonSpawningSystem] Force spawning dragon immediately');
       this.spawnDragon(playerPosition);
       this.lastSpawnTime = now;
       this.hasSpawned = true;
