@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BirdState, FlightMode, BirdBodyParts, WingSegments } from '../../entities/birds/BaseBird';
+import { BirdState, FlightMode, BirdBodyParts, WingSegments } from '../../birds/core/BirdTypes';
 
 export interface BirdAnimationState {
   walkCycle: number;
