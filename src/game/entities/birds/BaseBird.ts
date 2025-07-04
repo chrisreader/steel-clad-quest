@@ -286,88 +286,75 @@ export abstract class BaseBird implements SpawnableEntity {
     if (!currentWaypoint) return;
     
     const distanceToWaypoint = this.position.distanceTo(currentWaypoint);
-    const lookAheadDistance = 8; // Start turning before reaching waypoint
     
-    // Get the current direction to target
+    // Calculate direction to target
     const toTarget = currentWaypoint.clone().sub(this.position);
-    const targetDirection = toTarget.clone().normalize();
+    toTarget.y = 0; // Keep turning in horizontal plane only
     
-    // Get current facing direction from bird's orientation
-    const currentFacing = new THREE.Vector3(
-      Math.cos(this.mesh.rotation.y),
-      0,
-      Math.sin(this.mesh.rotation.y)
-    );
-    
-    // Calculate desired facing direction with look-ahead
-    let desiredFacing = targetDirection.clone();
-    
-    // If close to waypoint, look ahead to next waypoint for smooth turns
-    if (distanceToWaypoint < lookAheadDistance && this.flightPath.length > 1) {
-      const nextWaypoint = this.flightPath[(this.currentPathIndex + 1) % this.flightPath.length];
-      const nextDirection = nextWaypoint.clone().sub(currentWaypoint).normalize();
-      
-      // Blend current target direction with next direction for smooth turns
-      const blendFactor = 1 - (distanceToWaypoint / lookAheadDistance);
-      desiredFacing.lerp(nextDirection, blendFactor * 0.7);
+    if (toTarget.length() < 0.1) {
+      // Too close to waypoint, move to next
+      this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
+      return;
     }
     
-    // Calculate turn angle using dot product for stable turning
-    const turnDot = currentFacing.dot(desiredFacing);
-    const turnCross = currentFacing.clone().cross(desiredFacing);
-    const turnAngle = Math.atan2(turnCross.y, turnDot);
+    const targetDirection = toTarget.normalize();
     
-    // Realistic turn rate - birds can't turn instantly
-    const maxTurnRate = 2.5 * deltaTime; // Radians per second
-    const actualTurnRate = THREE.MathUtils.clamp(turnAngle, -maxTurnRate, maxTurnRate);
+    // Calculate desired rotation angle using atan2 for stability
+    const desiredAngle = Math.atan2(targetDirection.x, targetDirection.z);
     
-    // Apply smooth rotation with momentum
-    const targetRotationY = this.mesh.rotation.y + actualTurnRate;
-    this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetRotationY, 0.8);
+    // Get current angle and calculate shortest rotation
+    let currentAngle = this.mesh.rotation.y;
+    let angleDiff = desiredAngle - currentAngle;
     
-    // Calculate banking angle for realistic turns (birds bank when turning)
-    const bankingIntensity = Math.abs(actualTurnRate) * 3;
-    const bankingDirection = Math.sign(turnAngle);
-    this.bankingAngle = THREE.MathUtils.lerp(
-      this.bankingAngle, 
-      bankingDirection * bankingIntensity, 
-      deltaTime * 4
+    // Normalize angle difference to [-π, π]
+    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+    
+    // Apply smooth turning with limited turn rate
+    const maxTurnRate = 1.5 * deltaTime; // Slower, more stable turning
+    const turnAmount = THREE.MathUtils.clamp(angleDiff, -maxTurnRate, maxTurnRate);
+    
+    // Apply rotation smoothly
+    this.mesh.rotation.y += turnAmount * 0.6; // Damped rotation
+    
+    // Calculate banking based on turn rate (separate from main rotation)
+    const bankingAmount = turnAmount * 2.0; // Banking proportional to turn rate
+    this.bankingAngle = THREE.MathUtils.lerp(this.bankingAngle, bankingAmount, deltaTime * 3);
+    
+    // Apply banking to a separate rotation (wings only, not affecting flight direction)
+    if (this.bodyParts?.leftWing && this.bodyParts?.rightWing) {
+      const clampedBanking = THREE.MathUtils.clamp(this.bankingAngle, -0.4, 0.4);
+      this.bodyParts.leftWing.rotation.z = clampedBanking;
+      this.bodyParts.rightWing.rotation.z = -clampedBanking;
+    }
+    
+    // Set velocity based on current mesh orientation (head-first movement)
+    const currentFacing = new THREE.Vector3(
+      Math.sin(this.mesh.rotation.y),
+      0,
+      Math.cos(this.mesh.rotation.y)
     );
-    this.mesh.rotation.z = THREE.MathUtils.clamp(this.bankingAngle, -0.6, 0.6);
     
-    // Set velocity based on current facing direction (head-first movement)
     const speed = this.config.flightSpeed;
-    const adjustedSpeed = speed * (1 - Math.abs(actualTurnRate) * 0.3); // Slow down during turns
+    this.velocity.x = currentFacing.x * speed;
+    this.velocity.z = currentFacing.z * speed;
     
-    this.velocity.x = currentFacing.x * adjustedSpeed;
-    this.velocity.z = currentFacing.z * adjustedSpeed;
-    
-    // Add subtle undulating motion for natural flight
-    const undulationFreq = 0.4;
-    const undulationAmplitude = 0.8;
-    const undulation = Math.sin(this.age * undulationFreq) * undulationAmplitude * deltaTime;
-    this.velocity.y += undulation;
-    
-    // Adjust wing beat intensity based on flight demands
+    // Handle altitude changes smoothly
     const altitudeDiff = currentWaypoint.y - this.position.y;
-    const turnIntensity = Math.abs(actualTurnRate) / maxTurnRate;
-    
-    if (altitudeDiff > 1 || turnIntensity > 0.5) {
-      this.wingBeatIntensity = 1.2 + turnIntensity * 0.3; // More effort for climbing/turning
+    if (Math.abs(altitudeDiff) > 1) {
+      const climbRate = THREE.MathUtils.clamp(altitudeDiff * 0.5, -2, 2);
+      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, climbRate, deltaTime * 2);
       this.isFlapping = true;
-    } else if (altitudeDiff < -1 && turnIntensity < 0.3) {
-      this.wingBeatIntensity = 0.7; // Gliding descent
-      this.isFlapping = false;
+      this.wingBeatIntensity = 1.1;
     } else {
-      this.wingBeatIntensity = 1.0; // Normal flight
-      this.isFlapping = true;
+      this.isFlapping = Math.abs(turnAmount) > 0.1; // Flap during turns
+      this.wingBeatIntensity = 1.0;
     }
     
     // Move to next waypoint when close enough
-    if (distanceToWaypoint < 4) {
+    if (distanceToWaypoint < 5) {
       this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
-      this.flightPathProgress = 0;
-      console.log(`🐦 [${this.config.species}] Reached waypoint ${this.currentPathIndex}, heading to next`);
+      console.log(`🐦 [${this.config.species}] Reached waypoint ${this.currentPathIndex}`);
     }
   }
 
