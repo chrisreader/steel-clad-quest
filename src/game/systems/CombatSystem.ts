@@ -72,6 +72,7 @@ export class CombatSystem {
     this.lastAttackTime += deltaTime;
     
     this.projectileSystem.setEnemies(this.enemies);
+    this.projectileSystem.setBirds(this.birds);
     this.projectileSystem.update(deltaTime);
     
     // FIXED: Use transferGold to avoid destroying active arrows

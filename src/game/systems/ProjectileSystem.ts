@@ -13,6 +13,7 @@ export class ProjectileSystem {
   private scene: THREE.Scene;
   private player: Player;
   private enemies: Enemy[] = [];
+  private birds: any[] = [];
   private gold: Gold[] = [];
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
@@ -119,6 +120,7 @@ export class ProjectileSystem {
     const arrowBox = new THREE.Box3();
     arrowBox.setFromCenterAndSize(arrowPosition, new THREE.Vector3(0.2, 0.2, 0.2));
     
+    // Check enemy collisions
     this.enemies.forEach(enemy => {
       if (enemy.isDead()) return;
       
@@ -151,6 +153,35 @@ export class ProjectileSystem {
         console.log(`🏹 Arrow hit enemy for ${damage} damage with realistic blood effect`);
       }
     });
+    
+    // Check bird collisions
+    this.birds.forEach(bird => {
+      if (bird.isDead) return;
+      
+      const birdHitBox = bird.getHitBox();
+      if (!birdHitBox) return;
+      
+      const birdBox = new THREE.Box3().setFromObject(birdHitBox);
+      
+      if (arrowBox.intersectsBox(birdBox)) {
+        const damage = arrow.getDamage();
+        const birdPosition = bird.getPosition();
+        
+        // Create small blood effect for bird
+        this.effectsManager.createRealisticBloodEffect(birdPosition, arrowDirection, 0.3);
+        
+        // Apply damage to bird (1 HP = instant kill)
+        bird.takeDamage(damage);
+        
+        this.audioManager.play('arrow_hit');
+        
+        // Dispose of arrow properly
+        arrow.dispose();
+        this.arrows = this.arrows.filter(a => a !== arrow);
+        
+        console.log(`🏹🐦 Arrow hit and killed bird`);
+      }
+    });
   }
 
   private spawnGold(position: THREE.Vector3, value: number): void {
@@ -176,6 +207,10 @@ export class ProjectileSystem {
 
   public setEnemies(enemies: Enemy[]): void {
     this.enemies = enemies;
+  }
+  
+  public setBirds(birds: any[]): void {
+    this.birds = birds.filter(bird => !bird.isDead);
   }
 
   public getArrowCount(): number {
