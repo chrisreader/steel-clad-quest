@@ -87,8 +87,8 @@ export class CrowBird extends BaseBird {
     const leftWingGroup = new THREE.Group();
     const rightWingGroup = new THREE.Group();
     
-    const leftWing = this.createSimpleWing(true);
-    const rightWing = this.createSimpleWing(false);
+    const leftWing = this.createAnatomicalWing(true);
+    const rightWing = this.createAnatomicalWing(false);
     
     leftWingGroup.add(leftWing);
     rightWingGroup.add(rightWing);
@@ -150,25 +150,189 @@ export class CrowBird extends BaseBird {
     };
   }
 
-  private createSimpleWing(isLeft: boolean): THREE.Group {
+  private createTaperedFeatherGeometry(baseWidth: number, tipWidth: number, length: number): THREE.BufferGeometry {
+    const geometry = new THREE.BufferGeometry();
+    const thickness = 0.002; // Add slight thickness to make feathers visible from all angles
+    
+    // Create tapered feather shape with thickness - tips pointing backward (negative X direction)
+    const vertices = [
+      // Bottom face
+      // Base (wider) - at wing bone attachment point
+      0, -baseWidth/2, -thickness/2,
+      0, baseWidth/2, -thickness/2,
+      // Tip (narrower) - extending backward from wing bone
+      -length, -tipWidth/2, -thickness/2,
+      -length, tipWidth/2, -thickness/2,
+      
+      // Top face
+      // Base (wider) - at wing bone attachment point
+      0, -baseWidth/2, thickness/2,
+      0, baseWidth/2, thickness/2,
+      // Tip (narrower) - extending backward from wing bone
+      -length, -tipWidth/2, thickness/2,
+      -length, tipWidth/2, thickness/2
+    ];
+    
+    const indices = [
+      // Bottom face
+      0, 1, 2,  1, 3, 2,
+      // Top face  
+      4, 6, 5,  5, 6, 7,
+      // Front edge
+      0, 4, 5,  0, 5, 1,
+      // Back edge
+      2, 3, 7,  2, 7, 6,
+      // Left edge
+      0, 2, 6,  0, 6, 4,
+      // Right edge
+      1, 5, 7,  1, 7, 3
+    ];
+    
+    const uvs = [
+      // Bottom face
+      0, 0,  0, 1,  1, 0,  1, 1,
+      // Top face
+      0, 0,  0, 1,  1, 0,  1, 1
+    ];
+    
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    
+    return geometry;
+  }
+
+  private createAnatomicalWing(isLeft: boolean): THREE.Group {
     const wingGroup = new THREE.Group();
     const side = isLeft ? 1 : -1;
     
-    // Main wing segment
-    const wingGeometry = new THREE.BoxGeometry(0.4, 0.05, 0.6);
-    const wing = new THREE.Mesh(wingGeometry, this.materials!.feather);
-    wing.position.set(-0.2, 0, side * 0.3);
-    wingGroup.add(wing);
+    // SHOULDER/SCAPULA - Base attachment point at bird's body
+    const shoulderGroup = new THREE.Group();
+    wingGroup.add(shoulderGroup);
     
-    // Wing segments for animation
+    // HUMERUS - Upper arm bone that extends OUTWARD from body (along Z-axis for wingspan)
+    const humerusGroup = new THREE.Group();
+    const humerusGeometry = new THREE.CapsuleGeometry(0.03, 0.24, 6, 8);
+    const humerus = new THREE.Mesh(humerusGeometry, this.materials!.feather);
+    
+    // Orient bone along Z-axis (outward from body to create wingspan width)
+    humerus.rotation.x = Math.PI / 2; // Rotate to align along Z-axis
+    humerus.position.set(0, 0, side * 0.12); // Extend outward from shoulder
+    humerusGroup.add(humerus);
+    
+    // Attach humerus to shoulder (at body attachment point)
+    shoulderGroup.add(humerusGroup);
+
+    // FOREARM - Continues extending outward creating wing length
+    const forearmGroup = new THREE.Group();
+    const forearmGeometry = new THREE.CapsuleGeometry(0.025, 0.28, 6, 8);
+    const forearm = new THREE.Mesh(forearmGeometry, this.materials!.feather);
+    
+    // Continue outward extension along Z-axis
+    forearm.rotation.x = Math.PI / 2; // Align along Z-axis
+    forearm.position.set(0, 0, side * 0.14); // Extend further outward
+    forearmGroup.add(forearm);
+    
+    // Position forearm at end of humerus (elbow joint)
+    forearmGroup.position.set(0, 0, side * 0.24); // At end of humerus
+    humerusGroup.add(forearmGroup);
+
+    // HAND - Final wing bone segment extending to wingtip
+    const handGroup = new THREE.Group();
+    const handGeometry = new THREE.CapsuleGeometry(0.02, 0.16, 6, 8);
+    const hand = new THREE.Mesh(handGeometry, this.materials!.feather);
+    
+    // Continue Z-axis extension to wingtip with slight curve back
+    hand.rotation.x = Math.PI / 2; // Align along Z-axis
+    hand.position.set(-0.02, 0, side * 0.08); // Slightly curved back and outward
+    handGroup.add(hand);
+    
+    // Position hand at end of forearm (wrist joint)
+    handGroup.position.set(0, 0, side * 0.28); // At end of forearm
+    forearmGroup.add(handGroup);
+
+    // COVERT FEATHERS - Small body coverage feathers
+    const covertFeathers: THREE.Mesh[] = [];
+    for (let i = 0; i < 6; i++) {
+      const featherLength = 0.12 + (i * 0.008);
+      const baseWidth = (0.03 + (i * 0.002)) * 1.8;
+      const tipWidth = baseWidth * 0.4;
+      
+      const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
+      const covert = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      
+      const alongBone = i * 0.035;
+      const offsetFromBone = -0.02;
+      covert.position.set(offsetFromBone, -0.02, side * alongBone);
+      
+      covert.rotation.x = 0;
+      covert.rotation.y = -(0.1 - i * 0.01);
+      covert.rotation.z = (i * 0.08);
+      
+      humerusGroup.add(covert);
+      covertFeathers.push(covert);
+    }
+
+    // SECONDARY FEATHERS - Main wing surface
+    const secondaryFeathers: THREE.Mesh[] = [];
+    for (let i = 0; i < 8; i++) {
+      const featherLength = 0.25 + (i * 0.02);
+      const baseWidth = (0.06 + (i * 0.004)) * 1.6;
+      const tipWidth = baseWidth * 0.3;
+      
+      const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
+      const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      
+      const alongBone = i * 0.03;
+      const offsetFromBone = -0.01;
+      feather.position.set(offsetFromBone, -0.01, side * alongBone);
+      
+      feather.rotation.x = 0;
+      feather.rotation.y = -(0.15 - i * 0.005);
+      feather.rotation.z = (i * 0.04);
+      
+      forearmGroup.add(feather);
+      secondaryFeathers.push(feather);
+    }
+
+    // PRIMARY FEATHERS - Wing control surfaces
+    const primaryFeathers: THREE.Mesh[] = [];
+    for (let i = 0; i < 10; i++) {
+      const featherLength = 0.30 + (i * 0.015);
+      const baseWidth = (0.08 + (i * 0.004)) * 1.5;
+      const tipWidth = baseWidth * 0.2;
+      
+      const featherGeometry = this.createTaperedFeatherGeometry(baseWidth, tipWidth, featherLength);
+      const feather = new THREE.Mesh(featherGeometry, this.materials!.feather);
+      
+      const alongBone = i * 0.015;
+      const offsetFromBone = 0;
+      feather.position.set(offsetFromBone, 0, side * alongBone);
+      
+      const tipEffect = i / 9;
+      feather.rotation.x = 0;
+      feather.rotation.y = -(0.2 + tipEffect * 0.1);
+      feather.rotation.z = (tipEffect * 0.3);
+      
+      handGroup.add(feather);
+      primaryFeathers.push(feather);
+    }
+
+    // Store wing segments for animation
     const segments: WingSegments = {
-      upperArm: wing,
-      forearm: wing,
-      hand: wing,
-      primaryFeathers: [wing],
-      secondaryFeathers: [wing],
-      covertFeathers: [wing]
+      upperArm: humerus,
+      forearm: forearm,
+      hand: hand,
+      primaryFeathers: primaryFeathers,
+      secondaryFeathers: secondaryFeathers,
+      covertFeathers: covertFeathers
     };
+
+    // Store group references for joint animation
+    humerusGroup.userData = { type: 'shoulder', segment: humerus };
+    forearmGroup.userData = { type: 'elbow', segment: forearm };
+    handGroup.userData = { type: 'wrist', segment: hand };
 
     if (!this.wingSegments) {
       this.wingSegments = { left: segments, right: segments };
