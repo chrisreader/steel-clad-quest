@@ -939,22 +939,28 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Primary wing folding at shoulder joint - rotate entire wing inward against body
-    leftShoulder.rotation.set(0, Math.PI / 2, 0);  // +90° to fold left wing inward
-    rightShoulder.rotation.set(0, -Math.PI / 2, 0); // -90° to fold right wing inward
+    // Get the main wing groups (parent containers)
+    const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
+    const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
     
-    // Minimal secondary adjustments for natural folding
-    leftHumerus.rotation.set(0, 0, -0.3);  // Slight downward fold
-    rightHumerus.rotation.set(0, 0, 0.3);   // Slight downward fold
+    // Primary wing folding - rotate entire wing assembly inward against body
+    leftWingGroup.rotation.set(0, Math.PI / 2, 0);  // +90° to fold left wing inward
+    rightWingGroup.rotation.set(0, -Math.PI / 2, 0); // -90° to fold right wing inward
+    
+    // Reset all joint rotations to neutral since main rotation handles folding
+    leftShoulder.rotation.set(0, 0, 0);
+    rightShoulder.rotation.set(0, 0, 0);
+    leftHumerus.rotation.set(0, 0, 0);
+    rightHumerus.rotation.set(0, 0, 0);
     
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.4);  // Fold forearm closer to body
-      rightForearm.rotation.set(0, 0, 0.4);   // Fold forearm closer to body
+      leftForearm.rotation.set(0, 0, 0);
+      rightForearm.rotation.set(0, 0, 0);
     }
     
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.2);  // Slight hand fold
-      rightHand.rotation.set(0, 0, 0.2);   // Slight hand fold
+      leftHand.rotation.set(0, 0, 0);
+      rightHand.rotation.set(0, 0, 0);
     }
     
     this.animateFeathersForRest();
