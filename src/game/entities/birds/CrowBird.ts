@@ -175,20 +175,28 @@ export class CrowBird extends BaseBird {
   }
 
   private createSimpleMaterials(): void {
-    // Create simple materials for better performance and clarity
+    // Create realistic crow materials with proper lighting response
     this.materials = {
-      feather: new THREE.MeshLambertMaterial({
-        color: 0x1a1a1a,
-        side: THREE.DoubleSide // Make feathers visible from both sides
+      feather: new THREE.MeshPhongMaterial({
+        color: 0x2d2d2d,        // Dark charcoal instead of pure black
+        specular: 0x1a1a1a,     // Subtle sheen for feather texture
+        shininess: 10,          // Low shininess for natural look
+        side: THREE.DoubleSide  // Make feathers visible from both sides
       }),
-      beak: new THREE.MeshLambertMaterial({
-        color: 0x2a2a2a
+      beak: new THREE.MeshPhongMaterial({
+        color: 0x4a4a4a,        // Lighter grey for beak visibility
+        specular: 0x666666,
+        shininess: 30
       }),
-      eye: new THREE.MeshLambertMaterial({
-        color: 0x000000
+      eye: new THREE.MeshPhongMaterial({
+        color: 0x0a0a0a,        // Very dark but not pure black
+        specular: 0x333333,
+        shininess: 50
       }),
-      leg: new THREE.MeshLambertMaterial({
-        color: 0x333333
+      leg: new THREE.MeshPhongMaterial({
+        color: 0x4a3a2a,        // Dark brown for crow legs
+        specular: 0x2a2a2a,
+        shininess: 20
       })
     };
   }
@@ -881,24 +889,24 @@ export class CrowBird extends BaseBird {
     const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
     const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
     
-    // Properly fold wings against body for ground states
-    leftWingGroup.rotation.set(0, -Math.PI / 3, 0);   // -60° fold (less extreme than before)
-    rightWingGroup.rotation.set(0, Math.PI / 3, 0);    // +60° fold
+    // Tightly fold wings against body for realistic ground pose
+    leftWingGroup.rotation.set(0, -Math.PI / 2.2, 0);   // -82° tight fold
+    rightWingGroup.rotation.set(0, Math.PI / 2.2, 0);    // +82° tight fold
     
-    // Additional joint-based folding for natural appearance
-    leftShoulder.rotation.set(0.2, 0, 0.2);     // Fold shoulder toward body
-    rightShoulder.rotation.set(-0.2, 0, -0.2);
-    leftHumerus.rotation.set(0, 0.3, 0.4);      // Fold upper arm back
-    rightHumerus.rotation.set(0, -0.3, -0.4);
+    // Enhanced joint-based folding for very natural tucked appearance
+    leftShoulder.rotation.set(0.3, 0, 0.4);     // More pronounced shoulder fold
+    rightShoulder.rotation.set(-0.3, 0, -0.4);
+    leftHumerus.rotation.set(0, 0.5, 0.7);      // Tuck upper arm tightly
+    rightHumerus.rotation.set(0, -0.5, -0.7);
     
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.6);     // Fold forearm toward body
-      rightForearm.rotation.set(0, 0, 0.6);
+      leftForearm.rotation.set(0, 0, -1.0);     // Fold forearm completely back
+      rightForearm.rotation.set(0, 0, 1.0);
     }
     
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.3);        // Fold wingtips back
-      rightHand.rotation.set(0, 0, 0.3);
+      leftHand.rotation.set(0, 0, -0.6);        // Fold wingtips completely back
+      rightHand.rotation.set(0, 0, 0.6);
     }
     
     this.animateFeathersForRest();
