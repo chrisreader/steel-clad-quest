@@ -35,9 +35,9 @@ export class CrowBird extends BaseBird {
     const bodyGroup = new THREE.Group();
     
     // Create anatomically correct bird body - egg-shaped torso
-    const bodyGeometry = new THREE.SphereGeometry(1, 16, 12);
-    // Scale to create realistic bird torso: wider chest, narrower tail, compressed vertically
-    bodyGeometry.scale(0.8, 0.6, 0.7); // X: front-back length, Y: top-bottom height, Z: side-to-side width
+    const bodyGeometry = new THREE.SphereGeometry(0.3, 16, 12);
+    // Scale to create realistic bird torso: elongated front-back, compressed top-bottom, moderate width
+    bodyGeometry.scale(1.3, 0.45, 0.65); // X: front-back length, Y: top-bottom height, Z: side-to-side width
     
     // Create chest bulge for realistic bird anatomy
     const positions = bodyGeometry.attributes.position;
