@@ -489,16 +489,16 @@ export class CrowBird extends BaseBird {
     this.velocity.x *= 0.95;
     this.velocity.z *= 0.95;
     
-    const birdBodyHeight = 0.3;
-    if (this.position.y <= this.groundLevel + birdBodyHeight + 1) {
+    const feetToBodyDistance = 0.43;
+    if (this.position.y <= this.groundLevel + feetToBodyDistance + 1) {
       this.forceGrounding();
     }
   }
   
   private forceGrounding(): void {
     this.flightMode = FlightMode.GROUNDED;
-    const birdBodyHeight = 0.3;
-    this.position.y = this.groundLevel + birdBodyHeight;
+    const feetToBodyDistance = 0.43;
+    this.position.y = this.groundLevel + feetToBodyDistance;
     this.velocity.set(0, 0, 0);
     this.mesh.rotation.z = 0;
     this.mesh.rotation.x = 0;
@@ -696,16 +696,16 @@ export class CrowBird extends BaseBird {
     }
     
     // Land when close to ground
-    const birdBodyHeight = 0.3;
-    if (this.position.y <= this.groundLevel + birdBodyHeight + 0.5) {
+    const feetToBodyDistance = 0.43;
+    if (this.position.y <= this.groundLevel + feetToBodyDistance + 0.5) {
       this.flightMode = FlightMode.GROUNDED;
-      this.position.y = this.groundLevel + birdBodyHeight; // Position properly with body height
+      this.position.y = this.groundLevel + feetToBodyDistance; // Position properly with feet touching ground
       this.velocity.set(0, 0, 0);
       // Reset rotations when landing
       this.mesh.rotation.z = 0;
       this.mesh.rotation.x = 0;
       this.changeState(BirdState.IDLE);
-      console.log(`🐦 [CrowBird] Successfully landed at ground level ${this.groundLevel}, bird position: ${this.position.y}`);
+      console.log(`🐦 [CrowBird] Successfully landed with feet at ground level ${this.groundLevel}, bird position: ${this.position.y}`);
     }
   }
 
