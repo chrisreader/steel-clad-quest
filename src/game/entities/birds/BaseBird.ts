@@ -82,7 +82,11 @@ export abstract class BaseBird implements SpawnableEntity {
   protected targetAltitude: number = 0;
   protected groundLevel: number = 0;
   protected wingBeatIntensity: number = 1.0; // Variable wing beat intensity
-  protected bankingAngle: number = 0; // Current banking angle during turns
+  
+  // Flight heading system (separated from visual banking)
+  protected currentHeading: number = 0; // Current flight direction in radians
+  protected targetHeading: number = 0; // Desired flight direction
+  protected visualBankAngle: number = 0; // Visual banking for wings only
   
   // AI properties
   protected stateTimer: number = 0;
@@ -250,7 +254,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.changeState(BirdState.LANDING);
     this.isFlapping = false; // Stop flapping to begin glide approach
     this.wingBeatIntensity = 1.0; // Reset intensity
-    this.bankingAngle = 0; // Reset banking for landing
+    this.visualBankAngle = 0; // Reset visual banking for landing
     console.log(`🐦 [${this.config.species}] Starting landing approach from altitude: ${this.position.y.toFixed(1)}`);
   }
 
@@ -287,74 +291,81 @@ export abstract class BaseBird implements SpawnableEntity {
     
     const distanceToWaypoint = this.position.distanceTo(currentWaypoint);
     
-    // Calculate direction to target
-    const toTarget = currentWaypoint.clone().sub(this.position);
-    toTarget.y = 0; // Keep turning in horizontal plane only
-    
-    if (toTarget.length() < 0.1) {
-      // Too close to waypoint, move to next
-      this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
-      return;
-    }
-    
-    const targetDirection = toTarget.normalize();
-    
-    // Calculate desired rotation angle using atan2 for stability
-    const desiredAngle = Math.atan2(targetDirection.z, targetDirection.x);
-    
-    // Get current angle and calculate shortest rotation
-    let currentAngle = this.mesh.rotation.y;
-    let angleDiff = desiredAngle - currentAngle;
-    
-    // Normalize angle difference to [-π, π]
-    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-    
-    // Apply smooth turning with limited turn rate
-    const maxTurnRate = 1.5 * deltaTime; // Slower, more stable turning
-    const turnAmount = THREE.MathUtils.clamp(angleDiff, -maxTurnRate, maxTurnRate);
-    
-    // Apply rotation smoothly
-    this.mesh.rotation.y += turnAmount * 0.6; // Damped rotation
-    
-    // Calculate banking based on turn rate (separate from main rotation)
-    const bankingAmount = turnAmount * 2.0; // Banking proportional to turn rate
-    this.bankingAngle = THREE.MathUtils.lerp(this.bankingAngle, bankingAmount, deltaTime * 3);
-    
-    // Apply banking to a separate rotation (wings only, not affecting flight direction)
-    if (this.bodyParts?.leftWing && this.bodyParts?.rightWing) {
-      const clampedBanking = THREE.MathUtils.clamp(this.bankingAngle, -0.4, 0.4);
-      this.bodyParts.leftWing.rotation.z = clampedBanking;
-      this.bodyParts.rightWing.rotation.z = -clampedBanking;
-    }
-    
-    // Set velocity based on current mesh orientation (head-first movement)
-    const currentFacing = new THREE.Vector3(
-      Math.cos(this.mesh.rotation.y),
-      0,
-      Math.sin(this.mesh.rotation.y)
-    );
-    
-    const speed = this.config.flightSpeed;
-    this.velocity.x = currentFacing.x * speed;
-    this.velocity.z = currentFacing.z * speed;
-    
-    // Handle altitude changes smoothly
-    const altitudeDiff = currentWaypoint.y - this.position.y;
-    if (Math.abs(altitudeDiff) > 1) {
-      const climbRate = THREE.MathUtils.clamp(altitudeDiff * 0.5, -2, 2);
-      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, climbRate, deltaTime * 2);
-      this.isFlapping = true;
-      this.wingBeatIntensity = 1.1;
-    } else {
-      this.isFlapping = Math.abs(turnAmount) > 0.1; // Flap during turns
-      this.wingBeatIntensity = 1.0;
-    }
-    
     // Move to next waypoint when close enough
     if (distanceToWaypoint < 5) {
       this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
       console.log(`🐦 [${this.config.species}] Reached waypoint ${this.currentPathIndex}`);
+      return;
+    }
+    
+    // Calculate direction to target (horizontal plane only)
+    const toTarget = currentWaypoint.clone().sub(this.position);
+    toTarget.y = 0; // Keep turning calculations in horizontal plane
+    
+    if (toTarget.length() < 0.1) {
+      this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
+      return;
+    }
+    
+    // Calculate target heading (direction bird should face)
+    this.targetHeading = Math.atan2(toTarget.z, toTarget.x);
+    
+    // Smoothly adjust current heading toward target
+    let headingDiff = this.targetHeading - this.currentHeading;
+    
+    // Normalize heading difference to [-π, π] for shortest turn
+    while (headingDiff > Math.PI) headingDiff -= 2 * Math.PI;
+    while (headingDiff < -Math.PI) headingDiff += 2 * Math.PI;
+    
+    // Limit turn rate for realistic flight
+    const maxTurnRate = 2.0 * deltaTime; // Gradual turning
+    const headingChange = THREE.MathUtils.clamp(headingDiff, -maxTurnRate, maxTurnRate);
+    
+    // Update current heading
+    this.currentHeading += headingChange;
+    
+    // Set mesh rotation to match current heading
+    this.mesh.rotation.y = this.currentHeading;
+    
+    // ALWAYS fly forward in +X direction relative to bird's orientation
+    const forwardDirection = new THREE.Vector3(
+      Math.cos(this.currentHeading), // +X forward
+      0,
+      Math.sin(this.currentHeading)
+    );
+    
+    // Set horizontal velocity to always fly forward
+    const speed = this.config.flightSpeed;
+    this.velocity.x = forwardDirection.x * speed;
+    this.velocity.z = forwardDirection.z * speed;
+    
+    // Handle altitude changes independently of horizontal movement
+    const altitudeDiff = currentWaypoint.y - this.position.y;
+    if (Math.abs(altitudeDiff) > 1) {
+      const climbRate = THREE.MathUtils.clamp(altitudeDiff * 0.3, -1.5, 1.5);
+      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, climbRate, deltaTime * 2);
+      this.isFlapping = true;
+      this.wingBeatIntensity = 1.1;
+    } else {
+      // Flap during turns for realistic flight
+      this.isFlapping = Math.abs(headingChange) > 0.05;
+      this.wingBeatIntensity = 1.0;
+    }
+    
+    // Visual banking for wings only (does NOT affect flight direction)
+    const turnIntensity = Math.abs(headingChange) / maxTurnRate;
+    const targetBankAngle = headingChange * 1.5; // Bank in direction of turn
+    this.visualBankAngle = THREE.MathUtils.lerp(
+      this.visualBankAngle, 
+      targetBankAngle, 
+      deltaTime * 4
+    );
+    
+    // Apply visual banking to wings only
+    if (this.bodyParts?.leftWing && this.bodyParts?.rightWing) {
+      const clampedBanking = THREE.MathUtils.clamp(this.visualBankAngle, -0.3, 0.3);
+      this.bodyParts.leftWing.rotation.z = clampedBanking;
+      this.bodyParts.rightWing.rotation.z = -clampedBanking;
     }
   }
 
