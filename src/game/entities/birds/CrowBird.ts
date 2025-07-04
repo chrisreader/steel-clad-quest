@@ -221,14 +221,14 @@ export class CrowBird extends BaseBird {
   private createTaperedFeatherGeometry(baseWidth: number, tipWidth: number, length: number): THREE.BufferGeometry {
     const geometry = new THREE.BufferGeometry();
     
-    // Create tapered feather shape - oriented along X-axis (wing direction)
+    // Create tapered feather shape - tips pointing backward (negative X direction)
     const vertices = [
       // Base (wider) - at wing bone attachment point
       0, -baseWidth/2, 0,
       0, baseWidth/2, 0,
-      // Tip (narrower) - extending outward from wing bone
-      length, -tipWidth/2, 0,
-      length, tipWidth/2, 0
+      // Tip (narrower) - extending backward from wing bone
+      -length, -tipWidth/2, 0,
+      -length, tipWidth/2, 0
     ];
     
     const indices = [
