@@ -881,24 +881,24 @@ export class CrowBird extends BaseBird {
     const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
     const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
     
-    // FIXED: Don't rotate wing groups - use joint-based folding only
-    leftWingGroup.rotation.set(0, 0, 0);
-    rightWingGroup.rotation.set(0, 0, 0);
+    // Properly fold wings against body for ground states
+    leftWingGroup.rotation.set(0, -Math.PI / 3, 0);   // -60° fold (less extreme than before)
+    rightWingGroup.rotation.set(0, Math.PI / 3, 0);    // +60° fold
     
-    // Natural folded wing positions using joint-based folding
-    leftShoulder.rotation.set(0.1, 0, 0.3);     // Fold shoulder toward body
-    rightShoulder.rotation.set(-0.1, 0, -0.3);
-    leftHumerus.rotation.set(0, 0.2, 0.5);      // Fold upper arm back
-    rightHumerus.rotation.set(0, -0.2, -0.5);
+    // Additional joint-based folding for natural appearance
+    leftShoulder.rotation.set(0.2, 0, 0.2);     // Fold shoulder toward body
+    rightShoulder.rotation.set(-0.2, 0, -0.2);
+    leftHumerus.rotation.set(0, 0.3, 0.4);      // Fold upper arm back
+    rightHumerus.rotation.set(0, -0.3, -0.4);
     
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.8);     // Fold forearm toward body
-      rightForearm.rotation.set(0, 0, 0.8);
+      leftForearm.rotation.set(0, 0, -0.6);     // Fold forearm toward body
+      rightForearm.rotation.set(0, 0, 0.6);
     }
     
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.4);        // Fold wingtips back
-      rightHand.rotation.set(0, 0, 0.4);
+      leftHand.rotation.set(0, 0, -0.3);        // Fold wingtips back
+      rightHand.rotation.set(0, 0, 0.3);
     }
     
     this.animateFeathersForRest();
