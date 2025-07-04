@@ -315,10 +315,10 @@ export class CrowBird extends BaseBird {
       const offsetFromBone = -0.02; // Slight offset from bone center
       covert.position.set(offsetFromBone, -0.02, side * alongBone);
       
-      // Orient feathers that extend along X-axis from wing bone
+      // Orient feathers to point backward along bird's body (negative X)
       covert.rotation.x = 0; // No rotation around X since feathers are X-aligned
-      covert.rotation.y = side * (0.1 - i * 0.01); // Fan slightly inward
-      covert.rotation.z = (i * 0.08) - Math.PI / 2; // Gradually lift from body
+      covert.rotation.y = 0.1 - i * 0.01; // Same angle for both wings
+      covert.rotation.z = Math.PI + (i * 0.08); // Point backward + gradually lift from body
       
       covert.userData.originalRotation = { x: covert.rotation.x, y: covert.rotation.y, z: covert.rotation.z };
       
@@ -341,10 +341,10 @@ export class CrowBird extends BaseBird {
       const offsetFromBone = -0.01; // Slight offset from bone center
       feather.position.set(offsetFromBone, -0.01, side * alongBone);
       
-      // Orient feathers that extend along X-axis from wing bone
+      // Orient feathers to point backward along bird's body (negative X)
       feather.rotation.x = 0; // No rotation around X since feathers are X-aligned
-      feather.rotation.y = side * (0.15 - i * 0.005); // Slight backward sweep
-      feather.rotation.z = (i * 0.04) - Math.PI / 2; // Gradual lift creating wing curve
+      feather.rotation.y = 0.15 - i * 0.005; // Same angle for both wings, backward sweep
+      feather.rotation.z = Math.PI + (i * 0.04); // Point backward + gradual lift creating wing curve
       
       feather.userData.originalRotation = { x: feather.rotation.x, y: feather.rotation.y, z: feather.rotation.z };
       
@@ -367,11 +367,11 @@ export class CrowBird extends BaseBird {
       const offsetFromBone = 0; // No offset, attached to bone center
       feather.position.set(offsetFromBone, 0, side * alongBone);
       
-      // Orient feathers that extend along X-axis from wing bone
+      // Orient feathers to point backward along bird's body (negative X)
       const tipEffect = i / 9; // 0 to 1 from body to tip
       feather.rotation.x = 0; // No rotation around X since feathers are X-aligned
-      feather.rotation.y = side * (0.2 + tipEffect * 0.1); // Swept back toward tip
-      feather.rotation.z = (tipEffect * 0.3) - Math.PI / 2; // More lift toward tip
+      feather.rotation.y = 0.2 + tipEffect * 0.1; // Same angle for both wings, swept back toward tip
+      feather.rotation.z = Math.PI + (tipEffect * 0.3); // Point backward + more lift toward tip
       
       feather.userData.originalRotation = { x: feather.rotation.x, y: feather.rotation.y, z: feather.rotation.z };
       
