@@ -160,13 +160,20 @@ export abstract class BaseBird implements SpawnableEntity {
     const altitudeDiff = this.targetAltitude - this.position.y;
     
     if (Math.abs(altitudeDiff) > 0.1) {
-      // Adjust altitude
-      const ascendRate = this.isFlapping ? 3.0 : 1.0;
+      // Realistic soaring physics - birds lose altitude when not flapping
+      let ascendRate: number;
+      if (this.isFlapping) {
+        ascendRate = 3.0; // Powered flight can climb
+      } else {
+        // Soaring: apply gravity - birds gradually lose altitude
+        ascendRate = this.birdState === BirdState.SOARING ? -1.5 : 0.5;
+      }
+      
       const altitudeChange = Math.sign(altitudeDiff) * ascendRate * deltaTime;
       this.position.y += altitudeChange;
     }
     
-    // Apply drag
+    // Apply realistic drag
     this.velocity.multiplyScalar(0.98);
   }
 

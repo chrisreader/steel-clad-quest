@@ -615,11 +615,18 @@ export class CrowBird extends BaseBird {
     if (this.currentPathIndex < this.flightPath.length) {
       const target = this.flightPath[this.currentPathIndex];
       const direction = target.clone().sub(this.position).normalize();
-      this.velocity.copy(direction.multiplyScalar(this.config.flightSpeed));
       
-      // Face movement direction smoothly (bird should face direction of travel)
+      // Smooth velocity transitions instead of instant changes
+      const targetVelocity = direction.multiplyScalar(this.config.flightSpeed);
+      this.velocity.lerp(targetVelocity, deltaTime * 2);
+      
+      // Much smoother turning - realistic bird banking
       const targetDirection = Math.atan2(direction.z, direction.x) + Math.PI;
-      this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.1);
+      this.mesh.rotation.y = THREE.MathUtils.lerp(this.mesh.rotation.y, targetDirection, 0.02);
+      
+      // Add banking during turns
+      const turnRate = Math.abs(this.mesh.rotation.y - targetDirection);
+      this.mesh.rotation.z = THREE.MathUtils.lerp(this.mesh.rotation.z, turnRate * 0.5, 0.1);
       
       if (this.position.distanceTo(target) < 2) {
         this.currentPathIndex++;
@@ -686,9 +693,19 @@ export class CrowBird extends BaseBird {
       const progressiveAngle = currentDirection + (i * 0.2) + forwardBias; // Progressive forward movement
       const radius = this.config.territoryRadius * (0.3 + Math.random() * 0.7);
       
+      // Realistic altitude changes based on bird state
+      let altitudeVariation: number;
+      if (this.birdState === BirdState.SOARING && !this.isFlapping) {
+        // Soaring: only flat or downward movement
+        altitudeVariation = Math.max(-3, (Math.random() - 0.8) * 4); // Bias downward
+      } else {
+        // Normal flight: can go up or down
+        altitudeVariation = (Math.random() - 0.5) * 5;
+      }
+      
       const point = new THREE.Vector3(
         centerPoint.x + Math.cos(progressiveAngle) * radius,
-        centerPoint.y + (Math.random() - 0.5) * 5,
+        centerPoint.y + altitudeVariation,
         centerPoint.z + Math.sin(progressiveAngle) * radius
       );
       
@@ -780,8 +797,9 @@ export class CrowBird extends BaseBird {
     this.bodyParts.leftLeg.rotation.x = leftLegSwing;
     this.bodyParts.rightLeg.rotation.x = rightLegSwing;
 
-    // Body bob
-    this.bodyParts.body.position.y = Math.sin(this.walkCycle * 2) * 0.05;
+    // Subtle forward/backward body movement instead of floating bob
+    this.bodyParts.body.position.x = Math.sin(this.walkCycle * 2) * 0.02;
+    this.bodyParts.body.position.y = 0; // Keep firmly on ground
   }
 
   private animateWings(): void {
@@ -852,26 +870,26 @@ export class CrowBird extends BaseBird {
     leftForearm: THREE.Group, rightForearm: THREE.Group,
     leftHand: THREE.Group, rightHand: THREE.Group
   ): void {
-    // Wings folded against body in natural Z-fold pattern with Z-axis bones
+    // Wings fully folded parallel to body for natural resting position
     
-    // Shoulder position - neutral
+    // Shoulder position - completely neutral for parallel fold
     leftShoulder.rotation.set(0, 0, 0);
     rightShoulder.rotation.set(0, 0, 0);
     
-    // Humerus - folded back against body (Z-axis alignment)
-    leftHumerus.rotation.set(-0.2, 0.3, 0); // Rotated to fold back
-    rightHumerus.rotation.set(0.2, -0.3, 0); // Mirror for right wing
+    // Humerus - folded parallel to body along Y-axis (no outward spread)
+    leftHumerus.rotation.set(0, 0, 0); // Completely parallel to body
+    rightHumerus.rotation.set(0, 0, 0); // Mirror alignment
     
-    // Forearm - folded inward toward body
+    // Forearm - folded tightly inward along body
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.8); // Fold inward along Z-axis
-      rightForearm.rotation.set(0, 0, 0.8); // Mirror for right wing
+      leftForearm.rotation.set(0, 0, -1.2); // Tight fold against body
+      rightForearm.rotation.set(0, 0, 1.2); // Mirror tight fold
     }
     
-    // Hand - tucked close to body
+    // Hand - completely tucked parallel to body
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.4); // Fold inward
-      rightHand.rotation.set(0, 0, 0.4); // Mirror for right wing
+      leftHand.rotation.set(0, 0, -0.8); // Full parallel tuck
+      rightHand.rotation.set(0, 0, 0.8); // Mirror full tuck
     }
     
     // Animate feathers tight against body
