@@ -169,32 +169,51 @@ export abstract class BaseBird implements SpawnableEntity {
   }
 
   protected updateFlightPhysics(deltaTime: number): void {
+    // Base gravity effect
     const gravity = -9.8 * deltaTime;
     this.velocity.y += gravity;
     
+    // Lift generation from wing flapping
     if (this.isFlapping) {
       const liftForce = 12 * this.wingBeatIntensity * deltaTime;
       this.velocity.y += liftForce;
     }
     
-    if (this.birdState === BirdState.SOARING && !this.isFlapping) {
+    // Enhanced soaring physics
+    if (this.birdState === BirdState.SOARING) {
       this.soaringAltitudeLoss += deltaTime;
-      const soaringDrag = -2.5 * deltaTime;
-      this.velocity.y += soaringDrag;
       
-      if (this.soaringAltitudeLoss > 3.0 && this.position.y < this.targetAltitude - 2) {
+      // Realistic soaring: minimal energy loss with occasional thermals
+      const thermalChance = Math.random();
+      if (thermalChance < 0.01) { // 1% chance per frame to hit thermal
+        // Thermal updraft - slight altitude gain
+        this.velocity.y += 2.0 * deltaTime;
+        this.soaringAltitudeLoss = Math.max(0, this.soaringAltitudeLoss - 1.0);
+        console.log(`🐦 [${this.config.species}] Caught thermal updraft!`);
+      } else {
+        // Natural soaring energy loss - very gradual
+        const soaringDrag = -1.5 * deltaTime;
+        this.velocity.y += soaringDrag;
+      }
+      
+      // Start flapping if losing too much altitude
+      if (this.soaringAltitudeLoss > 4.0 && this.position.y < this.targetAltitude - 3) {
         this.isFlapping = true;
-        this.wingBeatIntensity = 1.2;
-        console.log(`🐦 [${this.config.species}] Starting to flap during soaring to regain altitude`);
+        this.wingBeatIntensity = 1.1;
+        console.log(`🐦 [${this.config.species}] Starting to flap to regain altitude from soaring`);
       }
     }
     
+    // Reset soaring timer when actively flapping
     if (this.isFlapping) {
       this.soaringAltitudeLoss = 0;
     }
     
-    this.velocity.y = THREE.MathUtils.clamp(this.velocity.y, -8, 4);
-    this.velocity.multiplyScalar(0.99);
+    // Reasonable velocity limits for bird flight
+    this.velocity.y = THREE.MathUtils.clamp(this.velocity.y, -6, 4);
+    
+    // Air resistance - more realistic for bird flight
+    this.velocity.multiplyScalar(0.985);
   }
 
   protected scheduleNextStateChange(): void {
@@ -268,65 +287,67 @@ export abstract class BaseBird implements SpawnableEntity {
       return;
     }
     
-    // Calculate direction to target for steering only
+    // Calculate direction to target
     const toTarget = currentWaypoint.clone().sub(this.position);
-    toTarget.y = 0; // Only consider horizontal direction for steering
-    toTarget.normalize();
+    const horizontalTarget = new THREE.Vector3(toTarget.x, 0, toTarget.z).normalize();
     
-    // Update target heading to face the waypoint
-    this.targetHeading = Math.atan2(toTarget.z, toTarget.x);
+    // Calculate desired heading (bird should face where it's going)
+    this.targetHeading = Math.atan2(horizontalTarget.z, horizontalTarget.x);
     
-    // Smoothly turn toward target
+    // Smooth heading interpolation
     let headingDiff = this.targetHeading - this.currentHeading;
-    while (headingDiff > Math.PI) headingDiff -= 2 * Math.PI;
-    while (headingDiff < -Math.PI) headingDiff += 2 * Math.PI;
     
-    const maxTurnRate = 1.5 * deltaTime; // Slower, more realistic turning
-    const headingChange = THREE.MathUtils.clamp(headingDiff, -maxTurnRate, maxTurnRate);
+    // Handle angle wrapping
+    if (headingDiff > Math.PI) headingDiff -= 2 * Math.PI;
+    if (headingDiff < -Math.PI) headingDiff += 2 * Math.PI;
     
-    this.currentHeading += headingChange;
+    const maxTurnRate = 1.8 * deltaTime;
+    const actualTurn = THREE.MathUtils.clamp(headingDiff, -maxTurnRate, maxTurnRate);
+    this.currentHeading += actualTurn;
     
-    // ALWAYS face forward in flight direction
-    this.mesh.rotation.y = this.currentHeading;
+    // FIXED: Always orient mesh to face flight direction (bird model faces +X)
+    this.mesh.rotation.y = this.currentHeading - Math.PI / 2;
     
-    // ALWAYS move forward in the direction the bird is facing
-    const forwardDirection = new THREE.Vector3(
+    // FIXED: Always move in the direction the bird is visually facing
+    const moveDirection = new THREE.Vector3(
       Math.cos(this.currentHeading),
       0,
       Math.sin(this.currentHeading)
     );
     
+    // Apply consistent forward velocity
     const speed = this.config.flightSpeed;
-    this.velocity.x = forwardDirection.x * speed;
-    this.velocity.z = forwardDirection.z * speed;
+    this.velocity.x = moveDirection.x * speed;
+    this.velocity.z = moveDirection.z * speed;
     
-    // Handle altitude changes separately and smoothly
+    // Handle altitude changes
     const altitudeDiff = currentWaypoint.y - this.position.y;
-    if (Math.abs(altitudeDiff) > 2) {
-      const climbRate = THREE.MathUtils.clamp(altitudeDiff * 0.2, -1.0, 1.0);
-      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, climbRate, deltaTime * 1.5);
+    if (Math.abs(altitudeDiff) > 1.5) {
+      const climbRate = THREE.MathUtils.clamp(altitudeDiff * 0.3, -1.2, 1.2);
+      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, climbRate, deltaTime * 2);
+      
+      // Flap more when climbing or descending significantly
       this.isFlapping = true;
-      this.wingBeatIntensity = 1.1;
+      this.wingBeatIntensity = 1.0 + Math.abs(climbRate) * 0.3;
     } else {
-      // Gentle gliding when close to target altitude
-      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, 0, deltaTime * 2);
-      this.isFlapping = Math.abs(headingChange) > 0.03; // Only flap when turning
-      this.wingBeatIntensity = 1.0;
+      // Maintain current altitude with minimal adjustments
+      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, 0, deltaTime * 3);
+      
+      // Only flap when turning or need speed
+      this.isFlapping = Math.abs(actualTurn) > 0.02 || this.birdState === BirdState.FLYING;
+      this.wingBeatIntensity = this.birdState === BirdState.SOARING ? 0.3 : 1.0;
     }
     
-    // Subtle banking for visual effect only
-    this.visualBankAngle = THREE.MathUtils.lerp(
-      this.visualBankAngle, 
-      headingChange * 1.2, 
-      deltaTime * 3
-    );
+    // Visual banking effect (body only, not wings)
+    const targetBank = -actualTurn * 2.0; // Banking into turns
+    this.visualBankAngle = THREE.MathUtils.lerp(this.visualBankAngle, targetBank, deltaTime * 4);
     
     if (this.bodyParts?.body) {
-      const clampedBanking = THREE.MathUtils.clamp(this.visualBankAngle, -0.15, 0.15);
-      this.bodyParts.body.rotation.z = clampedBanking;
+      const clampedBank = THREE.MathUtils.clamp(this.visualBankAngle, -0.3, 0.3);
+      this.bodyParts.body.rotation.z = clampedBank;
     }
     
-    console.log(`🐦 [${this.config.species}] Flying forward: heading=${(this.currentHeading * 180/Math.PI).toFixed(1)}°, velocity=(${this.velocity.x.toFixed(1)}, ${this.velocity.z.toFixed(1)}) to waypoint at ${distanceToWaypoint.toFixed(1)}m`);
+    console.log(`🐦 [${this.config.species}] Forward flight: heading=${(this.currentHeading * 180/Math.PI).toFixed(1)}°, mesh rot=${(this.mesh.rotation.y * 180/Math.PI).toFixed(1)}°, vel=(${this.velocity.x.toFixed(2)}, ${this.velocity.z.toFixed(2)}), dist=${distanceToWaypoint.toFixed(1)}m`);
   }
 
   public dispose(): void {

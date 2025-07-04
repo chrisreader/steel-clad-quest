@@ -881,24 +881,24 @@ export class CrowBird extends BaseBird {
     const leftWingGroup = this.bodyParts!.leftWing.children[0] as THREE.Group;
     const rightWingGroup = this.bodyParts!.rightWing.children[0] as THREE.Group;
     
-    // Primary wing folding - rotate entire wing assembly backward against body
-    leftWingGroup.rotation.set(0, -Math.PI / 2, 0);  // -90° to fold left wing backward
-    rightWingGroup.rotation.set(0, Math.PI / 2, 0);   // +90° to fold right wing backward
+    // Fold wings naturally against body (not fully backward)
+    leftWingGroup.rotation.set(0, -Math.PI / 3, 0);  // -60° natural fold
+    rightWingGroup.rotation.set(0, Math.PI / 3, 0);   // +60° natural fold
     
-    // Reset all joint rotations to neutral since main rotation handles folding
-    leftShoulder.rotation.set(0, 0, 0);
-    rightShoulder.rotation.set(0, 0, 0);
-    leftHumerus.rotation.set(0, 0, 0);
-    rightHumerus.rotation.set(0, 0, 0);
+    // Natural resting joint positions
+    leftShoulder.rotation.set(0.1, 0, 0);
+    rightShoulder.rotation.set(-0.1, 0, 0);
+    leftHumerus.rotation.set(0, 0.2, 0);
+    rightHumerus.rotation.set(0, -0.2, 0);
     
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, 0);
-      rightForearm.rotation.set(0, 0, 0);
+      leftForearm.rotation.set(0, 0, -0.8);  // Folded against body
+      rightForearm.rotation.set(0, 0, 0.8);
     }
     
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, 0);
-      rightHand.rotation.set(0, 0, 0);
+      leftHand.rotation.set(0, 0, -0.3);     // Wingtips tucked
+      rightHand.rotation.set(0, 0, 0.3);
     }
     
     this.animateFeathersForRest();
@@ -969,27 +969,37 @@ export class CrowBird extends BaseBird {
     leftWingGroup.rotation.set(0, 0, 0);
     rightWingGroup.rotation.set(0, 0, 0);
     
-    const flapIntensity = 0.8;
-    const wingBeat = Math.sin(this.flapCycle) * flapIntensity;
+    // Realistic bird wing beat pattern with proper sequencing
+    const flapIntensity = this.wingBeatIntensity;
+    const wingCycle = this.flapCycle;
     
-    leftShoulder.rotation.set(wingBeat * 0.3, 0, 0);
-    rightShoulder.rotation.set(-wingBeat * 0.3, 0, 0);
-    leftHumerus.rotation.set(wingBeat * 0.5, 0.1, 0);
-    rightHumerus.rotation.set(-wingBeat * 0.5, -0.1, 0);
+    // Primary stroke: shoulder leads the downstroke
+    const shoulderBeat = Math.sin(wingCycle) * flapIntensity;
+    const shoulderUpstroke = Math.sin(wingCycle + Math.PI) * flapIntensity * 0.6;
     
-    const forearmPhase = Math.sin(this.flapCycle - 0.2) * flapIntensity;
+    leftShoulder.rotation.set(shoulderBeat * 0.4 + shoulderUpstroke * 0.2, 0, 0);
+    rightShoulder.rotation.set(-shoulderBeat * 0.4 - shoulderUpstroke * 0.2, 0, 0);
+    
+    // Secondary: elbow follows with slight delay for wing flexibility
+    const elbowPhase = Math.sin(wingCycle - 0.15) * flapIntensity;
+    leftHumerus.rotation.set(elbowPhase * 0.6, 0.05, 0);
+    rightHumerus.rotation.set(-elbowPhase * 0.6, -0.05, 0);
+    
+    // Tertiary: forearm bends for efficiency on upstroke
+    const forearmPhase = Math.sin(wingCycle - 0.3) * flapIntensity;
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(forearmPhase * 0.4, 0, -0.4);
-      rightForearm.rotation.set(-forearmPhase * 0.4, 0, 0.4);
+      leftForearm.rotation.set(forearmPhase * 0.3, 0, -0.2 - Math.abs(forearmPhase) * 0.3);
+      rightForearm.rotation.set(-forearmPhase * 0.3, 0, 0.2 + Math.abs(forearmPhase) * 0.3);
     }
     
-    const handPhase = Math.sin(this.flapCycle - 0.4) * flapIntensity;
+    // Wingtip: subtle twist for thrust generation
+    const handPhase = Math.sin(wingCycle - 0.5) * flapIntensity;
     if (leftHand && rightHand) {
-      leftHand.rotation.set(handPhase * 0.3, 0, -0.3);
-      rightHand.rotation.set(-handPhase * 0.3, 0, 0.3);
+      leftHand.rotation.set(handPhase * 0.2, handPhase * 0.1, -0.1);
+      rightHand.rotation.set(-handPhase * 0.2, -handPhase * 0.1, 0.1);
     }
     
-    this.animateFeathersForFlight(wingBeat);
+    this.animateFeathersForFlight(shoulderBeat);
   }
 
   private animateSoaringWings(
@@ -1006,24 +1016,34 @@ export class CrowBird extends BaseBird {
     leftWingGroup.rotation.set(0, 0, 0);
     rightWingGroup.rotation.set(0, 0, 0);
     
-    leftShoulder.rotation.set(0.2, 0, 0);
-    rightShoulder.rotation.set(-0.2, 0, 0);
-    leftHumerus.rotation.set(0.1, 0.05, 0);
-    rightHumerus.rotation.set(-0.1, -0.05, 0);
+    // Wings fully extended for maximum lift efficiency
+    leftShoulder.rotation.set(0.15, 0, 0);      // Slight lift for soaring
+    rightShoulder.rotation.set(-0.15, 0, 0);
+    leftHumerus.rotation.set(0.05, 0.03, 0);    // Minimal angle adjustments
+    rightHumerus.rotation.set(-0.05, -0.03, 0);
     
     if (leftForearm && rightForearm) {
-      leftForearm.rotation.set(0, 0, -0.1);
-      rightForearm.rotation.set(0, 0, 0.1);
+      leftForearm.rotation.set(0, 0, -0.05);    // Nearly straight for maximum wingspan
+      rightForearm.rotation.set(0, 0, 0.05);
     }
     
     if (leftHand && rightHand) {
-      leftHand.rotation.set(0, 0, -0.05);
-      rightHand.rotation.set(0, 0, 0.05);
+      leftHand.rotation.set(0, 0, -0.02);       // Wingtips slightly angled
+      rightHand.rotation.set(0, 0, 0.02);
     }
     
-    const airCurrent = Math.sin(this.flapCycle * 0.3) * 0.05;
-    leftShoulder.rotation.x += airCurrent;
-    rightShoulder.rotation.x -= airCurrent;
+    // Subtle wing adjustments for air currents and balance
+    const airCurrent = Math.sin(this.flapCycle * 0.2) * 0.03; // Slower, gentler
+    const turbulence = Math.sin(this.flapCycle * 0.7) * 0.01; // Micro-adjustments
+    
+    leftShoulder.rotation.x += airCurrent + turbulence;
+    rightShoulder.rotation.x -= airCurrent - turbulence;
+    
+    // Wingtip flex for air currents
+    if (leftHand && rightHand) {
+      leftHand.rotation.x += turbulence * 0.5;
+      rightHand.rotation.x -= turbulence * 0.5;
+    }
     
     this.animateFeathersForSoaring();
   }
