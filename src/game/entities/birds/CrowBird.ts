@@ -652,19 +652,19 @@ export class CrowBird extends BaseBird {
     this.velocity.x *= 0.95;
     this.velocity.z *= 0.95;
     
-    // Control descent rate - force downward movement
-    this.velocity.y = -1.0; // Strong downward velocity
+    // Force strong downward velocity
+    this.velocity.y = -3.0; // Strong downward movement
     
-    // Land when close to ground
-    if (this.position.y <= this.groundLevel + 0.5) {
+    // Land when at or below ground level
+    if (this.position.y <= this.groundLevel) {
       this.flightMode = FlightMode.GROUNDED;
-      this.position.y = this.groundLevel; // Force ground contact
+      this.position.y = this.groundLevel; // Force exact ground contact
       this.velocity.set(0, 0, 0);
       // Reset rotations when landing
       this.mesh.rotation.z = 0;
       this.mesh.rotation.x = 0;
       this.changeState(BirdState.IDLE);
-      console.log(`🐦 [CrowBird] Successfully landed at Y: ${this.position.y}`);
+      console.log(`🐦 [CrowBird] Successfully landed - Y: ${this.position.y}, Ground: ${this.groundLevel}, Mode: ${this.flightMode}`);
     }
   }
 

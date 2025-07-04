@@ -144,24 +144,25 @@ export abstract class BaseBird implements SpawnableEntity {
   }
 
   protected updatePhysics(deltaTime: number): void {
+    // Always apply velocity first
+    this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+    
     if (this.flightMode === FlightMode.GROUNDED) {
       // Ground physics - ensure bird stays on ground
       this.position.y = this.groundLevel;
-      // Clear any upward velocity when grounded
-      if (this.velocity.y > 0) {
-        this.velocity.y = 0;
-      }
+      // Clear any velocity when grounded
+      this.velocity.set(0, 0, 0);
     } else {
       // Flight physics
       this.updateFlightPhysics(deltaTime);
     }
     
-    // Apply velocity
-    this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
-    
-    // Force ground contact when grounded (safety check)
-    if (this.flightMode === FlightMode.GROUNDED) {
+    // Extra safety check - if bird is very close to ground, force landing
+    if (this.position.y <= this.groundLevel + 0.1 && this.flightMode !== FlightMode.GROUNDED) {
+      console.log(`🐦 [BaseBird] Force landing - Y: ${this.position.y}, Ground: ${this.groundLevel}`);
+      this.flightMode = FlightMode.GROUNDED;
       this.position.y = this.groundLevel;
+      this.velocity.set(0, 0, 0);
     }
   }
 
