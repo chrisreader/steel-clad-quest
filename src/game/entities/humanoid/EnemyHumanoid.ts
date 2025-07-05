@@ -731,31 +731,53 @@ export abstract class EnemyHumanoid {
     rightArm.rotation.set(-0.393, 0, 0.3);
     rightArm.castShadow = true;
 
-    // Shoulder joints - create tapered, curved joints that blend with chest
+    // Shoulder joints - create curved deltoid-like joints using custom spherical geometry
     const shoulderJointRadius = bodyScale.body.radius * 0.5; // Scale with body size
     
-    // Create tapered shoulder geometry (wider at bottom, narrower at top)
-    const shoulderJointGeometry = new THREE.ConeGeometry(
-      shoulderJointRadius * 1.1, // Bottom radius (wider where it connects to chest)
-      shoulderJointRadius * 0.4,  // Height (shorter for more natural proportions)
-      24, 8, false, 0, Math.PI * 2
-    );
+    // Create custom deltoid-shaped shoulder geometry based on sphere
+    const shoulderJointGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 16);
     
-    // Modify geometry to create curved inward taper
+    // Modify vertices to create deltoid muscle shape with natural curves
     const shoulderPositions = shoulderJointGeometry.attributes.position.array as Float32Array;
     for (let i = 0; i < shoulderPositions.length; i += 3) {
       const x = shoulderPositions[i];
       const y = shoulderPositions[i + 1];
       const z = shoulderPositions[i + 2];
       
-      // Create inward curve - more pronounced at the top
-      const heightFactor = (y + shoulderJointRadius * 0.2) / (shoulderJointRadius * 0.4); // 0 at bottom, 1 at top
-      const curveFactor = Math.pow(heightFactor, 1.5); // Exponential curve for natural shoulder slope
+      // Calculate normalized position within sphere
+      const distance = Math.sqrt(x * x + y * y + z * z);
+      const normalizedY = y / shoulderJointRadius; // -1 to 1, where 1 is top, -1 is bottom
       
-      // Apply inward scaling based on height
-      const inwardScale = 1.0 - (curveFactor * 0.3); // Reduce width by up to 30% at the top
-      shoulderPositions[i] = x * inwardScale;
-      shoulderPositions[i + 2] = z * inwardScale * 0.85; // Extra front-to-back compression
+      // Create deltoid shape: bulge at arm connection (bottom), curve inward toward torso (top)
+      let scaleFactor = 1.0;
+      let frontBackScale = 1.0;
+      
+      if (normalizedY > 0.3) {
+        // Upper section - curve inward toward torso (like deltoid attachment)
+        const upperCurve = (normalizedY - 0.3) / 0.7; // 0 at middle, 1 at top
+        const smoothCurve = Math.sin(upperCurve * Math.PI * 0.5); // Smooth sine curve
+        scaleFactor = 1.1 - (smoothCurve * 0.4); // Scale from 1.1 to 0.7
+        frontBackScale = 1.0 - (smoothCurve * 0.3); // Compress front-to-back
+      } else if (normalizedY > -0.5) {
+        // Middle section - maintain deltoid bulk
+        scaleFactor = 1.1; // Slightly bulged
+        frontBackScale = 0.85; // Slightly compressed front-to-back
+      } else {
+        // Lower section - bulge outward where it connects to arm
+        const lowerBulge = Math.abs(normalizedY + 0.5) / 0.5; // 0 at middle, 1 at bottom
+        const bulgeCurve = Math.sin(lowerBulge * Math.PI * 0.5); // Smooth bulge
+        scaleFactor = 1.1 + (bulgeCurve * 0.2); // Bulge outward at arm connection
+        frontBackScale = 0.8; // More compressed front-to-back
+      }
+      
+      // Apply scaling with natural deltoid curves
+      const horizontalDistance = Math.sqrt(x * x + z * z);
+      if (horizontalDistance > 0) {
+        const newHorizontalDistance = horizontalDistance * scaleFactor;
+        const scaleRatio = newHorizontalDistance / horizontalDistance;
+        shoulderPositions[i] = x * scaleRatio; // X scaling
+        shoulderPositions[i + 2] = z * scaleRatio * frontBackScale; // Z scaling with compression
+      }
     }
     shoulderJointGeometry.attributes.position.needsUpdate = true;
     shoulderJointGeometry.computeVertexNormals();
