@@ -652,10 +652,10 @@ export abstract class EnemyHumanoid {
     const isHuman = features.eyeConfig.color === 0xFFFFFF;
     const eyeMaterial = new THREE.MeshPhongMaterial({
       color: features.eyeConfig.color,
-      transparent: !isHuman, // Only non-humans have transparency
-      opacity: isHuman ? 1.0 : 0.8,
-      emissive: isHuman ? new THREE.Color(0x000000) : new THREE.Color(features.eyeConfig.color),
-      emissiveIntensity: isHuman ? 0.0 : features.eyeConfig.emissiveIntensity,
+      transparent: false, // No transparency for cleaner eyes
+      opacity: 1.0,
+      emissive: new THREE.Color(0x000000), // No emissive glow for any eyes
+      emissiveIntensity: 0.0, // No glow
       shininess: isHuman ? 30 : 100
     });
 
