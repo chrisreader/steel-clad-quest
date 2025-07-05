@@ -377,7 +377,7 @@ export abstract class EnemyHumanoid {
       32, 16
     );
     
-    // Shape the torso for realistic human proportions
+    // Simple single taper from chest to waist - no double hourglass
     const positions = torsoGeometry.attributes.position.array as Float32Array;
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
@@ -386,44 +386,14 @@ export abstract class EnemyHumanoid {
       
       // Normalize Y position (-0.5 to 0.5)
       const normalizedY = y / bodyScale.body.height;
-      const angle = Math.atan2(z, x);
       
-      // Create anatomical shaping
-      let frontBackMultiplier = 1.0;
-      let sideMultiplier = 1.0;
+      // Simple taper: wider at top (chest), narrower at bottom (waist)
+      // Single smooth transition, no multiple zones
+      const taperFactor = 0.85 + (normalizedY + 0.5) * 0.15; // 0.85 at bottom, 1.0 at top
       
-      // Front and back shaping (chest deeper than sides)
-      const frontBackAngle = Math.abs(Math.sin(angle));
-      const frontBackDepth = Math.abs(Math.cos(angle));
-      
-      // Upper torso (chest area) - wider and deeper
-      if (normalizedY > 0.1) {
-        const chestFactor = (normalizedY - 0.1) / 0.4; // 0 to 1 for chest area
-        frontBackMultiplier = 1.0 + frontBackDepth * 0.4 * Math.min(chestFactor, 1.0);
-        sideMultiplier = 1.0 + frontBackAngle * 0.2 * Math.min(chestFactor, 1.0);
-      }
-      
-      // Waist area (narrower)
-      if (normalizedY >= -0.2 && normalizedY <= 0.1) {
-        const waistFactor = 1.0 - Math.abs(normalizedY + 0.05) * 1.5;
-        sideMultiplier *= Math.max(0.7, waistFactor);
-        frontBackMultiplier *= Math.max(0.8, waistFactor);
-      }
-      
-      // Hip area (slightly wider)
-      if (normalizedY < -0.2) {
-        const hipFactor = Math.abs(normalizedY + 0.2) / 0.3;
-        sideMultiplier *= 1.0 + hipFactor * 0.3;
-      }
-      
-      // Apply the modifications
-      const currentRadius = Math.sqrt(x * x + z * z);
-      const newRadius = currentRadius * sideMultiplier * frontBackMultiplier;
-      
-      if (currentRadius > 0) {
-        positions[i] = (x / currentRadius) * newRadius;
-        positions[i + 2] = (z / currentRadius) * newRadius;
-      }
+      // Apply consistent tapering
+      positions[i] = x * taperFactor;
+      positions[i + 2] = z * taperFactor;
     }
     
     torsoGeometry.attributes.position.needsUpdate = true;
