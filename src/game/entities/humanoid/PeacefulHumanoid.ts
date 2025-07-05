@@ -36,16 +36,10 @@ export class PeacefulHumanoid extends EnemyHumanoid {
    * Add human-specific features like hair and clothing
    */
   private addHumanFeatures(): void {
-    // Find the head group in the mesh hierarchy
-    let headGroup: THREE.Group | undefined;
-    this.mesh.traverse((child) => {
-      if (child instanceof THREE.Group && child.children.some(grandchild => 
-        grandchild === this.bodyParts.head)) {
-        headGroup = child;
-      }
-    });
-
-    if (!headGroup || !this.bodyParts.head) return;
+    // Since bodyParts.head is now a THREE.Group itself, use it directly
+    const headGroup = this.bodyParts.head as THREE.Group;
+    
+    if (!headGroup) return;
 
     // Add realistic human hair
     this.humanHair = HumanBodyConfig.createHumanHair(
