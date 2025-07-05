@@ -194,6 +194,10 @@ export abstract class BaseBird implements SpawnableEntity {
   }
   
   public getHitBox(): THREE.Mesh | null {
+    // Ensure hitbox world matrix is updated before returning
+    if (this.hitBox) {
+      this.hitBox.updateMatrixWorld(true);
+    }
     return this.hitBox;
   }
   

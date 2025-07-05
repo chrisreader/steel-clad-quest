@@ -335,15 +335,24 @@ export class CombatSystem {
       if (!birdHitBox) return;
       
       try {
-        // Update hitbox world matrix for proper collision detection
-        birdHitBox.updateMatrixWorld(true);
-        
-        const birdBox = new THREE.Box3().setFromObject(birdHitBox);
         const birdPosition = bird.getPosition();
+        
+        // CRITICAL: Get hitbox world position 
+        const hitboxWorldPosition = new THREE.Vector3();
+        birdHitBox.getWorldPosition(hitboxWorldPosition);
+        
+        // Create bounding box from hitbox world position
+        const hitboxSize = new THREE.Vector3(1.2, 0.8, 1.2); // Match hitbox size
+        const birdBox = new THREE.Box3().setFromCenterAndSize(hitboxWorldPosition, hitboxSize);
         
         // Debug logging for aerial birds
         if (birdPosition.y > 5) {
-          console.log(`⚔️🐦 [CombatSystem] Checking aerial bird melee at altitude ${birdPosition.y.toFixed(1)}m`);
+          console.log(`⚔️🐦 [CombatSystem] AERIAL MELEE CHECK - Bird altitude: ${birdPosition.y.toFixed(1)}m`);
+          console.log(`⚔️🐦 [CombatSystem] Bird at ${birdPosition.x.toFixed(1)}, ${birdPosition.y.toFixed(1)}, ${birdPosition.z.toFixed(1)}`);
+          console.log(`⚔️🐦 [CombatSystem] Hitbox at ${hitboxWorldPosition.x.toFixed(1)}, ${hitboxWorldPosition.y.toFixed(1)}, ${hitboxWorldPosition.z.toFixed(1)}`);
+          console.log(`⚔️🐦 [CombatSystem] Sword box:`, swordBox);
+          console.log(`⚔️🐦 [CombatSystem] Bird box:`, birdBox);
+          console.log(`⚔️🐦 [CombatSystem] Boxes intersect:`, swordBox.intersectsBox(birdBox));
         }
         
         if (swordBox.intersectsBox(birdBox)) {
@@ -359,7 +368,7 @@ export class CombatSystem {
           this.effectsManager.createFeatherBurst(birdPosition, hitDirection);
           this.audioManager.play('sword_hit');
           
-          console.log(`🪶⚔️ [CombatSystem] Bird hit at altitude ${birdPosition.y.toFixed(1)}m - feather burst created`);
+          console.log(`🪶⚔️ [CombatSystem] SUCCESSFUL MELEE HIT! Bird hit at altitude ${birdPosition.y.toFixed(1)}m - feather burst created`);
         }
       } catch (error) {
         console.error(`⚔️🐦 [CombatSystem] Error in bird melee collision:`, error);

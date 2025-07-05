@@ -158,6 +158,8 @@ export class ProjectileSystem {
     this.birds.forEach(bird => {
       if (bird.isDead) return;
       
+      console.log(`🏹🐦 [ProjectileSystem] Checking bird: altitude=${bird.getPosition().y.toFixed(1)}m, isDead=${bird.isDead}`);
+      
       const birdHitBox = bird.getHitBox();
       if (!birdHitBox) {
         console.log(`🏹🐦 [ProjectileSystem] Bird has no hitbox - skipping collision`);
@@ -165,17 +167,26 @@ export class ProjectileSystem {
       }
       
       try {
-        // Update hitbox world matrix to ensure proper collision detection
-        birdHitBox.updateMatrixWorld(true);
-        
-        const birdBox = new THREE.Box3().setFromObject(birdHitBox);
+        // Get current bird position
         const birdPosition = bird.getPosition();
+        
+        // CRITICAL: Get hitbox world position by checking its actual world position
+        const hitboxWorldPosition = new THREE.Vector3();
+        birdHitBox.getWorldPosition(hitboxWorldPosition);
+        
+        console.log(`🏹🐦 [ProjectileSystem] Bird at ${birdPosition.x.toFixed(1)}, ${birdPosition.y.toFixed(1)}, ${birdPosition.z.toFixed(1)}`);
+        console.log(`🏹🐦 [ProjectileSystem] Hitbox at ${hitboxWorldPosition.x.toFixed(1)}, ${hitboxWorldPosition.y.toFixed(1)}, ${hitboxWorldPosition.z.toFixed(1)}`);
+        
+        // Create bounding box from hitbox world position
+        const hitboxSize = new THREE.Vector3(1.2, 0.8, 1.2); // Match hitbox size
+        const birdBox = new THREE.Box3().setFromCenterAndSize(hitboxWorldPosition, hitboxSize);
         
         // Debug logging for aerial birds
         if (birdPosition.y > 5) {
-          console.log(`🏹🐦 [ProjectileSystem] Checking aerial bird collision at altitude ${birdPosition.y.toFixed(1)}m`);
-          console.log(`🏹🐦 [ProjectileSystem] Arrow box:`, arrowBox);
-          console.log(`🏹🐦 [ProjectileSystem] Bird box:`, birdBox);
+          console.log(`🏹🐦 [ProjectileSystem] AERIAL COLLISION CHECK - Bird altitude: ${birdPosition.y.toFixed(1)}m`);
+          console.log(`🏹🐦 [ProjectileSystem] Arrow box min:`, arrowBox.min, `max:`, arrowBox.max);
+          console.log(`🏹🐦 [ProjectileSystem] Bird box min:`, birdBox.min, `max:`, birdBox.max);
+          console.log(`🏹🐦 [ProjectileSystem] Boxes intersect:`, arrowBox.intersectsBox(birdBox));
         }
         
         if (arrowBox.intersectsBox(birdBox)) {
@@ -189,7 +200,7 @@ export class ProjectileSystem {
           
           this.audioManager.play('arrow_hit');
           
-          console.log(`🪶🏹 [ProjectileSystem] Arrow hit bird at altitude ${birdPosition.y.toFixed(1)}m - feather burst created`);
+          console.log(`🪶🏹 [ProjectileSystem] SUCCESSFUL HIT! Arrow hit bird at altitude ${birdPosition.y.toFixed(1)}m - feather burst created`);
           
           // Dispose of arrow properly
           arrow.dispose();
