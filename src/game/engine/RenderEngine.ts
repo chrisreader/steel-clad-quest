@@ -11,13 +11,13 @@ export class RenderEngine {
   // Enhanced camera controls with advanced smoothing
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private targetRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
-  private mouseSensitivity: number = 0.002;
+  private mouseSensitivity: number = 0.0008;
   private maxPitch: number = Math.PI / 2 - 0.1;
   
   // Advanced camera smoothing system
   private cameraVelocity: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private rotationInertia: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
-  private readonly CAMERA_SMOOTHING_FACTOR: number = 0.25;
+  private readonly CAMERA_SMOOTHING_FACTOR: number = 0.15;
   private readonly INERTIA_DAMPING: number = 0.88;
   private readonly VELOCITY_THRESHOLD: number = 0.001;
   
@@ -37,7 +37,7 @@ export class RenderEngine {
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 12; // ULTRA-AGGRESSIVE: Every 12 frames for 50% fewer calculations
+  private readonly CULLING_UPDATE_INTERVAL: number = 6; // Updated for smoother object transitions
   
   // Object pooling and caching for maximum performance
   private objectPool: Map<string, THREE.Object3D[]> = new Map();
@@ -62,7 +62,7 @@ export class RenderEngine {
       75,
       this.mountElement.clientWidth / this.mountElement.clientHeight,
       0.1,
-      500 // Reduced from 1000 for 50% fewer far calculations
+      1200 // Increased for better immersion and render distance
     );
     
     // Set up camera layers
@@ -180,9 +180,9 @@ export class RenderEngine {
     // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
     if (object instanceof THREE.InstancedMesh) return true;
     
-    // ULTRA-AGGRESSIVE distance culling - cull objects beyond 150 units immediately
+    // Enhanced distance culling - cull objects beyond 300 units for better immersion
     const distance = this.camera.position.distanceTo(object.position);
-    if (distance > 150) return false;
+    if (distance > 300) return false;
     
     // Skip expensive hierarchical checks for better performance
     
@@ -198,7 +198,7 @@ export class RenderEngine {
       }
     }
     
-    return distance < 100; // More aggressive default culling
+    return distance < 200; // Balanced default culling for better visibility
   }
   
   public render(): void {

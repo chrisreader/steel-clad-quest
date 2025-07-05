@@ -14,12 +14,12 @@ export class MouseHandler {
   
   // Advanced mouse smoothing system
   private lastMouseMoveTime: number = 0;
-  private mouseMoveThrottle: number = 4; // ~240fps max for ultra-smooth input
+  private mouseMoveThrottle: number = 8; // Increased for more consistent feel
   private mouseVelocity: { x: number; y: number } = { x: 0, y: 0 };
   private smoothedMovement: { x: number; y: number } = { x: 0, y: 0 };
   private movementHistory: Array<{ x: number; y: number; time: number }> = [];
   private readonly SMOOTHING_SAMPLES: number = 5;
-  private readonly SMOOTHING_FACTOR: number = 0.25;
+  private readonly SMOOTHING_FACTOR: number = 0.15;
   private readonly ACCELERATION_THRESHOLD: number = 2.0;
   private mouseSensitivity: number = 1.0;
   
