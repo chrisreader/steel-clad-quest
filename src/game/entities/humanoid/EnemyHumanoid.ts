@@ -199,7 +199,7 @@ export abstract class EnemyHumanoid {
     const bodyY = legTopY + bodyScale.body.height / 2;
     const bodyTopY = bodyY + bodyScale.body.height / 2;
     const headY = bodyTopY + bodyScale.head.radius + 0.25; // Reduced from 0.5 for shorter neck
-    const shoulderHeight = bodyTopY;
+    const shoulderHeight = bodyTopY - 0.15; // Lower shoulders for more natural proportions
 
     // Create base materials once
     const baseSkinMaterial = new THREE.MeshPhongMaterial({
@@ -702,7 +702,7 @@ export abstract class EnemyHumanoid {
     );
     leftArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
     const leftArm = new THREE.Mesh(leftArmGeometry, muscleMaterial.clone());
-    leftArm.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
+    leftArm.position.set(-(bodyScale.body.radius * 0.85), shoulderHeight, 0); // More inward shoulders
     leftArm.rotation.set(-0.393, 0, -0.3);
     leftArm.castShadow = true;
 
@@ -714,7 +714,7 @@ export abstract class EnemyHumanoid {
     );
     rightArmGeometry.translate(0, -bodyScale.arm.length * 0.5, 0);
     const rightArm = new THREE.Mesh(rightArmGeometry, muscleMaterial.clone());
-    rightArm.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
+    rightArm.position.set(bodyScale.body.radius * 0.85, shoulderHeight, 0); // More inward shoulders
     rightArm.rotation.set(-0.393, 0, 0.3);
     rightArm.castShadow = true;
 
@@ -722,12 +722,12 @@ export abstract class EnemyHumanoid {
     const shoulderJointRadius = bodyScale.body.radius * 0.5; // Scale with body size
     const shoulderJointGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 20);
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
+    leftShoulderJoint.position.set(-(bodyScale.body.radius * 0.85), shoulderHeight, 0); // Match arm position
     leftShoulderJoint.scale.set(0.9, 1, 0.9);
     leftShoulderJoint.castShadow = true;
 
     const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    rightShoulderJoint.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
+    rightShoulderJoint.position.set(bodyScale.body.radius * 0.85, shoulderHeight, 0); // Match arm position
     rightShoulderJoint.scale.set(0.9, 1, 0.9);
     rightShoulderJoint.castShadow = true;
 
