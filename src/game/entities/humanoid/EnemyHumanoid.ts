@@ -647,13 +647,16 @@ export abstract class EnemyHumanoid {
 
     // Eyes - smaller for humans
     const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.7, 16, 12); // Reduced from 1.0 to 0.7
+    
+    // Different materials for humans vs orcs/goblins
+    const isHuman = features.eyeConfig.color === 0xFFFFFF;
     const eyeMaterial = new THREE.MeshPhongMaterial({
       color: features.eyeConfig.color,
-      transparent: true,
-      opacity: 1,
-      emissive: features.eyeConfig.color,
-      emissiveIntensity: features.eyeConfig.emissiveIntensity,
-      shininess: 80
+      transparent: !isHuman, // Only non-humans have transparency
+      opacity: isHuman ? 1.0 : 0.8,
+      emissive: isHuman ? new THREE.Color(0x000000) : new THREE.Color(features.eyeConfig.color),
+      emissiveIntensity: isHuman ? 0.0 : features.eyeConfig.emissiveIntensity,
+      shininess: isHuman ? 30 : 100
     });
 
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
@@ -676,6 +679,14 @@ export abstract class EnemyHumanoid {
       color: 0x000000,
       shininess: 100
     });
+
+    // Add nose for humans
+    if (isHuman) {
+      this.addNoseToHead(headGroup, bodyScale, this.config.colors.skin);
+    }
+
+    // Add eyebrows for better facial definition
+    this.addEyebrowsToHead(headGroup, bodyScale, features, this.config.colors.accent);
 
     const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
     leftPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
@@ -720,6 +731,55 @@ export abstract class EnemyHumanoid {
     rightTusk.rotation.z = 0.1;
     rightTusk.castShadow = true;
     headGroup.add(rightTusk);
+  }
+
+  /**
+   * Add nose geometry to human heads
+   */
+  private addNoseToHead(headGroup: THREE.Group, bodyScale: any, skinColor: number): void {
+    const noseGeometry = new THREE.ConeGeometry(0.04, 0.15, 8);
+    const noseMaterial = new THREE.MeshPhongMaterial({
+      color: skinColor,
+      shininess: 20
+    });
+
+    const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+    nose.position.set(0, -0.05, bodyScale.head.radius * 0.95);
+    nose.rotation.x = Math.PI; // Point downward
+    nose.castShadow = true;
+    
+    headGroup.add(nose);
+  }
+
+  /**
+   * Add eyebrow ridges for better facial definition
+   */
+  private addEyebrowsToHead(headGroup: THREE.Group, bodyScale: any, features: any, accentColor: number): void {
+    const browGeometry = new THREE.BoxGeometry(0.15, 0.03, 0.08);
+    const browMaterial = new THREE.MeshPhongMaterial({
+      color: accentColor,
+      shininess: 10
+    });
+
+    // Left eyebrow
+    const leftBrow = new THREE.Mesh(browGeometry, browMaterial);
+    leftBrow.position.set(
+      -bodyScale.head.radius * features.eyeConfig.offsetX,
+      bodyScale.head.radius * (features.eyeConfig.offsetY + 0.15),
+      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
+    );
+    leftBrow.castShadow = true;
+    headGroup.add(leftBrow);
+
+    // Right eyebrow
+    const rightBrow = new THREE.Mesh(browGeometry, browMaterial.clone());
+    rightBrow.position.set(
+      bodyScale.head.radius * features.eyeConfig.offsetX,
+      bodyScale.head.radius * (features.eyeConfig.offsetY + 0.15),
+      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
+    );
+    rightBrow.castShadow = true;
+    headGroup.add(rightBrow);
   }
 
   private addEars(

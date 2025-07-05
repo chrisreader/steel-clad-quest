@@ -47,7 +47,7 @@ export class HumanBodyConfig {
         hasWeapon: false,  // Peaceful NPC doesn't carry weapons
         eyeConfig: {
           radius: 0.08,
-          color: 0x4A4A4A,        // Dark human eyes, not red
+          color: 0xFFFFFF,        // White human eyes
           emissiveIntensity: 0.0,  // No glow for human eyes
           offsetX: 0.12,
           offsetY: 0.05,
