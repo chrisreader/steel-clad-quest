@@ -414,40 +414,38 @@ export abstract class EnemyHumanoid {
     pelvis.castShadow = true;
     torsoGroup.add(pelvis);
 
-    // Trapezius muscle - positioned to align bottom edge with chest top edge
-    const shoulderJointX = bodyScale.body.radius + 0.1; // Match shoulder joint X position
-    
-    const trapGeometry = new THREE.CylinderGeometry(
-      shoulderJointX * 0.5, // Top radius - smaller taper into shoulder area  
-      chestTopRadius * 0.9, // Bottom radius - slightly smaller for less bulk
-      0.25, 20, 6 // Reduced height from 0.35 to 0.25
-    );
-    
-    // Shape the trapezius to taper naturally from chest to shoulders
-    const trapPositions = trapGeometry.attributes.position.array;
-    for (let i = 0; i < trapPositions.length; i += 3) {
-      const x = trapPositions[i];
-      const y = trapPositions[i + 1];
-      const z = trapPositions[i + 2];
+    // Small shoulder transition for humans only (much smaller than orc trapezius)
+    if (this.config.features.hasWeapon) {
+      // Orcs get the full trapezius muscle
+      const shoulderJointX = bodyScale.body.radius + 0.1;
       
-      // Normalize Y from -0.125 to 0.125 to 0 to 1 (updated for new height)
-      const normalizedY = (y / 0.25) + 0.5;
+      const trapGeometry = new THREE.CylinderGeometry(
+        shoulderJointX * 0.5,
+        chestTopRadius * 0.9,
+        0.25, 20, 6
+      );
       
-      // Create the characteristic trapezius shape tapering from chest to shoulders
-      const widthMultiplier = 0.85 + (1 - normalizedY) * 0.15;
-      const depthMultiplier = 0.9 + (1 - normalizedY) * 0.1;
+      const trapPositions = trapGeometry.attributes.position.array;
+      for (let i = 0; i < trapPositions.length; i += 3) {
+        const x = trapPositions[i];
+        const y = trapPositions[i + 1];
+        const z = trapPositions[i + 2];
+        
+        const normalizedY = (y / 0.25) + 0.5;
+        const widthMultiplier = 0.85 + (1 - normalizedY) * 0.15;
+        const depthMultiplier = 0.9 + (1 - normalizedY) * 0.1;
+        
+        trapPositions[i] = x * widthMultiplier;
+        trapPositions[i + 2] = z * depthMultiplier;
+      }
+      trapGeometry.attributes.position.needsUpdate = true;
+      trapGeometry.computeVertexNormals();
       
-      trapPositions[i] = x * widthMultiplier;
-      trapPositions[i + 2] = z * depthMultiplier;
+      const trapezius = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
+      trapezius.position.y = bodyTopY + 0.125;
+      trapezius.castShadow = true;
+      torsoGroup.add(trapezius);
     }
-    trapGeometry.attributes.position.needsUpdate = true;
-    trapGeometry.computeVertexNormals();
-    
-    const trapezius = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
-    // Position trapezius so its bottom edge aligns with the top edge of the chest
-    trapezius.position.y = bodyTopY + 0.125; // bodyTopY + (trapezius height / 2) - updated for new height
-    trapezius.castShadow = true;
-    torsoGroup.add(trapezius);
 
     return { parent: torsoGroup, mesh: mainTorso };
   }
@@ -493,10 +491,10 @@ export abstract class EnemyHumanoid {
     upperSkull.castShadow = true;
     headGroup.add(upperSkull);
 
-    // Neck - thinner for more human proportions
+    // Neck - natural taper that flares to connect with chest
     const neckGeometry = new THREE.CylinderGeometry(
-      bodyScale.head.radius * 0.35, // Reduced from 0.5 to 0.35
-      bodyScale.body.radius * 0.3,  // Reduced from 0.4 to 0.3  
+      bodyScale.head.radius * 0.35, // Top radius (at head)
+      bodyScale.body.radius * 0.6,  // Bottom radius (flares to connect with chest) 
       0.4, 16, 4
     );
     const neck = new THREE.Mesh(neckGeometry, accentMaterial.clone());
