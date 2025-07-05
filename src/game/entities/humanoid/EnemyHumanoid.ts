@@ -513,9 +513,9 @@ export abstract class EnemyHumanoid {
         frontBackScale = 1.0 - topFactor * 0.2; // Slightly flatter front-to-back
         heightScale = 0.95 - topFactor * 0.1; // Compress vertically
       } else if (normalizedY > 0.1) {
-        // Upper-middle region - eye/temple area (widest)
+        // Upper-middle region - eye/temple area (more skull-like)
         const eyeFactor = Math.sin(((normalizedY - 0.1) / 0.5) * Math.PI);
-        horizontalScale = 1.0 + eyeFactor * 0.2; // Wider at temples
+        horizontalScale = 0.95 + eyeFactor * 0.05; // Slightly narrower, more skull-like
         frontBackScale = 1.2; // Fuller front-to-back for forehead
         heightScale = 1.0;
       } else if (normalizedY > -0.3) {
