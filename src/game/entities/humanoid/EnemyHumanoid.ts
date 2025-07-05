@@ -748,59 +748,48 @@ export abstract class EnemyHumanoid {
       const distance = Math.sqrt(x * x + y * y + z * z);
       const normalizedY = y / shoulderJointRadius; // -1 to 1, where 1 is top, -1 is bottom
       
-      // Create refined deltoid shape: less pointed top, reduced center bulge, smooth transitions
+      // Create anatomically correct deltoid shape: teardrop profile, no center bulge
       let scaleFactor = 1.0;
-      let frontBackScale = 1.0;
+      let frontBackScale = 0.7; // Deltoids are naturally flatter front-to-back
       
-      // Smooth transition zones with overlapping blends
-      const upperBlend = Math.max(0, Math.min(1, (normalizedY - 0.2) / 0.6)); // Blend from y=0.2 to y=0.8
-      const lowerBlend = Math.max(0, Math.min(1, (-normalizedY - 0.3) / 0.4)); // Blend from y=-0.3 to y=-0.7
+      // Calculate position relative to shoulder attachment points
+      const angle = Math.atan2(z, x); // Angle around Y axis
+      const frontFactor = Math.max(0, Math.cos(angle)); // 1 at front, 0 at back
       
-      if (normalizedY > 0.2) {
-        // Upper section - flattened top with gentle taper, less pointed
-        const upperCurve = (normalizedY - 0.2) / 0.8; // 0 at transition, 1 at top
+      if (normalizedY > 0.1) {
+        // Upper section - deltoid attachment to clavicle/scapula
+        // Widest at top-front (anterior deltoid), tapering toward back
+        const upperPosition = (normalizedY - 0.1) / 0.9; // 0 at transition, 1 at top
+        const upperTaper = 1.0 - (upperPosition * 0.3); // Gentle taper from 1.0 to 0.7
         
-        // Create plateau at top (less pointed) then gentle taper
-        let topCurve;
-        if (upperCurve > 0.7) {
-          // Top plateau - minimal scaling to avoid pointed look
-          topCurve = 0.7 + (upperCurve - 0.7) * 0.3; // Gentle final taper
-        } else {
-          // Gradual taper using cosine for smoother curve
-          topCurve = Math.cos(upperCurve * Math.PI * 0.5) * 0.7;
-        }
+        // Anterior deltoid is wider than posterior
+        const anteriorScale = 1.0 + (frontFactor * 0.2); // Front bulges slightly more
+        scaleFactor = upperTaper * anteriorScale;
         
-        scaleFactor = 1.0 - (topCurve * 0.25); // Gentler scaling: 1.0 to 0.75
-        frontBackScale = 1.0 - (topCurve * 0.2); // Less compression
-      } else if (normalizedY > -0.3) {
-        // Middle section - reduced bulge for less bulgey appearance
-        const middlePosition = (normalizedY + 0.3) / 0.5; // 0 at bottom, 1 at top
-        const middleCurve = Math.sin(middlePosition * Math.PI); // Smooth bell curve
-        scaleFactor = 0.95 + (middleCurve * 0.1); // Reduced from 1.1 to 0.95-1.05 range
-        frontBackScale = 0.9 - (middleCurve * 0.05); // Slight compression
+        // Very flat profile - deltoids are thin muscles
+        frontBackScale = 0.6 - (upperPosition * 0.1); // Gets thinner toward top
+        
+      } else if (normalizedY > -0.4) {
+        // Middle section - main deltoid body, NO CENTER BULGE
+        // Real deltoids don't bulge in the middle - they're relatively flat
+        const middlePosition = (normalizedY + 0.4) / 0.5; // 0 at bottom, 1 at top
+        
+        // Linear taper from top to bottom - no bulging curve
+        scaleFactor = 0.85 + (middlePosition * 0.15); // Simple linear from 0.85 to 1.0
+        
+        // Maintain thin profile throughout middle
+        frontBackScale = 0.65;
+        
       } else {
-        // Lower section - smooth taper to arm with better transition
-        const lowerTaper = Math.abs(normalizedY + 0.3) / 0.7; // 0 at transition, 1 at bottom
-        const taperCurve = Math.sin(lowerTaper * Math.PI * 0.5); // Smooth taper curve
-        scaleFactor = 0.95 - (taperCurve * 0.25); // Taper from 0.95 down to 0.7 at arm connection
-        frontBackScale = 0.85 - (taperCurve * 0.1); // Gradual compression
-      }
-      
-      // Apply smooth blending between sections to eliminate hard transitions
-      if (upperBlend > 0 && upperBlend < 1) {
-        // Blend upper and middle sections
-        const middleScale = 0.95;
-        const middleFrontBack = 0.9;
-        scaleFactor = scaleFactor * upperBlend + middleScale * (1 - upperBlend);
-        frontBackScale = frontBackScale * upperBlend + middleFrontBack * (1 - upperBlend);
-      }
-      
-      if (lowerBlend > 0 && lowerBlend < 1) {
-        // Blend middle and lower sections
-        const middleScale = 0.95;
-        const middleFrontBack = 0.9;
-        scaleFactor = scaleFactor * lowerBlend + middleScale * (1 - lowerBlend);
-        frontBackScale = frontBackScale * lowerBlend + middleFrontBack * (1 - lowerBlend);
+        // Lower section - deltoid insertion at arm
+        // Smooth taper to arm connection point
+        const lowerPosition = Math.abs(normalizedY + 0.4) / 0.6; // 0 at transition, 1 at bottom
+        const insertionTaper = 1.0 - (lowerPosition * 0.4); // Taper from 1.0 to 0.6
+        
+        scaleFactor = 0.85 * insertionTaper;
+        
+        // Slightly thicker at insertion point for muscle attachment
+        frontBackScale = 0.65 + (lowerPosition * 0.1);
       }
       
       // Apply scaling with natural deltoid curves
