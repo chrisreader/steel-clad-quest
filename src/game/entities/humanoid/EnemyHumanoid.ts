@@ -193,8 +193,12 @@ export abstract class EnemyHumanoid {
     const humanoidGroup = new THREE.Group();
     const { bodyScale, colors, features } = this.config;
     
-    // Calculate positions - smaller for humans
-    const legTopY = 1.0;  // Reduced from 1.4 for human scale
+    // Calculate ground reference - feet should be at Y=0
+    const footHeight = 0.15; // Height of foot geometry
+    const groundToFeetBottom = bodyScale.leg.length + bodyScale.shin.length + footHeight / 2;
+    
+    // Calculate positions with proper ground reference
+    const legTopY = groundToFeetBottom; // Position legs so feet touch ground at Y=0
     const thighCenterY = legTopY - bodyScale.leg.length / 2;
     const bodyY = legTopY + bodyScale.body.height / 2;
     const bodyTopY = bodyY + bodyScale.body.height / 2;
