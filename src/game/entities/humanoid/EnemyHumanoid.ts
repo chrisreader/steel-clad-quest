@@ -193,8 +193,8 @@ export abstract class EnemyHumanoid {
     const humanoidGroup = new THREE.Group();
     const { bodyScale, colors, features } = this.config;
     
-    // Calculate positions
-    const legTopY = 1.4;
+    // Calculate positions - smaller for humans
+    const legTopY = 1.0;  // Reduced from 1.4 for human scale
     const thighCenterY = legTopY - bodyScale.leg.length / 2;
     const bodyY = legTopY + bodyScale.body.height / 2;
     const bodyTopY = bodyY + bodyScale.body.height / 2;
@@ -220,19 +220,20 @@ export abstract class EnemyHumanoid {
       specular: 0x555555
     });
 
-    // Create legs
-    const { leftLeg, rightLeg } = this.createLegs(bodyScale, thighCenterY, baseMuscleMaterial);
+    // Create legs - use skin material for humans
+    const { leftLeg, rightLeg } = this.createLegs(bodyScale, thighCenterY, baseSkinMaterial);
     humanoidGroup.add(leftLeg, rightLeg);
 
-    // Create hip joints
-    const hipJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
-    const leftHipJoint = new THREE.Mesh(hipJointGeometry, baseAccentMaterial.clone());
+    // Create hip joints - smaller for humans
+    const hipJointRadius = bodyScale.body.radius * 0.4; // Scale with body size
+    const hipJointGeometry = new THREE.SphereGeometry(hipJointRadius, 24, 20);
+    const leftHipJoint = new THREE.Mesh(hipJointGeometry, baseSkinMaterial.clone());
     leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
     leftHipJoint.scale.set(1, 0.8, 1);
     leftHipJoint.castShadow = true;
     humanoidGroup.add(leftHipJoint);
 
-    const rightHipJoint = new THREE.Mesh(hipJointGeometry, baseAccentMaterial.clone());
+    const rightHipJoint = new THREE.Mesh(hipJointGeometry, baseSkinMaterial.clone());
     rightHipJoint.position.set(bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
     rightHipJoint.scale.set(1, 0.8, 1);
     rightHipJoint.castShadow = true;
@@ -702,14 +703,15 @@ export abstract class EnemyHumanoid {
     rightArm.rotation.set(-0.393, 0, 0.3);
     rightArm.castShadow = true;
 
-    // Shoulder joints - these were missing from the scene!
-    const shoulderJointGeometry = new THREE.SphereGeometry(0.25, 24, 20);
-    const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
+    // Shoulder joints - smaller for humans and use skin material
+    const shoulderJointRadius = bodyScale.body.radius * 0.5; // Scale with body size
+    const shoulderJointGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 20);
+    const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
     leftShoulderJoint.position.set(-(bodyScale.body.radius + 0.1), shoulderHeight, 0);
     leftShoulderJoint.scale.set(0.9, 1, 0.9);
     leftShoulderJoint.castShadow = true;
 
-    const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, accentMaterial.clone());
+    const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
     rightShoulderJoint.position.set(bodyScale.body.radius + 0.1, shoulderHeight, 0);
     rightShoulderJoint.scale.set(0.9, 1, 0.9);
     rightShoulderJoint.castShadow = true;
@@ -730,15 +732,16 @@ export abstract class EnemyHumanoid {
     muscleMaterial: THREE.MeshPhongMaterial,
     accentMaterial: THREE.MeshPhongMaterial
   ) {
-    // Elbow joints
-    const elbowJointGeometry = new THREE.SphereGeometry(0.22, 24, 20);
-    const leftElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial.clone());
+    // Elbow joints - make smaller and use skin material for humans
+    const elbowJointRadius = bodyScale.arm.radius[1] + 0.02; // Scale with arm size
+    const elbowJointGeometry = new THREE.SphereGeometry(elbowJointRadius, 24, 20);
+    const leftElbowJoint = new THREE.Mesh(elbowJointGeometry, skinMaterial.clone());
     leftElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
     leftElbowJoint.scale.set(0.8, 1.2, 0.8);
     leftElbowJoint.castShadow = true;
     leftArm.add(leftElbowJoint);
 
-    const rightElbowJoint = new THREE.Mesh(elbowJointGeometry, accentMaterial.clone());
+    const rightElbowJoint = new THREE.Mesh(elbowJointGeometry, skinMaterial.clone());
     rightElbowJoint.position.set(0, -bodyScale.arm.length + 0.03, 0);
     rightElbowJoint.scale.set(0.8, 1.2, 0.8);
     rightElbowJoint.castShadow = true;
@@ -882,22 +885,23 @@ export abstract class EnemyHumanoid {
     rightKnee.castShadow = true;
     rightLeg.add(rightKnee);
 
-    // Knee joints
-    const kneeJointGeometry = new THREE.SphereGeometry(0.24, 24, 20);
-    const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial.clone());
+    // Knee joints - make smaller and use skin material for humans
+    const kneeJointRadius = bodyScale.leg.radius[1] + 0.02; // Scale with leg size
+    const kneeJointGeometry = new THREE.SphereGeometry(kneeJointRadius, 24, 20);
+    const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, skinMaterial.clone());
     leftKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
     leftKneeJoint.scale.set(0.8, 1.2, 0.8);
     leftKneeJoint.castShadow = true;
     leftLeg.add(leftKneeJoint);
 
-    const rightKneeJoint = new THREE.Mesh(kneeJointGeometry, accentMaterial.clone());
+    const rightKneeJoint = new THREE.Mesh(kneeJointGeometry, skinMaterial.clone());
     rightKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
     rightKneeJoint.scale.set(0.8, 1.2, 0.8);
     rightKneeJoint.castShadow = true;
     rightLeg.add(rightKneeJoint);
 
-    // Feet
-    this.addFeet(leftKnee, rightKnee, bodyScale, muscleMaterial);
+    // Feet - pass skin material to make feet skin-colored for humans
+    this.addFeet(leftKnee, rightKnee, bodyScale, skinMaterial);
 
     return { leftKnee, rightKnee };
   }
@@ -906,41 +910,59 @@ export abstract class EnemyHumanoid {
     leftKnee: THREE.Mesh,
     rightKnee: THREE.Mesh,
     bodyScale: BodyScale,
-    muscleMaterial: THREE.MeshPhongMaterial
+    skinMaterial: THREE.MeshPhongMaterial
   ) {
-    const footGeometry = new THREE.BoxGeometry(0.4, 0.2, 0.7);
-    const footMaterial = muscleMaterial.clone();
+    // Smaller feet for humans and use correct scaling
+    const footGeometry = new THREE.BoxGeometry(0.25, 0.15, 0.5);
+    const footMaterial = skinMaterial.clone();
 
     const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
-    leftFoot.position.set(0, -bodyScale.shin.length, 0.2);
+    leftFoot.position.set(0, -bodyScale.shin.length, 0.15);
     leftFoot.castShadow = true;
     leftKnee.add(leftFoot);
 
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
-    rightFoot.position.set(0, -bodyScale.shin.length, 0.2);
+    rightFoot.position.set(0, -bodyScale.shin.length, 0.15);
     rightFoot.castShadow = true;
     rightKnee.add(rightFoot);
 
-    // Toe claws
-    const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
-    const clawMaterial = new THREE.MeshPhongMaterial({
-      color: 0x2C1810,
-      shininess: 90,
-      specular: 0x888888
-    });
+    // Add human toes only if this is NOT a weapon-bearing entity (humans don't have claws)
+    if (!this.config.features.hasWeapon) {
+      this.addHumanToes(leftFoot, skinMaterial);
+      this.addHumanToes(rightFoot, skinMaterial);
+    } else {
+      // Orc toe claws
+      const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
+      const clawMaterial = new THREE.MeshPhongMaterial({
+        color: 0x2C1810,
+        shininess: 90,
+        specular: 0x888888
+      });
 
-    for (let i = 0; i < 3; i++) {
-      const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
-      toeClaw.position.set((i - 1) * 0.12, -0.1, 0.35);
-      toeClaw.rotation.x = Math.PI / 2;
-      toeClaw.castShadow = true;
-      leftFoot.add(toeClaw);
+      for (let i = 0; i < 3; i++) {
+        const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+        toeClaw.position.set((i - 1) * 0.12, -0.075, 0.25);
+        toeClaw.rotation.x = Math.PI / 2;
+        toeClaw.castShadow = true;
+        leftFoot.add(toeClaw);
 
-      const rightToeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
-      rightToeClaw.position.set((i - 1) * 0.12, -0.1, 0.35);
-      rightToeClaw.rotation.x = Math.PI / 2;
-      rightToeClaw.castShadow = true;
-      rightFoot.add(rightToeClaw);
+        const rightToeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+        rightToeClaw.position.set((i - 1) * 0.12, -0.075, 0.25);
+        rightToeClaw.rotation.x = Math.PI / 2;
+        rightToeClaw.castShadow = true;
+        rightFoot.add(rightToeClaw);
+      }
+    }
+  }
+
+  private addHumanToes(foot: THREE.Mesh, skinMaterial: THREE.MeshPhongMaterial) {
+    const toeGeometry = new THREE.SphereGeometry(0.02, 8, 6);
+    
+    for (let i = 0; i < 5; i++) {
+      const toe = new THREE.Mesh(toeGeometry, skinMaterial.clone());
+      toe.position.set((i - 2) * 0.04, -0.075, 0.22);
+      toe.castShadow = true;
+      foot.add(toe);
     }
   }
 

@@ -36,7 +36,16 @@ export class PeacefulHumanoid extends EnemyHumanoid {
    * Add human-specific features like hair and clothing
    */
   private addHumanFeatures(): void {
-    if (!this.bodyParts.head) return;
+    // Find the head group in the mesh hierarchy
+    let headGroup: THREE.Group | undefined;
+    this.mesh.traverse((child) => {
+      if (child instanceof THREE.Group && child.children.some(grandchild => 
+        grandchild === this.bodyParts.head)) {
+        headGroup = child;
+      }
+    });
+
+    if (!headGroup || !this.bodyParts.head) return;
 
     // Add realistic human hair
     this.humanHair = HumanBodyConfig.createHumanHair(
@@ -44,14 +53,14 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       0x654321 // Brown hair
     );
     
-    // Position hair on head
-    this.humanHair.position.y = this.config.bodyScale.head.radius * 0.4;
+    // Position hair properly on the head
+    const headPosition = this.bodyParts.head.position.clone();
+    this.humanHair.position.copy(headPosition);
+    this.humanHair.position.y += this.config.bodyScale.head.radius * 0.3;
     this.humanHair.castShadow = true;
     
-    // Add hair to the head's parent group
-    if (this.bodyParts.head.parent) {
-      this.bodyParts.head.parent.add(this.humanHair);
-    }
+    // Add hair to the head group for proper positioning
+    headGroup.add(this.humanHair);
 
     // Add clothing overlay for tavern keeper
     if (this.bodyParts.body) {
