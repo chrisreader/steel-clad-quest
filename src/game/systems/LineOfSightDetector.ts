@@ -120,6 +120,11 @@ export class LineOfSightDetector {
    * Check if an object is a significant obstacle for spawning
    */
   private isSignificantObstacle(object: THREE.Object3D): boolean {
+    // CRITICAL FIX: Add null/undefined safety checks
+    if (!object || !object.matrixWorld) {
+      return false;
+    }
+    
     // Check by name or type
     if (object.name?.includes('tree') || 
         object.name?.includes('rock') || 
@@ -128,12 +133,17 @@ export class LineOfSightDetector {
       return true;
     }
     
-    // Check by size - objects with significant bounding box
-    const box = new THREE.Box3().setFromObject(object);
-    const size = box.getSize(new THREE.Vector3());
-    
-    // Consider objects larger than 2x2x2 units as significant
-    return size.x > 2 && size.y > 2 && size.z > 2;
+    // PERFORMANCE FIX: Add try-catch for bounding box calculation
+    try {
+      const box = new THREE.Box3().setFromObject(object);
+      const size = box.getSize(new THREE.Vector3());
+      
+      // Consider objects larger than 2x2x2 units as significant
+      return size.x > 2 && size.y > 2 && size.z > 2;
+    } catch (error) {
+      // If bounding box calculation fails, treat as non-significant
+      return false;
+    }
   }
 
   /**
