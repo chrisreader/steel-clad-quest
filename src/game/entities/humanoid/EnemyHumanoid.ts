@@ -406,9 +406,9 @@ export abstract class EnemyHumanoid {
           scaleFactor = 1.2 - (upperCurve * 0.1); // Gradual reduction from 1.2 to 1.1
           frontBackScale = 1.0 - upperCurve * 0.15; // Start front-to-back compression
         } else {
-          // Upper-middle - broader chest/shoulder area (EXTENDED higher to align with shoulders)
+          // Upper-middle - broader chest/shoulder area with flatter back
           scaleFactor = 1.2; // Broader chest extending higher
-          frontBackScale = 1.2; // Increased front-to-back depth (from 1.0 to 1.2)
+          frontBackScale = 0.8; // Flatter front-to-back for straighter back (reduced from 1.2 to 0.8)
         }
         
         // Create curved shoulder transition for all upper sections
