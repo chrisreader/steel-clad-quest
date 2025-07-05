@@ -370,11 +370,11 @@ export abstract class EnemyHumanoid {
   ) {
     const torsoGroup = new THREE.Group();
     
-    // Create realistic human torso geometry
+    // Create realistic human torso geometry - increased size
     const torsoGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 0.9,  // Chest width
+      bodyScale.body.radius * 1.1,  // Chest width (increased from 0.9 to 1.1)
       bodyScale.body.radius * 0.7,  // Waist width (narrower)
-      bodyScale.body.height,
+      bodyScale.body.height * 1.2,  // Height (increased by 20%)
       32, 16
     );
     
@@ -408,7 +408,7 @@ export abstract class EnemyHumanoid {
         } else {
           // Upper-middle - broader chest/shoulder area (EXTENDED higher to align with shoulders)
           scaleFactor = 1.2; // Broader chest extending higher
-          frontBackScale = 1.0; // No front-to-back compression yet
+          frontBackScale = 1.2; // Increased front-to-back depth (from 1.0 to 1.2)
         }
         
         // Create curved shoulder transition for all upper sections
