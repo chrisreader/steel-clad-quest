@@ -23,7 +23,7 @@ export class GrassSystem {
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 60; // ULTRA-AGGRESSIVE: Every 60 frames for max performance
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 180; // PHASE 1: Every 180 frames for 3x better performance
   private readonly FOG_CHECK_INTERVAL: number = 600; // ULTRA-REDUCED: Every 10 seconds for performance
   
   // Player tracking
@@ -51,7 +51,7 @@ export class GrassSystem {
     // Force biome regeneration for fractal shapes
     DeterministicBiomeManager.clearCache();
     
-    this.bubbleManager.initializeWithCoverage(playerPosition, 80); // ULTRA-AGGRESSIVE distance
+    this.bubbleManager.initializeWithCoverage(playerPosition, 60); // PHASE 1: Reduced to 60 units
     this.lastPlayerPosition.copy(playerPosition);
     
     // Debug current position-based biome

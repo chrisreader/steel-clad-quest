@@ -281,7 +281,13 @@ export class ParticleSystem {
       
       if (!particle.active || !sprite) continue;
       
-      particle.age += 16;
+      // PHASE 3: Update particle physics every 2 frames instead of every frame
+      const updatePhysics = (particle.age % 32) < 16; // Every other frame
+      if (updatePhysics) {
+        particle.age += 32; // Double increment to maintain timing
+      } else {
+        particle.age += 16; // Normal increment
+      }
       const particleProgress = particle.age / this.options.duration;
       
       // Calculate opacity with fade in/out
@@ -293,20 +299,26 @@ export class ParticleSystem {
         particle.opacity = this.options.opacity!;
       }
       
-      // Update physics
-      particle.rotation += particle.rotationSpeed;
-      particle.velocity.y -= this.options.gravity! * 0.016;
-      particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
+      // PHASE 3: Update physics only when updatePhysics is true
+      if (updatePhysics) {
+        particle.rotation += particle.rotationSpeed;
+        particle.velocity.y -= this.options.gravity! * 0.016;
+        particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
+      }
       
-      // Update sprite with proper matrix updates
-      sprite.position.copy(particle.position);
-      sprite.material.opacity = particle.opacity;
-      sprite.material.rotation = particle.rotation;
-      sprite.visible = particle.opacity > 0.01;
-      
-      // Ensure matrix is updated after position changes
-      sprite.updateMatrix();
-      sprite.updateMatrixWorld(true);
+      // PHASE 3: Skip matrix updates for nearly invisible particles
+      if (particle.opacity > 0.01) {
+        sprite.position.copy(particle.position);
+        sprite.material.opacity = particle.opacity;
+        sprite.material.rotation = particle.rotation;
+        sprite.visible = true;
+        
+        // Update matrix only when visible
+        sprite.updateMatrix();
+        sprite.updateMatrixWorld(true);
+      } else {
+        sprite.visible = false;
+      }
       
       // Scale down over time for more realism
       const sizeMultiplier = 1 - particleProgress * 0.3;

@@ -15,9 +15,9 @@ export class GrassRenderBubbleManager {
   private renderer: GrassRenderer;
   
   // ULTRA-AGGRESSIVE performance optimization for 70-90% FPS improvement
-  private readonly RENDER_RADIUS = 80; // Drastically reduced from 120 (56% area reduction)
-  private readonly DATA_LOAD_RADIUS = 200; // Reduced from 300 for faster loading
-  private readonly UNLOAD_RADIUS = 100; // Reduced from 150
+  private readonly RENDER_RADIUS = 60; // PHASE 1: Reduced from 80 for 44% fewer grass instances
+  private readonly DATA_LOAD_RADIUS = 180; // Further reduced for faster loading
+  private readonly UNLOAD_RADIUS = 80; // Reduced from 100
   private readonly CHUNK_SIZE = 64;
   private readonly MAX_CHUNKS_PER_FRAME = 2; // Ultra-reduced from 3 for maximum smoothness
   private readonly MOVEMENT_THRESHOLD = 0.8; // RESPONSIVE: More sensitive to camera turns for immediate loading
