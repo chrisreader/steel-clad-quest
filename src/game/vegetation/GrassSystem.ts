@@ -23,13 +23,12 @@ export class GrassSystem {
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 120; // EXTREME: Every 120 frames (50% reduction) for maximum performance
-  private readonly FOG_CHECK_INTERVAL: number = 1200; // EXTREME: Every 20 seconds for performance
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 60; // ULTRA-AGGRESSIVE: Every 60 frames for max performance
+  private readonly FOG_CHECK_INTERVAL: number = 600; // ULTRA-REDUCED: Every 10 seconds for performance
   
-  // Player tracking for optimized updates
+  // Player tracking
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private playerVelocity: number = 0;
-  private isPlayerMoving: boolean = false;
   
   constructor(scene: THREE.Scene, config?: Partial<GrassConfig>) {
     this.scene = scene;
@@ -78,18 +77,17 @@ export class GrassSystem {
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
     this.updateCounter++;
     
-    // Track player velocity and movement state
+    // Track player velocity
     this.playerVelocity = playerPosition.distanceTo(this.lastPlayerPosition) / deltaTime;
-    this.isPlayerMoving = this.playerVelocity > 0.1;
     this.lastPlayerPosition.copy(playerPosition);
     
     // Update bubble manager with position-based biome queries
     this.bubbleManager.update(playerPosition);
     
-    // Update wind system with player movement state for caching optimization
-    this.windSystem.update(deltaTime, this.isPlayerMoving);
+    // Update wind system
+    this.windSystem.update(deltaTime);
     
-    // EXTREME optimization: Update materials much less frequently
+    // Update materials less frequently for better performance
     if (this.updateCounter % this.MATERIAL_UPDATE_INTERVAL === 0) {
       let nightFactor = 0;
       let dayFactor = 1;
@@ -99,37 +97,35 @@ export class GrassSystem {
         dayFactor = TimeUtils.getDayFactor(gameTime, TIME_PHASES);
       }
       
-      // Stagger updates across frames for better performance
-      const shouldUpdateTallGrass = this.updateCounter % 240 === 0; // EXTREME: Every 240 frames (4 seconds)
-      const shouldUpdateGroundGrass = this.updateCounter % 240 === 120; // EXTREME: Every 240 frames offset
+      const shouldUpdateTallGrass = this.updateCounter % 180 === 0; // ULTRA-AGGRESSIVE: Every 180 frames
+      const shouldUpdateGroundGrass = this.updateCounter % 180 === 90; // ULTRA-AGGRESSIVE: Every 180 frames offset
       
       if (shouldUpdateTallGrass) {
-        for (const [materialKey, material] of this.renderer.getGrassMaterials().entries()) {
-          this.windSystem.updateMaterialWind(material, false, materialKey);
+        for (const material of this.renderer.getGrassMaterials().values()) {
+          this.windSystem.updateMaterialWind(material, false);
           GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
           GrassShader.updateSeasonalVariation(material, this.currentSeason);
         }
       }
       
       if (shouldUpdateGroundGrass) {
-        for (const [materialKey, material] of this.renderer.getGroundGrassMaterials().entries()) {
-          this.windSystem.updateMaterialWind(material, true, materialKey + '_ground');
+        for (const material of this.renderer.getGroundGrassMaterials().values()) {
+          this.windSystem.updateMaterialWind(material, true);
           GrassShader.updateDayNightCycle(material, nightFactor, dayFactor);
           GrassShader.updateSeasonalVariation(material, this.currentSeason);
         }
       }
       
-      // Only check fog when absolutely necessary
       if (this.checkFogChanges() && this.cachedFogValues) {
         this.updateFogUniforms();
       }
     }
     
-    // EXTREME performance reporting (every 6000 frames = 10 minutes)
-    if (this.updateCounter % 6000 === 0) {
-      console.log(`🌱 EXTREME-PERFORMANCE: ${this.bubbleManager.getRenderedInstanceCount()} grass instances, velocity=${this.playerVelocity.toFixed(2)}`);
+    // ULTRA-AGGRESSIVE performance reporting (every 3000 frames = 3 minutes)
+    if (this.updateCounter % 3000 === 0) {
+      console.log(`🌱 ULTRA-PERFORMANCE: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 80-unit radius`);
       const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
-      console.log(`🌱 EXTREME-BIOME: ${debugInfo.biomeData.biomeType} (${debugInfo.organicBiomeCount} fractal biomes)`);
+      console.log(`🌱 ULTRA-BIOME: Currently in ${debugInfo.biomeData.biomeType} (${debugInfo.organicBiomeCount} fractal biomes nearby)`);
     }
   }
   

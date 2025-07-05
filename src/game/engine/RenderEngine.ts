@@ -8,25 +8,16 @@ export class RenderEngine {
   private clock: THREE.Clock;
   private mountElement: HTMLDivElement;
   
-  // Enhanced camera controls with advanced smoothing
+  // Camera controls with smoothing
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private targetRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
-  private mouseSensitivity: number = 0.0008;
+  private mouseSensitivity: number = 0.003;
   private maxPitch: number = Math.PI / 2 - 0.1;
+  private smoothingFactor: number = 0.15;
   
-  // Advanced camera smoothing system
-  private cameraVelocity: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
-  private rotationInertia: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
-  private readonly CAMERA_SMOOTHING_FACTOR: number = 0.15;
-  private readonly INERTIA_DAMPING: number = 0.88;
-  private readonly VELOCITY_THRESHOLD: number = 0.001;
-  
-  // Frame rate stabilization
-  private frameTimeHistory: number[] = [];
-  private readonly FRAME_HISTORY_SIZE: number = 10;
-  private targetFrameTime: number = 1000 / 60; // 60 FPS target
-  private lastFrameTime: number = 0;
-  private frameTimeSmoothing: number = 0.1;
+  // Mouse smoothing
+  private mouseVelocity: { x: number; y: number } = { x: 0, y: 0 };
+  private smoothedMouseDelta: { x: number; y: number } = { x: 0, y: 0 };
   
   // FIXED: Consistent camera height
   private readonly CAMERA_HEIGHT_OFFSET: number = 1.6; // Standard eye height
@@ -37,13 +28,7 @@ export class RenderEngine {
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 6; // Updated for smoother object transitions
-  
-  // Object pooling and caching for maximum performance
-  private objectPool: Map<string, THREE.Object3D[]> = new Map();
-  private cachedPlayerPosition: THREE.Vector3 = new THREE.Vector3();
-  private cachedCameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
-  private frameSkipCounter: number = 0;
+  private readonly CULLING_UPDATE_INTERVAL: number = 6; // RESPONSIVE: Every 6 frames for smooth turning while maintaining performance
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -62,7 +47,7 @@ export class RenderEngine {
       75,
       this.mountElement.clientWidth / this.mountElement.clientHeight,
       0.1,
-      1200 // Increased for better immersion and render distance
+      500 // Reduced from 1000 for 50% fewer far calculations
     );
     
     // Set up camera layers
@@ -108,45 +93,21 @@ export class RenderEngine {
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
-    // Calculate rotation deltas with sensitivity
-    const rotationDeltaYaw = -deltaX * this.mouseSensitivity;
-    const rotationDeltaPitch = -deltaY * this.mouseSensitivity;
+    // Apply mouse smoothing using exponential moving average
+    this.smoothedMouseDelta.x = this.smoothedMouseDelta.x * (1 - this.smoothingFactor) + deltaX * this.smoothingFactor;
+    this.smoothedMouseDelta.y = this.smoothedMouseDelta.y * (1 - this.smoothingFactor) + deltaY * this.smoothingFactor;
     
-    // Update velocity for inertia calculation
-    this.cameraVelocity.yaw = rotationDeltaYaw;
-    this.cameraVelocity.pitch = rotationDeltaPitch;
-    
-    // Apply rotation with inertia
-    this.rotationInertia.yaw = this.rotationInertia.yaw * this.INERTIA_DAMPING + this.cameraVelocity.yaw;
-    this.rotationInertia.pitch = this.rotationInertia.pitch * this.INERTIA_DAMPING + this.cameraVelocity.pitch;
-    
-    // Update target rotation
-    this.targetRotation.yaw += this.rotationInertia.yaw;
-    this.targetRotation.pitch += this.rotationInertia.pitch;
+    // Update target rotation with smoothed input
+    this.targetRotation.yaw -= this.smoothedMouseDelta.x * this.mouseSensitivity;
+    this.targetRotation.pitch -= this.smoothedMouseDelta.y * this.mouseSensitivity;
     this.targetRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.targetRotation.pitch));
     
-    // Smooth interpolation to target with enhanced easing
-    const smoothingFactor = this.calculateDynamicSmoothingFactor();
-    this.cameraRotation.yaw = THREE.MathUtils.lerp(this.cameraRotation.yaw, this.targetRotation.yaw, smoothingFactor);
-    this.cameraRotation.pitch = THREE.MathUtils.lerp(this.cameraRotation.pitch, this.targetRotation.pitch, smoothingFactor);
+    // Interpolate towards target rotation for ultra-smooth movement
+    const lerpFactor = 0.2; // Adjust for responsiveness vs smoothness
+    this.cameraRotation.yaw = THREE.MathUtils.lerp(this.cameraRotation.yaw, this.targetRotation.yaw, lerpFactor);
+    this.cameraRotation.pitch = THREE.MathUtils.lerp(this.cameraRotation.pitch, this.targetRotation.pitch, lerpFactor);
     
     this.updateCameraRotation();
-  }
-  
-  private calculateDynamicSmoothingFactor(): number {
-    const velocityMagnitude = Math.sqrt(
-      this.cameraVelocity.yaw * this.cameraVelocity.yaw + 
-      this.cameraVelocity.pitch * this.cameraVelocity.pitch
-    );
-    
-    // Increase smoothing for small movements, reduce for rapid movements
-    if (velocityMagnitude < this.VELOCITY_THRESHOLD) {
-      return this.CAMERA_SMOOTHING_FACTOR * 0.5; // Extra smooth for micro-movements
-    } else if (velocityMagnitude > 0.05) {
-      return this.CAMERA_SMOOTHING_FACTOR * 1.5; // More responsive for rapid movements
-    }
-    
-    return this.CAMERA_SMOOTHING_FACTOR;
   }
   
   private updateCameraRotation(): void {
@@ -167,38 +128,37 @@ export class RenderEngine {
   }
   
   private updateFrustumCulling(): void {
-    this.frameSkipCounter++;
-    if (this.frameSkipCounter < this.CULLING_UPDATE_INTERVAL) return;
+    const now = performance.now();
+    if (now - this.lastCullingUpdate < this.CULLING_UPDATE_INTERVAL) return;
     
-    // Cache matrix calculations to avoid repeated computation
-    this.cachedCameraMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
-    this.frustum.setFromProjectionMatrix(this.cachedCameraMatrix);
-    this.frameSkipCounter = 0;
+    this.cameraMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(this.cameraMatrix);
+    this.lastCullingUpdate = now;
   }
   
   private isObjectInFrustum(object: THREE.Object3D): boolean {
     // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
     if (object instanceof THREE.InstancedMesh) return true;
     
-    // Enhanced distance culling - cull objects beyond 300 units for better immersion
-    const distance = this.camera.position.distanceTo(object.position);
-    if (distance > 300) return false;
+    // Hierarchical culling - check parent objects first for performance
+    if (object.parent && object.parent !== this.scene && !this.isObjectInFrustum(object.parent)) {
+      return false;
+    }
     
-    // Skip expensive hierarchical checks for better performance
-    
-    // Fast bounding sphere pre-check with cached calculations
+    // Fast bounding sphere pre-check before expensive frustum test
     if (object instanceof THREE.Mesh && object.geometry) {
       const sphere = object.geometry.boundingSphere;
       if (sphere) {
-        // Skip frustum test for very close objects (performance boost)
-        if (distance < 20) return true;
+        // Quick distance check first (cheaper than frustum test)
+        const distance = this.camera.position.distanceTo(object.position);
+        if (distance > 200) return false; // Cull very distant objects immediately
         
         const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
         return this.frustum.intersectsSphere(worldSphere);
       }
     }
     
-    return distance < 200; // Balanced default culling for better visibility
+    return true; // Default to visible if no bounding info or not a mesh
   }
   
   public render(): void {
@@ -215,13 +175,13 @@ export class RenderEngine {
       }
     });
     
-    // EXTREME logging reduction (every 6000 frames = 10 minutes at 60fps)
-    if (this.renderCount % 6000 === 0) {
-      const fps = 6000 / ((now - this.lastRenderTime) / 1000);
-      console.log("🎨 [RenderEngine] EXTREME-PERFORMANCE:", {
+    // ULTRA-AGGRESSIVE logging reduction (every 3000 frames = 3 minutes at 60fps)
+    if (this.renderCount % 3000 === 0) {
+      const fps = 3000 / ((now - this.lastRenderTime) / 1000);
+      console.log("🎨 [RenderEngine] ULTRA-PERFORMANCE:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
-        visibleObjects: this.scene.children.filter(child => child.visible).length
+        objects: this.scene.children.length
       });
       this.lastRenderTime = now;
     }
@@ -230,32 +190,7 @@ export class RenderEngine {
   }
   
   public getDeltaTime(): number {
-    const rawDelta = this.clock.getDelta();
-    return this.getSmoothedDeltaTime(rawDelta);
-  }
-  
-  private getSmoothedDeltaTime(rawDelta: number): number {
-    const now = performance.now();
-    const frameTime = now - this.lastFrameTime;
-    this.lastFrameTime = now;
-    
-    // Add to frame time history
-    this.frameTimeHistory.push(frameTime);
-    if (this.frameTimeHistory.length > this.FRAME_HISTORY_SIZE) {
-      this.frameTimeHistory.shift();
-    }
-    
-    // Calculate smoothed frame time
-    const averageFrameTime = this.frameTimeHistory.reduce((a, b) => a + b, 0) / this.frameTimeHistory.length;
-    this.targetFrameTime = this.targetFrameTime * (1 - this.frameTimeSmoothing) + averageFrameTime * this.frameTimeSmoothing;
-    
-    // Cap delta time to prevent large jumps (max 33.33ms = 30fps minimum)
-    const clampedDelta = Math.min(rawDelta, 1 / 30);
-    
-    // Apply frame time smoothing to reduce stutters
-    const smoothedDelta = clampedDelta * (1 - this.frameTimeSmoothing) + (this.targetFrameTime / 1000) * this.frameTimeSmoothing;
-    
-    return Math.max(smoothedDelta, 1 / 144); // Minimum deltaTime for 144fps max
+    return Math.min(this.clock.getDelta(), 0.1);
   }
   
   public getCameraRotation(): { pitch: number; yaw: number } {

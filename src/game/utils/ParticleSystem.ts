@@ -267,10 +267,6 @@ export class ParticleSystem {
   public update(): void {
     if (!this.isActive) return;
     
-    // OPTIMIZATION: Skip frames when not needed for better performance
-    const frameSkip = 2; // Update every 2 frames instead of every frame
-    if (Date.now() % frameSkip !== 0) return;
-    
     const now = Date.now();
     const elapsed = now - this.startTime;
     
@@ -279,12 +275,7 @@ export class ParticleSystem {
       return;
     }
     
-    // OPTIMIZED: Process fewer particles per frame for better performance
-    const particleStep = Math.max(1, Math.floor(this.particles.length / 10)); // Process 10% each frame
-    const startIndex = (Math.floor(elapsed / 16) % particleStep) * 10;
-    const endIndex = Math.min(startIndex + 10, this.particles.length);
-    
-    for (let i = startIndex; i < endIndex; i++) {
+    for (let i = 0; i < this.particles.length; i++) {
       const particle = this.particles[i];
       const sprite = this.sprites[i];
       
@@ -307,17 +298,15 @@ export class ParticleSystem {
       particle.velocity.y -= this.options.gravity! * 0.016;
       particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
       
-      // Update sprite with optimized matrix updates
+      // Update sprite with proper matrix updates
       sprite.position.copy(particle.position);
       sprite.material.opacity = particle.opacity;
       sprite.material.rotation = particle.rotation;
       sprite.visible = particle.opacity > 0.01;
       
-      // OPTIMIZATION: Only update matrix when visible
-      if (sprite.visible) {
-        sprite.updateMatrix();
-        sprite.updateMatrixWorld(false); // Don't force update children
-      }
+      // Ensure matrix is updated after position changes
+      sprite.updateMatrix();
+      sprite.updateMatrixWorld(true);
       
       // Scale down over time for more realism
       const sizeMultiplier = 1 - particleProgress * 0.3;
