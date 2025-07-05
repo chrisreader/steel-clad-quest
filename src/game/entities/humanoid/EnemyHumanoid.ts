@@ -718,16 +718,16 @@ export abstract class EnemyHumanoid {
     rightArm.rotation.set(-0.393, 0, 0.3);
     rightArm.castShadow = true;
 
-    // Shoulder joints - smaller for humans and use skin material
+    // Shoulder joints - positioned outward from body, above arm attachment points
     const shoulderJointRadius = bodyScale.body.radius * 0.5; // Scale with body size
     const shoulderJointGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 20);
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    leftShoulderJoint.position.set(-(bodyScale.body.radius * 0.85), shoulderHeight, 0); // Match arm position
+    leftShoulderJoint.position.set(-(bodyScale.body.radius * 1.1), shoulderHeight, 0); // Positioned outward from body
     leftShoulderJoint.scale.set(0.9, 1, 0.9);
     leftShoulderJoint.castShadow = true;
 
     const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    rightShoulderJoint.position.set(bodyScale.body.radius * 0.85, shoulderHeight, 0); // Match arm position
+    rightShoulderJoint.position.set(bodyScale.body.radius * 1.1, shoulderHeight, 0); // Positioned outward from body
     rightShoulderJoint.scale.set(0.9, 1, 0.9);
     rightShoulderJoint.castShadow = true;
 
