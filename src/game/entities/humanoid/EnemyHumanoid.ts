@@ -19,6 +19,8 @@ export interface EnemyBodyParts {
   rightLeg: THREE.Mesh | undefined;
   leftKnee: THREE.Mesh | undefined;
   rightKnee: THREE.Mesh | undefined;
+  leftShoulderJoint: THREE.Mesh | undefined;
+  rightShoulderJoint: THREE.Mesh | undefined;
   weapon: THREE.Group | undefined;
   hitBox: THREE.Mesh | undefined;
 }
@@ -257,9 +259,6 @@ export abstract class EnemyHumanoid {
       bodyScale, shoulderHeight, baseSkinMaterial, baseMuscleMaterial, baseAccentMaterial
     );
     humanoidGroup.add(leftArm, rightArm);
-    
-    // Add the shoulder joints that were missing!
-    humanoidGroup.add(leftShoulderJoint, rightShoulderJoint);
 
     // Create legs with knees and feet
     const { leftKnee, rightKnee } = this.createShinsAndFeet(
@@ -300,6 +299,8 @@ export abstract class EnemyHumanoid {
       rightLeg,
       leftKnee,
       rightKnee,
+      leftShoulderJoint,
+      rightShoulderJoint,
       weapon,
       hitBox
     };
@@ -396,7 +397,7 @@ export abstract class EnemyHumanoid {
       if (isHuman && normalizedY > 0.3) {
         // Top shoulder area - create oval cross-section
         const shoulderCurve = (normalizedY - 0.3) / 0.2; // 0 at chest, 1 at very top
-        scaleFactor = 1.0 - shoulderCurve * 0.15; // Slightly narrower at top
+        scaleFactor = 1.0 + shoulderCurve * 0.3; // BROADER at top for wider shoulders
         frontBackScale = 1.0 - shoulderCurve * 0.25; // More narrow front-to-back
         
         // Create curved shoulder transition
@@ -719,18 +720,20 @@ export abstract class EnemyHumanoid {
     rightArm.rotation.set(-0.393, 0, 0.3);
     rightArm.castShadow = true;
 
-    // Shoulder joints - positioned outward from body, above arm attachment points
+    // Shoulder joints - attach to arms for animation
     const shoulderJointRadius = bodyScale.body.radius * 0.5; // Scale with body size
     const shoulderJointGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 20);
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    leftShoulderJoint.position.set(-(bodyScale.body.radius * 1.1), shoulderHeight, 0); // Positioned outward from body
+    leftShoulderJoint.position.set(-(bodyScale.body.radius * 0.25), 0.1, 0); // Relative to arm position
     leftShoulderJoint.scale.set(0.9, 1, 0.9);
     leftShoulderJoint.castShadow = true;
+    leftArm.add(leftShoulderJoint); // Attach to arm for animation
 
     const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    rightShoulderJoint.position.set(bodyScale.body.radius * 1.1, shoulderHeight, 0); // Positioned outward from body
+    rightShoulderJoint.position.set(bodyScale.body.radius * 0.25, 0.1, 0); // Relative to arm position
     rightShoulderJoint.scale.set(0.9, 1, 0.9);
     rightShoulderJoint.castShadow = true;
+    rightArm.add(rightShoulderJoint); // Attach to arm for animation
 
     // Elbows and forearms
     const { leftElbow, rightElbow, leftWrist, rightWrist } = this.createForearms(
