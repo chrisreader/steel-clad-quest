@@ -408,7 +408,7 @@ export abstract class EnemyHumanoid {
         } else {
           // Upper-middle - broader chest/shoulder area (EXTENDED higher to align with shoulders)
           scaleFactor = 1.2; // Broader chest extending higher
-          frontBackScale = 1.2; // Increased front-to-back depth (from 1.0 to 1.2)
+          frontBackScale = 1.0; // Flatter chest front-to-back depth
         }
         
         // Create curved shoulder transition for all upper sections
