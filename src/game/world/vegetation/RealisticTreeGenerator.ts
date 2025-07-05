@@ -1230,7 +1230,7 @@ export class RealisticTreeGenerator {
     this.lastDayFactor = dayFactor;
     this.lastNightFactor = nightFactor;
     
-    console.log(`🍃 Day/Night update triggered - dayFactor: ${dayFactor}, nightFactor: ${nightFactor}`);
+    // Day/Night material update (performance optimized)
     
     // BATCH MATERIAL UPDATES: Process materials more efficiently
     for (const material of this.activeFoliageMaterials) {
@@ -1247,7 +1247,7 @@ export class RealisticTreeGenerator {
         }
       }
       
-      console.log(`🍃 Using base color:`, baseColor.getHexString());
+      // Base color selection
       
       // Create night version - darker but still visible
       const nightColor = baseColor.clone().multiplyScalar(0.6);
@@ -1255,7 +1255,7 @@ export class RealisticTreeGenerator {
       // Blend between day and night colors
       const blendedColor = baseColor.clone().lerp(nightColor, nightFactor);
       material.color.copy(blendedColor);
-      console.log(`🍃 Material updated color:`, blendedColor.getHexString());
+      // Material color updated
       
       // Adjust material properties for lighting conditions
       const baseRoughness = 0.65;

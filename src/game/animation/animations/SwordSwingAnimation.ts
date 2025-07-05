@@ -13,12 +13,11 @@ export class SwordSwingAnimation {
     this.playerBody = playerBody;
     this.equippedWeapon = equippedWeapon;
     
-    console.log('🗡️ [SwordSwingAnimation] *** CONSTRUCTOR CALLED *** - Using standardized sword animation');
-    console.log('🗡️ [SwordSwingAnimation] Standard animation config loaded - duration:', STANDARD_SWORD_ANIMATION.duration);
+    // Constructor called - using standardized sword animation
   }
   
   public update(): void {
-    console.log('🗡️ [SwordSwingAnimation] *** UPDATE METHOD CALLED ***');
+    // Update method called
     
     if (!this.weaponSwing) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - weaponSwing is null/undefined');
@@ -26,7 +25,7 @@ export class SwordSwingAnimation {
     }
     
     if (!this.weaponSwing.isActive) {
-      console.log('🗡️ [SwordSwingAnimation] Update SKIPPED - weaponSwing not active');
+      // Update skipped - weaponSwing not active
       return;
     }
     
@@ -38,7 +37,7 @@ export class SwordSwingAnimation {
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
     const { phases, duration, rotations } = STANDARD_SWORD_ANIMATION;
     
-    console.log(`🗡️ [SwordSwingAnimation] *** STANDARDIZED ANIMATION ACTIVE *** - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
+    // Standardized animation active
     
     // Initialize rotations from standardized config
     let shoulderRotation = { 
@@ -73,7 +72,7 @@ export class SwordSwingAnimation {
       // TORSO: Coil to the right for power
       torsoRotation = THREE.MathUtils.lerp(0, -0.3, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** WINDUP PHASE *** t=${t.toFixed(2)} - Using standardized rotations`);
+      // Windup phase
       
     } else if (elapsed < phases.windup + phases.slash) {
       // SLASH PHASE: Use standardized slash movement
@@ -96,7 +95,7 @@ export class SwordSwingAnimation {
       // TORSO: Aggressive rotation to support diagonal movement
       torsoRotation = THREE.MathUtils.lerp(-0.3, 0.25, aggressiveT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** SLASH PHASE *** t=${t.toFixed(2)} - Standardized diagonal sweep`);
+      // Slash phase
       
     } else if (elapsed < duration) {
       // RECOVERY PHASE: Return to neutral position
@@ -119,11 +118,11 @@ export class SwordSwingAnimation {
       // Torso returns to center
       torsoRotation = THREE.MathUtils.lerp(0.25, 0, easedT);
       
-      console.log(`🗡️ [SwordSwingAnimation] *** RECOVERY PHASE *** t=${t.toFixed(2)} - Returning to standardized neutral`);
+      // Recovery phase
       
     } else {
       // ANIMATION COMPLETE
-      console.log('🗡️ [SwordSwingAnimation] *** ANIMATION COMPLETE *** - calling completeAnimation()');
+      // Animation complete
       this.completeAnimation();
       return;
     }
@@ -163,7 +162,7 @@ export class SwordSwingAnimation {
   }
   
   private completeAnimation(): void {
-    console.log('🗡️ [SwordSwingAnimation] *** COMPLETING ANIMATION *** - Resetting to standardized neutral rotations');
+    // Completing animation - resetting to neutral
     
     // Reset to standardized neutral rotations
     const neutralRotation = STANDARD_SWORD_ANIMATION.rotations.neutral;
@@ -182,6 +181,6 @@ export class SwordSwingAnimation {
     }
     
     this.weaponSwing.isActive = false;
-    console.log('🗡️ [SwordSwingAnimation] *** ANIMATION COMPLETE *** - weaponSwing.isActive set to false');
+    // Animation complete - weaponSwing.isActive set to false
   }
 }

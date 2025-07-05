@@ -51,7 +51,7 @@ export class BirdSpawningSystem {
       ...config
     };
 
-    console.log('🐦 [BirdSpawningSystem] Initialized with OPTIMIZED config:', this.config);
+    // BirdSpawningSystem initialized
   }
 
   // PERFORMANCE OPTIMIZATION: Frame skipping for bird updates
@@ -96,7 +96,7 @@ export class BirdSpawningSystem {
       
       // Check if bird died and became corpse
       if ((bird as any).isDead && (bird as any).birdState === 'dead') {
-        console.log(`🐦💀 [BirdSpawningSystem] Bird ${id} died, moving to corpses`);
+        // Bird died, moved to corpses
         this.birdCorpses.set(id, bird);
         this.birds.delete(id);
         return;
@@ -213,14 +213,11 @@ export class BirdSpawningSystem {
     // Check bird count
     const hasSpaceForMore = this.birds.size < this.config.maxEntities;
     
-    // Debug logging more frequently (every 2 seconds)
-    if (now % 2000 < 100) {
-      console.log(`🐦 [BirdSpawningSystem] Status - Birds: ${this.birds.size}/${this.config.maxEntities}, Movement: ${this.playerMovementAccumulator.toFixed(1)}/${this.config.playerMovementThreshold}, Time since spawn: ${((now - this.lastSpawnTime) / 1000).toFixed(1)}s, Conditions: movement=${shouldSpawnByMovement}, time=${shouldSpawnByTime}, space=${hasSpaceForMore}`);
-    }
+    // Status tracking (logging removed for performance)
     
     // Force spawn at least one bird for testing if none exist (reduce wait time)
     if (this.birds.size === 0 && now - this.lastSpawnTime > 1000) {
-      console.log('🐦 [BirdSpawningSystem] Force spawning bird for testing');
+      // Force spawning bird
       this.spawnBirds(playerPosition);
       this.lastSpawnTime = now;
       return;

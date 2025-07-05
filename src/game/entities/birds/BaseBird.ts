@@ -132,7 +132,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.state = EntityLifecycleState.ACTIVE;
     this.scheduleNextStateChange();
     
-    console.log(`🐦 [${this.config.species}] Spawned with feet at ground level ${this.groundLevel}, bird position: ${this.position.y}`);
+    // Bird spawned successfully
   }
 
   protected detectGroundLevel(position: THREE.Vector3): number {
@@ -174,7 +174,7 @@ export abstract class BaseBird implements SpawnableEntity {
       }
     }
     
-    console.log(`🐦💀 [${this.config.species}] Died and ${this.position.y > 1 ? 'started falling' : 'became corpse'}`);
+    // Bird died
   }
   
   private startDeathFall(): void {
@@ -190,7 +190,7 @@ export abstract class BaseBird implements SpawnableEntity {
       z: (Math.random() - 0.5) * 0.3
     };
     
-    console.log(`🐦🍂 [${this.config.species}] Started death fall animation from altitude ${this.position.y.toFixed(1)}`);
+    // Death fall started
   }
   
   public getHitBox(): THREE.Mesh | null {
@@ -236,7 +236,7 @@ export abstract class BaseBird implements SpawnableEntity {
             this.bodyParts.body.rotation.z = Math.PI / 2; // Lie on side
           }
           
-          console.log(`🐦🪦 [${this.config.species}] Landed and became corpse`);
+          // Bird became corpse
         }
         
         this.mesh.position.copy(this.position);
@@ -299,7 +299,7 @@ export abstract class BaseBird implements SpawnableEntity {
         // Thermal updraft - slight altitude gain
         this.velocity.y += 2.0 * deltaTime;
         this.soaringAltitudeLoss = Math.max(0, this.soaringAltitudeLoss - 1.0);
-        console.log(`🐦 [${this.config.species}] Caught thermal updraft!`);
+        // Caught thermal updraft
       } else {
         // Natural soaring energy loss - very gradual
         const soaringDrag = -1.5 * deltaTime;
@@ -310,7 +310,7 @@ export abstract class BaseBird implements SpawnableEntity {
       if (this.soaringAltitudeLoss > 4.0 && this.position.y < this.targetAltitude - 3) {
         this.isFlapping = true;
         this.wingBeatIntensity = 1.1;
-        console.log(`🐦 [${this.config.species}] Starting to flap to regain altitude from soaring`);
+        // Starting to flap
       }
     }
     
@@ -333,7 +333,7 @@ export abstract class BaseBird implements SpawnableEntity {
   protected changeState(newState: BirdState): void {
     if (this.birdState === newState) return;
     
-    console.log(`🐦 [${this.config.species}] State change: ${this.birdState} -> ${newState}`);
+    // State changed
     this.birdState = newState;
     this.stateTimer = 0;
     this.scheduleNextStateChange();
@@ -346,7 +346,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.wingBeatIntensity = 1.3;
     this.generateFlightPath();
     this.changeState(BirdState.TAKING_OFF);
-    console.log(`🐦 [${this.config.species}] Starting flight, target altitude: ${this.targetAltitude.toFixed(1)}`);
+    // Flight started
   }
 
   protected startLanding(): void {
@@ -380,7 +380,7 @@ export abstract class BaseBird implements SpawnableEntity {
     }
     
     this.flightPath.push(this.flightPath[0].clone());
-    console.log(`🐦 [${this.config.species}] Generated extended flight path with ${numPoints} waypoints`);
+    // Flight path generated
   }
 
   protected followFlightPath(deltaTime: number): void {
@@ -393,7 +393,7 @@ export abstract class BaseBird implements SpawnableEntity {
     
     if (distanceToWaypoint < 5) {
       this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
-      console.log(`🐦 [${this.config.species}] Reached waypoint ${this.currentPathIndex}`);
+      // Reached waypoint
       return;
     }
     
@@ -457,7 +457,7 @@ export abstract class BaseBird implements SpawnableEntity {
       this.bodyParts.body.rotation.z = clampedBank;
     }
     
-    console.log(`🐦 [${this.config.species}] Forward flight: heading=${(this.currentHeading * 180/Math.PI).toFixed(1)}°, mesh rot=${(this.mesh.rotation.y * 180/Math.PI).toFixed(1)}°, vel=(${this.velocity.x.toFixed(2)}, ${this.velocity.z.toFixed(2)}), dist=${distanceToWaypoint.toFixed(1)}m`);
+    // Forward flight updated
   }
 
   public dispose(): void {

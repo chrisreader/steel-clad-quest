@@ -12,6 +12,7 @@ import { UIIntegrationManager } from './UIIntegrationManager';
 import { PhysicsManager } from './PhysicsManager';
 import { BuildingManager } from '../buildings/BuildingManager';
 import { ChestInteractionSystem } from '../systems/ChestInteractionSystem';
+import { PerformanceManager } from '../systems/PerformanceManager';
 import { GameState, EnemyType } from '../../types/GameTypes';
 
 export class GameEngine {
@@ -20,6 +21,7 @@ export class GameEngine {
   private stateManager: StateManager;
   private uiIntegrationManager: UIIntegrationManager;
   private physicsManager: PhysicsManager;
+  private performanceManager: PerformanceManager;
   private buildingManager: BuildingManager | null = null;
   
   // Game systems
@@ -52,6 +54,11 @@ export class GameEngine {
     this.stateManager = new StateManager();
     this.uiIntegrationManager = new UIIntegrationManager();
     this.physicsManager = new PhysicsManager();
+    this.performanceManager = new PerformanceManager({
+      targetFPS: 60,
+      adaptiveQuality: true,
+      distanceLODThresholds: { close: 25, medium: 50, far: 100 }
+    });
   }
   
   // NEW METHOD: Set UI state from KnightGame
@@ -316,8 +323,13 @@ export class GameEngine {
     }
     
     const deltaTime = this.renderEngine.getDeltaTime();
-    this.stateManager.update(deltaTime);
-    this.update(deltaTime);
+    
+    // PHASE 2: Update performance metrics
+    this.performanceManager.updatePerformanceMetrics(deltaTime);
+    const safeDeltaTime = this.performanceManager.getSafeDeltaTime(deltaTime);
+    
+    this.stateManager.update(safeDeltaTime);
+    this.update(safeDeltaTime);
     this.renderEngine.render();
   };
   
@@ -325,6 +337,9 @@ export class GameEngine {
     if (!this.movementSystem || !this.inputManager || !this.combatSystem || !this.effectsManager || !this.audioManager || !this.player) {
       return;
     }
+    
+    // PHASE 2: Use performance-aware updates
+    const playerPosition = this.player.getPosition();
     
     // Update movement system first
     this.movementSystem.update(deltaTime);
@@ -335,18 +350,21 @@ export class GameEngine {
                    this.inputManager.isActionPressed('moveLeft') ||
                    this.inputManager.isActionPressed('moveRight');
     
+    // PHASE 4: Performance-aware updates with centralized frame skipping
+    const frameCounter = Math.floor(Date.now() / 16); // ~60fps base counter
+    
     // Update building manager (critical for fire animation)
     if (this.buildingManager) {
       this.buildingManager.update(deltaTime);
     }
     
-    // Update chest interaction system
-    if (this.chestInteractionSystem) {
+    // Update chest interaction system (less critical - every 2 frames)
+    if (this.chestInteractionSystem && this.performanceManager.shouldUpdate(frameCounter, 50)) {
       this.chestInteractionSystem.update(deltaTime);
     }
     
-    // Sync enemies from scene manager to combat system
-    if (this.sceneManager) {
+    // Sync enemies from scene manager to combat system (performance-aware)
+    if (this.sceneManager && this.performanceManager.shouldUpdate(frameCounter, 30)) {
       const sceneEnemies = this.sceneManager.getEnemies();
       // Update combat system with current enemies
       sceneEnemies.forEach(enemy => {
@@ -360,7 +378,7 @@ export class GameEngine {
       this.combatSystem.setBirds(sceneBirds);
     }
     
-    // Update combat system
+    // Update combat system (always critical)
     this.combatSystem.update(deltaTime);
     
     // Update effects

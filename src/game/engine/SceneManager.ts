@@ -695,12 +695,12 @@ export class SceneManager {
     this.scene.background = new THREE.Color(newFogColor);
     
     const currentPhase = TimeUtils.getCurrentPhase(this.timeOfDay, TIME_PHASES);
-    console.log(`Sky system synchronized - Phase: ${currentPhase}, Time: ${(this.timeOfDay * 24).toFixed(1)}h, Color: #${newFogColor.toString(16).padStart(6, '0')}`);
+    // Sky system synchronized
   }
 
   public setTimeOfDay(time: number): void {
     this.timeOfDay = Math.max(0, Math.min(1, time));
-    console.log(`Time set to: ${(this.timeOfDay * 24).toFixed(1)} hours`);
+    // Time of day set
   }
   
   public toggleDayNightCycle(): void {
