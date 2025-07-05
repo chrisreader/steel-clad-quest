@@ -748,54 +748,46 @@ export abstract class EnemyHumanoid {
       const distance = Math.sqrt(x * x + y * y + z * z);
       const normalizedY = y / shoulderJointRadius; // -1 to 1, where 1 is top, -1 is bottom
       
-      // Create anatomically correct deltoid shape: contained within arm width
+      // Create smooth deltoid shape: eliminate sharp points and discontinuities
       let scaleFactor = 1.0;
-      let frontBackScale = 0.7; // Deltoids are naturally flatter front-to-back
-      let lateralScale = 1.0; // Control side-to-side expansion
+      let frontBackScale = 0.7;
       
-      // Calculate position relative to shoulder attachment points
-      const angle = Math.atan2(z, x); // Angle around Y axis
-      const frontFactor = Math.max(0, Math.cos(angle)); // 1 at front, 0 at back
-      const sideFactor = Math.abs(Math.sin(angle)); // 1 at sides, 0 at front/back
+      // Calculate smooth angular factors to avoid sharp transitions
+      const angle = Math.atan2(z, x);
+      const frontFactor = Math.max(0, Math.cos(angle)); // 1 at front, 0 at back  
+      
+      // Use smooth cosine function for lateral scaling to eliminate points
+      const lateralFactor = Math.cos(angle); // Smooth transition from front to back
+      const smoothLateralScale = 0.85 + (lateralFactor * lateralFactor * 0.1); // Smooth quadratic curve
       
       if (normalizedY > 0.1) {
-        // Upper section - deltoid attachment to clavicle/scapula
-        const upperPosition = (normalizedY - 0.1) / 0.9; // 0 at transition, 1 at top
-        const upperTaper = 1.0 - (upperPosition * 0.4); // More aggressive taper
+        // Upper section - smooth taper without sharp edges
+        const upperPosition = (normalizedY - 0.1) / 0.9;
+        const smoothUpperTaper = Math.cos(upperPosition * Math.PI * 0.5); // Smooth cosine taper
         
-        // Anterior deltoid is wider than posterior, but constrain lateral expansion
-        const anteriorScale = 1.0 + (frontFactor * 0.15); // Reduced front bulge
-        scaleFactor = upperTaper * anteriorScale;
-        
-        // Constrain lateral expansion - deltoid shouldn't extend beyond arm width
-        lateralScale = 0.85 - (sideFactor * 0.1); // Reduce width at sides
-        
-        frontBackScale = 0.6 - (upperPosition * 0.1);
+        // Gentle anterior emphasis without creating points
+        scaleFactor = 0.75 + (smoothUpperTaper * 0.15) + (frontFactor * 0.1);
+        frontBackScale = 0.65 - (upperPosition * 0.05);
         
       } else if (normalizedY > -0.4) {
-        // Middle section - main deltoid body, constrained width
-        const middlePosition = (normalizedY + 0.4) / 0.5; // 0 at bottom, 1 at top
+        // Middle section - smooth profile without lateral points
+        const middlePosition = (normalizedY + 0.4) / 0.5;
+        const smoothMiddleCurve = Math.cos((1.0 - middlePosition) * Math.PI * 0.5); // Smooth curve
         
-        // Linear taper but keep contained within arm silhouette
-        scaleFactor = 0.8 + (middlePosition * 0.1); // Reduced overall size
-        
-        // Key fix: significantly reduce lateral expansion
-        lateralScale = 0.9 - (sideFactor * 0.15); // Much less width at sides
-        
-        frontBackScale = 0.65;
+        scaleFactor = 0.8 + (smoothMiddleCurve * 0.05); // Very gentle variation
+        frontBackScale = 0.68;
         
       } else {
-        // Lower section - deltoid insertion at arm
-        const lowerPosition = Math.abs(normalizedY + 0.4) / 0.6; // 0 at transition, 1 at bottom
-        const insertionTaper = 1.0 - (lowerPosition * 0.3);
+        // Lower section - smooth taper to arm
+        const lowerPosition = Math.abs(normalizedY + 0.4) / 0.6;
+        const smoothLowerTaper = Math.cos(lowerPosition * Math.PI * 0.5);
         
-        scaleFactor = 0.8 * insertionTaper;
-        
-        // Taper to arm width at insertion
-        lateralScale = 0.95 - (lowerPosition * 0.2);
-        
-        frontBackScale = 0.65 + (lowerPosition * 0.1);
+        scaleFactor = 0.75 + (smoothLowerTaper * 0.1);
+        frontBackScale = 0.7;
       }
+      
+      // Apply smooth lateral scaling to eliminate outside points
+      scaleFactor *= smoothLateralScale;
       
       // Apply scaling with natural deltoid curves
       const horizontalDistance = Math.sqrt(x * x + z * z);
@@ -803,8 +795,8 @@ export abstract class EnemyHumanoid {
         const angle = Math.atan2(z, x);
         
         // Apply lateral scaling to X (side-to-side) and front-back scaling to Z
-        const newX = Math.cos(angle) * horizontalDistance * scaleFactor * lateralScale;
-        const newZ = Math.sin(angle) * horizontalDistance * scaleFactor * frontBackScale;
+        const newX = Math.cos(angle) * horizontalDistance * scaleFactor;
+        const newZ = Math.sin(angle) * horizontalDistance * frontBackScale;
         
         shoulderPositions[i] = newX; // X scaling with lateral constraint
         shoulderPositions[i + 2] = newZ; // Z scaling with front-back compression
