@@ -748,26 +748,59 @@ export abstract class EnemyHumanoid {
       const distance = Math.sqrt(x * x + y * y + z * z);
       const normalizedY = y / shoulderJointRadius; // -1 to 1, where 1 is top, -1 is bottom
       
-      // Create deltoid shape: bulge at arm connection (bottom), curve inward toward torso (top)
+      // Create refined deltoid shape: less pointed top, reduced center bulge, smooth transitions
       let scaleFactor = 1.0;
       let frontBackScale = 1.0;
       
-      if (normalizedY > 0.3) {
-        // Upper section - curve inward toward torso (like deltoid attachment)
-        const upperCurve = (normalizedY - 0.3) / 0.7; // 0 at middle, 1 at top
-        const smoothCurve = Math.sin(upperCurve * Math.PI * 0.5); // Smooth sine curve
-        scaleFactor = 1.1 - (smoothCurve * 0.4); // Scale from 1.1 to 0.7
-        frontBackScale = 1.0 - (smoothCurve * 0.3); // Compress front-to-back
-      } else if (normalizedY > -0.5) {
-        // Middle section - maintain deltoid bulk
-        scaleFactor = 1.1; // Slightly bulged
-        frontBackScale = 0.85; // Slightly compressed front-to-back
+      // Smooth transition zones with overlapping blends
+      const upperBlend = Math.max(0, Math.min(1, (normalizedY - 0.2) / 0.6)); // Blend from y=0.2 to y=0.8
+      const lowerBlend = Math.max(0, Math.min(1, (-normalizedY - 0.3) / 0.4)); // Blend from y=-0.3 to y=-0.7
+      
+      if (normalizedY > 0.2) {
+        // Upper section - flattened top with gentle taper, less pointed
+        const upperCurve = (normalizedY - 0.2) / 0.8; // 0 at transition, 1 at top
+        
+        // Create plateau at top (less pointed) then gentle taper
+        let topCurve;
+        if (upperCurve > 0.7) {
+          // Top plateau - minimal scaling to avoid pointed look
+          topCurve = 0.7 + (upperCurve - 0.7) * 0.3; // Gentle final taper
+        } else {
+          // Gradual taper using cosine for smoother curve
+          topCurve = Math.cos(upperCurve * Math.PI * 0.5) * 0.7;
+        }
+        
+        scaleFactor = 1.0 - (topCurve * 0.25); // Gentler scaling: 1.0 to 0.75
+        frontBackScale = 1.0 - (topCurve * 0.2); // Less compression
+      } else if (normalizedY > -0.3) {
+        // Middle section - reduced bulge for less bulgey appearance
+        const middlePosition = (normalizedY + 0.3) / 0.5; // 0 at bottom, 1 at top
+        const middleCurve = Math.sin(middlePosition * Math.PI); // Smooth bell curve
+        scaleFactor = 0.95 + (middleCurve * 0.1); // Reduced from 1.1 to 0.95-1.05 range
+        frontBackScale = 0.9 - (middleCurve * 0.05); // Slight compression
       } else {
-        // Lower section - taper down towards arm diameter for smooth transition
-        const lowerTaper = Math.abs(normalizedY + 0.5) / 0.5; // 0 at middle, 1 at bottom
+        // Lower section - smooth taper to arm with better transition
+        const lowerTaper = Math.abs(normalizedY + 0.3) / 0.7; // 0 at transition, 1 at bottom
         const taperCurve = Math.sin(lowerTaper * Math.PI * 0.5); // Smooth taper curve
-        scaleFactor = 1.1 - (taperCurve * 0.4); // Taper from 1.1 down to 0.7 at arm connection
-        frontBackScale = 0.8 - (taperCurve * 0.1); // Gradually compress front-to-back
+        scaleFactor = 0.95 - (taperCurve * 0.25); // Taper from 0.95 down to 0.7 at arm connection
+        frontBackScale = 0.85 - (taperCurve * 0.1); // Gradual compression
+      }
+      
+      // Apply smooth blending between sections to eliminate hard transitions
+      if (upperBlend > 0 && upperBlend < 1) {
+        // Blend upper and middle sections
+        const middleScale = 0.95;
+        const middleFrontBack = 0.9;
+        scaleFactor = scaleFactor * upperBlend + middleScale * (1 - upperBlend);
+        frontBackScale = frontBackScale * upperBlend + middleFrontBack * (1 - upperBlend);
+      }
+      
+      if (lowerBlend > 0 && lowerBlend < 1) {
+        // Blend middle and lower sections
+        const middleScale = 0.95;
+        const middleFrontBack = 0.9;
+        scaleFactor = scaleFactor * lowerBlend + middleScale * (1 - lowerBlend);
+        frontBackScale = frontBackScale * lowerBlend + middleFrontBack * (1 - lowerBlend);
       }
       
       // Apply scaling with natural deltoid curves
