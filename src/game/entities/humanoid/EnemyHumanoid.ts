@@ -8,7 +8,7 @@ import { EnemyAnimationSystem } from '../../animation/EnemyAnimationSystem';
 // Export all necessary types and interfaces
 export interface EnemyBodyParts {
   body: THREE.Mesh | undefined;
-  head: THREE.Mesh | undefined;
+  head: THREE.Mesh | THREE.Group | undefined;
   leftArm: THREE.Mesh | undefined;
   rightArm: THREE.Mesh | undefined;
   leftElbow: THREE.Mesh | undefined;
@@ -284,7 +284,7 @@ export abstract class EnemyHumanoid {
 
     const bodyParts: EnemyBodyParts = {
       body: body.mesh,
-      head: head.mesh,
+      head: head.parent,
       leftArm,
       rightArm,
       leftElbow,

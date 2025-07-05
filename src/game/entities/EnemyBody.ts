@@ -5,7 +5,7 @@ import { EnemyType } from '../../types/GameTypes';
 // Define interfaces locally to avoid circular imports
 export interface EnemyBodyParts {
   body: THREE.Mesh | undefined;
-  head: THREE.Mesh | undefined;
+  head: THREE.Mesh | THREE.Group | undefined;
   leftArm: THREE.Mesh | undefined;
   rightArm: THREE.Mesh | undefined;
   leftElbow: THREE.Mesh | undefined;

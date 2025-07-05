@@ -163,7 +163,7 @@ export interface Enemy {
   };
   weapon: THREE.Group;
   body: THREE.Mesh;
-  head: THREE.Mesh;
+  head: THREE.Mesh | THREE.Group;
   attackRange: number;
   damageRange: number;
   attackCooldown: number;

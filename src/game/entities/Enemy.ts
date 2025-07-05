@@ -143,7 +143,7 @@ export class Enemy {
     const isGoblin = type === EnemyType.GOBLIN;
     
     let leftArm: THREE.Mesh, rightArm: THREE.Mesh, leftLeg: THREE.Mesh, rightLeg: THREE.Mesh;
-    let body: THREE.Mesh, head: THREE.Mesh, weapon: THREE.Group;
+    let body: THREE.Mesh, head: THREE.Mesh | THREE.Group, weapon: THREE.Group;
     const originalMaterials: THREE.Material[] = [];
     
     // Set enemy stats based on type with increased aggression range
