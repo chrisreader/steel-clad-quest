@@ -222,9 +222,6 @@ export abstract class EnemyHumanoid {
 
     // Create legs - use skin material for humans
     const { leftLeg, rightLeg } = this.createLegs(bodyScale, thighCenterY, baseSkinMaterial);
-    console.log('🔍 [EnemyHumanoid] HIP JOINTS REMOVED - No hip joint spheres should be created');
-    console.log('🔍 [EnemyHumanoid] Leg positions - Left:', leftLeg.position, 'Right:', rightLeg.position);
-    console.log('🔍 [EnemyHumanoid] thighCenterY (leg center):', thighCenterY, 'legTopY (floor level):', legTopY);
     humanoidGroup.add(leftLeg, rightLeg);
 
     // Create torso
@@ -275,32 +272,6 @@ export abstract class EnemyHumanoid {
 
     humanoidGroup.position.copy(position);
     humanoidGroup.castShadow = true;
-
-    // DEBUG: Find any geometry at floor level (legTopY = 1.0)
-    console.log('🔍 [EnemyHumanoid] === FLOOR LEVEL GEOMETRY CHECK ===');
-    console.log('🔍 [EnemyHumanoid] Floor level Y:', legTopY);
-    humanoidGroup.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        const worldPosition = new THREE.Vector3();
-        child.getWorldPosition(worldPosition);
-        const material = child.material as THREE.MeshPhongMaterial;
-        const colorHex = material.color.getHex().toString(16);
-        
-        // Check if geometry is at or near floor level
-        if (Math.abs(child.position.y - legTopY) < 0.1 || Math.abs(worldPosition.y - legTopY) < 0.1) {
-          console.log('🚨 [EnemyHumanoid] FLOOR LEVEL GEOMETRY FOUND:', {
-            meshId: child.uuid.substr(0,8),
-            localPos: child.position,
-            worldPos: worldPosition,
-            color: colorHex,
-            isRed: colorHex.includes('ff0000') || (colorHex.includes('ff') && colorHex.length === 6),
-            geometry: child.geometry.constructor.name,
-            parentName: child.parent?.constructor.name
-          });
-        }
-      }
-    });
-    console.log('🔍 [EnemyHumanoid] === END FLOOR LEVEL CHECK ===');
 
     const bodyParts: EnemyBodyParts = {
       body: body.mesh,
@@ -940,21 +911,6 @@ export abstract class EnemyHumanoid {
     rightKnee.position.set(0, shinRelativeY, 0);
     rightKnee.castShadow = true;
     rightLeg.add(rightKnee);
-
-    // Knee joints - much smaller and properly positioned for humans
-    const kneeJointRadius = bodyScale.leg.radius[1] * 0.6; // Much smaller radius
-    const kneeJointGeometry = new THREE.SphereGeometry(kneeJointRadius, 16, 12);
-    const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, skinMaterial.clone());
-    leftKneeJoint.position.set(0, shinRelativeY + 0.02, 0); // Closer to shin
-    leftKneeJoint.scale.set(0.7, 1.0, 0.7); // Even smaller scale
-    leftKneeJoint.castShadow = true;
-    leftLeg.add(leftKneeJoint);
-
-    const rightKneeJoint = new THREE.Mesh(kneeJointGeometry, skinMaterial.clone());
-    rightKneeJoint.position.set(0, shinRelativeY + 0.02, 0); // Closer to shin
-    rightKneeJoint.scale.set(0.7, 1.0, 0.7); // Even smaller scale
-    rightKneeJoint.castShadow = true;
-    rightLeg.add(rightKneeJoint);
 
     // Feet - pass skin material to make feet skin-colored for humans
     this.addFeet(leftKnee, rightKnee, bodyScale, skinMaterial);
