@@ -419,6 +419,37 @@ export abstract class EnemyHumanoid {
     mainTorso.castShadow = true;
     torsoGroup.add(mainTorso);
 
+    // Add subtle chest definition for humans (not the red cylinder!)
+    if (!this.config.features.hasWeapon) { // Humans only
+      const chestDefGeometry = new THREE.SphereGeometry(bodyScale.body.radius * 0.4, 16, 12);
+      const chestDef = new THREE.Mesh(chestDefGeometry, skinMaterial.clone());
+      chestDef.position.set(0, bodyTopY - 0.2, bodyScale.body.radius * 0.6);
+      chestDef.scale.set(1.2, 0.6, 0.8);
+      chestDef.castShadow = true;
+      torsoGroup.add(chestDef);
+    }
+
+    // Pelvis - more anatomically shaped
+    const pelvisGeometry = new THREE.SphereGeometry(bodyScale.body.radius * 0.8, 20, 16);
+    const pelvisPositions = pelvisGeometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < pelvisPositions.length; i += 3) {
+      const x = pelvisPositions[i];
+      const y = pelvisPositions[i + 1];
+      const z = pelvisPositions[i + 2];
+      
+      // Flatten top and bottom, widen sides
+      pelvisPositions[i] = x * 1.1; // Wider
+      pelvisPositions[i + 1] = y * 0.6; // Flatter
+      pelvisPositions[i + 2] = z * 0.9; // Slightly compressed front-to-back
+    }
+    pelvisGeometry.attributes.position.needsUpdate = true;
+    pelvisGeometry.computeVertexNormals();
+    
+    const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
+    pelvis.position.y = legTopY + 0.15;
+    pelvis.castShadow = true;
+    torsoGroup.add(pelvis);
+
     return { parent: torsoGroup, mesh: mainTorso };
   }
 
