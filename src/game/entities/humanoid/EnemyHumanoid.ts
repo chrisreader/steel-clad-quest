@@ -365,7 +365,7 @@ export abstract class EnemyHumanoid {
   ) {
     const torsoGroup = new THREE.Group();
     
-    // Main torso
+    // Main torso with curved/rounded top for realistic human shape
     const mainTorsoGeometry = new THREE.CylinderGeometry(
       bodyScale.body.radius * 1.1,
       bodyScale.body.radius * 0.85,
@@ -373,18 +373,34 @@ export abstract class EnemyHumanoid {
       32, 8
     );
     
-    // Make elliptical
+    // Make elliptical and round the top edges for realistic human torso
     const positions = mainTorsoGeometry.attributes.position.array;
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
+      const y = positions[i + 1];
       const z = positions[i + 2];
       const angle = Math.atan2(z, x);
       const radius = Math.sqrt(x * x + z * z);
+      
+      // Make elliptical
       const newRadius = radius * (Math.abs(Math.sin(angle)) * 0.2 + 0.8);
       positions[i] = Math.cos(angle) * newRadius;
       positions[i + 2] = Math.sin(angle) * newRadius;
+      
+      // Round the top edges - create curved shoulder area
+      const normalizedY = (y + bodyScale.body.height / 2) / bodyScale.body.height; // 0 at bottom, 1 at top
+      if (normalizedY > 0.7) { // Apply rounding to top 30% of torso
+        const roundingFactor = (normalizedY - 0.7) / 0.3; // 0 to 1 for rounding area
+        const radiusReduction = Math.sin(roundingFactor * Math.PI / 2) * 0.3; // Smooth curve
+        const finalRadius = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
+        const targetRadius = finalRadius * (1 - radiusReduction);
+        const currentAngle = Math.atan2(positions[i + 2], positions[i]);
+        positions[i] = Math.cos(currentAngle) * targetRadius;
+        positions[i + 2] = Math.sin(currentAngle) * targetRadius;
+      }
     }
     mainTorsoGeometry.attributes.position.needsUpdate = true;
+    mainTorsoGeometry.computeVertexNormals();
     
     const mainTorso = new THREE.Mesh(mainTorsoGeometry, skinMaterial.clone());
     mainTorso.position.y = bodyY;
