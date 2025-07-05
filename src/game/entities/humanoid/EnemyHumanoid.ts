@@ -207,21 +207,27 @@ export abstract class EnemyHumanoid {
       shininess: 35,
       specular: 0x333333
     });
+    console.log('🔍 [EnemyHumanoid] Created skin material with color:', colors.skin.toString(16));
     
     const baseMuscleMaterial = new THREE.MeshPhongMaterial({
       color: colors.muscle,
       shininess: 40,
       specular: 0x444444
     });
+    console.log('🔍 [EnemyHumanoid] Created muscle material with color:', colors.muscle.toString(16));
 
     const baseAccentMaterial = new THREE.MeshPhongMaterial({
       color: colors.skin, // Force accent to use skin color for humans to prevent red artifacts
       shininess: 35, // Match skin material properties  
       specular: 0x333333 // Match skin material properties
     });
+    console.log('🔍 [EnemyHumanoid] Created accent material with color:', colors.skin.toString(16), '(forced to skin color)');
 
     // Create legs - use skin material for humans
     const { leftLeg, rightLeg } = this.createLegs(bodyScale, thighCenterY, baseSkinMaterial);
+    console.log('🔍 [EnemyHumanoid] Created legs with positions:', 
+      'left:', leftLeg.position, 'right:', rightLeg.position,
+      'material color:', leftLeg.material.color.getHex().toString(16));
     humanoidGroup.add(leftLeg, rightLeg);
 
     // Create subtle hip joints for humans - much smaller and better positioned
@@ -287,6 +293,21 @@ export abstract class EnemyHumanoid {
 
     humanoidGroup.position.copy(position);
     humanoidGroup.castShadow = true;
+
+    // DEBUG: Traverse and log all materials to identify red geometry
+    console.log('🔍 [EnemyHumanoid] === MATERIAL DEBUG START ===');
+    humanoidGroup.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.material) {
+        const material = child.material as THREE.MeshPhongMaterial;
+        const colorHex = material.color.getHex().toString(16);
+        console.log('🔍 [EnemyHumanoid] Mesh:', child.uuid.substr(0,8), 
+          'Position:', child.position, 
+          'Parent Position:', child.parent?.position,
+          'Color:', colorHex,
+          'Is Red?:', colorHex.includes('ff0000') || colorHex.includes('ff') && colorHex.length === 6);
+      }
+    });
+    console.log('🔍 [EnemyHumanoid] === MATERIAL DEBUG END ===');
 
     const bodyParts: EnemyBodyParts = {
       body: body.mesh,
@@ -579,12 +600,17 @@ export abstract class EnemyHumanoid {
 
     // Eyes
     const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius, 16, 12);
+    
+    // FORCE human eye color - never allow red eyes for humans  
+    const humanEyeColor = this.config.type === EnemyType.GOBLIN ? 0x4A4A4A : features.eyeConfig.color;
+    console.log('🔍 [EnemyHumanoid] Eye color for type', this.config.type, ':', humanEyeColor.toString(16));
+    
     const eyeMaterial = new THREE.MeshPhongMaterial({
-      color: features.eyeConfig.color,
+      color: humanEyeColor,
       transparent: true,
       opacity: 1,
-      emissive: features.eyeConfig.color,
-      emissiveIntensity: features.eyeConfig.emissiveIntensity,
+      emissive: humanEyeColor,
+      emissiveIntensity: this.config.type === EnemyType.GOBLIN ? 0.0 : features.eyeConfig.emissiveIntensity, // No glow for humans
       shininess: 80
     });
 
