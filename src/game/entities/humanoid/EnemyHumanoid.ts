@@ -486,6 +486,77 @@ export abstract class EnemyHumanoid {
     return { parent: torsoGroup, mesh: mainTorso };
   }
 
+  private createEggShapedHeadGeometry(radius: number): THREE.SphereGeometry {
+    // Create base sphere geometry with high detail
+    const geometry = new THREE.SphereGeometry(radius, 32, 24);
+    
+    // Transform vertices to create egg-shaped human head
+    const positions = geometry.attributes.position.array as Float32Array;
+    
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const y = positions[i + 1];
+      const z = positions[i + 2];
+      
+      // Normalize Y position to -1 to 1 range
+      const normalizedY = y / radius;
+      
+      // Define head regions based on normalized Y
+      let horizontalScale = 1.0;
+      let frontBackScale = 1.0;
+      let heightScale = 1.0;
+      
+      if (normalizedY > 0.6) {
+        // Crown/top region - flatter
+        const topFactor = (normalizedY - 0.6) / 0.4;
+        horizontalScale = 1.0 - topFactor * 0.3; // Narrower at top
+        frontBackScale = 1.0 - topFactor * 0.2; // Slightly flatter front-to-back
+        heightScale = 0.95 - topFactor * 0.1; // Compress vertically
+      } else if (normalizedY > 0.1) {
+        // Upper-middle region - eye/temple area (widest)
+        const eyeFactor = Math.sin(((normalizedY - 0.1) / 0.5) * Math.PI);
+        horizontalScale = 1.0 + eyeFactor * 0.2; // Wider at temples
+        frontBackScale = 1.2; // Fuller front-to-back for forehead
+        heightScale = 1.0;
+      } else if (normalizedY > -0.3) {
+        // Mid-face region - mouth area (narrower)
+        const mouthFactor = Math.sin(((normalizedY + 0.3) / 0.4) * Math.PI);
+        horizontalScale = 0.9 + mouthFactor * 0.1; // Slightly narrower
+        frontBackScale = 1.1 - mouthFactor * 0.2; // Less deep at mouth
+        heightScale = 1.0;
+      } else {
+        // Lower region - jaw/chin (wider and rounder)
+        const jawFactor = Math.abs(normalizedY + 0.3) / 0.7;
+        horizontalScale = 0.9 + jawFactor * 0.3; // Wider jaw
+        frontBackScale = 1.1 + jawFactor * 0.2; // Fuller jaw
+        heightScale = 1.0 + jawFactor * 0.1; // Slightly taller jaw
+      }
+      
+      // Apply transformations
+      const horizontalDistance = Math.sqrt(x * x + z * z);
+      if (horizontalDistance > 0) {
+        const angle = Math.atan2(z, x);
+        
+        // Apply horizontal scaling
+        const newX = Math.cos(angle) * horizontalDistance * horizontalScale;
+        const newZ = Math.sin(angle) * horizontalDistance * frontBackScale;
+        
+        positions[i] = newX;
+        positions[i + 1] = y * heightScale;
+        positions[i + 2] = newZ;
+      } else {
+        // Handle center vertices
+        positions[i + 1] = y * heightScale;
+      }
+    }
+    
+    // Update geometry
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    
+    return geometry;
+  }
+
   private createHead(
     bodyScale: BodyScale,
     headY: number,
@@ -496,31 +567,8 @@ export abstract class EnemyHumanoid {
   ) {
     const headGroup = new THREE.Group();
     
-    // Skull
-    const upperSkullGeometry = new THREE.SphereGeometry(bodyScale.head.radius, 24, 20);
-    const skullPositions = upperSkullGeometry.attributes.position.array;
-    for (let i = 0; i < skullPositions.length; i += 3) {
-      const x = skullPositions[i];
-      const y = skullPositions[i + 1];
-      const z = skullPositions[i + 2];
-      
-      skullPositions[i + 2] = z * 1.3;
-      
-      if (y > 0) {
-        skullPositions[i] = x * (1 + Math.abs(y) * 0.2);
-        skullPositions[i + 1] = y * 1.1;
-        
-        if (z > 0) {
-          skullPositions[i + 2] = z * (1.3 - y * 0.3);
-        }
-      }
-      
-      if (y > 0.2 && y < 0.4 && z > 0.3) {
-        skullPositions[i + 2] = z * 1.5;
-      }
-    }
-    upperSkullGeometry.attributes.position.needsUpdate = true;
-    upperSkullGeometry.computeVertexNormals();
+    // Create egg-shaped skull with realistic human proportions
+    const upperSkullGeometry = this.createEggShapedHeadGeometry(bodyScale.head.radius);
     
     const upperSkull = new THREE.Mesh(upperSkullGeometry, muscleMaterial.clone());
     upperSkull.position.y = 0; // Position relative to head group center
