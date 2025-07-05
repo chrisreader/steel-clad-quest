@@ -35,7 +35,7 @@ export class HumanBodyConfig {
       
       // Realistic human skin tones and clothing colors
       colors: {
-        skin: 0xFFDBAE,    // Natural human skin tone
+        skin: 0xD2B48C,    // Natural tan skin tone
         muscle: 0xE6C2A6,  // Slightly darker muscle definition
         accent: 0xD4AF8C   // Accent for joints and details
       },
@@ -67,7 +67,7 @@ export class HumanBodyConfig {
       ...baseConfig,
       // Tavern keeper specific colors - apron and work clothes
       colors: {
-        skin: 0xFFDBAE,    // Human skin tone
+        skin: 0xD2B48C,    // Natural tan skin tone  
         muscle: 0x8B4513,  // Brown clothing/apron
         accent: 0x654321   // Darker brown for details
       }

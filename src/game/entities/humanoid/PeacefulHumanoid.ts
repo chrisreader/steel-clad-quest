@@ -84,12 +84,9 @@ export class PeacefulHumanoid extends EnemyHumanoid {
         this.config.bodyScale.shin.radius[1],
         this.config.bodyScale.shin.length
       );
+      // Add boot-integrated lower leg instead of separate shoes
       pants.position.y = 0.8; // Position at waist level
       this.mesh.add(pants);
-
-      // Add shoes
-      const shoes = HumanBodyConfig.createShoes();
-      this.mesh.add(shoes);
     }
   }
 
