@@ -421,9 +421,16 @@ export abstract class EnemyHumanoid {
           positions[i + 2] = ovalZ;
         }
       }
-      // Regular chest area - keep full width
-      else if (normalizedY > 0.1) {
-        scaleFactor = 1.0; // Keep full width at chest
+      // Regular chest area - smooth transition from upper section
+      else if (normalizedY > 0.05) {
+        // Smooth transition zone between upper chest and regular chest
+        const transitionFactor = (normalizedY - 0.05) / 0.05; // 0 at bottom, 1 at top
+        scaleFactor = 1.0 + (transitionFactor * 0.2); // Smooth blend from 1.0 to 1.2
+        frontBackScale = 1.0 - (transitionFactor * 0.2); // Smooth blend from 1.0 to 0.8
+      }
+      else if (normalizedY > 0.0) {
+        scaleFactor = 1.0; // Regular chest width
+        frontBackScale = 1.0; // Regular chest depth
       }
       // Waist area - narrower 
       else if (normalizedY >= -0.2) {
