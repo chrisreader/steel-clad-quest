@@ -158,6 +158,12 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
       const player = gameEngine.getPlayer();
       
+      // Check if player is null before trying to equip weapons
+      if (!player) {
+        console.warn('🎮 [KnightGame] Player not ready yet, skipping weapon sync');
+        return;
+      }
+      
       // Get the weapon for the currently active slot
       const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
                           activeWeaponSlot === 2 ? equippedWeapons.secondary : 
@@ -424,6 +430,13 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     const updateInterval = setInterval(() => {
       if (gameEngine.isRunning() && !gameEngine.isPaused()) {
         const player = gameEngine.getPlayer();
+        
+        // Check if player is null before accessing player methods
+        if (!player) {
+          console.warn('🎮 [KnightGame] Player not ready yet, skipping game state update');
+          return;
+        }
+        
         const gameState = gameEngine.getGameState();
         
         setPlayerStats(player.getStats());
