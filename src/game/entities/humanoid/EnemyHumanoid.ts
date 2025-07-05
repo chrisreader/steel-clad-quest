@@ -245,6 +245,7 @@ export abstract class EnemyHumanoid {
 
     // Create head
     const head = this.createHead(bodyScale, headY, colors, features, baseMuscleMaterial, baseAccentMaterial);
+    head.parent.position.y = headY; // Position the head group at the correct height
     humanoidGroup.add(head.parent);
 
     // Create arms and shoulder joints
@@ -488,7 +489,7 @@ export abstract class EnemyHumanoid {
     upperSkullGeometry.computeVertexNormals();
     
     const upperSkull = new THREE.Mesh(upperSkullGeometry, muscleMaterial.clone());
-    upperSkull.position.y = headY;
+    upperSkull.position.y = 0; // Position relative to head group center
     upperSkull.castShadow = true;
     headGroup.add(upperSkull);
 
@@ -499,29 +500,29 @@ export abstract class EnemyHumanoid {
       0.4, 16, 4
     );
     const neck = new THREE.Mesh(neckGeometry, accentMaterial.clone());
-    neck.position.y = headY - bodyScale.head.radius - 0.2;
+    neck.position.y = -bodyScale.head.radius - 0.2; // Position relative to head group center
     neck.castShadow = true;
     headGroup.add(neck);
 
     // Nose - smaller and more elliptical for human proportions
     const noseGeometry = new THREE.SphereGeometry(0.06, 16, 12);
     const nose = new THREE.Mesh(noseGeometry, accentMaterial.clone());
-    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 1.15);
+    nose.position.set(0, -0.05, bodyScale.head.radius * 1.15); // Position relative to head group center
     nose.scale.set(0.8, 0.6, 1.4); // More elliptical and smaller
     nose.castShadow = true;
     headGroup.add(nose);
 
     // Eyes and other features
     if (features.hasEyes && features.eyeConfig) {
-      this.addEyes(headGroup, headY, bodyScale, features, accentMaterial);
+      this.addEyes(headGroup, 0, bodyScale, features, accentMaterial); // Use 0 since head group is positioned
     }
 
     if (features.hasTusks && features.tuskConfig) {
-      this.addTusks(headGroup, headY, bodyScale, features);
+      this.addTusks(headGroup, 0, bodyScale, features); // Use 0 since head group is positioned
     }
 
     // Ears
-    this.addEars(headGroup, headY, bodyScale, colors, muscleMaterial);
+    this.addEars(headGroup, 0, bodyScale, colors, muscleMaterial); // Use 0 since head group is positioned
 
     return { parent: headGroup, mesh: upperSkull };
   }
@@ -540,7 +541,7 @@ export abstract class EnemyHumanoid {
     const leftEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial);
     leftEyeSocket.position.set(
       -features.eyeConfig.offsetX,
-      headY + features.eyeConfig.offsetY,
+      features.eyeConfig.offsetY,
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
     );
     leftEyeSocket.scale.z = 0.5;
@@ -549,7 +550,7 @@ export abstract class EnemyHumanoid {
     const rightEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial.clone());
     rightEyeSocket.position.set(
       features.eyeConfig.offsetX,
-      headY + features.eyeConfig.offsetY,
+      features.eyeConfig.offsetY,
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
     );
     rightEyeSocket.scale.z = 0.5;
@@ -569,14 +570,14 @@ export abstract class EnemyHumanoid {
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
     leftEye.position.set(
       -features.eyeConfig.offsetX,
-      headY + features.eyeConfig.offsetY,
+      features.eyeConfig.offsetY,
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
     );
 
     const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
     rightEye.position.set(
       features.eyeConfig.offsetX,
-      headY + features.eyeConfig.offsetY,
+      features.eyeConfig.offsetY,
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
     );
 
@@ -612,7 +613,7 @@ export abstract class EnemyHumanoid {
     const leftTusk = new THREE.Mesh(tuskGeometry, tuskMaterial);
     leftTusk.position.set(
       -features.tuskConfig.offsetX,
-      headY - 0.3,
+      -0.3,
       bodyScale.head.radius * 1.0
     );
     leftTusk.rotation.x = Math.PI;
@@ -623,7 +624,7 @@ export abstract class EnemyHumanoid {
     const rightTusk = new THREE.Mesh(tuskGeometry, tuskMaterial.clone());
     rightTusk.position.set(
       features.tuskConfig.offsetX,
-      headY - 0.3,
+      -0.3,
       bodyScale.head.radius * 1.0
     );
     rightTusk.rotation.x = Math.PI;
@@ -659,12 +660,12 @@ export abstract class EnemyHumanoid {
     const earMaterial = muscleMaterial.clone();
 
     const leftEar = new THREE.Mesh(earGeometry, earMaterial);
-    leftEar.position.set(-bodyScale.head.radius * 0.9, headY + 0.1, 0);
+    leftEar.position.set(-bodyScale.head.radius * 0.9, 0.1, 0);
     leftEar.rotation.z = -Math.PI / 8;  // Less rotation for human ears
     leftEar.castShadow = true;
 
     const rightEar = new THREE.Mesh(earGeometry, earMaterial.clone());
-    rightEar.position.set(bodyScale.head.radius * 0.9, headY + 0.1, 0);
+    rightEar.position.set(bodyScale.head.radius * 0.9, 0.1, 0);
     rightEar.rotation.z = Math.PI / 8;  // Less rotation for human ears
     rightEar.castShadow = true;
 
