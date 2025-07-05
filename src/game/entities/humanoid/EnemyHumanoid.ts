@@ -417,9 +417,9 @@ export abstract class EnemyHumanoid {
     const shoulderJointX = bodyScale.body.radius + 0.1; // Match shoulder joint X position
     
     const trapGeometry = new THREE.CylinderGeometry(
-      shoulderJointX * 0.6, // Top radius - taper into shoulder area
-      chestTopRadius, // Bottom radius - EXACTLY match chest top radius for seamless transition
-      0.35, 20, 6
+      shoulderJointX * 0.5, // Top radius - smaller taper into shoulder area  
+      chestTopRadius * 0.9, // Bottom radius - slightly smaller for less bulk
+      0.25, 20, 6 // Reduced height from 0.35 to 0.25
     );
     
     // Shape the trapezius to taper naturally from chest to shoulders
@@ -429,8 +429,8 @@ export abstract class EnemyHumanoid {
       const y = trapPositions[i + 1];
       const z = trapPositions[i + 2];
       
-      // Normalize Y from -0.175 to 0.175 to 0 to 1
-      const normalizedY = (y / 0.35) + 0.5;
+      // Normalize Y from -0.125 to 0.125 to 0 to 1 (updated for new height)
+      const normalizedY = (y / 0.25) + 0.5;
       
       // Create the characteristic trapezius shape tapering from chest to shoulders
       const widthMultiplier = 0.85 + (1 - normalizedY) * 0.15;
@@ -444,7 +444,7 @@ export abstract class EnemyHumanoid {
     
     const trapezius = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
     // Position trapezius so its bottom edge aligns with the top edge of the chest
-    trapezius.position.y = bodyTopY + 0.175; // bodyTopY + (trapezius height / 2)
+    trapezius.position.y = bodyTopY + 0.125; // bodyTopY + (trapezius height / 2) - updated for new height
     trapezius.castShadow = true;
     torsoGroup.add(trapezius);
 
@@ -492,10 +492,10 @@ export abstract class EnemyHumanoid {
     upperSkull.castShadow = true;
     headGroup.add(upperSkull);
 
-    // Neck
+    // Neck - thinner for more human proportions
     const neckGeometry = new THREE.CylinderGeometry(
-      bodyScale.head.radius * 0.5,
-      bodyScale.body.radius * 0.4,
+      bodyScale.head.radius * 0.35, // Reduced from 0.5 to 0.35
+      bodyScale.body.radius * 0.3,  // Reduced from 0.4 to 0.3  
       0.4, 16, 4
     );
     const neck = new THREE.Mesh(neckGeometry, accentMaterial.clone());
@@ -503,11 +503,11 @@ export abstract class EnemyHumanoid {
     neck.castShadow = true;
     headGroup.add(neck);
 
-    // Nose
-    const noseGeometry = new THREE.SphereGeometry(0.12, 16, 12);
+    // Nose - smaller and more elliptical for human proportions
+    const noseGeometry = new THREE.SphereGeometry(0.06, 16, 12);
     const nose = new THREE.Mesh(noseGeometry, accentMaterial.clone());
-    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 1.2);
-    nose.scale.set(1, 0.8, 1.2);
+    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 1.15);
+    nose.scale.set(0.8, 0.6, 1.4); // More elliptical and smaller
     nose.castShadow = true;
     headGroup.add(nose);
 
@@ -782,15 +782,18 @@ export abstract class EnemyHumanoid {
     bodyScale: BodyScale,
     muscleMaterial: THREE.MeshPhongMaterial
   ) {
-    const leftWristGeometry = new THREE.SphereGeometry(0.17, 20, 16);
+    // Create oval-shaped hands instead of spherical
+    const leftWristGeometry = new THREE.SphereGeometry(0.12, 20, 16);
     const leftWrist = new THREE.Mesh(leftWristGeometry, muscleMaterial.clone());
     leftWrist.position.set(0, -bodyScale.forearm.length, 0);
+    leftWrist.scale.set(0.8, 1.4, 0.6); // Make oval: narrower width/depth, longer height
     leftWrist.castShadow = true;
     leftElbow.add(leftWrist);
 
-    const rightWristGeometry = new THREE.SphereGeometry(0.17, 20, 16);
+    const rightWristGeometry = new THREE.SphereGeometry(0.12, 20, 16);
     const rightWrist = new THREE.Mesh(rightWristGeometry, muscleMaterial.clone());
     rightWrist.position.set(0, -bodyScale.forearm.length, 0);
+    rightWrist.scale.set(0.8, 1.4, 0.6); // Make oval: narrower width/depth, longer height
     rightWrist.castShadow = true;
     rightElbow.add(rightWrist);
 
@@ -841,12 +844,15 @@ export abstract class EnemyHumanoid {
     for (let i = 0; i < 5; i++) {
       const angle = (i / 4) * Math.PI - Math.PI / 2;
       const finger = new THREE.Mesh(fingerGeometry, fingerMaterial.clone());
+      // Add slight spread to fingers and adjust positioning
+      const fingerSpread = (i - 2) * 0.02; // Spread fingers slightly
       finger.position.set(
-        Math.cos(angle) * 0.18,
-        -0.08,
-        Math.sin(angle) * 0.18
+        Math.cos(angle) * 0.16 + fingerSpread,
+        -0.1,
+        Math.sin(angle) * 0.16
       );
-      finger.rotation.x = Math.PI / 2 + 0.1;
+      // Better finger angle for natural downward curl
+      finger.rotation.x = Math.PI / 2 + 0.3;
       finger.castShadow = true;
       wrist.add(finger);
     }
