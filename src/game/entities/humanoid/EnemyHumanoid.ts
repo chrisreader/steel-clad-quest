@@ -557,11 +557,11 @@ export abstract class EnemyHumanoid {
     // Eyes
     const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius, 16, 12);
     const eyeMaterial = new THREE.MeshPhongMaterial({
-      color: 0x8B0000,
+      color: features.eyeConfig.color,
       transparent: true,
       opacity: 1,
-      emissive: 0x440000,
-      emissiveIntensity: 0.15,
+      emissive: features.eyeConfig.color,
+      emissiveIntensity: features.eyeConfig.emissiveIntensity,
       shininess: 80
     });
 
@@ -638,19 +638,33 @@ export abstract class EnemyHumanoid {
     colors: any,
     muscleMaterial: THREE.MeshPhongMaterial
   ) {
-    const earGeometry = new THREE.ConeGeometry(0.12, 0.4, 12);
+    // Create human-style ears (rounded, not pointy like orcs)
+    const earGeometry = new THREE.SphereGeometry(0.1, 12, 10);
+    // Flatten and shape the ear geometry for human appearance
+    const positions = earGeometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const y = positions[i + 1];
+      const z = positions[i + 2];
+      
+      // Flatten the sphere to create a more ear-like shape
+      positions[i] = x * 0.6;  // Narrower
+      positions[i + 1] = y * 1.2;  // Taller
+      positions[i + 2] = z * 0.4;  // Thinner
+    }
+    earGeometry.attributes.position.needsUpdate = true;
+    earGeometry.computeVertexNormals();
+    
     const earMaterial = muscleMaterial.clone();
 
     const leftEar = new THREE.Mesh(earGeometry, earMaterial);
-    leftEar.position.set(-bodyScale.head.radius * 0.9, headY + 0.15, 0);
-    leftEar.rotation.z = -Math.PI / 6;
-    leftEar.scale.set(0.8, 1.2, 0.6);
+    leftEar.position.set(-bodyScale.head.radius * 0.9, headY + 0.1, 0);
+    leftEar.rotation.z = -Math.PI / 8;  // Less rotation for human ears
     leftEar.castShadow = true;
 
     const rightEar = new THREE.Mesh(earGeometry, earMaterial.clone());
-    rightEar.position.set(bodyScale.head.radius * 0.9, headY + 0.15, 0);
-    rightEar.rotation.z = Math.PI / 6;
-    rightEar.scale.set(0.8, 1.2, 0.6);
+    rightEar.position.set(bodyScale.head.radius * 0.9, headY + 0.1, 0);
+    rightEar.rotation.z = Math.PI / 8;  // Less rotation for human ears
     rightEar.castShadow = true;
 
     headGroup.add(leftEar);
@@ -777,9 +791,16 @@ export abstract class EnemyHumanoid {
     rightWrist.castShadow = true;
     rightElbow.add(rightWrist);
 
-    // Add claws
-    this.addClaws(leftWrist);
-    this.addClaws(rightWrist);
+    // Add fingers - check config to determine if claws or human fingers
+    if (this.config.features.hasWeapon) {
+      // Orcs get claws
+      this.addClaws(leftWrist);
+      this.addClaws(rightWrist);
+    } else {
+      // Humans get normal fingers
+      this.addHumanFingers(leftWrist);
+      this.addHumanFingers(rightWrist);
+    }
 
     return { leftWrist, rightWrist };
   }
@@ -803,6 +824,28 @@ export abstract class EnemyHumanoid {
       claw.rotation.x = Math.PI + 0.3;
       claw.castShadow = true;
       wrist.add(claw);
+    }
+  }
+
+  private addHumanFingers(wrist: THREE.Mesh) {
+    const fingerGeometry = new THREE.CylinderGeometry(0.02, 0.015, 0.12, 8);
+    const fingerMaterial = new THREE.MeshPhongMaterial({
+      color: this.config.colors.skin,
+      shininess: 30,
+      specular: 0x333333
+    });
+
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 4) * Math.PI - Math.PI / 2;
+      const finger = new THREE.Mesh(fingerGeometry, fingerMaterial.clone());
+      finger.position.set(
+        Math.cos(angle) * 0.18,
+        -0.08,
+        Math.sin(angle) * 0.18
+      );
+      finger.rotation.x = Math.PI / 2 + 0.1;
+      finger.castShadow = true;
+      wrist.add(finger);
     }
   }
 
