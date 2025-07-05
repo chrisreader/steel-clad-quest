@@ -539,7 +539,14 @@ export abstract class EnemyHumanoid {
         
         // Apply horizontal scaling
         const newX = Math.cos(angle) * horizontalDistance * horizontalScale;
-        const newZ = Math.sin(angle) * horizontalDistance * frontBackScale;
+        
+        // Make back of head flatter - apply different scaling to back vs front
+        let adjustedFrontBackScale = frontBackScale;
+        if (z < 0) { // Back of head (negative Z)
+          adjustedFrontBackScale = frontBackScale * 0.65; // Make back much flatter
+        }
+        
+        const newZ = Math.sin(angle) * horizontalDistance * adjustedFrontBackScale;
         
         positions[i] = newX;
         positions[i + 1] = y * heightScale;
