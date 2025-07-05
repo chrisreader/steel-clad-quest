@@ -406,9 +406,9 @@ export abstract class EnemyHumanoid {
           scaleFactor = 1.2 - (upperCurve * 0.1); // Gradual reduction from 1.2 to 1.1
           frontBackScale = 1.0 - upperCurve * 0.15; // Start front-to-back compression
         } else {
-          // Upper-middle - broader chest/shoulder area with flatter back
+          // Upper-middle - broader chest/shoulder area (EXTENDED higher to align with shoulders)
           scaleFactor = 1.2; // Broader chest extending higher
-          frontBackScale = 0.8; // Flatter front-to-back for straighter back (reduced from 1.2 to 0.8)
+          frontBackScale = 1.2; // Increased front-to-back depth (from 1.0 to 1.2)
         }
         
         // Create curved shoulder transition for all upper sections
@@ -421,12 +421,9 @@ export abstract class EnemyHumanoid {
           positions[i + 2] = ovalZ;
         }
       }
-      // Regular chest area - smooth transition from upper section
-      else if (normalizedY > 0.0) {
-        // Extended smooth transition zone to eliminate any ledge
-        const transitionFactor = normalizedY / 0.1; // 0 at bottom, 1 at boundary with upper section
-        scaleFactor = 1.0 + (transitionFactor * 0.2); // Smooth blend from 1.0 to 1.2
-        frontBackScale = 1.0 - (transitionFactor * 0.2); // Smooth blend from 1.0 to 0.8
+      // Regular chest area - keep full width
+      else if (normalizedY > 0.1) {
+        scaleFactor = 1.0; // Keep full width at chest
       }
       // Waist area - narrower 
       else if (normalizedY >= -0.2) {
