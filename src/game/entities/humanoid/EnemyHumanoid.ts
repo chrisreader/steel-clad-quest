@@ -763,11 +763,11 @@ export abstract class EnemyHumanoid {
         scaleFactor = 1.1; // Slightly bulged
         frontBackScale = 0.85; // Slightly compressed front-to-back
       } else {
-        // Lower section - bulge outward where it connects to arm
-        const lowerBulge = Math.abs(normalizedY + 0.5) / 0.5; // 0 at middle, 1 at bottom
-        const bulgeCurve = Math.sin(lowerBulge * Math.PI * 0.5); // Smooth bulge
-        scaleFactor = 1.1 + (bulgeCurve * 0.2); // Bulge outward at arm connection
-        frontBackScale = 0.8; // More compressed front-to-back
+        // Lower section - taper down towards arm diameter for smooth transition
+        const lowerTaper = Math.abs(normalizedY + 0.5) / 0.5; // 0 at middle, 1 at bottom
+        const taperCurve = Math.sin(lowerTaper * Math.PI * 0.5); // Smooth taper curve
+        scaleFactor = 1.1 - (taperCurve * 0.4); // Taper from 1.1 down to 0.7 at arm connection
+        frontBackScale = 0.8 - (taperCurve * 0.1); // Gradually compress front-to-back
       }
       
       // Apply scaling with natural deltoid curves
