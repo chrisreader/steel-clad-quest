@@ -84,8 +84,8 @@ export class EnemyAnimationSystem {
   }
   
   public updateWalkAnimation(deltaTime: number, isMoving: boolean, movementSpeed: number, distanceToPlayer: number = 0): void {
-    // PHASE 2: Frame limiting based on distance to player
-    const frameSkip = distanceToPlayer > 50 ? 3 : distanceToPlayer > 30 ? 2 : 1;
+    // OPTIMIZED: Enhanced frame limiting based on distance to player
+    const frameSkip = distanceToPlayer > 50 ? 4 : distanceToPlayer > 30 ? 3 : 1; // Increased from 3,2 to 4,3
     this.walkTime += deltaTime * frameSkip;
     const enhancedNeutralPoses = this.createEnhancedNeutralPoses();
 

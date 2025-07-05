@@ -281,10 +281,10 @@ export class ParticleSystem {
       
       if (!particle.active || !sprite) continue;
       
-      // PHASE 3: Update particle physics every 2 frames instead of every frame
-      const updatePhysics = (particle.age % 32) < 16; // Every other frame
+      // OPTIMIZED: Update particle physics every 3 frames for better performance
+      const updatePhysics = (particle.age % 48) < 16; // Every third frame
       if (updatePhysics) {
-        particle.age += 32; // Double increment to maintain timing
+        particle.age += 48; // Triple increment to maintain timing
       } else {
         particle.age += 16; // Normal increment
       }
@@ -306,16 +306,18 @@ export class ParticleSystem {
         particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
       }
       
-      // PHASE 3: Skip matrix updates for nearly invisible particles
-      if (particle.opacity > 0.01) {
+      // OPTIMIZED: Skip matrix updates for nearly invisible particles + batching
+      if (particle.opacity > 0.015) { // Slightly higher threshold
         sprite.position.copy(particle.position);
         sprite.material.opacity = particle.opacity;
         sprite.material.rotation = particle.rotation;
         sprite.visible = true;
         
-        // Update matrix only when visible
-        sprite.updateMatrix();
-        sprite.updateMatrixWorld(true);
+        // Update matrix only when physics updated (every 3 frames)
+        if (updatePhysics) {
+          sprite.updateMatrix();
+          sprite.updateMatrixWorld(true);
+        }
       } else {
         sprite.visible = false;
       }
