@@ -81,6 +81,7 @@ export abstract class BaseBird implements SpawnableEntity {
   public isDead: boolean = false;
   public deathTime: number = 0;
   public hitBox: THREE.Mesh | null = null;
+  public rotationSpeed: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 };
   
   // Animation properties
   protected walkCycle: number = 0;
@@ -159,16 +160,37 @@ export abstract class BaseBird implements SpawnableEntity {
     this.isDead = true;
     this.deathTime = Date.now();
     this.birdState = BirdState.DEAD;
-    this.velocity.set(0, 0, 0);
     
-    // Transform to corpse position - lay flat on ground
-    if (this.bodyParts) {
-      this.bodyParts.body.rotation.z = Math.PI / 2; // Rotate 90 degrees to lie on side
-      this.position.y = this.groundLevel + 0.1; // Place on ground
-      this.mesh.position.copy(this.position);
+    // Start death fall animation if bird was flying
+    if (this.position.y > 1) {
+      this.startDeathFall();
+    } else {
+      // Ground death - transform to corpse position immediately
+      this.velocity.set(0, 0, 0);
+      if (this.bodyParts) {
+        this.bodyParts.body.rotation.z = Math.PI / 2; // Rotate 90 degrees to lie on side
+        this.position.y = this.groundLevel + 0.1; // Place on ground
+        this.mesh.position.copy(this.position);
+      }
     }
     
-    console.log(`🐦💀 [${this.config.species}] Died and became corpse`);
+    console.log(`🐦💀 [${this.config.species}] Died and ${this.position.y > 1 ? 'started falling' : 'became corpse'}`);
+  }
+  
+  private startDeathFall(): void {
+    // Create tumbling fall animation
+    this.velocity.y = -2; // Start falling
+    this.velocity.x += (Math.random() - 0.5) * 2; // Random horizontal drift
+    this.velocity.z += (Math.random() - 0.5) * 2;
+    
+    // Add spinning motion for realistic death tumble
+    this.rotationSpeed = {
+      x: (Math.random() - 0.5) * 0.3,
+      y: (Math.random() - 0.5) * 0.3,
+      z: (Math.random() - 0.5) * 0.3
+    };
+    
+    console.log(`🐦🍂 [${this.config.species}] Started death fall animation from altitude ${this.position.y.toFixed(1)}`);
   }
   
   public getHitBox(): THREE.Mesh | null {
@@ -187,6 +209,36 @@ export abstract class BaseBird implements SpawnableEntity {
     
     // Handle dead bird corpse timer
     if (this.isDead) {
+      // Handle death fall animation
+      if (this.position.y > 0.1) {
+        this.velocity.y -= 9.8 * deltaTime; // Gravity
+        this.position.add(this.velocity.clone().multiplyScalar(deltaTime));
+        
+        // Apply death rotation for tumbling effect
+        if (this.bodyParts) {
+          this.bodyParts.body.rotation.x += this.rotationSpeed.x;
+          this.bodyParts.body.rotation.y += this.rotationSpeed.y;
+          this.bodyParts.body.rotation.z += this.rotationSpeed.z;
+        }
+        
+        // Ensure bird lands on ground and becomes corpse
+        if (this.position.y <= 0.1) {
+          this.position.y = 0.1;
+          this.velocity.set(0, 0, 0);
+          this.rotationSpeed = { x: 0, y: 0, z: 0 };
+          
+          // Final corpse position
+          if (this.bodyParts) {
+            this.bodyParts.body.rotation.z = Math.PI / 2; // Lie on side
+          }
+          
+          console.log(`🐦🪦 [${this.config.species}] Landed and became corpse`);
+        }
+        
+        this.mesh.position.copy(this.position);
+      }
+      
+      // Cleanup timer
       if (Date.now() - this.deathTime > 30000) { // 30 seconds
         this.state = EntityLifecycleState.DESPAWNING;
       }

@@ -342,15 +342,15 @@ export class CombatSystem {
         // Deal 1 damage (instant kill for birds)
         bird.takeDamage(1);
         
-        // Create small blood effect
+        // Create feather burst effect instead of blood
         const birdPosition = bird.getPosition();
         const playerPosition = this.player.getPosition();
         const hitDirection = birdPosition.clone().sub(playerPosition).normalize();
         
-        this.effectsManager.createRealisticBloodEffect(birdPosition, hitDirection, 0.3);
+        this.effectsManager.createFeatherBurst(birdPosition, hitDirection);
         this.audioManager.play('sword_hit');
         
-        console.log(`⚔️🐦 [CombatSystem] Bird hit and killed with sword`);
+        console.log(`🪶⚔️ [CombatSystem] Bird hit and killed with sword - feather burst created`);
       }
     });
     

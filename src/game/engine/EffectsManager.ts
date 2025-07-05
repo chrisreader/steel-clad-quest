@@ -339,6 +339,24 @@ export class EffectsManager {
     this.particleSystems.push(particleSystem);
   }
   
+  // NEW: Feather burst effect for bird kills
+  public createFeatherBurst(position: THREE.Vector3, hitDirection: THREE.Vector3): void {
+    const featherBurst = ParticleSystem.createFeatherBurst(this.scene, position, hitDirection);
+    featherBurst.start();
+    this.particleSystems.push(featherBurst);
+    
+    console.log(`🪶 [EffectsManager] Created feather burst effect at bird kill location`);
+  }
+  
+  // NEW: Smaller feather puff for aerial hits
+  public createFeatherPuff(position: THREE.Vector3, direction: THREE.Vector3): void {
+    const featherPuff = ParticleSystem.createFeatherPuff(this.scene, position, direction);
+    featherPuff.start();
+    this.particleSystems.push(featherPuff);
+    
+    console.log(`🪶 [EffectsManager] Created feather puff effect for aerial bird hit`);
+  }
+  
   public shakeCamera(intensity: number): void {
     this.cameraShakeIntensity = Math.min(intensity, 0.05);
     if (this.camera) {

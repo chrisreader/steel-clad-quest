@@ -167,19 +167,19 @@ export class ProjectileSystem {
         const damage = arrow.getDamage();
         const birdPosition = bird.getPosition();
         
-        // Create small blood effect for bird
-        this.effectsManager.createRealisticBloodEffect(birdPosition, arrowDirection, 0.3);
+        // Create feather burst effect for bird
+        this.effectsManager.createFeatherBurst(birdPosition, arrowDirection);
         
         // Apply damage to bird (1 HP = instant kill)
         bird.takeDamage(damage);
         
         this.audioManager.play('arrow_hit');
         
+        console.log(`🪶🏹 [ProjectileSystem] Arrow hit and killed bird with feather burst`);
+        
         // Dispose of arrow properly
         arrow.dispose();
         this.arrows = this.arrows.filter(a => a !== arrow);
-        
-        console.log(`🏹🐦 Arrow hit and killed bird`);
       }
     });
   }

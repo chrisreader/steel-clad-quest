@@ -47,6 +47,7 @@ export class ParticleSystem {
   private isActive: boolean;
   private bloodTexture: THREE.Texture | null = null;
   private windTexture: THREE.Texture | null = null; // NEW: Wind texture for sword swoosh
+  private featherTexture: THREE.Texture | null = null; // NEW: Feather texture for bird kills
   
   constructor(scene: THREE.Scene, options: ParticleOptions) {
     this.scene = scene;
@@ -79,6 +80,7 @@ export class ParticleSystem {
     
     this.createBloodTexture();
     this.createWindTexture(); // NEW: Create wind texture
+    this.createFeatherTexture(); // NEW: Create feather texture
     this.initParticles();
     this.createSprites();
   }
@@ -125,6 +127,38 @@ export class ParticleSystem {
     this.windTexture.needsUpdate = true;
   }
   
+  private createFeatherTexture(): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Create feather-like texture with elongated shape
+    ctx.fillStyle = 'rgba(40, 40, 40, 0.9)'; // Dark gray feather
+    ctx.beginPath();
+    ctx.ellipse(16, 16, 12, 6, 0, 0, Math.PI * 2); // Elongated ellipse
+    ctx.fill();
+    
+    // Add feather details
+    ctx.strokeStyle = 'rgba(60, 60, 60, 0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(16, 4);
+    ctx.lineTo(16, 28);
+    ctx.stroke();
+    
+    // Add feather barbs
+    for (let i = 6; i <= 26; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(10, i);
+      ctx.lineTo(22, i);
+      ctx.stroke();
+    }
+    
+    this.featherTexture = new THREE.CanvasTexture(canvas);
+    this.featherTexture.needsUpdate = true;
+  }
+  
   private initParticles(): void {
     this.particles = [];
     
@@ -169,6 +203,8 @@ export class ParticleSystem {
     let selectedTexture = this.bloodTexture; // Default
     if (this.options.particleType === 'wind') {
       selectedTexture = this.windTexture;
+    } else if (this.options.particleType === 'feather') {
+      selectedTexture = this.featherTexture;
     }
     
     for (let i = 0; i < this.particles.length; i++) {
@@ -608,6 +644,52 @@ export class ParticleSystem {
       fadeIn: 0.05,
       fadeOut: 0.6,
       rotationSpeed: 1
+    });
+  }
+  
+  // NEW: Feather particle system for bird kills
+  static createFeatherBurst(scene: THREE.Scene, position: THREE.Vector3, hitDirection: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 20, // Moderate amount of feathers
+      duration: 2500, // Longer duration for realistic float
+      size: 0.15, // Larger than blood particles
+      sizeVariation: 0.08,
+      speed: 1.5,
+      speedVariation: 1.2,
+      color: 0x2A2A2A, // Dark gray for crow feathers
+      colorVariation: 0.1,
+      gravity: 0.8, // Lighter gravity for floating effect
+      direction: hitDirection,
+      spread: 0.9, // Wide spread for natural feather burst
+      opacity: 0.9,
+      fadeIn: 0.1,
+      fadeOut: 0.6,
+      rotationSpeed: 3, // High rotation for tumbling feathers
+      particleType: 'feather'
+    });
+  }
+  
+  // NEW: Smaller feather puff for aerial bird hits
+  static createFeatherPuff(scene: THREE.Scene, position: THREE.Vector3, direction: THREE.Vector3): ParticleSystem {
+    return new ParticleSystem(scene, {
+      position: position,
+      count: 12,
+      duration: 1800,
+      size: 0.12,
+      sizeVariation: 0.06,
+      speed: 2.0,
+      speedVariation: 1.0,
+      color: 0x1A1A1A, // Slightly darker
+      colorVariation: 0.15,
+      gravity: 1.2,
+      direction: direction,
+      spread: 0.7,
+      opacity: 0.8,
+      fadeIn: 0.05,
+      fadeOut: 0.5,
+      rotationSpeed: 4,
+      particleType: 'feather'
     });
   }
 }
