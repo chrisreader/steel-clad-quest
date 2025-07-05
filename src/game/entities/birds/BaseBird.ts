@@ -128,7 +128,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.mesh.position.copy(this.position);
     
     this.createBirdBody();
-    this.createHitBox();
+    // Hitbox creation moved to after body creation in subclasses
     this.state = EntityLifecycleState.ACTIVE;
     this.scheduleNextStateChange();
     

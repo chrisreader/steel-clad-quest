@@ -322,7 +322,7 @@ export class CombatSystem {
       return;
     }
 
-    // Check sword hitbox against bird hitboxes
+    // Check sword hitbox against bird hitboxes - ENHANCED for aerial combat
     const swordHitBox = this.player.getSwordHitBox();
     const swordBox = new THREE.Box3().setFromObject(swordHitBox);
     
@@ -334,23 +334,35 @@ export class CombatSystem {
       const birdHitBox = bird.getHitBox();
       if (!birdHitBox) return;
       
-      const birdBox = new THREE.Box3().setFromObject(birdHitBox);
-      
-      if (swordBox.intersectsBox(birdBox)) {
-        birdHit = true;
+      try {
+        // Update hitbox world matrix for proper collision detection
+        birdHitBox.updateMatrixWorld(true);
         
-        // Deal 1 damage (instant kill for birds)
-        bird.takeDamage(1);
-        
-        // Create feather burst effect instead of blood
+        const birdBox = new THREE.Box3().setFromObject(birdHitBox);
         const birdPosition = bird.getPosition();
-        const playerPosition = this.player.getPosition();
-        const hitDirection = birdPosition.clone().sub(playerPosition).normalize();
         
-        this.effectsManager.createFeatherBurst(birdPosition, hitDirection);
-        this.audioManager.play('sword_hit');
+        // Debug logging for aerial birds
+        if (birdPosition.y > 5) {
+          console.log(`⚔️🐦 [CombatSystem] Checking aerial bird melee at altitude ${birdPosition.y.toFixed(1)}m`);
+        }
         
-        console.log(`🪶⚔️ [CombatSystem] Bird hit and killed with sword - feather burst created`);
+        if (swordBox.intersectsBox(birdBox)) {
+          birdHit = true;
+          
+          // Deal 1 damage (instant kill for birds)
+          bird.takeDamage(1);
+          
+          // Create feather burst effect instead of blood
+          const playerPosition = this.player.getPosition();
+          const hitDirection = birdPosition.clone().sub(playerPosition).normalize();
+          
+          this.effectsManager.createFeatherBurst(birdPosition, hitDirection);
+          this.audioManager.play('sword_hit');
+          
+          console.log(`🪶⚔️ [CombatSystem] Bird hit at altitude ${birdPosition.y.toFixed(1)}m - feather burst created`);
+        }
+      } catch (error) {
+        console.error(`⚔️🐦 [CombatSystem] Error in bird melee collision:`, error);
       }
     });
     

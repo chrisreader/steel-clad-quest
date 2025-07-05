@@ -224,6 +224,11 @@ export class ParticleSystem {
       sprite.position.copy(particle.position);
       sprite.visible = false;
       
+      // CRITICAL FIX: Ensure sprite has proper matrix initialization
+      sprite.matrixAutoUpdate = true;
+      sprite.updateMatrix();
+      sprite.updateMatrixWorld(true);
+      
       this.sprites.push(sprite);
     }
   }
@@ -234,8 +239,11 @@ export class ParticleSystem {
     this.isActive = true;
     this.startTime = Date.now();
     
-    // Add sprites to scene
+    // Add sprites to scene with proper matrix updates
     this.sprites.forEach(sprite => {
+      // Ensure matrix is properly initialized before adding to scene
+      sprite.updateMatrix();
+      sprite.updateMatrixWorld(true);
       this.scene.add(sprite);
     });
     
@@ -290,11 +298,15 @@ export class ParticleSystem {
       particle.velocity.y -= this.options.gravity! * 0.016;
       particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
       
-      // Update sprite
+      // Update sprite with proper matrix updates
       sprite.position.copy(particle.position);
       sprite.material.opacity = particle.opacity;
       sprite.material.rotation = particle.rotation;
       sprite.visible = particle.opacity > 0.01;
+      
+      // Ensure matrix is updated after position changes
+      sprite.updateMatrix();
+      sprite.updateMatrixWorld(true);
       
       // Scale down over time for more realism
       const sizeMultiplier = 1 - particleProgress * 0.3;

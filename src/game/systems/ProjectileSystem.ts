@@ -154,32 +154,49 @@ export class ProjectileSystem {
       }
     });
     
-    // Check bird collisions
+    // Check bird collisions - ENHANCED for aerial combat
     this.birds.forEach(bird => {
       if (bird.isDead) return;
       
       const birdHitBox = bird.getHitBox();
-      if (!birdHitBox) return;
+      if (!birdHitBox) {
+        console.log(`🏹🐦 [ProjectileSystem] Bird has no hitbox - skipping collision`);
+        return;
+      }
       
-      const birdBox = new THREE.Box3().setFromObject(birdHitBox);
-      
-      if (arrowBox.intersectsBox(birdBox)) {
-        const damage = arrow.getDamage();
+      try {
+        // Update hitbox world matrix to ensure proper collision detection
+        birdHitBox.updateMatrixWorld(true);
+        
+        const birdBox = new THREE.Box3().setFromObject(birdHitBox);
         const birdPosition = bird.getPosition();
         
-        // Create feather burst effect for bird
-        this.effectsManager.createFeatherBurst(birdPosition, arrowDirection);
+        // Debug logging for aerial birds
+        if (birdPosition.y > 5) {
+          console.log(`🏹🐦 [ProjectileSystem] Checking aerial bird collision at altitude ${birdPosition.y.toFixed(1)}m`);
+          console.log(`🏹🐦 [ProjectileSystem] Arrow box:`, arrowBox);
+          console.log(`🏹🐦 [ProjectileSystem] Bird box:`, birdBox);
+        }
         
-        // Apply damage to bird (1 HP = instant kill)
-        bird.takeDamage(damage);
-        
-        this.audioManager.play('arrow_hit');
-        
-        console.log(`🪶🏹 [ProjectileSystem] Arrow hit and killed bird with feather burst`);
-        
-        // Dispose of arrow properly
-        arrow.dispose();
-        this.arrows = this.arrows.filter(a => a !== arrow);
+        if (arrowBox.intersectsBox(birdBox)) {
+          const damage = arrow.getDamage();
+          
+          // Create feather burst effect for bird
+          this.effectsManager.createFeatherBurst(birdPosition, arrowDirection);
+          
+          // Apply damage to bird (1 HP = instant kill)
+          bird.takeDamage(damage);
+          
+          this.audioManager.play('arrow_hit');
+          
+          console.log(`🪶🏹 [ProjectileSystem] Arrow hit bird at altitude ${birdPosition.y.toFixed(1)}m - feather burst created`);
+          
+          // Dispose of arrow properly
+          arrow.dispose();
+          this.arrows = this.arrows.filter(a => a !== arrow);
+        }
+      } catch (error) {
+        console.error(`🏹🐦 [ProjectileSystem] Error in bird collision detection:`, error);
       }
     });
   }
