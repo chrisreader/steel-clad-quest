@@ -673,8 +673,8 @@ export abstract class EnemyHumanoid {
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
     );
 
-    // Pupils - smaller to match new eye size
-    const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.28, 12, 10); // Adjusted to match smaller eyes
+    // Pupils - much smaller to show white of eyes
+    const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.15, 12, 10); // Reduced from 0.28 to 0.15
     const pupilMaterial = new THREE.MeshPhongMaterial({
       color: 0x000000,
       shininess: 100
