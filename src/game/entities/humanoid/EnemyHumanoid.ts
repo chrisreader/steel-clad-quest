@@ -393,14 +393,25 @@ export abstract class EnemyHumanoid {
       let scaleFactor = 1.0;
       let frontBackScale = 1.0;
       
-      // For humans: create curved/oval top transition to shoulders
-      if (isHuman && normalizedY > 0.3) {
-        // Top shoulder area - create oval cross-section
-        const shoulderCurve = (normalizedY - 0.3) / 0.2; // 0 at chest, 1 at very top
-        scaleFactor = 1.0 + shoulderCurve * 0.3; // BROADER at top for wider shoulders
-        frontBackScale = 1.0 - shoulderCurve * 0.25; // More narrow front-to-back
+      // For humans: create graduated scaling for natural shoulder-to-neck transition
+      if (isHuman && normalizedY > 0.1) {
+        if (normalizedY > 0.45) {
+          // Very top - significant taper toward neck
+          const topCurve = (normalizedY - 0.45) / 0.05; // 0 at upper-top boundary, 1 at very top
+          scaleFactor = 1.2 - (topCurve * 0.4); // Taper from 1.2 to 0.8
+          frontBackScale = 1.0 - topCurve * 0.3; // More narrow front-to-back
+        } else if (normalizedY > 0.35) {
+          // Upper-top - start slight taper 
+          const upperCurve = (normalizedY - 0.35) / 0.1; // 0 at upper-middle boundary, 1 at very top boundary
+          scaleFactor = 1.2 - (upperCurve * 0.1); // Gradual reduction from 1.2 to 1.1
+          frontBackScale = 1.0 - upperCurve * 0.15; // Start front-to-back compression
+        } else {
+          // Upper-middle - broader chest/shoulder area
+          scaleFactor = 1.2; // Broader chest
+          frontBackScale = 1.0; // No front-to-back compression yet
+        }
         
-        // Create curved shoulder transition
+        // Create curved shoulder transition for all upper sections
         const shoulderRadius = Math.sqrt(x * x + z * z);
         if (shoulderRadius > 0) {
           const angle = Math.atan2(z, x);
@@ -410,9 +421,9 @@ export abstract class EnemyHumanoid {
           positions[i + 2] = ovalZ;
         }
       }
-      // Upper torso (shoulders/chest area) - wider
+      // Regular chest area - keep full width
       else if (normalizedY > 0.1) {
-        scaleFactor = 1.0; // Keep full width at shoulders
+        scaleFactor = 1.0; // Keep full width at chest
       }
       // Waist area - narrower 
       else if (normalizedY >= -0.2) {
@@ -427,8 +438,8 @@ export abstract class EnemyHumanoid {
         scaleFactor = 0.75 + hipPosition * 0.2; // Scale from 0.75 to 0.95
       }
       
-      // Apply the scaling (only if not already handled by shoulder curve logic)
-      if (!(isHuman && normalizedY > 0.3)) {
+      // Apply the scaling (only if not already handled by human shoulder curve logic)
+      if (!(isHuman && normalizedY > 0.1)) {
         positions[i] = x * scaleFactor;
         positions[i + 2] = z * scaleFactor;
       }
@@ -724,13 +735,13 @@ export abstract class EnemyHumanoid {
     const shoulderJointRadius = bodyScale.body.radius * 0.5; // Scale with body size
     const shoulderJointGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 20);
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    leftShoulderJoint.position.set(-(bodyScale.body.radius * 0.25), 0.1, 0); // Relative to arm position
+    leftShoulderJoint.position.set(0, 0.1, 0); // Centered at top of arm
     leftShoulderJoint.scale.set(0.9, 1, 0.9);
     leftShoulderJoint.castShadow = true;
     leftArm.add(leftShoulderJoint); // Attach to arm for animation
 
     const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    rightShoulderJoint.position.set(bodyScale.body.radius * 0.25, 0.1, 0); // Relative to arm position
+    rightShoulderJoint.position.set(0, 0.1, 0); // Centered at top of arm
     rightShoulderJoint.scale.set(0.9, 1, 0.9);
     rightShoulderJoint.castShadow = true;
     rightArm.add(rightShoulderJoint); // Attach to arm for animation
