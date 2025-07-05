@@ -45,8 +45,8 @@ export class SeededGrassDistribution {
       ? DeterministicBiomeManager.getGroundConfiguration(biomeData.biomeType).densityMultiplier
       : biomeConfig.densityMultiplier;
     
-    // DOUBLED DENSITY: Reduced spacing significantly to achieve 2x density
-    const baseSpacing = isGroundGrass ? 2.0 : 3.2; // Reduced from 2.8 and 4.5 for 2x density
+    // OPTIMIZED DENSITY: Increased spacing by 20% to reduce grass density for better FPS
+    const baseSpacing = isGroundGrass ? 2.4 : 3.8; // Increased by 20% from 2.0 and 3.2
     const spacing = baseSpacing / Math.sqrt(density);
     
     // Generate grass positions using seeded sampling
@@ -138,8 +138,8 @@ export class SeededGrassDistribution {
     const noiseZ = Math.cos(position.z * 0.05 + seed * 0.001) * 0.5 + 0.5;
     const combinedNoise = (noiseX + noiseZ) / 2;
     
-    // INCREASED base probability for 2x density - increased from 0.75
-    let probability = 0.85 + combinedNoise * 0.15;
+    // OPTIMIZED PROBABILITY: Reduced by 20% for better FPS
+    let probability = 0.68 + combinedNoise * 0.12; // Reduced from 0.85
     
     // Add some randomness but keep it seeded
     probability *= (0.85 + seededRandom() * 0.3);
