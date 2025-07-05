@@ -400,14 +400,14 @@ export abstract class EnemyHumanoid {
           const topCurve = (normalizedY - 0.45) / 0.05; // 0 at upper-top boundary, 1 at very top
           scaleFactor = 1.2 - (topCurve * 0.4); // Taper from 1.2 to 0.8
           frontBackScale = 1.0 - topCurve * 0.3; // More narrow front-to-back
-        } else if (normalizedY > 0.35) {
-          // Upper-top - start slight taper 
-          const upperCurve = (normalizedY - 0.35) / 0.1; // 0 at upper-middle boundary, 1 at very top boundary
+        } else if (normalizedY > 0.4) {
+          // Upper-top - start slight taper (extended chest area)
+          const upperCurve = (normalizedY - 0.4) / 0.05; // 0 at upper-middle boundary, 1 at very top boundary
           scaleFactor = 1.2 - (upperCurve * 0.1); // Gradual reduction from 1.2 to 1.1
           frontBackScale = 1.0 - upperCurve * 0.15; // Start front-to-back compression
         } else {
-          // Upper-middle - broader chest/shoulder area
-          scaleFactor = 1.2; // Broader chest
+          // Upper-middle - broader chest/shoulder area (EXTENDED higher to align with shoulders)
+          scaleFactor = 1.2; // Broader chest extending higher
           frontBackScale = 1.0; // No front-to-back compression yet
         }
         
@@ -731,18 +731,44 @@ export abstract class EnemyHumanoid {
     rightArm.rotation.set(-0.393, 0, 0.3);
     rightArm.castShadow = true;
 
-    // Shoulder joints - attach to arms for animation
+    // Shoulder joints - create tapered, curved joints that blend with chest
     const shoulderJointRadius = bodyScale.body.radius * 0.5; // Scale with body size
-    const shoulderJointGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 20);
+    
+    // Create tapered shoulder geometry (wider at bottom, narrower at top)
+    const shoulderJointGeometry = new THREE.ConeGeometry(
+      shoulderJointRadius * 1.1, // Bottom radius (wider where it connects to chest)
+      shoulderJointRadius * 0.4,  // Height (shorter for more natural proportions)
+      24, 8, false, 0, Math.PI * 2
+    );
+    
+    // Modify geometry to create curved inward taper
+    const shoulderPositions = shoulderJointGeometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < shoulderPositions.length; i += 3) {
+      const x = shoulderPositions[i];
+      const y = shoulderPositions[i + 1];
+      const z = shoulderPositions[i + 2];
+      
+      // Create inward curve - more pronounced at the top
+      const heightFactor = (y + shoulderJointRadius * 0.2) / (shoulderJointRadius * 0.4); // 0 at bottom, 1 at top
+      const curveFactor = Math.pow(heightFactor, 1.5); // Exponential curve for natural shoulder slope
+      
+      // Apply inward scaling based on height
+      const inwardScale = 1.0 - (curveFactor * 0.3); // Reduce width by up to 30% at the top
+      shoulderPositions[i] = x * inwardScale;
+      shoulderPositions[i + 2] = z * inwardScale * 0.85; // Extra front-to-back compression
+    }
+    shoulderJointGeometry.attributes.position.needsUpdate = true;
+    shoulderJointGeometry.computeVertexNormals();
+    
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    leftShoulderJoint.position.set(0, 0.1, 0); // Centered at top of arm
-    leftShoulderJoint.scale.set(0.9, 1, 0.9);
+    leftShoulderJoint.position.set(0, 0.05, 0); // Slightly lower to blend with extended chest
+    leftShoulderJoint.rotation.x = Math.PI; // Flip so wider part is at bottom
     leftShoulderJoint.castShadow = true;
     leftArm.add(leftShoulderJoint); // Attach to arm for animation
 
-    const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    rightShoulderJoint.position.set(0, 0.1, 0); // Centered at top of arm
-    rightShoulderJoint.scale.set(0.9, 1, 0.9);
+    const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry.clone(), skinMaterial.clone());
+    rightShoulderJoint.position.set(0, 0.05, 0); // Slightly lower to blend with extended chest
+    rightShoulderJoint.rotation.x = Math.PI; // Flip so wider part is at bottom
     rightShoulderJoint.castShadow = true;
     rightArm.add(rightShoulderJoint); // Attach to arm for animation
 
