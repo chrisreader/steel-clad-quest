@@ -110,23 +110,26 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       () => this.onPlayerExitSafeZone()
     );
     
-    console.log(`[DynamicEnemySpawningSystem] Initialized MMORPG-style spawning (${this.config.maxEntities} enemies max, ${this.spawnCooldown/1000}s intervals)`);
+    // MMORPG-style spawning initialized
   }
 
-  // Override base class initialize to use MMORPG-style initial spawning
+  // Override base class initialize to use MMORPG-style initial spawning with DELAY
   public initialize(playerPosition?: THREE.Vector3): void {
     if (playerPosition) {
       this.lastPlayerPosition.copy(playerPosition);
-      // Trigger initial spawn immediately
-      this.performInitialSpawn(playerPosition);
-      this.hasInitialSpawn = true;
-      console.log(`[DynamicEnemySpawningSystem] MMORPG initial spawn completed with ${this.entities.length} enemies`);
+      
+      // DELAY INITIAL SPAWNING for better spawn performance
+      setTimeout(() => {
+        this.performInitialSpawn(playerPosition);
+        this.hasInitialSpawn = true;
+        // MMORPG initial spawn completed
+      }, 2000); // 2 second delay to reduce spawn lag
     }
   }
 
   private onPlayerEnterSafeZone(): void {
     this.isPlayerInSafeZone = true;
-    console.log(`🛡️ [DynamicEnemySpawningSystem] Player entered safe zone - switching all enemies to passive mode`);
+    // Player entered safe zone - switching enemies to passive
     
     // Switch all existing enemies to passive mode
     this.entities.forEach(wrapper => {
@@ -137,7 +140,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
 
   private onPlayerExitSafeZone(): void {
     this.isPlayerInSafeZone = false;
-    console.log(`⚔️ [DynamicEnemySpawningSystem] Player exited safe zone - switching all enemies to aggressive mode`);
+    // Player exited safe zone - switching enemies to aggressive
     
     // Switch all existing enemies back to aggressive mode
     this.entities.forEach(wrapper => {
@@ -179,8 +182,8 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   }
 
   private performInitialSpawn(playerPosition: THREE.Vector3): void {
-    const initialEnemyCount = 3 + Math.floor(Math.random() * 2); // 3-4 enemies
-    console.log(`🚀 [MMORPG Initial Spawn] Creating ${initialEnemyCount} enemies around player on game start`);
+    const initialEnemyCount = 1 + Math.floor(Math.random() * 2); // REDUCED: 1-2 enemies for better spawn performance
+    // Initial spawn optimized for performance
     
     for (let i = 0; i < initialEnemyCount; i++) {
       // Spawn in a ring around player at safe initial distances
@@ -258,8 +261,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     // Add to entities list and scene
     this.entities.push(wrapper);
     
-    const spawnType = isOngoingSpawn ? "ongoing" : "initial";
-    console.log(`🗡️ [MMORPG ${spawnType} spawn] Created enemy at distance: ${position.distanceTo(new THREE.Vector3()).toFixed(1)}`);
+    // Enemy spawned successfully
   }
 
   protected createEntity(isInitial: boolean, playerPosition?: THREE.Vector3): SpawnableEnemyWrapper {
@@ -317,7 +319,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   
   public setDifficulty(difficulty: number): void {
     this.difficulty = Math.max(1, difficulty);
-    console.log(`[DynamicEnemySpawningSystem] Difficulty set to ${this.difficulty}`);
+    // Difficulty updated
   }
   
   public getSafeZoneManager(): SafeZoneManager {
@@ -341,7 +343,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   
   public setSpawnCooldown(cooldown: number): void {
     this.spawnCooldown = Math.max(5000, cooldown); // Minimum 5 seconds
-    console.log(`[DynamicEnemySpawningSystem] Spawn cooldown set to ${cooldown/1000}s`);
+    // Spawn cooldown updated
   }
   
   private isInSafeZone(position: THREE.Vector3): boolean {

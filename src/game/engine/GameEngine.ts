@@ -13,6 +13,7 @@ import { PhysicsManager } from './PhysicsManager';
 import { BuildingManager } from '../buildings/BuildingManager';
 import { ChestInteractionSystem } from '../systems/ChestInteractionSystem';
 import { PerformanceManager } from '../systems/PerformanceManager';
+import { PerformanceOptimizer } from '../core/PerformanceOptimizer';
 import { GameState, EnemyType } from '../../types/GameTypes';
 
 export class GameEngine {
@@ -22,6 +23,7 @@ export class GameEngine {
   private uiIntegrationManager: UIIntegrationManager;
   private physicsManager: PhysicsManager;
   private performanceManager: PerformanceManager;
+  private performanceOptimizer: PerformanceOptimizer | null = null;
   private buildingManager: BuildingManager | null = null;
   
   // Game systems
@@ -59,6 +61,10 @@ export class GameEngine {
       adaptiveQuality: true,
       distanceLODThresholds: { close: 25, medium: 50, far: 100 }
     });
+    
+    // PHASE 3: Initialize performance optimizer for advanced optimizations
+    this.performanceOptimizer = PerformanceOptimizer.create(this.performanceManager);
+    this.performanceOptimizer.initializeMonitoring();
   }
   
   // NEW METHOD: Set UI state from KnightGame
@@ -105,7 +111,7 @@ export class GameEngine {
       // Set audio manager for building manager
       if (this.buildingManager && this.audioManager) {
         this.buildingManager.setAudioManager(this.audioManager);
-        console.log("🔊 [GameEngine] AudioManager connected to BuildingManager");
+        // AudioManager connected to BuildingManager
       }
       
       // Create buildings with fireplaces
@@ -119,9 +125,9 @@ export class GameEngine {
       }
       
       // CRITICAL: Create the player with extensive debugging
-      console.log("🎮 [GameEngine] Creating player with NEW ARM POSITIONING...");
+      // Creating player with new arm positioning
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
-      console.log("🎮 [GameEngine] Player created successfully with new arm positioning");
+      // Player created successfully
       
       // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
@@ -147,7 +153,7 @@ export class GameEngine {
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete with fire animation system!");
+      // Initialization complete with fire animation system
       
       // Start the game
       this.start();
@@ -160,7 +166,7 @@ export class GameEngine {
   private createBuildings(): void {
     if (!this.buildingManager) return;
     
-    console.log("🏗️ [GameEngine] Creating buildings with animated fireplaces...");
+    // Creating buildings with animated fireplaces
     
     // Create tavern at origin with fireplace
     const tavernBuilding = this.buildingManager.createBuilding({
@@ -170,14 +176,14 @@ export class GameEngine {
     });
     
     if (tavernBuilding) {
-      console.log("🔥 [GameEngine] Tavern with animated fireplace created successfully");
+      // Tavern with animated fireplace created successfully
     }
   }
   
   private setupChestsInTavern(): void {
     if (!this.chestInteractionSystem) return;
     
-    console.log("💰 [GameEngine] Setting up treasure chests in tavern...");
+    // Setting up treasure chests in tavern
     
     // Create common chest near the table
     this.chestInteractionSystem.createChest({
@@ -193,7 +199,7 @@ export class GameEngine {
       id: 'tavern_rare_chest'
     });
     
-    console.log("💰 [GameEngine] Treasure chests created in tavern for testing");
+    // Treasure chests created in tavern
   }
   
   private setupMouseLookControls(): void {
@@ -324,8 +330,11 @@ export class GameEngine {
     
     const deltaTime = this.renderEngine.getDeltaTime();
     
-    // PHASE 2: Update performance metrics
+    // PHASE 2 & 3: Update performance metrics and frame counters
     this.performanceManager.updatePerformanceMetrics(deltaTime);
+    if (this.performanceOptimizer) {
+      this.performanceOptimizer.updateFrameCounters(deltaTime);
+    }
     const safeDeltaTime = this.performanceManager.getSafeDeltaTime(deltaTime);
     
     this.stateManager.update(safeDeltaTime);
@@ -526,7 +535,7 @@ export class GameEngine {
         if (this.chestInteractionSystem) {
           const success = this.chestInteractionSystem.handleInteraction();
           if (success) {
-            console.log("💰 [GameEngine] Player interacted with chest successfully");
+            // Player interacted with chest successfully
           }
         }
         break;

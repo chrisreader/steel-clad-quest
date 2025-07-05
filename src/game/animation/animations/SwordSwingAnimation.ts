@@ -13,11 +13,11 @@ export class SwordSwingAnimation {
     this.playerBody = playerBody;
     this.equippedWeapon = equippedWeapon;
     
-    // Constructor called - using standardized sword animation
+    // Constructor initialized
   }
   
   public update(): void {
-    // Update method called
+    // Update called
     
     if (!this.weaponSwing) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - weaponSwing is null/undefined');
@@ -25,7 +25,7 @@ export class SwordSwingAnimation {
     }
     
     if (!this.weaponSwing.isActive) {
-      // Update skipped - weaponSwing not active
+      // Update skipped - not active
       return;
     }
     
@@ -37,7 +37,7 @@ export class SwordSwingAnimation {
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
     const { phases, duration, rotations } = STANDARD_SWORD_ANIMATION;
     
-    // Standardized animation active
+    // Animation active
     
     // Initialize rotations from standardized config
     let shoulderRotation = { 

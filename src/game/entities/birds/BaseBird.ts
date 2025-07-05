@@ -356,7 +356,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.isFlapping = false;
     this.wingBeatIntensity = 1.0;
     this.visualBankAngle = 0;
-    console.log(`🐦 [${this.config.species}] Starting landing approach from altitude: ${this.position.y.toFixed(1)}`);
+    // Landing approach started
   }
 
   protected generateFlightPath(): void {
@@ -485,6 +485,6 @@ export abstract class BaseBird implements SpawnableEntity {
       });
     }
     
-    console.log(`🐦 [${this.config.species}] Disposed bird entity`);
+    // Bird entity disposed
   }
 }

@@ -224,7 +224,7 @@ export class BirdSpawningSystem {
     }
     
     if ((shouldSpawnByMovement || shouldSpawnByTime) && hasSpaceForMore) {
-      console.log('🐦 [BirdSpawningSystem] Spawning birds due to conditions');
+      // Spawning birds
       this.spawnBirds(playerPosition);
       this.playerMovementAccumulator = 0;
       this.lastSpawnTime = now;
@@ -303,7 +303,7 @@ export class BirdSpawningSystem {
     this.birds.set(birdId, bird);
     this.scene.add(bird.mesh);
     
-    console.log(`🐦 [BirdSpawningSystem] Spawned ${birdType} at position:`, position);
+    // Bird spawned successfully
   }
 
   private removeBird(birdId: string): void {
@@ -313,7 +313,7 @@ export class BirdSpawningSystem {
       bird.dispose();
       this.birds.delete(birdId);
       
-      console.log(`🐦 [BirdSpawningSystem] Removed bird: ${birdId}`);
+      // Bird removed
     }
   }
   
@@ -324,7 +324,7 @@ export class BirdSpawningSystem {
       corpse.dispose();
       this.birdCorpses.delete(corpseId);
       
-      console.log(`🐦💀 [BirdSpawningSystem] Removed corpse: ${corpseId}`);
+      // Corpse removed
     }
   }
 
@@ -356,7 +356,7 @@ export class BirdSpawningSystem {
     // PHASE 2: Clean up opacity cache to prevent memory leaks
     this.birdOpacityCache.clear();
     
-    console.log('🐦 [BirdSpawningSystem] Disposed all birds, corpses, and cache');
+    // BirdSpawningSystem disposed
   }
   
   // PHASE 2: Automatic cache cleanup to prevent memory leaks
