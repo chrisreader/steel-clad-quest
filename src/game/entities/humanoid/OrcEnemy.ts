@@ -42,8 +42,8 @@ export class OrcEnemy extends EnemyHumanoid {
       hasWeapon: true,
       eyeConfig: {
         radius: 0.12,
-        color: 0x880000, // Dark red instead of bright red
-        emissiveIntensity: 0.2, // Reduced intensity
+        color: 0xFF0000,
+        emissiveIntensity: 0.4,
         offsetX: 0.2,
         offsetY: 0.05,
         offsetZ: 0.85

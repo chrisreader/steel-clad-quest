@@ -460,10 +460,8 @@ export abstract class EnemyHumanoid {
     accentMaterial: THREE.MeshPhongMaterial
   ) {
     const headGroup = new THREE.Group();
-    // Position the head group at headY so animation works correctly
-    headGroup.position.y = headY;
     
-    // Skull - positioned relative to headGroup (0,0,0)
+    // Skull
     const upperSkullGeometry = new THREE.SphereGeometry(bodyScale.head.radius, 24, 20);
     const skullPositions = upperSkullGeometry.attributes.position.array;
     for (let i = 0; i < skullPositions.length; i += 3) {
@@ -490,40 +488,40 @@ export abstract class EnemyHumanoid {
     upperSkullGeometry.computeVertexNormals();
     
     const upperSkull = new THREE.Mesh(upperSkullGeometry, muscleMaterial.clone());
-    upperSkull.position.y = 0; // Position relative to headGroup
+    upperSkull.position.y = headY;
     upperSkull.castShadow = true;
     headGroup.add(upperSkull);
 
-    // Neck - thinner for more human proportions, positioned relative to headGroup
+    // Neck - thinner for more human proportions
     const neckGeometry = new THREE.CylinderGeometry(
       bodyScale.head.radius * 0.35, // Reduced from 0.5 to 0.35
       bodyScale.body.radius * 0.3,  // Reduced from 0.4 to 0.3  
       0.4, 16, 4
     );
     const neck = new THREE.Mesh(neckGeometry, accentMaterial.clone());
-    neck.position.y = -bodyScale.head.radius - 0.2; // Position relative to headGroup
+    neck.position.y = headY - bodyScale.head.radius - 0.2;
     neck.castShadow = true;
     headGroup.add(neck);
 
-    // Nose - smaller and more elliptical for human proportions, positioned relative to headGroup
+    // Nose - smaller and more elliptical for human proportions
     const noseGeometry = new THREE.SphereGeometry(0.06, 16, 12);
     const nose = new THREE.Mesh(noseGeometry, accentMaterial.clone());
-    nose.position.set(0, -0.05, bodyScale.head.radius * 1.15); // Position relative to headGroup
+    nose.position.set(0, headY - 0.05, bodyScale.head.radius * 1.15);
     nose.scale.set(0.8, 0.6, 1.4); // More elliptical and smaller
     nose.castShadow = true;
     headGroup.add(nose);
 
-    // Eyes and other features - pass 0 for headY since positions are now relative to headGroup
+    // Eyes and other features
     if (features.hasEyes && features.eyeConfig) {
-      this.addEyes(headGroup, 0, bodyScale, features, accentMaterial);
+      this.addEyes(headGroup, headY, bodyScale, features, accentMaterial);
     }
 
     if (features.hasTusks && features.tuskConfig) {
-      this.addTusks(headGroup, 0, bodyScale, features);
+      this.addTusks(headGroup, headY, bodyScale, features);
     }
 
     // Ears
-    this.addEars(headGroup, 0, bodyScale, colors, muscleMaterial);
+    this.addEars(headGroup, headY, bodyScale, colors, muscleMaterial);
 
     return { parent: headGroup, mesh: upperSkull };
   }
