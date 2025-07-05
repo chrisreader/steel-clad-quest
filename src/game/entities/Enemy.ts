@@ -394,22 +394,16 @@ export class Enemy {
   
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
     if (this.isHumanoidEnemy && this.humanoidEnemy) {
-      // Delegate to humanoid enemy - game logic always runs
+      // Delegate to humanoid enemy
       this.humanoidEnemy.update(deltaTime, playerPosition);
       
       // Update interface properties
       this.enemy.isDead = this.humanoidEnemy.getIsDead();
-      
-      // Mark mesh for visibility system (rendering may be disabled but logic continues)
-      this.enemy.mesh.userData.isEnemy = true;
       return;
     }
     
-    // Legacy update logic for non-humanoid enemies - ALWAYS runs regardless of visibility
+    // Legacy update logic for non-humanoid enemies
     const now = Date.now();
-    
-    // Mark mesh for visibility system
-    this.enemy.mesh.userData.isEnemy = true;
     
     if (this.enemy.isDead) {
       this.updateDeathAnimation(deltaTime);

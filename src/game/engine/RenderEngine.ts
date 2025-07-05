@@ -1,6 +1,5 @@
 
 import * as THREE from 'three';
-import { AdvancedVisibilityManager } from './AdvancedVisibilityManager';
 
 export class RenderEngine {
   private scene: THREE.Scene;
@@ -26,10 +25,10 @@ export class RenderEngine {
   // Performance optimizations
   private renderCount: number = 0;
   private lastRenderTime: number = 0;
-  
-  // Enhanced visibility management system
-  private visibilityManager: AdvancedVisibilityManager | null = null;
-  private playerPosition: THREE.Vector3 = new THREE.Vector3();
+  private frustum: THREE.Frustum = new THREE.Frustum();
+  private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
+  private lastCullingUpdate: number = 0;
+  private readonly CULLING_UPDATE_INTERVAL: number = 6; // RESPONSIVE: Every 6 frames for smooth turning while maintaining performance
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -74,10 +73,7 @@ export class RenderEngine {
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
     
-    // Initialize advanced visibility management system
-    this.visibilityManager = new AdvancedVisibilityManager(this.camera);
-    
-    console.log("🎨 [RenderEngine] Initialized with Smart Behind-Player Occlusion System");
+    console.log("🎨 [RenderEngine] Initialized with performance optimizations");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
@@ -129,46 +125,63 @@ export class RenderEngine {
       playerPosition.y + this.CAMERA_HEIGHT_OFFSET,
       playerPosition.z
     );
-    
-    // Store player position for visibility system
-    this.playerPosition.copy(playerPosition);
   }
   
-  // Legacy methods kept for compatibility but now handled by AdvancedVisibilityManager
   private updateFrustumCulling(): void {
-    // This is now handled by AdvancedVisibilityManager
-    // Kept for backward compatibility but does nothing
+    const now = performance.now();
+    if (now - this.lastCullingUpdate < this.CULLING_UPDATE_INTERVAL) return;
+    
+    this.cameraMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(this.cameraMatrix);
+    this.lastCullingUpdate = now;
   }
   
   private isObjectInFrustum(object: THREE.Object3D): boolean {
-    // This is now handled by AdvancedVisibilityManager
-    // Kept for backward compatibility
-    return true;
+    // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
+    if (object instanceof THREE.InstancedMesh) return true;
+    
+    // Hierarchical culling - check parent objects first for performance
+    if (object.parent && object.parent !== this.scene && !this.isObjectInFrustum(object.parent)) {
+      return false;
+    }
+    
+    // Fast bounding sphere pre-check before expensive frustum test
+    if (object instanceof THREE.Mesh && object.geometry) {
+      const sphere = object.geometry.boundingSphere;
+      if (sphere) {
+        // Quick distance check first (cheaper than frustum test)
+        const distance = this.camera.position.distanceTo(object.position);
+        if (distance > 200) return false; // Cull very distant objects immediately
+        
+        const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
+        return this.frustum.intersectsSphere(worldSphere);
+      }
+    }
+    
+    return true; // Default to visible if no bounding info or not a mesh
   }
   
   public render(): void {
     this.renderCount++;
     const now = performance.now();
     
-    // Use advanced visibility management for smart occlusion culling
-    if (this.visibilityManager) {
-      this.visibilityManager.update(this.scene, this.playerPosition);
-    }
+    // Update frustum culling less frequently for performance
+    this.updateFrustumCulling();
     
-    // Performance logging with visibility stats
+    // Apply frustum culling to scene objects
+    this.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
+        object.visible = this.isObjectInFrustum(object);
+      }
+    });
+    
+    // ULTRA-AGGRESSIVE logging reduction (every 3000 frames = 3 minutes at 60fps)
     if (this.renderCount % 3000 === 0) {
       const fps = 3000 / ((now - this.lastRenderTime) / 1000);
-      let visibilityStats = {};
-      
-      if (this.visibilityManager) {
-        visibilityStats = this.visibilityManager.getVisibilityStats();
-      }
-      
-      console.log("🎨 [RenderEngine] SMART-OCCLUSION PERFORMANCE:", {
+      console.log("🎨 [RenderEngine] ULTRA-PERFORMANCE:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
-        objects: this.scene.children.length,
-        visibility: visibilityStats
+        objects: this.scene.children.length
       });
       this.lastRenderTime = now;
     }
@@ -204,12 +217,6 @@ export class RenderEngine {
   public dispose(): void {
     console.log("🎨 [RenderEngine] Disposing...");
     
-    // Dispose visibility manager
-    if (this.visibilityManager) {
-      this.visibilityManager.dispose();
-      this.visibilityManager = null;
-    }
-    
     if (this.renderer) {
       this.renderer.dispose();
       if (this.renderer.domElement.parentElement) {
@@ -217,6 +224,6 @@ export class RenderEngine {
       }
     }
     
-    console.log("🎨 [RenderEngine] Disposed successfully with Smart Behind-Player Occlusion System");
+    console.log("🎨 [RenderEngine] Disposed successfully");
   }
 }

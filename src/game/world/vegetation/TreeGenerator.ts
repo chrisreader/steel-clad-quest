@@ -51,10 +51,6 @@ export class TreeGenerator {
         tree.scale.set(scale, scale, scale);
         tree.rotation.y = Math.random() * Math.PI * 2;
         
-        // Mark as static for visibility system
-        tree.userData.isStatic = true;
-        tree.name = 'tree';
-        
         return tree;
       }
       return null;
@@ -72,10 +68,6 @@ export class TreeGenerator {
       tree.scale.set(scale, scale, scale);
       tree.rotation.y = Math.random() * Math.PI * 2;
       
-      // Mark as static for visibility system
-      tree.userData.isStatic = true;
-      tree.name = 'tree';
-      
       return tree;
     }
   }
@@ -86,10 +78,6 @@ export class TreeGenerator {
     const scale = 0.8 + Math.random() * 0.4;
     tree.scale.set(scale, scale, scale);
     tree.rotation.y = Math.random() * Math.PI * 2;
-    
-    // Mark as static for visibility system
-    tree.userData.isStatic = true;
-    tree.name = 'tree';
     
     return tree;
   }
