@@ -8,16 +8,25 @@ export class RenderEngine {
   private clock: THREE.Clock;
   private mountElement: HTMLDivElement;
   
-  // Camera controls with smoothing
+  // Enhanced camera controls with advanced smoothing
   private cameraRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
   private targetRotation: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
-  private mouseSensitivity: number = 0.003;
+  private mouseSensitivity: number = 0.002;
   private maxPitch: number = Math.PI / 2 - 0.1;
-  private smoothingFactor: number = 0.15;
   
-  // Mouse smoothing
-  private mouseVelocity: { x: number; y: number } = { x: 0, y: 0 };
-  private smoothedMouseDelta: { x: number; y: number } = { x: 0, y: 0 };
+  // Advanced camera smoothing system
+  private cameraVelocity: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
+  private rotationInertia: { pitch: number; yaw: number } = { pitch: 0, yaw: 0 };
+  private readonly CAMERA_SMOOTHING_FACTOR: number = 0.25;
+  private readonly INERTIA_DAMPING: number = 0.88;
+  private readonly VELOCITY_THRESHOLD: number = 0.001;
+  
+  // Frame rate stabilization
+  private frameTimeHistory: number[] = [];
+  private readonly FRAME_HISTORY_SIZE: number = 10;
+  private targetFrameTime: number = 1000 / 60; // 60 FPS target
+  private lastFrameTime: number = 0;
+  private frameTimeSmoothing: number = 0.1;
   
   // FIXED: Consistent camera height
   private readonly CAMERA_HEIGHT_OFFSET: number = 1.6; // Standard eye height
@@ -99,21 +108,45 @@ export class RenderEngine {
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
-    // Apply mouse smoothing using exponential moving average
-    this.smoothedMouseDelta.x = this.smoothedMouseDelta.x * (1 - this.smoothingFactor) + deltaX * this.smoothingFactor;
-    this.smoothedMouseDelta.y = this.smoothedMouseDelta.y * (1 - this.smoothingFactor) + deltaY * this.smoothingFactor;
+    // Calculate rotation deltas with sensitivity
+    const rotationDeltaYaw = -deltaX * this.mouseSensitivity;
+    const rotationDeltaPitch = -deltaY * this.mouseSensitivity;
     
-    // Update target rotation with smoothed input
-    this.targetRotation.yaw -= this.smoothedMouseDelta.x * this.mouseSensitivity;
-    this.targetRotation.pitch -= this.smoothedMouseDelta.y * this.mouseSensitivity;
+    // Update velocity for inertia calculation
+    this.cameraVelocity.yaw = rotationDeltaYaw;
+    this.cameraVelocity.pitch = rotationDeltaPitch;
+    
+    // Apply rotation with inertia
+    this.rotationInertia.yaw = this.rotationInertia.yaw * this.INERTIA_DAMPING + this.cameraVelocity.yaw;
+    this.rotationInertia.pitch = this.rotationInertia.pitch * this.INERTIA_DAMPING + this.cameraVelocity.pitch;
+    
+    // Update target rotation
+    this.targetRotation.yaw += this.rotationInertia.yaw;
+    this.targetRotation.pitch += this.rotationInertia.pitch;
     this.targetRotation.pitch = Math.max(-this.maxPitch, Math.min(this.maxPitch, this.targetRotation.pitch));
     
-    // Interpolate towards target rotation for ultra-smooth movement
-    const lerpFactor = 0.2; // Adjust for responsiveness vs smoothness
-    this.cameraRotation.yaw = THREE.MathUtils.lerp(this.cameraRotation.yaw, this.targetRotation.yaw, lerpFactor);
-    this.cameraRotation.pitch = THREE.MathUtils.lerp(this.cameraRotation.pitch, this.targetRotation.pitch, lerpFactor);
+    // Smooth interpolation to target with enhanced easing
+    const smoothingFactor = this.calculateDynamicSmoothingFactor();
+    this.cameraRotation.yaw = THREE.MathUtils.lerp(this.cameraRotation.yaw, this.targetRotation.yaw, smoothingFactor);
+    this.cameraRotation.pitch = THREE.MathUtils.lerp(this.cameraRotation.pitch, this.targetRotation.pitch, smoothingFactor);
     
     this.updateCameraRotation();
+  }
+  
+  private calculateDynamicSmoothingFactor(): number {
+    const velocityMagnitude = Math.sqrt(
+      this.cameraVelocity.yaw * this.cameraVelocity.yaw + 
+      this.cameraVelocity.pitch * this.cameraVelocity.pitch
+    );
+    
+    // Increase smoothing for small movements, reduce for rapid movements
+    if (velocityMagnitude < this.VELOCITY_THRESHOLD) {
+      return this.CAMERA_SMOOTHING_FACTOR * 0.5; // Extra smooth for micro-movements
+    } else if (velocityMagnitude > 0.05) {
+      return this.CAMERA_SMOOTHING_FACTOR * 1.5; // More responsive for rapid movements
+    }
+    
+    return this.CAMERA_SMOOTHING_FACTOR;
   }
   
   private updateCameraRotation(): void {
@@ -197,7 +230,32 @@ export class RenderEngine {
   }
   
   public getDeltaTime(): number {
-    return Math.min(this.clock.getDelta(), 0.1);
+    const rawDelta = this.clock.getDelta();
+    return this.getSmoothedDeltaTime(rawDelta);
+  }
+  
+  private getSmoothedDeltaTime(rawDelta: number): number {
+    const now = performance.now();
+    const frameTime = now - this.lastFrameTime;
+    this.lastFrameTime = now;
+    
+    // Add to frame time history
+    this.frameTimeHistory.push(frameTime);
+    if (this.frameTimeHistory.length > this.FRAME_HISTORY_SIZE) {
+      this.frameTimeHistory.shift();
+    }
+    
+    // Calculate smoothed frame time
+    const averageFrameTime = this.frameTimeHistory.reduce((a, b) => a + b, 0) / this.frameTimeHistory.length;
+    this.targetFrameTime = this.targetFrameTime * (1 - this.frameTimeSmoothing) + averageFrameTime * this.frameTimeSmoothing;
+    
+    // Cap delta time to prevent large jumps (max 33.33ms = 30fps minimum)
+    const clampedDelta = Math.min(rawDelta, 1 / 30);
+    
+    // Apply frame time smoothing to reduce stutters
+    const smoothedDelta = clampedDelta * (1 - this.frameTimeSmoothing) + (this.targetFrameTime / 1000) * this.frameTimeSmoothing;
+    
+    return Math.max(smoothedDelta, 1 / 144); // Minimum deltaTime for 144fps max
   }
   
   public getCameraRotation(): { pitch: number; yaw: number } {

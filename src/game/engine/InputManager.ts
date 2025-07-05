@@ -108,7 +108,8 @@ export class InputManager {
   }
   
   public setMouseSensitivity(sensitivity: number): void {
-    console.log("Mouse sensitivity setting moved to GameEngine");
+    this.mouseHandler.setMouseSensitivity(sensitivity);
+    console.log(`🎮 [InputManager] Mouse sensitivity updated to: ${sensitivity}`);
   }
   
   public setKeyBindings(bindings: Partial<KeyBindings>): void {

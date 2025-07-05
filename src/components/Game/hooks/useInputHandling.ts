@@ -69,12 +69,10 @@ export const useInputHandling = ({
     return () => document.removeEventListener('gameInput', handleGameInput);
   }, [gameStarted, gameEngine, isAnyUIOpen]);
 
-  // Enhanced keyboard input handler
+  // Enhanced keyboard input handler with frame-rate independent timing
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if (!gameStarted || !gameEngine) return;
-
-      console.log('🎮 [useInputHandling] Key pressed:', event.code);
 
       // Prevent default for game controls only when no UI is open
       const anyUIOpen = isAnyUIOpen();
