@@ -748,57 +748,66 @@ export abstract class EnemyHumanoid {
       const distance = Math.sqrt(x * x + y * y + z * z);
       const normalizedY = y / shoulderJointRadius; // -1 to 1, where 1 is top, -1 is bottom
       
-      // Create anatomically correct deltoid shape: teardrop profile, no center bulge
+      // Create anatomically correct deltoid shape: contained within arm width
       let scaleFactor = 1.0;
       let frontBackScale = 0.7; // Deltoids are naturally flatter front-to-back
+      let lateralScale = 1.0; // Control side-to-side expansion
       
       // Calculate position relative to shoulder attachment points
       const angle = Math.atan2(z, x); // Angle around Y axis
       const frontFactor = Math.max(0, Math.cos(angle)); // 1 at front, 0 at back
+      const sideFactor = Math.abs(Math.sin(angle)); // 1 at sides, 0 at front/back
       
       if (normalizedY > 0.1) {
         // Upper section - deltoid attachment to clavicle/scapula
-        // Widest at top-front (anterior deltoid), tapering toward back
         const upperPosition = (normalizedY - 0.1) / 0.9; // 0 at transition, 1 at top
-        const upperTaper = 1.0 - (upperPosition * 0.3); // Gentle taper from 1.0 to 0.7
+        const upperTaper = 1.0 - (upperPosition * 0.4); // More aggressive taper
         
-        // Anterior deltoid is wider than posterior
-        const anteriorScale = 1.0 + (frontFactor * 0.2); // Front bulges slightly more
+        // Anterior deltoid is wider than posterior, but constrain lateral expansion
+        const anteriorScale = 1.0 + (frontFactor * 0.15); // Reduced front bulge
         scaleFactor = upperTaper * anteriorScale;
         
-        // Very flat profile - deltoids are thin muscles
-        frontBackScale = 0.6 - (upperPosition * 0.1); // Gets thinner toward top
+        // Constrain lateral expansion - deltoid shouldn't extend beyond arm width
+        lateralScale = 0.85 - (sideFactor * 0.1); // Reduce width at sides
+        
+        frontBackScale = 0.6 - (upperPosition * 0.1);
         
       } else if (normalizedY > -0.4) {
-        // Middle section - main deltoid body, NO CENTER BULGE
-        // Real deltoids don't bulge in the middle - they're relatively flat
+        // Middle section - main deltoid body, constrained width
         const middlePosition = (normalizedY + 0.4) / 0.5; // 0 at bottom, 1 at top
         
-        // Linear taper from top to bottom - no bulging curve
-        scaleFactor = 0.85 + (middlePosition * 0.15); // Simple linear from 0.85 to 1.0
+        // Linear taper but keep contained within arm silhouette
+        scaleFactor = 0.8 + (middlePosition * 0.1); // Reduced overall size
         
-        // Maintain thin profile throughout middle
+        // Key fix: significantly reduce lateral expansion
+        lateralScale = 0.9 - (sideFactor * 0.15); // Much less width at sides
+        
         frontBackScale = 0.65;
         
       } else {
         // Lower section - deltoid insertion at arm
-        // Smooth taper to arm connection point
         const lowerPosition = Math.abs(normalizedY + 0.4) / 0.6; // 0 at transition, 1 at bottom
-        const insertionTaper = 1.0 - (lowerPosition * 0.4); // Taper from 1.0 to 0.6
+        const insertionTaper = 1.0 - (lowerPosition * 0.3);
         
-        scaleFactor = 0.85 * insertionTaper;
+        scaleFactor = 0.8 * insertionTaper;
         
-        // Slightly thicker at insertion point for muscle attachment
+        // Taper to arm width at insertion
+        lateralScale = 0.95 - (lowerPosition * 0.2);
+        
         frontBackScale = 0.65 + (lowerPosition * 0.1);
       }
       
       // Apply scaling with natural deltoid curves
       const horizontalDistance = Math.sqrt(x * x + z * z);
       if (horizontalDistance > 0) {
-        const newHorizontalDistance = horizontalDistance * scaleFactor;
-        const scaleRatio = newHorizontalDistance / horizontalDistance;
-        shoulderPositions[i] = x * scaleRatio; // X scaling
-        shoulderPositions[i + 2] = z * scaleRatio * frontBackScale; // Z scaling with compression
+        const angle = Math.atan2(z, x);
+        
+        // Apply lateral scaling to X (side-to-side) and front-back scaling to Z
+        const newX = Math.cos(angle) * horizontalDistance * scaleFactor * lateralScale;
+        const newZ = Math.sin(angle) * horizontalDistance * scaleFactor * frontBackScale;
+        
+        shoulderPositions[i] = newX; // X scaling with lateral constraint
+        shoulderPositions[i + 2] = newZ; // Z scaling with front-back compression
       }
     }
     shoulderJointGeometry.attributes.position.needsUpdate = true;
