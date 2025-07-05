@@ -47,27 +47,26 @@ export class PeacefulHumanoid extends EnemyHumanoid {
 
     if (!headGroup || !this.bodyParts.head) return;
 
-    // Add realistic human hair
+    // Add realistic human hair with better positioning
     this.humanHair = HumanBodyConfig.createHumanHair(
       this.config.bodyScale.head.radius, 
       0x654321 // Brown hair
     );
     
-    // Position hair properly on the head
-    const headPosition = this.bodyParts.head.position.clone();
-    this.humanHair.position.copy(headPosition);
-    this.humanHair.position.y += this.config.bodyScale.head.radius * 0.3;
+    // Position hair properly on the head - fix positioning
+    this.humanHair.position.set(0, this.config.bodyScale.head.radius * 0.15, 0);
     this.humanHair.castShadow = true;
     
     // Add hair to the head group for proper positioning
     headGroup.add(this.humanHair);
 
-    // Add clothing overlay for tavern keeper
+    // Add comprehensive clothing system
     if (this.bodyParts.body) {
+      // Better tunic
       this.humanClothing = HumanBodyConfig.createClothing(
         this.config.bodyScale.body.radius,
         this.config.bodyScale.body.height,
-        this.config.colors.muscle // Use muscle color for clothing
+        0x8B4513 // Brown clothing
       );
       
       // Position clothing over the body
@@ -77,6 +76,20 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       
       // Add clothing to the main mesh group
       this.mesh.add(this.humanClothing);
+
+      // Add pants
+      const pants = HumanBodyConfig.createPants(
+        this.config.bodyScale.leg.radius[1],
+        this.config.bodyScale.leg.length,
+        this.config.bodyScale.shin.radius[1],
+        this.config.bodyScale.shin.length
+      );
+      pants.position.y = 0.8; // Position at waist level
+      this.mesh.add(pants);
+
+      // Add shoes
+      const shoes = HumanBodyConfig.createShoes();
+      this.mesh.add(shoes);
     }
   }
 
