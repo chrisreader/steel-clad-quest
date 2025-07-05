@@ -47,10 +47,8 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       0x654321 // Brown hair
     );
     
-    // Position hair properly on the head
-    const headPosition = this.bodyParts.head.position.clone();
-    this.humanHair.position.copy(headPosition);
-    this.humanHair.position.y += this.config.bodyScale.head.radius * 0.3;
+    // Position hair relative to head group's local coordinates
+    this.humanHair.position.set(0, this.config.bodyScale.head.radius * 0.3, 0);
     this.humanHair.castShadow = true;
     
     // Add hair to the head group for proper positioning
