@@ -215,9 +215,9 @@ export abstract class EnemyHumanoid {
     });
 
     const baseAccentMaterial = new THREE.MeshPhongMaterial({
-      color: colors.accent,
-      shininess: 45,
-      specular: 0x555555
+      color: colors.skin, // Force accent to use skin color for humans to prevent red artifacts
+      shininess: 35, // Match skin material properties  
+      specular: 0x333333 // Match skin material properties
     });
 
     // Create legs - use skin material for humans
@@ -402,14 +402,14 @@ export abstract class EnemyHumanoid {
     chest.castShadow = true;
     torsoGroup.add(chest);
 
-    // Pelvis
+    // Pelvis - force skin material and reduce size
     const pelvisGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 0.75,
-      bodyScale.body.radius * 0.9,
-      0.4, 16, 4
+      bodyScale.body.radius * 0.6,  // Reduced from 0.75
+      bodyScale.body.radius * 0.7,  // Reduced from 0.9
+      0.3, 16, 4  // Reduced height from 0.4
     );
-    const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
-    pelvis.position.y = legTopY + 0.2;
+    const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone()); // Force base skin material
+    pelvis.position.y = legTopY + 0.15; // Slightly lower position
     pelvis.castShadow = true;
     torsoGroup.add(pelvis);
 
