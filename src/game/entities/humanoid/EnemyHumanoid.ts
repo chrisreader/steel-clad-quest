@@ -491,14 +491,14 @@ export abstract class EnemyHumanoid {
     upperSkull.castShadow = true;
     headGroup.add(upperSkull);
 
-    // Neck - natural taper that flares to connect with chest
+    // Neck - natural taper that flares to connect with chest, made longer
     const neckGeometry = new THREE.CylinderGeometry(
       bodyScale.head.radius * 0.35, // Top radius (at head)
       bodyScale.body.radius * 0.6,  // Bottom radius (flares to connect with chest) 
-      0.4, 16, 4
+      0.7, 16, 4  // Increased height from 0.4 to 0.7 for longer neck
     );
     const neck = new THREE.Mesh(neckGeometry, accentMaterial.clone());
-    neck.position.y = -bodyScale.head.radius - 0.2; // Position relative to head group center
+    neck.position.y = -bodyScale.head.radius - 0.35; // Adjusted position for longer neck
     neck.castShadow = true;
     headGroup.add(neck);
 
