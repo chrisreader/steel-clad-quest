@@ -501,83 +501,36 @@ export abstract class EnemyHumanoid {
       // Normalize Y position to -1 to 1 range
       const normalizedY = y / radius;
       
-      // Calculate angle to determine front vs back vs sides
-      const angle = Math.atan2(z, x);
-      const normalizedAngle = (angle + Math.PI) / (2 * Math.PI); // 0 to 1, where 0.5 is front
+      // Define head regions based on normalized Y
+      let horizontalScale = 1.0;
+      let frontBackScale = 1.0;
+      let heightScale = 1.0;
       
-      // Determine if we're at front, back, or sides
-      const frontness = Math.cos(angle); // 1 at front (z+), -1 at back (z-), 0 at sides
-      const sideness = Math.abs(Math.sin(angle)); // 1 at sides, 0 at front/back
-      
-      // Base skull proportions - create curved diamond shape
-      let horizontalScale: number;
-      let frontBackScale: number; 
-      let heightScale: number;
-
-      if (normalizedY > 0.5) {
-        // Upper region - crown (rounded but forward-projecting)
-        const crownFactor = (normalizedY - 0.5) / 0.5;
-        horizontalScale = 1.0 - crownFactor * 0.25; // Narrower at crown
-        
-        // Crown projects forward but flatter at back
-        if (frontness > 0) {
-          frontBackScale = 1.2 + crownFactor * 0.2; // Forward crown projection
-        } else {
-          frontBackScale = 0.7 + crownFactor * 0.1; // Much flatter back of head
-        }
-        heightScale = 1.0 + crownFactor * 0.15;
-        
+      if (normalizedY > 0.6) {
+        // Crown/top region - flatter
+        const topFactor = (normalizedY - 0.6) / 0.4;
+        horizontalScale = 1.0 - topFactor * 0.3; // Narrower at top
+        frontBackScale = 1.0 - topFactor * 0.2; // Slightly flatter front-to-back
+        heightScale = 0.95 - topFactor * 0.1; // Compress vertically
       } else if (normalizedY > 0.1) {
-        // Upper-middle region - forehead/brow area (strong forward projection)
-        const browFactor = Math.sin(((normalizedY - 0.1) / 0.4) * Math.PI);
-        horizontalScale = 0.95 + browFactor * 0.1; // Moderate width at temples
-        
-        // Strong brow ridge and forehead vs flat back
-        if (frontness > 0.3) {
-          frontBackScale = 1.4 + browFactor * 0.3; // Prominent brow/forehead
-        } else if (frontness < -0.3) {
-          frontBackScale = 0.6; // Very flat back of head
-        } else {
-          frontBackScale = 1.0 + frontness * 0.4; // Smooth transition at sides
-        }
+        // Upper-middle region - eye/temple area (more skull-like)
+        const eyeFactor = Math.sin(((normalizedY - 0.1) / 0.5) * Math.PI);
+        horizontalScale = 0.95 + eyeFactor * 0.05; // Slightly narrower, more skull-like
+        frontBackScale = 1.4; // More forward projection for forehead/brow area
         heightScale = 1.0;
-        
-      } else if (normalizedY > -0.2) {
-        // Mid-face region - cheeks/nose area
-        const faceFactor = Math.sin(((normalizedY + 0.2) / 0.3) * Math.PI);
-        horizontalScale = 0.85 + faceFactor * 0.15; // Narrower face
-        
-        // Face projects forward, back remains flat
-        if (frontness > 0.2) {
-          frontBackScale = 1.3 + faceFactor * 0.2; // Forward facial projection
-        } else if (frontness < -0.2) {
-          frontBackScale = 0.65; // Flat back continues
-        } else {
-          frontBackScale = 0.95 + frontness * 0.35; // Smooth side transition
-        }
+      } else if (normalizedY > -0.3) {
+        // Mid-face region - mouth area (narrower)
+        const mouthFactor = Math.sin(((normalizedY + 0.3) / 0.4) * Math.PI);
+        horizontalScale = 0.9 + mouthFactor * 0.1; // Slightly narrower
+        frontBackScale = 1.3 - mouthFactor * 0.1; // Forward projection for face area
         heightScale = 1.0;
-        
       } else {
-        // Lower region - jaw/chin area (wider jaw, prominent chin)
-        const jawFactor = Math.abs(normalizedY + 0.2) / 0.8;
-        horizontalScale = 0.9 + jawFactor * 0.4; // Wider jaw for muscle attachment
-        
-        // Strong chin projection vs flat back
-        if (frontness > 0.1) {
-          frontBackScale = 1.25 + jawFactor * 0.3; // Prominent chin and jaw
-        } else if (frontness < -0.1) {
-          frontBackScale = 0.7 + jawFactor * 0.1; // Slightly more rounded at back base
-        } else {
-          frontBackScale = 0.95 + frontness * 0.35; // Side jaw projection
-        }
-        heightScale = 1.0 + jawFactor * 0.12; // Slightly taller jaw
+        // Lower region - jaw/chin (wider and rounder)
+        const jawFactor = Math.abs(normalizedY + 0.3) / 0.7;
+        horizontalScale = 0.9 + jawFactor * 0.3; // Wider jaw
+        frontBackScale = 1.2 + jawFactor * 0.1; // Forward projection for chin
+        heightScale = 1.0 + jawFactor * 0.1; // Slightly taller jaw
       }
-      
-      // Add subtle curvature variation based on skull anatomy
-      const curvatureBonus = Math.sin(normalizedAngle * Math.PI * 2) * 0.05;
-      horizontalScale += curvatureBonus;
-
-      // Apply the transformations
       
       // Apply transformations
       const horizontalDistance = Math.sqrt(x * x + z * z);
