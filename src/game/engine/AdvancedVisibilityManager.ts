@@ -2,17 +2,17 @@ import * as THREE from 'three';
 
 // Visibility zones for optimized culling
 export enum VisibilityZone {
-  NEAR = 'near',       // 0-30 units: Always render
-  MEDIUM = 'medium',   // 30-80 units: Frustum cull only
-  FAR = 'far',         // 80-150 units: Behind-player cull
-  EXTREME = 'extreme'  // 150+ units: Full cull
+  NEAR = 'near',       // 0-80 units: Always render
+  MEDIUM = 'medium',   // 80-150 units: Frustum cull only
+  FAR = 'far',         // 150-250 units: Behind-player cull
+  EXTREME = 'extreme'  // 250+ units: Full cull
 }
 
 // View angles for behind-player detection
 export enum ViewAngle {
-  FRONT = 'front',     // ±60°: Always render
-  SIDE = 'side',       // ±60-120°: Partial cull
-  BEHIND = 'behind'    // ±120-180°: Aggressive cull
+  FRONT = 'front',     // ±90°: Always render
+  SIDE = 'side',       // ±90-135°: Partial cull
+  BEHIND = 'behind'    // ±135-180°: Aggressive cull
 }
 
 export interface VisibilityConfig {
@@ -41,13 +41,13 @@ export interface ObjectVisibilityState {
 
 export class AdvancedVisibilityManager {
   private config: VisibilityConfig = {
-    nearDistance: 30,
-    mediumDistance: 80,
-    farDistance: 150,
-    extremeDistance: 200,
-    frontAngle: 60,      // degrees
-    sideAngle: 120,      // degrees
-    behindAngle: 180,    // degrees
+    nearDistance: 80,    // Expanded from 30 - always render, no culling
+    mediumDistance: 150, // Expanded from 80 - frustum cull only
+    farDistance: 250,    // Expanded from 150 - selective behind-player cull
+    extremeDistance: 300, // Expanded from 200 - full distance cull
+    frontAngle: 90,      // Expanded from 60° - wider visible cone (180° total)
+    sideAngle: 135,      // Expanded from 120° - moderate culling zone
+    behindAngle: 180,    // degrees - aggressive culling only for truly behind
     updateInterval: 16,  // ~60fps update rate
     renderCacheTime: 100 // Cache visibility decisions for 100ms
   };
@@ -111,7 +111,7 @@ export class AdvancedVisibilityManager {
     
     // Debug logging every 3 seconds
     if (Math.floor(now / 3000) !== Math.floor((now - this.config.updateInterval) / 3000)) {
-      console.log(`🎯 [AdvancedVisibilityManager] Rendered: ${renderedObjects}, Culled: ${culledObjects}, Ratio: ${(100 * culledObjects / (renderedObjects + culledObjects)).toFixed(1)}%`);
+      console.log(`🎯 [AdvancedVisibilityManager] Player: (${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)}) | Rendered: ${renderedObjects}, Culled: ${culledObjects}, Ratio: ${(100 * culledObjects / (renderedObjects + culledObjects)).toFixed(1)}%`);
     }
   }
 
@@ -188,6 +188,11 @@ export class AdvancedVisibilityManager {
    * Smart enemy rendering logic - maintains gameplay while optimizing visuals
    */
   private shouldRenderEnemy(visibility: ObjectVisibilityState): boolean {
+    // Keep all enemies visible within 120 units regardless of angle or zone
+    if (visibility.distance <= 120) {
+      return true;
+    }
+
     // Always render enemies that are close or in front
     if (visibility.zone === VisibilityZone.NEAR || visibility.angle === ViewAngle.FRONT) {
       return true;
