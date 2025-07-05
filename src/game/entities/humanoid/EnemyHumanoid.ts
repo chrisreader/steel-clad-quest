@@ -516,19 +516,19 @@ export abstract class EnemyHumanoid {
         // Upper-middle region - eye/temple area (more skull-like)
         const eyeFactor = Math.sin(((normalizedY - 0.1) / 0.5) * Math.PI);
         horizontalScale = 0.95 + eyeFactor * 0.05; // Slightly narrower, more skull-like
-        frontBackScale = 1.2; // Fuller front-to-back for forehead
+        frontBackScale = 1.4; // More forward projection for forehead/brow area
         heightScale = 1.0;
       } else if (normalizedY > -0.3) {
         // Mid-face region - mouth area (narrower)
         const mouthFactor = Math.sin(((normalizedY + 0.3) / 0.4) * Math.PI);
         horizontalScale = 0.9 + mouthFactor * 0.1; // Slightly narrower
-        frontBackScale = 1.1 - mouthFactor * 0.2; // Less deep at mouth
+        frontBackScale = 1.3 - mouthFactor * 0.1; // Forward projection for face area
         heightScale = 1.0;
       } else {
         // Lower region - jaw/chin (wider and rounder)
         const jawFactor = Math.abs(normalizedY + 0.3) / 0.7;
         horizontalScale = 0.9 + jawFactor * 0.3; // Wider jaw
-        frontBackScale = 1.1 + jawFactor * 0.2; // Fuller jaw
+        frontBackScale = 1.2 + jawFactor * 0.1; // Forward projection for chin
         heightScale = 1.0 + jawFactor * 0.1; // Slightly taller jaw
       }
       
