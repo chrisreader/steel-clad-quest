@@ -107,6 +107,10 @@ export abstract class BaseBird implements SpawnableEntity {
   protected flightPathProgress: number = 0;
   protected soaringAltitudeLoss: number = 0;
 
+  // PHASE 3: Flight calculation optimization - update flight path less frequently
+  private flightUpdateCounter: number = 0;
+  private readonly FLIGHT_UPDATE_INTERVAL: number = 3; // Update flight calculations every 3 frames
+
   constructor(id: string, config: BirdConfig) {
     this.id = id;
     this.config = config;
@@ -386,6 +390,19 @@ export abstract class BaseBird implements SpawnableEntity {
   protected followFlightPath(deltaTime: number): void {
     if (this.flightPath.length === 0) return;
     
+    // PHASE 3: Only update flight calculations every 3 frames for better FPS
+    this.flightUpdateCounter++;
+    const shouldUpdateFlightPath = this.flightUpdateCounter >= this.FLIGHT_UPDATE_INTERVAL;
+    
+    if (!shouldUpdateFlightPath) {
+      // Continue with last known velocity without recalculating path
+      return;
+    }
+    
+    // Reset counter and scale deltaTime for accuracy
+    this.flightUpdateCounter = 0;
+    const scaledDeltaTime = deltaTime * this.FLIGHT_UPDATE_INTERVAL;
+    
     const currentWaypoint = this.flightPath[this.currentPathIndex];
     if (!currentWaypoint) return;
     
@@ -393,7 +410,6 @@ export abstract class BaseBird implements SpawnableEntity {
     
     if (distanceToWaypoint < 5) {
       this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
-      console.log(`🐦 [${this.config.species}] Reached waypoint ${this.currentPathIndex}`);
       return;
     }
     
@@ -411,7 +427,7 @@ export abstract class BaseBird implements SpawnableEntity {
     if (headingDiff > Math.PI) headingDiff -= 2 * Math.PI;
     if (headingDiff < -Math.PI) headingDiff += 2 * Math.PI;
     
-    const maxTurnRate = 1.8 * deltaTime;
+    const maxTurnRate = 1.8 * scaledDeltaTime;
     const actualTurn = THREE.MathUtils.clamp(headingDiff, -maxTurnRate, maxTurnRate);
     this.currentHeading += actualTurn;
     
@@ -434,14 +450,14 @@ export abstract class BaseBird implements SpawnableEntity {
     const altitudeDiff = currentWaypoint.y - this.position.y;
     if (Math.abs(altitudeDiff) > 1.5) {
       const climbRate = THREE.MathUtils.clamp(altitudeDiff * 0.3, -1.2, 1.2);
-      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, climbRate, deltaTime * 2);
+      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, climbRate, scaledDeltaTime * 2);
       
       // Flap more when climbing or descending significantly
       this.isFlapping = true;
       this.wingBeatIntensity = 1.0 + Math.abs(climbRate) * 0.3;
     } else {
       // Maintain current altitude with minimal adjustments
-      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, 0, deltaTime * 3);
+      this.velocity.y = THREE.MathUtils.lerp(this.velocity.y, 0, scaledDeltaTime * 3);
       
       // Only flap when turning or need speed
       this.isFlapping = Math.abs(actualTurn) > 0.02 || this.birdState === BirdState.FLYING;
@@ -450,14 +466,12 @@ export abstract class BaseBird implements SpawnableEntity {
     
     // Visual banking effect (body only, not wings)
     const targetBank = -actualTurn * 2.0; // Banking into turns
-    this.visualBankAngle = THREE.MathUtils.lerp(this.visualBankAngle, targetBank, deltaTime * 4);
+    this.visualBankAngle = THREE.MathUtils.lerp(this.visualBankAngle, targetBank, scaledDeltaTime * 4);
     
     if (this.bodyParts?.body) {
       const clampedBank = THREE.MathUtils.clamp(this.visualBankAngle, -0.3, 0.3);
       this.bodyParts.body.rotation.z = clampedBank;
     }
-    
-    console.log(`🐦 [${this.config.species}] Forward flight: heading=${(this.currentHeading * 180/Math.PI).toFixed(1)}°, mesh rot=${(this.mesh.rotation.y * 180/Math.PI).toFixed(1)}°, vel=(${this.velocity.x.toFixed(2)}, ${this.velocity.z.toFixed(2)}), dist=${distanceToWaypoint.toFixed(1)}m`);
   }
 
   public dispose(): void {
