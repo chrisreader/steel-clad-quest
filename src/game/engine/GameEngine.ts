@@ -95,10 +95,11 @@ export class GameEngine {
       // Create the audio manager
       this.audioManager = new AudioManager(this.renderEngine.getCamera(), this.renderEngine.getScene());
       
-      // Set audio manager for building manager
-      if (this.buildingManager && this.audioManager) {
+      // Set audio manager and effects manager for building manager
+      if (this.buildingManager && this.audioManager && this.effectsManager) {
         this.buildingManager.setAudioManager(this.audioManager);
-        console.log("🔊 [GameEngine] AudioManager connected to BuildingManager");
+        this.buildingManager.setEffectsManager(this.effectsManager);
+        console.log("🔊 [GameEngine] AudioManager and EffectsManager connected to BuildingManager");
       }
       
       // Create buildings with fireplaces

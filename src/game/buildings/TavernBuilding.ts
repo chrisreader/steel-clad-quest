@@ -3,13 +3,21 @@ import { BaseBuilding } from './BaseBuilding';
 import { TextureGenerator } from '../utils';
 import { FireplaceComponent } from './components/FireplaceComponent';
 import { AudioManager } from '../engine/AudioManager';
+import { HumanNPC } from '../entities/humanoid/HumanNPC';
+import { EffectsManager } from '../engine/EffectsManager';
 
 export class TavernBuilding extends BaseBuilding {
   private fireplaceComponent: FireplaceComponent | null = null;
   private audioManager: AudioManager | null = null;
+  private effectsManager: EffectsManager | null = null;
+  private tavernKeeper: HumanNPC | null = null;
 
   public setAudioManager(audioManager: AudioManager): void {
     this.audioManager = audioManager;
+  }
+
+  public setEffectsManager(effectsManager: EffectsManager): void {
+    this.effectsManager = effectsManager;
   }
 
   protected createStructure(): void {
@@ -73,6 +81,9 @@ export class TavernBuilding extends BaseBuilding {
     
     // Furniture (moved to sides to make room for fireplace)
     this.createFurniture();
+    
+    // Create tavern keeper NPC
+    this.createTavernKeeper();
   }
   
   private createEnhancedFireplace(): void {
@@ -145,9 +156,37 @@ export class TavernBuilding extends BaseBuilding {
     this.addComponent(chair2, 'chair_2', 'wood');
   }
   
+  private createTavernKeeper(): void {
+    if (!this.audioManager || !this.effectsManager) {
+      console.warn('🏠 [TavernBuilding] AudioManager or EffectsManager not set. Cannot create tavern keeper.');
+      return;
+    }
+
+    console.log('👤 [TavernBuilding] Creating tavern keeper NPC');
+    
+    // Position the tavern keeper near the bar area
+    const keeperPosition = new THREE.Vector3(3, 0, 1);
+    // Adjust position to be relative to tavern position
+    keeperPosition.add(this.position);
+    
+    this.tavernKeeper = HumanNPC.createTavernKeeper(
+      this.scene,
+      keeperPosition,
+      this.effectsManager,
+      this.audioManager
+    );
+    
+    console.log('👤 [TavernBuilding] Tavern keeper created successfully');
+  }
+
   public update(deltaTime: number): void {
     if (this.fireplaceComponent) {
       this.fireplaceComponent.update(deltaTime);
+    }
+    
+    if (this.tavernKeeper) {
+      // For now, update without player position (tavern keeper will wander on its own)
+      this.tavernKeeper.update(deltaTime);
     }
   }
   
@@ -156,6 +195,12 @@ export class TavernBuilding extends BaseBuilding {
       this.fireplaceComponent.dispose();
       this.fireplaceComponent = null;
     }
+    
+    if (this.tavernKeeper) {
+      this.tavernKeeper.dispose();
+      this.tavernKeeper = null;
+    }
+    
     super.dispose();
   }
   

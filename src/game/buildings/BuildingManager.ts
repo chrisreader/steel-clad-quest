@@ -6,6 +6,7 @@ import { CastleBuilding } from './CastleBuilding';
 import { PhysicsManager } from '../engine/PhysicsManager';
 import { SafeZoneManager } from '../systems/SafeZoneManager';
 import { AudioManager } from '../engine/AudioManager';
+import { EffectsManager } from '../engine/EffectsManager';
 
 export interface BuildingConfig {
   type: 'tavern' | 'castle';
@@ -20,6 +21,7 @@ export class BuildingManager {
   private safeZoneManager: SafeZoneManager;
 
   private audioManager: AudioManager | null = null;
+  private effectsManager: EffectsManager | null = null;
 
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
@@ -39,6 +41,11 @@ export class BuildingManager {
     console.log('🔊 AudioManager set for BuildingManager');
   }
 
+  public setEffectsManager(effectsManager: EffectsManager): void {
+    this.effectsManager = effectsManager;
+    console.log('✨ EffectsManager set for BuildingManager');
+  }
+
   public createBuilding(config: BuildingConfig): BaseBuilding | null {
     console.log(`🏗️ Creating building of type: ${config.type} at position:`, config.position);
 
@@ -47,8 +54,16 @@ export class BuildingManager {
     switch (config.type) {
       case 'tavern':
         building = new TavernBuilding(this.scene, this.physicsManager, config.position);
-        if (building instanceof TavernBuilding && this.audioManager) {
-          building.setAudioManager(this.audioManager);
+        if (building instanceof TavernBuilding) {
+          if (this.audioManager) {
+            building.setAudioManager(this.audioManager);
+          }
+          if (this.effectsManager) {
+            building.setEffectsManager(this.effectsManager);
+            console.log('🏗️ [BuildingManager] Tavern created with EffectsManager for NPC');
+          } else {
+            console.warn('🏗️ [BuildingManager] EffectsManager not set - tavern keeper NPC will not spawn');
+          }
         }
         break;
       case 'castle':
