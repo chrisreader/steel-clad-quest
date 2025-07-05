@@ -58,18 +58,18 @@ export class HumanBodyConfig {
   }
 
   /**
-   * Creates configuration for a tavern keeper specifically
+   * Creates configuration for a tavern keeper with natural skin tones
    */
   public static createTavernKeeperConfig(): HumanoidConfig {
     const baseConfig = this.createHumanConfig();
     
     return {
       ...baseConfig,
-      // Tavern keeper specific colors - apron and work clothes
+      // Use natural skin tones instead of clothing colors
       colors: {
         skin: 0xFFDBAE,    // Human skin tone
-        muscle: 0x8B4513,  // Brown clothing/apron
-        accent: 0x654321   // Darker brown for details
+        muscle: 0xE6C2A6,  // Slightly darker muscle definition (skin tone)
+        accent: 0xD4AF8C   // Accent for joints and details (skin tone)
       }
     };
   }

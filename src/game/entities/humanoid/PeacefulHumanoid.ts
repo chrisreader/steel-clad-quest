@@ -10,7 +10,6 @@ import { HumanBodyConfig } from './HumanBodyConfig';
  */
 export class PeacefulHumanoid extends EnemyHumanoid {
   private humanHair?: THREE.Mesh;
-  private humanClothing?: THREE.Mesh;
 
   constructor(
     scene: THREE.Scene,
@@ -33,7 +32,7 @@ export class PeacefulHumanoid extends EnemyHumanoid {
   }
 
   /**
-   * Add human-specific features like hair and clothing
+   * Add human-specific features like hair
    */
   private addHumanFeatures(): void {
     // Since bodyParts.head is now a THREE.Group itself, use it directly
@@ -53,23 +52,6 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     
     // Add hair to the head group for proper positioning
     headGroup.add(this.humanHair);
-
-    // Add clothing overlay for tavern keeper
-    if (this.bodyParts.body) {
-      this.humanClothing = HumanBodyConfig.createClothing(
-        this.config.bodyScale.body.radius,
-        this.config.bodyScale.body.height,
-        this.config.colors.muscle // Use muscle color for clothing
-      );
-      
-      // Position clothing over the body
-      this.humanClothing.position.copy(this.bodyParts.body.position);
-      this.humanClothing.castShadow = true;
-      this.humanClothing.receiveShadow = true;
-      
-      // Add clothing to the main mesh group
-      this.mesh.add(this.humanClothing);
-    }
   }
 
   /**
@@ -148,13 +130,6 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       if (this.humanHair.geometry) this.humanHair.geometry.dispose();
       if (this.humanHair.material instanceof THREE.Material) {
         this.humanHair.material.dispose();
-      }
-    }
-    
-    if (this.humanClothing) {
-      if (this.humanClothing.geometry) this.humanClothing.geometry.dispose();
-      if (this.humanClothing.material instanceof THREE.Material) {
-        this.humanClothing.material.dispose();
       }
     }
     
