@@ -36,7 +36,7 @@ export class PerformanceManager {
       ...settings
     };
     
-    console.log('🚀 [PerformanceManager] Initialized with target FPS:', this.settings.targetFPS);
+    // Removed initialization log for performance
   }
   
   public updatePerformanceMetrics(deltaTime: number): void {
@@ -69,12 +69,7 @@ export class PerformanceManager {
       // Reduce quality to improve performance
       this.qualityScale = Math.max(0.5, this.qualityScale - 0.1);
       this.updateFrequencyScale = Math.max(0.3, this.updateFrequencyScale - 0.1);
-      console.log('🔻 [PerformanceManager] Performance below target, reducing quality:', {
-        fps: averageFPS,
-        target: targetFPS,
-        qualityScale: this.qualityScale,
-        updateScale: this.updateFrequencyScale
-      });
+      // Removed high-frequency performance adjustment logs
     } else if (averageFPS > targetFPS * 1.1) { // Above 110% of target
       // Increase quality if we have headroom
       this.qualityScale = Math.min(1.0, this.qualityScale + 0.05);
@@ -175,9 +170,6 @@ export class PerformanceManager {
         this.updateFrequencyScale = 1.0;
         break;
     }
-    console.log(`🎯 [PerformanceManager] Performance level set to ${level}:`, {
-      qualityScale: this.qualityScale,
-      updateScale: this.updateFrequencyScale
-    });
+    // Removed performance level adjustment log
   }
 }

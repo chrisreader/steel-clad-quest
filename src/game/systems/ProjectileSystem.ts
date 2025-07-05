@@ -252,7 +252,7 @@ export class ProjectileSystem {
   public transferGold(): Gold[] {
     const goldToTransfer = [...this.gold];
     this.gold = []; // Clear only the gold array
-    console.log(`💰 [ProjectileSystem] Transferred ${goldToTransfer.length} gold drops to CombatSystem`);
+    // Removed high-frequency log for performance
     return goldToTransfer;
   }
 

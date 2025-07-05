@@ -15,7 +15,7 @@ const LOG_LEVELS: LogLevel = {
 
 class GameLogger {
   private static instance: GameLogger;
-  private currentLevel: number = LOG_LEVELS.DEBUG;
+  private currentLevel: number = LOG_LEVELS.ERROR;
   private isProduction: boolean = process.env.NODE_ENV === 'production';
 
   private constructor() {
