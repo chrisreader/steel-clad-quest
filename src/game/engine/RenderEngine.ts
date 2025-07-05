@@ -145,8 +145,11 @@ export class RenderEngine {
   }
   
   private isObjectInFrustum(object: THREE.Object3D): boolean {
-    // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
+    // Skip frustum culling for InstancedMesh (like grass) and billboards to avoid complexity
     if (object instanceof THREE.InstancedMesh) return true;
+    
+    // Skip frustum culling for billboard objects - let BillboardSystem manage visibility
+    if (object.userData && object.userData.isBillboard) return true;
     
     // Hierarchical culling - check parent objects first for performance
     if (object.parent && object.parent !== this.scene && !this.isObjectInFrustum(object.parent)) {

@@ -18,6 +18,7 @@ interface BillboardObject {
   scale: number;
   isVisible: boolean;
   isBillboard: boolean;
+  lastStateChange: number; // Track last state change for cooldown
 }
 
 export class BillboardSystem {
@@ -30,14 +31,18 @@ export class BillboardSystem {
   private billboardTextures: Map<TreeSpeciesType, BillboardTexture[]> = new Map();
   private billboardAtlas: THREE.Texture | null = null;
   
-  // Distance thresholds
+  // Distance thresholds with hysteresis
   private readonly BILLBOARD_START_DISTANCE = 80;
-  private readonly BILLBOARD_FADE_RANGE = 10; // 80-90 units for smooth transition
+  private readonly BILLBOARD_RETURN_DISTANCE = 75; // Hysteresis to prevent rapid switching
+  private readonly BILLBOARD_FADE_RANGE = 20; // 70-90 units for smooth transition
   private readonly MAX_RENDER_DISTANCE = 200;
   
   // Performance tracking
   private lastUpdateTime = 0;
-  private readonly UPDATE_INTERVAL = 100; // Update every 100ms
+  private readonly UPDATE_INTERVAL = 16; // Update at ~60fps for smooth transitions
+  
+  // State change cooldown to prevent flickering
+  private readonly STATE_CHANGE_COOLDOWN = 500; // 500ms minimum between state changes
   
   constructor(scene: THREE.Scene, camera: THREE.PerspectiveCamera, renderer: THREE.WebGLRenderer) {
     this.scene = scene;
@@ -229,6 +234,7 @@ export class BillboardSystem {
     const billboard = new THREE.Mesh(billboardGeometry, billboardMaterial);
     billboard.position.copy(treeMesh.position);
     billboard.visible = false; // Start invisible
+    billboard.userData.isBillboard = true; // Mark as billboard for exclusion from frustum culling
     
     const billboardObject: BillboardObject = {
       id,
@@ -238,7 +244,8 @@ export class BillboardSystem {
       species,
       scale: treeMesh.scale.x,
       isVisible: true,
-      isBillboard: false
+      isBillboard: false,
+      lastStateChange: 0
     };
     
     this.billboardObjects.set(id, billboardObject);
@@ -254,25 +261,33 @@ export class BillboardSystem {
     this.billboardObjects.forEach((obj, id) => {
       const distance = playerPosition.distanceTo(obj.position);
       
-      // Determine if should be billboard or 3D
-      const shouldUseBillboard = distance >= this.BILLBOARD_START_DISTANCE;
+      // Check if enough time has passed since last state change (cooldown)
+      const timeSinceLastChange = now - obj.lastStateChange;
+      const canChangeState = timeSinceLastChange >= this.STATE_CHANGE_COOLDOWN;
       
-      if (shouldUseBillboard && !obj.isBillboard) {
-        // Switch to billboard
-        this.switchToBillboard(obj, playerPosition);
-      } else if (!shouldUseBillboard && obj.isBillboard) {
-        // Switch back to 3D
-        this.switchTo3D(obj);
+      // Use hysteresis to prevent rapid switching
+      const shouldUseBillboard = obj.isBillboard 
+        ? distance >= this.BILLBOARD_RETURN_DISTANCE // Use lower threshold to return to 3D
+        : distance >= this.BILLBOARD_START_DISTANCE; // Use higher threshold to switch to billboard
+      
+      // Only change state if cooldown has passed and distance threshold is crossed
+      if (canChangeState) {
+        if (shouldUseBillboard && !obj.isBillboard) {
+          // Switch to billboard
+          this.switchToBillboard(obj, playerPosition, now);
+        } else if (!shouldUseBillboard && obj.isBillboard) {
+          // Switch back to 3D
+          this.switchTo3D(obj, now);
+        }
       }
       
-      // Update billboard orientation if using billboard
+      // Update billboard orientation if using billboard (but don't change texture constantly)
       if (obj.isBillboard && obj.billboard.visible) {
         this.updateBillboardOrientation(obj, playerPosition);
-        this.updateBillboardTexture(obj, playerPosition);
       }
       
-      // Handle fade transitions
-      this.handleFadeTransition(obj, distance);
+      // Handle smooth fade transitions with easing
+      this.handleSmoothFadeTransition(obj, distance);
       
       // Cull distant objects
       if (distance > this.MAX_RENDER_DISTANCE) {
@@ -285,25 +300,31 @@ export class BillboardSystem {
     });
   }
   
-  private switchToBillboard(obj: BillboardObject, playerPosition: THREE.Vector3): void {
+  private switchToBillboard(obj: BillboardObject, playerPosition: THREE.Vector3, now: number): void {
     obj.originalMesh.visible = false;
     obj.billboard.visible = true;
     obj.isBillboard = true;
+    obj.lastStateChange = now;
     
     // Set appropriate scale for billboard
     const distance = playerPosition.distanceTo(obj.position);
     const scale = obj.scale * Math.min(2.5, distance / 50); // Scale with distance
     obj.billboard.scale.set(scale, scale, scale);
     
-    console.log(`🖼️ [BillboardSystem] Switched tree ${obj.id} to billboard at distance ${distance.toFixed(1)}`);
+    // Set initial billboard texture (use first texture to avoid switching)
+    const textures = this.billboardTextures.get(obj.species);
+    if (textures && textures.length > 0) {
+      const material = obj.billboard.material as THREE.MeshBasicMaterial;
+      material.map = textures[0].texture; // Use first texture only to prevent switching
+      material.needsUpdate = true;
+    }
   }
   
-  private switchTo3D(obj: BillboardObject): void {
+  private switchTo3D(obj: BillboardObject, now: number): void {
     obj.billboard.visible = false;
     obj.originalMesh.visible = true;
     obj.isBillboard = false;
-    
-    console.log(`🌲 [BillboardSystem] Switched tree ${obj.id} back to 3D`);
+    obj.lastStateChange = now;
   }
   
   private updateBillboardOrientation(obj: BillboardObject, playerPosition: THREE.Vector3): void {
@@ -330,41 +351,69 @@ export class BillboardSystem {
     material.needsUpdate = true;
   }
   
-  private handleFadeTransition(obj: BillboardObject, distance: number): void {
+  private handleSmoothFadeTransition(obj: BillboardObject, distance: number): void {
     const material = obj.billboard.material as THREE.MeshBasicMaterial;
     
-    if (distance >= this.BILLBOARD_START_DISTANCE && distance <= this.BILLBOARD_START_DISTANCE + this.BILLBOARD_FADE_RANGE) {
-      // Fade in billboard, fade out 3D
-      const fadeProgress = (distance - this.BILLBOARD_START_DISTANCE) / this.BILLBOARD_FADE_RANGE;
+    // Calculate fade range based on new larger transition zone (70-90 units)
+    const fadeStart = this.BILLBOARD_START_DISTANCE - this.BILLBOARD_FADE_RANGE / 2; // 70 units
+    const fadeEnd = this.BILLBOARD_START_DISTANCE + this.BILLBOARD_FADE_RANGE / 2;   // 90 units
+    
+    if (distance >= fadeStart && distance <= fadeEnd) {
+      // Smooth fade transition with easing
+      const normalizedDistance = (distance - fadeStart) / this.BILLBOARD_FADE_RANGE;
       
+      // Use ease-in-out cubic easing for smooth transitions
+      const easeInOutCubic = (t: number): number => {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
+      
+      const fadeProgress = easeInOutCubic(normalizedDistance);
+      
+      // Fade out 3D mesh
       if (obj.originalMesh.traverse) {
         obj.originalMesh.traverse((child) => {
           if (child instanceof THREE.Mesh && child.material) {
             const childMaterial = child.material as THREE.Material;
             if ('opacity' in childMaterial) {
               (childMaterial as any).transparent = true;
-              (childMaterial as any).opacity = 1.0 - fadeProgress;
+              (childMaterial as any).opacity = Math.max(0.0, 1.0 - fadeProgress);
             }
           }
         });
       }
       
-      material.opacity = fadeProgress;
-    } else if (distance < this.BILLBOARD_START_DISTANCE) {
-      // Full 3D visibility
+      // Fade in billboard
+      material.transparent = true;
+      material.opacity = Math.max(0.0, fadeProgress);
+      
+    } else if (distance < fadeStart) {
+      // Full 3D visibility - ensure billboard is hidden
+      material.opacity = 0.0;
       if (obj.originalMesh.traverse) {
         obj.originalMesh.traverse((child) => {
           if (child instanceof THREE.Mesh && child.material) {
             const childMaterial = child.material as THREE.Material;
             if ('opacity' in childMaterial) {
               (childMaterial as any).opacity = 1.0;
+              (childMaterial as any).transparent = false;
             }
           }
         });
       }
     } else {
-      // Full billboard visibility
+      // Full billboard visibility - ensure 3D mesh is hidden
       material.opacity = 1.0;
+      if (obj.originalMesh.traverse) {
+        obj.originalMesh.traverse((child) => {
+          if (child instanceof THREE.Mesh && child.material) {
+            const childMaterial = child.material as THREE.Material;
+            if ('opacity' in childMaterial) {
+              (childMaterial as any).opacity = 0.0;
+              (childMaterial as any).transparent = true;
+            }
+          }
+        });
+      }
     }
   }
   
