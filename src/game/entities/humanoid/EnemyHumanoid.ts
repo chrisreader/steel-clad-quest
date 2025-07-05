@@ -198,7 +198,7 @@ export abstract class EnemyHumanoid {
     const thighCenterY = legTopY - bodyScale.leg.length / 2;
     const bodyY = legTopY + bodyScale.body.height / 2;
     const bodyTopY = bodyY + bodyScale.body.height / 2;
-    const headY = bodyTopY + bodyScale.head.radius + 0.5; // Added extra space for longer neck
+    const headY = bodyTopY + bodyScale.head.radius + 0.25; // Reduced from 0.5 for shorter neck
     const shoulderHeight = bodyTopY;
 
     // Create base materials once
@@ -491,14 +491,14 @@ export abstract class EnemyHumanoid {
     upperSkull.castShadow = true;
     headGroup.add(upperSkull);
 
-    // Neck - natural taper that flares to connect with chest, made longer
+    // Neck - natural taper that flares to connect with chest, 50% shorter
     const neckGeometry = new THREE.CylinderGeometry(
       bodyScale.head.radius * 0.35, // Top radius (at head)
       bodyScale.body.radius * 0.6,  // Bottom radius (flares to connect with chest) 
-      0.7, 16, 4  // Increased height from 0.4 to 0.7 for longer neck
+      0.35, 16, 4  // Reduced height from 0.7 to 0.35 (50% shorter)
     );
     const neck = new THREE.Mesh(neckGeometry, accentMaterial.clone());
-    neck.position.y = -bodyScale.head.radius - 0.35; // Adjusted position for longer neck
+    neck.position.y = -bodyScale.head.radius - 0.175; // Adjusted position for shorter neck
     neck.castShadow = true;
     headGroup.add(neck);
 
