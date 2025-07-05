@@ -648,7 +648,7 @@ export class SceneManager {
     }
     
     if (this.volumetricFogSystem && playerPosition) {
-      this.volumetricFogSystem.update(deltaTime, this.timeOfDay, playerPosition);
+      this.volumetricFogSystem.update(deltaTime, playerPosition, this.timeOfDay);
     }
   }
   
