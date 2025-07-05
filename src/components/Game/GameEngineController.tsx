@@ -35,21 +35,14 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
     
     // Initialize game engine
     useEffect(() => {
-      console.log('[GameEngineController] Component mounted with mountElement:', mountElement);
-      
       if (!mountElement) {
-        console.log('[GameEngineController] No mount element provided, skipping initialization');
         return;
       }
       
       const initGame = async () => {
-        console.log('[GameEngineController] Starting initGame function');
-        
         try {
-          console.log('[GameEngineController] Creating GameEngine instance...');
           // Create game engine
           const engine = new GameEngine(mountElement);
-          console.log('[GameEngineController] GameEngine created successfully:', engine);
           
           // Set callbacks
           engine.setOnUpdateHealth(onUpdateHealth);
@@ -58,29 +51,21 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
           engine.setOnUpdateScore(onUpdateScore);
           engine.setOnGameOver(onGameOver);
           engine.setOnLocationChange(onLocationChange);
-          console.log('[GameEngineController] Engine callbacks configured');
           
-          console.log('[GameEngineController] Calling engine.initialize()...');
           // Initialize engine
           await engine.initialize();
-          console.log('[GameEngineController] Engine initialization completed successfully');
           
           // Store engine reference
           engineRef.current = engine;
-          console.log('[GameEngineController] Engine reference stored');
           
-          console.log('[GameEngineController] Calling onLoadingComplete callback');
           // Notify loading complete
           onLoadingComplete();
-          console.log('[GameEngineController] onLoadingComplete callback executed');
           
           // Set up input event listeners
           document.addEventListener('gameInput', handleGameInput);
-          console.log('[GameEngineController] Input event listeners set up');
           
         } catch (error) {
           console.error("[GameEngineController] Failed to initialize game engine:", error);
-          console.log('[GameEngineController] Calling onLoadingComplete despite error to prevent UI hanging');
           onLoadingComplete(); // Still notify loading complete to avoid hanging UI
         }
       };
@@ -89,16 +74,13 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
       
       // Cleanup function
       return () => {
-        console.log('[GameEngineController] Cleanup function called');
         // Dispose engine
         if (engineRef.current) {
-          console.log('[GameEngineController] Disposing engine');
           engineRef.current.dispose();
         }
         
         // Remove event listeners
         document.removeEventListener('gameInput', handleGameInput);
-        console.log('[GameEngineController] Event listeners removed');
       };
     }, [mountElement, onUpdateHealth, onUpdateGold, onUpdateStamina, onUpdateScore, onGameOver, onLocationChange, onLoadingComplete]);
     
@@ -117,7 +99,6 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
     
     // Restart the game
     const restartGame = useCallback(() => {
-      console.log('[GameEngineController] Restart game called');
       if (engineRef.current) {
         engineRef.current.restart();
       }
@@ -125,7 +106,6 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
     
     // Pause the game
     const pauseGame = useCallback(() => {
-      console.log('[GameEngineController] Pause game called');
       if (engineRef.current) {
         engineRef.current.pause();
       }
@@ -133,7 +113,6 @@ const GameEngineController = React.forwardRef<GameEngineControllerRef, GameEngin
     
     // Resume the game (use pause method since it toggles)
     const resumeGame = useCallback(() => {
-      console.log('[GameEngineController] Resume game called');
       if (engineRef.current) {
         engineRef.current.pause();
       }

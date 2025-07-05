@@ -35,7 +35,7 @@ export class EmptyHandsWalkAnimation {
       playerBody.rightElbow.rotation.x = Math.sin(walkCycle) * this.config.elbowMovement + 0.05;
     }
     
-    console.log('👐 [EmptyHandsWalkAnimation] Updated empty hands walking animation');
+    // Silent mode - removed debug logging for FPS
   }
   
   public reset(playerBody: PlayerBody): void {

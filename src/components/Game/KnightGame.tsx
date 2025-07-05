@@ -131,7 +131,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     };
 
     // Set initial inventory with hunting bow
-    console.log('[KnightGame] Adding hunting bow to starting inventory');
+    // Adding hunting bow to starting inventory
     // The inventory will be updated through the useGameManager hook
   }, []);
 
@@ -152,77 +152,50 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     isAnyUIOpen
   });
 
-  // CRITICAL: Enhanced weapon syncing - sync whenever weapons or active slot changes
-  useEffect(() => {
-    if (!gameEngine || !gameStarted) return;
+    // CRITICAL: Enhanced weapon syncing - sync whenever weapons or active slot changes
+    useEffect(() => {
+      if (!gameEngine || !gameStarted) return;
 
-    console.log('[KnightGame] 🔄 WEAPON SYNC - Syncing equipped weapons with game engine');
-    console.log('[KnightGame] 🔄 Active slot:', activeWeaponSlot);
-    console.log('[KnightGame] 🔄 Equipped weapons:', equippedWeapons);
-    
-    const player = gameEngine.getPlayer();
-    
-    // Get the weapon for the currently active slot
-    const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
-                        activeWeaponSlot === 2 ? equippedWeapons.secondary : 
-                        equippedWeapons.offhand;
-    
-    if (activeWeapon && activeWeapon.weaponId) {
-      console.log(`[KnightGame] 🏹 EQUIPPING WEAPON: ${activeWeapon.name} (${activeWeapon.weaponId}) to Player entity`);
-      player.equipWeapon(activeWeapon.weaponId);
-      console.log(`[KnightGame] ✅ WEAPON EQUIPPED - Player should now have ${activeWeapon.name} equipped`);
+      const player = gameEngine.getPlayer();
       
-      // Additional logging for bow weapons
-      if (activeWeapon.subtype === 'bow') {
-        console.log(`[KnightGame] 🏹 BOW EQUIPPED - Player should now be able to shoot arrows`);
-        console.log(`[KnightGame] 🏹 isBowEquipped should be: true`);
+      // Get the weapon for the currently active slot
+      const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
+                          activeWeaponSlot === 2 ? equippedWeapons.secondary : 
+                          equippedWeapons.offhand;
+      
+      if (activeWeapon && activeWeapon.weaponId) {
+        player.equipWeapon(activeWeapon.weaponId);
+      } else {
+        player.unequipWeapon();
       }
-    } else {
-      console.log(`[KnightGame] 🔄 UNEQUIPPING WEAPON - slot ${activeWeaponSlot} is empty`);
-      player.unequipWeapon();
-      console.log(`[KnightGame] ✅ WEAPON UNEQUIPPED - Player should now have no weapon equipped`);
-    }
-    
-    // Log current player weapon state after syncing
-    setTimeout(() => {
-      console.log(`[KnightGame] 🔍 POST-SYNC CHECK - Player weapon state:`);
-      // Note: We can't directly access private properties, but the equip/unequip calls should have set them
-    }, 100);
-    
-  }, [gameEngine, gameStarted, equippedWeapons, activeWeaponSlot]);
+      
+    }, [gameEngine, gameStarted, equippedWeapons, activeWeaponSlot]);
 
   // Enhanced weapon slot selection with immediate syncing
   const handleEnhancedWeaponSlotSelect = useCallback((slot: 1 | 2 | 3) => {
-    console.log(`[KnightGame] 🎯 SLOT SELECTION - Switching to weapon slot ${slot}`);
-    
     // Use the existing slot selection logic
     handleWeaponSlotSelect(slot);
     
     // The weapon syncing will happen automatically via the useEffect above
-    console.log(`[KnightGame] 🎯 SLOT SWITCHED - Active slot is now ${slot}, weapon sync will trigger`);
   }, [handleWeaponSlotSelect]);
 
   // CRITICAL: Force engine restart when component mounts to ensure new arm positioning
   useEffect(() => {
-    console.log('[KnightGame] Component mounted - will force engine restart for new arm positioning');
+    // Component mounted - silent mode
   }, []);
 
-  // Log the initial setup
+  // Initial setup
   useEffect(() => {
-    console.log('[KnightGame] Initial setup - Steel Sword equipped in primary, Hunting Bow in inventory');
+    // Initial setup - silent mode
   }, []); // Empty dependency array - runs once on mount
 
   // Wait for mount element to be ready
   useEffect(() => {
-    console.log('[KnightGame] Checking if mount element is ready...');
     if (mountRef.current) {
-      console.log('[KnightGame] Mount element is ready, setting mountReady to true');
       setMountReady(true);
     } else {
-      console.log('[KnightGame] Mount element not ready yet');
       const timer = setTimeout(() => {
         if (mountRef.current) {
-          console.log('[KnightGame] Mount element ready on retry');
           setMountReady(true);
         }
       }, 100);
@@ -232,7 +205,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Handler for engine loading completion
   const handleEngineLoadingComplete = useCallback(() => {
-    console.log('🚀 [KnightGame] Engine loading completed with NEW ARM POSITIONING, setting engineReady to true');
     setEngineReady(true);
     const engine = engineControllerRef.current?.getEngine();
     setGameEngine(engine || null);
@@ -242,7 +214,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       const chestSystem = (engine as any).chestInteractionSystem;
       if (chestSystem) {
         chestSystem.setChestOpenCallback((chest: any, loot: any) => {
-          console.log('💰 [KnightGame] Chest opened, showing UI:', loot);
           setChestUIState({
             isOpen: true,
             chestItems: loot.items,
@@ -252,7 +223,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       }
     }
     
-    console.log('🚀 [KnightGame] GameEngine instance set with NEW ARM POSITIONING:', !!engine);
     onLoadingComplete?.();
   }, [onLoadingComplete, setEngineReady, setGameEngine]);
 
@@ -267,7 +237,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   const handleTakeItem = useCallback((item: Item, index: number) => {
     // Add item to player inventory
-    console.log('💰 [KnightGame] Taking item from chest:', item.name);
     // Remove from chest items
     setChestUIState(prev => ({
       ...prev,
@@ -276,7 +245,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, []);
 
   const handleTakeAll = useCallback(() => {
-    console.log('💰 [KnightGame] Taking all items from chest');
     // Add all items to player inventory here
     setChestUIState({
       isOpen: false,
@@ -287,7 +255,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Inventory management functions that actually update the inventory
   const handleAddItemToInventory = useCallback((item: Item, targetSlot?: number) => {
-    console.log('💰 [KnightGame] Adding item to inventory:', item.name, 'target slot:', targetSlot);
     const currentInventory = [...inventory];
     
     if (targetSlot !== undefined) {

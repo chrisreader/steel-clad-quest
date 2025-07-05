@@ -28,7 +28,7 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
 
     // Initialize sample quests and skills on mount
     React.useEffect(() => {
-      console.log('[GameController] Initializing quests and skills...');
+      // Initializing quests and skills...
       
       // Sample quests
       setQuests([
@@ -97,7 +97,7 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
 
     const handleUpgradeSkill = useCallback((skill: Skill) => {
       if (skill.level < skill.maxLevel) {
-        console.log(`Upgraded ${skill.name}`);
+        // Skill upgraded
         setSkills(prevSkills => 
           prevSkills.map(s => 
             s.id === skill.id 
@@ -109,7 +109,7 @@ export const GameController = React.forwardRef<GameControllerRef, GameController
     }, []);
 
     const handleCraft = useCallback((recipe: any) => {
-      console.log(`Crafted ${recipe.name}`);
+      // Item crafted
     }, []);
 
     // Simplified ref interface - removed inventory methods

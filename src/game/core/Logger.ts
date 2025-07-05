@@ -15,14 +15,12 @@ const LOG_LEVELS: LogLevel = {
 
 class GameLogger {
   private static instance: GameLogger;
-  private currentLevel: number = LOG_LEVELS.DEBUG;
+  private currentLevel: number = LOG_LEVELS.ERROR; // SILENT MODE: ERROR only for FPS
   private isProduction: boolean = process.env.NODE_ENV === 'production';
 
   private constructor() {
-    // Set production level to ERROR only
-    if (this.isProduction) {
-      this.currentLevel = LOG_LEVELS.ERROR;
-    }
+    // Always use ERROR level for maximum FPS
+    this.currentLevel = LOG_LEVELS.ERROR;
   }
 
   public static getInstance(): GameLogger {

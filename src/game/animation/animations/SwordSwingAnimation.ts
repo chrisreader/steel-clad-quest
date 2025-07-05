@@ -13,20 +13,16 @@ export class SwordSwingAnimation {
     this.playerBody = playerBody;
     this.equippedWeapon = equippedWeapon;
     
-    console.log('🗡️ [SwordSwingAnimation] *** CONSTRUCTOR CALLED *** - Using standardized sword animation');
-    console.log('🗡️ [SwordSwingAnimation] Standard animation config loaded - duration:', STANDARD_SWORD_ANIMATION.duration);
+    // Silent mode - removed constructor logging for FPS
   }
   
   public update(): void {
-    console.log('🗡️ [SwordSwingAnimation] *** UPDATE METHOD CALLED ***');
-    
     if (!this.weaponSwing) {
       console.error('🗡️ [SwordSwingAnimation] *** ERROR *** - weaponSwing is null/undefined');
       return;
     }
     
     if (!this.weaponSwing.isActive) {
-      console.log('🗡️ [SwordSwingAnimation] Update SKIPPED - weaponSwing not active');
       return;
     }
     
@@ -37,8 +33,6 @@ export class SwordSwingAnimation {
     
     const elapsed = this.weaponSwing.clock.getElapsedTime() - this.weaponSwing.startTime;
     const { phases, duration, rotations } = STANDARD_SWORD_ANIMATION;
-    
-    console.log(`🗡️ [SwordSwingAnimation] *** STANDARDIZED ANIMATION ACTIVE *** - Elapsed: ${elapsed.toFixed(3)}s, Duration: ${duration}s`);
     
     // Initialize rotations from standardized config
     let shoulderRotation = { 
@@ -123,7 +117,7 @@ export class SwordSwingAnimation {
       
     } else {
       // ANIMATION COMPLETE
-      console.log('🗡️ [SwordSwingAnimation] *** ANIMATION COMPLETE *** - calling completeAnimation()');
+      // Animation complete - silent mode
       this.completeAnimation();
       return;
     }
@@ -163,8 +157,6 @@ export class SwordSwingAnimation {
   }
   
   private completeAnimation(): void {
-    console.log('🗡️ [SwordSwingAnimation] *** COMPLETING ANIMATION *** - Resetting to standardized neutral rotations');
-    
     // Reset to standardized neutral rotations
     const neutralRotation = STANDARD_SWORD_ANIMATION.rotations.neutral;
     
@@ -182,6 +174,5 @@ export class SwordSwingAnimation {
     }
     
     this.weaponSwing.isActive = false;
-    console.log('🗡️ [SwordSwingAnimation] *** ANIMATION COMPLETE *** - weaponSwing.isActive set to false');
   }
 }

@@ -158,29 +158,7 @@ export class Player {
   
   // NEW DEBUG METHOD: Track arm positions and detect changes
   private debugArmPositions(context: string): void {
-    if (this.playerBody && this.playerBody.leftArm && this.playerBody.rightArm) {
-      const leftPos = this.playerBody.leftArm.position.clone();
-      const rightPos = this.playerBody.rightArm.position.clone();
-      const leftRot = this.playerBody.leftArm.rotation.clone();
-      const rightRot = this.playerBody.rightArm.rotation.clone();
-      
-      console.log(`🔍 [Player] ARM DEBUG [${context}]:`);
-      console.log(`   Left Arm Position: x=${leftPos.x.toFixed(3)}, y=${leftPos.y.toFixed(3)}, z=${leftPos.z.toFixed(3)}`);
-      console.log(`   Right Arm Position: x=${rightPos.x.toFixed(3)}, y=${rightPos.y.toFixed(3)}, z=${rightPos.z.toFixed(3)}`);
-      console.log(`   Left Arm Rotation: x=${leftRot.x.toFixed(3)}, y=${leftRot.y.toFixed(3)}, z=${leftRot.z.toFixed(3)}`);
-      console.log(`   Right Arm Rotation: x=${rightRot.x.toFixed(3)}, y=${rightRot.y.toFixed(3)}, z=${rightRot.z.toFixed(3)}`);
-      console.log(`   Expected "CORRECT" Rotation: x=0.393 (22.5°), y=0.000, z=0.000`);
-      
-      if (Math.abs(leftRot.y) < 0.01 && Math.abs(rightRot.y) < 0.01) {
-        console.log(`✅ [Player] ARM ROTATIONS CORRECT - Y rotations are 0 (no inward/outward angle)!`);
-      } else {
-        console.log(`❌ [Player] ARM ROTATIONS HAVE INWARD ANGLE - Y rotations not zero!`);
-        console.log(`   Left Y rotation: ${leftRot.y.toFixed(3)} (should be 0.000)`);
-        console.log(`   Right Y rotation: ${rightRot.y.toFixed(3)} (should be 0.000)`);
-      }
-    } else {
-      console.log(`❌ [Player] ARM DEBUG [${context}] - Arms not yet created!`);
-    }
+    // Silent mode - removed debug logging for massive FPS improvement
   }
   
   private createTallerRealisticPlayerBody(): PlayerBody {
