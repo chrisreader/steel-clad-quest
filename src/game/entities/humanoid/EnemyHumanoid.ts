@@ -272,11 +272,17 @@ export abstract class EnemyHumanoid {
       leftWrist.add(weapon);
     }
 
-    // Create hitbox
+    // Create hitbox - ensure it's completely invisible
     const hitBoxGeometry = new THREE.BoxGeometry(1.8, 2.2, 1.8);
-    const hitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
+    const hitBoxMaterial = new THREE.MeshBasicMaterial({ 
+      visible: false,
+      transparent: true,
+      opacity: 0,
+      color: 0x000000 // Force black color to prevent any red artifacts
+    });
     const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
     hitBox.position.y = bodyY;
+    hitBox.visible = false; // Double-ensure it's invisible
     humanoidGroup.add(hitBox);
 
     humanoidGroup.position.copy(position);
