@@ -130,7 +130,7 @@ export class HumanBodyConfig {
   }
 
   /**
-   * Creates pants for human NPCs
+   * Creates pants for human NPCs - simplified without separate boots
    */
   public static createPants(legRadius: number, legLength: number, shinRadius: number, shinLength: number): THREE.Group {
     const pantsGroup = new THREE.Group();
@@ -142,62 +142,30 @@ export class HumanBodyConfig {
       specular: 0x222222
     });
 
-    // Left leg pants
+    // Left leg pants - only covers the thigh area since boots are integrated
     const leftPantsGeometry = new THREE.CylinderGeometry(
       legRadius * 1.1, 
-      shinRadius * 1.1, 
-      legLength + shinLength * 0.8, 
+      shinRadius * 1.05, 
+      legLength * 0.9, // Shorter since boots handle lower leg
       16, 4
     );
     const leftPants = new THREE.Mesh(leftPantsGeometry, pantsMaterial);
-    leftPants.position.set(-0.12, -(legLength + shinLength * 0.4), 0);
+    leftPants.position.set(-0.12, -(legLength * 0.45), 0);
     leftPants.castShadow = true;
     pantsGroup.add(leftPants);
 
     // Right leg pants
     const rightPantsGeometry = new THREE.CylinderGeometry(
       legRadius * 1.1, 
-      shinRadius * 1.1, 
-      legLength + shinLength * 0.8, 
+      shinRadius * 1.05, 
+      legLength * 0.9, 
       16, 4
     );
     const rightPants = new THREE.Mesh(rightPantsGeometry, pantsMaterial);
-    rightPants.position.set(0.12, -(legLength + shinLength * 0.4), 0);
+    rightPants.position.set(0.12, -(legLength * 0.45), 0);
     rightPants.castShadow = true;
     pantsGroup.add(rightPants);
 
     return pantsGroup;
-  }
-
-  /**
-   * Creates shoes for human NPCs
-   */
-  public static createShoes(): THREE.Group {
-    const shoesGroup = new THREE.Group();
-    const shoeColor = 0x4A3C1F; // Dark brown shoes
-    
-    const shoeMaterial = new THREE.MeshPhongMaterial({
-      color: shoeColor,
-      shininess: 20,
-      specular: 0x333333
-    });
-
-    // Left shoe
-    const leftShoeGeometry = new THREE.BoxGeometry(0.28, 0.18, 0.55);
-    const leftShoe = new THREE.Mesh(leftShoeGeometry, shoeMaterial);
-    leftShoe.position.set(-0.12, -1.18, 0.18);
-    leftShoe.castShadow = true;
-    leftShoe.receiveShadow = true;
-    shoesGroup.add(leftShoe);
-
-    // Right shoe
-    const rightShoeGeometry = new THREE.BoxGeometry(0.28, 0.18, 0.55);
-    const rightShoe = new THREE.Mesh(rightShoeGeometry, shoeMaterial);
-    rightShoe.position.set(0.12, -1.18, 0.18);
-    rightShoe.castShadow = true;
-    rightShoe.receiveShadow = true;
-    shoesGroup.add(rightShoe);
-
-    return shoesGroup;
   }
 }

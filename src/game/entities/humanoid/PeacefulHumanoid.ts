@@ -77,14 +77,13 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       // Add clothing to the main mesh group
       this.mesh.add(this.humanClothing);
 
-      // Add pants
+      // Add pants - no separate boots needed since they're integrated
       const pants = HumanBodyConfig.createPants(
         this.config.bodyScale.leg.radius[1],
         this.config.bodyScale.leg.length,
         this.config.bodyScale.shin.radius[1],
         this.config.bodyScale.shin.length
       );
-      // Add boot-integrated lower leg instead of separate shoes
       pants.position.y = 0.8; // Position at waist level
       this.mesh.add(pants);
     }

@@ -518,17 +518,21 @@ export abstract class EnemyHumanoid {
     nose.castShadow = true;
     headGroup.add(nose);
 
-    // Eyes and other features
+    // Create face group to unify all facial features
+    const faceGroup = new THREE.Group();
+    headGroup.add(faceGroup);
+
+    // Eyes and other features - add to face group
     if (features.hasEyes && features.eyeConfig) {
-      this.addEyes(headGroup, headY, bodyScale, features, accentMaterial);
+      this.addEyes(faceGroup, headY, bodyScale, features, accentMaterial);
     }
 
     if (features.hasTusks && features.tuskConfig) {
-      this.addTusks(headGroup, headY, bodyScale, features);
+      this.addTusks(faceGroup, headY, bodyScale, features);
     }
 
-    // Ears
-    this.addEars(headGroup, headY, bodyScale, colors, skinMaterial);
+    // Ears - add to face group
+    this.addEars(faceGroup, headY, bodyScale, colors, skinMaterial);
 
     return { parent: headGroup, mesh: upperSkull };
   }
@@ -872,7 +876,8 @@ export abstract class EnemyHumanoid {
         -0.06,
         Math.sin(data.angle) * data.distance
       );
-      finger.rotation.x = Math.PI / 2 + 0.15 + data.rotation;
+      finger.rotation.x = Math.PI / 3 + data.rotation; // Curve fingers inward more naturally
+      finger.rotation.y = data.angle * 0.5; // Add curvature toward palm
       finger.rotation.z = data.angle * 0.3;
       finger.castShadow = true;
       wrist.add(finger);
@@ -939,49 +944,48 @@ export abstract class EnemyHumanoid {
     bodyScale: BodyScale,
     skinMaterial: THREE.MeshPhongMaterial
   ) {
-    // Create boot-integrated feet for humans instead of separate shoes
+    // Create integrated boot-feet that are part of the shin geometry
     const bootMaterial = new THREE.MeshPhongMaterial({
       color: 0x4A3C1F, // Dark brown boot leather
       shininess: 20,
       specular: 0x333333
     });
 
-    // Create boot geometry that extends from shin to foot
-    const bootGeometry = new THREE.CylinderGeometry(
-      bodyScale.shin.radius[0] * 0.9, // Top radius slightly smaller than shin
-      0.12, // Bottom radius for foot
-      0.35, // Height covering ankle and foot
-      16, 4
+    // Create extended shin geometry that includes the boot portion
+    const extendedShinGeometry = new THREE.CylinderGeometry(
+      bodyScale.shin.radius[0], // Top matches shin
+      0.12, // Bottom for foot
+      bodyScale.shin.length + 0.4, // Extended length to include foot
+      16, 8
     );
     
-    // Left boot
-    const leftBoot = new THREE.Mesh(bootGeometry, bootMaterial);
-    leftBoot.position.set(0, -bodyScale.shin.length + 0.1, 0);
-    leftBoot.castShadow = true;
-    leftBoot.receiveShadow = true;
-    leftKnee.add(leftBoot);
+    // Create the boot-integrated shin parts
+    const leftBootShin = new THREE.Mesh(extendedShinGeometry, bootMaterial);
+    leftBootShin.position.set(0, -bodyScale.shin.length * 0.5 - 0.2, 0);
+    leftBootShin.castShadow = true;
+    leftBootShin.receiveShadow = true;
+    leftKnee.add(leftBootShin);
 
-    // Right boot  
-    const rightBoot = new THREE.Mesh(bootGeometry, bootMaterial.clone());
-    rightBoot.position.set(0, -bodyScale.shin.length + 0.1, 0);
-    rightBoot.castShadow = true;
-    rightBoot.receiveShadow = true;
-    rightKnee.add(rightBoot);
+    const rightBootShin = new THREE.Mesh(extendedShinGeometry, bootMaterial.clone());
+    rightBootShin.position.set(0, -bodyScale.shin.length * 0.5 - 0.2, 0);
+    rightBootShin.castShadow = true;
+    rightBootShin.receiveShadow = true;
+    rightKnee.add(rightBootShin);
 
-    // Add boot sole/foot part
-    const footGeometry = new THREE.BoxGeometry(0.28, 0.12, 0.55);
+    // Add foot sole that's integrated into the boot
+    const footGeometry = new THREE.BoxGeometry(0.28, 0.08, 0.55);
     
     const leftFoot = new THREE.Mesh(footGeometry, bootMaterial.clone());
-    leftFoot.position.set(0, -0.18, 0.18);
+    leftFoot.position.set(0, -(bodyScale.shin.length + 0.35), 0.18);
     leftFoot.castShadow = true;
     leftFoot.receiveShadow = true;
-    leftBoot.add(leftFoot);
+    leftBootShin.add(leftFoot);
 
     const rightFoot = new THREE.Mesh(footGeometry, bootMaterial.clone());
-    rightFoot.position.set(0, -0.18, 0.18);
+    rightFoot.position.set(0, -(bodyScale.shin.length + 0.35), 0.18);
     rightFoot.castShadow = true;
     rightFoot.receiveShadow = true;
-    rightBoot.add(rightFoot);
+    rightBootShin.add(rightFoot);
   }
 
   private addHumanToes(foot: THREE.Mesh, skinMaterial: THREE.MeshPhongMaterial) {
