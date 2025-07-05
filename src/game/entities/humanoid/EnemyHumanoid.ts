@@ -369,103 +369,101 @@ export abstract class EnemyHumanoid {
   ) {
     const torsoGroup = new THREE.Group();
     
-    // Main torso with curved/rounded top for realistic human shape
-    const mainTorsoGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 1.1,
-      bodyScale.body.radius * 0.85,
+    // Create realistic human torso geometry
+    const torsoGeometry = new THREE.CylinderGeometry(
+      bodyScale.body.radius * 0.9,  // Chest width
+      bodyScale.body.radius * 0.7,  // Waist width (narrower)
       bodyScale.body.height,
-      32, 8
+      32, 16
     );
     
-    // Make elliptical and round the top edges for realistic human torso
-    const positions = mainTorsoGeometry.attributes.position.array;
+    // Shape the torso for realistic human proportions
+    const positions = torsoGeometry.attributes.position.array as Float32Array;
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const y = positions[i + 1];
       const z = positions[i + 2];
+      
+      // Normalize Y position (-0.5 to 0.5)
+      const normalizedY = y / bodyScale.body.height;
       const angle = Math.atan2(z, x);
-      const radius = Math.sqrt(x * x + z * z);
       
-      // Make elliptical
-      const newRadius = radius * (Math.abs(Math.sin(angle)) * 0.2 + 0.8);
-      positions[i] = Math.cos(angle) * newRadius;
-      positions[i + 2] = Math.sin(angle) * newRadius;
+      // Create anatomical shaping
+      let frontBackMultiplier = 1.0;
+      let sideMultiplier = 1.0;
       
-      // Round the top edges - create curved shoulder area
-      const normalizedY = (y + bodyScale.body.height / 2) / bodyScale.body.height; // 0 at bottom, 1 at top
-      if (normalizedY > 0.7) { // Apply rounding to top 30% of torso
-        const roundingFactor = (normalizedY - 0.7) / 0.3; // 0 to 1 for rounding area
-        const radiusReduction = Math.sin(roundingFactor * Math.PI / 2) * 0.3; // Smooth curve
-        const finalRadius = Math.sqrt(positions[i] * positions[i] + positions[i + 2] * positions[i + 2]);
-        const targetRadius = finalRadius * (1 - radiusReduction);
-        const currentAngle = Math.atan2(positions[i + 2], positions[i]);
-        positions[i] = Math.cos(currentAngle) * targetRadius;
-        positions[i + 2] = Math.sin(currentAngle) * targetRadius;
+      // Front and back shaping (chest deeper than sides)
+      const frontBackAngle = Math.abs(Math.sin(angle));
+      const frontBackDepth = Math.abs(Math.cos(angle));
+      
+      // Upper torso (chest area) - wider and deeper
+      if (normalizedY > 0.1) {
+        const chestFactor = (normalizedY - 0.1) / 0.4; // 0 to 1 for chest area
+        frontBackMultiplier = 1.0 + frontBackDepth * 0.4 * Math.min(chestFactor, 1.0);
+        sideMultiplier = 1.0 + frontBackAngle * 0.2 * Math.min(chestFactor, 1.0);
+      }
+      
+      // Waist area (narrower)
+      if (normalizedY >= -0.2 && normalizedY <= 0.1) {
+        const waistFactor = 1.0 - Math.abs(normalizedY + 0.05) * 1.5;
+        sideMultiplier *= Math.max(0.7, waistFactor);
+        frontBackMultiplier *= Math.max(0.8, waistFactor);
+      }
+      
+      // Hip area (slightly wider)
+      if (normalizedY < -0.2) {
+        const hipFactor = Math.abs(normalizedY + 0.2) / 0.3;
+        sideMultiplier *= 1.0 + hipFactor * 0.3;
+      }
+      
+      // Apply the modifications
+      const currentRadius = Math.sqrt(x * x + z * z);
+      const newRadius = currentRadius * sideMultiplier * frontBackMultiplier;
+      
+      if (currentRadius > 0) {
+        positions[i] = (x / currentRadius) * newRadius;
+        positions[i + 2] = (z / currentRadius) * newRadius;
       }
     }
-    mainTorsoGeometry.attributes.position.needsUpdate = true;
-    mainTorsoGeometry.computeVertexNormals();
     
-    const mainTorso = new THREE.Mesh(mainTorsoGeometry, skinMaterial.clone());
+    torsoGeometry.attributes.position.needsUpdate = true;
+    torsoGeometry.computeVertexNormals();
+    
+    const mainTorso = new THREE.Mesh(torsoGeometry, skinMaterial.clone());
     mainTorso.position.y = bodyY;
     mainTorso.castShadow = true;
     torsoGroup.add(mainTorso);
 
-    // Chest
-    const chestTopRadius = bodyScale.body.radius * 1.2;
-    const chestGeometry = new THREE.CylinderGeometry(
-      chestTopRadius,
-      bodyScale.body.radius * 0.85,
-      0.5, 16, 4
-    );
-    const chest = new THREE.Mesh(chestGeometry, muscleMaterial.clone());
-    chest.position.y = bodyTopY - 0.25;
-    chest.castShadow = true;
-    torsoGroup.add(chest);
+    // Add subtle chest definition for humans (not the red cylinder!)
+    if (!this.config.features.hasWeapon) { // Humans only
+      const chestDefGeometry = new THREE.SphereGeometry(bodyScale.body.radius * 0.4, 16, 12);
+      const chestDef = new THREE.Mesh(chestDefGeometry, skinMaterial.clone());
+      chestDef.position.set(0, bodyTopY - 0.2, bodyScale.body.radius * 0.6);
+      chestDef.scale.set(1.2, 0.6, 0.8);
+      chestDef.castShadow = true;
+      torsoGroup.add(chestDef);
+    }
 
-    // Pelvis
-    const pelvisGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 0.75,
-      bodyScale.body.radius * 0.9,
-      0.4, 16, 4
-    );
+    // Pelvis - more anatomically shaped
+    const pelvisGeometry = new THREE.SphereGeometry(bodyScale.body.radius * 0.8, 20, 16);
+    const pelvisPositions = pelvisGeometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < pelvisPositions.length; i += 3) {
+      const x = pelvisPositions[i];
+      const y = pelvisPositions[i + 1];
+      const z = pelvisPositions[i + 2];
+      
+      // Flatten top and bottom, widen sides
+      pelvisPositions[i] = x * 1.1; // Wider
+      pelvisPositions[i + 1] = y * 0.6; // Flatter
+      pelvisPositions[i + 2] = z * 0.9; // Slightly compressed front-to-back
+    }
+    pelvisGeometry.attributes.position.needsUpdate = true;
+    pelvisGeometry.computeVertexNormals();
+    
     const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
-    pelvis.position.y = legTopY + 0.2;
+    pelvis.position.y = legTopY + 0.15;
     pelvis.castShadow = true;
     torsoGroup.add(pelvis);
-
-    // Small shoulder transition for humans only (much smaller than orc trapezius)
-    if (this.config.features.hasWeapon) {
-      // Orcs get the full trapezius muscle
-      const shoulderJointX = bodyScale.body.radius + 0.1;
-      
-      const trapGeometry = new THREE.CylinderGeometry(
-        shoulderJointX * 0.5,
-        chestTopRadius * 0.9,
-        0.25, 20, 6
-      );
-      
-      const trapPositions = trapGeometry.attributes.position.array;
-      for (let i = 0; i < trapPositions.length; i += 3) {
-        const x = trapPositions[i];
-        const y = trapPositions[i + 1];
-        const z = trapPositions[i + 2];
-        
-        const normalizedY = (y / 0.25) + 0.5;
-        const widthMultiplier = 0.85 + (1 - normalizedY) * 0.15;
-        const depthMultiplier = 0.9 + (1 - normalizedY) * 0.1;
-        
-        trapPositions[i] = x * widthMultiplier;
-        trapPositions[i + 2] = z * depthMultiplier;
-      }
-      trapGeometry.attributes.position.needsUpdate = true;
-      trapGeometry.computeVertexNormals();
-      
-      const trapezius = new THREE.Mesh(trapGeometry, muscleMaterial.clone());
-      trapezius.position.y = bodyTopY + 0.125;
-      trapezius.castShadow = true;
-      torsoGroup.add(trapezius);
-    }
 
     return { parent: torsoGroup, mesh: mainTorso };
   }
