@@ -377,7 +377,7 @@ export abstract class EnemyHumanoid {
       32, 16
     );
     
-    // Simple single taper from chest to waist - no double hourglass
+    // Natural human silhouette: shoulders -> waist -> hips
     const positions = torsoGeometry.attributes.position.array as Float32Array;
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
@@ -387,13 +387,28 @@ export abstract class EnemyHumanoid {
       // Normalize Y position (-0.5 to 0.5)
       const normalizedY = y / bodyScale.body.height;
       
-      // Simple taper: wider at top (chest), narrower at bottom (waist)
-      // Single smooth transition, no multiple zones
-      const taperFactor = 0.85 + (normalizedY + 0.5) * 0.15; // 0.85 at bottom, 1.0 at top
+      let scaleFactor = 1.0;
       
-      // Apply consistent tapering
-      positions[i] = x * taperFactor;
-      positions[i + 2] = z * taperFactor;
+      // Upper torso (shoulders/chest area) - wider
+      if (normalizedY > 0.1) {
+        scaleFactor = 1.0; // Keep full width at shoulders
+      }
+      // Waist area - narrower 
+      else if (normalizedY >= -0.2) {
+        // Smooth transition to narrow waist
+        const waistPosition = (normalizedY + 0.2) / 0.3; // 0 at bottom of waist, 1 at top
+        scaleFactor = 0.75 + waistPosition * 0.25; // Scale from 0.75 to 1.0
+      }
+      // Hip/pelvis area - wider again
+      else {
+        // Smooth transition to wider hips
+        const hipPosition = Math.abs(normalizedY + 0.2) / 0.3; // 0 at waist, 1 at bottom
+        scaleFactor = 0.75 + hipPosition * 0.2; // Scale from 0.75 to 0.95
+      }
+      
+      // Apply the scaling
+      positions[i] = x * scaleFactor;
+      positions[i + 2] = z * scaleFactor;
     }
     
     torsoGeometry.attributes.position.needsUpdate = true;
