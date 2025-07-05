@@ -650,10 +650,15 @@ export abstract class EnemyHumanoid {
     
     let eyeGeometry;
     if (isHuman) {
-      // Create sideways oval eye for humans
+      // Create sideways oval eye for humans - fix shader issues
       eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.7, 16, 12);
-      // Scale to make it oval (wider horizontally)
-      eyeGeometry.scale(1.4, 0.8, 0.6); // Wider, shorter, flatter
+      // Apply scaling after creation to avoid shader issues
+      eyeGeometry.computeBoundingBox();
+      eyeGeometry.computeVertexNormals();
+      // Scale to make it oval (wider horizontally) 
+      eyeGeometry.scale(1.4, 0.8, 0.6);
+      // Recompute normals after scaling to fix rendering
+      eyeGeometry.computeVertexNormals();
     } else {
       // Keep sphere for orcs/goblins
       eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.7, 16, 12);
@@ -665,7 +670,8 @@ export abstract class EnemyHumanoid {
       opacity: 1.0,
       emissive: new THREE.Color(0x000000), // No glow
       emissiveIntensity: 0.0,
-      shininess: isHuman ? 30 : 100
+      shininess: isHuman ? 30 : 100,
+      side: THREE.FrontSide // Ensure proper rendering
     });
 
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
@@ -674,13 +680,15 @@ export abstract class EnemyHumanoid {
       features.eyeConfig.offsetY,
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
     );
+    leftEye.castShadow = false; // Disable shadow casting for eyes to avoid shader issues
 
-    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
+    const rightEye = new THREE.Mesh(eyeGeometry.clone(), eyeMaterial.clone());
     rightEye.position.set(
       features.eyeConfig.offsetX,
       features.eyeConfig.offsetY,
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
     );
+    rightEye.castShadow = false; // Disable shadow casting for eyes
 
     // Pupils - circular and smaller for humans
     const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.15, 12, 10);
