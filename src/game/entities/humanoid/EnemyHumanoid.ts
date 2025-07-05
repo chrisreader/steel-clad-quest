@@ -513,10 +513,10 @@ export abstract class EnemyHumanoid {
         frontBackScale = 1.0 - topFactor * 0.2; // Slightly flatter front-to-back
         heightScale = 0.95 - topFactor * 0.1; // Compress vertically
       } else if (normalizedY > 0.1) {
-        // Upper-middle region - eye/temple area (more skull-like)
+        // Upper-middle region - eye/temple area (flatter for humans)
         const eyeFactor = Math.sin(((normalizedY - 0.1) / 0.5) * Math.PI);
         horizontalScale = 0.95 + eyeFactor * 0.05; // Slightly narrower, more skull-like
-        frontBackScale = 1.4; // More forward projection for forehead/brow area
+        frontBackScale = 1.15; // Reduced forward projection for flatter forehead/brow
         heightScale = 1.0;
       } else if (normalizedY > -0.3) {
         // Mid-face region - mouth area (narrower)
@@ -623,8 +623,8 @@ export abstract class EnemyHumanoid {
     features: any,
     accentMaterial: THREE.MeshPhongMaterial
   ) {
-    // Eye sockets
-    const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.2, 16, 12);
+    // Eye sockets - smaller for humans
+    const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.8, 16, 12); // Reduced from 1.2 to 0.8
     const eyeSocketMaterial = accentMaterial.clone();
 
     const leftEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial);
@@ -645,8 +645,8 @@ export abstract class EnemyHumanoid {
     rightEyeSocket.scale.z = 0.5;
     headGroup.add(rightEyeSocket);
 
-    // Eyes
-    const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius, 16, 12);
+    // Eyes - smaller for humans
+    const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.7, 16, 12); // Reduced from 1.0 to 0.7
     const eyeMaterial = new THREE.MeshPhongMaterial({
       color: features.eyeConfig.color,
       transparent: true,
@@ -670,8 +670,8 @@ export abstract class EnemyHumanoid {
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
     );
 
-    // Pupils
-    const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.4, 12, 10);
+    // Pupils - smaller to match new eye size
+    const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.28, 12, 10); // Adjusted to match smaller eyes
     const pupilMaterial = new THREE.MeshPhongMaterial({
       color: 0x000000,
       shininess: 100
