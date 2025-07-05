@@ -35,7 +35,7 @@ export class HumanBodyConfig {
       
       // Realistic human skin tones and clothing colors
       colors: {
-        skin: 0xD2B48C,    // Natural tan skin tone
+        skin: 0xFFDBAE,    // Natural human skin tone
         muscle: 0xE6C2A6,  // Slightly darker muscle definition
         accent: 0xD4AF8C   // Accent for joints and details
       },
@@ -67,7 +67,7 @@ export class HumanBodyConfig {
       ...baseConfig,
       // Tavern keeper specific colors - apron and work clothes
       colors: {
-        skin: 0xD2B48C,    // Natural tan skin tone  
+        skin: 0xFFDBAE,    // Human skin tone
         muscle: 0x8B4513,  // Brown clothing/apron
         accent: 0x654321   // Darker brown for details
       }
@@ -130,7 +130,7 @@ export class HumanBodyConfig {
   }
 
   /**
-   * Creates pants for human NPCs - properly fitted to avoid overlaps
+   * Creates pants for human NPCs
    */
   public static createPants(legRadius: number, legLength: number, shinRadius: number, shinLength: number): THREE.Group {
     const pantsGroup = new THREE.Group();
@@ -142,30 +142,62 @@ export class HumanBodyConfig {
       specular: 0x222222
     });
 
-    // Left leg pants - properly positioned to avoid knee joint interference
+    // Left leg pants
     const leftPantsGeometry = new THREE.CylinderGeometry(
-      legRadius * 1.05, // Slightly smaller to avoid overlap
-      shinRadius * 1.02, // Taper more gradually
-      legLength * 0.7, // Shorter to avoid knee area
+      legRadius * 1.1, 
+      shinRadius * 1.1, 
+      legLength + shinLength * 0.8, 
       16, 4
     );
     const leftPants = new THREE.Mesh(leftPantsGeometry, pantsMaterial);
-    leftPants.position.set(-0.12, -(legLength * 0.35), 0); // Higher position
+    leftPants.position.set(-0.12, -(legLength + shinLength * 0.4), 0);
     leftPants.castShadow = true;
     pantsGroup.add(leftPants);
 
     // Right leg pants
     const rightPantsGeometry = new THREE.CylinderGeometry(
-      legRadius * 1.05, // Slightly smaller to avoid overlap
-      shinRadius * 1.02, // Taper more gradually  
-      legLength * 0.7, // Shorter to avoid knee area
+      legRadius * 1.1, 
+      shinRadius * 1.1, 
+      legLength + shinLength * 0.8, 
       16, 4
     );
     const rightPants = new THREE.Mesh(rightPantsGeometry, pantsMaterial);
-    rightPants.position.set(0.12, -(legLength * 0.35), 0); // Higher position
+    rightPants.position.set(0.12, -(legLength + shinLength * 0.4), 0);
     rightPants.castShadow = true;
     pantsGroup.add(rightPants);
 
     return pantsGroup;
+  }
+
+  /**
+   * Creates shoes for human NPCs
+   */
+  public static createShoes(): THREE.Group {
+    const shoesGroup = new THREE.Group();
+    const shoeColor = 0x4A3C1F; // Dark brown shoes
+    
+    const shoeMaterial = new THREE.MeshPhongMaterial({
+      color: shoeColor,
+      shininess: 20,
+      specular: 0x333333
+    });
+
+    // Left shoe
+    const leftShoeGeometry = new THREE.BoxGeometry(0.28, 0.18, 0.55);
+    const leftShoe = new THREE.Mesh(leftShoeGeometry, shoeMaterial);
+    leftShoe.position.set(-0.12, -1.18, 0.18);
+    leftShoe.castShadow = true;
+    leftShoe.receiveShadow = true;
+    shoesGroup.add(leftShoe);
+
+    // Right shoe
+    const rightShoeGeometry = new THREE.BoxGeometry(0.28, 0.18, 0.55);
+    const rightShoe = new THREE.Mesh(rightShoeGeometry, shoeMaterial);
+    rightShoe.position.set(0.12, -1.18, 0.18);
+    rightShoe.castShadow = true;
+    rightShoe.receiveShadow = true;
+    shoesGroup.add(rightShoe);
+
+    return shoesGroup;
   }
 }

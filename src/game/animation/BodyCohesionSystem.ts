@@ -110,10 +110,10 @@ export class BodyCohesionSystem {
     const headCompensation = -state.hipSway * 0.3; // Counter-rotate slightly for stability
     bodyParts.head.rotation.z = state.hipSway * 0.7 + headCompensation;
     
-    // Head bob follows body movement with slight delay - reduced for less extreme movement
-    const headBob = state.verticalBob * 0.3 + state.momentum.y;
+    // Head bob follows body movement with slight delay
+    const headBob = state.verticalBob * 0.8 + state.momentum.y;
     const baseHeadY = neutralPoses.headY || (neutralPoses.bodyY + 1.5); // Fallback if headY not provided
-    bodyParts.head.position.y = baseHeadY + headBob + state.breathingPhase * 0.2;
+    bodyParts.head.position.y = baseHeadY + headBob + state.breathingPhase * 0.5;
     
     // Subtle head sway for realism
     bodyParts.head.rotation.y = Math.sin(state.walkPhase * Math.PI * 2) * 0.05;

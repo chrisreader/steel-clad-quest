@@ -215,14 +215,29 @@ export abstract class EnemyHumanoid {
     });
 
     const baseAccentMaterial = new THREE.MeshPhongMaterial({
-      color: colors.skin, // Force accent to use skin color for humans to prevent red artifacts
-      shininess: 35, // Match skin material properties  
-      specular: 0x333333 // Match skin material properties
+      color: colors.accent,
+      shininess: 45,
+      specular: 0x555555
     });
 
     // Create legs - use skin material for humans
     const { leftLeg, rightLeg } = this.createLegs(bodyScale, thighCenterY, baseSkinMaterial);
     humanoidGroup.add(leftLeg, rightLeg);
+
+    // Create hip joints - smaller for humans
+    const hipJointRadius = bodyScale.body.radius * 0.4; // Scale with body size
+    const hipJointGeometry = new THREE.SphereGeometry(hipJointRadius, 24, 20);
+    const leftHipJoint = new THREE.Mesh(hipJointGeometry, baseSkinMaterial.clone());
+    leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
+    leftHipJoint.scale.set(1, 0.8, 1);
+    leftHipJoint.castShadow = true;
+    humanoidGroup.add(leftHipJoint);
+
+    const rightHipJoint = new THREE.Mesh(hipJointGeometry, baseSkinMaterial.clone());
+    rightHipJoint.position.set(bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
+    rightHipJoint.scale.set(1, 0.8, 1);
+    rightHipJoint.castShadow = true;
+    humanoidGroup.add(rightHipJoint);
 
     // Create torso
     const body = this.createTorso(bodyScale, bodyY, bodyTopY, legTopY, shoulderHeight, baseSkinMaterial, baseMuscleMaterial, baseAccentMaterial);
@@ -257,17 +272,11 @@ export abstract class EnemyHumanoid {
       leftWrist.add(weapon);
     }
 
-    // Create hitbox - ensure it's completely invisible
+    // Create hitbox
     const hitBoxGeometry = new THREE.BoxGeometry(1.8, 2.2, 1.8);
-    const hitBoxMaterial = new THREE.MeshBasicMaterial({ 
-      visible: false,
-      transparent: true,
-      opacity: 0,
-      color: 0x000000 // Force black color to prevent any red artifacts
-    });
+    const hitBoxMaterial = new THREE.MeshBasicMaterial({ visible: false });
     const hitBox = new THREE.Mesh(hitBoxGeometry, hitBoxMaterial);
     hitBox.position.y = bodyY;
-    hitBox.visible = false; // Double-ensure it's invisible
     humanoidGroup.add(hitBox);
 
     humanoidGroup.position.copy(position);
@@ -393,14 +402,14 @@ export abstract class EnemyHumanoid {
     chest.castShadow = true;
     torsoGroup.add(chest);
 
-    // Pelvis - force skin material and reduce size
+    // Pelvis
     const pelvisGeometry = new THREE.CylinderGeometry(
-      bodyScale.body.radius * 0.6,  // Reduced from 0.75
-      bodyScale.body.radius * 0.7,  // Reduced from 0.9
-      0.3, 16, 4  // Reduced height from 0.4
+      bodyScale.body.radius * 0.75,
+      bodyScale.body.radius * 0.9,
+      0.4, 16, 4
     );
-    const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone()); // Force base skin material
-    pelvis.position.y = legTopY + 0.15; // Slightly lower position
+    const pelvis = new THREE.Mesh(pelvisGeometry, skinMaterial.clone());
+    pelvis.position.y = legTopY + 0.2;
     pelvis.castShadow = true;
     torsoGroup.add(pelvis);
 
@@ -509,21 +518,17 @@ export abstract class EnemyHumanoid {
     nose.castShadow = true;
     headGroup.add(nose);
 
-    // Create face group to unify all facial features
-    const faceGroup = new THREE.Group();
-    headGroup.add(faceGroup);
-
-    // Eyes and other features - add to face group
+    // Eyes and other features
     if (features.hasEyes && features.eyeConfig) {
-      this.addEyes(faceGroup, headY, bodyScale, features, accentMaterial);
+      this.addEyes(headGroup, headY, bodyScale, features, accentMaterial);
     }
 
     if (features.hasTusks && features.tuskConfig) {
-      this.addTusks(faceGroup, headY, bodyScale, features);
+      this.addTusks(headGroup, headY, bodyScale, features);
     }
 
-    // Ears - add to face group
-    this.addEars(faceGroup, headY, bodyScale, colors, skinMaterial);
+    // Ears
+    this.addEars(headGroup, headY, bodyScale, colors, skinMaterial);
 
     return { parent: headGroup, mesh: upperSkull };
   }
@@ -535,14 +540,9 @@ export abstract class EnemyHumanoid {
     features: any,
     accentMaterial: THREE.MeshPhongMaterial
   ) {
-    // Eye sockets - use skin material instead of accent for humans
-    const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.0, 16, 12);
-    const skinMaterial = new THREE.MeshPhongMaterial({
-      color: this.config.colors.skin,
-      shininess: 35,
-      specular: 0x333333
-    });
-    const eyeSocketMaterial = skinMaterial.clone();
+    // Eye sockets
+    const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 1.2, 16, 12);
+    const eyeSocketMaterial = accentMaterial.clone();
 
     const leftEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial);
     leftEyeSocket.position.set(
@@ -564,16 +564,12 @@ export abstract class EnemyHumanoid {
 
     // Eyes
     const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius, 16, 12);
-    
-    // FORCE human eye color - never allow red eyes for humans  
-    const humanEyeColor = this.config.type === EnemyType.GOBLIN ? 0x4A4A4A : features.eyeConfig.color;
-    
     const eyeMaterial = new THREE.MeshPhongMaterial({
-      color: humanEyeColor,
+      color: features.eyeConfig.color,
       transparent: true,
       opacity: 1,
-      emissive: humanEyeColor,
-      emissiveIntensity: this.config.type === EnemyType.GOBLIN ? 0.0 : features.eyeConfig.emissiveIntensity, // No glow for humans
+      emissive: features.eyeConfig.color,
+      emissiveIntensity: features.eyeConfig.emissiveIntensity,
       shininess: 80
     });
 
@@ -591,19 +587,19 @@ export abstract class EnemyHumanoid {
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
     );
 
-    // Pupils - make them more stable to prevent bouncing
-    const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.3, 12, 10);
+    // Pupils
+    const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.4, 12, 10);
     const pupilMaterial = new THREE.MeshPhongMaterial({
       color: 0x000000,
       shininess: 100
     });
 
     const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
-    leftPupil.position.set(0, 0, features.eyeConfig.radius * 0.5); // Reduced offset
+    leftPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
     leftEye.add(leftPupil);
 
     const rightPupil = new THREE.Mesh(pupilGeometry, pupilMaterial.clone());
-    rightPupil.position.set(0, 0, features.eyeConfig.radius * 0.5); // Reduced offset
+    rightPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
     rightEye.add(rightPupil);
 
     headGroup.add(leftEye);
@@ -667,11 +663,7 @@ export abstract class EnemyHumanoid {
     earGeometry.attributes.position.needsUpdate = true;
     earGeometry.computeVertexNormals();
     
-    const earMaterial = new THREE.MeshPhongMaterial({
-      color: this.config.colors.skin,
-      shininess: 35,
-      specular: 0x333333
-    });
+    const earMaterial = muscleMaterial.clone();
 
     const leftEar = new THREE.Mesh(earGeometry, earMaterial);
     leftEar.position.set(-bodyScale.head.radius * 0.9, headY + 0.1, 0);
@@ -797,18 +789,15 @@ export abstract class EnemyHumanoid {
     bodyScale: BodyScale,
     skinMaterial: THREE.MeshPhongMaterial
   ) {
-    // Create smaller, oval-shaped hands instead of large spheres
-    const leftWristGeometry = new THREE.SphereGeometry(0.08, 20, 16);
+    const leftWristGeometry = new THREE.SphereGeometry(0.12, 20, 16);
     const leftWrist = new THREE.Mesh(leftWristGeometry, skinMaterial.clone());
     leftWrist.position.set(0, -bodyScale.forearm.length, 0);
-    leftWrist.scale.set(0.7, 0.8, 1.2); // Make oval-shaped hand
     leftWrist.castShadow = true;
     leftElbow.add(leftWrist);
 
-    const rightWristGeometry = new THREE.SphereGeometry(0.08, 20, 16);
+    const rightWristGeometry = new THREE.SphereGeometry(0.12, 20, 16);
     const rightWrist = new THREE.Mesh(rightWristGeometry, skinMaterial.clone());
     rightWrist.position.set(0, -bodyScale.forearm.length, 0);
-    rightWrist.scale.set(0.7, 0.8, 1.2); // Make oval-shaped hand
     rightWrist.castShadow = true;
     rightElbow.add(rightWrist);
 
@@ -871,8 +860,7 @@ export abstract class EnemyHumanoid {
         -0.06,
         Math.sin(data.angle) * data.distance
       );
-      finger.rotation.x = Math.PI / 3 + data.rotation; // Curve fingers inward more naturally
-      finger.rotation.y = data.angle * 0.5; // Add curvature toward palm
+      finger.rotation.x = Math.PI / 2 + 0.15 + data.rotation;
       finger.rotation.z = data.angle * 0.3;
       finger.castShadow = true;
       wrist.add(finger);
@@ -912,6 +900,21 @@ export abstract class EnemyHumanoid {
     rightKnee.castShadow = true;
     rightLeg.add(rightKnee);
 
+    // Knee joints - make smaller and use skin material for humans
+    const kneeJointRadius = bodyScale.leg.radius[1] + 0.02; // Scale with leg size
+    const kneeJointGeometry = new THREE.SphereGeometry(kneeJointRadius, 24, 20);
+    const leftKneeJoint = new THREE.Mesh(kneeJointGeometry, skinMaterial.clone());
+    leftKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
+    leftKneeJoint.scale.set(0.8, 1.2, 0.8);
+    leftKneeJoint.castShadow = true;
+    leftLeg.add(leftKneeJoint);
+
+    const rightKneeJoint = new THREE.Mesh(kneeJointGeometry, skinMaterial.clone());
+    rightKneeJoint.position.set(0, shinRelativeY + 0.03, 0);
+    rightKneeJoint.scale.set(0.8, 1.2, 0.8);
+    rightKneeJoint.castShadow = true;
+    rightLeg.add(rightKneeJoint);
+
     // Feet - pass skin material to make feet skin-colored for humans
     this.addFeet(leftKnee, rightKnee, bodyScale, skinMaterial);
 
@@ -924,27 +927,47 @@ export abstract class EnemyHumanoid {
     bodyScale: BodyScale,
     skinMaterial: THREE.MeshPhongMaterial
   ) {
-  // Create simple integrated boot-feet directly on the shin
-  const bootMaterial = new THREE.MeshPhongMaterial({
-    color: 0x00FFFF, // BRIGHT CYAN FOR TESTING - if you see cyan, it's the boots!
-    shininess: 20,
-    specular: 0x333333
-  });
+    // Smaller feet for humans and use correct scaling
+    const footGeometry = new THREE.BoxGeometry(0.25, 0.15, 0.5);
+    const footMaterial = skinMaterial.clone();
 
-    // Create simple foot geometry that attaches to the bottom of shins
-    const footGeometry = new THREE.BoxGeometry(0.25, 0.12, 0.45);
-    
-    const leftFoot = new THREE.Mesh(footGeometry, bootMaterial);
-    leftFoot.position.set(0, -bodyScale.shin.length * 0.8, 0.12); // Attach to bottom of shin
+    const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+    leftFoot.position.set(0, -bodyScale.shin.length, 0.15);
     leftFoot.castShadow = true;
-    leftFoot.receiveShadow = true;
     leftKnee.add(leftFoot);
 
-    const rightFoot = new THREE.Mesh(footGeometry, bootMaterial.clone());
-    rightFoot.position.set(0, -bodyScale.shin.length * 0.8, 0.12); // Attach to bottom of shin
+    const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
+    rightFoot.position.set(0, -bodyScale.shin.length, 0.15);
     rightFoot.castShadow = true;
-    rightFoot.receiveShadow = true;
     rightKnee.add(rightFoot);
+
+    // Add human toes only if this is NOT a weapon-bearing entity (humans don't have claws)
+    if (!this.config.features.hasWeapon) {
+      this.addHumanToes(leftFoot, skinMaterial);
+      this.addHumanToes(rightFoot, skinMaterial);
+    } else {
+      // Orc toe claws
+      const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
+      const clawMaterial = new THREE.MeshPhongMaterial({
+        color: 0x2C1810,
+        shininess: 90,
+        specular: 0x888888
+      });
+
+      for (let i = 0; i < 3; i++) {
+        const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+        toeClaw.position.set((i - 1) * 0.12, -0.075, 0.25);
+        toeClaw.rotation.x = Math.PI / 2;
+        toeClaw.castShadow = true;
+        leftFoot.add(toeClaw);
+
+        const rightToeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+        rightToeClaw.position.set((i - 1) * 0.12, -0.075, 0.25);
+        rightToeClaw.rotation.x = Math.PI / 2;
+        rightToeClaw.castShadow = true;
+        rightFoot.add(rightToeClaw);
+      }
+    }
   }
 
   private addHumanToes(foot: THREE.Mesh, skinMaterial: THREE.MeshPhongMaterial) {
