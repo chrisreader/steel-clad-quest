@@ -56,10 +56,12 @@ export class BirdSpawningSystem {
 
   // PERFORMANCE OPTIMIZATION: Frame skipping for bird updates
   private birdUpdateFrameCounter: number = 0;
+  private updateCounter: number = 0; // PHASE 2: Add missing counter for cache cleanup
   
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
     // PERFORMANCE: Update bird spawning checks every 3-5 frames for better FPS
     this.birdUpdateFrameCounter++;
+    this.updateCounter++; // PHASE 2: Increment counter for cache cleanup
     const shouldUpdateSpawning = this.birdUpdateFrameCounter % 4 === 0; // Every 4 frames
     
     // Track player movement
@@ -77,6 +79,11 @@ export class BirdSpawningSystem {
 
       // Check if we should spawn new birds
       this.checkSpawning(playerPosition);
+      
+      // PHASE 2: Clean up opacity cache periodically
+      if (this.updateCounter % 300 === 0) { // Every 300 frames
+        this.cleanupOpacityCache();
+      }
     }
   }
 
@@ -110,8 +117,8 @@ export class BirdSpawningSystem {
     });
   }
 
-  // PERFORMANCE OPTIMIZATION: Cache opacity calculations and reduce updates
-  private birdOpacityCache: Map<string, { opacity: number; lastDistance: number }> = new Map();
+  // PHASE 2: Enhanced performance optimization with automatic cache cleanup
+  private birdOpacityCache: Map<string, { opacity: number; lastDistance: number; lastUsed: number }> = new Map();
   private opacityUpdateCounter: number = 0;
   
   private updateBirdOpacity(bird: SpawnableEntity, playerPosition: THREE.Vector3): void {
@@ -124,10 +131,12 @@ export class BirdSpawningSystem {
     const distance = bird.position.distanceTo(playerPosition);
     const birdId = (bird as any).id || 'unknown';
     
-    // CACHE CHECK: Only recalculate if distance changed significantly
+    // PHASE 2: Enhanced cache with automatic cleanup
+    const now = Date.now();
     const cached = this.birdOpacityCache.get(birdId);
     if (cached && Math.abs(distance - cached.lastDistance) < 2.0) {
-      bird.opacity = cached.opacity; // Use cached value
+      bird.opacity = cached.opacity;
+      cached.lastUsed = now; // Update usage time
       return;
     }
     
@@ -145,8 +154,12 @@ export class BirdSpawningSystem {
     
     bird.opacity = newOpacity;
     
-    // CACHE THE RESULT
-    this.birdOpacityCache.set(birdId, { opacity: newOpacity, lastDistance: distance });
+    // PHASE 2: Cache with timestamp for cleanup
+    this.birdOpacityCache.set(birdId, { 
+      opacity: newOpacity, 
+      lastDistance: distance, 
+      lastUsed: Date.now() 
+    });
     
     // OPTIMIZED MATERIAL UPDATES: Only update if opacity actually changed
     if (bird.mesh && (cached?.opacity !== newOpacity)) {
@@ -343,6 +356,21 @@ export class BirdSpawningSystem {
       this.removeCorpse(id);
     });
     
-    console.log('🐦 [BirdSpawningSystem] Disposed all birds and corpses');
+    // PHASE 2: Clean up opacity cache to prevent memory leaks
+    this.birdOpacityCache.clear();
+    
+    console.log('🐦 [BirdSpawningSystem] Disposed all birds, corpses, and cache');
+  }
+  
+  // PHASE 2: Automatic cache cleanup to prevent memory leaks
+  private cleanupOpacityCache(): void {
+    const now = Date.now();
+    const maxAge = 30000; // 30 seconds
+    
+    for (const [birdId, cached] of this.birdOpacityCache.entries()) {
+      if (now - cached.lastUsed > maxAge) {
+        this.birdOpacityCache.delete(birdId);
+      }
+    }
   }
 }
