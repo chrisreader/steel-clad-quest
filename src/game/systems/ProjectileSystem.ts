@@ -82,11 +82,15 @@ export class ProjectileSystem {
     
     const activeArrowsBefore = this.arrows.length;
     
-    // SAFETY LOG: Verify terrain collision integrity before arrow updates
-    const terrainCollisionsBefore = Array.from(this.physicsManager.getCollisionObjects().values())
-      .filter(obj => obj.type === 'terrain');
+    // PERFORMANCE: Batch update arrows with frame skipping for distant ones
+    const frameSkip = Math.floor(performance.now() / 16) % 2; // Skip every other frame alternately
     
-    this.arrows = this.arrows.filter(arrow => {
+    this.arrows = this.arrows.filter((arrow, index) => {
+      // Skip update for some distant arrows to improve performance
+      if (index % 2 === frameSkip && this.player.getPosition().distanceTo(arrow.getPosition()) > 30) {
+        return arrow.isArrowActive(); // Just check if still active
+      }
+      
       const isActive = arrow.update(deltaTime);
       
       if (arrow.isArrowActive()) {
@@ -100,16 +104,8 @@ export class ProjectileSystem {
       return isActive;
     });
     
-    // SAFETY LOG: Verify terrain collision integrity after arrow updates
-    const terrainCollisionsAfter = Array.from(this.physicsManager.getCollisionObjects().values())
-      .filter(obj => obj.type === 'terrain');
-    
-    if (terrainCollisionsBefore.length !== terrainCollisionsAfter.length) {
-      console.error('🏹 ❌ TERRAIN COLLISION CORRUPTION during arrow updates!');
-      console.error(`Before: ${terrainCollisionsBefore.length}, After: ${terrainCollisionsAfter.length}`);
-    }
-    
-    if (activeArrowsBefore !== this.arrows.length) {
+    // Reduced logging frequency for better performance
+    if (activeArrowsBefore !== this.arrows.length && activeArrowsBefore % 5 === 0) {
       console.log(`🏹 Arrow count changed: ${activeArrowsBefore} -> ${this.arrows.length}`);
     }
   }

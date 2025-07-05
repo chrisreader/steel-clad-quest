@@ -249,9 +249,20 @@ export abstract class BaseBird implements SpawnableEntity {
       return; // Dead birds don't update behavior or physics
     }
     
-    this.updateBirdBehavior(deltaTime, playerPosition);
-    this.updatePhysics(deltaTime);
-    this.updateAnimation(deltaTime);
+    // PERFORMANCE: Skip expensive updates for distant birds
+    const isNearPlayer = this.distanceFromPlayer < 50;
+    const updateFrequency = isNearPlayer ? 1 : 3; // Update distant birds every 3 frames
+    
+    if (Math.floor(this.age * 60) % updateFrequency === 0) {
+      this.updateBirdBehavior(deltaTime, playerPosition);
+      this.updatePhysics(deltaTime);
+      
+      // PERFORMANCE: Only update animation for nearby birds
+      if (isNearPlayer) {
+        this.updateAnimation(deltaTime);
+      }
+    }
+    
     this.mesh.position.copy(this.position);
     
     if (this.age >= this.maxAge || this.distanceFromPlayer > 200) {

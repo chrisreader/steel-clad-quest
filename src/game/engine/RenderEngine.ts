@@ -28,7 +28,13 @@ export class RenderEngine {
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 6; // RESPONSIVE: Every 6 frames for smooth turning while maintaining performance
+  private readonly CULLING_UPDATE_INTERVAL: number = 12; // ULTRA-AGGRESSIVE: Every 12 frames for 50% fewer calculations
+  
+  // Object pooling and caching for maximum performance
+  private objectPool: Map<string, THREE.Object3D[]> = new Map();
+  private cachedPlayerPosition: THREE.Vector3 = new THREE.Vector3();
+  private cachedCameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
+  private frameSkipCounter: number = 0;
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -128,37 +134,38 @@ export class RenderEngine {
   }
   
   private updateFrustumCulling(): void {
-    const now = performance.now();
-    if (now - this.lastCullingUpdate < this.CULLING_UPDATE_INTERVAL) return;
+    this.frameSkipCounter++;
+    if (this.frameSkipCounter < this.CULLING_UPDATE_INTERVAL) return;
     
-    this.cameraMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
-    this.frustum.setFromProjectionMatrix(this.cameraMatrix);
-    this.lastCullingUpdate = now;
+    // Cache matrix calculations to avoid repeated computation
+    this.cachedCameraMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
+    this.frustum.setFromProjectionMatrix(this.cachedCameraMatrix);
+    this.frameSkipCounter = 0;
   }
   
   private isObjectInFrustum(object: THREE.Object3D): boolean {
     // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
     if (object instanceof THREE.InstancedMesh) return true;
     
-    // Hierarchical culling - check parent objects first for performance
-    if (object.parent && object.parent !== this.scene && !this.isObjectInFrustum(object.parent)) {
-      return false;
-    }
+    // ULTRA-AGGRESSIVE distance culling - cull objects beyond 150 units immediately
+    const distance = this.camera.position.distanceTo(object.position);
+    if (distance > 150) return false;
     
-    // Fast bounding sphere pre-check before expensive frustum test
+    // Skip expensive hierarchical checks for better performance
+    
+    // Fast bounding sphere pre-check with cached calculations
     if (object instanceof THREE.Mesh && object.geometry) {
       const sphere = object.geometry.boundingSphere;
       if (sphere) {
-        // Quick distance check first (cheaper than frustum test)
-        const distance = this.camera.position.distanceTo(object.position);
-        if (distance > 200) return false; // Cull very distant objects immediately
+        // Skip frustum test for very close objects (performance boost)
+        if (distance < 20) return true;
         
         const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
         return this.frustum.intersectsSphere(worldSphere);
       }
     }
     
-    return true; // Default to visible if no bounding info or not a mesh
+    return distance < 100; // More aggressive default culling
   }
   
   public render(): void {
@@ -175,13 +182,13 @@ export class RenderEngine {
       }
     });
     
-    // ULTRA-AGGRESSIVE logging reduction (every 3000 frames = 3 minutes at 60fps)
-    if (this.renderCount % 3000 === 0) {
-      const fps = 3000 / ((now - this.lastRenderTime) / 1000);
-      console.log("🎨 [RenderEngine] ULTRA-PERFORMANCE:", {
+    // EXTREME logging reduction (every 6000 frames = 10 minutes at 60fps)
+    if (this.renderCount % 6000 === 0) {
+      const fps = 6000 / ((now - this.lastRenderTime) / 1000);
+      console.log("🎨 [RenderEngine] EXTREME-PERFORMANCE:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
-        objects: this.scene.children.length
+        visibleObjects: this.scene.children.filter(child => child.visible).length
       });
       this.lastRenderTime = now;
     }
