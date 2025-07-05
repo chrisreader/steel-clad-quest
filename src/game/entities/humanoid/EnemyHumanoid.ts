@@ -748,46 +748,17 @@ export abstract class EnemyHumanoid {
       const distance = Math.sqrt(x * x + y * y + z * z);
       const normalizedY = y / shoulderJointRadius; // -1 to 1, where 1 is top, -1 is bottom
       
-      // Create smooth deltoid shape: eliminate sharp points and discontinuities
-      let scaleFactor = 1.0;
-      let frontBackScale = 0.7;
+      // Create completely uniform deltoid - no angular variation to eliminate any points
+      // Use only height-based linear scaling for guaranteed smoothness
       
-      // Calculate smooth angular factors to avoid sharp transitions
-      const angle = Math.atan2(z, x);
-      const frontFactor = Math.max(0, Math.cos(angle)); // 1 at front, 0 at back  
+      // Convert to normalized coordinates
+      const heightNorm = (normalizedY + 1.0) / 2.0; // 0 at bottom, 1 at top
       
-      // Use smooth cosine function for lateral scaling to eliminate points
-      const lateralFactor = Math.cos(angle); // Smooth transition from front to back
-      const smoothLateralScale = 0.85 + (lateralFactor * lateralFactor * 0.1); // Smooth quadratic curve
+      // Completely uniform scaling around circumference - no angular factors at all
+      let scaleFactor = 0.75 + (heightNorm * 0.1); // Simple linear from 0.75 to 0.85
       
-      if (normalizedY > 0.1) {
-        // Upper section - smooth taper without sharp edges
-        const upperPosition = (normalizedY - 0.1) / 0.9;
-        const smoothUpperTaper = Math.cos(upperPosition * Math.PI * 0.5); // Smooth cosine taper
-        
-        // Gentle anterior emphasis without creating points
-        scaleFactor = 0.75 + (smoothUpperTaper * 0.15) + (frontFactor * 0.1);
-        frontBackScale = 0.65 - (upperPosition * 0.05);
-        
-      } else if (normalizedY > -0.4) {
-        // Middle section - smooth profile without lateral points
-        const middlePosition = (normalizedY + 0.4) / 0.5;
-        const smoothMiddleCurve = Math.cos((1.0 - middlePosition) * Math.PI * 0.5); // Smooth curve
-        
-        scaleFactor = 0.8 + (smoothMiddleCurve * 0.05); // Very gentle variation
-        frontBackScale = 0.68;
-        
-      } else {
-        // Lower section - smooth taper to arm
-        const lowerPosition = Math.abs(normalizedY + 0.4) / 0.6;
-        const smoothLowerTaper = Math.cos(lowerPosition * Math.PI * 0.5);
-        
-        scaleFactor = 0.75 + (smoothLowerTaper * 0.1);
-        frontBackScale = 0.7;
-      }
-      
-      // Apply smooth lateral scaling to eliminate outside points
-      scaleFactor *= smoothLateralScale;
+      // Constant front-back compression throughout
+      let frontBackScale = 0.68;
       
       // Apply scaling with natural deltoid curves
       const horizontalDistance = Math.sqrt(x * x + z * z);
