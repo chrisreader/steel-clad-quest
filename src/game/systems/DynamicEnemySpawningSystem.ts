@@ -20,9 +20,6 @@ class SpawnableEnemyWrapper implements SpawnableEntity {
   distanceFromPlayer: number = 0;
   
   private enemy: Enemy;
-  // PHASE 3: AI update frequency optimization - update AI every 3 frames instead of every frame
-  private aiUpdateFrameCounter: number = 0;
-  private readonly AI_UPDATE_INTERVAL: number = 3;
   
   constructor(enemy: Enemy) {
     this.enemy = enemy;
@@ -41,18 +38,10 @@ class SpawnableEnemyWrapper implements SpawnableEntity {
     this.age += deltaTime * 1000;
     this.distanceFromPlayer = this.position.distanceTo(playerPosition);
     
-    // PHASE 3: Optimize AI updates - only update AI every 3 frames
-    this.aiUpdateFrameCounter++;
-    const shouldUpdateAI = this.aiUpdateFrameCounter >= this.AI_UPDATE_INTERVAL;
+    // Update enemy
+    this.enemy.update(deltaTime, playerPosition);
     
-    if (shouldUpdateAI) {
-      // Scale deltaTime by frame interval for accurate timing
-      const scaledDeltaTime = deltaTime * this.AI_UPDATE_INTERVAL;
-      this.enemy.update(scaledDeltaTime, playerPosition);
-      this.aiUpdateFrameCounter = 0;
-    }
-    
-    // Always update position reference (for collision/rendering)
+    // Update position reference
     this.position.copy(this.enemy.getPosition());
     
     // Update state based on enemy status
@@ -95,7 +84,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       maxEntityDistance: 180, // Increased cleanup distance
       minSpawnDistance: 35, // Initial spawn safe distance
       maxSpawnDistance: 60, // Initial spawn max distance  
-      maxEntities: 3, // PHASE 3: Reduced from 8 to 3 for 5-15% FPS improvement
+      maxEntities: 8, // More enemies for engaging gameplay
       baseSpawnInterval: 15000, // Fixed interval spawning
       spawnCountPerTrigger: 1, // Single enemy spawns
       aggressiveCleanupDistance: 140,
@@ -121,7 +110,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
       () => this.onPlayerExitSafeZone()
     );
     
-    console.log(`[DynamicEnemySpawningSystem] PHASE 3: Optimized spawning (${this.config.maxEntities} enemies max for FPS, ${this.spawnCooldown/1000}s intervals)`);
+    console.log(`[DynamicEnemySpawningSystem] Initialized MMORPG-style spawning (${this.config.maxEntities} enemies max, ${this.spawnCooldown/1000}s intervals)`);
   }
 
   // Override base class initialize to use MMORPG-style initial spawning

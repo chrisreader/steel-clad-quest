@@ -34,7 +34,7 @@ export class BirdSpawningSystem {
       maxSpawnDistance: 50,
       
       // Spawn settings
-      maxEntities: 4, // PHASE 3: Reduced from 8 to 4 for FPS optimization
+      maxEntities: 8,
       baseSpawnInterval: 8000, // 8 seconds
       spawnCountPerTrigger: 1,
       
@@ -71,20 +71,15 @@ export class BirdSpawningSystem {
   }
 
   private updateBirds(deltaTime: number, playerPosition: THREE.Vector3): void {
-    // PHASE 3: Optimize bird AI updates - update every other frame for better FPS
     this.birds.forEach((bird, id) => {
-      // Birds only update AI every other frame, but always update position/animation  
-      const skipAIUpdate = Math.random() < 0.5; // 50% chance to skip AI this frame
+      bird.update(deltaTime, playerPosition);
       
-      if (!skipAIUpdate) {
-        bird.update(deltaTime * 2, playerPosition); // Scale deltaTime for accuracy
-      }
-      
-      // Always handle opacity fading based on distance (visual priority)
+      // Handle opacity fading based on distance
       this.updateBirdOpacity(bird, playerPosition);
       
       // Check if bird died and became corpse
       if ((bird as any).isDead && (bird as any).birdState === 'dead') {
+        console.log(`🐦💀 [BirdSpawningSystem] Bird ${id} died, moving to corpses`);
         this.birdCorpses.set(id, bird);
         this.birds.delete(id);
         return;
