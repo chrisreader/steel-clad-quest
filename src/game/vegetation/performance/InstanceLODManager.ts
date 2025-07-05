@@ -11,18 +11,18 @@ export interface InstanceLODInfo {
 
 export class InstanceLODManager {
   private regionInstanceData: Map<string, InstanceLODInfo> = new Map();
-  // Tighter LOD distances for 200-unit optimization
-  private lodDistances: number[] = [40, 80, 120, 200];
+  // AGGRESSIVE LOD distances - Phase 2 FPS optimization
+  private lodDistances: number[] = [10, 20, 35, 60]; // Drastically reduced from [40, 80, 120, 200]
   private readonly DENSITY_UPDATE_THRESHOLD = 0.1; // Lower threshold for smoother updates
   private readonly POSITION_UPDATE_THRESHOLD = 3; // Lower threshold for responsiveness
-  private readonly CULLING_DISTANCE = 200; // Complete culling beyond this distance
+  private readonly CULLING_DISTANCE = 60; // Aggressive culling - reduced from 200
 
   public calculateInstanceLODDensity(distance: number): number {
-    if (distance >= this.CULLING_DISTANCE) return 0.0; // Complete culling beyond 200 units
-    if (distance < this.lodDistances[0]) return 1.0;
-    if (distance < this.lodDistances[1]) return 0.7; // More aggressive reduction
-    if (distance < this.lodDistances[2]) return 0.4; // Stronger culling
-    if (distance < this.lodDistances[3]) return 0.15; // Very sparse at distance
+    if (distance >= this.CULLING_DISTANCE) return 0.0; // Complete culling beyond 60 units
+    if (distance < this.lodDistances[0]) return 1.0;    // 0-10 units: full density
+    if (distance < this.lodDistances[1]) return 0.5;    // 10-20 units: 50% density (more aggressive)
+    if (distance < this.lodDistances[2]) return 0.2;    // 20-35 units: 20% density (very aggressive)
+    if (distance < this.lodDistances[3]) return 0.05;   // 35-60 units: 5% density (ultra sparse)
     return 0.0; // Complete culling
   }
 
