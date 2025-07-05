@@ -379,6 +379,8 @@ export abstract class EnemyHumanoid {
     
     // Natural human silhouette: shoulders -> waist -> hips
     const positions = torsoGeometry.attributes.position.array as Float32Array;
+    const isHuman = !this.config.features.hasWeapon;
+    
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const y = positions[i + 1];
@@ -388,9 +390,27 @@ export abstract class EnemyHumanoid {
       const normalizedY = y / bodyScale.body.height;
       
       let scaleFactor = 1.0;
+      let frontBackScale = 1.0;
       
+      // For humans: create curved/oval top transition to shoulders
+      if (isHuman && normalizedY > 0.3) {
+        // Top shoulder area - create oval cross-section
+        const shoulderCurve = (normalizedY - 0.3) / 0.2; // 0 at chest, 1 at very top
+        scaleFactor = 1.0 - shoulderCurve * 0.15; // Slightly narrower at top
+        frontBackScale = 1.0 - shoulderCurve * 0.25; // More narrow front-to-back
+        
+        // Create curved shoulder transition
+        const shoulderRadius = Math.sqrt(x * x + z * z);
+        if (shoulderRadius > 0) {
+          const angle = Math.atan2(z, x);
+          const ovalX = Math.cos(angle) * shoulderRadius * scaleFactor;
+          const ovalZ = Math.sin(angle) * shoulderRadius * frontBackScale;
+          positions[i] = ovalX;
+          positions[i + 2] = ovalZ;
+        }
+      }
       // Upper torso (shoulders/chest area) - wider
-      if (normalizedY > 0.1) {
+      else if (normalizedY > 0.1) {
         scaleFactor = 1.0; // Keep full width at shoulders
       }
       // Waist area - narrower 
@@ -406,9 +426,11 @@ export abstract class EnemyHumanoid {
         scaleFactor = 0.75 + hipPosition * 0.2; // Scale from 0.75 to 0.95
       }
       
-      // Apply the scaling
-      positions[i] = x * scaleFactor;
-      positions[i + 2] = z * scaleFactor;
+      // Apply the scaling (only if not already handled by shoulder curve logic)
+      if (!(isHuman && normalizedY > 0.3)) {
+        positions[i] = x * scaleFactor;
+        positions[i + 2] = z * scaleFactor;
+      }
     }
     
     torsoGeometry.attributes.position.needsUpdate = true;
