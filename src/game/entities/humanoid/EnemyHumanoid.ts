@@ -645,17 +645,26 @@ export abstract class EnemyHumanoid {
     rightEyeSocket.scale.z = 0.5;
     headGroup.add(rightEyeSocket);
 
-    // Eyes - smaller for humans
-    const eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.7, 16, 12); // Reduced from 1.0 to 0.7
-    
-    // Different materials for humans vs orcs/goblins
+    // Eyes - oval shaped for humans, sphere for others
     const isHuman = features.eyeConfig.color === 0xFFFFFF;
+    
+    let eyeGeometry;
+    if (isHuman) {
+      // Create sideways oval eye for humans
+      eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.7, 16, 12);
+      // Scale to make it oval (wider horizontally)
+      eyeGeometry.scale(1.4, 0.8, 0.6); // Wider, shorter, flatter
+    } else {
+      // Keep sphere for orcs/goblins
+      eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.7, 16, 12);
+    }
+    
     const eyeMaterial = new THREE.MeshPhongMaterial({
-      color: features.eyeConfig.color,
-      transparent: false, // No transparency for cleaner eyes
+      color: isHuman ? 0xFFFFFF : features.eyeConfig.color, // Pure white for humans
+      transparent: false,
       opacity: 1.0,
-      emissive: new THREE.Color(0x000000), // No emissive glow for any eyes
-      emissiveIntensity: 0.0, // No glow
+      emissive: new THREE.Color(0x000000), // No glow
+      emissiveIntensity: 0.0,
       shininess: isHuman ? 30 : 100
     });
 
@@ -673,10 +682,10 @@ export abstract class EnemyHumanoid {
       bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
     );
 
-    // Pupils - much smaller to show white of eyes
-    const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.15, 12, 10); // Reduced from 0.28 to 0.15
+    // Pupils - circular and smaller for humans
+    const pupilGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.15, 12, 10);
     const pupilMaterial = new THREE.MeshPhongMaterial({
-      color: 0x000000,
+      color: 0x000000, // Pure black pupils
       shininess: 100
     });
 
