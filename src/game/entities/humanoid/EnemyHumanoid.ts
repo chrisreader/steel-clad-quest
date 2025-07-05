@@ -722,12 +722,12 @@ export abstract class EnemyHumanoid {
     const shoulderJointRadius = bodyScale.body.radius * 0.5; // Scale with body size
     const shoulderJointGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 20);
     const leftShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    leftShoulderJoint.position.set(-(bodyScale.body.radius * 0.7), shoulderHeight, 0); // Center with arms
+    leftShoulderJoint.position.set(-(bodyScale.body.radius * 0.7), shoulderHeight + bodyScale.arm.length * 0.5, 0); // Position at top of upper arm
     leftShoulderJoint.scale.set(0.9, 1, 0.9);
     leftShoulderJoint.castShadow = true;
 
     const rightShoulderJoint = new THREE.Mesh(shoulderJointGeometry, skinMaterial.clone());
-    rightShoulderJoint.position.set(bodyScale.body.radius * 0.7, shoulderHeight, 0); // Center with arms
+    rightShoulderJoint.position.set(bodyScale.body.radius * 0.7, shoulderHeight + bodyScale.arm.length * 0.5, 0); // Position at top of upper arm
     rightShoulderJoint.scale.set(0.9, 1, 0.9);
     rightShoulderJoint.castShadow = true;
 
