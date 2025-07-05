@@ -22,18 +22,13 @@ export class RenderEngine {
   // FIXED: Consistent camera height
   private readonly CAMERA_HEIGHT_OFFSET: number = 1.6; // Standard eye height
   
-  // PHASE 2: Enhanced performance optimizations
+  // Performance optimizations
   private renderCount: number = 0;
   private lastRenderTime: number = 0;
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 6; // PHASE 2: Every 6 frames (50% more frequent)
-  
-  // PHASE 2: Object pooling and shared materials
-  private materialCache: Map<string, THREE.Material> = new Map();
-  private geometryCache: Map<string, THREE.BufferGeometry> = new Map();
-  private visibilityCache: Map<string, { visible: boolean; lastCheck: number }> = new Map();
+  private readonly CULLING_UPDATE_INTERVAL: number = 6; // RESPONSIVE: Every 6 frames for smooth turning while maintaining performance
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -141,47 +136,12 @@ export class RenderEngine {
     this.lastCullingUpdate = now;
   }
   
-  // PHASE 2: Shared material system for identical objects
-  public getSharedMaterial(key: string, materialFactory: () => THREE.Material): THREE.Material {
-    if (!this.materialCache.has(key)) {
-      this.materialCache.set(key, materialFactory());
-    }
-    return this.materialCache.get(key)!;
-  }
-  
-  public getSharedGeometry(key: string, geometryFactory: () => THREE.BufferGeometry): THREE.BufferGeometry {
-    if (!this.geometryCache.has(key)) {
-      this.geometryCache.set(key, geometryFactory());
-    }
-    return this.geometryCache.get(key)!;
-  }
-  
   private isObjectInFrustum(object: THREE.Object3D): boolean {
     // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
     if (object instanceof THREE.InstancedMesh) return true;
     
-    // PHASE 2: Use visibility cache to avoid repeated calculations
-    const objectId = object.uuid;
-    const now = performance.now();
-    const cached = this.visibilityCache.get(objectId);
-    
-    if (cached && (now - cached.lastCheck) < 16) { // Cache for ~1 frame at 60fps
-      return cached.visible;
-    }
-    
-    // PHASE 2: Enhanced hierarchical culling
-    if (object.parent && object.parent !== this.scene) {
-      const parentVisible = this.isObjectInFrustum(object.parent);
-      if (!parentVisible) {
-        this.visibilityCache.set(objectId, { visible: false, lastCheck: now });
-        return false;
-      }
-    }
-    
-    // PHASE 2: Optimized distance-based culling with multiple thresholds
-    const distance = this.camera.position.distanceTo(object.position);
-    if (distance > 300) { // Increased culling distance
-      this.visibilityCache.set(objectId, { visible: false, lastCheck: now });
+    // Hierarchical culling - check parent objects first for performance
+    if (object.parent && object.parent !== this.scene && !this.isObjectInFrustum(object.parent)) {
       return false;
     }
     
@@ -189,21 +149,16 @@ export class RenderEngine {
     if (object instanceof THREE.Mesh && object.geometry) {
       const sphere = object.geometry.boundingSphere;
       if (sphere) {
-        // PHASE 2: Skip frustum test for very close objects (optimization)
-        if (distance < 50) {
-          this.visibilityCache.set(objectId, { visible: true, lastCheck: now });
-          return true;
-        }
+        // Quick distance check first (cheaper than frustum test)
+        const distance = this.camera.position.distanceTo(object.position);
+        if (distance > 200) return false; // Cull very distant objects immediately
         
         const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
-        const visible = this.frustum.intersectsSphere(worldSphere);
-        this.visibilityCache.set(objectId, { visible, lastCheck: now });
-        return visible;
+        return this.frustum.intersectsSphere(worldSphere);
       }
     }
     
-    this.visibilityCache.set(objectId, { visible: true, lastCheck: now });
-    return true; // Default to visible if no bounding info
+    return true; // Default to visible if no bounding info or not a mesh
   }
   
   public render(): void {
@@ -262,15 +217,6 @@ export class RenderEngine {
   public dispose(): void {
     console.log("🎨 [RenderEngine] Disposing...");
     
-    // PHASE 2: Dispose cached materials and geometries
-    this.materialCache.forEach(material => material.dispose());
-    this.materialCache.clear();
-    
-    this.geometryCache.forEach(geometry => geometry.dispose());
-    this.geometryCache.clear();
-    
-    this.visibilityCache.clear();
-    
     if (this.renderer) {
       this.renderer.dispose();
       if (this.renderer.domElement.parentElement) {
@@ -278,6 +224,6 @@ export class RenderEngine {
       }
     }
     
-    console.log("🎨 [RenderEngine] Disposed successfully with cache cleanup");
+    console.log("🎨 [RenderEngine] Disposed successfully");
   }
 }

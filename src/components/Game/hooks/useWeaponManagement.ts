@@ -108,7 +108,9 @@ export const useWeaponManagement = (initialWeapons: WeaponSlots = { primary: nul
                         activeWeaponSlot === 2 ? equippedWeapons.secondary : 
                         equippedWeapons.offhand;
     
-    // Removed high-frequency log for performance
+    if (activeWeapon) {
+      console.log(`[useWeaponManagement] 🔍 ACTIVE WEAPON: ${activeWeapon.name} in slot ${activeWeaponSlot}`);
+    }
     
     return activeWeapon;
   }, [activeWeaponSlot, equippedWeapons]);

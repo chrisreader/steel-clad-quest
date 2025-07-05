@@ -28,28 +28,12 @@ export class LineOfSightDetector {
     this.raycaster.set(playerPosition, direction);
     this.raycaster.far = distance;
     
-    // CRITICAL FIX: Safer raycaster intersection with error handling
-    let intersects: THREE.Intersection[] = [];
-    try {
-      // Filter valid objects before raycasting to prevent crashes
-      const validObjects = this.scene.children.filter(child => 
-        child && child.matrixWorld && child.visible
-      );
-      
-      intersects = this.raycaster.intersectObjects(validObjects, true);
-    } catch (error) {
-      console.warn('LineOfSightDetector: Raycaster intersection failed:', error);
-      return true; // Assume not visible if we can't check
-    }
+    // Check for intersections with scene objects
+    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
     
-    // Filter out small objects and ground plane with enhanced safety
+    // Filter out small objects and ground plane
     const significantIntersects = intersects.filter(intersect => {
       const object = intersect.object;
-      
-      // Enhanced safety checks
-      if (!object || !object.position) {
-        return false;
-      }
       
       // Skip if it's the ground or very small objects
       if (object.name?.includes('ground') || 
@@ -136,27 +120,7 @@ export class LineOfSightDetector {
    * Check if an object is a significant obstacle for spawning
    */
   private isSignificantObstacle(object: THREE.Object3D): boolean {
-    // CRITICAL FIX: Enhanced safety checks to prevent crashes
-    if (!object || !object.matrixWorld) {
-      return false;
-    }
-    
-    // Skip objects that aren't meshes or don't have valid materials
-    if (!(object instanceof THREE.Mesh) || !object.material) {
-      return false;
-    }
-    
-    // PHASE 2: Additional safety check for geometry
-    if (!object.geometry) {
-      return false;
-    }
-    
-    // Skip objects that are likely temporary or invalid (fix type comparison)
-    if (object.parent === null && object.parent !== this.scene) {
-      return false;
-    }
-    
-    // Check by name or type first (fastest check)
+    // Check by name or type
     if (object.name?.includes('tree') || 
         object.name?.includes('rock') || 
         object.name?.includes('building') ||
@@ -164,23 +128,12 @@ export class LineOfSightDetector {
       return true;
     }
     
-    // PERFORMANCE FIX: Enhanced safety for bounding box calculation
-    try {
-      // Skip if geometry is not valid
-      if (!object.geometry.boundingBox && !object.geometry.boundingSphere) {
-        object.geometry.computeBoundingBox();
-      }
-      
-      const box = new THREE.Box3().setFromObject(object);
-      const size = box.getSize(new THREE.Vector3());
-      
-      // Consider objects larger than 2x2x2 units as significant
-      return size.x > 2 && size.y > 2 && size.z > 2;
-    } catch (error) {
-      // Log error for debugging but don't crash
-      console.warn('LineOfSightDetector: Failed to compute bounding box for object:', object.name || 'unnamed', error);
-      return false;
-    }
+    // Check by size - objects with significant bounding box
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    
+    // Consider objects larger than 2x2x2 units as significant
+    return size.x > 2 && size.y > 2 && size.z > 2;
   }
 
   /**

@@ -83,22 +83,16 @@ export class EnemyAnimationSystem {
     };
   }
   
-  public updateWalkAnimation(deltaTime: number, isMoving: boolean, movementSpeed: number, distanceToPlayer: number = 0): void {
-    // OPTIMIZED: Enhanced frame limiting based on distance to player
-    const frameSkip = distanceToPlayer > 50 ? 4 : distanceToPlayer > 30 ? 3 : 1; // Increased from 3,2 to 4,3
-    this.walkTime += deltaTime * frameSkip;
+  public updateWalkAnimation(deltaTime: number, isMoving: boolean, movementSpeed: number): void {
     const enhancedNeutralPoses = this.createEnhancedNeutralPoses();
 
-    // PHASE 2: Skip complex realistic movement for distant enemies
-    if (distanceToPlayer < 50) {
-      this.realisticMovement.updateRealisticWalk(
-        this.bodyParts,
-        deltaTime,
-        isMoving,
-        movementSpeed,
-        enhancedNeutralPoses
-      );
-    }
+    this.realisticMovement.updateRealisticWalk(
+      this.bodyParts,
+      deltaTime,
+      isMoving,
+      movementSpeed,
+      enhancedNeutralPoses
+    );
 
     if (isMoving) {
       this.walkTime += deltaTime * movementSpeed * this.metrics.animationMetrics.walkCycleSpeed;

@@ -1204,40 +1204,21 @@ export class RealisticTreeGenerator {
     });
   }
 
-  // PERFORMANCE OPTIMIZATION: Cache last update values
-  private lastDayFactor: number = -1;
-  private lastNightFactor: number = -1;
-  private updateFrameCounter: number = 0;
-  
   /**
-   * Update foliage materials for day/night lighting - OPTIMIZED for 15-25% FPS gain
+   * Update foliage materials for day/night lighting
    */
   public updateDayNightLighting(dayFactor: number, nightFactor: number): void {
-    // CRITICAL OPTIMIZATION: Only update if values changed significantly (>0.01) 
-    const dayFactorChanged = Math.abs(dayFactor - this.lastDayFactor) > 0.01;
-    const nightFactorChanged = Math.abs(nightFactor - this.lastNightFactor) > 0.01;
+    console.log(`🍃 Day/Night update called - dayFactor: ${dayFactor}, nightFactor: ${nightFactor}`);
     
-    // PERFORMANCE: Update every 5 frames max, or when significant change occurs
-    this.updateFrameCounter++;
-    const shouldUpdateByFrame = this.updateFrameCounter >= 5;
-    
-    if (!dayFactorChanged && !nightFactorChanged && !shouldUpdateByFrame) {
-      return; // Skip expensive material updates
-    }
-    
-    // Reset counter and cache values
-    if (shouldUpdateByFrame) this.updateFrameCounter = 0;
-    this.lastDayFactor = dayFactor;
-    this.lastNightFactor = nightFactor;
-    
-    // Day/Night material update (performance optimized)
-    
-    // BATCH MATERIAL UPDATES: Process materials more efficiently
     for (const material of this.activeFoliageMaterials) {
+      // Get the material's current color - NOT the original color which is being overwritten
+      const currentColor = new THREE.Color(material.color);
+      console.log(`🍃 Material current color:`, currentColor.getHexString());
+      
       // Get the species from material cache to restore proper base color
       let baseColor = new THREE.Color(0x8BC34A); // Default bright green
       
-      // OPTIMIZED: Cache lookup for base color restoration
+      // Try to find the original species color from material cache key
       for (const [key, cachedMaterial] of this.materialCache.entries()) {
         if (cachedMaterial === material && key.includes('_')) {
           const species = key.split('_')[2] as TreeSpeciesType;
@@ -1247,19 +1228,19 @@ export class RealisticTreeGenerator {
         }
       }
       
-      // Base color selection
+      console.log(`🍃 Using base color:`, baseColor.getHexString());
       
       // Create night version - darker but still visible
-      const nightColor = baseColor.clone().multiplyScalar(0.6);
+      const nightColor = baseColor.clone().multiplyScalar(0.6); // Increased from 0.5 to keep more color
       
       // Blend between day and night colors
       const blendedColor = baseColor.clone().lerp(nightColor, nightFactor);
       material.color.copy(blendedColor);
-      // Material color updated
+      console.log(`🍃 Material updated color:`, blendedColor.getHexString());
       
       // Adjust material properties for lighting conditions
       const baseRoughness = 0.65;
-      material.roughness = baseRoughness + (nightFactor * 0.1);
+      material.roughness = baseRoughness + (nightFactor * 0.1); // Slightly rougher at night
       
       // Remove emissive completely to prevent glow
       material.emissive.setRGB(0, 0, 0);

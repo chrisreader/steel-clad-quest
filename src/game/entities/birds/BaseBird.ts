@@ -132,7 +132,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.state = EntityLifecycleState.ACTIVE;
     this.scheduleNextStateChange();
     
-    // Bird spawned successfully
+    console.log(`🐦 [${this.config.species}] Spawned with feet at ground level ${this.groundLevel}, bird position: ${this.position.y}`);
   }
 
   protected detectGroundLevel(position: THREE.Vector3): number {
@@ -174,7 +174,7 @@ export abstract class BaseBird implements SpawnableEntity {
       }
     }
     
-    // Bird died
+    console.log(`🐦💀 [${this.config.species}] Died and ${this.position.y > 1 ? 'started falling' : 'became corpse'}`);
   }
   
   private startDeathFall(): void {
@@ -190,7 +190,7 @@ export abstract class BaseBird implements SpawnableEntity {
       z: (Math.random() - 0.5) * 0.3
     };
     
-    // Death fall started
+    console.log(`🐦🍂 [${this.config.species}] Started death fall animation from altitude ${this.position.y.toFixed(1)}`);
   }
   
   public getHitBox(): THREE.Mesh | null {
@@ -236,7 +236,7 @@ export abstract class BaseBird implements SpawnableEntity {
             this.bodyParts.body.rotation.z = Math.PI / 2; // Lie on side
           }
           
-          // Bird became corpse
+          console.log(`🐦🪦 [${this.config.species}] Landed and became corpse`);
         }
         
         this.mesh.position.copy(this.position);
@@ -299,7 +299,7 @@ export abstract class BaseBird implements SpawnableEntity {
         // Thermal updraft - slight altitude gain
         this.velocity.y += 2.0 * deltaTime;
         this.soaringAltitudeLoss = Math.max(0, this.soaringAltitudeLoss - 1.0);
-        // Caught thermal updraft
+        console.log(`🐦 [${this.config.species}] Caught thermal updraft!`);
       } else {
         // Natural soaring energy loss - very gradual
         const soaringDrag = -1.5 * deltaTime;
@@ -310,7 +310,7 @@ export abstract class BaseBird implements SpawnableEntity {
       if (this.soaringAltitudeLoss > 4.0 && this.position.y < this.targetAltitude - 3) {
         this.isFlapping = true;
         this.wingBeatIntensity = 1.1;
-        // Starting to flap
+        console.log(`🐦 [${this.config.species}] Starting to flap to regain altitude from soaring`);
       }
     }
     
@@ -333,7 +333,7 @@ export abstract class BaseBird implements SpawnableEntity {
   protected changeState(newState: BirdState): void {
     if (this.birdState === newState) return;
     
-    // State changed
+    console.log(`🐦 [${this.config.species}] State change: ${this.birdState} -> ${newState}`);
     this.birdState = newState;
     this.stateTimer = 0;
     this.scheduleNextStateChange();
@@ -346,7 +346,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.wingBeatIntensity = 1.3;
     this.generateFlightPath();
     this.changeState(BirdState.TAKING_OFF);
-    // Flight started
+    console.log(`🐦 [${this.config.species}] Starting flight, target altitude: ${this.targetAltitude.toFixed(1)}`);
   }
 
   protected startLanding(): void {
@@ -356,7 +356,7 @@ export abstract class BaseBird implements SpawnableEntity {
     this.isFlapping = false;
     this.wingBeatIntensity = 1.0;
     this.visualBankAngle = 0;
-    // Landing approach started
+    console.log(`🐦 [${this.config.species}] Starting landing approach from altitude: ${this.position.y.toFixed(1)}`);
   }
 
   protected generateFlightPath(): void {
@@ -380,7 +380,7 @@ export abstract class BaseBird implements SpawnableEntity {
     }
     
     this.flightPath.push(this.flightPath[0].clone());
-    // Flight path generated
+    console.log(`🐦 [${this.config.species}] Generated extended flight path with ${numPoints} waypoints`);
   }
 
   protected followFlightPath(deltaTime: number): void {
@@ -393,7 +393,7 @@ export abstract class BaseBird implements SpawnableEntity {
     
     if (distanceToWaypoint < 5) {
       this.currentPathIndex = (this.currentPathIndex + 1) % this.flightPath.length;
-      // Reached waypoint
+      console.log(`🐦 [${this.config.species}] Reached waypoint ${this.currentPathIndex}`);
       return;
     }
     
@@ -457,7 +457,7 @@ export abstract class BaseBird implements SpawnableEntity {
       this.bodyParts.body.rotation.z = clampedBank;
     }
     
-    // Forward flight updated
+    console.log(`🐦 [${this.config.species}] Forward flight: heading=${(this.currentHeading * 180/Math.PI).toFixed(1)}°, mesh rot=${(this.mesh.rotation.y * 180/Math.PI).toFixed(1)}°, vel=(${this.velocity.x.toFixed(2)}, ${this.velocity.z.toFixed(2)}), dist=${distanceToWaypoint.toFixed(1)}m`);
   }
 
   public dispose(): void {
@@ -485,6 +485,6 @@ export abstract class BaseBird implements SpawnableEntity {
       });
     }
     
-    // Bird entity disposed
+    console.log(`🐦 [${this.config.species}] Disposed bird entity`);
   }
 }

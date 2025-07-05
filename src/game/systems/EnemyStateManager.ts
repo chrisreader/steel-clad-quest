@@ -45,8 +45,6 @@ export class EnemyStateManager {
     };
   }
 
-  private updateCounter: number = 0;
-
   public update(
     deltaTime: number, 
     enemyPosition: THREE.Vector3,
@@ -55,17 +53,9 @@ export class EnemyStateManager {
     maxHealth: number,
     isInSafeZone: boolean = false
   ): EnemyAIState {
-    this.updateCounter++;
-    
-    // PHASE 5: Update AI every 3 frames when not in combat for better performance
-    const distanceToPlayer = enemyPosition.distanceTo(playerPosition);
-    const isInCombat = this.currentState === EnemyAIState.AGGRESSIVE && distanceToPlayer < 20;
-    
-    if (!isInCombat && this.updateCounter % 3 !== 0) {
-      return this.currentState; // Skip update
-    }
     this.stateTimer += deltaTime * 1000;
     
+    const distanceToPlayer = enemyPosition.distanceTo(playerPosition);
     const distanceFromSpawn = enemyPosition.distanceTo(this.spawnPosition);
     const healthPercentage = enemyHealth / maxHealth;
     

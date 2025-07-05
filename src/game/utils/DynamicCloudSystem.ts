@@ -16,13 +16,12 @@ interface Cloud {
 export class DynamicCloudSystem {
   private scene: THREE.Scene;
   private clouds: Cloud[] = [];
-  private sharedCloudMaterial: THREE.MeshLambertMaterial; // Shared material for performance
-  private materialUpdateCounter: number = 0;
+  private cloudMaterial: THREE.MeshLambertMaterial;
   private time: number = 0;
   private windDirection: THREE.Vector3;
   private spawnTimer: number = 0;
-  private baseSpawnInterval: number = 5000; // Optimized spawn interval (20% slower)
-  private currentSpawnInterval: number = 5000;
+  private baseSpawnInterval: number = 4000; // Base spawn interval
+  private currentSpawnInterval: number = 4000;
   
   // Player-centered system variables - IMPROVED VALUES
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -43,8 +42,8 @@ export class DynamicCloudSystem {
     // Unified wind direction - all clouds move the same way
     this.windDirection = new THREE.Vector3(1.0, 0, 0.5).normalize();
     
-    // Create SHARED cloud material for performance optimization
-    this.sharedCloudMaterial = new THREE.MeshLambertMaterial({
+    // Create cloud material with reduced opacity for realism
+    this.cloudMaterial = new THREE.MeshLambertMaterial({
       color: 0xffffff,
       transparent: true,
       opacity: 0.4,
@@ -62,8 +61,8 @@ export class DynamicCloudSystem {
       this.lastPlayerPosition.copy(playerPosition);
     }
     
-    // Create initial clouds positioned around the player (reduced by ~17%)
-    for (let i = 0; i < 5; i++) {
+    // Create initial clouds positioned around the player
+    for (let i = 0; i < 6; i++) {
       this.createCloud(true, playerPosition);
     }
     console.log(`IMPROVED player-centered cloud sky initialized with ${this.clouds.length} clouds around player`);
@@ -73,14 +72,15 @@ export class DynamicCloudSystem {
     // Create simplified cloud geometry
     const cloudGroup = new THREE.Group();
     
-    // Optimized puff count per cloud (reduced max from 4 to 3)
-    const puffCount = 1 + Math.floor(Math.random() * 2.5);
+    // Fewer puffs per cloud for realistic individual formations
+    const puffCount = 1 + Math.floor(Math.random() * 3);
     for (let i = 0; i < puffCount; i++) {
       const puffGeometry = new THREE.SphereGeometry(
         12 + Math.random() * 10,
         16, 12
       );
-      const puffMesh = new THREE.Mesh(puffGeometry, this.sharedCloudMaterial);
+      const puffMaterial = this.cloudMaterial.clone();
+      const puffMesh = new THREE.Mesh(puffGeometry, puffMaterial);
       
       puffMesh.position.set(
         (Math.random() - 0.5) * 30,
@@ -220,17 +220,14 @@ export class DynamicCloudSystem {
       }
     }
     
-    // Spawn new clouds based on dynamic interval - RELATIVE TO PLAYER (max reduced to 6)
-    if (this.spawnTimer >= this.currentSpawnInterval && this.clouds.length < 6) {
+    // Spawn new clouds based on dynamic interval - RELATIVE TO PLAYER
+    if (this.spawnTimer >= this.currentSpawnInterval && this.clouds.length < 8) {
       this.createCloud(false, playerPosition);
       this.spawnTimer = 0;
       console.log(`Spawned cloud (interval: ${this.currentSpawnInterval}ms), total: ${this.clouds.length}`);
     }
     
-      // Update existing clouds with batched material updates
-    this.materialUpdateCounter++;
-    const shouldUpdateMaterials = this.materialUpdateCounter % 3 === 0; // Every 3 frames
-    
+    // Update existing clouds
     for (let i = this.clouds.length - 1; i >= 0; i--) {
       const cloud = this.clouds[i];
       
@@ -289,16 +286,14 @@ export class DynamicCloudSystem {
         cloud.fadedOutTime = 0;
       }
       
-      // Update material opacity for all child meshes (batched)
-      if (shouldUpdateMaterials) {
-        cloud.mesh.traverse((child) => {
-          if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshLambertMaterial) {
-            child.material.opacity = cloud.opacity;
-            child.material.transparent = true;
-            child.material.needsUpdate = true;
-          }
-        });
-      }
+      // Update material opacity for all child meshes
+      cloud.mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshLambertMaterial) {
+          child.material.opacity = cloud.opacity;
+          child.material.transparent = true;
+          child.material.needsUpdate = true;
+        }
+      });
       
       // IMPROVED REMOVAL LOGIC - More aggressive cleanup for player-following
       let shouldRemove = false;
@@ -362,8 +357,8 @@ export class DynamicCloudSystem {
     });
     this.clouds = [];
     
-    if (this.sharedCloudMaterial) {
-      this.sharedCloudMaterial.dispose();
+    if (this.cloudMaterial) {
+      this.cloudMaterial.dispose();
     }
     
     console.log('IMPROVED DynamicCloudSystem disposed');

@@ -864,9 +864,82 @@ export class VolumetricFogSystem {
     console.log(`Created ${this.groundFogLayers.length} realistic ground fog layers`);
   }
   
-  // PERFORMANCE OPTIMIZATION: Frame skipping and uniform caching
-  private fogUpdateFrameCounter: number = 0;
-  private cachedUniforms: { [key: string]: any } = {};
+  // ENHANCED: Update method with realistic fog behavior
+  public update(deltaTime: number, timeOfDay: number, playerPosition: THREE.Vector3): void {
+    this.timeOfDay = timeOfDay;
+    
+    const darknessFactor = this.getDarknessFactor(timeOfDay);
+    const transitionFactor = this.getTransitionFactor(timeOfDay);
+    const densityMultiplier = this.getFogDensityMultiplier(timeOfDay);
+    const maxDistance = this.getFogMaxDistance(timeOfDay);
+    const maxOpacity = this.getFogMaxOpacity(timeOfDay);
+    const blendingAlpha = this.getBlendingAlpha(timeOfDay);
+    
+    // Update realistic fog walls
+    this.fogWallLayers.forEach((wall, index) => {
+      const material = wall.material as THREE.ShaderMaterial;
+      if (material.uniforms) {
+        material.uniforms.time.value += deltaTime;
+        material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.playerPosition.value.copy(playerPosition);
+        material.uniforms.fogWallDensityMultiplier.value = densityMultiplier * 0.6; // Reduced for realism
+        material.uniforms.maxWallDistance.value = maxDistance;
+        material.uniforms.maxWallOpacity.value = maxOpacity * 0.5; // Significantly reduced
+        material.uniforms.blendingAlpha.value = blendingAlpha;
+      }
+      
+      // Update positions relative to player
+      const wallData = wall as any;
+      const baseDistance = wallData.baseDistance;
+      const wallIndex = wallData.wallIndex;
+      
+      const angle = (wallIndex / 20) * Math.PI * 2;
+      wall.position.x = playerPosition.x + Math.cos(angle) * baseDistance;
+      wall.position.z = playerPosition.z + Math.sin(angle) * baseDistance;
+    });
+    
+    // Update atmospheric layers
+    this.atmosphericFogLayers.forEach(layer => {
+      const material = layer.material as THREE.ShaderMaterial;
+      if (material.uniforms) {
+        material.uniforms.time.value += deltaTime;
+        material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.playerPosition.value.copy(playerPosition);
+        material.uniforms.atmosphericMultiplier.value = densityMultiplier * 0.4;
+      }
+      
+      layer.position.x = playerPosition.x;
+      layer.position.z = playerPosition.z;
+    });
+    
+    // Update horizon blending layers
+    this.horizonFogLayers.forEach(layer => {
+      const material = layer.material as THREE.ShaderMaterial;
+      if (material.uniforms) {
+        material.uniforms.time.value += deltaTime;
+        material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.playerPosition.value.copy(playerPosition);
+        material.uniforms.horizonMultiplier.value = densityMultiplier * 0.5;
+      }
+      
+      layer.position.x = playerPosition.x;
+      layer.position.z = playerPosition.z;
+    });
+    
+    // Update ground fog layers
+    this.groundFogLayers.forEach(groundFog => {
+      const material = groundFog.material as THREE.ShaderMaterial;
+      if (material.uniforms) {
+        material.uniforms.time.value += deltaTime;
+        material.uniforms.timeOfDay.value = timeOfDay;
+        material.uniforms.playerPosition.value.copy(playerPosition);
+        material.uniforms.groundDensityMultiplier.value = densityMultiplier * 0.7;
+      }
+      
+      groundFog.position.x = playerPosition.x;
+      groundFog.position.z = playerPosition.z;
+    });
+  }
   
   public dispose(): void {
     this.fogWallLayers.forEach(layer => {
@@ -903,84 +976,5 @@ export class VolumetricFogSystem {
     if (this.horizonFogMaterial) this.horizonFogMaterial.dispose();
     
     console.log("Realistic VolumetricFogSystem with atmospheric perspective disposed");
-  }
-  
-  // PHASE 2: Massive performance optimization for fog system
-  private updateCounter: number = 0;
-  private cachedTime: number = 0;
-  private cachedFogParams: {
-    densityMultiplier: number;
-    maxDistance: number;
-    maxOpacity: number;
-    blendingAlpha: number;
-    lastUpdate: number;
-  } | null = null;
-
-  public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
-    this.updateCounter++;
-    this.timeOfDay = gameTime || this.timeOfDay;
-    
-    // ULTRA-AGGRESSIVE: Update fog every 8 frames for 87.5% fewer updates
-    if (this.updateCounter % 8 !== 0) return;
-    
-    const time = Date.now() * 0.001;
-    const timeDiff = time - this.cachedTime;
-    
-    // CACHE fog parameters - only recalculate if time changed significantly
-    if (!this.cachedFogParams || timeDiff > 0.1 || Math.abs(this.timeOfDay - (this.cachedFogParams.lastUpdate || 0)) > 0.01) {
-      this.cachedFogParams = {
-        densityMultiplier: this.getFogDensityMultiplier(this.timeOfDay),
-        maxDistance: this.getFogMaxDistance(this.timeOfDay),
-        maxOpacity: this.getFogMaxOpacity(this.timeOfDay),
-        blendingAlpha: this.getBlendingAlpha(this.timeOfDay),
-        lastUpdate: this.timeOfDay
-      };
-      this.cachedTime = time;
-    }
-    
-    const { densityMultiplier, maxDistance, maxOpacity, blendingAlpha } = this.cachedFogParams;
-    
-    // BATCH uniform updates for maximum performance
-    const updateMaterialUniforms = (material: THREE.ShaderMaterial, timeOffset: number, multiplier: number = 1) => {
-      if (!material.uniforms) return;
-      
-      material.uniforms.time.value = time + timeOffset;
-      material.uniforms.timeOfDay.value = this.timeOfDay;
-      material.uniforms.playerPosition.value = playerPosition;
-      
-      // Apply cached parameters with multiplier
-      if (material.uniforms.fogWallDensityMultiplier) {
-        material.uniforms.fogWallDensityMultiplier.value = densityMultiplier * multiplier;
-      }
-      if (material.uniforms.maxWallDistance) {
-        material.uniforms.maxWallDistance.value = maxDistance;
-      }
-      if (material.uniforms.maxWallOpacity) {
-        material.uniforms.maxWallOpacity.value = maxOpacity;
-      }
-      if (material.uniforms.blendingAlpha) {
-        material.uniforms.blendingAlpha.value = blendingAlpha;
-      }
-    };
-    
-    // OPTIMIZED: Single loop with specific multipliers for each layer type
-    this.fogWallLayers.forEach((layer, index) => {
-      updateMaterialUniforms(layer.material as THREE.ShaderMaterial, index * 0.1, 1.0);
-      if ((layer.material as THREE.ShaderMaterial).uniforms?.layerDepth) {
-        (layer.material as THREE.ShaderMaterial).uniforms.layerDepth.value = index * 0.1;
-      }
-    });
-    
-    this.atmosphericFogLayers.forEach((layer, index) => {
-      updateMaterialUniforms(layer.material as THREE.ShaderMaterial, index * 0.05, 0.7);
-    });
-    
-    this.horizonFogLayers.forEach((layer, index) => {
-      updateMaterialUniforms(layer.material as THREE.ShaderMaterial, index * 0.03, 0.5);
-    });
-    
-    this.groundFogLayers.forEach((layer, index) => {
-      updateMaterialUniforms(layer.material as THREE.ShaderMaterial, index * 0.02, 0.8);
-    });
   }
 }

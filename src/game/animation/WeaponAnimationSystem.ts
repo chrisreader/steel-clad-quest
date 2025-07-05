@@ -43,7 +43,11 @@ export class WeaponAnimationSystem {
     isBowDrawing: boolean = false,
     bowChargeLevel: number = 0
   ): void {
-    // Removed high-frequency animation logging for performance
+    // Only log in debug mode to reduce performance overhead
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug(LOGGING_CONSTANTS.MODULES.ANIMATION, 
+        `Update: moving=${isMoving}, weapon=${this.currentWeaponType}, attacking=${isAttacking}, bowDrawing=${isBowDrawing}, chargeLevel=${bowChargeLevel.toFixed(2)}`);
+    }
     
     if (this.currentWeaponType === 'bow') {
       this.bowAnimationController.updateAnimation(

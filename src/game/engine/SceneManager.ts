@@ -648,7 +648,7 @@ export class SceneManager {
     }
     
     if (this.volumetricFogSystem && playerPosition) {
-      this.volumetricFogSystem.update(deltaTime, playerPosition, this.timeOfDay);
+      this.volumetricFogSystem.update(deltaTime, this.timeOfDay, playerPosition);
     }
   }
   
@@ -695,12 +695,12 @@ export class SceneManager {
     this.scene.background = new THREE.Color(newFogColor);
     
     const currentPhase = TimeUtils.getCurrentPhase(this.timeOfDay, TIME_PHASES);
-    // Sky system synchronized
+    console.log(`Sky system synchronized - Phase: ${currentPhase}, Time: ${(this.timeOfDay * 24).toFixed(1)}h, Color: #${newFogColor.toString(16).padStart(6, '0')}`);
   }
 
   public setTimeOfDay(time: number): void {
     this.timeOfDay = Math.max(0, Math.min(1, time));
-    // Time of day set
+    console.log(`Time set to: ${(this.timeOfDay * 24).toFixed(1)} hours`);
   }
   
   public toggleDayNightCycle(): void {

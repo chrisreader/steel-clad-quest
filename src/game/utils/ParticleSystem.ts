@@ -281,13 +281,7 @@ export class ParticleSystem {
       
       if (!particle.active || !sprite) continue;
       
-      // OPTIMIZED: Update particle physics every 3 frames for better performance
-      const updatePhysics = (particle.age % 48) < 16; // Every third frame
-      if (updatePhysics) {
-        particle.age += 48; // Triple increment to maintain timing
-      } else {
-        particle.age += 16; // Normal increment
-      }
+      particle.age += 16;
       const particleProgress = particle.age / this.options.duration;
       
       // Calculate opacity with fade in/out
@@ -299,28 +293,20 @@ export class ParticleSystem {
         particle.opacity = this.options.opacity!;
       }
       
-      // PHASE 3: Update physics only when updatePhysics is true
-      if (updatePhysics) {
-        particle.rotation += particle.rotationSpeed;
-        particle.velocity.y -= this.options.gravity! * 0.016;
-        particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
-      }
+      // Update physics
+      particle.rotation += particle.rotationSpeed;
+      particle.velocity.y -= this.options.gravity! * 0.016;
+      particle.position.add(particle.velocity.clone().multiplyScalar(0.016));
       
-      // OPTIMIZED: Skip matrix updates for nearly invisible particles + batching
-      if (particle.opacity > 0.015) { // Slightly higher threshold
-        sprite.position.copy(particle.position);
-        sprite.material.opacity = particle.opacity;
-        sprite.material.rotation = particle.rotation;
-        sprite.visible = true;
-        
-        // Update matrix only when physics updated (every 3 frames)
-        if (updatePhysics) {
-          sprite.updateMatrix();
-          sprite.updateMatrixWorld(true);
-        }
-      } else {
-        sprite.visible = false;
-      }
+      // Update sprite with proper matrix updates
+      sprite.position.copy(particle.position);
+      sprite.material.opacity = particle.opacity;
+      sprite.material.rotation = particle.rotation;
+      sprite.visible = particle.opacity > 0.01;
+      
+      // Ensure matrix is updated after position changes
+      sprite.updateMatrix();
+      sprite.updateMatrixWorld(true);
       
       // Scale down over time for more realism
       const sizeMultiplier = 1 - particleProgress * 0.3;

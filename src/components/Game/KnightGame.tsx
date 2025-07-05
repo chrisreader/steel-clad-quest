@@ -185,7 +185,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     
     // Log current player weapon state after syncing
     setTimeout(() => {
-      // Post-sync weapon state check
+      console.log(`[KnightGame] 🔍 POST-SYNC CHECK - Player weapon state:`);
       // Note: We can't directly access private properties, but the equip/unequip calls should have set them
     }, 100);
     
@@ -242,7 +242,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       const chestSystem = (engine as any).chestInteractionSystem;
       if (chestSystem) {
         chestSystem.setChestOpenCallback((chest: any, loot: any) => {
-          // Chest opened
+          console.log('💰 [KnightGame] Chest opened, showing UI:', loot);
           setChestUIState({
             isOpen: true,
             chestItems: loot.items,
@@ -267,7 +267,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   const handleTakeItem = useCallback((item: Item, index: number) => {
     // Add item to player inventory
-    // Taking item from chest
+    console.log('💰 [KnightGame] Taking item from chest:', item.name);
     // Remove from chest items
     setChestUIState(prev => ({
       ...prev,
@@ -276,7 +276,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   }, []);
 
   const handleTakeAll = useCallback(() => {
-    // Taking all items from chest
+    console.log('💰 [KnightGame] Taking all items from chest');
     // Add all items to player inventory here
     setChestUIState({
       isOpen: false,
@@ -287,7 +287,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
 
   // Inventory management functions that actually update the inventory
   const handleAddItemToInventory = useCallback((item: Item, targetSlot?: number) => {
-    // Adding item to inventory
+    console.log('💰 [KnightGame] Adding item to inventory:', item.name, 'target slot:', targetSlot);
     const currentInventory = [...inventory];
     
     if (targetSlot !== undefined) {
@@ -307,18 +307,18 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       }
       currentInventory[targetSlot] = item;
       setInventory(currentInventory);
-      // Item placed in slot
+      console.log('💰 [KnightGame] Item placed in slot', targetSlot);
     } else {
       // Original logic for auto-placement
       const emptySlotIndex = currentInventory.findIndex(slot => slot === undefined || slot === null);
       if (emptySlotIndex !== -1) {
         currentInventory[emptySlotIndex] = item;
         setInventory(currentInventory);
-        // Item added to slot
+        console.log('💰 [KnightGame] Item added to slot', emptySlotIndex);
       } else {
         currentInventory.push(item);
         setInventory(currentInventory);
-        // Item added to end of inventory
+        console.log('💰 [KnightGame] Item added to end of inventory');
       }
     }
   }, [inventory, setInventory]);

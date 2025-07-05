@@ -98,8 +98,8 @@ export class LODManager {
       }
     }
     
-    // PHASE 1: ULTRA-AGGRESSIVE ground grass distance (75% area reduction)
-    const groundRenderDistance = Math.min(maxDistance * 0.4, 40); // Reduced from 0.6 to 0.4
+    // ULTRA-AGGRESSIVE ground grass distance (65% area reduction)
+    const groundRenderDistance = Math.min(maxDistance * 0.6, 50);
     for (const [regionKey, instancedMesh] of groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);
