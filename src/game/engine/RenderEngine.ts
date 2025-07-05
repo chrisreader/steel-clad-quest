@@ -1,6 +1,5 @@
 
 import * as THREE from 'three';
-import { BillboardManager } from './BillboardManager';
 
 export class RenderEngine {
   private scene: THREE.Scene;
@@ -30,9 +29,6 @@ export class RenderEngine {
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
   private readonly CULLING_UPDATE_INTERVAL: number = 6; // RESPONSIVE: Every 6 frames for smooth turning while maintaining performance
-  
-  // Billboard system integration
-  private billboardManager: BillboardManager | null = null;
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -78,10 +74,6 @@ export class RenderEngine {
     canvas.style.outline = 'none';
     
     console.log("🎨 [RenderEngine] Initialized with performance optimizations");
-    
-    // Initialize billboard manager
-    this.billboardManager = new BillboardManager(this.scene, this.camera, this.renderer);
-    console.log("🎨 [RenderEngine] Billboard system integrated - trees will use smart LOD at 80+ units");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
@@ -145,11 +137,8 @@ export class RenderEngine {
   }
   
   private isObjectInFrustum(object: THREE.Object3D): boolean {
-    // Skip frustum culling for InstancedMesh (like grass) and billboards to avoid complexity
+    // Skip frustum culling for InstancedMesh (like grass) to avoid complexity
     if (object instanceof THREE.InstancedMesh) return true;
-    
-    // Skip frustum culling for billboard objects - let BillboardSystem manage visibility
-    if (object.userData && object.userData.isBillboard) return true;
     
     // Hierarchical culling - check parent objects first for performance
     if (object.parent && object.parent !== this.scene && !this.isObjectInFrustum(object.parent)) {
@@ -172,14 +161,9 @@ export class RenderEngine {
     return true; // Default to visible if no bounding info or not a mesh
   }
   
-  public render(playerPosition?: THREE.Vector3): void {
+  public render(): void {
     this.renderCount++;
     const now = performance.now();
-    
-    // Update billboard system with player position
-    if (this.billboardManager && playerPosition) {
-      this.billboardManager.update(playerPosition);
-    }
     
     // Update frustum culling less frequently for performance
     this.updateFrustumCulling();
@@ -194,14 +178,10 @@ export class RenderEngine {
     // ULTRA-AGGRESSIVE logging reduction (every 3000 frames = 3 minutes at 60fps)
     if (this.renderCount % 3000 === 0) {
       const fps = 3000 / ((now - this.lastRenderTime) / 1000);
-      const billboardStats = this.billboardManager?.getPerformanceStats();
-      console.log("🎨 [RenderEngine] ULTRA-PERFORMANCE + BILLBOARD LOD:", {
+      console.log("🎨 [RenderEngine] ULTRA-PERFORMANCE:", {
         frame: this.renderCount,
         fps: fps.toFixed(1),
-        objects: this.scene.children.length,
-        billboards: billboardStats?.billboardCount || 0,
-        highDetail: billboardStats?.tree3DCount || 0,
-        performanceGain: billboardStats?.performanceGain || 'N/A'
+        objects: this.scene.children.length
       });
       this.lastRenderTime = now;
     }
@@ -234,17 +214,8 @@ export class RenderEngine {
     return this.renderer;
   }
   
-  public getBillboardManager(): BillboardManager | null {
-    return this.billboardManager;
-  }
-  
   public dispose(): void {
     console.log("🎨 [RenderEngine] Disposing...");
-    
-    // Dispose billboard manager
-    if (this.billboardManager) {
-      this.billboardManager.dispose();
-    }
     
     if (this.renderer) {
       this.renderer.dispose();

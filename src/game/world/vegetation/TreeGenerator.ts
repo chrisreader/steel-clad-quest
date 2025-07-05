@@ -5,21 +5,14 @@ import { TREE_CONFIG } from './VegetationConfig';
 import { RealisticTreeGenerator } from './RealisticTreeGenerator';
 import { ForestBiomeManager, ForestBiomeType } from './ForestBiomeManager';
 import { TreeSpeciesType, TreeSpeciesManager } from './TreeSpecies';
-import { BillboardManager } from '../../engine/BillboardManager';
 
 export class TreeGenerator {
   private treeModels: THREE.Object3D[] = [];
   private realisticTreeGenerator: RealisticTreeGenerator;
-  private billboardManager: BillboardManager | null = null;
 
   constructor() {
     this.realisticTreeGenerator = new RealisticTreeGenerator();
     this.loadTreeModels();
-  }
-
-  public setBillboardManager(billboardManager: BillboardManager): void {
-    this.billboardManager = billboardManager;
-    console.log('🌲 [TreeGenerator] Billboard manager integrated for smart LOD');
   }
 
   private loadTreeModels(): void {
@@ -58,11 +51,6 @@ export class TreeGenerator {
         tree.scale.set(scale, scale, scale);
         tree.rotation.y = Math.random() * Math.PI * 2;
         
-        // Register with billboard manager for smart LOD
-        if (this.billboardManager) {
-          this.billboardManager.registerTree(tree, species);
-        }
-        
         return tree;
       }
       return null;
@@ -80,11 +68,6 @@ export class TreeGenerator {
       tree.scale.set(scale, scale, scale);
       tree.rotation.y = Math.random() * Math.PI * 2;
       
-      // Register with billboard manager for smart LOD
-      if (this.billboardManager) {
-        this.billboardManager.registerTree(tree, species);
-      }
-      
       return tree;
     }
   }
@@ -95,11 +78,6 @@ export class TreeGenerator {
     const scale = 0.8 + Math.random() * 0.4;
     tree.scale.set(scale, scale, scale);
     tree.rotation.y = Math.random() * Math.PI * 2;
-    
-    // Register with billboard manager for smart LOD
-    if (this.billboardManager) {
-      this.billboardManager.registerTree(tree, species);
-    }
     
     return tree;
   }

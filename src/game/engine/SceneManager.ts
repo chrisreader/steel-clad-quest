@@ -150,10 +150,6 @@ export class SceneManager {
     console.log('🔧 Simplified collision system established');
   }
 
-  public getTerrainFeatureGenerator(): TerrainFeatureGenerator {
-    return this.terrainFeatureGenerator;
-  }
-
   public setCamera(camera: THREE.PerspectiveCamera): void {
     this.camera = camera;
     console.log("📹 [SceneManager] Camera reference set for sun glow calculations");
