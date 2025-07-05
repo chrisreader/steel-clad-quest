@@ -924,12 +924,12 @@ export abstract class EnemyHumanoid {
     bodyScale: BodyScale,
     skinMaterial: THREE.MeshPhongMaterial
   ) {
-    // Create simple integrated boot-feet directly on the shin
-    const bootMaterial = new THREE.MeshPhongMaterial({
-      color: 0x4A3C1F, // Dark brown boot leather
-      shininess: 20,
-      specular: 0x333333
-    });
+  // Create simple integrated boot-feet directly on the shin
+  const bootMaterial = new THREE.MeshPhongMaterial({
+    color: 0x00FFFF, // BRIGHT CYAN FOR TESTING - if you see cyan, it's the boots!
+    shininess: 20,
+    specular: 0x333333
+  });
 
     // Create simple foot geometry that attaches to the bottom of shins
     const footGeometry = new THREE.BoxGeometry(0.25, 0.12, 0.45);
