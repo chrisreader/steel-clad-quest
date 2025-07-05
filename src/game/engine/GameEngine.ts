@@ -82,6 +82,13 @@ export class GameEngine {
       // Create default world
       this.sceneManager.createDefaultWorld();
       
+      // Connect TreeGenerator with Billboard Manager for smart LOD
+      const billboardManager = this.renderEngine.getBillboardManager();
+      if (billboardManager && this.sceneManager) {
+        this.sceneManager.getTerrainFeatureGenerator().getTreeGenerator().setBillboardManager(billboardManager);
+        console.log('🖼️ [GameEngine] Billboard system connected to TreeGenerator');
+      }
+      
       // Create the input manager
       this.inputManager = new InputManager();
       this.inputManager.initialize(this.renderEngine.getRenderer());
@@ -318,7 +325,7 @@ export class GameEngine {
     const deltaTime = this.renderEngine.getDeltaTime();
     this.stateManager.update(deltaTime);
     this.update(deltaTime);
-    this.renderEngine.render();
+    this.renderEngine.render(this.player?.getPosition());
   };
   
   private update(deltaTime: number): void {

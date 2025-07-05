@@ -1877,4 +1877,11 @@ export class TerrainFeatureGenerator {
       this.treeGenerator.updateDayNightLighting(dayFactor, nightFactor);
     }
   }
+
+  /**
+   * Get the TreeGenerator for external integrations (billboard system)
+   */
+  public getTreeGenerator(): TreeGenerator {
+    return this.treeGenerator;
+  }
 }
