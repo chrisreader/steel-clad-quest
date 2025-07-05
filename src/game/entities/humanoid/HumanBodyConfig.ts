@@ -23,12 +23,12 @@ export class HumanBodyConfig {
       points: 0,
       knockbackResistance: 0,
       
-      // Realistic human body proportions - much smaller than orc
+      // Realistic human body proportions - much smaller than orc, with shorter arms
       bodyScale: {
         body: { radius: 0.3, height: 1.0 },      // Smaller human torso
         head: { radius: 0.25 },                  // Smaller human head
-        arm: { radius: [0.08, 0.1], length: 0.7 },       // Human arms
-        forearm: { radius: [0.06, 0.08], length: 0.55 }, // Human forearms
+        arm: { radius: [0.08, 0.1], length: 0.5 },       // Shorter human arms
+        forearm: { radius: [0.06, 0.08], length: 0.42 }, // Shorter human forearms
         leg: { radius: [0.1, 0.12], length: 0.6 },       // Human thighs
         shin: { radius: [0.08, 0.1], length: 0.55 }      // Human calves
       },
