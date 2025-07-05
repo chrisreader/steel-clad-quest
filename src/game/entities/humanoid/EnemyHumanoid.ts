@@ -224,18 +224,18 @@ export abstract class EnemyHumanoid {
     const { leftLeg, rightLeg } = this.createLegs(bodyScale, thighCenterY, baseSkinMaterial);
     humanoidGroup.add(leftLeg, rightLeg);
 
-    // Create hip joints - smaller for humans
-    const hipJointRadius = bodyScale.body.radius * 0.4; // Scale with body size
-    const hipJointGeometry = new THREE.SphereGeometry(hipJointRadius, 24, 20);
+    // Create subtle hip joints for humans - much smaller and better positioned
+    const hipJointRadius = bodyScale.body.radius * 0.15; // Much smaller for humans
+    const hipJointGeometry = new THREE.SphereGeometry(hipJointRadius, 12, 8);
     const leftHipJoint = new THREE.Mesh(hipJointGeometry, baseSkinMaterial.clone());
-    leftHipJoint.position.set(-bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
-    leftHipJoint.scale.set(1, 0.8, 1);
+    leftHipJoint.position.set(-bodyScale.body.radius * 0.3, legTopY - 0.02, 0); // Closer to body
+    leftHipJoint.scale.set(0.8, 0.6, 0.8); // Much smaller scale
     leftHipJoint.castShadow = true;
     humanoidGroup.add(leftHipJoint);
 
     const rightHipJoint = new THREE.Mesh(hipJointGeometry, baseSkinMaterial.clone());
-    rightHipJoint.position.set(bodyScale.body.radius * 0.4, legTopY - 0.03, 0);
-    rightHipJoint.scale.set(1, 0.8, 1);
+    rightHipJoint.position.set(bodyScale.body.radius * 0.3, legTopY - 0.02, 0); // Closer to body
+    rightHipJoint.scale.set(0.8, 0.6, 0.8); // Much smaller scale
     rightHipJoint.castShadow = true;
     humanoidGroup.add(rightHipJoint);
 
