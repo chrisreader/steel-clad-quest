@@ -416,7 +416,14 @@ export abstract class EnemyHumanoid {
         if (shoulderRadius > 0) {
           const angle = Math.atan2(z, x);
           const ovalX = Math.cos(angle) * shoulderRadius * scaleFactor;
-          const ovalZ = Math.sin(angle) * shoulderRadius * frontBackScale;
+          
+          // Apply different scaling to front vs back - make back flatter
+          let zScale = frontBackScale;
+          if (z < 0) { // Back of the chest (negative Z)
+            zScale = frontBackScale * 0.85; // Make back slightly flatter
+          }
+          
+          const ovalZ = Math.sin(angle) * shoulderRadius * zScale;
           positions[i] = ovalX;
           positions[i + 2] = ovalZ;
         }
