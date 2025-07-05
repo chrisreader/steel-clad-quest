@@ -77,14 +77,14 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       // Add clothing to the main mesh group
       this.mesh.add(this.humanClothing);
 
-      // Add pants - no separate boots needed since they're integrated
+      // Add pants - positioned to avoid knee joint overlaps
       const pants = HumanBodyConfig.createPants(
         this.config.bodyScale.leg.radius[1],
         this.config.bodyScale.leg.length,
         this.config.bodyScale.shin.radius[1],
         this.config.bodyScale.shin.length
       );
-      pants.position.y = 0.8; // Position at waist level
+      pants.position.y = 0.9; // Higher position to avoid knee joints
       this.mesh.add(pants);
     }
   }

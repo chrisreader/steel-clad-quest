@@ -130,7 +130,7 @@ export class HumanBodyConfig {
   }
 
   /**
-   * Creates pants for human NPCs - simplified without separate boots
+   * Creates pants for human NPCs - properly fitted to avoid overlaps
    */
   public static createPants(legRadius: number, legLength: number, shinRadius: number, shinLength: number): THREE.Group {
     const pantsGroup = new THREE.Group();
@@ -142,27 +142,27 @@ export class HumanBodyConfig {
       specular: 0x222222
     });
 
-    // Left leg pants - only covers the thigh area since boots are integrated
+    // Left leg pants - properly positioned to avoid knee joint interference
     const leftPantsGeometry = new THREE.CylinderGeometry(
-      legRadius * 1.1, 
-      shinRadius * 1.05, 
-      legLength * 0.9, // Shorter since boots handle lower leg
+      legRadius * 1.05, // Slightly smaller to avoid overlap
+      shinRadius * 1.02, // Taper more gradually
+      legLength * 0.7, // Shorter to avoid knee area
       16, 4
     );
     const leftPants = new THREE.Mesh(leftPantsGeometry, pantsMaterial);
-    leftPants.position.set(-0.12, -(legLength * 0.45), 0);
+    leftPants.position.set(-0.12, -(legLength * 0.35), 0); // Higher position
     leftPants.castShadow = true;
     pantsGroup.add(leftPants);
 
     // Right leg pants
     const rightPantsGeometry = new THREE.CylinderGeometry(
-      legRadius * 1.1, 
-      shinRadius * 1.05, 
-      legLength * 0.9, 
+      legRadius * 1.05, // Slightly smaller to avoid overlap
+      shinRadius * 1.02, // Taper more gradually  
+      legLength * 0.7, // Shorter to avoid knee area
       16, 4
     );
     const rightPants = new THREE.Mesh(rightPantsGeometry, pantsMaterial);
-    rightPants.position.set(0.12, -(legLength * 0.45), 0);
+    rightPants.position.set(0.12, -(legLength * 0.35), 0); // Higher position
     rightPants.castShadow = true;
     pantsGroup.add(rightPants);
 
