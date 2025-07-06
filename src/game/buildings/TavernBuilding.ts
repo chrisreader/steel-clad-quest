@@ -158,32 +158,6 @@ export class TavernBuilding extends BaseBuilding {
     
     for (let i = 0; i < logsCount; i++) {
       const logY = (i + 0.5) * logHeight;
-      
-      // Check if this log intersects with any window opening
-      if (windowOpenings) {
-        let skipLog = false;
-        for (const opening of windowOpenings) {
-          if (logY >= opening.minY && logY <= opening.maxY) {
-            // For side walls, check if log intersects with window Z range
-            if (width <= depth) { // Side wall (left/right)
-              // Log spans from centerZ - depth/2 to centerZ + depth/2
-              const logMinZ = centerZ - depth/2;
-              const logMaxZ = centerZ + depth/2;
-              // Check if log overlaps with window opening
-              if (logMaxZ > opening.minZ && logMinZ < opening.maxZ) {
-                skipLog = true;
-                break;
-              }
-            } else {
-              // For front/back walls, window spans entire wall width
-              skipLog = true;
-              break;
-            }
-          }
-        }
-        if (skipLog) continue;
-      }
-      
       const colorIndex = i % logColors.length;
       const logMaterial = new THREE.MeshStandardMaterial({
         color: logColors[colorIndex],
@@ -199,12 +173,47 @@ export class TavernBuilding extends BaseBuilding {
       if (width > depth) {
         // Horizontal log (back/front walls)
         logGeometry = new THREE.CylinderGeometry(logRadius, logRadius, width, 12);
-        logPosition = new THREE.Vector3(centerX, (i + 0.5) * logHeight, centerZ);
+        logPosition = new THREE.Vector3(centerX, logY, centerZ);
       } else {
         // Vertical log (left/right walls)  
         logGeometry = new THREE.CylinderGeometry(logRadius, logRadius, depth, 12);
-        logPosition = new THREE.Vector3(centerX, (i + 0.5) * logHeight, centerZ);
+        logPosition = new THREE.Vector3(centerX, logY, centerZ);
         rotation = new THREE.Euler(Math.PI / 2, 0, 0); // Different rotation for side walls
+      }
+      
+      // Check if this log needs to be segmented around window openings
+      if (windowOpenings && width <= depth) { // Only for side walls
+        let hasWindowIntersection = false;
+        for (const opening of windowOpenings) {
+          if (logY >= opening.minY && logY <= opening.maxY) {
+            // Log intersects with window height, create segments
+            const logMinZ = centerZ - depth/2;
+            const logMaxZ = centerZ + depth/2;
+            
+            // Check if log overlaps with window opening
+            if (logMaxZ > opening.minZ && logMinZ < opening.maxZ) {
+              hasWindowIntersection = true;
+              
+              // Create log segment before window (if any)
+              if (logMinZ < opening.minZ) {
+                const segmentLength = opening.minZ - logMinZ;
+                const segmentGeometry = new THREE.CylinderGeometry(logRadius, logRadius, segmentLength, 12);
+                const segmentPosition = new THREE.Vector3(centerX, logY, logMinZ + segmentLength/2);
+                this.createLogSegment(segmentGeometry, segmentPosition, logMaterial, rotation, `${wallName}_log_${i}_pre`);
+              }
+              
+              // Create log segment after window (if any)
+              if (logMaxZ > opening.maxZ) {
+                const segmentLength = logMaxZ - opening.maxZ;
+                const segmentGeometry = new THREE.CylinderGeometry(logRadius, logRadius, segmentLength, 12);
+                const segmentPosition = new THREE.Vector3(centerX, logY, opening.maxZ + segmentLength/2);
+                this.createLogSegment(segmentGeometry, segmentPosition, logMaterial, rotation, `${wallName}_log_${i}_post`);
+              }
+              break;
+            }
+          }
+        }
+        if (hasWindowIntersection) continue;
       }
       
       const log = new THREE.Mesh(logGeometry, logMaterial);
@@ -222,6 +231,18 @@ export class TavernBuilding extends BaseBuilding {
         this.createLogEndCaps(logPosition, logRadius, width > depth ? width : depth, wallName, i);
       }
     }
+  }
+  
+  private createLogSegment(geometry: THREE.CylinderGeometry, position: THREE.Vector3, material: THREE.MeshStandardMaterial, rotation: THREE.Euler, name: string): void {
+    const segment = new THREE.Mesh(geometry, material);
+    segment.position.copy(position);
+    segment.rotation.copy(rotation);
+    
+    // Add slight variations to keep logs natural
+    segment.position.y += (Math.random() - 0.5) * 0.01;
+    segment.rotation.z += (Math.random() - 0.5) * 0.02;
+    
+    this.addComponent(segment, name, 'wood');
   }
 
   private createLogEndCaps(logPosition: THREE.Vector3, radius: number, length: number, wallName: string, logIndex: number): void {
