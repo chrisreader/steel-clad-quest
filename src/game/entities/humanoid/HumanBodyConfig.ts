@@ -127,13 +127,66 @@ export class HumanBodyConfig {
       transparent: false
     });
     
-    // 1. Main torso section - matches body exactly but slightly larger
+    // 1. Main torso section - matches the exact body shape from EnemyHumanoid.ts but slightly larger
     const torsoGeometry = new THREE.CylinderGeometry(
-      bodyRadius * 1.06,    // Top radius - 6% larger for fabric fit
-      bodyRadius * 1.08,    // Bottom radius - slightly more flared
-      bodyHeight * 0.8,     // Height - covers most of torso
-      16, 8                 // Smooth segments
+      bodyRadius * 1.1 * 1.05,  // Chest width - match body exactly (1.1) + 5% fabric allowance
+      bodyRadius * 0.7 * 1.05,  // Waist width - match body exactly (0.7) + 5% fabric allowance  
+      bodyHeight * 1.2 * 0.8,   // Height - match body (1.2) but cover 80% for t-shirt length
+      32, 16                    // Same high resolution as body for smooth curves
     );
+    
+    // Apply the same anatomical shaping as the actual torso (from EnemyHumanoid.ts)
+    const positions = torsoGeometry.attributes.position.array as Float32Array;
+    const isHuman = true; // This is for human NPCs
+    
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const y = positions[i + 1];
+      const z = positions[i + 2];
+      
+      // Normalize Y position (-0.5 to 0.5) - same logic as body creation
+      const normalizedY = y / (bodyHeight * 1.2);
+      
+      // Apply the exact same scaling logic as the actual torso
+      let scaleFactor = 1.0;
+      
+      if (normalizedY > 0.3) {
+        // Upper chest/shoulder area - wider
+        scaleFactor = 1.0 + (normalizedY - 0.3) * 0.4;
+      } else if (normalizedY > 0.0) {
+        // Mid torso - gradual narrowing
+        scaleFactor = 1.0 + normalizedY * 0.1;
+      } else if (normalizedY > -0.3) {
+        // Lower torso/waist - narrower
+        scaleFactor = 1.0 - Math.abs(normalizedY) * 0.2;
+      } else {
+        // Hip area - slightly wider again
+        scaleFactor = 0.85 + Math.abs(normalizedY + 0.3) * 0.1;
+      }
+      
+      // Human shoulder curve enhancement (from original body code)
+      if (isHuman && normalizedY > 0.1) {
+        const shoulderCurve = Math.sin((normalizedY - 0.1) * Math.PI * 2.5);
+        const shoulderWidth = 1.0 + shoulderCurve * 0.15;
+        
+        const distance = Math.sqrt(x * x + z * z);
+        if (distance > 0) {
+          const normalizedX = x / distance;
+          const normalizedZ = z / distance;
+          
+          const newDistance = distance * shoulderWidth * 1.05; // +5% fabric allowance
+          positions[i] = normalizedX * newDistance;
+          positions[i + 2] = normalizedZ * newDistance;
+        }
+      } else {
+        // Apply the scaling with fabric allowance (5% larger than body)
+        positions[i] = x * scaleFactor * 1.05;
+        positions[i + 2] = z * scaleFactor * 1.05;
+      }
+    }
+    
+    torsoGeometry.attributes.position.needsUpdate = true;
+    torsoGeometry.computeVertexNormals();
     
     const torso = new THREE.Mesh(torsoGeometry, shirtMaterial);
     torso.castShadow = true;
