@@ -895,8 +895,8 @@ export abstract class EnemyHumanoid {
     isGreenHumanoid: boolean = false
   ) {
     if (isGreenHumanoid) {
-      // Create longer, pointed goblin ears
-      const earLength = 0.25; // Much longer for goblins
+      // Create extra long, pointed goblin ears (100% longer)
+      const earLength = 0.5; // Doubled from 0.25 to 0.5 for 100% longer ears
       const earWidth = 0.12;
       const earThickness = 0.06;
       
@@ -906,7 +906,7 @@ export abstract class EnemyHumanoid {
       const leftEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
       leftEar.position.set(
         -bodyScale.head.radius * 0.9, 
-        0.1, // Slightly higher for goblins
+        0.2, // Higher position for longer ears
         0
       );
       leftEar.rotation.z = -0.3; // More angled for goblins
@@ -918,7 +918,7 @@ export abstract class EnemyHumanoid {
       const rightEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
       rightEar.position.set(
         bodyScale.head.radius * 0.9, 
-        0.1, // Slightly higher for goblins
+        0.2, // Higher position for longer ears
         0
       );
       rightEar.rotation.z = 0.3; // More angled for goblins
@@ -926,19 +926,19 @@ export abstract class EnemyHumanoid {
       rightEar.castShadow = true;
       headGroup.add(rightEar);
 
-      // Add pointed ear tips for goblin ears
-      const tipGeometry = new THREE.ConeGeometry(0.02, 0.08, 6);
+      // Add pointed ear tips for extra long goblin ears
+      const tipGeometry = new THREE.ConeGeometry(0.02, 0.1, 6); // Slightly bigger tips for longer ears
       
-      // Left ear tip
+      // Left ear tip - positioned at end of longer ear
       const leftTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
-      leftTip.position.set(-bodyScale.head.radius * 0.9, 0.22, 0);
+      leftTip.position.set(-bodyScale.head.radius * 0.9, 0.45, 0); // Much higher for longer ears
       leftTip.rotation.z = -0.3;
       leftTip.castShadow = true;
       headGroup.add(leftTip);
       
-      // Right ear tip
+      // Right ear tip - positioned at end of longer ear
       const rightTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
-      rightTip.position.set(bodyScale.head.radius * 0.9, 0.22, 0);
+      rightTip.position.set(bodyScale.head.radius * 0.9, 0.45, 0); // Much higher for longer ears
       rightTip.rotation.z = 0.3;
       rightTip.castShadow = true;
       headGroup.add(rightTip);
