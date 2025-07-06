@@ -11,6 +11,7 @@ import { HumanBodyConfig } from './HumanBodyConfig';
 export class PeacefulHumanoid extends EnemyHumanoid {
   private humanHair?: THREE.Mesh;
   private humanTShirt?: THREE.Group;
+  private humanPants?: THREE.Group;
 
   constructor(
     scene: THREE.Scene,
@@ -70,6 +71,70 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       // Add to the body mesh directly, like hair is added to headGroup
       bodyMesh.add(this.humanTShirt);
     }
+
+    // Add realistic pants using exact same methodology as t-shirt
+    this.humanPants = HumanBodyConfig.createPants(
+      this.config.bodyScale.body.radius,
+      0x2F4F2F // Dark green pants
+    );
+    
+    // Extract pants components from userData (same pattern as t-shirt components)
+    const pantsComponents = this.humanPants.userData;
+    const { 
+      leftThighPants, 
+      rightThighPants, 
+      leftShinPants, 
+      rightShinPants, 
+      leftKneePants, 
+      rightKneePants, 
+      waistband 
+    } = pantsComponents;
+    
+    // Attach pants components directly to leg meshes (CRITICAL for animation following)
+    // Same pattern as t-shirt sleeves attach to arms
+    
+    // 1. Attach thigh pants to leg meshes - they will follow leg swing animations
+    if (this.bodyParts.leftLeg && leftThighPants) {
+      this.bodyParts.leftLeg.add(leftThighPants);
+    }
+    if (this.bodyParts.rightLeg && rightThighPants) {
+      this.bodyParts.rightLeg.add(rightThighPants);
+    }
+    
+    // 2. Attach shin pants to knee meshes - they will follow shin animations  
+    if (this.bodyParts.leftKnee && leftShinPants) {
+      this.bodyParts.leftKnee.add(leftShinPants);
+    }
+    if (this.bodyParts.rightKnee && rightShinPants) {
+      this.bodyParts.rightKnee.add(rightShinPants);
+    }
+    
+    // 3. Attach knee pants to knee meshes - they will follow knee joint movements
+    if (this.bodyParts.leftKnee && leftKneePants) {
+      this.bodyParts.leftKnee.add(leftKneePants);
+    }
+    if (this.bodyParts.rightKnee && rightKneePants) {
+      this.bodyParts.rightKnee.add(rightKneePants);
+    }
+    
+    // 4. Attach waistband to body mesh at hip level - calculate position relative to body center
+    if (bodyMesh instanceof THREE.Mesh && waistband) {
+      // Position waistband at hip level relative to body center
+      // From EnemyHumanoid: legTopY = groundToFeetBottom, bodyY = legTopY + bodyHeight / 2
+      // Hip level is approximately at legTopY, so relative to body center: legTopY - bodyY
+      const legLength = this.config.bodyScale.leg.length;   // 0.6
+      const shinLength = this.config.bodyScale.shin.length; // 0.55
+      const footHeight = 0.15;
+      const groundToFeetBottom = legLength + shinLength + footHeight / 2;
+      const legTopY = groundToFeetBottom;
+      const bodyY = legTopY + this.config.bodyScale.body.height / 2;
+      const hipLevelRelative = legTopY - bodyY; // Hip level relative to body center
+      
+      waistband.position.set(0, hipLevelRelative, 0);
+      bodyMesh.add(waistband);
+    }
+    
+    console.log('👔 [PeacefulHumanoid] Added pants with full leg coverage and animation following');
   }
 
   /**
@@ -161,6 +226,31 @@ export class PeacefulHumanoid extends EnemyHumanoid {
           }
         }
       });
+    }
+    
+    // Clean up pants (same pattern as t-shirt)
+    if (this.humanPants) {
+      this.humanPants.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material instanceof THREE.Material) {
+            child.material.dispose();
+          }
+        }
+      });
+      
+      // Also clean up components stored in userData
+      const pantsComponents = this.humanPants.userData;
+      if (pantsComponents) {
+        Object.values(pantsComponents).forEach((component: any) => {
+          if (component instanceof THREE.Mesh) {
+            if (component.geometry) component.geometry.dispose();
+            if (component.material instanceof THREE.Material) {
+              component.material.dispose();
+            }
+          }
+        });
+      }
     }
     
     // Call parent disposal

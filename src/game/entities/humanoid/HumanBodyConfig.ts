@@ -356,6 +356,113 @@ export class HumanBodyConfig {
   }
 
   /**
+   * Creates form-fitting pants that match exact leg contours and follow leg animations
+   * Uses exact same methodology as createTShirt but for legs
+   */
+  public static createPants(bodyRadius: number, pantsColor: number = 0x2F4F2F): THREE.Group {
+    const pantsGroup = new THREE.Group();
+    
+    // Use exact measurements from createHumanConfig for perfect fit
+    const legTopRadius = 0.12;    // bodyScale.leg.radius[1] from config
+    const legBottomRadius = 0.1;  // bodyScale.leg.radius[0] from config  
+    const legLength = 0.6;        // bodyScale.leg.length from config
+    const shinTopRadius = 0.1;    // bodyScale.shin.radius[1] from config
+    const shinBottomRadius = 0.08; // bodyScale.shin.radius[0] from config
+    const shinLength = 0.55;      // bodyScale.shin.length from config
+    
+    // Create fabric material with realistic properties (same as t-shirt)
+    const pantsMaterial = new THREE.MeshPhongMaterial({
+      color: pantsColor,
+      shininess: 5,         // Low shininess for fabric
+      specular: 0x111111,   // Minimal specular for cotton-like appearance
+      transparent: false
+    });
+    
+    // 1. Upper leg (thigh) pants sections - EXACT same size as legs but with fabric allowance
+    const thighGeometry = new THREE.CylinderGeometry(
+      legTopRadius * 1.05,    // Top radius with 5% fabric allowance to overlay on skin
+      legBottomRadius * 1.05, // Bottom radius with 5% fabric allowance
+      legLength,              // Exact same length as actual thigh
+      24, 8                   // Same high resolution as actual legs for smooth curves
+    );
+    
+    // Apply EXACT same geometry translation as actual legs
+    // (No translation needed for thighs as they're positioned at center)
+    
+    const leftThighPants = new THREE.Mesh(thighGeometry, pantsMaterial.clone());
+    leftThighPants.position.set(0, 0, 0); // Positioned relative to leftLeg mesh it will attach to
+    leftThighPants.castShadow = true;
+    leftThighPants.receiveShadow = true;
+    
+    const rightThighPants = new THREE.Mesh(thighGeometry.clone(), pantsMaterial.clone());
+    rightThighPants.position.set(0, 0, 0); // Positioned relative to rightLeg mesh it will attach to
+    rightThighPants.castShadow = true;
+    rightThighPants.receiveShadow = true;
+    
+    // 2. Lower leg (shin) pants sections - EXACT same size as shins but with fabric allowance
+    const shinGeometry = new THREE.CylinderGeometry(
+      shinTopRadius * 1.05,    // Top radius with 5% fabric allowance
+      shinBottomRadius * 1.05, // Bottom radius with 5% fabric allowance  
+      shinLength,              // Exact same length as actual shin
+      24, 8                    // Same high resolution as actual shins
+    );
+    
+    // Apply EXACT same geometry translation as actual shins: translate(0, -shinLength * 0.5, 0)
+    shinGeometry.translate(0, -shinLength * 0.5, 0);
+    
+    const leftShinPants = new THREE.Mesh(shinGeometry, pantsMaterial.clone());
+    leftShinPants.position.set(0, 0, 0); // Positioned relative to leftKnee mesh it will attach to
+    leftShinPants.castShadow = true;
+    leftShinPants.receiveShadow = true;
+    
+    const rightShinPants = new THREE.Mesh(shinGeometry.clone(), pantsMaterial.clone());
+    rightShinPants.position.set(0, 0, 0); // Positioned relative to rightKnee mesh it will attach to
+    rightShinPants.castShadow = true;
+    rightShinPants.receiveShadow = true;
+    
+    // 3. Knee fabric overlays - match the exact knee joint dimensions from EnemyHumanoid
+    const kneeJointRadius = (legTopRadius + 0.02) * 1.05; // Same as actual knee joints + fabric allowance
+    const kneeGeometry = new THREE.SphereGeometry(kneeJointRadius, 24, 20);
+    
+    // Apply same scaling as actual knee joints: scale.set(0.8, 1.2, 0.8)
+    const leftKneePants = new THREE.Mesh(kneeGeometry, pantsMaterial.clone());
+    leftKneePants.position.set(0, 0.03, 0); // Same relative position as actual knee joints
+    leftKneePants.scale.set(0.8, 1.2, 0.8); // Same scaling as actual knee joints
+    leftKneePants.castShadow = true;
+    
+    const rightKneePants = new THREE.Mesh(kneeGeometry.clone(), pantsMaterial.clone());
+    rightKneePants.position.set(0, 0.03, 0); // Same relative position as actual knee joints
+    rightKneePants.scale.set(0.8, 1.2, 0.8); // Same scaling as actual knee joints
+    rightKneePants.castShadow = true;
+    
+    // 4. Waistband - positioned at hip level
+    const waistbandGeometry = new THREE.TorusGeometry(
+      bodyRadius * 0.45,     // Waistband radius slightly larger than body radius at hip level
+      bodyRadius * 0.06,     // Waistband thickness
+      8, 16
+    );
+    
+    const waistband = new THREE.Mesh(waistbandGeometry, pantsMaterial.clone());
+    waistband.position.set(0, 0, 0); // Will be positioned relative to main body when attached
+    waistband.rotation.x = Math.PI / 2; // Horizontal orientation
+    waistband.castShadow = true;
+    
+    // Store components in the group for easy access during attachment
+    // Note: These won't be added to pantsGroup as they attach directly to body parts
+    pantsGroup.userData = {
+      leftThighPants,
+      rightThighPants,
+      leftShinPants,
+      rightShinPants,
+      leftKneePants,
+      rightKneePants,
+      waistband
+    };
+    
+    return pantsGroup;
+  }
+
+  /**
    * Creates clothing overlay for human NPCs (legacy method)
    */
   public static createClothing(bodyRadius: number, bodyHeight: number, clothingColor: number = 0x8B4513): THREE.Mesh {
