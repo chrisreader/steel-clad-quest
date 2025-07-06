@@ -91,7 +91,7 @@ export class TavernBuilding extends BaseBuilding {
   private createRealisticWalls(): void {
     const wallHeight = 6;
     
-    // Stone foundation base
+    // Stone foundation base with individual rock outlines
     const foundationMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x696969,
       map: TextureGenerator.createStoneTexture(),
@@ -112,6 +112,9 @@ export class TavernBuilding extends BaseBuilding {
     backFoundation.position.set(0, 0.75, -6);
     this.addComponent(backFoundation, 'back_foundation', 'stone');
     
+    // Add individual rock outlines to back foundation
+    this.addRockOutlines(0, 0.75, -6, 12, 0.4, 'back');
+    
     const backWoodWall = new THREE.Mesh(new THREE.BoxGeometry(12, wallHeight - 1.5, 0.3), woodMaterial);
     backWoodWall.position.set(0, wallHeight - 2.25, -6);
     this.addComponent(backWoodWall, 'back_wall', 'wood');
@@ -123,28 +126,34 @@ export class TavernBuilding extends BaseBuilding {
       this.addComponent(beam, `back_beam_${i + 1}`, 'wood');
     }
     
-    // Left wall
+    // Left wall with rock outlines
     const leftFoundation = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.5, 12), foundationMaterial.clone());
     leftFoundation.position.set(-6, 0.75, 0);
     this.addComponent(leftFoundation, 'left_foundation', 'stone');
+    
+    this.addRockOutlines(-6, 0.75, 0, 0.4, 12, 'left');
     
     const leftWoodWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, wallHeight - 1.5, 12), woodMaterial.clone());
     leftWoodWall.position.set(-6, wallHeight - 2.25, 0);
     this.addComponent(leftWoodWall, 'left_wall', 'wood');
     
-    // Right wall  
+    // Right wall with rock outlines
     const rightFoundation = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.5, 12), foundationMaterial.clone());
     rightFoundation.position.set(6, 0.75, 0);
     this.addComponent(rightFoundation, 'right_foundation', 'stone');
+    
+    this.addRockOutlines(6, 0.75, 0, 0.4, 12, 'right');
     
     const rightWoodWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, wallHeight - 1.5, 12), woodMaterial.clone());
     rightWoodWall.position.set(6, wallHeight - 2.25, 0);
     this.addComponent(rightWoodWall, 'right_wall', 'wood');
     
-    // Front walls with tavern door
+    // Front walls with tavern door and rock outlines
     const frontLeftFoundation = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 0.4), foundationMaterial.clone());
     frontLeftFoundation.position.set(-3, 0.75, 6);
     this.addComponent(frontLeftFoundation, 'front_left_foundation', 'stone');
+    
+    this.addRockOutlines(-3, 0.75, 6, 3, 0.4, 'front_left');
     
     const frontLeftWall = new THREE.Mesh(new THREE.BoxGeometry(3, wallHeight - 1.5, 0.3), woodMaterial.clone());
     frontLeftWall.position.set(-3, wallHeight - 2.25, 6);
@@ -154,12 +163,65 @@ export class TavernBuilding extends BaseBuilding {
     frontRightFoundation.position.set(3, 0.75, 6);
     this.addComponent(frontRightFoundation, 'front_right_foundation', 'stone');
     
+    this.addRockOutlines(3, 0.75, 6, 3, 0.4, 'front_right');
+    
     const frontRightWall = new THREE.Mesh(new THREE.BoxGeometry(3, wallHeight - 1.5, 0.3), woodMaterial.clone());
     frontRightWall.position.set(3, wallHeight - 2.25, 6);
     this.addComponent(frontRightWall, 'front_wall_right', 'wood');
     
     // Create tavern door frame
     this.createDoorFrame();
+  }
+
+  private addRockOutlines(centerX: number, centerY: number, centerZ: number, width: number, depth: number, wallName: string): void {
+    const rockMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x595959,
+      roughness: 1.0,
+      metalness: 0
+    });
+    
+    // Calculate rock placement based on wall dimensions
+    const rocksPerRow = Math.ceil(Math.max(width, depth) / 0.8);
+    const rocksPerColumn = 2; // Two rows of rocks for foundation height
+    
+    for (let row = 0; row < rocksPerColumn; row++) {
+      for (let i = 0; i < rocksPerRow; i++) {
+        const rockSize = 0.3 + Math.random() * 0.2;
+        const rock = new THREE.Mesh(
+          new THREE.BoxGeometry(rockSize, rockSize * 0.8, rockSize * 0.6),
+          rockMaterial.clone()
+        );
+        
+        // Position rocks based on wall orientation
+        let x = centerX;
+        let y = centerY - 0.5 + row * 0.4;
+        let z = centerZ;
+        
+        if (wallName.includes('back') || wallName.includes('front')) {
+          // Horizontal wall - spread rocks along width
+          x = centerX - width/2 + (i + 0.5) * (width / rocksPerRow);
+          z = centerZ + (Math.random() - 0.5) * 0.2;
+        } else {
+          // Vertical wall - spread rocks along depth
+          z = centerZ - depth/2 + (i + 0.5) * (depth / rocksPerRow);
+          x = centerX + (Math.random() - 0.5) * 0.2;
+        }
+        
+        // Add some random variation
+        x += (Math.random() - 0.5) * 0.1;
+        y += (Math.random() - 0.5) * 0.05;
+        z += (Math.random() - 0.5) * 0.1;
+        
+        rock.position.set(x, y, z);
+        rock.rotation.set(
+          Math.random() * 0.2,
+          Math.random() * Math.PI,
+          Math.random() * 0.2
+        );
+        
+        this.addComponent(rock, `${wallName}_rock_${row}_${i}`, 'stone');
+      }
+    }
   }
 
   private createRealisticRoof(): void {
@@ -399,18 +461,18 @@ export class TavernBuilding extends BaseBuilding {
       metalness: 0
     });
     
-    // Large round table in center-left
+    // Large round table moved to center-right
     const roundTable = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.1, 16), tableMaterial);
-    roundTable.position.set(-2, 0.9, -1);
+    roundTable.position.set(2, 0.9, -1);
     this.addComponent(roundTable, 'round_table_top', 'wood');
     
     const roundTableLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.9, 8), tableMaterial.clone());
-    roundTableLeg.position.set(-2, 0.45, -1);
+    roundTableLeg.position.set(2, 0.45, -1);
     this.addComponent(roundTableLeg, 'round_table_leg', 'wood');
     
-    // Chairs around round table
+    // Chairs around round table (shifted positions)
     const chairPositions = [
-      [-2, 0.4, -2.5], [-3.5, 0.4, -1], [-2, 0.4, 0.5], [-0.5, 0.4, -1]
+      [2, 0.4, -2.5], [0.5, 0.4, -1], [2, 0.4, 0.5], [3.5, 0.4, -1]
     ];
     
     chairPositions.forEach((pos, index) => {
@@ -434,14 +496,14 @@ export class TavernBuilding extends BaseBuilding {
       }
     });
     
-    // Rectangular table near back wall
+    // Rectangular table moved to right side near back wall
     const rectTable = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.1, 1.2), tableMaterial.clone());
-    rectTable.position.set(-3.5, 0.9, -3.5);
+    rectTable.position.set(3.5, 0.9, -3.5);
     this.addComponent(rectTable, 'rect_table_top', 'wood');
     
-    // Rectangular table legs
+    // Rectangular table legs (shifted positions)
     const rectLegPositions = [
-      [-4.5, 0.45, -4], [-2.5, 0.45, -4], [-4.5, 0.45, -3], [-2.5, 0.45, -3]
+      [2.5, 0.45, -4], [4.5, 0.45, -4], [2.5, 0.45, -3], [4.5, 0.45, -3]
     ];
     
     rectLegPositions.forEach((pos, index) => {
@@ -459,11 +521,11 @@ export class TavernBuilding extends BaseBuilding {
       roughness: 0.9
     });
     
-    // Mugs on round table
+    // Mugs on round table (adjusted for new table position)
     for (let i = 0; i < 3; i++) {
       const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 12), mugMaterial.clone());
       const angle = (i / 3) * Math.PI * 2;
-      mug.position.set(-2 + Math.cos(angle) * 0.6, 1.06, -1 + Math.sin(angle) * 0.6);
+      mug.position.set(2 + Math.cos(angle) * 0.6, 1.06, -1 + Math.sin(angle) * 0.6);
       this.addComponent(mug, `table_mug_${i}`, 'wood');
       
       // Mug handle
