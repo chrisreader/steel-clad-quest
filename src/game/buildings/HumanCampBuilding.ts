@@ -100,7 +100,7 @@ export class HumanCampBuilding extends BaseBuilding {
       this.audioManager,
       new THREE.Vector3(0, 0, 0), // Center of camp
       `camp_fireplace_${Date.now()}`,
-      false // Night-time only for camp fires
+      true // Always on like tavern fires
     );
     
     const fireplaceGroup = this.fireplaceComponent.create();
