@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PureHuman } from './PureHuman';
+import { PeacefulHumanoid } from './PeacefulHumanoid';
 import { EffectsManager } from '../../engine/EffectsManager';
 import { AudioManager } from '../../engine/AudioManager';
 import { CampNPCBehavior } from '../../ai/CampNPCBehavior';
@@ -12,11 +12,11 @@ export interface HumanCampNPCConfig {
 }
 
 /**
- * HumanCampNPC - A clean camp NPC implementation using PureHuman
- * No orc inheritance, proper human anatomy, and camp-specific behaviors
+ * HumanCampNPC - A sophisticated camp NPC implementation using PeacefulHumanoid
+ * Uses the same advanced human anatomy as tavern keeper, with randomized appearance and camp-specific behaviors
  */
 export class HumanCampNPC {
-  private human: PureHuman;
+  private humanoid: PeacefulHumanoid;
   private scene: THREE.Scene;
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
@@ -37,19 +37,20 @@ export class HumanCampNPC {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    // Create clean human using PureHuman (no orc inheritance)
-    this.human = new PureHuman(
+    // Create sophisticated human using PeacefulHumanoid (same as tavern keeper)
+    this.humanoid = new PeacefulHumanoid(
       scene,
       config.position,
       effectsManager,
       audioManager,
-      true, // Use randomized appearance
+      false, // Not tavern keeper type
+      true,  // Use randomized appearance for variety
       config.toolType // Tool type for weapon
     );
     
     this.setupBehavior();
     
-    console.log(`👤 [HumanCampNPC] Created clean camp human ${config.name} with ${config.toolType || 'no tool'}`);
+    console.log(`👤 [HumanCampNPC] Created sophisticated camp human ${config.name} with ${config.toolType || 'no tool'}`);
   }
 
   private setupBehavior(): void {
@@ -78,12 +79,12 @@ export class HumanCampNPC {
     // Handle movement based on behavior
     if (action.type === 'move' && action.target) {
       this.moveTowards(action.target, deltaTime);
-      this.human.updateWalkAnimation(deltaTime);
+      this.humanoid.updateWalkAnimation(deltaTime);
     } else if (action.type === 'patrol' && action.target) {
       this.moveTowards(action.target, deltaTime);
-      this.human.updateWalkAnimation(deltaTime);
+      this.humanoid.updateWalkAnimation(deltaTime);
     } else if (action.type === 'idle') {
-      this.human.updateIdleAnimation(deltaTime);
+      this.humanoid.updateIdleAnimation(deltaTime);
     }
   }
 
@@ -120,11 +121,11 @@ export class HumanCampNPC {
   }
 
   public getMesh(): THREE.Group {
-    return this.human.getMesh();
+    return this.humanoid.getMesh();
   }
 
   public getPosition(): THREE.Vector3 {
-    return this.human.getPosition();
+    return this.humanoid.getPosition();
   }
 
   public getName(): string {
@@ -136,8 +137,8 @@ export class HumanCampNPC {
   }
 
   public dispose(): void {
-    this.human.dispose();
-    console.log(`👤 [HumanCampNPC] Disposed clean camp human ${this.config.name}`);
+    this.humanoid.dispose();
+    console.log(`👤 [HumanCampNPC] Disposed sophisticated camp human ${this.config.name}`);
   }
 
   /**

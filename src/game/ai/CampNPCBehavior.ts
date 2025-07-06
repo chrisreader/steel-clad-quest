@@ -219,14 +219,14 @@ export class CampNPCBehavior {
   }
 
   private selectNextWaypoint(currentPosition: THREE.Vector3): THREE.Vector3 {
-    // Simple waypoint selection with guaranteed distance
+    // Enhanced waypoint selection with guaranteed movement distance
     let selectedWaypoint: THREE.Vector3;
     let attempts = 0;
     
     do {
-      // Generate a random waypoint around the camp
+      // Generate a random waypoint around the camp with better distribution
       const angle = Math.random() * Math.PI * 2;
-      const distance = 2 + Math.random() * 4; // 2-6 units from center
+      const distance = 3 + Math.random() * 5; // 3-8 units from center for guaranteed movement
       
       selectedWaypoint = new THREE.Vector3(
         Math.cos(angle) * distance,
@@ -236,7 +236,7 @@ export class CampNPCBehavior {
       
       attempts++;
     } while (
-      currentPosition.distanceTo(selectedWaypoint) < 2.0 && 
+      currentPosition.distanceTo(selectedWaypoint) < 3.0 && 
       attempts < 10
     );
     
