@@ -59,8 +59,8 @@ export class CampNPCBehavior {
     const now = Date.now();
     const actionDuration = now - this.actionStartTime;
 
-    // ALWAYS log for debugging - remove randomness
-    if (Math.random() < 0.1) { // Only log 10% of the time to reduce spam
+    // Reduce debug logging spam - only log occasionally
+    if (Math.random() < 0.02) { // Only log 2% of the time to reduce spam
       console.log(`🏕️ [CampNPCBehavior] === BEHAVIOR UPDATE ===`);
       console.log(`🏕️ [CampNPCBehavior] Current action: ${this.currentAction.type}`);
       console.log(`🏕️ [CampNPCBehavior] Action duration: ${actionDuration}ms`);
