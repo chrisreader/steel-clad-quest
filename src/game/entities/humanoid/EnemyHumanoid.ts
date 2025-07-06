@@ -894,6 +894,8 @@ export abstract class EnemyHumanoid {
     muscleMaterial: THREE.MeshPhongMaterial,
     isGreenHumanoid: boolean = false
   ) {
+    console.log(`👂 [EnemyHumanoid] Adding ears - isGreenHumanoid: ${isGreenHumanoid}, enemy type: ${this.config.type}`);
+    
     if (isGreenHumanoid) {
       // Create pointed goblin ears that attach to the head
       const earLength = 0.8; // Moderate pointed ear length
@@ -904,11 +906,13 @@ export abstract class EnemyHumanoid {
       
       // Left ear - attached to side of head, pointing upward
       const leftEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
-      leftEar.position.set(
-        -bodyScale.head.radius * 0.8925, // Moved outward by 5%
-        bodyScale.head.radius * 0.3,      // Positioned on side of head 
-        -bodyScale.head.radius * 0.36     // Moved back by 50%
-      );
+      const leftEarPosition = {
+        x: -bodyScale.head.radius * 0.8925, // Moved outward by 5%
+        y: bodyScale.head.radius * 0.3,      // Positioned on side of head 
+        z: -bodyScale.head.radius * 0.36     // Moved back by 50%
+      };
+      console.log(`👂 [EnemyHumanoid] Left ear position:`, leftEarPosition);
+      leftEar.position.set(leftEarPosition.x, leftEarPosition.y, leftEarPosition.z);
       leftEar.rotation.z = -0.4; // Tilt outward from head
       leftEar.rotation.x = -Math.PI/2; // Point upward with base at head
       leftEar.rotation.y = Math.PI; // Flip 180 degrees so thick end is at head
@@ -917,11 +921,13 @@ export abstract class EnemyHumanoid {
 
       // Right ear - attached to side of head, pointing upward
       const rightEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
-      rightEar.position.set(
-        bodyScale.head.radius * 0.8925,   // Moved outward by 5%
-        bodyScale.head.radius * 0.3,      // Positioned on side of head
-        -bodyScale.head.radius * 0.36     // Moved back by 50%
-      );
+      const rightEarPosition = {
+        x: bodyScale.head.radius * 0.8925,   // Moved outward by 5%
+        y: bodyScale.head.radius * 0.3,      // Positioned on side of head
+        z: -bodyScale.head.radius * 0.36     // Moved back by 50%
+      };
+      console.log(`👂 [EnemyHumanoid] Right ear position:`, rightEarPosition);
+      rightEar.position.set(rightEarPosition.x, rightEarPosition.y, rightEarPosition.z);
       rightEar.rotation.z = 0.4; // Tilt outward from head
       rightEar.rotation.x = -Math.PI/2; // Point upward with base at head
       rightEar.rotation.y = Math.PI; // Flip 180 degrees so thick end is at head
