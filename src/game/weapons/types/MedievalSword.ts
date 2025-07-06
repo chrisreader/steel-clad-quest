@@ -12,10 +12,10 @@ export class MedievalSword extends Sword {
       handRequirement: 'one-handed',
       stats: {
         damage: 30, // 2x steel sword damage (15 * 2)
-        attackSpeed: 0.85, // Slightly slower due to power
-        range: 2.3,
-        durability: 200, // Higher durability for premium weapon
-        weight: 4.5
+        attackSpeed: 0.9, // Same as steel sword for identical combat timing
+        range: 2.2, // Same as steel sword for identical reach
+        durability: 150, // Same as steel sword for identical durability
+        weight: 4.0 // Same as steel sword for identical weight
       }
     };
     
