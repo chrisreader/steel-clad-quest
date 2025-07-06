@@ -35,14 +35,7 @@ export class CampNPC {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    console.log(`👤 [CampNPC] Creating camp keeper "${config.name}" at position:`, config.position, 'for camp at:', config.campCenter);
-    
-    if (!effectsManager) {
-      console.error(`❌ [CampNPC] No effectsManager provided for ${config.name}`);
-    }
-    if (!audioManager) {
-      console.error(`❌ [CampNPC] No audioManager provided for ${config.name}`);
-    }
+    console.log(`👤 [CampNPC] Creating camp keeper at position:`, config.position);
     
     // Create realistic human using the sophisticated PeacefulHumanoid system
     this.humanoid = new PeacefulHumanoid(
@@ -57,7 +50,7 @@ export class CampNPC {
     
     this.setupBehavior();
     
-    console.log(`👤✅ [CampNPC] Successfully created realistic camp keeper "${config.name}" with behavior and humanoid systems`);
+    console.log(`👤 [CampNPC] Created realistic camp keeper at position:`, config.position);
   }
 
   private setupBehavior(): void {
@@ -72,42 +65,22 @@ export class CampNPC {
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
-    if (this.isDead) {
-      console.log('💀 [CampNPC] NPC is dead, skipping update');
-      return;
-    }
-
-    // Detailed debugging for frozen NPCs
-    const currentPosition = this.getMesh().position;
-    console.log(`🔍 [CampNPC] ${this.config.name} update - Position: (${currentPosition.x.toFixed(2)}, ${currentPosition.y.toFixed(2)}, ${currentPosition.z.toFixed(2)})`);
-
-    if (!this.behavior) {
-      console.error(`❌ [CampNPC] ${this.config.name} has no behavior system!`);
-      return;
-    }
-
-    if (!this.humanoid) {
-      console.error(`❌ [CampNPC] ${this.config.name} has no humanoid system!`);
-      return;
-    }
+    if (this.isDead) return;
 
     // Update AI behavior
-    const action = this.behavior.update(deltaTime, currentPosition, playerPosition);
-    console.log(`🧠 [CampNPC] ${this.config.name} behavior returned action:`, action.type, action.target ? `target: (${action.target.x.toFixed(2)}, ${action.target.z.toFixed(2)})` : '');
+    const action = this.behavior.update(deltaTime, this.getMesh().position, playerPosition);
     
     // Handle movement based on behavior with enhanced logging
     if (action.type === 'move' && action.target) {
       this.moveTowards(action.target, deltaTime);
       this.humanoid.updateWalkAnimation(deltaTime);
-      console.log(`🚶 [CampNPC] ${this.config.name} moving towards target:`, action.target);
+      console.log('🚶 [CampNPC] Moving towards target:', action.target, 'at speed:', 2.0);
     } else if (action.type === 'idle') {
       this.humanoid.updateIdleAnimation(deltaTime);
-      console.log(`🛌 [CampNPC] ${this.config.name} standing idle - still animated`);
+      console.log('🛌 [CampNPC] Standing idle at position:', this.getMesh().position);
     } else if (action.type === 'interact') {
       this.humanoid.updateIdleAnimation(deltaTime);
-      console.log(`💬 [CampNPC] ${this.config.name} interacting with player`);
-    } else {
-      console.warn(`⚠️ [CampNPC] ${this.config.name} unknown action type:`, action.type);
+      console.log('💬 [CampNPC] Interacting with player');
     }
   }
 
