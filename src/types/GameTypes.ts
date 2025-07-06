@@ -124,7 +124,8 @@ export enum EnemyType {
   GOBLIN = 'goblin',
   ORC = 'orc',
   SKELETON = 'skeleton',
-  BOSS = 'boss'
+  BOSS = 'boss',
+  HUMAN = 'human'
 }
 
 // Bird types enum

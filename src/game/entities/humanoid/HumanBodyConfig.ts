@@ -11,7 +11,7 @@ export class HumanBodyConfig {
    */
   public static createHumanConfig(): HumanoidConfig {
     return {
-      type: EnemyType.GOBLIN, // Reuse goblin type for smaller build, but with human features
+      type: EnemyType.HUMAN, // Use proper human type
       health: 100,
       maxHealth: 100,
       speed: 1.5,
@@ -82,31 +82,36 @@ export class HumanBodyConfig {
     const baseConfig = this.createHumanConfig();
     
     // Randomize t-shirt colors
-    const tshirtColors = [0x808080, 0x2F4F2F, 0xF5F5DC]; // grey, dark green, cream
+    const tshirtColors = [0x808080, 0x2F4F2F, 0xF5F5DC, 0x4169E1, 0x8B0000]; // grey, dark green, cream, blue, red
     const tshirtColor = tshirtColors[Math.floor(Math.random() * tshirtColors.length)];
     
     // Randomize pants colors
-    const pantsColors = [0x000000, 0x2F4F2F, 0x808080, 0x8B4513]; // black, dark green, grey, brown
+    const pantsColors = [0x000000, 0x2F4F2F, 0x808080, 0x8B4513, 0x483D8B]; // black, dark green, grey, brown, blue
     const pantsColor = pantsColors[Math.floor(Math.random() * pantsColors.length)];
     
     // Randomize hair colors
-    const hairColors = [0x000000, 0x8B4513, 0x808080]; // black, brown, grey
+    const hairColors = [0x000000, 0x8B4513, 0x808080, 0x654321, 0x2F1B14]; // black, brown, grey, dark brown, very dark brown
     const hairColor = hairColors[Math.floor(Math.random() * hairColors.length)];
-    
-    // Small chance for weapons
-    const hasWeapon = Math.random() < 0.3; // 30% chance
-    const weaponType = Math.random() < 0.6 ? 'dagger' : 'sword';
     
     return {
       ...baseConfig,
+      // Keep proper human skin tones for skin/muscle/accent - these are used for body rendering
       colors: {
-        skin: 0xFFDBAE,    // Human skin tone
-        muscle: tshirtColor, // Use as t-shirt color
-        accent: pantsColor   // Use as pants color
+        skin: 0xFFDBAE,    // Always human skin tone
+        muscle: 0xE6C2A6,  // Always human muscle tone
+        accent: 0xD4AF8C   // Always human accent tone
+      },
+      // Store clothing and hair colors in userData for clothing creation
+      userData: {
+        clothingColors: {
+          tshirt: tshirtColor,
+          pants: pantsColor,
+          hair: hairColor
+        }
       },
       features: {
         ...baseConfig.features,
-        hasWeapon
+        hasWeapon: false // Camp NPCs don't carry weapons
       }
     };
   }
@@ -114,7 +119,7 @@ export class HumanBodyConfig {
   /**
    * Creates hair geometry for human NPCs
    */
-  public static createHumanHair(headRadius: number, hairColor: number = 0x8B4513): THREE.Mesh {
+  public static createHumanHair(headRadius: number, hairColor: number): THREE.Mesh {
     // Create natural-looking human hair cap
     const hairGeometry = new THREE.SphereGeometry(headRadius * 1.08, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.65);
     

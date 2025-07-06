@@ -104,6 +104,39 @@ export class EnemyBodyConfig {
         }
       }
     });
+
+    // Initialize HUMAN configuration
+    this.configs.set(EnemyType.HUMAN, {
+      type: EnemyType.HUMAN,
+      metrics: {
+        bodyScale: {
+          body: { radius: 0.3, height: 1.0 },
+          head: { radius: 0.25 },
+          arm: { radius: [0.08, 0.1], length: 0.5 },
+          forearm: { radius: [0.06, 0.08], length: 0.42 },
+          leg: { radius: [0.1, 0.12], length: 0.6 },
+          shin: { radius: [0.08, 0.1], length: 0.55 }
+        },
+        colors: {
+          skin: 0xFFDBAE,
+          muscle: 0xE6C2A6,
+          accent: 0xD4AF8C
+        }
+      },
+      features: {
+        hasEyes: true,
+        hasTusks: false,
+        hasWeapon: false,
+        eyeConfig: {
+          radius: 0.08,
+          color: 0xFFFFFF,
+          emissiveIntensity: 0.0,
+          offsetX: 0.12,
+          offsetY: 0.05,
+          offsetZ: 0.9
+        }
+      }
+    });
   }
 
   public static getConfig(type: EnemyType): EnemyConfiguration {

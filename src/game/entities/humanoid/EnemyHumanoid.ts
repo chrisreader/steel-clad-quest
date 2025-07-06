@@ -130,6 +130,14 @@ export interface HumanoidConfig {
       offsetZ: number;
     };
   };
+  
+  userData?: {
+    clothingColors?: {
+      tshirt: number;
+      pants: number;
+      hair: number;
+    };
+  };
 }
 
 export enum EnemyMovementState {

@@ -49,10 +49,16 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     
     if (!headGroup || !bodyMesh) return;
 
-    // Add realistic human hair
+    // Get colors from config userData if available (randomized appearance)
+    const clothingColors = this.config.userData?.clothingColors;
+    const hairColor = clothingColors?.hair || 0x654321; // Default brown hair
+    const tshirtColor = clothingColors?.tshirt || 0x4169E1; // Default blue t-shirt
+    const pantsColor = clothingColors?.pants || 0x2F4F2F; // Default green pants
+
+    // Add realistic human hair with correct color
     this.humanHair = HumanBodyConfig.createHumanHair(
       this.config.bodyScale.head.radius, 
-      0x654321 // Brown hair
+      hairColor
     );
     
     // Position hair relative to head group's local coordinates
@@ -62,11 +68,11 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     // Add hair to the head group for proper positioning
     headGroup.add(this.humanHair);
 
-    // Add realistic t-shirt
+    // Add realistic t-shirt with correct color
     this.humanTShirt = HumanBodyConfig.createTShirt(
       this.config.bodyScale.body.radius,
       this.config.bodyScale.body.height,
-      0x4169E1 // Blue t-shirt
+      tshirtColor
     );
     
     // Position t-shirt relative to body center (like hair to head)
@@ -108,10 +114,10 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     
     console.log('👔 [PeacefulHumanoid] Added t-shirt with shoulders and sleeves attached to arms for animation following');
 
-    // Add realistic pants using exact same methodology as t-shirt
+    // Add realistic pants using exact same methodology as t-shirt with correct color
     this.humanPants = HumanBodyConfig.createPants(
       this.config.bodyScale.body.radius,
-      0x2F4F2F // Dark green pants
+      pantsColor
     );
     
     // Extract pants components from userData (same pattern as t-shirt components)
