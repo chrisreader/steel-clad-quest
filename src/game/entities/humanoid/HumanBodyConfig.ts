@@ -45,7 +45,7 @@ export class HumanBodyConfig {
       features: {
         hasEyes: true,
         hasTusks: false,   // Humans don't have tusks
-        hasWeapon: false,  // Peaceful NPC doesn't carry weapons
+        hasWeapon: false,  // Peaceful NPC doesn't carry weapons by default
         eyeConfig: {
           radius: 0.08,
           color: 0xFFFFFF,        // White human eyes

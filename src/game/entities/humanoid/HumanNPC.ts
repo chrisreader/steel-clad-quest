@@ -86,8 +86,16 @@ export class HumanNPC {
     // Update AI behavior
     const action = this.behavior.update(deltaTime, this.getMesh().position, playerPosition);
     
+    // Debug logging for camp NPCs
+    if (this.config.npcType === 'camp_npc' && Math.random() < 0.01) { // Log occasionally
+      console.log(`🏕️ [${this.config.name}] Action: ${action.type}, Target:`, action.target);
+    }
+    
     // Handle movement based on behavior
     if (action.type === 'move' && action.target) {
+      this.moveTowards(action.target, deltaTime);
+      this.humanoid.updateWalkAnimation(deltaTime);
+    } else if (action.type === 'patrol' && action.target) {
       this.moveTowards(action.target, deltaTime);
       this.humanoid.updateWalkAnimation(deltaTime);
     } else if (action.type === 'idle') {

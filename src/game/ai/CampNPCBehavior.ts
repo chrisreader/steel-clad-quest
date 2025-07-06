@@ -51,6 +51,11 @@ export class CampNPCBehavior {
     const now = Date.now();
     const actionDuration = now - this.actionStartTime;
 
+    // Debug logging for camp behavior
+    if (Math.random() < 0.005) { // Log occasionally (0.5% chance)
+      console.log(`🏕️ [CampNPCBehavior] Current action: ${this.currentAction.type}, Duration: ${actionDuration}ms, Position:`, npcPosition);
+    }
+
     // Check if we should interact with the player when they're nearby
     if (playerPosition && this.shouldInteractWithPlayer(npcPosition, playerPosition)) {
       return this.handlePlayerInteraction(npcPosition, playerPosition);

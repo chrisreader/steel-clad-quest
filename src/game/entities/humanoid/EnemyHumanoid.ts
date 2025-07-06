@@ -588,7 +588,12 @@ export abstract class EnemyHumanoid {
     // Create egg-shaped skull with realistic human proportions
     const upperSkullGeometry = this.createEggShapedHeadGeometry(bodyScale.head.radius);
     
-    const upperSkull = new THREE.Mesh(upperSkullGeometry, muscleMaterial.clone());
+    // Use skin material for human faces, muscle material for orcs
+    const headMaterial = this.config.type === EnemyType.HUMAN ? 
+      new THREE.MeshPhongMaterial({ color: colors.skin, shininess: 35, specular: 0x333333 }) :
+      muscleMaterial.clone();
+    
+    const upperSkull = new THREE.Mesh(upperSkullGeometry, headMaterial);
     upperSkull.position.y = 0; // Position relative to head group center
     upperSkull.castShadow = true;
     headGroup.add(upperSkull);
@@ -1261,12 +1266,12 @@ export abstract class EnemyHumanoid {
     rightFoot.castShadow = true;
     rightKnee.add(rightFoot);
 
-    // Add human toes only if this is NOT a weapon-bearing entity (humans don't have claws)
-    if (!this.config.features.hasWeapon) {
+    // Add human toes for humans, claws only for orcs
+    if (this.config.type === EnemyType.HUMAN) {
       this.addHumanToes(leftFoot, skinMaterial);
       this.addHumanToes(rightFoot, skinMaterial);
     } else {
-      // Orc toe claws
+      // Orc toe claws for non-human types
       const clawGeometry = HumanGeometryFactory.createClaw();
       const clawMaterial = HumanMaterialManager.createSharedMaterial(
         'claw', 
