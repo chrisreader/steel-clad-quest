@@ -79,7 +79,8 @@ export class GreenHumanoidEnemy extends EnemyHumanoid {
     const now = Date.now();
     
     if (this.isDead) {
-      this.updateDeathAnimation(deltaTime);
+      // Use base class death handling
+      super.update(deltaTime, playerPosition);
       return;
     }
 
@@ -103,21 +104,20 @@ export class GreenHumanoidEnemy extends EnemyHumanoid {
         newPosition.y = 0;
 
         this.mesh.position.copy(newPosition);
-        this.animationSystem.updateWalkAnimation(deltaTime, this.mesh.position, playerPosition);
+        this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
       } else {
         // Attack if in range
         if (now - this.lastAttackTime > this.config.attackCooldown) {
-          this.attack(playerPosition);
+          // Use base class attack method via casting
+          (this as any).attack(playerPosition);
           this.lastAttackTime = now;
         }
-        this.animationSystem.updateWalkAnimation(deltaTime, this.mesh.position, playerPosition);
+        this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
       }
-    } else {
-      // Passive - just idle  
-      // this.animationSystem.updateIdleAnimation(deltaTime, 0.02);
     }
 
-    this.updateRotation(deltaTime);
+    // Use base class rotation method
+    (this as any).updateRotation(deltaTime);
   }
 
   public setPassiveMode(passive: boolean): void {
@@ -145,57 +145,5 @@ export class GreenHumanoidEnemy extends EnemyHumanoid {
       currentState: this.isPassive ? 'passive' : 'aggressive',
       personality: { isPassive: this.isPassive }
     };
-  }
-
-  private attack(playerPosition: THREE.Vector3): void {
-    // Same attack logic as parent class
-    const direction = new THREE.Vector3()
-      .subVectors(playerPosition, this.mesh.position)
-      .normalize();
-    
-    this.targetRotation = Math.atan2(direction.x, direction.z);
-    
-    // Trigger attack animation
-    this.animationSystem.startAttackAnimation();
-    
-    // Play attack sound
-    this.audioManager.play('swing');
-    
-    console.log(`🟢 [GreenHumanoidEnemy] Attacking player for ${this.config.damage} damage`);
-  }
-
-  public updateDeathAnimation(deltaTime: number): void {
-    if (!this.deathAnimation.falling) {
-      this.deathAnimation.falling = true;
-      this.deathAnimation.fallSpeed = 0;
-    }
-
-    // Apply falling rotation
-    this.mesh.rotation.x += this.deathAnimation.rotationSpeed * deltaTime;
-    this.mesh.rotation.z += this.deathAnimation.rotationSpeed * 0.5 * deltaTime;
-
-    // Apply falling motion
-    this.deathAnimation.fallSpeed += 9.8 * deltaTime; // Gravity
-    this.mesh.position.y -= this.deathAnimation.fallSpeed * deltaTime;
-
-    // Stop falling when hitting ground
-    if (this.mesh.position.y <= -0.5) {
-      this.mesh.position.y = -0.5;
-      this.deathAnimation.fallSpeed = 0;
-    }
-  }
-
-  public updateRotation(deltaTime: number): void {
-    const currentRotation = this.mesh.rotation.y;
-    const rotationDiff = this.targetRotation - currentRotation;
-    
-    // Normalize rotation difference to [-π, π]
-    const normalizedDiff = ((rotationDiff + Math.PI) % (2 * Math.PI)) - Math.PI;
-    
-    if (Math.abs(normalizedDiff) > 0.01) {
-      const rotationSpeed = this.rotationSpeed * deltaTime;
-      const rotationStep = Math.sign(normalizedDiff) * Math.min(Math.abs(normalizedDiff), rotationSpeed);
-      this.mesh.rotation.y = currentRotation + rotationStep;
-    }
   }
 }
