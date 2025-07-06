@@ -76,6 +76,72 @@ export class HumanBodyConfig {
   }
 
   /**
+   * Creates a green-skinned human configuration for combat (replaces goblins)
+   * Smaller than regular humans, with green skin and no hair
+   */
+  public static createGreenHumanConfig(): HumanoidConfig {
+    const baseConfig = this.createHumanConfig();
+    
+    return {
+      ...baseConfig,
+      // Use goblin combat stats but with human body proportions (smaller)
+      health: 20,
+      maxHealth: 20,
+      speed: 4,
+      damage: 10,
+      goldReward: 25,
+      experienceReward: 10,
+      attackRange: 6.0,
+      damageRange: 1.5,
+      attackCooldown: 2000,
+      points: 25,
+      knockbackResistance: 1.0,
+      
+      // Smaller human body proportions (scaled down from regular human)
+      bodyScale: {
+        body: { radius: 0.25, height: 0.85 },        // Smaller than regular human
+        head: { radius: 0.22 },                      // Smaller head
+        arm: { radius: [0.07, 0.09], length: 0.42 }, // Shorter arms
+        forearm: { radius: [0.05, 0.07], length: 0.35 }, // Shorter forearms
+        leg: { radius: [0.09, 0.11], length: 0.5 },  // Shorter legs
+        shin: { radius: [0.07, 0.09], length: 0.45 } // Shorter shins
+      },
+      
+      // Green skin colors (same as original goblin colors)
+      colors: {
+        skin: 0x4A7C4A,    // Green skin
+        muscle: 0x6B8E6B,  // Darker green for muscle definition
+        accent: 0x3A5A3A   // Dark green accent
+      },
+      
+      // Green humanoid features - no hair, red eyes, has weapon
+      features: {
+        hasEyes: true,
+        hasTusks: false,   // No tusks like humans
+        hasWeapon: true,   // Combat enemy carries weapons
+        eyeConfig: {
+          radius: 0.08,
+          color: 0xFF0000,        // Red eyes like original goblins
+          emissiveIntensity: 0.3, // Glowing red eyes
+          offsetX: 0.15,
+          offsetY: 0.05,
+          offsetZ: 0.8
+        }
+      },
+      
+      // No hair generation for green humanoids
+      userData: {
+        clothingColors: {
+          tshirt: 0x8B4513,  // Brown clothing
+          pants: 0x654321,   // Dark brown pants
+          hair: 0x000000     // Not used
+        },
+        toolType: 'dagger'
+      }
+    };
+  }
+
+  /**
    * Creates randomized human configuration with varied clothing and hair
    */
   public static createRandomizedHumanConfig(): HumanoidConfig {

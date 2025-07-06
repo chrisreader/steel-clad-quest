@@ -7,6 +7,7 @@ import { MathUtils } from '../utils';
 import { EnemyBodyParts } from './humanoid/EnemyHumanoid';
 import { EnemyAnimationSystem } from '../animation/EnemyAnimationSystem';
 import { OrcEnemy } from './humanoid/OrcEnemy';
+import { GreenHumanoidEnemy } from './humanoid/GreenHumanoidEnemy';
 import { PassiveNPCBehavior, PassiveBehaviorState } from '../ai/PassiveNPCBehavior';
 import { EnemyStateManager, EnemyAIState } from '../systems/EnemyStateManager';
 
@@ -25,8 +26,8 @@ export class Enemy {
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
   
-  // Enhanced humanoid enemy (for orcs)
-  private humanoidEnemy: OrcEnemy | null = null;
+  // Enhanced humanoid enemy (for orcs and green humanoids)
+  private humanoidEnemy: OrcEnemy | GreenHumanoidEnemy | null = null;
   private isHumanoidEnemy: boolean = false;
   
   // Legacy properties for non-humanoid enemies
@@ -62,7 +63,7 @@ export class Enemy {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
-    // Create enemy based on type with humanoid system for orcs
+    // Create enemy based on type with humanoid system for orcs and green humanoids
     if (type === EnemyType.ORC) {
       this.humanoidEnemy = OrcEnemy.create(scene, position, effectsManager, audioManager);
       this.isHumanoidEnemy = true;
@@ -71,23 +72,32 @@ export class Enemy {
       this.enemy = this.createEnemyInterface(this.humanoidEnemy);
       
       console.log(`🗡️ [Enemy] Created humanoid orc with preserved functionality`);
+    } else if (type === EnemyType.GOBLIN) {
+      // Replace legacy goblins with green humanoids
+      this.humanoidEnemy = GreenHumanoidEnemy.create(scene, position, effectsManager, audioManager);
+      this.isHumanoidEnemy = true;
+      
+      // Create interface wrapper for backward compatibility
+      this.enemy = this.createGreenHumanoidInterface(this.humanoidEnemy);
+      
+      console.log(`🗡️ [Enemy] Created green humanoid enemy (replaced goblin) with preserved functionality`);
     } else {
       this.enemy = this.createEnemy(type, position);
-      console.log("🗡️ [Enemy] Created legacy goblin enemy with MMORPG AI");
+      console.log("🗡️ [Enemy] Created legacy enemy with MMORPG AI");
       
-      // Initialize state manager for enhanced MMORPG-style AI
+      // Initialize state manager for enhanced MMORPG-style AI (only for non-humanoid enemies)
       this.stateManager = new EnemyStateManager(position, {
-        awarenessRange: type === EnemyType.GOBLIN ? 28 : 32,
-        aggressionRange: type === EnemyType.GOBLIN ? 18 : 22,
-        maxPursuitDistance: type === EnemyType.GOBLIN ? 70 : 80,
+        awarenessRange: 32,
+        aggressionRange: 22,
+        maxPursuitDistance: 80,
         patrolRadius: 15,
-        investigationTime: 8000, // Longer investigation time
-        retreatHealthThreshold: type === EnemyType.GOBLIN ? 0.2 : 0.15
+        investigationTime: 8000,
+        retreatHealthThreshold: 0.15
       });
     }
     
     // Set knockback resistance based on enemy type
-    this.knockbackResistance = type === EnemyType.GOBLIN ? 1.0 : 0.7;
+    this.knockbackResistance = 0.7;
     
     // Add to scene (only for legacy enemies, humanoid enemies handle their own scene management)
     if (!this.isHumanoidEnemy) {
@@ -134,6 +144,46 @@ export class Enemy {
       damageRange: 2.5,
       attackCooldown: 2000,
       points: 50,
+      idleTime: 0
+    };
+  }
+  
+  private createGreenHumanoidInterface(humanoidEnemy: GreenHumanoidEnemy): EnemyInterface {
+    const bodyParts = humanoidEnemy.getBodyParts();
+    
+    return {
+      mesh: humanoidEnemy.getMesh(),
+      health: 20,
+      maxHealth: 20,
+      speed: 4,
+      damage: 10,
+      goldReward: 25,
+      experienceReward: 10,
+      lastAttackTime: 0,
+      isDead: false,
+      deathTime: 0,
+      type: EnemyType.GOBLIN,
+      leftArm: bodyParts.leftArm,
+      rightArm: bodyParts.rightArm,
+      leftLeg: bodyParts.leftLeg,
+      rightLeg: bodyParts.rightLeg,
+      walkTime: 0,
+      hitBox: bodyParts.hitBox,
+      originalMaterials: [],
+      isHit: false,
+      hitTime: 0,
+      deathAnimation: {
+        falling: false,
+        rotationSpeed: Math.random() * 0.1 + 0.05,
+        fallSpeed: 0
+      },
+      weapon: bodyParts.weapon,
+      body: bodyParts.body,
+      head: bodyParts.head,
+      attackRange: 6.0,
+      damageRange: 1.5,
+      attackCooldown: 2000,
+      points: 25,
       idleTime: 0
     };
   }
@@ -599,8 +649,8 @@ export class Enemy {
   }
 
   public getPassiveMode(): boolean {
-    if (this.isHumanoidEnemy && this.humanoidEnemy) {
-      return this.humanoidEnemy.getPassiveMode();
+    if (this.isHumanoidEnemy && this.humanoidEnemy && 'getIsPassive' in this.humanoidEnemy) {
+      return this.humanoidEnemy.getIsPassive();
     }
     return this.isPassive;
   }
@@ -966,6 +1016,7 @@ export class Enemy {
     difficulty: number = 1
   ): Enemy {
     const typeRoll = Math.random() * (1 + difficulty * 0.3);
+    // Replace goblins with green humanoids, keep orcs
     const type = typeRoll < 0.5 ? EnemyType.GOBLIN : EnemyType.ORC;
     
     const spawnDistance = 20 + Math.random() * 15;
