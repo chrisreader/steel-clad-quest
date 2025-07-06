@@ -393,9 +393,10 @@ export class TavernBuilding extends BaseBuilding {
     for (let i = 0; i < 2; i++) {
       const xPos = -2 + i * 4;
       
-      // Chandelier base ring
+      // Chandelier base ring (rotated to be horizontal)
       const chandelierRing = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 8, 16), chandelierMaterial.clone());
       chandelierRing.position.set(xPos, 4.5, 1);
+      chandelierRing.rotation.x = Math.PI / 2; // Rotate 90 degrees to make horizontal
       this.addComponent(chandelierRing, `chandelier_ring_${i}`, 'metal');
       
       // Hanging chain
