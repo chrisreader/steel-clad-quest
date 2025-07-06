@@ -7,7 +7,7 @@ export const useGameManager = () => {
   const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   
-  // Initialize inventory with hunting bow and medieval sword
+  // Initialize inventory with hunting bow, steel sword, and medieval sword
   const [inventory, setInventory] = useState<Item[]>([
     {
       id: '2',
@@ -36,6 +36,20 @@ export const useGameManager = () => {
       tier: 'rare' as const,
       icon: 'sword',
       weaponId: 'medieval_sword'
+    },
+    {
+      id: '4',
+      name: 'Steel Sword',
+      type: 'weapon' as const,
+      subtype: 'sword' as const,
+      value: 250,
+      description: 'A well-forged steel blade with excellent balance and sharpness. A reliable weapon for any warrior (+15 attack)',
+      quantity: 1,
+      equipmentSlot: 'primary' as const,
+      stats: { attack: 15 },
+      tier: 'uncommon' as const,
+      icon: 'sword',
+      weaponId: 'steel_sword'
     }
   ]);
 
