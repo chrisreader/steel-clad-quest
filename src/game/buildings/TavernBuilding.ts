@@ -175,48 +175,56 @@ export class TavernBuilding extends BaseBuilding {
 
   private addRockOutlines(centerX: number, centerY: number, centerZ: number, width: number, depth: number, wallName: string): void {
     const rockMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x595959,
+      color: 0x505050,
       roughness: 1.0,
       metalness: 0
     });
     
-    // Calculate rock placement based on wall dimensions
-    const rocksPerRow = Math.ceil(Math.max(width, depth) / 0.8);
-    const rocksPerColumn = 2; // Two rows of rocks for foundation height
+    // Simpler, more visible rock placement
+    const maxDimension = Math.max(width, depth);
+    const rocksPerRow = Math.max(3, Math.ceil(maxDimension / 1.5)); // Fewer, larger rocks
+    const rocksPerColumn = 2; // Two clear rows
     
     for (let row = 0; row < rocksPerColumn; row++) {
       for (let i = 0; i < rocksPerRow; i++) {
-        const rockSize = 0.3 + Math.random() * 0.2;
+        // Larger, more uniform rock sizes
+        const baseSize = 0.6;
+        const sizeVariation = 0.2;
+        const rockWidth = baseSize + Math.random() * sizeVariation;
+        const rockHeight = baseSize * 0.7 + Math.random() * sizeVariation * 0.5;
+        const rockDepth = baseSize * 0.8 + Math.random() * sizeVariation * 0.5;
+        
         const rock = new THREE.Mesh(
-          new THREE.BoxGeometry(rockSize, rockSize * 0.8, rockSize * 0.6),
+          new THREE.BoxGeometry(rockWidth, rockHeight, rockDepth),
           rockMaterial.clone()
         );
         
-        // Position rocks based on wall orientation
+        // Position rocks in clear, stacked formation
         let x = centerX;
-        let y = centerY - 0.5 + row * 0.4;
+        let y = centerY - 0.6 + row * 0.6; // Clear vertical stacking
         let z = centerZ;
         
         if (wallName.includes('back') || wallName.includes('front')) {
-          // Horizontal wall - spread rocks along width
+          // Horizontal wall - evenly space rocks along width
           x = centerX - width/2 + (i + 0.5) * (width / rocksPerRow);
-          z = centerZ + (Math.random() - 0.5) * 0.2;
+          z = centerZ; // Keep aligned with wall
         } else {
-          // Vertical wall - spread rocks along depth
+          // Vertical wall - evenly space rocks along depth  
           z = centerZ - depth/2 + (i + 0.5) * (depth / rocksPerRow);
-          x = centerX + (Math.random() - 0.5) * 0.2;
+          x = centerX; // Keep aligned with wall
         }
         
-        // Add some random variation
-        x += (Math.random() - 0.5) * 0.1;
-        y += (Math.random() - 0.5) * 0.05;
-        z += (Math.random() - 0.5) * 0.1;
+        // Minimal random variation for natural look
+        x += (Math.random() - 0.5) * 0.05;
+        z += (Math.random() - 0.5) * 0.05;
         
         rock.position.set(x, y, z);
+        
+        // Slight rotation for natural appearance
         rock.rotation.set(
-          Math.random() * 0.2,
-          Math.random() * Math.PI,
-          Math.random() * 0.2
+          (Math.random() - 0.5) * 0.1,
+          (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.1
         );
         
         this.addComponent(rock, `${wallName}_rock_${row}_${i}`, 'stone');
@@ -536,7 +544,7 @@ export class TavernBuilding extends BaseBuilding {
       this.addComponent(handle, `table_mug_handle_${i}`, 'wood');
     }
     
-    // Candles on tables
+    // Candles on tables (adjusted for new table position)
     const candleMaterial = new THREE.MeshStandardMaterial({ 
       color: 0xFFFACD,
       emissive: 0x332211,
@@ -544,7 +552,7 @@ export class TavernBuilding extends BaseBuilding {
     });
     
     const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 8), candleMaterial);
-    candle.position.set(-3.5, 1.08, -3.5);
+    candle.position.set(3.5, 1.08, -3.5);
     this.addComponent(candle, 'table_candle', 'fabric');
     
     // Candle holder
@@ -554,7 +562,7 @@ export class TavernBuilding extends BaseBuilding {
       roughness: 0.4
     });
     const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.03, 8), holderMaterial);
-    holder.position.set(-3.5, 0.985, -3.5);
+    holder.position.set(3.5, 0.985, -3.5);
     this.addComponent(holder, 'candle_holder', 'metal');
   }
 
@@ -615,9 +623,9 @@ export class TavernBuilding extends BaseBuilding {
       return;
     }
     
-    // Create common chest near the table
+    // Create common chest in open area away from bar and furniture
     const commonChestPosition = this.position.clone().add(
-      new THREE.Vector3(-4.5, 0, -3) // Near the table area
+      new THREE.Vector3(-1.5, 0, 2.5) // Open area near entrance
     );
     
     console.log('💰 [TavernBuilding] Common chest position:', commonChestPosition);
@@ -632,9 +640,9 @@ export class TavernBuilding extends BaseBuilding {
     this.addComponent(commonChest.getGroup(), 'common_chest', 'wood');
     console.log('💰 [TavernBuilding] Common chest created successfully');
     
-    // Create rare chest in corner
+    // Create rare chest in back corner away from furniture
     const rareChestPosition = this.position.clone().add(
-      new THREE.Vector3(4.5, 0, -4.5) // Corner position
+      new THREE.Vector3(-1, 0, -5.2) // Back wall area, away from bench
     );
     
     console.log('💰 [TavernBuilding] Rare chest position:', rareChestPosition);
