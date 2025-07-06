@@ -373,12 +373,12 @@ export class TreasureChest {
   }
 
   public interact(): ChestLoot | null {
-    if (this.isOpen || this.isAnimating || this.hasBeenLooted) {
+    if (this.isOpen || this.isAnimating) {
       return null;
     }
 
     this.openChest();
-    this.hasBeenLooted = true;
+    // Removed hasBeenLooted check - chests can now be opened multiple times
     return { ...this.loot };
   }
 

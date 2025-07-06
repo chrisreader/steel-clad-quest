@@ -97,17 +97,17 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   } = useWeaponManagement({
     primary: {
       id: '1', 
-      name: 'Steel Sword', 
+      name: 'Medieval Sword', 
       type: 'weapon' as const, 
       subtype: 'sword' as const,
-      value: 200, 
-      description: 'A masterfully forged steel blade with razor-sharp edges. This superior weapon offers exceptional balance and deadly precision in combat (+15 attack)', 
+      value: 500, 
+      description: 'A masterfully crafted medieval blade with tapered cross guard and razor-sharp tapered point. This superior weapon offers exceptional balance and deadly precision in combat (+30 attack)', 
       quantity: 1,
       equipmentSlot: 'primary' as const,
-      stats: { attack: 15 },
-      tier: 'uncommon' as const,
+      stats: { attack: 30 },
+      tier: 'rare' as const,
       icon: 'sword',
-      weaponId: 'steel_sword'
+      weaponId: 'medieval_sword'
     },
     secondary: null,
     offhand: null
