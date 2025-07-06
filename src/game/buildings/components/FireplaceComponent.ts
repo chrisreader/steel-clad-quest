@@ -32,12 +32,13 @@ export class FireplaceComponent {
     this.scene = scene;
     this.physicsManager = physicsManager;
     this.audioManager = audioManager;
-    this.position = position.clone();
+    this.position = position.clone(); // Store world position for fire effects
     this.fireplaceId = id;
     this.alwaysOn = alwaysOn;
     
     this.fireplaceGroup = new THREE.Group();
-    this.fireplaceGroup.position.copy(this.position);
+    // Use relative positioning (0,0,0) since parent handles world positioning
+    this.fireplaceGroup.position.set(0, 0, 0);
     
     this.fireSystem = new FireSystem(this.scene, this.audioManager);
   }
@@ -130,14 +131,14 @@ export class FireplaceComponent {
   }
 
   public lightFire(): void {
-    // Calculate world position from the fireplace group's world position
-    const worldPosition = new THREE.Vector3();
-    this.fireplaceGroup.getWorldPosition(worldPosition);
-    worldPosition.y += 0.2;
+    // Use the original position that was passed to the constructor
+    // Since we're now using relative positioning, we need to add the parent's world position
+    const firePosition = this.position.clone();
+    firePosition.y += 0.2;
     
-    console.log(`🔥 [${this.fireplaceId}] Lighting fire at calculated world position:`, worldPosition);
+    console.log(`🔥 [${this.fireplaceId}] Lighting fire at position:`, firePosition);
     
-    this.fireSystem.createFire(this.fireplaceId, worldPosition, {
+    this.fireSystem.createFire(this.fireplaceId, firePosition, {
       intensity: 1.0,
       size: 1.0,
       particleCount: 45,

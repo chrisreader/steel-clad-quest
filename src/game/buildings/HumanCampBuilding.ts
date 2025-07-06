@@ -95,14 +95,14 @@ export class HumanCampBuilding extends BaseBuilding {
 
     console.log('🔥 Creating enhanced fireplace system for human camp at world position:', this.position);
     
-    // FIX: Use relative position since buildingGroup handles world positioning
-    console.log('🔥 Fireplace will be created at relative center (0,0,0) within building group');
+    // Pass world position for fire effects, but use relative positioning for geometry
+    console.log('🔥 Fireplace will use world position for fire effects');
     
     this.fireplaceComponent = new FireplaceComponent(
       this.scene,
       this.physicsManager,
       this.audioManager,
-      new THREE.Vector3(0, 0, 0), // Relative to building group
+      this.position.clone(), // Pass world position for fire effects
       'camp_fireplace_' + this.position.x.toFixed(0) + '_' + this.position.z.toFixed(0), // Unique but consistent ID
       true // Always on for camp
     );
