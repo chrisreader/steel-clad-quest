@@ -275,20 +275,20 @@ export class HumanBodyConfig {
     shoulderGeometry.attributes.position.needsUpdate = true;
     shoulderGeometry.computeVertexNormals();
     
-    // Left shoulder deltoid - positioned MORE OUTWARD to overlay properly on top
+    // Left shoulder deltoid - positioned 20% MORE OUTWARD to overlay properly on top
     const leftShoulder = new THREE.Mesh(shoulderGeometry, shirtMaterial.clone());
     leftShoulder.position.set(
-      -exactArmPositionX * 1.1,      // 10% MORE OUTWARD than arm position
+      -exactArmPositionX * 1.2,      // 20% MORE OUTWARD than arm position
       shoulderHeightRelative + 0.05, // EXACT shoulder joint Y position (arm Y + joint offset)
       0                              // EXACT Z position
     );
     leftShoulder.rotation.set(-0.393 + Math.PI, 0, -0.3); // EXACT shoulder joint rotation
     leftShoulder.castShadow = true;
     
-    // Right shoulder deltoid - positioned MORE OUTWARD to overlay properly on top  
+    // Right shoulder deltoid - positioned 20% MORE OUTWARD to overlay properly on top  
     const rightShoulder = new THREE.Mesh(shoulderGeometry.clone(), shirtMaterial.clone());
     rightShoulder.position.set(
-      exactArmPositionX * 1.1,       // 10% MORE OUTWARD than arm position
+      exactArmPositionX * 1.2,       // 20% MORE OUTWARD than arm position
       shoulderHeightRelative + 0.05, // EXACT shoulder joint Y position (arm Y + joint offset)
       0                              // EXACT Z position
     );
@@ -312,20 +312,20 @@ export class HumanBodyConfig {
     // But adjust for sleeve length: translate(0, -sleeveLength * 0.5, 0)
     sleeveGeometry.translate(0, -sleeveLength * 0.5, 0);
     
-    // Left sleeve - positioned MORE OUTWARD to overlay on top of arm
+    // Left sleeve - positioned 20% MORE OUTWARD to overlay on top of arm
     const leftSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
     leftSleeve.position.set(
-      -exactArmPositionX * 1.1,      // 10% MORE OUTWARD than arm position
+      -exactArmPositionX * 1.2,      // 20% MORE OUTWARD than arm position
       shoulderHeightRelative,        // EXACT arm Y position: shoulderHeightRelative
       0                              // EXACT arm Z position
     );
     leftSleeve.rotation.set(-0.393, 0, -0.3); // EXACT same rotation as actual left arm
     leftSleeve.castShadow = true;
     
-    // Right sleeve - positioned MORE OUTWARD to overlay on top of arm
+    // Right sleeve - positioned 20% MORE OUTWARD to overlay on top of arm
     const rightSleeve = new THREE.Mesh(sleeveGeometry.clone(), shirtMaterial.clone());
     rightSleeve.position.set(
-      exactArmPositionX * 1.1,       // 10% MORE OUTWARD than arm position  
+      exactArmPositionX * 1.2,       // 20% MORE OUTWARD than arm position  
       shoulderHeightRelative,        // EXACT arm Y position: shoulderHeightRelative
       0                              // EXACT arm Z position
     );
