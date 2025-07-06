@@ -98,8 +98,8 @@ export class MedievalSword extends Sword {
       // Create a custom tapered rectangular geometry extending outward
       const leftGuardShape = new THREE.Shape();
       leftGuardShape.moveTo(0, -0.04);      // Start at center
-      leftGuardShape.lineTo(-0.25, -0.02);  // Extend left and taper to narrower tip
-      leftGuardShape.lineTo(-0.25, 0.02);   // Top of tip
+      leftGuardShape.lineTo(-0.25, -0.01);  // Extend left and taper to sharper tip (reduced from -0.02 to -0.01)
+      leftGuardShape.lineTo(-0.25, 0.01);   // Top of sharp tip (reduced from 0.02 to 0.01)
       leftGuardShape.lineTo(0, 0.04);       // Back to center top
       leftGuardShape.lineTo(0, -0.04);      // Close shape
       
@@ -124,8 +124,8 @@ export class MedievalSword extends Sword {
       // Create tapered rectangular crossguard - right side
       const rightGuardShape = new THREE.Shape();
       rightGuardShape.moveTo(0, -0.04);      // Start at center
-      rightGuardShape.lineTo(0.25, -0.02);   // Extend right and taper to narrower tip
-      rightGuardShape.lineTo(0.25, 0.02);    // Top of tip
+      rightGuardShape.lineTo(0.25, -0.01);   // Extend right and taper to sharper tip (reduced from -0.02 to -0.01)
+      rightGuardShape.lineTo(0.25, 0.01);    // Top of sharp tip (reduced from 0.02 to 0.01)
       rightGuardShape.lineTo(0, 0.04);       // Back to center top
       rightGuardShape.lineTo(0, -0.04);      // Close shape
       
