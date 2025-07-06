@@ -15,6 +15,8 @@ export class TavernBuilding extends BaseBuilding {
   private tavernKeeper: HumanNPC | null = null;
   private chestInteractionSystem: ChestInteractionSystem | null = null;
   private chests: TreasureChest[] = [];
+  private chandelierLights: THREE.PointLight[] = [];
+  private tableCandleLight: THREE.PointLight | null = null;
 
   public setAudioManager(audioManager: AudioManager): void {
     this.audioManager = audioManager;
@@ -377,22 +379,65 @@ export class TavernBuilding extends BaseBuilding {
   }
 
   private createHangingElements(): void {
-    // Hanging lanterns
-    const lanternMaterial = new THREE.MeshStandardMaterial({ 
+    // Hanging candle chandeliers
+    const chandelierMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x8B7355,
-      metalness: 0.3,
-      roughness: 0.7
+      metalness: 0.6,
+      roughness: 0.4
+    });
+    
+    const candleMaterial = new THREE.MeshStandardMaterial({
+      color: 0xFFFACD,
+      emissive: 0x221100,
+      emissiveIntensity: 0.1
     });
     
     for (let i = 0; i < 2; i++) {
-      const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.6, 8), lanternMaterial.clone());
-      lantern.position.set(-2 + i * 4, 5, 1);
-      this.addComponent(lantern, `hanging_lantern_${i}`, 'metal');
+      const chandelierGroup = new THREE.Group();
+      const xPos = -2 + i * 4;
       
-      // Lantern chain
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1, 6), lanternMaterial.clone());
-      chain.position.set(-2 + i * 4, 5.8, 1);
-      this.addComponent(chain, `lantern_chain_${i}`, 'metal');
+      // Chandelier base
+      const chandelierBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.2, 8), chandelierMaterial.clone());
+      chandelierBase.position.set(0, 0, 0);
+      chandelierGroup.add(chandelierBase);
+      
+      // Hanging chain
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 6), chandelierMaterial.clone());
+      chain.position.set(0, 0.6, 0);
+      chandelierGroup.add(chain);
+      
+      // Candles around the chandelier (6 candles)
+      for (let j = 0; j < 6; j++) {
+        const angle = (j / 6) * Math.PI * 2;
+        const radius = 0.25;
+        
+        // Candle holder arm
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.02), chandelierMaterial.clone());
+        arm.position.set(Math.cos(angle) * radius * 0.7, -0.05, Math.sin(angle) * radius * 0.7);
+        arm.rotation.y = angle;
+        chandelierGroup.add(arm);
+        
+        // Candle
+        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.1, 8), candleMaterial.clone());
+        candle.position.set(Math.cos(angle) * radius, -0.05, Math.sin(angle) * radius);
+        chandelierGroup.add(candle);
+        
+        // Candle holder cup
+        const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.02, 8), chandelierMaterial.clone());
+        holder.position.set(Math.cos(angle) * radius, -0.1, Math.sin(angle) * radius);
+        chandelierGroup.add(holder);
+      }
+      
+      // Position the chandelier group
+      chandelierGroup.position.set(xPos, 5, 1);
+      this.addComponent(chandelierGroup, `hanging_chandelier_${i}`, 'metal');
+      
+      // Create point light for chandelier (initially off)
+      const chandelierLight = new THREE.PointLight(0xffaa44, 0, 8, 2);
+      chandelierLight.position.set(xPos, 5, 1);
+      chandelierLight.castShadow = true;
+      this.scene.add(chandelierLight);
+      this.chandelierLights.push(chandelierLight);
     }
   }
   
@@ -578,8 +623,8 @@ export class TavernBuilding extends BaseBuilding {
     // Candles on tables (adjusted for new table position)
     const candleMaterial = new THREE.MeshStandardMaterial({ 
       color: 0xFFFACD,
-      emissive: 0x332211,
-      emissiveIntensity: 0.3
+      emissive: 0x221100,
+      emissiveIntensity: 0.1
     });
     
     const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 8), candleMaterial);
@@ -595,6 +640,12 @@ export class TavernBuilding extends BaseBuilding {
     const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.03, 8), holderMaterial);
     holder.position.set(3.5, 0.985, -3.5);
     this.addComponent(holder, 'candle_holder', 'metal');
+    
+    // Create point light for table candle (initially off)
+    this.tableCandleLight = new THREE.PointLight(0xffaa44, 0, 4, 2);
+    this.tableCandleLight.position.set(3.5, 1.2, -3.5);
+    this.tableCandleLight.castShadow = true;
+    this.scene.add(this.tableCandleLight);
   }
 
   private createSeatingAreas(): void {
@@ -707,6 +758,33 @@ export class TavernBuilding extends BaseBuilding {
     });
   }
   
+  public updateTimeOfDay(gameTime: number, timePhases: any): void {
+    // Determine if it's night time (when candles should be lit)
+    const isNight = timePhases.isNight || gameTime < 0.25 || gameTime > 0.75;
+    
+    if (isNight) {
+      // Turn on chandelier lights
+      this.chandelierLights.forEach(light => {
+        light.intensity = 1.5;
+      });
+      
+      // Turn on table candle light
+      if (this.tableCandleLight) {
+        this.tableCandleLight.intensity = 0.8;
+      }
+    } else {
+      // Turn off lights during day
+      this.chandelierLights.forEach(light => {
+        light.intensity = 0;
+      });
+      
+      // Turn off table candle light
+      if (this.tableCandleLight) {
+        this.tableCandleLight.intensity = 0;
+      }
+    }
+  }
+  
   public dispose(): void {
     if (this.fireplaceComponent) {
       this.fireplaceComponent.dispose();
@@ -716,6 +794,18 @@ export class TavernBuilding extends BaseBuilding {
     if (this.tavernKeeper) {
       this.tavernKeeper.dispose();
       this.tavernKeeper = null;
+    }
+    
+    // Dispose chandelier lights
+    this.chandelierLights.forEach(light => {
+      this.scene.remove(light);
+    });
+    this.chandelierLights.length = 0;
+    
+    // Dispose table candle light
+    if (this.tableCandleLight) {
+      this.scene.remove(this.tableCandleLight);
+      this.tableCandleLight = null;
     }
     
     // Dispose chests
