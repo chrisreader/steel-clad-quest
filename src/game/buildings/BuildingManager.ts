@@ -9,6 +9,7 @@ import { SafeZoneManager } from '../systems/SafeZoneManager';
 import { AudioManager } from '../engine/AudioManager';
 import { EffectsManager } from '../engine/EffectsManager';
 import { DistanceLODManager } from '../systems/DistanceLODManager';
+import { ChestInteractionSystem } from '../systems/ChestInteractionSystem';
 
 export interface BuildingConfig {
   type: 'tavern' | 'castle' | 'human_camp';
@@ -31,6 +32,7 @@ export class BuildingManager {
 
   private audioManager: AudioManager | null = null;
   private effectsManager: EffectsManager | null = null;
+  private chestInteractionSystem: ChestInteractionSystem | null = null;
 
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
@@ -52,6 +54,10 @@ export class BuildingManager {
 
   public setEffectsManager(effectsManager: EffectsManager): void {
     this.effectsManager = effectsManager;
+  }
+
+  public setChestInteractionSystem(chestInteractionSystem: ChestInteractionSystem): void {
+    this.chestInteractionSystem = chestInteractionSystem;
   }
 
   public createBuilding(config: BuildingConfig): BaseBuilding | null {
@@ -80,6 +86,9 @@ export class BuildingManager {
           }
           if (this.effectsManager) {
             building.setEffectsManager(this.effectsManager);
+          }
+          if (this.chestInteractionSystem) {
+            building.setChestInteractionSystem(this.chestInteractionSystem);
           }
         }
         break;

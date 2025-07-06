@@ -7,6 +7,7 @@ import { TreasureChest } from '../world/objects/TreasureChest';
 import { AudioManager } from '../engine/AudioManager';
 import { EffectsManager } from '../engine/EffectsManager';
 import { CampNPC } from '../entities/humanoid/CampNPC';
+import { ChestInteractionSystem } from '../systems/ChestInteractionSystem';
 
 export interface CampConfig {
   size: 'small' | 'medium' | 'large';
@@ -24,6 +25,7 @@ export class HumanCampBuilding extends BaseBuilding {
   private chests: TreasureChest[] = [];
   private campKeeper: CampNPC | null = null;
   private furniture: THREE.Group[] = [];
+  private chestInteractionSystem: ChestInteractionSystem | null = null;
 
   constructor(scene: THREE.Scene, physicsManager: any, position: THREE.Vector3, config?: Partial<CampConfig>) {
     super(scene, physicsManager, position);
@@ -40,6 +42,10 @@ export class HumanCampBuilding extends BaseBuilding {
 
   public setEffectsManager(effectsManager: EffectsManager): void {
     this.effectsManager = effectsManager;
+  }
+
+  public setChestInteractionSystem(chestInteractionSystem: ChestInteractionSystem): void {
+    this.chestInteractionSystem = chestInteractionSystem;
   }
 
   protected createStructure(): void {
@@ -193,6 +199,11 @@ export class HumanCampBuilding extends BaseBuilding {
   private createCampChests(): void {
     console.log('💰 Creating camp chests');
     
+    if (!this.chestInteractionSystem) {
+      console.warn('💰 [HumanCampBuilding] ChestInteractionSystem not available, skipping chest creation');
+      return;
+    }
+    
     // Always have at least one common chest - positioned close to fireplace
     const commonChestPosition = this.position.clone().add(
       new THREE.Vector3(
@@ -202,13 +213,12 @@ export class HumanCampBuilding extends BaseBuilding {
       )
     );
     
-    const commonChest = new TreasureChest({
+    const commonChest = this.chestInteractionSystem.createChest({
       type: 'common',
       position: commonChestPosition,
-      id: `camp_common_chest_${Date.now()}`
+      id: `camp_common_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}_${Date.now()}`
     });
     
-    this.scene.add(commonChest.getGroup());
     this.chests.push(commonChest);
     this.addComponent(commonChest.getGroup(), 'common_chest', 'wood');
     
@@ -222,13 +232,12 @@ export class HumanCampBuilding extends BaseBuilding {
         )
       );
       
-      const rareChest = new TreasureChest({
+      const rareChest = this.chestInteractionSystem.createChest({
         type: 'rare',
         position: rareChestPosition,
-        id: `camp_rare_chest_${Date.now()}`
+        id: `camp_rare_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}_${Date.now()}`
       });
       
-      this.scene.add(rareChest.getGroup());
       this.chests.push(rareChest);
       this.addComponent(rareChest.getGroup(), 'rare_chest', 'metal');
       

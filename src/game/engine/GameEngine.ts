@@ -93,7 +93,7 @@ export class GameEngine {
         this.buildingManager.setAudioManager(this.audioManager);
         this.buildingManager.setEffectsManager(this.effectsManager);
       }
-
+      
       // Also initialize SceneManager with the managers for consistency
       if (this.audioManager) {
         this.sceneManager.initializeWithAudioManager(this.audioManager);
@@ -130,9 +130,14 @@ export class GameEngine {
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
       
-      // Create chest interaction system
+      // Create chest interaction system AFTER player is created
       this.chestInteractionSystem = new ChestInteractionSystem(this.renderEngine.getScene(), this.player);
       // REMOVED: setupChestsInTavern() - chests should only spawn in human camps
+      
+      // Set chest interaction system for building manager
+      if (this.buildingManager && this.chestInteractionSystem) {
+        this.buildingManager.setChestInteractionSystem(this.chestInteractionSystem);
+      }
       
       // Initialize enemy spawning system in scene manager
       if (this.sceneManager) {
