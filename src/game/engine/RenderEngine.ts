@@ -28,7 +28,7 @@ export class RenderEngine {
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 6; // RESPONSIVE: Every 6 frames for smooth turning while maintaining performance
+  private readonly CULLING_UPDATE_INTERVAL: number = 10; // Increased for better performance
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -128,12 +128,11 @@ export class RenderEngine {
   }
   
   private updateFrustumCulling(): void {
-    const now = performance.now();
-    if (now - this.lastCullingUpdate < this.CULLING_UPDATE_INTERVAL) return;
+    this.renderCount++;
+    if (this.renderCount % this.CULLING_UPDATE_INTERVAL !== 0) return;
     
     this.cameraMatrix.multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
     this.frustum.setFromProjectionMatrix(this.cameraMatrix);
-    this.lastCullingUpdate = now;
   }
   
   private isObjectInFrustum(object: THREE.Object3D): boolean {
@@ -162,28 +161,16 @@ export class RenderEngine {
   }
   
   public render(): void {
-    this.renderCount++;
-    const now = performance.now();
-    
     // Update frustum culling less frequently for performance
     this.updateFrustumCulling();
     
-    // Apply frustum culling to scene objects
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
-        object.visible = this.isObjectInFrustum(object);
-      }
-    });
-    
-    // ULTRA-AGGRESSIVE logging reduction (every 3000 frames = 3 minutes at 60fps)
-    if (this.renderCount % 3000 === 0) {
-      const fps = 3000 / ((now - this.lastRenderTime) / 1000);
-      console.log("🎨 [RenderEngine] ULTRA-PERFORMANCE:", {
-        frame: this.renderCount,
-        fps: fps.toFixed(1),
-        objects: this.scene.children.length
+    // Apply frustum culling to scene objects (reduced frequency)
+    if (this.renderCount % 5 === 0) {
+      this.scene.traverse((object) => {
+        if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
+          object.visible = this.isObjectInFrustum(object);
+        }
       });
-      this.lastRenderTime = now;
     }
     
     this.renderer.render(this.scene, this.camera);

@@ -24,6 +24,8 @@ export class HumanCampBuilding extends BaseBuilding {
   private chests: TreasureChest[] = [];
   private campKeeper: CampNPC | null = null;
   private furniture: THREE.Group[] = [];
+  private creationAttempts: number = 0;
+  private lastCreationAttempt: number = 0;
 
   constructor(scene: THREE.Scene, physicsManager: any, position: THREE.Vector3, config?: Partial<CampConfig>) {
     super(scene, physicsManager, position);
@@ -31,7 +33,7 @@ export class HumanCampBuilding extends BaseBuilding {
     // Generate random camp configuration
     this.config = this.generateCampConfig(config);
     
-    console.log(`🏕️ [HumanCampBuilding] Creating ${this.config.size} human camp with camp keeper`);
+    // Creating human camp
   }
 
   public setAudioManager(audioManager: AudioManager): void {
@@ -43,8 +45,6 @@ export class HumanCampBuilding extends BaseBuilding {
   }
 
   protected createStructure(): void {
-    console.log(`🏕️ [HumanCampBuilding] Creating camp structure at position:`, this.position);
-
     // 1. Create central fireplace
     this.createCampFireplace();
 
@@ -61,11 +61,7 @@ export class HumanCampBuilding extends BaseBuilding {
     this.createCampSupplies();
 
     // 6. Create camp keeper
-    console.log('🏕️ [HumanCampBuilding] About to create camp keeper');
     this.createCampKeeper();
-    console.log('🏕️ [HumanCampBuilding] Camp keeper creation finished');
-
-    console.log(`🏕️ [HumanCampBuilding] Camp structure complete with ${this.components.length} components`);
   }
 
   private generateCampConfig(config?: Partial<CampConfig>): CampConfig {
@@ -267,24 +263,21 @@ export class HumanCampBuilding extends BaseBuilding {
   }
 
   private createCampKeeper(): void {
-    console.log('🏕️ [HumanCampBuilding] createCampKeeper called');
-    console.log('🏕️ [HumanCampBuilding] AudioManager:', !!this.audioManager);
-    console.log('🏕️ [HumanCampBuilding] EffectsManager:', !!this.effectsManager);
-    
     if (!this.audioManager || !this.effectsManager) {
-      console.warn('🏕️ [HumanCampBuilding] AudioManager or EffectsManager not set. Cannot create camp keeper.');
       return;
     }
 
-    console.log('👤 [HumanCampBuilding] Creating camp keeper NPC');
+    // Add creation attempt tracking to prevent infinite loops
+    if (!this.creationAttempts) this.creationAttempts = 0;
+    if (this.creationAttempts >= 3) return; // Prevent infinite attempts
+    
+    this.creationAttempts++;
     
     try {
       // Position the camp keeper near the fireplace
       const keeperPosition = new THREE.Vector3(2, 0, 1);
       // Adjust position to be relative to camp position
       keeperPosition.add(this.position);
-      
-      console.log('👤 [HumanCampBuilding] Camp keeper position:', keeperPosition);
       
       this.campKeeper = CampNPC.createCampKeeper(
         this.scene,
@@ -294,19 +287,16 @@ export class HumanCampBuilding extends BaseBuilding {
         this.audioManager
       );
       
-      if (this.campKeeper) {
-        console.log('👤✅ [HumanCampBuilding] Camp keeper created successfully');
-        
+      if (this.campKeeper && !this.campKeeper.getIsDead()) {
         // Add to building group for proper management
         const npcGroup = this.campKeeper.getMesh();
         if (npcGroup) {
           this.buildingGroup.add(npcGroup);
         }
-      } else {
-        console.error('👤❌ [HumanCampBuilding] CampNPC.createCampKeeper returned null');
+        this.creationAttempts = 0; // Reset on success
       }
     } catch (error) {
-      console.error('👤❌ [HumanCampBuilding] Error creating camp keeper:', error);
+      // Silenced for performance - just fail gracefully
     }
   }
 
@@ -326,18 +316,20 @@ export class HumanCampBuilding extends BaseBuilding {
       this.campKeeper.update(deltaTime, playerPosition);
     }
     
-    // Simplified NPC Recovery System
+    // Optimized NPC Recovery System with cooldown
+    const now = Date.now();
     if (!this.campKeeper && this.audioManager && this.effectsManager) {
-      this.createCampKeeper();
+      if (now - this.lastCreationAttempt > 5000) { // 5 second cooldown
+        this.lastCreationAttempt = now;
+        this.createCampKeeper();
+      }
     }
     
     // Basic health check for camp keeper
     if (this.campKeeper?.getIsDead()) {
       this.campKeeper.dispose();
       this.campKeeper = null;
-      if (this.audioManager && this.effectsManager) {
-        this.createCampKeeper();
-      }
+      this.creationAttempts = 0; // Reset attempts when disposing
     }
   }
 
