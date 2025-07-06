@@ -393,10 +393,10 @@ export class TavernBuilding extends BaseBuilding {
     for (let i = 0; i < 2; i++) {
       const xPos = -2 + i * 4;
       
-      // Chandelier base ring (rotated to be horizontal)
+      // Chandelier base ring (horizontal by default)
       const chandelierRing = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 8, 16), chandelierMaterial.clone());
       chandelierRing.position.set(xPos, 4.5, 1);
-      chandelierRing.rotation.x = Math.PI / 2; // Rotate 90 degrees to make horizontal
+      // No rotation needed - torus is horizontal by default
       this.addComponent(chandelierRing, `chandelier_ring_${i}`, 'metal');
       
       // Hanging chain
@@ -801,9 +801,9 @@ export class TavernBuilding extends BaseBuilding {
 
   // Time-based lighting control for candles (called at night)
   public updateCandleLighting(isNight: boolean): void {
-    const intensity = isNight ? 1.0 : 0;
-    const flameOpacity = isNight ? 0.8 : 0;
-    const lightIntensity = isNight ? 0.6 : 0;
+    const intensity = isNight ? 1.2 : 0; // Increased flame intensity
+    const flameOpacity = isNight ? 1.0 : 0; // Full opacity for flames
+    const lightIntensity = isNight ? 1.5 : 0; // Much brighter lights for tavern illumination
     
     // Update chandelier candles and lights
     for (let i = 0; i < 2; i++) {
@@ -819,6 +819,7 @@ export class TavernBuilding extends BaseBuilding {
         const light = this.components.find(c => c.name === `chandelier_light_${i}_${j}`)?.mesh;
         if (light && light instanceof THREE.PointLight) {
           light.intensity = lightIntensity;
+          light.distance = 12; // Increased light range for better coverage
         }
       }
     }
@@ -832,9 +833,10 @@ export class TavernBuilding extends BaseBuilding {
     
     const tableLight = this.components.find(c => c.name === 'table_candle_light')?.mesh;
     if (tableLight && tableLight instanceof THREE.PointLight) {
-      tableLight.intensity = lightIntensity * 0.8; // Slightly dimmer for table candle
+      tableLight.intensity = lightIntensity * 1.2; // Even brighter for table area
+      tableLight.distance = 8; // Increased range
     }
     
-    console.log(`🕯️ [TavernBuilding] Candle lighting ${isNight ? 'activated' : 'deactivated'} for night time`);
+    console.log(`🕯️ [TavernBuilding] Candle lighting ${isNight ? 'activated' : 'deactivated'} for night time with enhanced brightness`);
   }
 }
