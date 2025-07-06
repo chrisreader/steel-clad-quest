@@ -84,6 +84,7 @@ export class HumanBodyConfig {
     
     return {
       ...baseConfig,
+      type: EnemyType.GOBLIN, // Override to GOBLIN type so ears will be created correctly
       // Use goblin combat stats but with human body proportions (smaller)
       health: 20,
       maxHealth: 20,
