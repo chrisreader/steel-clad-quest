@@ -219,8 +219,9 @@ export class HumanBodyConfig {
     torso.receiveShadow = true;
     torso.position.set(0, 0, 0);
     
-    // Calculate exact shoulder height using SAME LOGIC as EnemyHumanoid.ts
-    // From EnemyHumanoid: legTopY = groundToFeetBottom, bodyY = legTopY + bodyHeight/2, bodyTopY = bodyY + bodyHeight/2, shoulderHeight = bodyTopY - 0.15
+    // Calculate positions RELATIVE TO BODY since t-shirt will be added as child to body mesh
+    // From EnemyHumanoid: shoulderHeight = bodyTopY - 0.15, arms are at shoulderHeight in world coords
+    // Body is positioned at bodyY in world coords, so relative to body: shoulderHeight - bodyY
     const legLength = 0.6; // bodyScale.leg.length from human config
     const shinLength = 0.55; // bodyScale.shin.length from human config  
     const footHeight = 0.2; // estimated foot height
@@ -228,7 +229,8 @@ export class HumanBodyConfig {
     const legTopY = groundToFeetBottom;
     const bodyY = legTopY + bodyHeight / 2;
     const bodyTopY = bodyY + bodyHeight / 2;
-    const shoulderHeight = bodyTopY - 0.15; // EXACT same as EnemyHumanoid.ts
+    const shoulderHeightWorld = bodyTopY - 0.15; // World position
+    const shoulderHeightRelative = shoulderHeightWorld - bodyY; // Relative to body center
     const exactArmPositionX = bodyRadius * 0.85; // EXACT same as arms: ±(bodyScale.body.radius * 0.85)
     
     // 2. Shoulder deltoid pieces - positioned SLIGHTLY OUTWARD to overlay on top of body shoulders
@@ -277,7 +279,7 @@ export class HumanBodyConfig {
     const leftShoulder = new THREE.Mesh(shoulderGeometry, shirtMaterial.clone());
     leftShoulder.position.set(
       -exactArmPositionX,            // EXACT arm X position
-      shoulderHeight + 0.05,         // EXACT shoulder joint Y position (arm Y + joint offset)
+      shoulderHeightRelative + 0.05, // EXACT shoulder joint Y position (arm Y + joint offset)
       0                              // EXACT Z position
     );
     leftShoulder.rotation.set(-0.393 + Math.PI, 0, -0.3); // EXACT shoulder joint rotation
@@ -287,7 +289,7 @@ export class HumanBodyConfig {
     const rightShoulder = new THREE.Mesh(shoulderGeometry.clone(), shirtMaterial.clone());
     rightShoulder.position.set(
       exactArmPositionX,             // EXACT arm X position
-      shoulderHeight + 0.05,         // EXACT shoulder joint Y position (arm Y + joint offset)
+      shoulderHeightRelative + 0.05, // EXACT shoulder joint Y position (arm Y + joint offset)
       0                              // EXACT Z position
     );
     rightShoulder.rotation.set(-0.393 + Math.PI, 0, 0.3); // EXACT shoulder joint rotation
@@ -314,7 +316,7 @@ export class HumanBodyConfig {
     const leftSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
     leftSleeve.position.set(
       -exactArmPositionX,            // EXACT arm X position
-      shoulderHeight,                // EXACT arm Y position: shoulderHeight
+      shoulderHeightRelative,        // EXACT arm Y position: shoulderHeightRelative
       0                              // EXACT arm Z position
     );
     leftSleeve.rotation.set(-0.393, 0, -0.3); // EXACT same rotation as actual left arm
@@ -324,7 +326,7 @@ export class HumanBodyConfig {
     const rightSleeve = new THREE.Mesh(sleeveGeometry.clone(), shirtMaterial.clone());
     rightSleeve.position.set(
       exactArmPositionX,             // EXACT arm X position  
-      shoulderHeight,                // EXACT arm Y position: shoulderHeight
+      shoulderHeightRelative,        // EXACT arm Y position: shoulderHeightRelative
       0                              // EXACT arm Z position
     );
     rightSleeve.rotation.set(-0.393, 0, 0.3); // EXACT same rotation as actual right arm
