@@ -44,8 +44,6 @@ export class FireplaceComponent {
   }
 
   public create(): THREE.Group {
-    console.log(`🔥 Creating fireplace component '${this.fireplaceId}' at position:`, this.position, `alwaysOn: ${this.alwaysOn}`);
-
     // Create fireplace structure (base, logs, ash)
     this.fireplaceGeometry = new FireplaceGeometry(this.scene, new THREE.Vector3(0, 0, 0));
     const structureGroup = this.fireplaceGeometry.createFireplaceStructure();
@@ -58,17 +56,12 @@ export class FireplaceComponent {
 
     // Start fire immediately if always-on (tavern), otherwise wait for time updates for camp fires
     if (this.alwaysOn) {
-      console.log(`🔥 [${this.fireplaceId}] TAVERN FIRE - Always on, lighting immediately`);
       this.lightFire();
       this.fireActive = true;
     } else {
-      console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - Time-based, starting inactive`);
       this.fireActive = false;
     }
 
-    // Don't add directly to scene - let the parent building handle positioning
-    console.log(`🔥 Fireplace component '${this.fireplaceId}' created - Fire Active: ${this.fireActive}`);
-    
     return this.fireplaceGroup;
   }
 
@@ -76,13 +69,9 @@ export class FireplaceComponent {
     this.currentGameTime = gameTime;
     this.fireSystem.updateTimeOfDay(gameTime, timePhases);
     
-    console.log(`🔥 [${this.fireplaceId}] Time update: ${gameTime.toFixed(1)}h, alwaysOn: ${this.alwaysOn}, fireActive: ${this.fireActive}`);
-    
     // Skip time-based control if always on (tavern fire)
     if (this.alwaysOn) {
-      console.log(`🔥 [${this.fireplaceId}] TAVERN FIRE - Skipping time-based control`);
       if (!this.fireActive) {
-        console.log(`🔥 [${this.fireplaceId}] TAVERN FIRE - Fire was off, lighting it`);
         this.lightFire();
         this.fireActive = true;
       }
@@ -91,27 +80,19 @@ export class FireplaceComponent {
     
     // Turn fire on at sunset (19:00) and off at sunrise (6:00) for camp fires
     const isNightTime = gameTime >= 19 || gameTime <= 6;
-    console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - Time: ${gameTime.toFixed(1)}h, isNightTime: ${isNightTime}, fireActive: ${this.fireActive}`);
     
     if (isNightTime && !this.fireActive) {
-      console.log(`🔥 [${this.fireplaceId}] 🌙 CAMP FIRE - Lighting fire for night time!`);
       this.lightFire();
       this.fireActive = true;
     } else if (!isNightTime && this.fireActive) {
-      console.log(`🔥 [${this.fireplaceId}] ☀️ CAMP FIRE - Extinguishing fire for day time!`);
       this.extinguishFire();
       this.fireActive = false;
     } else if (isNightTime && this.fireActive) {
-      // FORCED FIX: Check if fire is actually lit visually
+      // Check if fire is actually lit visually
       const actualFire = this.fireSystem.getFire(this.fireplaceId);
       if (!actualFire || !actualFire.isRunning()) {
-        console.log(`🔥 [${this.fireplaceId}] 🔧 CAMP FIRE - Fire marked active but not running, re-lighting!`);
         this.lightFire();
-      } else {
-        console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - No state change needed`);
       }
-    } else {
-      console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - No state change needed`);
     }
   }
 
@@ -127,16 +108,11 @@ export class FireplaceComponent {
 
   public extinguishFire(): void {
     this.fireSystem.removeFire(this.fireplaceId);
-    console.log(`🔥 Fire '${this.fireplaceId}' extinguished`);
   }
 
   public lightFire(): void {
-    // Use the original position that was passed to the constructor
-    // Since we're now using relative positioning, we need to add the parent's world position
     const firePosition = this.position.clone();
     firePosition.y += 0.2;
-    
-    console.log(`🔥 [${this.fireplaceId}] Lighting fire at position:`, firePosition);
     
     this.fireSystem.createFire(this.fireplaceId, firePosition, {
       intensity: 1.0,
@@ -147,9 +123,6 @@ export class FireplaceComponent {
       lightIntensity: 12.0, // Strong intensity for realistic shadow casting  
       lightDistance: 60     // Good range for area lighting
     });
-    
-    const fireType = this.alwaysOn ? 'TAVERN' : 'CAMP';
-    console.log(`🔥✨ [${this.fireplaceId}] ${fireType} FIRE LIT - Strong shadows & lighting active!`);
   }
 
   public setFireIntensity(intensity: number): void {
@@ -164,8 +137,6 @@ export class FireplaceComponent {
   }
 
   public dispose(): void {
-    console.log(`🔥 Disposing fireplace component '${this.fireplaceId}'`);
-    
     this.fireSystem.dispose();
     
     if (this.fireplaceGeometry) {
@@ -177,8 +148,5 @@ export class FireplaceComponent {
       this.fireplaceRocks.dispose();
       this.fireplaceRocks = null;
     }
-    
-    // Don't remove from scene - parent building handles cleanup
-    console.log(`🔥 Fireplace component '${this.fireplaceId}' disposed`);
   }
 }

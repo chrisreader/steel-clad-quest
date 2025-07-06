@@ -93,11 +93,6 @@ export class HumanCampBuilding extends BaseBuilding {
       this.audioManager = {} as AudioManager;
     }
 
-    console.log('🔥 Creating enhanced fireplace system for human camp at world position:', this.position);
-    
-    // Pass world position for fire effects, but use relative positioning for geometry
-    console.log('🔥 Fireplace will use world position for fire effects');
-    
     this.fireplaceComponent = new FireplaceComponent(
       this.scene,
       this.physicsManager,
@@ -112,8 +107,6 @@ export class HumanCampBuilding extends BaseBuilding {
     
     // Register fireplace collisions
     this.fireplaceComponent.registerCollisions('human_camp');
-    
-    console.log('🔥 Enhanced fireplace system created with realistic fire, organic rocks, and dynamic lighting');
   }
 
   private createCampTents(): void {
@@ -272,24 +265,16 @@ export class HumanCampBuilding extends BaseBuilding {
   }
 
   private createCampKeeper(): void {
-    console.log('🏕️ [HumanCampBuilding] createCampKeeper called');
-    console.log('🏕️ [HumanCampBuilding] AudioManager:', !!this.audioManager);
-    console.log('🏕️ [HumanCampBuilding] EffectsManager:', !!this.effectsManager);
-    
     if (!this.audioManager || !this.effectsManager) {
       console.warn('🏕️ [HumanCampBuilding] AudioManager or EffectsManager not set. Cannot create camp keeper.');
       return;
     }
 
-    console.log('👤 [HumanCampBuilding] Creating camp keeper NPC');
-    
     try {
       // Position the camp keeper near the fireplace
       const keeperPosition = new THREE.Vector3(2, 0, 1);
       // Adjust position to be relative to camp position
       keeperPosition.add(this.position);
-      
-      console.log('👤 [HumanCampBuilding] Camp keeper position:', keeperPosition);
       
       this.campKeeper = CampNPC.createCampKeeper(
         this.scene,
@@ -300,20 +285,13 @@ export class HumanCampBuilding extends BaseBuilding {
       );
       
       if (this.campKeeper) {
-        console.log('👤✅ [HumanCampBuilding] Camp keeper created successfully');
-        
         // Add to building group for proper management
         if (this.campKeeper && 'getGroup' in this.campKeeper && typeof this.campKeeper.getGroup === 'function') {
           const npcGroup = this.campKeeper.getGroup();
           if (npcGroup) {
             this.buildingGroup.add(npcGroup);
-            console.log('👤 [HumanCampBuilding] Camp keeper added to building group');
           }
-        } else {
-          console.log('👤 [HumanCampBuilding] Camp keeper created but no getGroup method available');
         }
-      } else {
-        console.error('👤❌ [HumanCampBuilding] CampNPC.createCampKeeper returned null');
       }
     } catch (error) {
       console.error('👤❌ [HumanCampBuilding] Error creating camp keeper:', error);
@@ -338,13 +316,11 @@ export class HumanCampBuilding extends BaseBuilding {
     
     // NPC Recovery System: Try to create missing NPCs if managers are now available
     if (!this.campKeeper && this.audioManager && this.effectsManager) {
-      console.log('🏕️ [HumanCampBuilding] Attempting to recover missing camp keeper NPC');
       this.createCampKeeper();
     }
   }
 
   public updateTimeOfDay(gameTime: number, timePhases: any): void {
-    console.log(`🏕️ [HumanCampBuilding] updateTimeOfDay called: ${gameTime.toFixed(1)}h, has fireplace: ${!!this.fireplaceComponent}`);
     if (this.fireplaceComponent) {
       this.fireplaceComponent.updateTimeOfDay(gameTime, timePhases);
     }

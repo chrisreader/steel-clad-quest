@@ -40,8 +40,6 @@ export class FireLightingSystem {
     
     this.lights.push(primaryLight);
     this.scene.add(primaryLight);
-
-    console.log('🔥 Optimized single fire light created - maximum performance');
   }
 
   private updateCounter = 0;
@@ -103,6 +101,5 @@ export class FireLightingSystem {
       this.scene.remove(light);
     }
     this.lights = [];
-    console.log('🔥 Balanced fire lighting system disposed');
   }
 }

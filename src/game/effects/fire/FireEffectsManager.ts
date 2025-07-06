@@ -124,7 +124,6 @@ export class FireEffectsManager {
     }
 
     this.isActive = false;
-    console.log('🔥 Fire effects stopped');
   }
 
   public dispose(): void {

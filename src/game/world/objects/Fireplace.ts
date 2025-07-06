@@ -47,7 +47,6 @@ export class Fireplace {
   }
 
   public create(): THREE.Group {
-    console.log(`🔥 Creating standalone fireplace at position:`, this.position);
     const group = this.fireplaceComponent.create();
     this.fireplaceComponent.registerCollisions('standalone');
     return group;

@@ -75,9 +75,6 @@ export class GradientDensity {
       density *= (1.0 + treeBenefit);
     }
     
-    // Remove water and rock penalties temporarily
-    // Remove player traffic penalties temporarily
-    
     // Ensure minimum density of 80%
     return MathUtils.clamp(density, 0.8, 1.2);
   }
