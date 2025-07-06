@@ -219,8 +219,16 @@ export class HumanBodyConfig {
     torso.receiveShadow = true;
     torso.position.set(0, 0, 0);
     
-    // Get exact shoulder height and arm positions from body configuration
-    const shoulderHeight = bodyHeight * 0.35; // EXACT same as EnemyHumanoid.ts
+    // Calculate exact shoulder height using SAME LOGIC as EnemyHumanoid.ts
+    // From EnemyHumanoid: legTopY = groundToFeetBottom, bodyY = legTopY + bodyHeight/2, bodyTopY = bodyY + bodyHeight/2, shoulderHeight = bodyTopY - 0.15
+    const legLength = 0.6; // bodyScale.leg.length from human config
+    const shinLength = 0.55; // bodyScale.shin.length from human config  
+    const footHeight = 0.2; // estimated foot height
+    const groundToFeetBottom = legLength + shinLength + footHeight / 2;
+    const legTopY = groundToFeetBottom;
+    const bodyY = legTopY + bodyHeight / 2;
+    const bodyTopY = bodyY + bodyHeight / 2;
+    const shoulderHeight = bodyTopY - 0.15; // EXACT same as EnemyHumanoid.ts
     const exactArmPositionX = bodyRadius * 0.85; // EXACT same as arms: ±(bodyScale.body.radius * 0.85)
     
     // 2. Shoulder deltoid pieces - positioned SLIGHTLY OUTWARD to overlay on top of body shoulders
