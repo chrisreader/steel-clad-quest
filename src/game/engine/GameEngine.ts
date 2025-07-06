@@ -338,7 +338,7 @@ export class GameEngine {
     
     // Update building manager (critical for fire animation)
     if (this.buildingManager) {
-      this.buildingManager.update(deltaTime);
+      this.buildingManager.update(deltaTime, this.player.getPosition());
       
       // Update time-aware buildings (like human camps with fireplaces)
       if (this.sceneManager) {
