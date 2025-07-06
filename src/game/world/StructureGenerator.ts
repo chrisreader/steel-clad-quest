@@ -289,36 +289,35 @@ export class StructureGenerator {
       }
     }
 
-    // NEW: Place human camps near forests and rock formations (Ring 1-4)
-    if (region.ringIndex >= 1 && region.ringIndex <= 4) {
-      const regionCenter = this.ringSystem.getRegionCenter(region);
+    // NEW: Place human camps sparingly near forests and rock formations (Ring 2-4 only)
+    if (region.ringIndex >= 2 && region.ringIndex <= 4) {
+      // Very low base spawn chance to prevent performance issues
+      const baseChance = region.ringIndex === 2 ? 0.15 : region.ringIndex === 3 ? 0.10 : 0.05;
       
-      // Check multiple positions in the region for optimal camp placement
-      for (let attempt = 0; attempt < 3; attempt++) {
+      if (Math.random() < baseChance) {
+        const regionCenter = this.ringSystem.getRegionCenter(region);
         const testPosition = regionCenter.clone().add(
           new THREE.Vector3(
-            (Math.random() - 0.5) * 60,
+            (Math.random() - 0.5) * 50,
             0,
-            (Math.random() - 0.5) * 60
+            (Math.random() - 0.5) * 50
           )
         );
         
         const forestDensity = this.getForestDensityAtPosition(testPosition);
         const rockFormationNearby = this.hasLargeRockFormationNearby(testPosition);
         
-        // Higher spawn chance near forests or rocks
-        const baseSpawnChance = forestDensity > 0.6 ? 0.8 : rockFormationNearby ? 0.7 : 0.3;
-        const shouldSpawnCamp = Math.random() < baseSpawnChance;
+        // Only spawn if near forests OR rocks (not just anywhere)
+        const shouldSpawnCamp = forestDensity > 0.5 || rockFormationNearby;
         
         if (shouldSpawnCamp && this.buildingManager) {
-          // Fine-tune position for optimal placement
           const campPosition = this.findOptimalCampPosition(testPosition);
-          const campSize = Math.random() < 0.4 ? 'small' : Math.random() < 0.7 ? 'medium' : 'large';
+          const campSize = Math.random() < 0.6 ? 'small' : Math.random() < 0.8 ? 'medium' : 'large';
           
           const humanCamp = this.buildingManager.createBuilding({
             type: 'human_camp',
             position: campPosition,
-            id: `human_camp_${region.ringIndex}_${region.quadrant}_${attempt}`,
+            id: `human_camp_${region.ringIndex}_${region.quadrant}`,
             campConfig: { size: campSize }
           });
           
@@ -330,9 +329,8 @@ export class StructureGenerator {
               model: humanCamp.getBuildingGroup()
             });
             
-            const placementReason = forestDensity > 0.6 ? 'dense forest' : rockFormationNearby ? 'rock formation' : 'suitable terrain';
+            const placementReason = forestDensity > 0.5 ? 'dense forest' : 'rock formation';
             console.log(`🏕️ Placed ${campSize} human camp at ${campPosition.x.toFixed(2)}, ${campPosition.z.toFixed(2)} near ${placementReason} in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-            break; // Only place one camp per region
           }
         }
       }
