@@ -623,40 +623,42 @@ export abstract class EnemyHumanoid {
     features: any,
     accentMaterial: THREE.MeshPhongMaterial
   ) {
-    // Eye sockets - smaller for humans
-    const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.8, 16, 12); // Reduced from 1.2 to 0.8
-    const eyeSocketMaterial = accentMaterial.clone();
+    // Eye sockets - remove for humans to eliminate rectangles, keep minimal for others
+    if (!features.eyeConfig.color || features.eyeConfig.color !== 0xFFFFFF) {
+      const eyeSocketGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.8, 16, 12);
+      const eyeSocketMaterial = accentMaterial.clone();
 
-    const leftEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial);
-    leftEyeSocket.position.set(
-      -features.eyeConfig.offsetX,
-      features.eyeConfig.offsetY,
-      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
-    );
-    leftEyeSocket.scale.z = 0.5;
-    headGroup.add(leftEyeSocket);
+      const leftEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial);
+      leftEyeSocket.position.set(
+        -features.eyeConfig.offsetX,
+        features.eyeConfig.offsetY,
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
+      );
+      leftEyeSocket.scale.z = 0.5;
+      headGroup.add(leftEyeSocket);
 
-    const rightEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial.clone());
-    rightEyeSocket.position.set(
-      features.eyeConfig.offsetX,
-      features.eyeConfig.offsetY,
-      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
-    );
-    rightEyeSocket.scale.z = 0.5;
-    headGroup.add(rightEyeSocket);
+      const rightEyeSocket = new THREE.Mesh(eyeSocketGeometry, eyeSocketMaterial.clone());
+      rightEyeSocket.position.set(
+        features.eyeConfig.offsetX,
+        features.eyeConfig.offsetY,
+        bodyScale.head.radius * features.eyeConfig.offsetZ * 1.1
+      );
+      rightEyeSocket.scale.z = 0.5;
+      headGroup.add(rightEyeSocket);
+    }
 
     // Eyes - oval shaped for humans, sphere for others
     const isHuman = features.eyeConfig.color === 0xFFFFFF;
     
     let eyeGeometry;
     if (isHuman) {
-      // Create realistic eyeball shape for humans
-      eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.8, 16, 12);
+      // Create smaller, more recessed eyeball shape for humans
+      eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.6, 16, 12); // Reduced from 0.8 to 0.6
       // Apply scaling after creation to avoid shader issues
       eyeGeometry.computeBoundingBox();
       eyeGeometry.computeVertexNormals();
-      // Scale to make it more eyeball-shaped (slightly wider, but more spherical than oval)
-      eyeGeometry.scale(1.2, 1.0, 0.9); // More realistic eyeball proportions
+      // Scale to make it more eyeball-shaped (slightly wider, but smaller overall)
+      eyeGeometry.scale(1.1, 0.9, 0.8); // More realistic, smaller eyeball proportions
       // Recompute normals after scaling to fix rendering
       eyeGeometry.computeVertexNormals();
     } else {
@@ -678,7 +680,7 @@ export abstract class EnemyHumanoid {
     leftEye.position.set(
       -features.eyeConfig.offsetX,
       features.eyeConfig.offsetY,
-      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
+      bodyScale.head.radius * features.eyeConfig.offsetZ * (isHuman ? 1.05 : 1.15) // More recessed for humans
     );
     leftEye.castShadow = false; // Disable shadow casting for eyes to avoid shader issues
 
@@ -686,7 +688,7 @@ export abstract class EnemyHumanoid {
     rightEye.position.set(
       features.eyeConfig.offsetX,
       features.eyeConfig.offsetY,
-      bodyScale.head.radius * features.eyeConfig.offsetZ * 1.15
+      bodyScale.head.radius * features.eyeConfig.offsetZ * (isHuman ? 1.05 : 1.15) // More recessed for humans
     );
     rightEye.castShadow = false; // Disable shadow casting for eyes
 
@@ -699,8 +701,7 @@ export abstract class EnemyHumanoid {
 
     // Remove nose to eliminate rectangle between eyes
 
-    // Add eyebrows for better facial definition
-    this.addEyebrowsToHead(headGroup, bodyScale, features, this.config.colors.accent);
+    // Remove rectangular eyebrows for humans to eliminate rectangles between eyes
 
     const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
     leftPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
