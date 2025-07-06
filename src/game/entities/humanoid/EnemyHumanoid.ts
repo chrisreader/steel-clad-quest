@@ -909,7 +909,7 @@ export abstract class EnemyHumanoid {
       const leftEarPosition = {
         x: -bodyScale.head.radius * 0.8925, // Moved outward by 5%
         y: bodyScale.head.radius * 0.3,      // Positioned on side of head 
-        z: -bodyScale.head.radius * 0.36     // Moved back by 50%
+        z: -bodyScale.head.radius * 0.8      // Moved back much further
       };
       console.log(`👂 [EnemyHumanoid] Left ear position:`, leftEarPosition);
       leftEar.position.set(leftEarPosition.x, leftEarPosition.y, leftEarPosition.z);
@@ -924,7 +924,7 @@ export abstract class EnemyHumanoid {
       const rightEarPosition = {
         x: bodyScale.head.radius * 0.8925,   // Moved outward by 5%
         y: bodyScale.head.radius * 0.3,      // Positioned on side of head
-        z: -bodyScale.head.radius * 0.36     // Moved back by 50%
+        z: -bodyScale.head.radius * 0.8      // Moved back much further
       };
       console.log(`👂 [EnemyHumanoid] Right ear position:`, rightEarPosition);
       rightEar.position.set(rightEarPosition.x, rightEarPosition.y, rightEarPosition.z);
