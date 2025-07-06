@@ -7,7 +7,7 @@ export const useGameManager = () => {
   const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   
-  // Initialize inventory with hunting bow - updated to use 'primary' slot
+  // Initialize inventory with hunting bow and medieval sword
   const [inventory, setInventory] = useState<Item[]>([
     {
       id: '2',
@@ -22,6 +22,20 @@ export const useGameManager = () => {
       tier: 'common' as const,
       icon: 'bow',
       weaponId: 'hunting_bow'
+    },
+    {
+      id: '3',
+      name: 'Medieval Sword',
+      type: 'weapon' as const,
+      subtype: 'sword' as const,
+      value: 500,
+      description: 'A masterfully crafted medieval blade with tapered cross guard and razor-sharp tapered point. This superior weapon offers exceptional balance and deadly precision in combat (+30 attack)',
+      quantity: 1,
+      equipmentSlot: 'primary' as const,
+      stats: { attack: 30 },
+      tier: 'rare' as const,
+      icon: 'sword',
+      weaponId: 'medieval_sword'
     }
   ]);
 

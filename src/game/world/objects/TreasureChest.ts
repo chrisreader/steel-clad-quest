@@ -369,17 +369,23 @@ export class TreasureChest {
 
   public canInteract(playerPosition: THREE.Vector3): boolean {
     const distance = this.group.position.distanceTo(playerPosition);
-    return distance <= 2.5 && !this.isAnimating;
+    return distance <= 2.5; // Removed isAnimating check to allow interaction while animating
   }
 
   public interact(): ChestLoot | null {
-    if (this.isOpen || this.isAnimating) {
-      return null;
+    if (this.isAnimating) {
+      return null; // Only prevent interaction during animation
     }
 
-    this.openChest();
-    // Removed hasBeenLooted check - chests can now be opened multiple times
-    return { ...this.loot };
+    if (this.isOpen) {
+      // If chest is open, close it
+      this.closeChest();
+      return null;
+    } else {
+      // If chest is closed, open it and return loot
+      this.openChest();
+      return { ...this.loot };
+    }
   }
 
   public isChestOpen(): boolean {
