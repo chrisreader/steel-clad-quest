@@ -706,6 +706,7 @@ export abstract class EnemyHumanoid {
     // Add realistic mouth for humans
     if (isHuman) {
       this.addMouthToHead(headGroup, bodyScale, this.config.colors.skin);
+      this.addNoseToHead(headGroup, bodyScale, this.config.colors.skin);
     }
 
     const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
@@ -754,41 +755,87 @@ export abstract class EnemyHumanoid {
   }
 
   /**
-   * Add nose geometry to human heads
+   * Add realistic nose geometry to human heads
    */
   private addNoseToHead(headGroup: THREE.Group, bodyScale: any, skinColor: number): void {
-    const noseGeometry = new THREE.ConeGeometry(0.04, 0.15, 8);
+    // Create nose bridge
+    const bridgeGeometry = new THREE.CylinderGeometry(0.025, 0.035, 0.12, 8);
     const noseMaterial = new THREE.MeshPhongMaterial({
       color: skinColor,
-      shininess: 20
+      shininess: 15
     });
 
-    const nose = new THREE.Mesh(noseGeometry, noseMaterial);
-    nose.position.set(0, -0.05, bodyScale.head.radius * 0.95);
-    nose.rotation.x = Math.PI; // Point downward
-    nose.castShadow = true;
+    const noseBridge = new THREE.Mesh(bridgeGeometry, noseMaterial);
+    noseBridge.position.set(0, -0.03, bodyScale.head.radius * 0.94);
+    noseBridge.rotation.x = Math.PI * 0.15; // Slight downward angle
+    noseBridge.castShadow = true;
+    headGroup.add(noseBridge);
     
-    headGroup.add(nose);
+    // Create nose tip (bulbous end)
+    const tipGeometry = new THREE.SphereGeometry(0.032, 12, 8);
+    const noseTip = new THREE.Mesh(tipGeometry, noseMaterial.clone());
+    noseTip.position.set(0, -0.08, bodyScale.head.radius * 0.98);
+    noseTip.scale.set(1, 0.8, 1.2); // Slightly flattened
+    noseTip.castShadow = true;
+    headGroup.add(noseTip);
+    
+    // Create nostrils
+    const nostrilGeometry = new THREE.SphereGeometry(0.012, 8, 6);
+    const nostrilMaterial = new THREE.MeshPhongMaterial({
+      color: 0x444444, // Darker color for nostrils
+      shininess: 5
+    });
+    
+    const leftNostril = new THREE.Mesh(nostrilGeometry, nostrilMaterial);  
+    leftNostril.position.set(-0.02, -0.085, bodyScale.head.radius * 0.99);
+    leftNostril.scale.set(0.8, 0.6, 1.5);
+    headGroup.add(leftNostril);
+    
+    const rightNostril = new THREE.Mesh(nostrilGeometry, nostrilMaterial.clone());
+    rightNostril.position.set(0.02, -0.085, bodyScale.head.radius * 0.99);
+    rightNostril.scale.set(0.8, 0.6, 1.5);
+    headGroup.add(rightNostril);
   }
 
   /**
    * Add realistic mouth geometry to human heads
    */
   private addMouthToHead(headGroup: THREE.Group, bodyScale: any, skinColor: number): void {
-    // Create subtle mouth line
-    const mouthGeometry = new THREE.CylinderGeometry(0.02, 0.03, 0.08, 8);
-    const mouthMaterial = new THREE.MeshPhongMaterial({
-      color: 0x8B4444, // Slightly darker reddish color for mouth
-      shininess: 5
+    // Create upper lip
+    const upperLipGeometry = new THREE.CylinderGeometry(0.015, 0.02, 0.06, 8);
+    const lipMaterial = new THREE.MeshPhongMaterial({
+      color: 0xB87070, // Natural lip color - pinkish
+      shininess: 25
     });
 
-    const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
-    mouth.position.set(0, -0.15, bodyScale.head.radius * 0.92);
-    mouth.rotation.z = Math.PI / 2; // Rotate to make it horizontal
-    mouth.scale.set(1, 0.6, 1); // Make it slightly flatter
-    mouth.castShadow = true;
+    const upperLip = new THREE.Mesh(upperLipGeometry, lipMaterial);
+    upperLip.position.set(0, -0.145, bodyScale.head.radius * 0.93);
+    upperLip.rotation.z = Math.PI / 2; // Horizontal
+    upperLip.scale.set(1, 0.4, 1); // Flatter
+    upperLip.castShadow = true;
+    headGroup.add(upperLip);
     
-    headGroup.add(mouth);
+    // Create lower lip (slightly larger)
+    const lowerLipGeometry = new THREE.CylinderGeometry(0.018, 0.025, 0.07, 8);
+    const lowerLip = new THREE.Mesh(lowerLipGeometry, lipMaterial.clone());
+    lowerLip.position.set(0, -0.155, bodyScale.head.radius * 0.925);
+    lowerLip.rotation.z = Math.PI / 2; // Horizontal
+    lowerLip.scale.set(1, 0.5, 1); // Slightly fuller lower lip
+    lowerLip.castShadow = true;
+    headGroup.add(lowerLip);
+    
+    // Create mouth opening (dark line between lips)
+    const mouthLineGeometry = new THREE.CylinderGeometry(0.008, 0.008, 0.05, 6);
+    const mouthLineMaterial = new THREE.MeshPhongMaterial({
+      color: 0x333333, // Dark mouth opening
+      shininess: 1
+    });
+    
+    const mouthLine = new THREE.Mesh(mouthLineGeometry, mouthLineMaterial);
+    mouthLine.position.set(0, -0.15, bodyScale.head.radius * 0.932);
+    mouthLine.rotation.z = Math.PI / 2;
+    mouthLine.scale.set(1, 0.2, 1);
+    headGroup.add(mouthLine);
   }
 
   /**
@@ -829,37 +876,56 @@ export abstract class EnemyHumanoid {
     colors: any,
     muscleMaterial: THREE.MeshPhongMaterial
   ) {
-    // Create human-style ears (rounded, not pointy like orcs)
-    const earGeometry = new THREE.SphereGeometry(0.1, 12, 10);
-    // Flatten and shape the ear geometry for human appearance
-    const positions = earGeometry.attributes.position.array as Float32Array;
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-      
-      // Flatten the sphere to create a more ear-like shape
-      positions[i] = x * 0.6;  // Narrower
-      positions[i + 1] = y * 1.2;  // Taller
-      positions[i + 2] = z * 0.4;  // Thinner
-    }
-    earGeometry.attributes.position.needsUpdate = true;
-    earGeometry.computeVertexNormals();
-    
+    // Create realistic human ear structure
     const earMaterial = muscleMaterial.clone();
+    
+    // Outer ear (main structure)
+    const outerEarGeometry = new THREE.SphereGeometry(0.08, 12, 10);
+    const outerEarPositions = outerEarGeometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < outerEarPositions.length; i += 3) {
+      const x = outerEarPositions[i];
+      const y = outerEarPositions[i + 1];
+      const z = outerEarPositions[i + 2];
+      
+      // Shape into realistic ear form
+      outerEarPositions[i] = x * 0.5;      // Much thinner from side
+      outerEarPositions[i + 1] = y * 1.3;  // Taller
+      outerEarPositions[i + 2] = z * 0.7;  // Less depth
+    }
+    outerEarGeometry.attributes.position.needsUpdate = true;
+    outerEarGeometry.computeVertexNormals();
 
-    const leftEar = new THREE.Mesh(earGeometry, earMaterial);
-    leftEar.position.set(-bodyScale.head.radius * 0.9, 0.1, 0);
-    leftEar.rotation.z = -Math.PI / 8;  // Less rotation for human ears
-    leftEar.castShadow = true;
+    // Left ear
+    const leftOuterEar = new THREE.Mesh(outerEarGeometry, earMaterial);
+    leftOuterEar.position.set(-bodyScale.head.radius * 0.85, 0.05, 0);
+    leftOuterEar.rotation.z = -Math.PI / 12; // Slight tilt
+    leftOuterEar.castShadow = true;
+    headGroup.add(leftOuterEar);
+    
+    // Inner ear cavity for left ear
+    const innerEarGeometry = new THREE.SphereGeometry(0.035, 8, 6);
+    const innerEarMaterial = new THREE.MeshPhongMaterial({
+      color: 0x555555, // Darker inner ear
+      shininess: 5
+    });
+    
+    const leftInnerEar = new THREE.Mesh(innerEarGeometry, innerEarMaterial);
+    leftInnerEar.position.set(-bodyScale.head.radius * 0.83, 0.05, 0.02);
+    leftInnerEar.scale.set(0.4, 0.8, 0.6);
+    headGroup.add(leftInnerEar);
 
-    const rightEar = new THREE.Mesh(earGeometry, earMaterial.clone());
-    rightEar.position.set(bodyScale.head.radius * 0.9, 0.1, 0);
-    rightEar.rotation.z = Math.PI / 8;  // Less rotation for human ears
-    rightEar.castShadow = true;
-
-    headGroup.add(leftEar);
-    headGroup.add(rightEar);
+    // Right ear 
+    const rightOuterEar = new THREE.Mesh(outerEarGeometry.clone(), earMaterial.clone());
+    rightOuterEar.position.set(bodyScale.head.radius * 0.85, 0.05, 0);
+    rightOuterEar.rotation.z = Math.PI / 12; // Slight tilt opposite direction
+    rightOuterEar.castShadow = true;
+    headGroup.add(rightOuterEar);
+    
+    // Inner ear cavity for right ear
+    const rightInnerEar = new THREE.Mesh(innerEarGeometry.clone(), innerEarMaterial.clone());
+    rightInnerEar.position.set(bodyScale.head.radius * 0.83, 0.05, 0.02);
+    rightInnerEar.scale.set(0.4, 0.8, 0.6);
+    headGroup.add(rightInnerEar);
   }
 
   private createArms(
