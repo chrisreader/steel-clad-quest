@@ -55,13 +55,13 @@ export class CampNPC {
 
   private setupBehavior(): void {
     this.behavior = new CampKeeperBehavior({
-      wanderRadius: this.config.wanderRadius || 6,
-      moveSpeed: 1.5,
-      pauseDuration: 2000,
+      wanderRadius: this.config.wanderRadius || 8,
+      moveSpeed: 2.0,
+      pauseDuration: 1500,
       interactionRadius: 12
     }, this.config.campCenter);
     
-    console.log(`🧠 [CampNPC] Setup camp keeper behavior for ${this.config.name} at camp center:`, this.config.campCenter);
+    console.log(`🧠 [CampNPC] Setup enhanced camp keeper behavior for ${this.config.name} - faster movement, shorter pauses, larger patrol area`);
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
@@ -70,12 +70,17 @@ export class CampNPC {
     // Update AI behavior
     const action = this.behavior.update(deltaTime, this.getMesh().position, playerPosition);
     
-    // Handle movement based on behavior
+    // Handle movement based on behavior with enhanced logging
     if (action.type === 'move' && action.target) {
       this.moveTowards(action.target, deltaTime);
       this.humanoid.updateWalkAnimation(deltaTime);
+      console.log('🚶 [CampNPC] Moving towards target:', action.target, 'at speed:', 2.0);
     } else if (action.type === 'idle') {
       this.humanoid.updateIdleAnimation(deltaTime);
+      console.log('🛌 [CampNPC] Standing idle at position:', this.getMesh().position);
+    } else if (action.type === 'interact') {
+      this.humanoid.updateIdleAnimation(deltaTime);
+      console.log('💬 [CampNPC] Interacting with player');
     }
   }
 
@@ -86,7 +91,7 @@ export class CampNPC {
       .normalize();
     direction.y = 0; // Keep on ground level
     
-    const moveSpeed = 1.5 * deltaTime;
+    const moveSpeed = 2.0 * deltaTime;
     const newPosition = mesh.position.clone();
     newPosition.add(direction.multiplyScalar(moveSpeed));
     newPosition.y = 0; // Ensure stays on ground

@@ -38,7 +38,12 @@ export class CampKeeperBehavior {
   constructor(config: CampKeeperConfig, campCenter: THREE.Vector3) {
     this.config = config;
     this.campCenter = campCenter.clone();
-    console.log('🏕️ [CampKeeperBehavior] Initialized with camp center:', this.campCenter, 'and waypoint-based movement');
+    console.log('🏕️ [CampKeeperBehavior] Initialized with camp center:', this.campCenter, 'config:', {
+      wanderRadius: config.wanderRadius,
+      moveSpeed: config.moveSpeed,
+      pauseDuration: config.pauseDuration,
+      interactionRadius: config.interactionRadius
+    });
   }
 
   public update(
@@ -102,11 +107,12 @@ export class CampKeeperBehavior {
       this.actionStartTime = Date.now();
       this.isAtWaypoint = false;
       
-      console.log('🚶 [CampKeeper] Moving to waypoint:', nextWaypoint);
+      console.log('🚶 [CampKeeper] Starting movement from idle after', actionDuration, 'ms pause. Moving to waypoint:', nextWaypoint);
       
       return this.currentAction;
     }
     
+    console.log('🛌 [CampKeeper] Remaining idle for', this.config.pauseDuration - actionDuration, 'ms more');
     return { type: 'idle' };
   }
 
@@ -162,7 +168,7 @@ export class CampKeeperBehavior {
       selectedWaypoint = this.campCenter.clone().add(this.relativeWaypoints[this.currentWaypointIndex]);
       attempts++;
     } while (
-      currentPosition.distanceTo(selectedWaypoint) < 2.0 && 
+      currentPosition.distanceTo(selectedWaypoint) < 1.5 && 
       attempts < this.relativeWaypoints.length
     );
     
