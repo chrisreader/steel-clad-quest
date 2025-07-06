@@ -905,9 +905,9 @@ export abstract class EnemyHumanoid {
       // Left ear - attached to side of head, pointing upward
       const leftEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
       leftEar.position.set(
-        -bodyScale.head.radius * 0.85, // Closer to head surface
-        bodyScale.head.radius * 0.3,   // Positioned on side of head 
-        -bodyScale.head.radius * 0.2   // Position ears back where they should naturally be
+        -bodyScale.head.radius * 0.8925, // Moved outward by 5%
+        bodyScale.head.radius * 0.3,      // Positioned on side of head 
+        -bodyScale.head.radius * 0.24     // Moved back by 20%
       );
       leftEar.rotation.z = -0.4; // Tilt outward from head
       leftEar.rotation.x = -Math.PI/2; // Point upward with base at head
@@ -918,9 +918,9 @@ export abstract class EnemyHumanoid {
       // Right ear - attached to side of head, pointing upward
       const rightEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
       rightEar.position.set(
-        bodyScale.head.radius * 0.85,  // Closer to head surface
-        bodyScale.head.radius * 0.3,   // Positioned on side of head
-        -bodyScale.head.radius * 0.2   // Position ears back where they should naturally be
+        bodyScale.head.radius * 0.8925,   // Moved outward by 5%
+        bodyScale.head.radius * 0.3,      // Positioned on side of head
+        -bodyScale.head.radius * 0.24     // Moved back by 20%
       );
       rightEar.rotation.z = 0.4; // Tilt outward from head
       rightEar.rotation.x = -Math.PI/2; // Point upward with base at head
