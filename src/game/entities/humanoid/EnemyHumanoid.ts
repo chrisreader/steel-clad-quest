@@ -215,7 +215,7 @@ export abstract class EnemyHumanoid {
     const thighCenterY = legTopY - bodyScale.leg.length / 2;
     const bodyY = legTopY + bodyScale.body.height / 2;
     const bodyTopY = bodyY + bodyScale.body.height / 2;
-    const headY = bodyTopY + bodyScale.head.radius + 0.25; // Reduced from 0.5 for shorter neck
+    const headY = bodyTopY + bodyScale.head.radius + 0.1; // Much shorter neck for goblin-like appearance
     const shoulderHeight = bodyTopY - 0.15; // Lower shoulders for more natural proportions
 
     // Create base materials once

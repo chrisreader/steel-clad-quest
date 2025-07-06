@@ -97,14 +97,14 @@ export class HumanBodyConfig {
       points: 25,
       knockbackResistance: 1.0,
       
-      // Smaller human body proportions (scaled down from regular human)
+      // Smaller, chunkier humanoid body proportions (half height, bulkier)
       bodyScale: {
-        body: { radius: 0.25, height: 0.85 },        // Smaller than regular human
-        head: { radius: 0.22 },                      // Smaller head
-        arm: { radius: [0.07, 0.09], length: 0.42 }, // Shorter arms
-        forearm: { radius: [0.05, 0.07], length: 0.35 }, // Shorter forearms
-        leg: { radius: [0.09, 0.11], length: 0.5 },  // Shorter legs
-        shin: { radius: [0.07, 0.09], length: 0.45 } // Shorter shins
+        body: { radius: 0.35, height: 0.4 },         // Much shorter and wider body
+        head: { radius: 0.25 },                      // Keep head proportional
+        arm: { radius: [0.12, 0.15], length: 0.2 },  // Much shorter, thicker arms
+        forearm: { radius: [0.1, 0.12], length: 0.15 }, // Shorter, thicker forearms
+        leg: { radius: [0.15, 0.18], length: 0.25 },  // Much shorter, thicker legs
+        shin: { radius: [0.12, 0.15], length: 0.2 }   // Shorter, thicker shins
       },
       
       // Green skin colors (same as original goblin colors)
