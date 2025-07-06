@@ -345,8 +345,7 @@ export class TavernBuilding extends BaseBuilding {
   }
 
   private createArchitecturalDetails(): void {
-    // Add windows with frames
-    this.createWindows();
+    // Note: Window frames removed to show actual openings in log walls
     
     // Add decorative elements
     this.createDecorations();
