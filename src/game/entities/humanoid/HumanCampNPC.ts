@@ -61,40 +61,61 @@ export class HumanCampNPC {
     this.behavior = new CampNPCBehavior({
       wanderRadius: this.config.wanderRadius || 6,
       moveSpeed: 1.5,
-      pauseDuration: 2000,
+      pauseDuration: 1000, // Reduced from 2000ms to 1000ms for more active movement
       interactionRadius: 12,
       patrolRadius: this.config.wanderRadius || 6
-    });
+    }, this.config.position); // Pass camp center position
     
-    console.log(`🧠 [HumanCampNPC] Setup camp behavior for ${this.config.name} with config:`, {
+    console.log(`🧠 [HumanCampNPC] Setup camp behavior for ${this.config.name} at position:`, this.config.position);
+    console.log(`🧠 [HumanCampNPC] Behavior config:`, {
       wanderRadius: this.config.wanderRadius || 6,
       moveSpeed: 1.5,
-      pauseDuration: 2000
+      pauseDuration: 1000 // Reduced pause duration
     });
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     if (this.isDead) return;
 
+    // Enhanced debug logging for camp NPCs - more frequent to diagnose movement issues
+    if (Math.random() < 0.2) { // Increased to 20% chance for debugging
+      console.log(`🏕️ [${this.config.name}] === UPDATE DEBUG ===`);
+      console.log(`🏕️ [${this.config.name}] Position:`, this.getMesh().position.clone());
+      console.log(`🏕️ [${this.config.name}] Player pos:`, playerPosition);
+      console.log(`🏕️ [${this.config.name}] Behavior debug:`, this.behavior.getDebugInfo());
+    }
+
     // Update AI behavior
     const action = this.behavior.update(deltaTime, this.getMesh().position, playerPosition);
     
-    // Enhanced debug logging for camp NPCs
-    if (Math.random() < 0.05) { // Log occasionally (5% chance)
-      console.log(`🏕️ [${this.config.name}] Update - Action: ${action.type}, Position:`, this.getMesh().position.clone());
-      console.log(`🏕️ [${this.config.name}] Target:`, action.target);
+    // Enhanced debug logging for actions
+    if (Math.random() < 0.1) { // 10% chance for action logging
+      console.log(`🏕️ [${this.config.name}] Action result:`, action);
+      console.log(`🏕️ [${this.config.name}] Current position:`, this.getMesh().position.clone());
+      if (action.target) {
+        console.log(`🏕️ [${this.config.name}] Target distance:`, this.getMesh().position.distanceTo(action.target).toFixed(2));
+      }
     }
     
-    // Handle movement based on behavior
+    // Handle movement based on behavior with enhanced debugging
     if (action.type === 'move' && action.target) {
-      console.log(`🚶 [${this.config.name}] Moving to target:`, action.target);
+      console.log(`🚶 [${this.config.name}] MOVING to target:`, action.target);
       this.moveTowards(action.target, deltaTime);
       this.humanoid.updateWalkAnimation(deltaTime);
     } else if (action.type === 'patrol' && action.target) {
-      console.log(`🛡️ [${this.config.name}] Patrolling to target:`, action.target);
+      console.log(`🛡️ [${this.config.name}] PATROLLING to target:`, action.target);
       this.moveTowards(action.target, deltaTime);
       this.humanoid.updateWalkAnimation(deltaTime);
     } else if (action.type === 'idle') {
+      // More frequent idle logging
+      if (Math.random() < 0.05) {
+        console.log(`💤 [${this.config.name}] IDLE state`);
+      }
+      this.humanoid.updateIdleAnimation(deltaTime);
+    } else if (action.type === 'interact') {
+      if (Math.random() < 0.1) {
+        console.log(`👋 [${this.config.name}] INTERACTING with player`);
+      }
       this.humanoid.updateIdleAnimation(deltaTime);
     }
   }
