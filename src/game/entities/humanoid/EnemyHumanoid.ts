@@ -1141,21 +1141,33 @@ export abstract class EnemyHumanoid {
       specular: 0x333333
     });
 
-    for (let i = 0; i < 5; i++) {
-      const angle = (i / 4) * Math.PI - Math.PI / 2;
+    // Define finger positions extending from the "palm" of the hand
+    const fingerPositions = [
+      { x: -0.06, y: -0.15, z: 0.03, name: 'thumb' },     // Thumb - offset to side
+      { x: -0.03, y: -0.18, z: 0.02, name: 'index' },    // Index finger
+      { x: 0.0, y: -0.19, z: 0.0, name: 'middle' },      // Middle finger (longest)
+      { x: 0.03, y: -0.18, z: -0.02, name: 'ring' },     // Ring finger
+      { x: 0.06, y: -0.16, z: -0.03, name: 'pinky' }     // Pinky (shortest)
+    ];
+
+    fingerPositions.forEach((pos, i) => {
       const finger = new THREE.Mesh(fingerGeometry, fingerMaterial.clone());
-      // Add slight spread to fingers and adjust positioning
-      const fingerSpread = (i - 2) * 0.02; // Spread fingers slightly
-      finger.position.set(
-        Math.cos(angle) * 0.16 + fingerSpread,
-        -0.1,
-        Math.sin(angle) * 0.16
-      );
-      // Better finger angle for natural downward curl
-      finger.rotation.x = Math.PI / 2 + 0.3;
+      
+      // Position fingers extending from the hand/wrist
+      finger.position.set(pos.x, pos.y, pos.z);
+      
+      // Rotate fingers to point outward from hand naturally
+      if (pos.name === 'thumb') {
+        // Thumb has different orientation
+        finger.rotation.set(0.2, 0, 0.8);
+      } else {
+        // Other fingers point forward and slightly downward
+        finger.rotation.set(0.3, 0, 0);
+      }
+      
       finger.castShadow = true;
       wrist.add(finger);
-    }
+    });
   }
 
   private createShinsAndFeet(
