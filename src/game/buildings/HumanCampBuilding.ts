@@ -197,7 +197,9 @@ export class HumanCampBuilding extends BaseBuilding {
   }
 
   private createCampChests(): void {
-    console.log('💰 Creating camp chests');
+    console.log('💰 [HumanCampBuilding] Creating camp chests - START');
+    console.log('💰 [HumanCampBuilding] Camp position:', this.position);
+    console.log('💰 [HumanCampBuilding] ChestInteractionSystem available:', !!this.chestInteractionSystem);
     
     if (!this.chestInteractionSystem) {
       console.warn('💰 [HumanCampBuilding] ChestInteractionSystem not available, skipping chest creation');
@@ -208,10 +210,12 @@ export class HumanCampBuilding extends BaseBuilding {
     const commonChestPosition = this.position.clone().add(
       new THREE.Vector3(
         (Math.random() - 0.5) * 4, // Reduced from 6 to 4 units
-        0,
+        0, // Y=0 to ensure floor level
         (Math.random() - 0.5) * 4  // Reduced from 6 to 4 units
       )
     );
+    
+    console.log('💰 [HumanCampBuilding] Common chest position:', commonChestPosition);
     
     const commonChest = this.chestInteractionSystem.createChest({
       type: 'common',
@@ -221,16 +225,19 @@ export class HumanCampBuilding extends BaseBuilding {
     
     this.chests.push(commonChest);
     this.addComponent(commonChest.getGroup(), 'common_chest', 'wood');
+    console.log('💰 [HumanCampBuilding] Common chest created successfully');
     
     // Maybe add rare chest
     if (this.config.hasRareChest) {
       const rareChestPosition = this.position.clone().add(
         new THREE.Vector3(
           (Math.random() - 0.5) * 5, // Reduced from 8 to 5 units
-          0,
+          0, // Y=0 to ensure floor level
           (Math.random() - 0.5) * 5  // Reduced from 8 to 5 units
         )
       );
+      
+      console.log('💰 [HumanCampBuilding] Rare chest position:', rareChestPosition);
       
       const rareChest = this.chestInteractionSystem.createChest({
         type: 'rare',
@@ -241,10 +248,10 @@ export class HumanCampBuilding extends BaseBuilding {
       this.chests.push(rareChest);
       this.addComponent(rareChest.getGroup(), 'rare_chest', 'metal');
       
-      console.log('💰 Added rare chest to camp');
+      console.log('💰 [HumanCampBuilding] Rare chest created successfully');
     }
     
-    console.log(`💰 Created ${this.chests.length} chest(s) for camp`);
+    console.log(`💰 [HumanCampBuilding] Camp chest creation COMPLETE - ${this.chests.length} chest(s) for camp`);
   }
 
   private createCampSupplies(): void {

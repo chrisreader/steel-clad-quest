@@ -93,7 +93,7 @@ export class GameEngine {
         this.buildingManager.setAudioManager(this.audioManager);
         this.buildingManager.setEffectsManager(this.effectsManager);
       }
-      
+
       // Also initialize SceneManager with the managers for consistency
       if (this.audioManager) {
         this.sceneManager.initializeWithAudioManager(this.audioManager);
@@ -104,12 +104,6 @@ export class GameEngine {
       
       // Create default world AFTER managers are set
       this.sceneManager.createDefaultWorld();
-      
-      // Create buildings with fireplaces
-      this.createBuildings();
-      
-      // Force create a test camp near spawn with NPCs
-      this.createTestCampWithNPC();
       
       // Preload audio
       try {
@@ -134,10 +128,17 @@ export class GameEngine {
       this.chestInteractionSystem = new ChestInteractionSystem(this.renderEngine.getScene(), this.player);
       // REMOVED: setupChestsInTavern() - chests should only spawn in human camps
       
-      // Set chest interaction system for building manager
+      // Set chest interaction system for building manager BEFORE building creation
       if (this.buildingManager && this.chestInteractionSystem) {
         this.buildingManager.setChestInteractionSystem(this.chestInteractionSystem);
+        console.log("🏕️ [GameEngine] ChestInteractionSystem set for BuildingManager");
       }
+      
+      // Create buildings with fireplaces AFTER chest system is ready
+      this.createBuildings();
+      
+      // Force create a test camp near spawn with NPCs AFTER chest system is ready
+      this.createTestCampWithNPC();
       
       // Initialize enemy spawning system in scene manager
       if (this.sceneManager) {
