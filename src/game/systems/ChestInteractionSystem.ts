@@ -35,7 +35,7 @@ export class ChestInteractionSystem {
     this.chests.set(config.id, chest);
     this.scene.add(chest.getGroup());
 
-    console.log(`💰 [ChestInteractionSystem] Created ${config.type} chest at:`, config.position);
+    console.log(`💰 [ChestInteractionSystem] Created ${config.type} chest at:`, config.position, `ID: ${config.id}`);
     return chest;
   }
 

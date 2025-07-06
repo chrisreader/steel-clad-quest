@@ -132,7 +132,7 @@ export class GameEngine {
       
       // Create chest interaction system
       this.chestInteractionSystem = new ChestInteractionSystem(this.renderEngine.getScene(), this.player);
-      this.setupChestsInTavern();
+      // REMOVED: setupChestsInTavern() - chests should only spawn in human camps
       
       // Initialize enemy spawning system in scene manager
       if (this.sceneManager) {

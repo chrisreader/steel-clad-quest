@@ -193,12 +193,12 @@ export class HumanCampBuilding extends BaseBuilding {
   private createCampChests(): void {
     console.log('💰 Creating camp chests');
     
-    // Always have at least one common chest
+    // Always have at least one common chest - positioned close to fireplace
     const commonChestPosition = this.position.clone().add(
       new THREE.Vector3(
-        (Math.random() - 0.5) * 6,
+        (Math.random() - 0.5) * 4, // Reduced from 6 to 4 units
         0,
-        (Math.random() - 0.5) * 6
+        (Math.random() - 0.5) * 4  // Reduced from 6 to 4 units
       )
     );
     
@@ -216,9 +216,9 @@ export class HumanCampBuilding extends BaseBuilding {
     if (this.config.hasRareChest) {
       const rareChestPosition = this.position.clone().add(
         new THREE.Vector3(
-          (Math.random() - 0.5) * 8,
+          (Math.random() - 0.5) * 5, // Reduced from 8 to 5 units
           0,
-          (Math.random() - 0.5) * 8
+          (Math.random() - 0.5) * 5  // Reduced from 8 to 5 units
         )
       );
       
