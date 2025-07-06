@@ -336,6 +336,16 @@ export class HumanCampBuilding extends BaseBuilding {
       console.log('🏕️ [HumanCampBuilding] Attempting to recover missing camp keeper NPC');
       this.createCampKeeper();
     }
+    
+    // Health check for camp keeper
+    if (this.campKeeper && this.campKeeper.getIsDead()) {
+      console.warn('🏕️ [HumanCampBuilding] Camp keeper is dead, attempting recreation');
+      this.campKeeper.dispose();
+      this.campKeeper = null;
+      if (this.audioManager && this.effectsManager) {
+        this.createCampKeeper();
+      }
+    }
   }
 
   public updateTimeOfDay(gameTime: number, timePhases: any): void {

@@ -20,9 +20,13 @@ export class CampNPC {
   private audioManager: AudioManager;
   private behavior: CampKeeperBehavior;
   private config: CampNPCConfig;
+  private npcId: string;
   
   private walkTime: number = 0;
   private isDead: boolean = false;
+  private lastPosition: THREE.Vector3 = new THREE.Vector3();
+  private stuckTimer: number = 0;
+  private lastMoveTime: number = Date.now();
 
   constructor(
     scene: THREE.Scene,
@@ -34,38 +38,55 @@ export class CampNPC {
     this.config = config;
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
+    this.npcId = `CampNPC_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    console.log(`👤 [CampNPC] Creating camp keeper at position:`, config.position);
+    console.log(`👤 [${this.npcId}] Creating camp keeper "${config.name}" at:`, config.position);
     
-    // Create realistic human using the sophisticated PeacefulHumanoid system
-    this.humanoid = new PeacefulHumanoid(
-      scene,
-      config.position,
-      effectsManager,
-      audioManager,
-      false, // Not tavern keeper type
-      config.useRandomizedAppearance || true, // Use randomized appearance for variety
-      config.toolType || 'dagger' // Default to dagger for camp keeper
-    );
+    // Validate managers
+    if (!effectsManager || !audioManager) {
+      console.error(`❌ [${this.npcId}] Missing managers - Effects: ${!!effectsManager}, Audio: ${!!audioManager}`);
+      this.isDead = true;
+      return;
+    }
     
-    this.setupBehavior();
-    
-    console.log(`👤 [CampNPC] Created realistic camp keeper at position:`, config.position);
+    try {
+      // Create realistic human using the sophisticated PeacefulHumanoid system
+      this.humanoid = new PeacefulHumanoid(
+        scene,
+        config.position,
+        effectsManager,
+        audioManager,
+        false, // Not tavern keeper type
+        config.useRandomizedAppearance || true, // Use randomized appearance for variety
+        config.toolType || 'dagger' // Default to dagger for camp keeper
+      );
+      
+      this.setupBehavior();
+      this.lastPosition.copy(config.position);
+      
+      console.log(`👤✅ [${this.npcId}] Successfully created camp keeper "${config.name}"`);
+    } catch (error) {
+      console.error(`❌ [${this.npcId}] Failed to create camp keeper:`, error);
+      this.isDead = true;
+    }
   }
 
   private setupBehavior(): void {
     this.behavior = new CampKeeperBehavior({
-      wanderRadius: this.config.wanderRadius || 8,
+      wanderRadius: 8, // Consistent radius for all camp NPCs
       moveSpeed: 2.0,
       pauseDuration: 1500,
       interactionRadius: 12
     }, this.config.campCenter);
     
-    console.log(`🧠 [CampNPC] Setup enhanced camp keeper behavior for ${this.config.name} - faster movement, shorter pauses, larger patrol area`);
+    console.log(`🧠 [${this.npcId}] Setup enhanced camp keeper behavior - wanderRadius: 8, speed: 2.0, pause: 1500ms`);
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     if (this.isDead) return;
+
+    // Check if NPC is stuck (hasn't moved in 5 seconds)
+    this.checkIfStuck(deltaTime);
 
     // Update AI behavior
     const action = this.behavior.update(deltaTime, this.getMesh().position, playerPosition);
@@ -74,14 +95,39 @@ export class CampNPC {
     if (action.type === 'move' && action.target) {
       this.moveTowards(action.target, deltaTime);
       this.humanoid.updateWalkAnimation(deltaTime);
-      console.log('🚶 [CampNPC] Moving towards target:', action.target, 'at speed:', 2.0);
+      this.lastMoveTime = Date.now();
+      console.log(`🚶 [${this.npcId}] Moving towards target:`, action.target);
     } else if (action.type === 'idle') {
       this.humanoid.updateIdleAnimation(deltaTime);
-      console.log('🛌 [CampNPC] Standing idle at position:', this.getMesh().position);
+      console.log(`🛌 [${this.npcId}] Standing idle at position:`, this.getMesh().position);
     } else if (action.type === 'interact') {
       this.humanoid.updateIdleAnimation(deltaTime);
-      console.log('💬 [CampNPC] Interacting with player');
+      console.log(`💬 [${this.npcId}] Interacting with player`);
     }
+  }
+
+  private checkIfStuck(deltaTime: number): void {
+    const currentPosition = this.getMesh().position;
+    const distanceMoved = currentPosition.distanceTo(this.lastPosition);
+    
+    if (distanceMoved < 0.1) { // Less than 0.1 units moved
+      this.stuckTimer += deltaTime * 1000; // Convert to milliseconds
+      
+      if (this.stuckTimer > 5000) { // Stuck for 5 seconds
+        console.warn(`⚠️ [${this.npcId}] NPC appears stuck! Resetting behavior...`);
+        this.resetBehavior();
+        this.stuckTimer = 0;
+      }
+    } else {
+      this.stuckTimer = 0;
+      this.lastPosition.copy(currentPosition);
+    }
+  }
+
+  private resetBehavior(): void {
+    console.log(`🔄 [${this.npcId}] Resetting behavior system`);
+    this.setupBehavior();
+    this.lastMoveTime = Date.now();
   }
 
   private moveTowards(target: THREE.Vector3, deltaTime: number): void {
@@ -144,7 +190,7 @@ export class CampNPC {
       name: 'Camp Keeper',
       position: position,
       campCenter: campCenter,
-      wanderRadius: 6,
+      wanderRadius: 8, // Consistent with behavior setup
       useRandomizedAppearance: true,
       toolType: randomTool
     }, effectsManager, audioManager);
