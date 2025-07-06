@@ -37,6 +37,10 @@ export class HumanCampNPC {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
+    // CRITICAL DEBUG - This should ALWAYS show if an NPC is being created
+    console.log(`🚨 [HumanCampNPC] CONSTRUCTOR CALLED for ${config.name} at position:`, config.position);
+    console.error(`🚨 [HumanCampNPC] NPC CONSTRUCTOR - ERROR LOG for visibility:`, config.name);
+    
     console.log(`🏕️ [HumanCampNPC] Starting creation of ${config.name} with tool: ${config.toolType}`);
     
     // Create sophisticated human using PeacefulHumanoid (same as tavern keeper)
@@ -55,6 +59,7 @@ export class HumanCampNPC {
     console.log(`👤 [HumanCampNPC] Created sophisticated camp human ${config.name} with ${config.toolType || 'no tool'}`);
     console.log(`🎯 [HumanCampNPC] Position:`, config.position);
     console.log(`🎭 [HumanCampNPC] Mesh created:`, !!this.humanoid.getMesh());
+    console.error(`🚨 [HumanCampNPC] NPC CREATION COMPLETE:`, config.name);
   }
 
   private setupBehavior(): void {
@@ -77,24 +82,20 @@ export class HumanCampNPC {
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     if (this.isDead) return;
 
-    // Enhanced debug logging for camp NPCs - more frequent to diagnose movement issues
-    if (Math.random() < 0.2) { // Increased to 20% chance for debugging
-      console.log(`🏕️ [${this.config.name}] === UPDATE DEBUG ===`);
-      console.log(`🏕️ [${this.config.name}] Position:`, this.getMesh().position.clone());
-      console.log(`🏕️ [${this.config.name}] Player pos:`, playerPosition);
-      console.log(`🏕️ [${this.config.name}] Behavior debug:`, this.behavior.getDebugInfo());
-    }
+    // ALWAYS log for debugging - remove randomness
+    console.log(`🏕️ [${this.config.name}] === UPDATE DEBUG ===`);
+    console.log(`🏕️ [${this.config.name}] Position:`, this.getMesh().position.clone());
+    console.log(`🏕️ [${this.config.name}] Player pos:`, playerPosition);
+    console.log(`🏕️ [${this.config.name}] Behavior debug:`, this.behavior.getDebugInfo());
 
     // Update AI behavior
     const action = this.behavior.update(deltaTime, this.getMesh().position, playerPosition);
     
-    // Enhanced debug logging for actions
-    if (Math.random() < 0.1) { // 10% chance for action logging
-      console.log(`🏕️ [${this.config.name}] Action result:`, action);
-      console.log(`🏕️ [${this.config.name}] Current position:`, this.getMesh().position.clone());
-      if (action.target) {
-        console.log(`🏕️ [${this.config.name}] Target distance:`, this.getMesh().position.distanceTo(action.target).toFixed(2));
-      }
+    // ALWAYS log actions for debugging
+    console.log(`🏕️ [${this.config.name}] Action result:`, action);
+    console.log(`🏕️ [${this.config.name}] Current position:`, this.getMesh().position.clone());
+    if (action.target) {
+      console.log(`🏕️ [${this.config.name}] Target distance:`, this.getMesh().position.distanceTo(action.target).toFixed(2));
     }
     
     // Handle movement based on behavior with enhanced debugging
@@ -107,15 +108,10 @@ export class HumanCampNPC {
       this.moveTowards(action.target, deltaTime);
       this.humanoid.updateWalkAnimation(deltaTime);
     } else if (action.type === 'idle') {
-      // More frequent idle logging
-      if (Math.random() < 0.05) {
-        console.log(`💤 [${this.config.name}] IDLE state`);
-      }
+      console.log(`💤 [${this.config.name}] IDLE state`);
       this.humanoid.updateIdleAnimation(deltaTime);
     } else if (action.type === 'interact') {
-      if (Math.random() < 0.1) {
-        console.log(`👋 [${this.config.name}] INTERACTING with player`);
-      }
+      console.log(`👋 [${this.config.name}] INTERACTING with player`);
       this.humanoid.updateIdleAnimation(deltaTime);
     }
   }

@@ -58,15 +58,13 @@ export class CampNPCBehavior {
     const now = Date.now();
     const actionDuration = now - this.actionStartTime;
 
-    // More frequent debug logging for behavior (increased from 0.5% to 10%)
-    if (Math.random() < 0.1) {
-      console.log(`🏕️ [CampNPCBehavior] === BEHAVIOR UPDATE ===`);
-      console.log(`🏕️ [CampNPCBehavior] Current action: ${this.currentAction.type}`);
-      console.log(`🏕️ [CampNPCBehavior] Action duration: ${actionDuration}ms`);
-      console.log(`🏕️ [CampNPCBehavior] NPC position:`, npcPosition);
-      console.log(`🏕️ [CampNPCBehavior] Camp center:`, this.campCenter);
-      console.log(`🏕️ [CampNPCBehavior] Current waypoint:`, this.currentWaypoint);
-    }
+    // ALWAYS log for debugging - remove randomness
+    console.log(`🏕️ [CampNPCBehavior] === BEHAVIOR UPDATE ===`);
+    console.log(`🏕️ [CampNPCBehavior] Current action: ${this.currentAction.type}`);
+    console.log(`🏕️ [CampNPCBehavior] Action duration: ${actionDuration}ms`);
+    console.log(`🏕️ [CampNPCBehavior] NPC position:`, npcPosition);
+    console.log(`🏕️ [CampNPCBehavior] Camp center:`, this.campCenter);
+    console.log(`🏕️ [CampNPCBehavior] Current waypoint:`, this.currentWaypoint);
 
     // Check if we should interact with the player when they're nearby
     if (playerPosition && this.shouldInteractWithPlayer(npcPosition, playerPosition)) {
@@ -130,10 +128,8 @@ export class CampNPCBehavior {
       }
     }
     
-    // Still idling
-    if (Math.random() < 0.02) { // 2% chance to log idle state
-      console.log(`🏕️ [CampNPC] Still idling... ${actionDuration}ms / ${activePauseDuration}ms`);
-    }
+    // Still idling - ALWAYS log for debugging
+    console.log(`🏕️ [CampNPC] Still idling... ${actionDuration}ms / ${activePauseDuration}ms`);
     
     return { type: 'idle' };
   }

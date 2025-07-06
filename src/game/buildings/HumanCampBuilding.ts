@@ -28,10 +28,15 @@ export class HumanCampBuilding extends BaseBuilding {
   constructor(scene: THREE.Scene, physicsManager: any, position: THREE.Vector3, config?: Partial<CampConfig>) {
     super(scene, physicsManager, position);
     
+    // CRITICAL DEBUG - This should ALWAYS show if a camp is being created
+    console.log(`🚨 [HumanCampBuilding] CONSTRUCTOR CALLED at position:`, position);
+    console.error(`🚨 [HumanCampBuilding] CONSTRUCTOR CALLED - ERROR LOG for visibility`);
+    
     // Generate random camp configuration
     this.config = this.generateCampConfig(config);
     
     console.log(`🏕️ [HumanCampBuilding] Creating ${this.config.size} human camp with ${this.config.npcCount} NPCs`);
+    console.error(`🏕️ [HumanCampBuilding] Camp config generated:`, this.config);
   }
 
   public setAudioManager(audioManager: AudioManager): void {
@@ -44,6 +49,7 @@ export class HumanCampBuilding extends BaseBuilding {
 
   protected createStructure(): void {
     console.log(`🏕️ [HumanCampBuilding] Creating camp structure at position:`, this.position);
+    console.error(`🚨 [HumanCampBuilding] CREATE STRUCTURE CALLED - ERROR LOG for visibility`);
 
     // 1. Create central fireplace
     this.createCampFireplace();
@@ -61,9 +67,12 @@ export class HumanCampBuilding extends BaseBuilding {
     this.createCampSupplies();
 
     // 6. Create NPCs
+    console.error(`🚨 [HumanCampBuilding] ABOUT TO CREATE NPCs`);
     this.createCampNPCs();
+    console.error(`🚨 [HumanCampBuilding] FINISHED CREATING NPCs`);
 
     console.log(`🏕️ [HumanCampBuilding] Camp structure complete with ${this.components.length} components`);
+    console.error(`🚨 [HumanCampBuilding] STRUCTURE CREATION COMPLETE`);
   }
 
   private generateCampConfig(config?: Partial<CampConfig>): CampConfig {
@@ -321,15 +330,11 @@ export class HumanCampBuilding extends BaseBuilding {
       chest.update(deltaTime);
     });
     
-    // Update NPCs with detailed logging
-    if (Math.random() < 0.1) { // Log 10% of the time
-      console.log(`🏕️ [HumanCampBuilding] Updating ${this.npcs.length} NPCs. Player position:`, playerPosition);
-    }
+    // ALWAYS log NPCs for debugging - remove randomness
+    console.log(`🏕️ [HumanCampBuilding] Updating ${this.npcs.length} NPCs. Player position:`, playerPosition);
     
     this.npcs.forEach((npc, index) => {
-      if (Math.random() < 0.05) { // Log 5% of the time per NPC
-        console.log(`🏕️ [HumanCampBuilding] Updating NPC ${index}: ${npc.getName()}`);
-      }
+      console.log(`🏕️ [HumanCampBuilding] Updating NPC ${index}: ${npc.getName()}`);
       npc.update(deltaTime, playerPosition);
     });
   }
