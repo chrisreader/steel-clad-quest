@@ -61,7 +61,9 @@ export class HumanCampBuilding extends BaseBuilding {
     this.createCampSupplies();
 
     // 6. Create camp keeper
+    console.log('🏕️ [HumanCampBuilding] About to create camp keeper');
     this.createCampKeeper();
+    console.log('🏕️ [HumanCampBuilding] Camp keeper creation finished');
 
     console.log(`🏕️ [HumanCampBuilding] Camp structure complete with ${this.components.length} components`);
   }
@@ -265,6 +267,10 @@ export class HumanCampBuilding extends BaseBuilding {
   }
 
   private createCampKeeper(): void {
+    console.log('🏕️ [HumanCampBuilding] createCampKeeper called');
+    console.log('🏕️ [HumanCampBuilding] AudioManager:', !!this.audioManager);
+    console.log('🏕️ [HumanCampBuilding] EffectsManager:', !!this.effectsManager);
+    
     if (!this.audioManager || !this.effectsManager) {
       console.warn('🏕️ [HumanCampBuilding] AudioManager or EffectsManager not set. Cannot create camp keeper.');
       return;
@@ -277,6 +283,8 @@ export class HumanCampBuilding extends BaseBuilding {
     // Adjust position to be relative to camp position
     keeperPosition.add(this.position);
     
+    console.log('👤 [HumanCampBuilding] Camp keeper position:', keeperPosition);
+    
     this.campKeeper = CampNPC.createCampKeeper(
       this.scene,
       keeperPosition,
@@ -284,7 +292,7 @@ export class HumanCampBuilding extends BaseBuilding {
       this.audioManager
     );
     
-    console.log('👤 [HumanCampBuilding] Camp keeper created successfully');
+    console.log('👤 [HumanCampBuilding] Camp keeper created:', !!this.campKeeper);
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
