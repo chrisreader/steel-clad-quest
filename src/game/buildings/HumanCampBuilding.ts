@@ -6,7 +6,7 @@ import { FireplaceComponent } from './components/FireplaceComponent';
 import { TreasureChest } from '../world/objects/TreasureChest';
 import { AudioManager } from '../engine/AudioManager';
 import { EffectsManager } from '../engine/EffectsManager';
-import { HumanNPC } from '../entities/humanoid/HumanNPC';
+import { HumanCampNPC } from '../entities/humanoid/HumanCampNPC';
 
 export interface CampConfig {
   size: 'small' | 'medium' | 'large';
@@ -22,7 +22,7 @@ export class HumanCampBuilding extends BaseBuilding {
   private fireplaceComponent: FireplaceComponent | null = null;
   private tents: THREE.Group[] = [];
   private chests: TreasureChest[] = [];
-  private npcs: HumanNPC[] = [];
+  private npcs: HumanCampNPC[] = [];
   private furniture: THREE.Group[] = [];
 
   constructor(scene: THREE.Scene, physicsManager: any, position: THREE.Vector3, config?: Partial<CampConfig>) {
@@ -295,7 +295,7 @@ export class HumanCampBuilding extends BaseBuilding {
         )
       );
       
-      const npc = HumanNPC.createCampNPC(
+      const npc = HumanCampNPC.createCampNPC(
         this.scene,
         npcPosition,
         this.effectsManager!,
@@ -370,7 +370,7 @@ export class HumanCampBuilding extends BaseBuilding {
     return [...this.chests];
   }
 
-  public getNPCs(): HumanNPC[] {
+  public getNPCs(): HumanCampNPC[] {
     return [...this.npcs];
   }
 

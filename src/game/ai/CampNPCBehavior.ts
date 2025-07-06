@@ -219,27 +219,28 @@ export class CampNPCBehavior {
   }
 
   private selectNextWaypoint(currentPosition: THREE.Vector3): THREE.Vector3 {
-    // Choose camp waypoints in sequence, but skip if too close
-    let attempts = 0;
+    // Simple waypoint selection with guaranteed distance
     let selectedWaypoint: THREE.Vector3;
+    let attempts = 0;
     
     do {
-      this.currentWaypointIndex = (this.currentWaypointIndex + 1) % this.campWaypoints.length;
-      selectedWaypoint = this.campWaypoints[this.currentWaypointIndex].clone();
+      // Generate a random waypoint around the camp
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 2 + Math.random() * 4; // 2-6 units from center
+      
+      selectedWaypoint = new THREE.Vector3(
+        Math.cos(angle) * distance,
+        0,
+        Math.sin(angle) * distance
+      );
+      
       attempts++;
     } while (
-      currentPosition.distanceTo(selectedWaypoint) < 2.5 && 
-      attempts < this.campWaypoints.length
+      currentPosition.distanceTo(selectedWaypoint) < 2.0 && 
+      attempts < 10
     );
     
-    // Add random variation for natural movement
-    const randomOffset = new THREE.Vector3(
-      (Math.random() - 0.5) * 1.5,
-      0,
-      (Math.random() - 0.5) * 1.5
-    );
-    
-    selectedWaypoint.add(randomOffset);
+    console.log(`🎯 [CampNPC] Selected waypoint:`, selectedWaypoint, `Distance: ${currentPosition.distanceTo(selectedWaypoint).toFixed(2)}m`);
     
     return selectedWaypoint;
   }
