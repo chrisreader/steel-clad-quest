@@ -80,7 +80,7 @@ export class Enemy {
       // Create interface wrapper for backward compatibility
       this.enemy = this.createGreenHumanoidInterface(this.humanoidEnemy);
       
-      console.log(`🗡️ [Enemy] Created green humanoid enemy (replaced goblin) with preserved functionality`);
+      console.log(`👹 [Enemy] Created GOBLIN with extremely long ears - position: ${position.x}, ${position.z}`);
     } else {
       this.enemy = this.createEnemy(type, position);
       console.log("🗡️ [Enemy] Created legacy enemy with MMORPG AI");

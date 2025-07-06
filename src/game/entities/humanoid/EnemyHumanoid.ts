@@ -929,16 +929,16 @@ export abstract class EnemyHumanoid {
       // Add pointed ear tips for extra long goblin ears
       const tipGeometry = new THREE.ConeGeometry(0.02, 0.1, 6); // Slightly bigger tips for longer ears
       
-      // Left ear tip - positioned at end of longer ear
+      // Left ear tip - positioned at end of extremely long ear
       const leftTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
-      leftTip.position.set(-bodyScale.head.radius * 0.9, 0.45, 0); // Much higher for longer ears
+      leftTip.position.set(-bodyScale.head.radius * 0.9, 0.7, 0); // Positioned at end of 1.0 length ears
       leftTip.rotation.z = -0.3;
       leftTip.castShadow = true;
       headGroup.add(leftTip);
       
-      // Right ear tip - positioned at end of longer ear
+      // Right ear tip - positioned at end of extremely long ear
       const rightTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
-      rightTip.position.set(bodyScale.head.radius * 0.9, 0.45, 0); // Much higher for longer ears
+      rightTip.position.set(bodyScale.head.radius * 0.9, 0.7, 0); // Positioned at end of 1.0 length ears
       rightTip.rotation.z = 0.3;
       rightTip.castShadow = true;
       headGroup.add(rightTip);
