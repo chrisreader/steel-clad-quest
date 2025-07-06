@@ -289,6 +289,7 @@ export class HumanCampBuilding extends BaseBuilding {
       this.campKeeper = CampNPC.createCampKeeper(
         this.scene,
         keeperPosition,
+        this.position, // Pass camp center position for waypoint calculations
         this.effectsManager,
         this.audioManager
       );

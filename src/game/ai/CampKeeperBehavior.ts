@@ -19,9 +19,10 @@ export class CampKeeperBehavior {
   private actionStartTime: number = Date.now();
   private currentWaypoint: THREE.Vector3 | null = null;
   private lastWaypointTime: number = 0;
+  private campCenter: THREE.Vector3;
   
   // Camp-specific waypoints (relative to camp center)
-  private campWaypoints: THREE.Vector3[] = [
+  private relativeWaypoints: THREE.Vector3[] = [
     new THREE.Vector3(0, 0, 0),      // Near fireplace (center)
     new THREE.Vector3(-2, 0, -2),    // Near tent area
     new THREE.Vector3(2, 0, 2),      // Opposite tent area
@@ -34,9 +35,10 @@ export class CampKeeperBehavior {
   private currentWaypointIndex: number = 0;
   private isAtWaypoint: boolean = false;
 
-  constructor(config: CampKeeperConfig) {
+  constructor(config: CampKeeperConfig, campCenter: THREE.Vector3) {
     this.config = config;
-    console.log('🏕️ [CampKeeperBehavior] Initialized with waypoint-based movement');
+    this.campCenter = campCenter.clone();
+    console.log('🏕️ [CampKeeperBehavior] Initialized with camp center:', this.campCenter, 'and waypoint-based movement');
   }
 
   public update(
@@ -155,12 +157,13 @@ export class CampKeeperBehavior {
     let selectedWaypoint: THREE.Vector3;
     
     do {
-      this.currentWaypointIndex = (this.currentWaypointIndex + 1) % this.campWaypoints.length;
-      selectedWaypoint = this.campWaypoints[this.currentWaypointIndex].clone();
+      this.currentWaypointIndex = (this.currentWaypointIndex + 1) % this.relativeWaypoints.length;
+      // Create absolute waypoint by adding relative waypoint to camp center
+      selectedWaypoint = this.campCenter.clone().add(this.relativeWaypoints[this.currentWaypointIndex]);
       attempts++;
     } while (
       currentPosition.distanceTo(selectedWaypoint) < 2.0 && 
-      attempts < this.campWaypoints.length
+      attempts < this.relativeWaypoints.length
     );
     
     // Add slight random variation to make movement less predictable
@@ -172,6 +175,7 @@ export class CampKeeperBehavior {
     
     selectedWaypoint.add(randomOffset);
     
+    console.log('🚶 [CampKeeper] Selected waypoint:', selectedWaypoint, 'for camp at:', this.campCenter);
     return selectedWaypoint;
   }
 
@@ -194,7 +198,8 @@ export class CampKeeperBehavior {
       currentWaypoint: this.currentWaypointIndex,
       isAtWaypoint: this.isAtWaypoint,
       waypointTarget: this.currentWaypoint,
-      totalWaypoints: this.campWaypoints.length
+      totalWaypoints: this.relativeWaypoints.length,
+      campCenter: this.campCenter
     };
   }
 }

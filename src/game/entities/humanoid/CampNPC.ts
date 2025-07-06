@@ -7,6 +7,7 @@ import { CampKeeperBehavior } from '../../ai/CampKeeperBehavior';
 export interface CampNPCConfig {
   name: string;
   position: THREE.Vector3;
+  campCenter: THREE.Vector3;
   wanderRadius?: number;
   useRandomizedAppearance?: boolean;
   toolType?: 'dagger' | 'sword' | 'staff' | 'axe';
@@ -58,9 +59,9 @@ export class CampNPC {
       moveSpeed: 1.5,
       pauseDuration: 2000,
       interactionRadius: 12
-    });
+    }, this.config.campCenter);
     
-    console.log(`🧠 [CampNPC] Setup camp keeper behavior for ${this.config.name}`);
+    console.log(`🧠 [CampNPC] Setup camp keeper behavior for ${this.config.name} at camp center:`, this.config.campCenter);
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
@@ -125,15 +126,19 @@ export class CampNPC {
   public static createCampKeeper(
     scene: THREE.Scene,
     position: THREE.Vector3,
+    campCenter: THREE.Vector3,
     effectsManager: EffectsManager,
     audioManager: AudioManager
   ): CampNPC {
     const tools = ['dagger', 'sword', 'staff', 'axe'];
     const randomTool = tools[Math.floor(Math.random() * tools.length)] as 'dagger' | 'sword' | 'staff' | 'axe';
     
+    console.log('👤 [CampNPC] Creating camp keeper at position:', position, 'for camp at:', campCenter);
+    
     return new CampNPC(scene, {
       name: 'Camp Keeper',
       position: position,
+      campCenter: campCenter,
       wanderRadius: 6,
       useRandomizedAppearance: true,
       toolType: randomTool
