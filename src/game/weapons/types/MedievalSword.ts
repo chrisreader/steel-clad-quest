@@ -95,13 +95,13 @@ export class MedievalSword extends Sword {
       swordGroup.remove(oldGuard);
       
       // Create tapered rectangular crossguard - left side 
-      // Create a custom tapered rectangular geometry
+      // Create a custom tapered rectangular geometry extending outward
       const leftGuardShape = new THREE.Shape();
-      leftGuardShape.moveTo(-0.04, 0);      // Start at center, left
-      leftGuardShape.lineTo(-0.02, 0.25);   // Taper to narrower at tip
-      leftGuardShape.lineTo(0.02, 0.25);    // Right side of tip
-      leftGuardShape.lineTo(0.04, 0);       // Back to center, right
-      leftGuardShape.lineTo(-0.04, 0);      // Close shape
+      leftGuardShape.moveTo(0, -0.04);      // Start at center
+      leftGuardShape.lineTo(-0.25, -0.02);  // Extend left and taper to narrower tip
+      leftGuardShape.lineTo(-0.25, 0.02);   // Top of tip
+      leftGuardShape.lineTo(0, 0.04);       // Back to center top
+      leftGuardShape.lineTo(0, -0.04);      // Close shape
       
       const leftGuardGeometry = new THREE.ExtrudeGeometry(leftGuardShape, {
         depth: 0.08,
@@ -116,18 +116,18 @@ export class MedievalSword extends Sword {
       });
       
       const leftGuard = new THREE.Mesh(leftGuardGeometry, guardMaterial);
-      leftGuard.position.set(-0.125, 0, -0.3);
-      leftGuard.rotation.x = Math.PI / 2; // Rotate to be horizontal
+      leftGuard.position.set(0, 0, -0.3); // Center position
+      leftGuard.rotation.z = 0; // No rotation needed
       leftGuard.castShadow = true;
       swordGroup.add(leftGuard);
 
       // Create tapered rectangular crossguard - right side
       const rightGuardShape = new THREE.Shape();
-      rightGuardShape.moveTo(-0.04, 0);      // Start at center, left
-      rightGuardShape.lineTo(-0.02, -0.25);  // Taper to narrower at tip (negative for right side)
-      rightGuardShape.lineTo(0.02, -0.25);   // Right side of tip
-      rightGuardShape.lineTo(0.04, 0);       // Back to center, right
-      rightGuardShape.lineTo(-0.04, 0);      // Close shape
+      rightGuardShape.moveTo(0, -0.04);      // Start at center
+      rightGuardShape.lineTo(0.25, -0.02);   // Extend right and taper to narrower tip
+      rightGuardShape.lineTo(0.25, 0.02);    // Top of tip
+      rightGuardShape.lineTo(0, 0.04);       // Back to center top
+      rightGuardShape.lineTo(0, -0.04);      // Close shape
       
       const rightGuardGeometry = new THREE.ExtrudeGeometry(rightGuardShape, {
         depth: 0.08,
@@ -135,8 +135,8 @@ export class MedievalSword extends Sword {
       });
       
       const rightGuard = new THREE.Mesh(rightGuardGeometry, guardMaterial);
-      rightGuard.position.set(0.125, 0, -0.3);
-      rightGuard.rotation.x = Math.PI / 2; // Rotate to be horizontal
+      rightGuard.position.set(0, 0, -0.3); // Center position
+      rightGuard.rotation.z = 0; // No rotation needed
       rightGuard.castShadow = true;
       swordGroup.add(rightGuard);
       
