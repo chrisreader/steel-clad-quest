@@ -28,15 +28,15 @@ export class FireLightingSystem {
   private createMassiveLightingSystem(): void {
     // PERFORMANCE: Single optimized light for maximum performance
     
-    // Single primary fire light - optimized for performance
+    // Single primary fire light - strong lighting with shadows
     const primaryLight = new THREE.PointLight(
       this.config.color,
-      4.0, // Reduced intensity
-      35   // Reduced range
+      8.0, // Strong intensity for shadow casting
+      50   // Good range for lighting area
     );
     primaryLight.position.copy(this.position);
     primaryLight.position.y += 0.5;
-    primaryLight.castShadow = false; // Disabled shadows for performance
+    primaryLight.castShadow = true; // Re-enabled shadows for realism
     
     this.lights.push(primaryLight);
     this.scene.add(primaryLight);
@@ -69,10 +69,10 @@ export class FireLightingSystem {
     if (primaryLight) {
       const intensityVariation = this.cachedSin1 + this.cachedSin2;
       primaryLight.intensity = Math.max(
-        2.5, // Reduced minimum for performance
+        6.0, // Strong minimum for good shadows
         Math.min(
-          4.5, // Reduced maximum for performance
-          4.0 + intensityVariation * (adjustedBaseIntensity / this.config.baseIntensity)
+          10.0, // Strong maximum for dramatic lighting
+          8.0 + intensityVariation * (adjustedBaseIntensity / this.config.baseIntensity)
         )
       );
 
@@ -89,7 +89,7 @@ export class FireLightingSystem {
     const primaryLight = this.lights[0];
     
     if (primaryLight) {
-      primaryLight.intensity = Math.max(2.0, 4.0 * multiplier);
+      primaryLight.intensity = Math.max(6.0, 8.0 * multiplier);
     }
     
     this.timeAwareIntensity = new TimeAwareFireIntensity(this.config.baseIntensity * multiplier);

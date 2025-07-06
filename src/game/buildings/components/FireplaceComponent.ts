@@ -80,8 +80,8 @@ export class FireplaceComponent {
       return;
     }
     
-    // Turn fire on at night (18:00-6:00), off during day for camp fires
-    const isNightTime = gameTime >= 18 || gameTime <= 6;
+    // Turn fire on at sunset (19:00) and off at sunrise (6:00) for camp fires
+    const isNightTime = gameTime >= 19 || gameTime <= 6;
     
     if (isNightTime && !this.fireActive) {
       this.lightFire();
@@ -117,8 +117,8 @@ export class FireplaceComponent {
       particleCount: 45,
       smokeEnabled: true,
       emberCount: 12,
-      lightIntensity: 10.0, // MASSIVE intensity for landscape visibility  
-      lightDistance: 120    // EXTREME range for doorway spillover effect
+      lightIntensity: 12.0, // Strong intensity for realistic shadow casting  
+      lightDistance: 60     // Good range for area lighting
     });
     
     console.log(`🔥 Fire '${this.fireplaceId}' lit with MASSIVE landscape-reaching lighting`);
