@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { EnemyType } from '../../../types/GameTypes';
 import { HumanoidConfig } from './EnemyHumanoid';
+import { HumanMaterialManager } from './HumanMaterialManager';
 
 export class HumanBodyConfig {
   /**
@@ -120,12 +121,7 @@ export class HumanBodyConfig {
     const armPositionX = bodyRadius * 0.85; // Exact arm attachment position
     
     // Create fabric material with realistic properties
-    const shirtMaterial = new THREE.MeshPhongMaterial({
-      color: tshirtColor,
-      shininess: 5,         // Low shininess for fabric
-      specular: 0x111111,   // Minimal specular for cotton-like appearance
-      transparent: false
-    });
+    const shirtMaterial = HumanMaterialManager.createClothingMaterial(tshirtColor, 'shirt');
     
     // 1. Main torso section - matches the EXACT body shape from EnemyHumanoid.ts but slightly larger
     const torsoGeometry = new THREE.CylinderGeometry(
@@ -358,12 +354,7 @@ export class HumanBodyConfig {
     const shinLength = 0.55;      // bodyScale.shin.length from config
     
     // Create fabric material with realistic properties (same as t-shirt)
-    const pantsMaterial = new THREE.MeshPhongMaterial({
-      color: pantsColor,
-      shininess: 5,         // Low shininess for fabric
-      specular: 0x111111,   // Minimal specular for cotton-like appearance
-      transparent: false
-    });
+    const pantsMaterial = HumanMaterialManager.createClothingMaterial(pantsColor, 'pants');
     
     // 1. Upper leg (thigh) pants sections - EXACT same size as legs but with fabric allowance
     const thighGeometry = new THREE.CylinderGeometry(
@@ -449,24 +440,4 @@ export class HumanBodyConfig {
     return pantsGroup;
   }
 
-  /**
-   * Creates clothing overlay for human NPCs (legacy method)
-   */
-  public static createClothing(bodyRadius: number, bodyHeight: number, clothingColor: number = 0x8B4513): THREE.Mesh {
-    // Create simple tunic/apron overlay
-    const clothingGeometry = new THREE.CylinderGeometry(
-      bodyRadius * 1.15, 
-      bodyRadius * 1.1, 
-      bodyHeight * 0.8, 
-      16, 4
-    );
-    
-    const clothingMaterial = new THREE.MeshPhongMaterial({
-      color: clothingColor,
-      shininess: 10,
-      specular: 0x222222
-    });
-    
-    return new THREE.Mesh(clothingGeometry, clothingMaterial);
-  }
 }

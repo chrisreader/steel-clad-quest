@@ -4,7 +4,7 @@ import { EnemyType, Enemy as EnemyInterface } from '../../types/GameTypes';
 import { EffectsManager } from '../engine/EffectsManager';
 import { AudioManager, SoundCategory } from '../engine/AudioManager';
 import { MathUtils } from '../utils';
-import { EnemyBodyParts } from './EnemyBody';
+import { EnemyBodyParts } from './humanoid/EnemyHumanoid';
 import { EnemyAnimationSystem } from '../animation/EnemyAnimationSystem';
 import { OrcEnemy } from './humanoid/OrcEnemy';
 import { PassiveNPCBehavior, PassiveBehaviorState } from '../ai/PassiveNPCBehavior';

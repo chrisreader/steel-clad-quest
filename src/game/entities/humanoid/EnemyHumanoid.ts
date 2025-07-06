@@ -4,6 +4,8 @@ import { EnemyType } from '../../../types/GameTypes';
 import { EffectsManager } from '../../engine/EffectsManager';
 import { AudioManager } from '../../engine/AudioManager';
 import { EnemyAnimationSystem } from '../../animation/EnemyAnimationSystem';
+import { HumanMaterialManager } from './HumanMaterialManager';
+import { HumanGeometryFactory } from './HumanGeometryFactory';
 
 // Export all necessary types and interfaces
 export interface EnemyBodyParts {
@@ -1112,16 +1114,17 @@ export abstract class EnemyHumanoid {
   }
 
   private addClaws(wrist: THREE.Mesh) {
-    const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
-    const clawMaterial = new THREE.MeshPhongMaterial({
-      color: 0x2C1810,
-      shininess: 90,
-      specular: 0x888888
-    });
+    const clawGeometry = HumanGeometryFactory.createClaw();
+    const clawMaterial = HumanMaterialManager.createSharedMaterial(
+      'claw', 
+      0x2C1810, 
+      90, 
+      0x888888
+    );
 
     for (let i = 0; i < 5; i++) {
       const angle = (i / 4) * Math.PI - Math.PI / 2;
-      const claw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+      const claw = new THREE.Mesh(clawGeometry, clawMaterial);
       claw.position.set(
         Math.cos(angle) * 0.22,
         -0.12,
@@ -1134,12 +1137,13 @@ export abstract class EnemyHumanoid {
   }
 
   private addHumanFingers(wrist: THREE.Mesh) {
-    const fingerGeometry = new THREE.CylinderGeometry(0.02, 0.015, 0.12, 8);
-    const fingerMaterial = new THREE.MeshPhongMaterial({
-      color: this.config.colors.skin,
-      shininess: 30,
-      specular: 0x333333
-    });
+    const fingerGeometry = HumanGeometryFactory.createFinger();
+    const fingerMaterial = HumanMaterialManager.createSharedMaterial(
+      'finger', 
+      this.config.colors.skin, 
+      30, 
+      0x333333
+    );
 
     // Define finger positions extending from the "palm" of the hand
     const fingerPositions = [
@@ -1151,7 +1155,7 @@ export abstract class EnemyHumanoid {
     ];
 
     fingerPositions.forEach((pos, i) => {
-      const finger = new THREE.Mesh(fingerGeometry, fingerMaterial.clone());
+      const finger = new THREE.Mesh(fingerGeometry, fingerMaterial);
       
       // Position fingers extending from the hand/wrist
       finger.position.set(pos.x, pos.y, pos.z);
@@ -1231,14 +1235,10 @@ export abstract class EnemyHumanoid {
     skinMaterial: THREE.MeshPhongMaterial
   ) {
     // Create oval-shaped feet with curved edges using capsule geometry
-    const footGeometry = new THREE.CapsuleGeometry(0.12, 0.35, 4, 8);
+    const footGeometry = HumanGeometryFactory.createFoot();
     
     // Create dark grey shoe material instead of skin material
-    const footMaterial = new THREE.MeshPhongMaterial({
-      color: 0x404040,        // Dark grey color for shoes
-      shininess: 20,          // Slight shine for leather-like appearance
-      specular: 0x222222      // Subtle specular highlights
-    });
+    const footMaterial = HumanMaterialManager.createShoeMaterial();
 
     const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
     leftFoot.position.set(0, -bodyScale.shin.length, 0.15);
@@ -1246,7 +1246,7 @@ export abstract class EnemyHumanoid {
     leftFoot.castShadow = true;
     leftKnee.add(leftFoot);
 
-    const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
+    const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
     rightFoot.position.set(0, -bodyScale.shin.length, 0.15);
     rightFoot.rotation.x = Math.PI / 2; // Rotate to lie flat like a foot
     rightFoot.castShadow = true;
@@ -1258,21 +1258,22 @@ export abstract class EnemyHumanoid {
       this.addHumanToes(rightFoot, skinMaterial);
     } else {
       // Orc toe claws
-      const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
-      const clawMaterial = new THREE.MeshPhongMaterial({
-        color: 0x2C1810,
-        shininess: 90,
-        specular: 0x888888
-      });
+      const clawGeometry = HumanGeometryFactory.createClaw();
+      const clawMaterial = HumanMaterialManager.createSharedMaterial(
+        'claw', 
+        0x2C1810, 
+        90, 
+        0x888888
+      );
 
       for (let i = 0; i < 3; i++) {
-        const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+        const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial);
         toeClaw.position.set((i - 1) * 0.12, -0.075, 0.25);
         toeClaw.rotation.x = Math.PI / 2;
         toeClaw.castShadow = true;
         leftFoot.add(toeClaw);
 
-        const rightToeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+        const rightToeClaw = new THREE.Mesh(clawGeometry, clawMaterial);
         rightToeClaw.position.set((i - 1) * 0.12, -0.075, 0.25);
         rightToeClaw.rotation.x = Math.PI / 2;
         rightToeClaw.castShadow = true;
@@ -1282,10 +1283,10 @@ export abstract class EnemyHumanoid {
   }
 
   private addHumanToes(foot: THREE.Mesh, skinMaterial: THREE.MeshPhongMaterial) {
-    const toeGeometry = new THREE.SphereGeometry(0.02, 8, 6);
+    const toeGeometry = HumanGeometryFactory.createToe();
     
     for (let i = 0; i < 5; i++) {
-      const toe = new THREE.Mesh(toeGeometry, skinMaterial.clone());
+      const toe = new THREE.Mesh(toeGeometry, skinMaterial);
       toe.position.set((i - 2) * 0.04, -0.075, 0.22);
       toe.castShadow = true;
       foot.add(toe);
