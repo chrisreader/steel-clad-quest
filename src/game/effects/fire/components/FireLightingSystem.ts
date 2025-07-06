@@ -28,15 +28,15 @@ export class FireLightingSystem {
   private createMassiveLightingSystem(): void {
     // PERFORMANCE: Single optimized light for maximum performance
     
-    // Single primary fire light - strong lighting with shadows
+    // Single primary fire light - maximum strength with shadows
     const primaryLight = new THREE.PointLight(
       this.config.color,
-      8.0, // Strong intensity for shadow casting
-      50   // Good range for lighting area
+      this.config.baseIntensity, // Use full config intensity
+      this.config.distance        // Use full config distance
     );
     primaryLight.position.copy(this.position);
     primaryLight.position.y += 0.5;
-    primaryLight.castShadow = true; // Re-enabled shadows for realism
+    primaryLight.castShadow = this.config.castShadow; // Respect config setting
     
     this.lights.push(primaryLight);
     this.scene.add(primaryLight);
@@ -69,10 +69,10 @@ export class FireLightingSystem {
     if (primaryLight) {
       const intensityVariation = this.cachedSin1 + this.cachedSin2;
       primaryLight.intensity = Math.max(
-        6.0, // Strong minimum for good shadows
+        adjustedBaseIntensity * 0.8, // Strong minimum based on config
         Math.min(
-          10.0, // Strong maximum for dramatic lighting
-          8.0 + intensityVariation * (adjustedBaseIntensity / this.config.baseIntensity)
+          this.config.maxIntensity, // Use config maximum
+          adjustedBaseIntensity + intensityVariation * adjustedBaseIntensity * 0.3
         )
       );
 
@@ -85,11 +85,14 @@ export class FireLightingSystem {
   }
 
   public setIntensity(multiplier: number): void {
-    // PERFORMANCE: Single light intensity setting
+    // Strong light intensity setting using config values
     const primaryLight = this.lights[0];
     
     if (primaryLight) {
-      primaryLight.intensity = Math.max(6.0, 8.0 * multiplier);
+      primaryLight.intensity = Math.max(
+        this.config.baseIntensity * 0.8, 
+        this.config.baseIntensity * multiplier
+      );
     }
     
     this.timeAwareIntensity = new TimeAwareFireIntensity(this.config.baseIntensity * multiplier);

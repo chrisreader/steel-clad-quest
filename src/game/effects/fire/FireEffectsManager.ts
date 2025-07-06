@@ -46,14 +46,14 @@ export class FireEffectsManager {
     emberConfig.count = Math.max(1, this.config.emberCount * 0.3); // Reduced from 0.6
     this.particleGenerator.addParticleType('embers', emberConfig);
 
-    // PERFORMANCE: Optimized single light system
+    // STRONG LIGHTING: Full intensity system for realistic shadows
     const lightConfig: FireLightConfig = {
       color: this.config.lightColor,
-      baseIntensity: this.config.lightIntensity * 0.4, // Reduced from 0.6
-      maxIntensity: this.config.lightIntensity * 0.6, // Reduced from 0.8
+      baseIntensity: this.config.lightIntensity, // Full intensity restored
+      maxIntensity: this.config.lightIntensity * 1.2, // Strong maximum
       flickerSpeed: this.config.flickerSpeed,
-      distance: this.config.lightDistance * 0.4, // Reduced from 0.7
-      castShadow: false // Disabled for performance
+      distance: this.config.lightDistance, // Full distance restored
+      castShadow: true // Re-enabled for realism
     };
     this.lightingSystem = new FireLightingSystem(this.scene, this.position, lightConfig);
 

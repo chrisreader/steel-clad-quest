@@ -46,7 +46,7 @@ export class HumanCampBuilding extends BaseBuilding {
     console.log(`🏕️ [HumanCampBuilding] Creating camp structure at position:`, this.position);
 
     // 1. Create central fireplace
-    this.createCampFireplace();
+    this.createEnhancedFireplace();
 
     // 2. Create tents around the fireplace
     this.createCampTents();
@@ -86,20 +86,21 @@ export class HumanCampBuilding extends BaseBuilding {
     };
   }
 
-  private createCampFireplace(): void {
+  private createEnhancedFireplace(): void {
     if (!this.audioManager) {
       console.warn('🔥 AudioManager not set for HumanCampBuilding. Creating fireplace without audio.');
       this.audioManager = {} as AudioManager;
     }
 
-    console.log('🔥 Creating camp fireplace');
+    console.log('🔥 Creating enhanced fireplace system for human camp');
     
     this.fireplaceComponent = new FireplaceComponent(
       this.scene,
       this.physicsManager,
       this.audioManager,
       new THREE.Vector3(0, 0, 0), // Center of camp
-      `camp_fireplace_${Date.now()}`
+      `camp_fireplace_${Date.now()}`,
+      false // Night-time only for camp fires
     );
     
     const fireplaceGroup = this.fireplaceComponent.create();
@@ -108,7 +109,7 @@ export class HumanCampBuilding extends BaseBuilding {
     // Register fireplace collisions
     this.fireplaceComponent.registerCollisions('human_camp');
     
-    console.log('🔥 Camp fireplace created successfully');
+    console.log('🔥 Enhanced camp fireplace system created with realistic fire, organic rocks, and dynamic lighting');
   }
 
   private createCampTents(): void {
