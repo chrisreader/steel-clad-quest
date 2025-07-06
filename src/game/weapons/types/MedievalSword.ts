@@ -40,7 +40,8 @@ export class MedievalSword extends Sword {
       const oldGuard = swordGroup.children[existingGuardIndex];
       swordGroup.remove(oldGuard);
       
-      // Create realistic curved crossguard with single tapered pieces
+      // Create tapered crossguard - left side (tapered outward)
+      const leftGuardGeometry = new THREE.ConeGeometry(0.05, 0.25, 8); // Bigger cone
       const guardMaterial = new THREE.MeshPhongMaterial({ 
         color: 0x9A9A9A, // Match original guard color
         shininess: 100,
@@ -48,18 +49,16 @@ export class MedievalSword extends Sword {
         map: metalTexture
       });
       
-      // Left tapered guard - single piece curving upward
-      const leftGuardGeometry = new THREE.ConeGeometry(0.02, 0.2, 8);
       const leftGuard = new THREE.Mesh(leftGuardGeometry, guardMaterial);
-      leftGuard.position.set(-0.1, 0.03, -0.3);
-      leftGuard.rotation.z = Math.PI / 2 + Math.PI / 8; // Horizontal + 22.5° upward tilt
+      leftGuard.position.set(-0.125, 0, -0.3); // Further apart
+      leftGuard.rotation.z = Math.PI / 2; // Point outward left
       leftGuard.castShadow = true;
       swordGroup.add(leftGuard);
 
-      // Right tapered guard - single piece curving upward (mirrored)
+      // Create tapered crossguard - right side (tapered outward)
       const rightGuard = new THREE.Mesh(leftGuardGeometry.clone(), guardMaterial);
-      rightGuard.position.set(0.1, 0.03, -0.3);
-      rightGuard.rotation.z = -Math.PI / 2 - Math.PI / 8; // Horizontal + 22.5° upward tilt (mirrored)
+      rightGuard.position.set(0.125, 0, -0.3); // Further apart
+      rightGuard.rotation.z = -Math.PI / 2; // Point outward right
       rightGuard.castShadow = true;
       swordGroup.add(rightGuard);
       
