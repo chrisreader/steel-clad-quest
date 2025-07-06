@@ -895,53 +895,36 @@ export abstract class EnemyHumanoid {
     isGreenHumanoid: boolean = false
   ) {
     if (isGreenHumanoid) {
-      // Create large, pointed goblin ears - traditional goblin size
-      const earLength = 1.2; // Large but reasonable goblin ears
-      const earWidth = 0.15; // Wider than human but not excessive
-      const earThickness = 0.06;
+      // Create pointed goblin ears that attach to the head
+      const earLength = 0.8; // Moderate pointed ear length
+      const earWidth = 0.12; // Width of ear
       
-      const earGeometry = new THREE.BoxGeometry(earThickness, earLength, earWidth);
+      // Use more organic ear geometry instead of rectangular boxes
+      const earGeometry = new THREE.ConeGeometry(earWidth/2, earLength, 8);
       
-      // Left ear - positioned higher and angled dramatically for massive goblin look
+      // Left ear - attached to side of head, pointing upward
       const leftEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
       leftEar.position.set(
-        -bodyScale.head.radius * 0.9, 
-        0.4, // Much higher position for massive 2.0 length ears
+        -bodyScale.head.radius * 0.85, // Closer to head surface
+        bodyScale.head.radius * 0.3,   // Positioned on side of head 
         0
       );
-      leftEar.rotation.z = -0.3; // Moderate angle for goblin ears
-      leftEar.rotation.y = -0.2; // Slight forward angle for goblin look
+      leftEar.rotation.z = -0.4; // Tilt outward from head
+      leftEar.rotation.x = Math.PI/2; // Point upward
       leftEar.castShadow = true;
       headGroup.add(leftEar);
 
-      // Right ear - positioned higher and angled dramatically for massive goblin look
+      // Right ear - attached to side of head, pointing upward
       const rightEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
       rightEar.position.set(
-        bodyScale.head.radius * 0.9, 
-        0.4, // Much higher position for massive 2.0 length ears
+        bodyScale.head.radius * 0.85,  // Closer to head surface
+        bodyScale.head.radius * 0.3,   // Positioned on side of head
         0
       );
-      rightEar.rotation.z = 0.3; // Moderate angle for goblin ears
-      rightEar.rotation.y = 0.2; // Slight forward angle for goblin look
+      rightEar.rotation.z = 0.4; // Tilt outward from head
+      rightEar.rotation.x = Math.PI/2; // Point upward
       rightEar.castShadow = true;
       headGroup.add(rightEar);
-
-      // Add pointed ear tips for goblin ears
-      const tipGeometry = new THREE.ConeGeometry(0.025, 0.12, 6); // Moderate size tips
-      
-      // Left ear tip - positioned at the end of the large goblin ear
-      const leftTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
-      leftTip.position.set(-bodyScale.head.radius * 0.9, 1.0, 0); // At end of 1.2 length ears (0.4 + 1.2/2 = 1.0)
-      leftTip.rotation.z = -0.3;
-      leftTip.castShadow = true;
-      headGroup.add(leftTip);
-      
-      // Right ear tip - positioned at the end of the large goblin ear
-      const rightTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
-      rightTip.position.set(bodyScale.head.radius * 0.9, 1.0, 0); // At end of 1.2 length ears (0.4 + 1.2/2 = 1.0)
-      rightTip.rotation.z = 0.3;
-      rightTip.castShadow = true;
-      headGroup.add(rightTip);
     } else {
       // Create realistic human ear structure (original code)
       const earMaterial = muscleMaterial.clone();
