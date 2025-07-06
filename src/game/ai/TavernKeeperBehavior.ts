@@ -35,7 +35,6 @@ export class TavernKeeperBehavior {
 
   constructor(config: TavernKeeperConfig) {
     this.config = config;
-    console.log('🏠 [TavernKeeperBehavior] Initialized with waypoint-based movement');
   }
 
   public update(
@@ -80,8 +79,6 @@ export class TavernKeeperBehavior {
       .subVectors(playerPosition, npcPosition)
       .normalize();
     
-    console.log('👋 [TavernKeeper] Greeting player');
-    
     this.currentAction = { 
       type: 'interact', 
       duration: 2000 // Brief interaction
@@ -104,8 +101,6 @@ export class TavernKeeperBehavior {
       this.actionStartTime = Date.now();
       this.isAtWaypoint = false;
       
-      console.log('🚶 [TavernKeeper] Moving to waypoint:', nextWaypoint);
-      
       return this.currentAction;
     }
     
@@ -124,8 +119,6 @@ export class TavernKeeperBehavior {
     
     // Check if we've reached the waypoint
     if (distanceToWaypoint < 0.8) {
-      console.log('✅ [TavernKeeper] Reached waypoint, switching to idle');
-      
       this.currentAction = { type: 'idle' };
       this.actionStartTime = Date.now();
       this.lastWaypointTime = Date.now();
@@ -146,8 +139,6 @@ export class TavernKeeperBehavior {
     if (actionDuration > (this.currentAction.duration || 2000)) {
       this.currentAction = { type: 'idle' };
       this.actionStartTime = Date.now();
-      
-      console.log('💬 [TavernKeeper] Finished interaction, returning to idle');
     }
     
     return this.currentAction;

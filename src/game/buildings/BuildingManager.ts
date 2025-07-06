@@ -44,22 +44,17 @@ export class BuildingManager {
       minZ: -20,
       maxZ: 20
     });
-    console.log('🏗️ BuildingManager initialized with LOD system');
   }
 
   public setAudioManager(audioManager: AudioManager): void {
     this.audioManager = audioManager;
-    console.log('🔊 AudioManager set for BuildingManager');
   }
 
   public setEffectsManager(effectsManager: EffectsManager): void {
     this.effectsManager = effectsManager;
-    console.log('✨ EffectsManager set for BuildingManager');
   }
 
   public createBuilding(config: BuildingConfig): BaseBuilding | null {
-    console.log(`🏗️ Creating building of type: ${config.type} at position:`, config.position);
-
     let building: BaseBuilding | null = null;
 
     switch (config.type) {
@@ -71,9 +66,6 @@ export class BuildingManager {
           }
           if (this.effectsManager) {
             building.setEffectsManager(this.effectsManager);
-            console.log('🏗️ [BuildingManager] Tavern created with EffectsManager for NPC');
-          } else {
-            console.warn('🏗️ [BuildingManager] EffectsManager not set - tavern keeper NPC will not spawn');
           }
         }
         break;
@@ -88,14 +80,10 @@ export class BuildingManager {
           }
           if (this.effectsManager) {
             building.setEffectsManager(this.effectsManager);
-            console.log('🏕️ [BuildingManager] Human camp created with EffectsManager for camp keeper');
-          } else {
-            console.warn('🏕️ [BuildingManager] EffectsManager not set - camp keeper will not spawn');
           }
         }
         break;
       default:
-        console.warn(`🏗️ Unknown building type: ${config.type}`);
         return null;
     }
 
@@ -113,7 +101,6 @@ export class BuildingManager {
         () => building.dispose()
       );
       
-      console.log(`🏗️ Building created successfully: ${config.type} with LOD management`);
       return building;
     }
 
@@ -150,9 +137,6 @@ export class BuildingManager {
       this.lodManager.removeLODObject(id);
       building.dispose();
       this.buildings.delete(id);
-      console.log(`🔥 Building destroyed: ${id}`);
-    } else {
-      console.warn(`🔥 No building found with ID: ${id}`);
     }
   }
 
@@ -198,13 +182,11 @@ export class BuildingManager {
   }
 
   public dispose(): void {
-    console.log('Disposing BuildingManager');
     this.lodManager.dispose();
     
     for (const building of this.buildings.values()) {
       building.dispose();
     }
     this.buildings.clear();
-    console.log('BuildingManager disposed');
   }
 }

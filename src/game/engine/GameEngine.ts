@@ -62,8 +62,6 @@ export class GameEngine {
   public async initialize(): Promise<void> {
     if (this.isInitialized) return;
     
-    console.log("🎮 [GameEngine] Starting initialization...");
-    
     try {
       // Initialize render engine
       this.renderEngine.initialize();
@@ -73,11 +71,9 @@ export class GameEngine {
       
       // Get the building manager from scene manager (don't create a separate one)
       this.buildingManager = this.sceneManager.getBuildingManager();
-      console.log("🏗️ [GameEngine] Using SceneManager's BuildingManager");
       
-      // FIXED: Set camera reference in SceneManager for proper sun glow calculations
+      // Set camera reference in SceneManager for proper sun glow calculations
       this.sceneManager.setCamera(this.renderEngine.getCamera());
-      console.log("📹 [GameEngine] Camera reference passed to SceneManager for sun glow calculations");
       
       // Create the input manager
       this.inputManager = new InputManager();
@@ -96,7 +92,6 @@ export class GameEngine {
       if (this.buildingManager && this.audioManager && this.effectsManager) {
         this.buildingManager.setAudioManager(this.audioManager);
         this.buildingManager.setEffectsManager(this.effectsManager);
-        console.log("🔊 [GameEngine] AudioManager and EffectsManager connected to BuildingManager");
       }
 
       // Also initialize SceneManager with the managers for consistency
@@ -123,10 +118,8 @@ export class GameEngine {
         console.warn("🎮 [GameEngine] Audio preloading failed, continuing:", audioError);
       }
       
-      // CRITICAL: Create the player with extensive debugging
-      console.log("🎮 [GameEngine] Creating player with NEW ARM POSITIONING...");
+      // Create the player
       this.player = new Player(this.renderEngine.getScene(), this.effectsManager, this.audioManager);
-      console.log("🎮 [GameEngine] Player created successfully with new arm positioning");
       
       // Make player arms/sword visible for first-person immersion
       const playerBody = this.player.getBody();
@@ -152,7 +145,6 @@ export class GameEngine {
       
       // Set game as initialized
       this.isInitialized = true;
-      console.log("🎮 [GameEngine] Initialization complete with fire animation system!");
       
       // Start the game
       this.start();
@@ -292,7 +284,6 @@ export class GameEngine {
       return;
     }
     
-    console.log("📹 [GameEngine] Processing mouse look:", deltaX, deltaY);
     this.renderEngine.handleMouseLook(deltaX, deltaY);
     
     // Update player visual rotation
@@ -330,11 +321,9 @@ export class GameEngine {
     
     try {
       await this.audioManager.loadSound(`assets/sounds/${id}.mp3`, id, SoundCategory.SFX);
-      console.log(`🎮 [GameEngine] Loaded audio: ${id}`);
     } catch (e) {
       try {
         await this.audioManager.loadSound(`/sounds/${id}.mp3`, id, SoundCategory.SFX);
-        console.log(`🎮 [GameEngine] Loaded audio from alternate path: ${id}`);
       } catch (e2) {
         console.warn(`🎮 [GameEngine] Failed to load audio: ${id} - continuing without sound`);
       }
@@ -347,10 +336,8 @@ export class GameEngine {
       return;
     }
     
-    console.log("🎮 [GameEngine] Starting game with NEW ARM POSITIONING...");
     this.stateManager.start();
     this.animate();
-    console.log("🎮 [GameEngine] Game started successfully with NEW ARM POSITIONING!");
   }
   
   private animate = (): void => {

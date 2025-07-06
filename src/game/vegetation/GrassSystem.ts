@@ -41,22 +41,14 @@ export class GrassSystem {
     // Initialize position-based biome system with enhanced organic biomes
     DeterministicBiomeManager.setWorldSeed(Date.now());
     DeterministicBiomeManager.forceRegenerateAllBiomes();
-    
-    console.log('🌱 POSITION-BASED GRASS SYSTEM: Initialized with fractal organic biome generation');
   }
   
   public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 200): void {
-    console.log(`🌱 FRACTAL ORGANIC GRASS: Initializing with position-based biome queries`);
-    
     // Force biome regeneration for fractal shapes
     DeterministicBiomeManager.clearCache();
     
-    this.bubbleManager.initializeWithCoverage(playerPosition, 80); // ULTRA-AGGRESSIVE distance
+    this.bubbleManager.initializeWithCoverage(playerPosition, 80);
     this.lastPlayerPosition.copy(playerPosition);
-    
-    // Debug current position-based biome
-    const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
-    console.log(`🌱 POSITION-BASED GRASS: Player in ${debugInfo.biomeData.biomeType} biome (${debugInfo.organicBiomeCount} organic biomes nearby)`);
   }
   
   public generateGrassForRegion(
@@ -71,7 +63,7 @@ export class GrassSystem {
       this.initializeGrassSystem(currentPlayerPosition, coverageRadius);
     }
     
-    console.log(`🌱 Legacy region converted to position-based fractal system`);
+    // Legacy region system now handled by position-based system
   }
   
   public update(deltaTime: number, playerPosition: THREE.Vector3, gameTime?: number): void {
@@ -121,11 +113,9 @@ export class GrassSystem {
       }
     }
     
-    // ULTRA-AGGRESSIVE performance reporting (every 3000 frames = 3 minutes)
-    if (this.updateCounter % 3000 === 0) {
-      console.log(`🌱 ULTRA-PERFORMANCE: ${this.bubbleManager.getRenderedInstanceCount()} grass instances in 80-unit radius`);
-      const debugInfo = DeterministicBiomeManager.getDebugBiomeInfo(playerPosition);
-      console.log(`🌱 ULTRA-BIOME: Currently in ${debugInfo.biomeData.biomeType} (${debugInfo.organicBiomeCount} fractal biomes nearby)`);
+    // Performance reporting (every 6000 frames = ~6 minutes)
+    if (this.updateCounter % 6000 === 0) {
+      console.log(`🌱 Grass instances: ${this.bubbleManager.getRenderedInstanceCount()}`);
     }
   }
   
@@ -188,7 +178,7 @@ export class GrassSystem {
   }
   
   public removeGrassForRegion(region: RegionCoordinates): void {
-    console.log(`🌱 Legacy region removal ignored - position-based system handles this automatically`);
+    // Legacy region system now handled automatically
   }
   
   public getLoadedChunkCount(): number {
@@ -206,7 +196,6 @@ export class GrassSystem {
   public dispose(): void {
     this.bubbleManager.dispose();
     this.renderer.dispose();
-    console.log('🌱 Position-based grass system disposed');
   }
   
   public debugBiomeAtPosition(position: THREE.Vector3): void {
@@ -216,7 +205,6 @@ export class GrassSystem {
   
   public regenerateOrganicBiomes(): void {
     DeterministicBiomeManager.setWorldSeed(Date.now());
-    console.log('🔄 FRACTAL BIOME: Regenerated with new fractal boundaries');
   }
 }
 

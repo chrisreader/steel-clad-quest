@@ -36,8 +36,6 @@ export class RenderEngine {
   }
   
   public initialize(): void {
-    console.log("🎨 [RenderEngine] Initializing with performance optimizations...");
-    
     // Create scene
     this.scene = new THREE.Scene();
     this.scene.background = null;
@@ -72,8 +70,6 @@ export class RenderEngine {
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     canvas.style.outline = 'none';
-    
-    console.log("🎨 [RenderEngine] Initialized with performance optimizations");
   }
   
   public setupFirstPersonCamera(playerPosition: THREE.Vector3): void {
@@ -88,8 +84,6 @@ export class RenderEngine {
     this.targetRotation.pitch = 0;
     this.targetRotation.yaw = 0;
     this.updateCameraRotation();
-    
-    console.log("📹 [RenderEngine] First-person camera positioned with consistent height offset:", this.camera.position);
   }
   
   public handleMouseLook(deltaX: number, deltaY: number): void {
@@ -175,14 +169,10 @@ export class RenderEngine {
       }
     });
     
-    // ULTRA-AGGRESSIVE logging reduction (every 3000 frames = 3 minutes at 60fps)
-    if (this.renderCount % 3000 === 0) {
-      const fps = 3000 / ((now - this.lastRenderTime) / 1000);
-      console.log("🎨 [RenderEngine] ULTRA-PERFORMANCE:", {
-        frame: this.renderCount,
-        fps: fps.toFixed(1),
-        objects: this.scene.children.length
-      });
+    // Performance logging (every 5000 frames = ~5 minutes at 60fps)
+    if (this.renderCount % 5000 === 0) {
+      const fps = 5000 / ((now - this.lastRenderTime) / 1000);
+      console.log("🎨 [RenderEngine] Performance:", fps.toFixed(1), "fps");
       this.lastRenderTime = now;
     }
     
@@ -215,15 +205,11 @@ export class RenderEngine {
   }
   
   public dispose(): void {
-    console.log("🎨 [RenderEngine] Disposing...");
-    
     if (this.renderer) {
       this.renderer.dispose();
       if (this.renderer.domElement.parentElement) {
         this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
       }
     }
-    
-    console.log("🎨 [RenderEngine] Disposed successfully");
   }
 }
