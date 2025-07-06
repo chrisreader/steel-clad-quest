@@ -327,14 +327,14 @@ export class TavernBuilding extends BaseBuilding {
     leftWindow.position.set(-5.95, 3, -2);
     this.addComponent(leftWindow, 'left_window_frame', 'wood');
     
-    // Right wall windows (opposite side of bar)
-    const rightWindow1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 2), windowFrameMaterial.clone());
-    rightWindow1.position.set(5.95, 3, 2);
+    // Right wall windows (opposite side of bar) - positioned to protrude through the wall
+    const rightWindow1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.5, 2), windowFrameMaterial.clone());
+    rightWindow1.position.set(6.1, 3, 2);
     this.addComponent(rightWindow1, 'right_window_frame_1', 'wood');
     
     // Additional right wall window
-    const rightWindow2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.5, 2), windowFrameMaterial.clone());
-    rightWindow2.position.set(5.95, 3, -2);
+    const rightWindow2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.5, 2), windowFrameMaterial.clone());
+    rightWindow2.position.set(6.1, 3, -2);
     this.addComponent(rightWindow2, 'right_window_frame_2', 'wood');
   }
 
