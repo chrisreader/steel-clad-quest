@@ -1218,33 +1218,24 @@ export abstract class EnemyHumanoid {
     bodyScale: BodyScale,
     skinMaterial: THREE.MeshPhongMaterial
   ) {
-    // Create curved grey shoes instead of rectangular feet - maintain EXACT same positioning
-    const shoeMaterial = new THREE.MeshPhongMaterial({
-      color: 0x444444, // Dark grey shoe color
-      shininess: 15,   // Slight shine like leather
-      specular: 0x222222
-    });
+    // Smaller feet for humans and use correct scaling
+    const footGeometry = new THREE.BoxGeometry(0.25, 0.15, 0.5);
+    const footMaterial = skinMaterial.clone();
 
-    // Left shoe - use capsule for curved edges but EXACT same positioning as original box feet
-    const leftShoeGeometry = new THREE.CapsuleGeometry(0.075, 0.35, 8, 16);
-    const leftShoe = new THREE.Mesh(leftShoeGeometry, shoeMaterial.clone());
-    leftShoe.rotation.z = Math.PI / 2; // Orient horizontally like a foot
-    leftShoe.position.set(0, -bodyScale.shin.length, 0.15); // EXACT same position as original feet
-    leftShoe.castShadow = true;
-    leftKnee.add(leftShoe);
+    const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+    leftFoot.position.set(0, -bodyScale.shin.length, 0.15);
+    leftFoot.castShadow = true;
+    leftKnee.add(leftFoot);
 
-    // Right shoe - EXACT same positioning as original box feet
-    const rightShoeGeometry = new THREE.CapsuleGeometry(0.075, 0.35, 8, 16);
-    const rightShoe = new THREE.Mesh(rightShoeGeometry, shoeMaterial.clone());
-    rightShoe.rotation.z = Math.PI / 2; // Orient horizontally like a foot
-    rightShoe.position.set(0, -bodyScale.shin.length, 0.15); // EXACT same position as original feet
-    rightShoe.castShadow = true;
-    rightKnee.add(rightShoe);
+    const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
+    rightFoot.position.set(0, -bodyScale.shin.length, 0.15);
+    rightFoot.castShadow = true;
+    rightKnee.add(rightFoot);
 
-    // Add shoe details only for peaceful humans (no claws/toes visible with shoes)
+    // Add human toes only if this is NOT a weapon-bearing entity (humans don't have claws)
     if (!this.config.features.hasWeapon) {
-      this.addShoeDetails(leftShoe, shoeMaterial);
-      this.addShoeDetails(rightShoe, shoeMaterial);
+      this.addHumanToes(leftFoot, skinMaterial);
+      this.addHumanToes(rightFoot, skinMaterial);
     } else {
       // Orc toe claws
       const clawGeometry = new THREE.ConeGeometry(0.03, 0.18, 8);
@@ -1255,17 +1246,17 @@ export abstract class EnemyHumanoid {
       });
 
       for (let i = 0; i < 3; i++) {
-        const leftToeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
-        leftToeClaw.position.set((i - 1) * 0.12, -0.075, 0.25);
-        leftToeClaw.rotation.x = Math.PI / 2;
-        leftToeClaw.castShadow = true;
-        leftShoe.add(leftToeClaw);
+        const toeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
+        toeClaw.position.set((i - 1) * 0.12, -0.075, 0.25);
+        toeClaw.rotation.x = Math.PI / 2;
+        toeClaw.castShadow = true;
+        leftFoot.add(toeClaw);
 
         const rightToeClaw = new THREE.Mesh(clawGeometry, clawMaterial.clone());
         rightToeClaw.position.set((i - 1) * 0.12, -0.075, 0.25);
         rightToeClaw.rotation.x = Math.PI / 2;
         rightToeClaw.castShadow = true;
-        rightShoe.add(rightToeClaw);
+        rightFoot.add(rightToeClaw);
       }
     }
   }
@@ -1279,30 +1270,6 @@ export abstract class EnemyHumanoid {
       toe.castShadow = true;
       foot.add(toe);
     }
-  }
-
-  private addShoeDetails(shoe: THREE.Mesh, shoeMaterial: THREE.MeshPhongMaterial) {
-    // Add subtle shoe laces or eyelets for realism
-    const eyeletGeometry = new THREE.SphereGeometry(0.015, 8, 6);
-    const eyeletMaterial = new THREE.MeshPhongMaterial({
-      color: 0x666666, // Slightly lighter grey for details
-      shininess: 30
-    });
-    
-    // Add small eyelets along the top of the shoe
-    for (let i = 0; i < 3; i++) {
-      const eyelet = new THREE.Mesh(eyeletGeometry, eyeletMaterial.clone());
-      eyelet.position.set((i - 1) * 0.08, 0.05, 0.05);
-      eyelet.castShadow = true;
-      shoe.add(eyelet);
-    }
-
-    // Add a subtle shoe tongue
-    const tongueGeometry = new THREE.BoxGeometry(0.12, 0.02, 0.08);
-    const tongue = new THREE.Mesh(tongueGeometry, shoeMaterial.clone());
-    tongue.position.set(0, 0.03, 0.05);
-    tongue.castShadow = true;
-    shoe.add(tongue);
   }
 
   private createTaperedLimbGeometry(
