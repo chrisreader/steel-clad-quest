@@ -53,7 +53,7 @@ export const DEFAULT_FIRE_CONFIG: FireConfig = {
 
 export const FIREPLACE_PARTICLE_CONFIGS = {
   flames: {
-    count: 25,
+    count: 8, // Reduced from 25 (68% reduction)
     size: 0.3,
     speed: 2.0,
     color: new THREE.Color(0xFF6600),
@@ -63,7 +63,7 @@ export const FIREPLACE_PARTICLE_CONFIGS = {
   } as FireParticleConfig,
   
   smoke: {
-    count: 15,
+    count: 5, // Reduced from 15 (67% reduction)
     size: 0.5,
     speed: 1.0,
     color: new THREE.Color(0x888888),
@@ -73,7 +73,7 @@ export const FIREPLACE_PARTICLE_CONFIGS = {
   } as FireParticleConfig,
   
   embers: {
-    count: 12,
+    count: 4, // Reduced from 12 (67% reduction)
     size: 0.1,
     speed: 0.5,
     color: new THREE.Color(0xFF4400),

@@ -145,12 +145,12 @@ export class EmberParticleSystem {
             float hotCenter = 1.0 - smoothstep(0.0, 0.2, dist);
             alpha += hotCenter * vTemperature * 0.8;
             
-            // Add sparking effect
-            float sparkle = sin(uTime * 20.0 + vSparkIntensity * 100.0) * 0.3 + 0.7;
+            // Simplified sparking effect - less expensive
+            float sparkle = vSparkIntensity * 0.3 + 0.7;
             alpha *= sparkle;
             
-            // Add flickering intensity based on temperature
-            float flicker = sin(uTime * 15.0 + vTemperature * 50.0) * 0.2 + 0.8;
+            // Simplified flickering - cached calculation
+            float flicker = vTemperature * 0.2 + 0.8;
             alpha *= flicker;
           } else {
             // Organic variation for smoke

@@ -25,9 +25,9 @@ export class OrganicFireParticleGenerator {
     // Only create animated flame geometry - no static visuals
     this.createAnimatedFlames();
     
-    // Create organic particle systems
-    this.emberSystem = new EmberParticleSystem(scene, position, 15, 'embers');
-    this.smokeSystem = new EmberParticleSystem(scene, position, 8, 'smoke');
+    // Create organic particle systems - reduced counts
+    this.emberSystem = new EmberParticleSystem(scene, position, 6, 'embers'); // Reduced from 15
+    this.smokeSystem = new EmberParticleSystem(scene, position, 4, 'smoke'); // Reduced from 8
     
     this.scene.add(this.flameGroup);
     console.log('🔥 Organic fire particle generator created with animated flames only');
@@ -35,7 +35,7 @@ export class OrganicFireParticleGenerator {
 
   private createAnimatedFlames(): void {
     const flameTypes = FlameGeometry.getFlameTypes();
-    const flameCount = 12; // Reduced count for better performance
+    const flameCount = 6; // Further reduced from 12 to 6 (50% reduction)
     
     for (let i = 0; i < flameCount; i++) {
       const flameType = flameTypes[i % flameTypes.length];
@@ -82,33 +82,45 @@ export class OrganicFireParticleGenerator {
     }
   }
 
+  private updateCounter = 0;
+  private cachedSinValues: number[] = [];
+
   public update(deltaTime: number): void {
     this.time += deltaTime;
+    this.updateCounter++;
     
-    // Update all flame materials with organic movement
+    // Update cached sin values less frequently for performance
+    if (this.updateCounter % 5 === 0) {
+      this.cachedSinValues = this.materials.map((_, i) => Math.sin(this.time * 2 + i));
+    }
+    
+    // Update flame materials with cached calculations
     for (let i = 0; i < this.materials.length; i++) {
       const material = this.materials[i];
       material.uniforms.uTime.value = this.time;
-      material.uniforms.uIntensity.value = this.intensity * (0.8 + Math.sin(this.time * 2 + i) * 0.2);
-      material.uniforms.uWindStrength.value = 0.6 + Math.sin(this.time * 0.7 + i * 0.5) * 0.4;
+      // Use cached sin values for performance
+      const cachedSin = this.cachedSinValues[i] || 0;
+      material.uniforms.uIntensity.value = this.intensity * (0.8 + cachedSin * 0.2);
+      material.uniforms.uWindStrength.value = 0.6 + cachedSin * 0.2; // Simplified wind
     }
     
-    // Add individual flame movement for more organic feel
-    for (let i = 0; i < this.flames.length; i++) {
-      const flame = this.flames[i];
-      const baseY = Math.random() * 0.1;
-      flame.position.y = baseY + Math.sin(this.time * 3 + i * 0.8) * 0.05;
-      
-      // Subtle rotation animation
-      flame.rotation.z = Math.sin(this.time * 1.5 + i) * 0.1;
+    // Update flame positions less frequently
+    if (this.updateCounter % 3 === 0) {
+      for (let i = 0; i < this.flames.length; i++) {
+        const flame = this.flames[i];
+        flame.position.y = Math.sin(this.time * 3 + i * 0.8) * 0.03; // Reduced movement
+        flame.rotation.z = Math.sin(this.time * 1.5 + i) * 0.05; // Reduced rotation
+      }
     }
     
     // Update particle systems
     this.emberSystem.update(deltaTime);
     this.smokeSystem.update(deltaTime);
     
-    // Organic group movement
-    this.flameGroup.rotation.y += Math.sin(this.time * 0.4) * 0.005 * deltaTime;
+    // Simplified group movement
+    if (this.updateCounter % 10 === 0) {
+      this.flameGroup.rotation.y += Math.sin(this.time * 0.4) * 0.002 * deltaTime;
+    }
   }
 
   public setIntensity(intensity: number): void {

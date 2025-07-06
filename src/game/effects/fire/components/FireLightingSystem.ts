@@ -26,47 +26,31 @@ export class FireLightingSystem {
   }
 
   private createMassiveLightingSystem(): void {
-    // PERFORMANCE: Balanced lighting system - 2 lights for good visuals + performance
+    // PERFORMANCE: Single optimized light for maximum performance
     
-    // 1. Primary fire light with good intensity and range
+    // Single primary fire light - optimized for performance
     const primaryLight = new THREE.PointLight(
       this.config.color,
-      5.0, // Increased from 3.0
-      40   // Increased from 25
+      4.0, // Reduced intensity
+      35   // Reduced range
     );
     primaryLight.position.copy(this.position);
     primaryLight.position.y += 0.5;
-    primaryLight.castShadow = this.config.castShadow;
-    
-    if (primaryLight.castShadow) {
-      primaryLight.shadow.mapSize.width = 1024;
-      primaryLight.shadow.mapSize.height = 1024;
-      primaryLight.shadow.bias = -0.0005;
-      primaryLight.shadow.camera.near = 0.1;
-      primaryLight.shadow.camera.far = 40;
-    }
+    primaryLight.castShadow = false; // Disabled shadows for performance
     
     this.lights.push(primaryLight);
     this.scene.add(primaryLight);
 
-    // 2. Secondary atmospheric light for glow effect
-    const atmosphericLight = new THREE.PointLight(
-      this.config.color,
-      2.5, // Moderate intensity for atmosphere
-      60   // Wider range for atmosphere
-    );
-    atmosphericLight.position.copy(this.position);
-    atmosphericLight.position.y += 1.0;
-    atmosphericLight.castShadow = false; // No shadows for atmosphere
-    
-    this.lights.push(atmosphericLight);
-    this.scene.add(atmosphericLight);
-
-    console.log('🔥 Balanced fire lighting system created - good visuals + performance');
+    console.log('🔥 Optimized single fire light created - maximum performance');
   }
+
+  private updateCounter = 0;
+  private cachedSin1 = 0;
+  private cachedSin2 = 0;
 
   public update(deltaTime: number): void {
     this.time += deltaTime * this.config.flickerSpeed;
+    this.updateCounter++;
 
     // Get time-adjusted intensity
     let adjustedBaseIntensity = this.config.baseIntensity;
@@ -74,47 +58,38 @@ export class FireLightingSystem {
       adjustedBaseIntensity = this.timeAwareIntensity.getAdjustedIntensity(this.currentGameTime, this.gameTimePhases);
     }
 
-    // Primary light with enhanced flickering
+    // Update flickering calculations only every 3 frames for performance
+    if (this.updateCounter % 3 === 0) {
+      this.cachedSin1 = Math.sin(this.time * 2.5) * 0.15;
+      this.cachedSin2 = Math.sin(this.time * 4.1) * 0.08;
+    }
+
+    // Single optimized light update
     const primaryLight = this.lights[0];
     if (primaryLight) {
-      const flicker1 = Math.sin(this.time * 2.5) * 0.15;
-      const flicker2 = Math.sin(this.time * 4.1) * 0.08;
-      
-      const intensityVariation = flicker1 + flicker2;
+      const intensityVariation = this.cachedSin1 + this.cachedSin2;
       primaryLight.intensity = Math.max(
-        3.5, // Minimum bright
+        2.5, // Reduced minimum for performance
         Math.min(
-          6.5, // Maximum very bright
-          5.0 + intensityVariation * (adjustedBaseIntensity / this.config.baseIntensity)
+          4.5, // Reduced maximum for performance
+          4.0 + intensityVariation * (adjustedBaseIntensity / this.config.baseIntensity)
         )
       );
 
-      // Subtle position flicker for realism
-      primaryLight.position.x = this.position.x + Math.sin(this.time * 3) * 0.03;
-      primaryLight.position.z = this.position.z + Math.cos(this.time * 2.7) * 0.03;
-    }
-
-    // Atmospheric light with gentle breathing
-    const atmosphericLight = this.lights[1];
-    if (atmosphericLight) {
-      const atmosphericFlicker = Math.sin(this.time * 1.5) * 0.1;
-      atmosphericLight.intensity = Math.max(
-        1.5,
-        2.5 + atmosphericFlicker * (adjustedBaseIntensity / this.config.baseIntensity)
-      );
+      // Simplified position flicker - less frequent
+      if (this.updateCounter % 5 === 0) {
+        primaryLight.position.x = this.position.x + Math.sin(this.time * 3) * 0.02;
+        primaryLight.position.z = this.position.z + Math.cos(this.time * 2.7) * 0.02;
+      }
     }
   }
 
   public setIntensity(multiplier: number): void {
-    // PERFORMANCE: Balanced intensity setting for both lights
+    // PERFORMANCE: Single light intensity setting
     const primaryLight = this.lights[0];
-    const atmosphericLight = this.lights[1];
     
     if (primaryLight) {
-      primaryLight.intensity = Math.max(3.5, 5.0 * multiplier);
-    }
-    if (atmosphericLight) {
-      atmosphericLight.intensity = Math.max(1.5, 2.5 * multiplier);
+      primaryLight.intensity = Math.max(2.0, 4.0 * multiplier);
     }
     
     this.timeAwareIntensity = new TimeAwareFireIntensity(this.config.baseIntensity * multiplier);

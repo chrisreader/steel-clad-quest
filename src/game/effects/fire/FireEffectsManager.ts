@@ -28,40 +28,38 @@ export class FireEffectsManager {
   public start(): void {
     if (this.isActive) return;
 
-    console.log('🔥 Starting enhanced organic fire effects at position:', this.position);
-
-    // Initialize ONLY organic particle generator - no static fire system
+    // Initialize optimized particle generator
     this.particleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
     
-    // PERFORMANCE: Restored particle counts for visual appeal while keeping performance
+    // PERFORMANCE: Significantly reduced particle counts (using already optimized FIREPLACE_PARTICLE_CONFIGS)
     const flameConfig = { ...FIREPLACE_PARTICLE_CONFIGS.flames };
-    flameConfig.count = Math.floor(this.config.particleCount * 0.45); // Increased from 0.3
+    flameConfig.count = Math.floor(this.config.particleCount * 0.2); // Reduced from 0.45
     this.particleGenerator.addParticleType('flames', flameConfig);
 
     if (this.config.smokeEnabled) {
       const smokeConfig = { ...FIREPLACE_PARTICLE_CONFIGS.smoke };
-      smokeConfig.count = Math.floor(this.config.particleCount * 0.25); // Increased from 0.2
+      smokeConfig.count = Math.floor(this.config.particleCount * 0.15); // Reduced from 0.25
       this.particleGenerator.addParticleType('smoke', smokeConfig);
     }
 
     const emberConfig = { ...FIREPLACE_PARTICLE_CONFIGS.embers };
-    emberConfig.count = Math.max(2, this.config.emberCount * 0.6); // Increased from 0.3
+    emberConfig.count = Math.max(1, this.config.emberCount * 0.3); // Reduced from 0.6
     this.particleGenerator.addParticleType('embers', emberConfig);
 
-    // PERFORMANCE: Balanced lighting system for visual appeal + performance
+    // PERFORMANCE: Optimized single light system
     const lightConfig: FireLightConfig = {
       color: this.config.lightColor,
-      baseIntensity: this.config.lightIntensity * 0.6, // Increased from 0.3
-      maxIntensity: this.config.lightIntensity * 0.8, // Increased from 0.5
+      baseIntensity: this.config.lightIntensity * 0.4, // Reduced from 0.6
+      maxIntensity: this.config.lightIntensity * 0.6, // Reduced from 0.8
       flickerSpeed: this.config.flickerSpeed,
-      distance: this.config.lightDistance * 0.7, // Increased from 0.4
-      castShadow: true // Re-enabled for visual quality
+      distance: this.config.lightDistance * 0.4, // Reduced from 0.7
+      castShadow: false // Disabled for performance
     };
     this.lightingSystem = new FireLightingSystem(this.scene, this.position, lightConfig);
 
     // Initialize sound manager
     const soundConfig: FireSoundConfig = {
-      volume: 0.3,
+      volume: 0.2, // Reduced volume
       loop: true,
       fadeInTime: 2.0,
       fadeOutTime: 1.0,
@@ -71,7 +69,6 @@ export class FireEffectsManager {
     this.soundManager.start();
 
     this.isActive = true;
-    console.log('🔥 Massive fire effects system fully initialized - lights entire tavern + exterior with time-aware intensity');
   }
 
   public update(deltaTime: number): void {
