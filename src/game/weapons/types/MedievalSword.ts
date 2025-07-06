@@ -59,16 +59,16 @@ export class MedievalSword extends Sword {
       bladeShape.lineTo(-0.01, 0.7);
       bladeShape.lineTo(0, 0.9);      // Close at tip
       
-      // Extrude the shape to create 3D blade with same thickness as original (0.02)
+      // Extrude the shape to create 3D blade with increased thickness
       const extrudeSettings = {
-        depth: 0.02,
+        depth: 0.06, // Increased from 0.02 to 0.06 for thicker blade
         bevelEnabled: false
       };
       
       const bladeGeometry = new THREE.ExtrudeGeometry(bladeShape, extrudeSettings);
       
       // Center the geometry and rotate to match original orientation
-      bladeGeometry.translate(0, 0, -0.01);
+      bladeGeometry.translate(0, 0, -0.03); // Adjusted for thicker blade (half of 0.06)
       bladeGeometry.rotateX(Math.PI / 2); // Rotate to match original blade orientation
       
       const taperedBlade = new THREE.Mesh(bladeGeometry, bladeMaterial);
