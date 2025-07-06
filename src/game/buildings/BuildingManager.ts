@@ -3,15 +3,22 @@ import * as THREE from 'three';
 import { BaseBuilding } from './BaseBuilding';
 import { TavernBuilding } from './TavernBuilding';
 import { CastleBuilding } from './CastleBuilding';
+import { HumanCampBuilding } from './HumanCampBuilding';
 import { PhysicsManager } from '../engine/PhysicsManager';
 import { SafeZoneManager } from '../systems/SafeZoneManager';
 import { AudioManager } from '../engine/AudioManager';
 import { EffectsManager } from '../engine/EffectsManager';
 
 export interface BuildingConfig {
-  type: 'tavern' | 'castle';
+  type: 'tavern' | 'castle' | 'human_camp';
   position: THREE.Vector3;
   id?: string;
+  campConfig?: {
+    size?: 'small' | 'medium' | 'large';
+    npcCount?: number;
+    hasRareChest?: boolean;
+    tentCount?: number;
+  };
 }
 
 export class BuildingManager {
@@ -68,6 +75,20 @@ export class BuildingManager {
         break;
       case 'castle':
         building = new CastleBuilding(this.scene, this.physicsManager, config.position);
+        break;
+      case 'human_camp':
+        building = new HumanCampBuilding(this.scene, this.physicsManager, config.position, config.campConfig);
+        if (building instanceof HumanCampBuilding) {
+          if (this.audioManager) {
+            building.setAudioManager(this.audioManager);
+          }
+          if (this.effectsManager) {
+            building.setEffectsManager(this.effectsManager);
+            console.log('🏕️ [BuildingManager] Human camp created with EffectsManager for NPCs');
+          } else {
+            console.warn('🏕️ [BuildingManager] EffectsManager not set - camp NPCs will not spawn');
+          }
+        }
         break;
       default:
         console.warn(`🏗️ Unknown building type: ${config.type}`);

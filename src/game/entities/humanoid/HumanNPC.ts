@@ -134,4 +134,22 @@ export class HumanNPC {
       wanderRadius: 8
     }, effectsManager, audioManager);
   }
+
+  public static createCampNPC(
+    scene: THREE.Scene,
+    position: THREE.Vector3,
+    effectsManager: EffectsManager,
+    audioManager: AudioManager,
+    npcIndex: number
+  ): HumanNPC {
+    const npcNames = [
+      'Camp Guard', 'Hunter', 'Scout', 'Woodsman', 'Traveler'
+    ];
+    
+    return new HumanNPC(scene, {
+      name: npcNames[npcIndex % npcNames.length],
+      position: position,
+      wanderRadius: 5
+    }, effectsManager, audioManager);
+  }
 }
