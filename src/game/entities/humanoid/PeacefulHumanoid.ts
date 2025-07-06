@@ -72,6 +72,36 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       bodyMesh.add(this.humanTShirt);
     }
 
+    // Extract t-shirt arm components from userData (same pattern as pants)
+    const tshirtComponents = this.humanTShirt.userData;
+    const { 
+      leftShoulderTShirt, 
+      rightShoulderTShirt, 
+      leftSleeveTShirt, 
+      rightSleeveTShirt 
+    } = tshirtComponents;
+    
+    // Attach t-shirt arm components directly to arm meshes (CRITICAL for animation following)
+    // Same pattern as pants components attach to leg meshes
+    
+    // 1. Attach shoulder t-shirt components to arm meshes - they will follow arm swing animations
+    if (this.bodyParts.leftArm && leftShoulderTShirt) {
+      this.bodyParts.leftArm.add(leftShoulderTShirt);
+    }
+    if (this.bodyParts.rightArm && rightShoulderTShirt) {
+      this.bodyParts.rightArm.add(rightShoulderTShirt);
+    }
+    
+    // 2. Attach sleeve t-shirt components to arm meshes - they will follow arm swing animations
+    if (this.bodyParts.leftArm && leftSleeveTShirt) {
+      this.bodyParts.leftArm.add(leftSleeveTShirt);
+    }
+    if (this.bodyParts.rightArm && rightSleeveTShirt) {
+      this.bodyParts.rightArm.add(rightSleeveTShirt);
+    }
+    
+    console.log('👔 [PeacefulHumanoid] Added t-shirt with shoulders and sleeves attached to arms for animation following');
+
     // Add realistic pants using exact same methodology as t-shirt
     this.humanPants = HumanBodyConfig.createPants(
       this.config.bodyScale.body.radius,
@@ -226,6 +256,19 @@ export class PeacefulHumanoid extends EnemyHumanoid {
           }
         }
       });
+      
+      // Also clean up t-shirt arm components stored in userData (same pattern as pants)
+      const tshirtComponents = this.humanTShirt.userData;
+      if (tshirtComponents) {
+        Object.values(tshirtComponents).forEach((component: any) => {
+          if (component instanceof THREE.Mesh) {
+            if (component.geometry) component.geometry.dispose();
+            if (component.material instanceof THREE.Material) {
+              component.material.dispose();
+            }
+          }
+        });
+      }
     }
     
     // Clean up pants (same pattern as t-shirt)

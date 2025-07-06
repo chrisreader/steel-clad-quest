@@ -233,8 +233,15 @@ export class HumanBodyConfig {
     const shoulderHeightRelative = shoulderHeightWorld - bodyY; // Relative to body center
     const exactArmPositionX = bodyRadius * 0.85; // EXACT same as arms: ±(bodyScale.body.radius * 0.85)
     
-    // 2. Shoulder deltoid pieces - positioned FURTHER OUTWARD and made 30% WIDER to overlay on top of body shoulders
-    const shoulderJointRadius = (bodyRadius * 0.5) * 1.46; // Match body deltoid size + 46% to overlay on top + 30% wider
+    // 2. T-shirt arm components using exact same methodology as pants
+    // These will be stored in userData and attached to arm meshes for animation following
+    
+    const armTopRadius = armRadius; // 0.1 (bodyScale.arm.radius[1] from config)
+    const armBottomRadius = 0.08;   // bodyScale.arm.radius[0] from config
+    const halfSleeveLength = armLength * 0.5; // Cover half of upper arm length
+    
+    // Create shoulder deltoid components - EXACT same size as actual shoulder joints + fabric allowance
+    const shoulderJointRadius = (bodyRadius * 0.5) * 1.15; // Same as actual shoulder deltoids + 15% fabric allowance
     
     // Create custom deltoid-shaped shoulder geometry - IDENTICAL to body creation
     const shoulderGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 16);
@@ -275,62 +282,37 @@ export class HumanBodyConfig {
     shoulderGeometry.attributes.position.needsUpdate = true;
     shoulderGeometry.computeVertexNormals();
     
-    // Left shoulder deltoid - positioned 40% MORE OUTWARD to overlay properly on top
-    const leftShoulder = new THREE.Mesh(shoulderGeometry, shirtMaterial.clone());
-    leftShoulder.position.set(
-      -exactArmPositionX * 1.4,      // 40% MORE OUTWARD than arm position
-      shoulderHeightRelative + 0.05, // EXACT shoulder joint Y position (arm Y + joint offset)
-      0                              // EXACT Z position
-    );
-    leftShoulder.rotation.set(-0.393 + Math.PI, 0, -0.3); // EXACT shoulder joint rotation
-    leftShoulder.castShadow = true;
+    // Create shoulder deltoid meshes - positioned relative to arm meshes they'll attach to
+    const leftShoulderTShirt = new THREE.Mesh(shoulderGeometry, shirtMaterial.clone());
+    leftShoulderTShirt.position.set(0, 0.05, 0); // Same relative position as actual shoulder joints
+    leftShoulderTShirt.rotation.set(-0.393 + Math.PI, 0, -0.3); // EXACT shoulder joint rotation
+    leftShoulderTShirt.castShadow = true;
     
-    // Right shoulder deltoid - positioned 40% MORE OUTWARD to overlay properly on top  
-    const rightShoulder = new THREE.Mesh(shoulderGeometry.clone(), shirtMaterial.clone());
-    rightShoulder.position.set(
-      exactArmPositionX * 1.4,       // 40% MORE OUTWARD than arm position
-      shoulderHeightRelative + 0.05, // EXACT shoulder joint Y position (arm Y + joint offset)
-      0                              // EXACT Z position
-    );
-    rightShoulder.rotation.set(-0.393 + Math.PI, 0, 0.3); // EXACT shoulder joint rotation
-    rightShoulder.castShadow = true;
+    const rightShoulderTShirt = new THREE.Mesh(shoulderGeometry.clone(), shirtMaterial.clone());
+    rightShoulderTShirt.position.set(0, 0.05, 0); // Same relative position as actual shoulder joints
+    rightShoulderTShirt.rotation.set(-0.393 + Math.PI, 0, 0.3); // EXACT shoulder joint rotation
+    rightShoulderTShirt.castShadow = true;
     
-    // 3. Sleeves - positioned SLIGHTLY MORE OUTWARD to overlay on top of arms
-    const armTopRadius = armRadius; // 0.1 (bodyScale.arm.radius[1])
-    const armBottomRadius = 0.08;   // bodyScale.arm.radius[0] 
-    const sleeveLength = armLength * 0.6; // Cover 60% of upper arm
-    
-    // Create tapered sleeve geometry - IDENTICAL to createTaperedLimbGeometry + fabric allowance + 30% WIDER
+    // 3. Half-sleeve components - EXACT same size as arms but with fabric allowance
     const sleeveGeometry = new THREE.CylinderGeometry(
-      armTopRadius * 1.495,    // Top radius with 49.5% fabric allowance to overlay + 30% wider
-      armBottomRadius * 1.495, // Bottom radius with 49.5% fabric allowance + 30% wider  
-      sleeveLength,            // Length based on arm measurements
-      24, 8                    // Same high resolution as arms
+      armTopRadius * 1.15,    // Top radius with 15% fabric allowance
+      armBottomRadius * 1.15, // Bottom radius with 15% fabric allowance  
+      halfSleeveLength,       // Half the arm length for short sleeves
+      24, 8                   // Same high resolution as actual arms
     );
     
-    // Apply the same geometry translation as arms: translate(0, -armLength * 0.5, 0)
-    // But adjust for sleeve length: translate(0, -sleeveLength * 0.5, 0)
-    sleeveGeometry.translate(0, -sleeveLength * 0.5, 0);
+    // Apply EXACT same geometry translation as actual arms: translate(0, -halfSleeveLength * 0.5, 0)
+    sleeveGeometry.translate(0, -halfSleeveLength * 0.5, 0);
     
-    // Left sleeve - positioned 40% MORE OUTWARD to overlay on top of arm
-    const leftSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
-    leftSleeve.position.set(
-      -exactArmPositionX * 1.4,      // 40% MORE OUTWARD than arm position
-      shoulderHeightRelative,        // EXACT arm Y position: shoulderHeightRelative
-      0                              // EXACT arm Z position
-    );
-    leftSleeve.rotation.set(-0.393, 0, -0.3); // EXACT same rotation as actual left arm
-    leftSleeve.castShadow = true;
+    const leftSleeveTShirt = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
+    leftSleeveTShirt.position.set(0, 0, 0); // Positioned relative to leftArm mesh it will attach to
+    leftSleeveTShirt.castShadow = true;
+    leftSleeveTShirt.receiveShadow = true;
     
-    // Right sleeve - positioned 40% MORE OUTWARD to overlay on top of arm
-    const rightSleeve = new THREE.Mesh(sleeveGeometry.clone(), shirtMaterial.clone());
-    rightSleeve.position.set(
-      exactArmPositionX * 1.4,       // 40% MORE OUTWARD than arm position  
-      shoulderHeightRelative,        // EXACT arm Y position: shoulderHeightRelative
-      0                              // EXACT arm Z position
-    );
-    rightSleeve.rotation.set(-0.393, 0, 0.3); // EXACT same rotation as actual right arm
-    rightSleeve.castShadow = true;
+    const rightSleeveTShirt = new THREE.Mesh(sleeveGeometry.clone(), shirtMaterial.clone());
+    rightSleeveTShirt.position.set(0, 0, 0); // Positioned relative to rightArm mesh it will attach to
+    rightSleeveTShirt.castShadow = true;
+    rightSleeveTShirt.receiveShadow = true;
     
     // 4. Neck opening - realistic collar
     const neckGeometry = new THREE.TorusGeometry(
@@ -344,13 +326,18 @@ export class HumanBodyConfig {
     neckCollar.rotation.x = Math.PI / 2;
     neckCollar.castShadow = true;
     
-    // Assemble complete form-fitting t-shirt
+    // Assemble main t-shirt (only torso and collar in main group)
     tshirtGroup.add(torso);
-    tshirtGroup.add(leftShoulder);
-    tshirtGroup.add(rightShoulder);
-    tshirtGroup.add(leftSleeve);
-    tshirtGroup.add(rightSleeve);
     tshirtGroup.add(neckCollar);
+    
+    // Store arm components in userData for attachment to arm meshes (same pattern as pants)
+    // These won't be added to tshirtGroup as they attach directly to arm parts for animation following
+    tshirtGroup.userData = {
+      leftShoulderTShirt,
+      rightShoulderTShirt,
+      leftSleeveTShirt,
+      rightSleeveTShirt
+    };
     
     return tshirtGroup;
   }
