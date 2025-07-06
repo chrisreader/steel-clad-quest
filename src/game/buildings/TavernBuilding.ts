@@ -164,9 +164,13 @@ export class TavernBuilding extends BaseBuilding {
         let skipLog = false;
         for (const opening of windowOpenings) {
           if (logY >= opening.minY && logY <= opening.maxY) {
-            // For side walls, also check Z position
+            // For side walls, check if log intersects with window Z range
             if (width <= depth) { // Side wall (left/right)
-              if (centerZ >= opening.minZ && centerZ <= opening.maxZ) {
+              // Log spans from centerZ - depth/2 to centerZ + depth/2
+              const logMinZ = centerZ - depth/2;
+              const logMaxZ = centerZ + depth/2;
+              // Check if log overlaps with window opening
+              if (logMaxZ > opening.minZ && logMinZ < opening.maxZ) {
                 skipLog = true;
                 break;
               }
