@@ -895,8 +895,8 @@ export abstract class EnemyHumanoid {
     isGreenHumanoid: boolean = false
   ) {
     if (isGreenHumanoid) {
-      // Create extra long, pointed goblin ears (100% longer)
-      const earLength = 0.5; // Doubled from 0.25 to 0.5 for 100% longer ears
+      // Create extremely long, pointed goblin ears (200% longer than original)
+      const earLength = 1.0; // Doubled again from 0.5 to 1.0 for another 100% increase
       const earWidth = 0.12;
       const earThickness = 0.06;
       
