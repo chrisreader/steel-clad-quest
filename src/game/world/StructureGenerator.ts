@@ -213,10 +213,33 @@ export class StructureGenerator {
     return t * t * (3 - 2 * t);
   }
   
-  // REMOVED: Duplicate test camp creation - GameEngine handles this
+  // NEW: Create specific test camp near spawn
   private createTestCamp(): void {
-    console.log('🏕️ [StructureGenerator] Test camp creation handled by GameEngine - skipping duplicate');
-    return; // Skip duplicate creation
+    console.log('🏕️ [StructureGenerator] Creating TEST CAMP near spawn');
+    
+    if (!this.buildingManager) {
+      console.warn('🏕️ [StructureGenerator] BuildingManager not available for test camp');
+      return;
+    }
+    
+    const testCampPosition = new THREE.Vector3(40, 0, 30);
+    const testCamp = this.buildingManager.createBuilding({
+      type: 'human_camp',
+      position: testCampPosition,
+      id: 'test_camp_spawn',
+      campConfig: { 
+        size: 'medium',
+        npcCount: 1,
+        hasRareChest: true,
+        tentCount: 2
+      }
+    });
+    
+    if (testCamp) {
+      console.log(`🏕️ ✅ TEST CAMP placed at (${testCampPosition.x}, ${testCampPosition.z}) with NPC`);
+    } else {
+      console.error(`🏕️ ❌ TEST CAMP creation failed`);
+    }
   }
   
   // NEW: Create guaranteed camps at specific locations

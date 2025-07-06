@@ -38,7 +38,12 @@ export class CampKeeperBehavior {
   constructor(config: CampKeeperConfig, campCenter: THREE.Vector3) {
     this.config = config;
     this.campCenter = campCenter.clone();
-    // Removed excessive logging for performance
+    console.log('🏕️ [CampKeeperBehavior] Initialized with camp center:', this.campCenter, 'config:', {
+      wanderRadius: config.wanderRadius,
+      moveSpeed: config.moveSpeed,
+      pauseDuration: config.pauseDuration,
+      interactionRadius: config.interactionRadius
+    });
   }
 
   public update(
@@ -78,6 +83,8 @@ export class CampKeeperBehavior {
   }
 
   private handlePlayerInteraction(npcPosition: THREE.Vector3, playerPosition: THREE.Vector3): CampAction {
+    console.log('👋 [CampKeeper] Greeting player');
+    
     this.currentAction = { 
       type: 'interact', 
       duration: 2000 // Brief interaction
@@ -88,23 +95,7 @@ export class CampKeeperBehavior {
   }
 
   private handleIdleState(actionDuration: number, npcPosition: THREE.Vector3): CampAction {
-    // Enhanced stuck detection - if idle too long (more than 2x pause duration), force movement
-    const maxIdleTime = this.config.pauseDuration * 2;
-    if (actionDuration > maxIdleTime) {
-      const forceWaypoint = this.selectNextWaypoint(npcPosition);
-      
-      this.currentAction = {
-        type: 'move',
-        target: forceWaypoint
-      };
-      this.currentWaypoint = forceWaypoint;
-      this.actionStartTime = Date.now();
-      this.isAtWaypoint = false;
-      
-      return this.currentAction;
-    }
-    
-    // After normal pausing, choose next waypoint to move to
+    // After pausing, choose next waypoint to move to
     if (actionDuration > this.config.pauseDuration) {
       const nextWaypoint = this.selectNextWaypoint(npcPosition);
       
@@ -116,9 +107,12 @@ export class CampKeeperBehavior {
       this.actionStartTime = Date.now();
       this.isAtWaypoint = false;
       
+      console.log('🚶 [CampKeeper] Starting movement from idle after', actionDuration, 'ms pause. Moving to waypoint:', nextWaypoint);
+      
       return this.currentAction;
     }
     
+    console.log('🛌 [CampKeeper] Remaining idle for', this.config.pauseDuration - actionDuration, 'ms more');
     return { type: 'idle' };
   }
 
@@ -134,6 +128,8 @@ export class CampKeeperBehavior {
     
     // Check if we've reached the waypoint
     if (distanceToWaypoint < 0.8) {
+      console.log('✅ [CampKeeper] Reached waypoint, switching to idle');
+      
       this.currentAction = { type: 'idle' };
       this.actionStartTime = Date.now();
       this.lastWaypointTime = Date.now();
@@ -154,6 +150,8 @@ export class CampKeeperBehavior {
     if (actionDuration > (this.currentAction.duration || 2000)) {
       this.currentAction = { type: 'idle' };
       this.actionStartTime = Date.now();
+      
+      console.log('💬 [CampKeeper] Finished interaction, returning to idle');
     }
     
     return this.currentAction;
@@ -183,6 +181,7 @@ export class CampKeeperBehavior {
     
     selectedWaypoint.add(randomOffset);
     
+    console.log('🚶 [CampKeeper] Selected waypoint:', selectedWaypoint, 'for camp at:', this.campCenter);
     return selectedWaypoint;
   }
 
