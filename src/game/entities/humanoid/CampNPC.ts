@@ -20,7 +20,7 @@ export class CampNPC extends BaseHumanNPC {
     effectsManager: EffectsManager,
     audioManager: AudioManager
   ) {
-    super(scene, config, effectsManager, audioManager, false, 'dagger');
+    super(scene, config, effectsManager, audioManager, false, 'dagger', config.campCenter);
     
     this.campCenter = config.campCenter;
     this.lastPosition.copy(config.position);

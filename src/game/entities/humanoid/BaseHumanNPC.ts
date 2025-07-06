@@ -33,10 +33,16 @@ export abstract class BaseHumanNPC {
     effectsManager: EffectsManager,
     audioManager: AudioManager,
     isTavernKeeper: boolean = false,
-    defaultTool: string = 'dagger'
+    defaultTool: string = 'dagger',
+    campCenter?: THREE.Vector3
   ) {
     this.config = config;
     this.npcId = `${this.constructor.name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Store campCenter if provided (for CampNPC)
+    if (campCenter && 'campCenter' in this) {
+      (this as any).campCenter = campCenter;
+    }
     
     // Streamlined manager validation
     if (!this.validateManagers(effectsManager, audioManager)) {
