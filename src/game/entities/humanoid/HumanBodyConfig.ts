@@ -107,11 +107,12 @@ export class HumanBodyConfig {
           tshirt: tshirtColor,
           pants: pantsColor,
           hair: hairColor
-        }
+        },
+        toolType: 'dagger' // Default tool type for camp NPCs
       },
       features: {
         ...baseConfig.features,
-        hasWeapon: false // Camp NPCs don't carry weapons
+        hasWeapon: true // Camp NPCs carry tools/weapons
       }
     };
   }

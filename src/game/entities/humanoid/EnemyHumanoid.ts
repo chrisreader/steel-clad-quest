@@ -137,6 +137,7 @@ export interface HumanoidConfig {
       pants: number;
       hair: number;
     };
+    toolType?: string;
   };
 }
 

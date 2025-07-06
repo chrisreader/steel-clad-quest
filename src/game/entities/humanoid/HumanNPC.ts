@@ -3,12 +3,15 @@ import { PeacefulHumanoid } from './PeacefulHumanoid';
 import { EffectsManager } from '../../engine/EffectsManager';
 import { AudioManager } from '../../engine/AudioManager';
 import { TavernKeeperBehavior } from '../../ai/TavernKeeperBehavior';
+import { CampNPCBehavior } from '../../ai/CampNPCBehavior';
 
 export interface HumanNPCConfig {
   name: string;
   position: THREE.Vector3;
   wanderRadius?: number;
   useRandomizedAppearance?: boolean;
+  toolType?: 'mug' | 'dagger' | 'sword' | 'staff' | 'axe';
+  npcType?: 'tavern_keeper' | 'camp_npc';
 }
 
 export class HumanNPC {
@@ -16,7 +19,7 @@ export class HumanNPC {
   private scene: THREE.Scene;
   private effectsManager: EffectsManager;
   private audioManager: AudioManager;
-  private behavior: TavernKeeperBehavior;
+  private behavior: TavernKeeperBehavior | CampNPCBehavior;
   private config: HumanNPCConfig;
   
   private walkTime: number = 0;
@@ -41,7 +44,8 @@ export class HumanNPC {
       effectsManager,
       audioManager,
       isKeeperType, // keeper type for tavern keeper
-      config.useRandomizedAppearance || false // use randomized appearance if specified
+      config.useRandomizedAppearance || false, // use randomized appearance if specified
+      config.toolType // pass tool type for weapon creation
     );
     
     this.setupBehavior();
@@ -52,14 +56,28 @@ export class HumanNPC {
   // Body creation is now handled by PeacefulHumanoid - no primitive geometry needed!
 
   private setupBehavior(): void {
-    this.behavior = new TavernKeeperBehavior({
-      wanderRadius: this.config.wanderRadius || 8,
-      moveSpeed: 1.5,
-      pauseDuration: 3000,
-      interactionRadius: 15
-    });
+    const npcType = this.config.npcType || 'tavern_keeper';
     
-    console.log(`🧠 [HumanNPC] Setup tavern keeper behavior for ${this.config.name}`);
+    if (npcType === 'camp_npc') {
+      this.behavior = new CampNPCBehavior({
+        wanderRadius: this.config.wanderRadius || 6,
+        moveSpeed: 1.5,
+        pauseDuration: 2000,
+        interactionRadius: 12,
+        patrolRadius: this.config.wanderRadius || 6
+      });
+      
+      console.log(`🧠 [HumanNPC] Setup camp NPC behavior for ${this.config.name}`);
+    } else {
+      this.behavior = new TavernKeeperBehavior({
+        wanderRadius: this.config.wanderRadius || 8,
+        moveSpeed: 1.5,
+        pauseDuration: 3000,
+        interactionRadius: 15
+      });
+      
+      console.log(`🧠 [HumanNPC] Setup tavern keeper behavior for ${this.config.name}`);
+    }
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
@@ -149,11 +167,17 @@ export class HumanNPC {
       'Camp Guard', 'Hunter', 'Scout', 'Woodsman', 'Traveler'
     ];
     
+    // Random tool selection for camp NPCs
+    const tools = ['dagger', 'sword', 'staff', 'axe'];
+    const randomTool = tools[Math.floor(Math.random() * tools.length)] as 'dagger' | 'sword' | 'staff' | 'axe';
+    
     return new HumanNPC(scene, {
       name: npcNames[npcIndex % npcNames.length],
       position: position,
       wanderRadius: 5,
-      useRandomizedAppearance: true // Enable randomized appearance for camp NPCs
+      useRandomizedAppearance: true,
+      toolType: randomTool,
+      npcType: 'camp_npc'
     }, effectsManager, audioManager);
   }
 }

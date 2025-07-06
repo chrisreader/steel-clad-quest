@@ -19,7 +19,8 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     effectsManager: EffectsManager,
     audioManager: AudioManager,
     isKeeperType: boolean = false,
-    useRandomizedAppearance: boolean = false
+    useRandomizedAppearance: boolean = false,
+    toolType?: string
   ) {
     // Use appropriate human configuration
     let config;
@@ -27,6 +28,10 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       config = HumanBodyConfig.createTavernKeeperConfig();
     } else if (useRandomizedAppearance) {
       config = HumanBodyConfig.createRandomizedHumanConfig();
+      // Override tool type if provided
+      if (toolType && config.userData) {
+        config.userData.toolType = toolType;
+      }
     } else {
       config = HumanBodyConfig.createHumanConfig();
     }
@@ -180,13 +185,33 @@ export class PeacefulHumanoid extends EnemyHumanoid {
   }
 
   /**
-   * Override createWeapon to not create weapons for peaceful NPCs
-   * Instead, optionally create civilian tools like mugs, brooms, etc.
+   * Override createWeapon to create varied tools/weapons based on NPC type
+   * Tavern keepers get mugs, camp NPCs get daggers, swords, staffs, etc.
    */
   protected createWeapon(woodTexture: THREE.Texture, metalTexture: THREE.Texture): THREE.Group {
     const toolGroup = new THREE.Group();
     
-    // Create a simple mug or tankard for tavern keeper
+    // Get tool type from config userData, default to mug for tavern keeper
+    const toolType = this.config.userData?.toolType || 'mug';
+    
+    switch (toolType) {
+      case 'dagger':
+        return this.createDagger(metalTexture);
+      case 'sword':
+        return this.createSword(metalTexture);
+      case 'staff':
+        return this.createStaff(woodTexture);
+      case 'axe':
+        return this.createAxe(woodTexture, metalTexture);
+      case 'mug':
+      default:
+        return this.createMug();
+    }
+  }
+  
+  private createMug(): THREE.Group {
+    const toolGroup = new THREE.Group();
+    
     const mugGeometry = new THREE.CylinderGeometry(0.08, 0.06, 0.15, 12);
     const mugMaterial = new THREE.MeshPhongMaterial({
       color: 0x8B4513, // Brown mug
@@ -204,6 +229,138 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     
     toolGroup.add(mug);
     toolGroup.add(handle);
+    
+    return toolGroup;
+  }
+  
+  private createDagger(metalTexture: THREE.Texture): THREE.Group {
+    const toolGroup = new THREE.Group();
+    
+    // Blade
+    const bladeGeometry = new THREE.BoxGeometry(0.03, 0.25, 0.01);
+    const bladeMaterial = new THREE.MeshPhongMaterial({
+      color: 0xC0C0C0,
+      shininess: 100,
+      map: metalTexture
+    });
+    
+    const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+    blade.position.set(0, 0.125, 0);
+    blade.castShadow = true;
+    
+    // Handle
+    const handleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.1, 8);
+    const handleMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8B4513
+    });
+    
+    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+    handle.position.set(0, -0.05, 0);
+    handle.castShadow = true;
+    
+    toolGroup.add(blade);
+    toolGroup.add(handle);
+    
+    return toolGroup;
+  }
+  
+  private createSword(metalTexture: THREE.Texture): THREE.Group {
+    const toolGroup = new THREE.Group();
+    
+    // Blade
+    const bladeGeometry = new THREE.BoxGeometry(0.04, 0.4, 0.01);
+    const bladeMaterial = new THREE.MeshPhongMaterial({
+      color: 0xC0C0C0,
+      shininess: 100,
+      map: metalTexture
+    });
+    
+    const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+    blade.position.set(0, 0.2, 0);
+    blade.castShadow = true;
+    
+    // Handle
+    const handleGeometry = new THREE.CylinderGeometry(0.025, 0.025, 0.15, 8);
+    const handleMaterial = new THREE.MeshPhongMaterial({
+      color: 0x654321
+    });
+    
+    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+    handle.position.set(0, -0.075, 0);
+    handle.castShadow = true;
+    
+    // Guard
+    const guardGeometry = new THREE.BoxGeometry(0.15, 0.02, 0.02);
+    const guard = new THREE.Mesh(guardGeometry, bladeMaterial);
+    guard.position.set(0, 0, 0);
+    guard.castShadow = true;
+    
+    toolGroup.add(blade);
+    toolGroup.add(handle);
+    toolGroup.add(guard);
+    
+    return toolGroup;
+  }
+  
+  private createStaff(woodTexture: THREE.Texture): THREE.Group {
+    const toolGroup = new THREE.Group();
+    
+    // Staff shaft
+    const shaftGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.6, 8);
+    const shaftMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8B4513,
+      map: woodTexture
+    });
+    
+    const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
+    shaft.position.set(0, 0.3, 0);
+    shaft.castShadow = true;
+    
+    // Staff top ornament
+    const ornamentGeometry = new THREE.SphereGeometry(0.04, 12, 8);
+    const ornamentMaterial = new THREE.MeshPhongMaterial({
+      color: 0x4169E1,
+      shininess: 80
+    });
+    
+    const ornament = new THREE.Mesh(ornamentGeometry, ornamentMaterial);
+    ornament.position.set(0, 0.64, 0);
+    ornament.castShadow = true;
+    
+    toolGroup.add(shaft);
+    toolGroup.add(ornament);
+    
+    return toolGroup;
+  }
+  
+  private createAxe(woodTexture: THREE.Texture, metalTexture: THREE.Texture): THREE.Group {
+    const toolGroup = new THREE.Group();
+    
+    // Handle
+    const handleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8);
+    const handleMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8B4513,
+      map: woodTexture
+    });
+    
+    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+    handle.position.set(0, 0.15, 0);
+    handle.castShadow = true;
+    
+    // Axe head
+    const headGeometry = new THREE.BoxGeometry(0.12, 0.08, 0.02);
+    const headMaterial = new THREE.MeshPhongMaterial({
+      color: 0x696969,
+      map: metalTexture,
+      shininess: 60
+    });
+    
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.set(0, 0.32, 0);
+    head.castShadow = true;
+    
+    toolGroup.add(handle);
+    toolGroup.add(head);
     
     return toolGroup;
   }
