@@ -895,51 +895,51 @@ export abstract class EnemyHumanoid {
     isGreenHumanoid: boolean = false
   ) {
     if (isGreenHumanoid) {
-      // Create extremely long, pointed goblin ears (200% longer than original)
-      const earLength = 1.0; // Doubled again from 0.5 to 1.0 for another 100% increase
-      const earWidth = 0.12;
+      // Create EXTREMELY LONG, pointed goblin ears - massive 2.0 length!
+      const earLength = 2.0; // Massive goblin ears - 2x longer than previous
+      const earWidth = 0.18; // Much wider for prominent goblin look
       const earThickness = 0.06;
       
       const earGeometry = new THREE.BoxGeometry(earThickness, earLength, earWidth);
       
-      // Left ear - positioned and angled for goblin look
+      // Left ear - positioned higher and angled dramatically for massive goblin look
       const leftEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
       leftEar.position.set(
         -bodyScale.head.radius * 0.9, 
-        0.2, // Higher position for longer ears
+        0.4, // Much higher position for massive 2.0 length ears
         0
       );
-      leftEar.rotation.z = -0.3; // More angled for goblins
-      leftEar.rotation.y = -0.2; // Slight forward angle for goblins
+      leftEar.rotation.z = -0.4; // More dramatic angle for massive goblin ears
+      leftEar.rotation.y = -0.3; // More forward angle for prominent goblin look
       leftEar.castShadow = true;
       headGroup.add(leftEar);
 
-      // Right ear - positioned and angled for goblin look  
+      // Right ear - positioned higher and angled dramatically for massive goblin look
       const rightEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
       rightEar.position.set(
         bodyScale.head.radius * 0.9, 
-        0.2, // Higher position for longer ears
+        0.4, // Much higher position for massive 2.0 length ears
         0
       );
-      rightEar.rotation.z = 0.3; // More angled for goblins
-      rightEar.rotation.y = 0.2; // Slight forward angle for goblins
+      rightEar.rotation.z = 0.4; // More dramatic angle for massive goblin ears
+      rightEar.rotation.y = 0.3; // More forward angle for prominent goblin look
       rightEar.castShadow = true;
       headGroup.add(rightEar);
 
-      // Add pointed ear tips for extra long goblin ears
-      const tipGeometry = new THREE.ConeGeometry(0.02, 0.1, 6); // Slightly bigger tips for longer ears
+      // Add pointed ear tips for MASSIVE goblin ears
+      const tipGeometry = new THREE.ConeGeometry(0.03, 0.15, 6); // Bigger tips for massive ears
       
-      // Left ear tip - positioned at end of extremely long ear
+      // Left ear tip - positioned at the very end of the massive 2.0 length ear
       const leftTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
-      leftTip.position.set(-bodyScale.head.radius * 0.9, 0.7, 0); // Positioned at end of 1.0 length ears
-      leftTip.rotation.z = -0.3;
+      leftTip.position.set(-bodyScale.head.radius * 0.9, 1.4, 0); // At end of 2.0 length ears (0.4 + 2.0/2 = 1.4)
+      leftTip.rotation.z = -0.4;
       leftTip.castShadow = true;
       headGroup.add(leftTip);
       
-      // Right ear tip - positioned at end of extremely long ear
+      // Right ear tip - positioned at the very end of the massive 2.0 length ear
       const rightTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
-      rightTip.position.set(bodyScale.head.radius * 0.9, 0.7, 0); // Positioned at end of 1.0 length ears
-      rightTip.rotation.z = 0.3;
+      rightTip.position.set(bodyScale.head.radius * 0.9, 1.4, 0); // At end of 2.0 length ears (0.4 + 2.0/2 = 1.4)
+      rightTip.rotation.z = 0.4;
       rightTip.castShadow = true;
       headGroup.add(rightTip);
     } else {
