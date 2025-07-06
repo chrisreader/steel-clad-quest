@@ -255,6 +255,38 @@ export class StructureGenerator {
       });
       
       console.log(`🏔️ Placed realistic curved hill at (20, 0, 30) in Ring 0, Quadrant 0 for slope testing`);
+
+      // TEST HUMAN CAMP: Add a test camp near spawn to verify NPC movement
+      console.log(`🏕️ [TEST] Creating test human camp at (40, 0, 30) to verify NPC movement`);
+      
+      if (this.buildingManager) {
+        const testCampPosition = new THREE.Vector3(40, 0, 30);
+        const testCamp = this.buildingManager.createBuilding({
+          type: 'human_camp',
+          position: testCampPosition,
+          id: 'test_camp_ring0',
+          campConfig: { 
+            size: 'small',
+            npcCount: 1,
+            hasRareChest: false
+          }
+        });
+        
+        if (testCamp) {
+          structures.push({
+            type: 'human_camp',
+            position: testCampPosition,
+            rotation: 0,
+            model: testCamp.getBuildingGroup()
+          });
+          
+          console.log(`🏕️ ✅ TEST CAMP placed at (${testCampPosition.x}, ${testCampPosition.z}) for immediate NPC testing`);
+        } else {
+          console.error(`🏕️ ❌ TEST CAMP creation failed`);
+        }
+      } else {
+        console.warn(`🏕️ ❌ BuildingManager not available for test camp`);
+      }
     }
     
     // For ring 1, quadrant 2 (SW), place a ruined castle using BuildingManager
