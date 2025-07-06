@@ -396,9 +396,10 @@ export class TavernBuilding extends BaseBuilding {
       const chandelierGroup = new THREE.Group();
       const xPos = -2 + i * 4;
       
-      // Chandelier ring base
+      // Chandelier ring base (rotated to lay flat)
       const chandelierBase = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.02, 8, 16), chandelierMaterial.clone());
       chandelierBase.position.set(0, 0, 0);
+      chandelierBase.rotation.x = Math.PI / 2; // Rotate to lay flat
       chandelierGroup.add(chandelierBase);
       
       // Hanging chain
@@ -417,13 +418,13 @@ export class TavernBuilding extends BaseBuilding {
         arm.rotation.y = angle;
         chandelierGroup.add(arm);
         
-        // Candle (positioned on top of ring)
-        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.1, 8), candleMaterial.clone());
-        candle.position.set(Math.cos(angle) * radius, 0.05, Math.sin(angle) * radius);
+        // Candle (positioned on top of ring) - larger size
+        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8), candleMaterial.clone());
+        candle.position.set(Math.cos(angle) * radius, 0.1, Math.sin(angle) * radius);
         chandelierGroup.add(candle);
         
-        // Candle holder cup (on top of ring)
-        const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.02, 8), chandelierMaterial.clone());
+        // Candle holder cup (on top of ring) - larger to match candle
+        const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.03, 8), chandelierMaterial.clone());
         holder.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
         chandelierGroup.add(holder);
       }
