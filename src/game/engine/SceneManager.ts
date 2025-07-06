@@ -160,6 +160,11 @@ export class SceneManager {
     console.log('🔊 SceneManager: AudioManager connected to BuildingManager for enhanced fire effects');
   }
 
+  public initializeWithEffectsManager(effectsManager: EffectsManager): void {
+    this.buildingManager.setEffectsManager(effectsManager);
+    console.log('✨ SceneManager: EffectsManager connected to BuildingManager for NPC spawning');
+  }
+
   private setupEnhancedFog(): void {
     const fogColor = ColorUtils.getSynchronizedFogColorForTime(
       this.timeOfDay, 

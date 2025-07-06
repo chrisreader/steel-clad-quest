@@ -68,12 +68,12 @@ export class GameEngine {
       // Initialize render engine
       this.renderEngine.initialize();
       
-      // Create the building manager
-      this.buildingManager = new BuildingManager(this.renderEngine.getScene(), this.physicsManager);
-      console.log("🏗️ [GameEngine] BuildingManager created");
-      
       // Create the scene manager using the render engine's scene and physics manager
       this.sceneManager = new SceneManager(this.renderEngine.getScene(), this.physicsManager);
+      
+      // Get the building manager from scene manager (don't create a separate one)
+      this.buildingManager = this.sceneManager.getBuildingManager();
+      console.log("🏗️ [GameEngine] Using SceneManager's BuildingManager");
       
       // FIXED: Set camera reference in SceneManager for proper sun glow calculations
       this.sceneManager.setCamera(this.renderEngine.getCamera());
@@ -100,6 +100,14 @@ export class GameEngine {
         this.buildingManager.setAudioManager(this.audioManager);
         this.buildingManager.setEffectsManager(this.effectsManager);
         console.log("🔊 [GameEngine] AudioManager and EffectsManager connected to BuildingManager");
+      }
+
+      // Also initialize SceneManager with the managers for consistency
+      if (this.audioManager) {
+        this.sceneManager.initializeWithAudioManager(this.audioManager);
+      }
+      if (this.effectsManager) {
+        this.sceneManager.initializeWithEffectsManager(this.effectsManager);
       }
       
       // Create buildings with fireplaces
