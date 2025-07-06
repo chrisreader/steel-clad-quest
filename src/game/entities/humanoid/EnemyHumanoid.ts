@@ -391,7 +391,7 @@ export abstract class EnemyHumanoid {
     
     // Natural human silhouette: shoulders -> waist -> hips
     const positions = torsoGeometry.attributes.position.array as Float32Array;
-    const isHuman = !this.config.features.hasWeapon;
+    const isHuman = this.config.type === EnemyType.HUMAN; // Check actual type, not weapon status
     
     for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];

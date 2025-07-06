@@ -99,6 +99,8 @@ export class HumanCampNPC {
     const mesh = this.getMesh();
     const currentPos = mesh.position.clone();
     
+    console.log(`🏃 [${this.config.name}] moveTowards called - From:`, currentPos, 'To:', target);
+    
     // Calculate direction to target
     const direction = new THREE.Vector3()
       .subVectors(target, currentPos)
@@ -108,22 +110,24 @@ export class HumanCampNPC {
     const moveSpeed = 1.5 * deltaTime;
     const distanceToTarget = currentPos.distanceTo(target);
     
+    console.log(`🏃 [${this.config.name}] Distance to target: ${distanceToTarget.toFixed(2)}m, Speed: ${moveSpeed.toFixed(3)}`);
+    
     // Only move if we're not too close to the target
     if (distanceToTarget > 0.5) {
       const newPosition = currentPos.clone();
       newPosition.add(direction.multiplyScalar(moveSpeed));
       newPosition.y = 0; // Ensure stays on ground
       
+      console.log(`🏃 [${this.config.name}] Moving to new position:`, newPosition);
       mesh.position.copy(newPosition);
       
       // Update rotation to face movement direction
       const targetRotation = Math.atan2(direction.x, direction.z);
       mesh.rotation.y = THREE.MathUtils.lerp(mesh.rotation.y, targetRotation, 0.1);
       
-      // Debug movement
-      if (Math.random() < 0.01) {
-        console.log(`🚶 [${this.config.name}] Moving towards target, distance: ${distanceToTarget.toFixed(2)}m`);
-      }
+      console.log(`🏃 [${this.config.name}] New rotation: ${mesh.rotation.y.toFixed(2)} rad`);
+    } else {
+      console.log(`🏃 [${this.config.name}] Too close to target, not moving`);
     }
   }
 
