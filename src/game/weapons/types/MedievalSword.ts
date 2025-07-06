@@ -94,18 +94,24 @@ export class MedievalSword extends Sword {
       const oldGuard = swordGroup.children[existingGuardIndex];
       swordGroup.remove(oldGuard);
       
-      // Create tapered rectangular crossguard - left side 
+      // Create tapered rectangular crossguard - left side with dual-plane tapering
       // Create a custom tapered rectangular geometry extending outward
       const leftGuardShape = new THREE.Shape();
-      leftGuardShape.moveTo(0, -0.04);      // Start at center
-      leftGuardShape.lineTo(-0.25, -0.01);  // Extend left and taper to sharper tip (reduced from -0.02 to -0.01)
-      leftGuardShape.lineTo(-0.25, 0.01);   // Top of sharp tip (reduced from 0.02 to 0.01)
+      leftGuardShape.moveTo(0, -0.04);      // Start at center bottom
+      leftGuardShape.lineTo(-0.15, -0.025); // Intermediate taper
+      leftGuardShape.lineTo(-0.22, -0.01);  // Near sharp tip, narrower
+      leftGuardShape.lineTo(-0.25, 0);      // Sharp point at tip center
+      leftGuardShape.lineTo(-0.22, 0.01);   // Near sharp tip, narrower (top)
+      leftGuardShape.lineTo(-0.15, 0.025);  // Intermediate taper (top)
       leftGuardShape.lineTo(0, 0.04);       // Back to center top
       leftGuardShape.lineTo(0, -0.04);      // Close shape
       
       const leftGuardGeometry = new THREE.ExtrudeGeometry(leftGuardShape, {
         depth: 0.08,
-        bevelEnabled: false
+        bevelEnabled: true,
+        bevelThickness: 0.01,
+        bevelSize: 0.01,
+        bevelSegments: 3
       });
       
       const guardMaterial = new THREE.MeshPhongMaterial({ 
@@ -121,17 +127,23 @@ export class MedievalSword extends Sword {
       leftGuard.castShadow = true;
       swordGroup.add(leftGuard);
 
-      // Create tapered rectangular crossguard - right side
+      // Create tapered rectangular crossguard - right side with dual-plane tapering
       const rightGuardShape = new THREE.Shape();
-      rightGuardShape.moveTo(0, -0.04);      // Start at center
-      rightGuardShape.lineTo(0.25, -0.01);   // Extend right and taper to sharper tip (reduced from -0.02 to -0.01)
-      rightGuardShape.lineTo(0.25, 0.01);    // Top of sharp tip (reduced from 0.02 to 0.01)
+      rightGuardShape.moveTo(0, -0.04);      // Start at center bottom
+      rightGuardShape.lineTo(0.15, -0.025);  // Intermediate taper
+      rightGuardShape.lineTo(0.22, -0.01);   // Near sharp tip, narrower
+      rightGuardShape.lineTo(0.25, 0);       // Sharp point at tip center
+      rightGuardShape.lineTo(0.22, 0.01);    // Near sharp tip, narrower (top)
+      rightGuardShape.lineTo(0.15, 0.025);   // Intermediate taper (top)
       rightGuardShape.lineTo(0, 0.04);       // Back to center top
       rightGuardShape.lineTo(0, -0.04);      // Close shape
       
       const rightGuardGeometry = new THREE.ExtrudeGeometry(rightGuardShape, {
         depth: 0.08,
-        bevelEnabled: false
+        bevelEnabled: true,
+        bevelThickness: 0.01,
+        bevelSize: 0.01,
+        bevelSegments: 3
       });
       
       const rightGuard = new THREE.Mesh(rightGuardGeometry, guardMaterial);
