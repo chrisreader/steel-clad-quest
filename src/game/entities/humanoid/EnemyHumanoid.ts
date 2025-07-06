@@ -650,13 +650,13 @@ export abstract class EnemyHumanoid {
     
     let eyeGeometry;
     if (isHuman) {
-      // Create sideways oval eye for humans - fix shader issues
-      eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.7, 16, 12);
+      // Create realistic eyeball shape for humans
+      eyeGeometry = new THREE.SphereGeometry(features.eyeConfig.radius * 0.8, 16, 12);
       // Apply scaling after creation to avoid shader issues
       eyeGeometry.computeBoundingBox();
       eyeGeometry.computeVertexNormals();
-      // Scale to make it oval (wider horizontally) 
-      eyeGeometry.scale(1.4, 0.8, 0.6);
+      // Scale to make it more eyeball-shaped (slightly wider, but more spherical than oval)
+      eyeGeometry.scale(1.2, 1.0, 0.9); // More realistic eyeball proportions
       // Recompute normals after scaling to fix rendering
       eyeGeometry.computeVertexNormals();
     } else {
@@ -697,10 +697,7 @@ export abstract class EnemyHumanoid {
       shininess: 100
     });
 
-    // Add nose for humans
-    if (isHuman) {
-      this.addNoseToHead(headGroup, bodyScale, this.config.colors.skin);
-    }
+    // Remove nose to eliminate rectangle between eyes
 
     // Add eyebrows for better facial definition
     this.addEyebrowsToHead(headGroup, bodyScale, features, this.config.colors.accent);
