@@ -94,8 +94,9 @@ export class GreenHumanoidEnemy extends EnemyHumanoid {
           .normalize();
         direction.y = 0;
 
-        // Set target rotation
+        // Always face the player when chasing
         this.targetRotation = Math.atan2(direction.x, direction.z);
+        this.updateFacingDirection(deltaTime);
 
         // Move towards player
         const moveAmount = this.config.speed * deltaTime;
@@ -106,6 +107,14 @@ export class GreenHumanoidEnemy extends EnemyHumanoid {
         this.mesh.position.copy(newPosition);
         this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
       } else {
+        // Still face player when in attack range
+        const direction = new THREE.Vector3()
+          .subVectors(playerPosition, this.mesh.position)
+          .normalize();
+        direction.y = 0;
+        this.targetRotation = Math.atan2(direction.x, direction.z);
+        this.updateFacingDirection(deltaTime);
+        
         // Attack if in range
         if (now - this.lastAttackTime > this.config.attackCooldown) {
           // Use base class attack method via casting
@@ -114,10 +123,27 @@ export class GreenHumanoidEnemy extends EnemyHumanoid {
         }
         this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
       }
+    } else {
+      // When passive, still update animations but don't move
+      this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
     }
+  }
 
-    // Use base class rotation method
-    (this as any).updateRotation(deltaTime);
+  private updateFacingDirection(deltaTime: number): void {
+    const currentRotation = this.mesh.rotation.y;
+    const rotationDiff = this.targetRotation - currentRotation;
+    
+    // Normalize rotation difference to [-π, π]
+    let normalizedDiff = rotationDiff;
+    while (normalizedDiff > Math.PI) normalizedDiff -= 2 * Math.PI;
+    while (normalizedDiff < -Math.PI) normalizedDiff += 2 * Math.PI;
+    
+    // Apply rotation smoothly
+    if (Math.abs(normalizedDiff) > 0.01) {
+      const rotationSpeed = this.rotationSpeed * deltaTime;
+      const rotationStep = Math.sign(normalizedDiff) * Math.min(Math.abs(normalizedDiff), rotationSpeed);
+      this.mesh.rotation.y = currentRotation + rotationStep;
+    }
   }
 
   public setPassiveMode(passive: boolean): void {
