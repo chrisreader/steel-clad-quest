@@ -48,14 +48,14 @@ export class MedievalSword extends Sword {
       bladeShape.lineTo(0.008, -0.8);  // Very narrow near tip for sharp point
       bladeShape.lineTo(0.015, -0.7);  // Gradually widening
       bladeShape.lineTo(0.03, -0.3);   // Wider section
-      bladeShape.lineTo(0.04, 0);     // Widest at middle
-      bladeShape.lineTo(0.03, 0.3);   // Wider narrowing back
-      bladeShape.lineTo(0.025, 0.7);  // Getting wider toward base
-      bladeShape.lineTo(0.03, 0.9);   // Much wider at base for better handle connection
-      bladeShape.lineTo(-0.03, 0.9);  // Mirror wide base
+      bladeShape.lineTo(0.055, 0);     // Much wider at middle (increased from 0.04 to 0.055)
+      bladeShape.lineTo(0.03, 0.3);    // Wider narrowing back
+      bladeShape.lineTo(0.025, 0.7);   // Getting wider toward base
+      bladeShape.lineTo(0.03, 0.9);    // Much wider at base for better handle connection
+      bladeShape.lineTo(-0.03, 0.9);   // Mirror wide base
       bladeShape.lineTo(-0.025, 0.7);  // Mirror
       bladeShape.lineTo(-0.03, 0.3);   // Mirror
-      bladeShape.lineTo(-0.04, 0);     // Widest at middle
+      bladeShape.lineTo(-0.055, 0);    // Much wider at middle (mirrored)
       bladeShape.lineTo(-0.03, -0.3);  // Mirror
       bladeShape.lineTo(-0.015, -0.7); // Mirror
       bladeShape.lineTo(-0.008, -0.8); // Mirror narrow near tip
