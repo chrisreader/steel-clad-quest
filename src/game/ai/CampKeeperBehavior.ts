@@ -95,7 +95,24 @@ export class CampKeeperBehavior {
   }
 
   private handleIdleState(actionDuration: number, npcPosition: THREE.Vector3): CampAction {
-    // After pausing, choose next waypoint to move to
+    // Enhanced stuck detection - if idle too long (more than 2x pause duration), force movement
+    const maxIdleTime = this.config.pauseDuration * 2;
+    if (actionDuration > maxIdleTime) {
+      console.warn('⚠️ [CampKeeper] NPC stuck in idle state for', actionDuration, 'ms (max:', maxIdleTime, ') - forcing movement');
+      const forceWaypoint = this.selectNextWaypoint(npcPosition);
+      
+      this.currentAction = {
+        type: 'move',
+        target: forceWaypoint
+      };
+      this.currentWaypoint = forceWaypoint;
+      this.actionStartTime = Date.now();
+      this.isAtWaypoint = false;
+      
+      return this.currentAction;
+    }
+    
+    // After normal pausing, choose next waypoint to move to
     if (actionDuration > this.config.pauseDuration) {
       const nextWaypoint = this.selectNextWaypoint(npcPosition);
       

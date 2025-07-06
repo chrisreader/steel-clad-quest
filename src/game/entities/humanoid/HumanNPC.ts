@@ -72,9 +72,14 @@ export class HumanNPC {
     // Handle movement based on behavior
     if (action.type === 'move' && action.target) {
       this.moveTowards(action.target, deltaTime);
-      this.humanoid.updateWalkAnimation(deltaTime);
+      // Use unified animation method with movement state
+      this.humanoid.updateAnimation(deltaTime, true, 1.5); // isMoving=true, speed=1.5
     } else if (action.type === 'idle') {
-      this.humanoid.updateIdleAnimation(deltaTime);
+      // Use unified animation method for idle state
+      this.humanoid.updateAnimation(deltaTime, false, 0); // isMoving=false
+    } else if (action.type === 'interact') {
+      // Use unified animation method for interaction
+      this.humanoid.updateAnimation(deltaTime, false, 0); // isMoving=false
     }
   }
 

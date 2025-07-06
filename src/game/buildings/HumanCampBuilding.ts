@@ -331,10 +331,18 @@ export class HumanCampBuilding extends BaseBuilding {
       this.campKeeper.update(deltaTime, playerPosition);
     }
     
-    // Enhanced NPC Recovery System: Try to create missing NPCs if managers are now available
+    // Enhanced NPC Recovery System with better validation
     if (!this.campKeeper && this.audioManager && this.effectsManager) {
-      console.log('🏕️ [HumanCampBuilding] Attempting to recover missing camp keeper NPC');
-      this.createCampKeeper();
+      // Additional validation - ensure managers are functional
+      const isAudioReady = typeof this.audioManager.playSound === 'function';
+      const isEffectsReady = typeof this.effectsManager.createHitEffect === 'function';
+      
+      if (isAudioReady && isEffectsReady) {
+        console.log('🏕️ [HumanCampBuilding] Attempting to recover missing camp keeper NPC with validated managers');
+        this.createCampKeeper();
+      } else {
+        console.warn('🏕️ [HumanCampBuilding] Managers present but not fully functional - Audio ready:', isAudioReady, 'Effects ready:', isEffectsReady);
+      }
     }
     
     // Enhanced Health check for camp keeper

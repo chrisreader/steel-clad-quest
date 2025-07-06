@@ -42,9 +42,16 @@ export class CampNPC {
     
     console.log(`👤 [${this.npcId}] Creating camp keeper "${config.name}" at:`, config.position);
     
-    // Validate managers
+    // Enhanced manager validation - check if managers are functional, not just non-null
     if (!effectsManager || !audioManager) {
       console.error(`❌ [${this.npcId}] Missing managers - Effects: ${!!effectsManager}, Audio: ${!!audioManager}`);
+      this.isDead = true;
+      return;
+    }
+    
+    // Additional validation - check if managers have required methods
+    if (typeof effectsManager.createHitEffect !== 'function' || typeof audioManager.playSound !== 'function') {
+      console.error(`❌ [${this.npcId}] Managers not fully initialized - Effects methods: ${typeof effectsManager.createHitEffect}, Audio methods: ${typeof audioManager.playSound}`);
       this.isDead = true;
       return;
     }
