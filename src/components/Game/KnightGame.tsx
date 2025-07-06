@@ -95,20 +95,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
     handleWeaponSlotSelect,
     isOffhandDisabled
   } = useWeaponManagement({
-    primary: {
-      id: '1', 
-      name: 'Medieval Sword', 
-      type: 'weapon' as const, 
-      subtype: 'sword' as const,
-      value: 500, 
-      description: 'A masterfully crafted medieval blade with tapered cross guard and razor-sharp tapered point. This superior weapon offers exceptional balance and deadly precision in combat (+30 attack)', 
-      quantity: 1,
-      equipmentSlot: 'primary' as const,
-      stats: { attack: 30 },
-      tier: 'rare' as const,
-      icon: 'sword',
-      weaponId: 'medieval_sword'
-    },
+    primary: null,
     secondary: null,
     offhand: null
   });
