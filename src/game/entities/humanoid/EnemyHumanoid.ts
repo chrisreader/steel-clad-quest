@@ -1230,17 +1230,25 @@ export abstract class EnemyHumanoid {
     bodyScale: BodyScale,
     skinMaterial: THREE.MeshPhongMaterial
   ) {
-    // Smaller feet for humans and use correct scaling
-    const footGeometry = new THREE.BoxGeometry(0.25, 0.15, 0.5);
-    const footMaterial = skinMaterial.clone();
+    // Create oval-shaped feet with curved edges using capsule geometry
+    const footGeometry = new THREE.CapsuleGeometry(0.12, 0.35, 4, 8);
+    
+    // Create dark grey shoe material instead of skin material
+    const footMaterial = new THREE.MeshPhongMaterial({
+      color: 0x404040,        // Dark grey color for shoes
+      shininess: 20,          // Slight shine for leather-like appearance
+      specular: 0x222222      // Subtle specular highlights
+    });
 
     const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
     leftFoot.position.set(0, -bodyScale.shin.length, 0.15);
+    leftFoot.rotation.x = Math.PI / 2; // Rotate to lie flat like a foot
     leftFoot.castShadow = true;
     leftKnee.add(leftFoot);
 
     const rightFoot = new THREE.Mesh(footGeometry, footMaterial.clone());
     rightFoot.position.set(0, -bodyScale.shin.length, 0.15);
+    rightFoot.rotation.x = Math.PI / 2; // Rotate to lie flat like a foot
     rightFoot.castShadow = true;
     rightKnee.add(rightFoot);
 
