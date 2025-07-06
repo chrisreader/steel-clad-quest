@@ -1252,14 +1252,17 @@ export class RealisticTreeGenerator {
 
     // Update trunk materials
     for (const material of this.activeTrunkMaterials) {
+      // Always use the full base bark color during day time
       const baseBarkColor = new THREE.Color(0xA0522D); // Brown bark color
       console.log(`🌳 Trunk material current color:`, material.color.getHexString());
       
-      // Create night version - darker but still visible
-      const nightColor = baseBarkColor.clone().multiplyScalar(0.4); // Darker at night
+      // During day time (nightFactor = 0), use full base color
+      // During night time (nightFactor = 1), use darker version but still visible
+      const dayColor = baseBarkColor.clone();
+      const nightColor = baseBarkColor.clone().multiplyScalar(0.5); // Brighter at night than before
       
       // Blend between day and night colors
-      const blendedColor = baseBarkColor.clone().lerp(nightColor, nightFactor);
+      const blendedColor = dayColor.clone().lerp(nightColor, nightFactor);
       material.color.copy(blendedColor);
       console.log(`🌳 Trunk material updated color:`, blendedColor.getHexString());
       
