@@ -734,11 +734,8 @@ export class SceneManager {
     this.loadRegion(startRegion);
     console.log('🔧 Starting region loaded with proper terrain');
     
-    this.buildingManager.createBuilding({
-      type: 'tavern',
-      position: new THREE.Vector3(0, 0, 0)
-    });
-    console.log('🏗️ Tavern created using BuildingManager');
+    // Note: Tavern is created by GameEngine.createBuildings(), not here
+    console.log('🏗️ Tavern creation handled by GameEngine');
     
     this.structureGenerator.createTestHill(20, 0, 30, 15, 8);
     console.log('Test hill created for shadow testing');
