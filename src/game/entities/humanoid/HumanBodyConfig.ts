@@ -127,15 +127,15 @@ export class HumanBodyConfig {
       transparent: false
     });
     
-    // 1. Main torso section - matches the exact body shape from EnemyHumanoid.ts but slightly larger
+    // 1. Main torso section - matches the EXACT body shape from EnemyHumanoid.ts but slightly larger
     const torsoGeometry = new THREE.CylinderGeometry(
-      bodyRadius * 1.1 * 1.05,  // Chest width - match body exactly (1.1) + 5% fabric allowance
-      bodyRadius * 0.7 * 1.05,  // Waist width - match body exactly (0.7) + 5% fabric allowance  
-      bodyHeight * 1.2 * 0.8,   // Height - match body (1.2) but cover 80% for t-shirt length
-      32, 16                    // Same high resolution as body for smooth curves
+      bodyRadius * 1.1,     // Chest width - match body exactly
+      bodyRadius * 0.7,     // Waist width - match body exactly  
+      bodyHeight * 1.2,     // Height - match body exactly (full height for neck tapering)
+      32, 16                // Same high resolution as body for smooth curves
     );
     
-    // Apply the same anatomical shaping as the actual torso (from EnemyHumanoid.ts)
+    // Apply the EXACT same anatomical shaping as the actual torso (from EnemyHumanoid.ts)
     const positions = torsoGeometry.attributes.position.array as Float32Array;
     const isHuman = true; // This is for human NPCs
     
@@ -145,41 +145,67 @@ export class HumanBodyConfig {
       const z = positions[i + 2];
       
       // Normalize Y position (-0.5 to 0.5) - same logic as body creation
-      const normalizedY = y / (bodyHeight * 1.2);
+      const normalizedY = y / bodyHeight;
       
-      // Apply the exact same scaling logic as the actual torso
       let scaleFactor = 1.0;
+      let frontBackScale = 1.0;
       
-      if (normalizedY > 0.3) {
-        // Upper chest/shoulder area - wider
-        scaleFactor = 1.0 + (normalizedY - 0.3) * 0.4;
-      } else if (normalizedY > 0.0) {
-        // Mid torso - gradual narrowing
-        scaleFactor = 1.0 + normalizedY * 0.1;
-      } else if (normalizedY > -0.3) {
-        // Lower torso/waist - narrower
-        scaleFactor = 1.0 - Math.abs(normalizedY) * 0.2;
-      } else {
-        // Hip area - slightly wider again
-        scaleFactor = 0.85 + Math.abs(normalizedY + 0.3) * 0.1;
-      }
-      
-      // Human shoulder curve enhancement (from original body code)
+      // EXACT same logic as EnemyHumanoid.ts for humans - create graduated scaling for natural shoulder-to-neck transition
       if (isHuman && normalizedY > 0.1) {
-        const shoulderCurve = Math.sin((normalizedY - 0.1) * Math.PI * 2.5);
-        const shoulderWidth = 1.0 + shoulderCurve * 0.15;
-        
-        const distance = Math.sqrt(x * x + z * z);
-        if (distance > 0) {
-          const normalizedX = x / distance;
-          const normalizedZ = z / distance;
-          
-          const newDistance = distance * shoulderWidth * 1.05; // +5% fabric allowance
-          positions[i] = normalizedX * newDistance;
-          positions[i + 2] = normalizedZ * newDistance;
+        if (normalizedY > 0.45) {
+          // Very top - significant taper toward neck (CRITICAL for neck fit)
+          const topCurve = (normalizedY - 0.45) / 0.05; // 0 at upper-top boundary, 1 at very top
+          scaleFactor = 1.2 - (topCurve * 0.4); // Taper from 1.2 to 0.8
+          frontBackScale = 1.0 - topCurve * 0.3; // More narrow front-to-back
+        } else if (normalizedY > 0.4) {
+          // Upper-top - start slight taper (extended chest area)
+          const upperCurve = (normalizedY - 0.4) / 0.05; // 0 at upper-middle boundary, 1 at very top boundary
+          scaleFactor = 1.2 - (upperCurve * 0.1); // Gradual reduction from 1.2 to 1.1
+          frontBackScale = 1.0 - upperCurve * 0.15; // Start front-to-back compression
+        } else {
+          // Upper-middle - broader chest/shoulder area (EXTENDED higher to align with shoulders)
+          scaleFactor = 1.2; // Broader chest extending higher
+          frontBackScale = 1.0; // Flatter chest front-to-back depth
         }
-      } else {
-        // Apply the scaling with fabric allowance (5% larger than body)
+        
+        // Create curved shoulder transition for all upper sections (EXACT same as body)
+        const shoulderRadius = Math.sqrt(x * x + z * z);
+        if (shoulderRadius > 0) {
+          const angle = Math.atan2(z, x);
+          const ovalX = Math.cos(angle) * shoulderRadius * scaleFactor;
+          
+          // Apply different scaling to front vs back - make back flatter
+          let zScale = frontBackScale;
+          if (z < 0) { // Back of the chest (negative Z)
+            zScale = frontBackScale * 0.85; // Make back slightly flatter
+          }
+          
+          const ovalZ = Math.sin(angle) * shoulderRadius * zScale;
+          
+          // Add 5% fabric allowance to the final shape
+          positions[i] = ovalX * 1.05;
+          positions[i + 2] = ovalZ * 1.05;
+        }
+      }
+      // Regular chest area - keep full width
+      else if (normalizedY > 0.1) {
+        scaleFactor = 1.0; // Keep full width at chest
+        positions[i] = x * scaleFactor * 1.05;
+        positions[i + 2] = z * scaleFactor * 1.05;
+      }
+      // Waist area - narrower 
+      else if (normalizedY >= -0.2) {
+        // Smooth transition to narrow waist
+        const waistPosition = (normalizedY + 0.2) / 0.3; // 0 at bottom of waist, 1 at top
+        scaleFactor = 0.75 + waistPosition * 0.25; // Scale from 0.75 to 1.0
+        positions[i] = x * scaleFactor * 1.05;
+        positions[i + 2] = z * scaleFactor * 1.05;
+      }
+      // Hip/pelvis area - wider again
+      else {
+        // Smooth transition to wider hips
+        const hipPosition = Math.abs(normalizedY + 0.2) / 0.3; // 0 at waist, 1 at bottom
+        scaleFactor = 0.75 + hipPosition * 0.2; // Scale from 0.75 to 0.95
         positions[i] = x * scaleFactor * 1.05;
         positions[i + 2] = z * scaleFactor * 1.05;
       }
