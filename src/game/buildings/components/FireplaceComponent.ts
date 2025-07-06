@@ -19,19 +19,22 @@ export class FireplaceComponent {
   private fireplaceId: string;
   private fireActive: boolean = false;
   private currentGameTime: number = 0;
+  private alwaysOn: boolean = false;
 
   constructor(
     scene: THREE.Scene, 
     physicsManager: PhysicsManager, 
     audioManager: AudioManager, 
     position: THREE.Vector3,
-    id: string = 'main_fireplace'
+    id: string = 'main_fireplace',
+    alwaysOn: boolean = false
   ) {
     this.scene = scene;
     this.physicsManager = physicsManager;
     this.audioManager = audioManager;
     this.position = position.clone();
     this.fireplaceId = id;
+    this.alwaysOn = alwaysOn;
     
     this.fireplaceGroup = new THREE.Group();
     this.fireplaceGroup.position.copy(this.position);
@@ -52,7 +55,11 @@ export class FireplaceComponent {
     const rocksGroup = this.fireplaceRocks.createRockCircle(0.8, 16);
     this.fireplaceGroup.add(rocksGroup);
 
-    // Don't start fire immediately - wait for night time
+    // Start fire immediately if always-on (tavern), otherwise wait for night time
+    if (this.alwaysOn) {
+      this.lightFire();
+      this.fireActive = true;
+    }
 
     this.scene.add(this.fireplaceGroup);
     console.log(`🔥 Fireplace component '${this.fireplaceId}' created with MASSIVE landscape-reaching lighting`);
@@ -64,7 +71,16 @@ export class FireplaceComponent {
     this.currentGameTime = gameTime;
     this.fireSystem.updateTimeOfDay(gameTime, timePhases);
     
-    // Turn fire on at night (18:00-6:00), off during day
+    // Skip time-based control if always on (tavern fire)
+    if (this.alwaysOn) {
+      if (!this.fireActive) {
+        this.lightFire();
+        this.fireActive = true;
+      }
+      return;
+    }
+    
+    // Turn fire on at night (18:00-6:00), off during day for camp fires
     const isNightTime = gameTime >= 18 || gameTime <= 6;
     
     if (isNightTime && !this.fireActive) {

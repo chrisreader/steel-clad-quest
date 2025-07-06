@@ -100,7 +100,8 @@ export class TavernBuilding extends BaseBuilding {
       this.physicsManager,
       this.audioManager,
       new THREE.Vector3(0, 0, 0), // Center of tavern
-      'tavern_fireplace'
+      'tavern_fireplace',
+      true // Always on for tavern
     );
     
     const fireplaceGroup = this.fireplaceComponent.create();
