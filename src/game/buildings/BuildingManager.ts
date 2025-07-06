@@ -82,16 +82,23 @@ export class BuildingManager {
         building = new CastleBuilding(this.scene, this.physicsManager, config.position);
         break;
       case 'human_camp':
+        console.log('🏗️ [BuildingManager] Creating human camp building...');
         building = new HumanCampBuilding(this.scene, this.physicsManager, config.position, config.campConfig);
         if (building instanceof HumanCampBuilding) {
+          console.log('🏗️ [BuildingManager] Setting managers for human camp...');
           if (this.audioManager) {
             building.setAudioManager(this.audioManager);
+            console.log('🏗️ [BuildingManager] AudioManager set for human camp');
           }
           if (this.effectsManager) {
             building.setEffectsManager(this.effectsManager);
+            console.log('🏗️ [BuildingManager] EffectsManager set for human camp');
           }
           if (this.chestInteractionSystem) {
             building.setChestInteractionSystem(this.chestInteractionSystem);
+            console.log('🏗️ [BuildingManager] ChestInteractionSystem set for human camp');
+          } else {
+            console.warn('🏗️ [BuildingManager] ChestInteractionSystem NOT available for human camp');
           }
         }
         break;

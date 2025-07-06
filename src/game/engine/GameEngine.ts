@@ -205,6 +205,7 @@ export class GameEngine {
     }
     
     console.log("🏕️ [GameEngine] Creating guaranteed test camp near spawn with NPC...");
+    console.log("🏕️ [GameEngine] ChestInteractionSystem available:", !!this.chestInteractionSystem);
     
     // Create a test human camp near spawn with guaranteed NPC
     const testCamp = this.buildingManager.createBuilding({

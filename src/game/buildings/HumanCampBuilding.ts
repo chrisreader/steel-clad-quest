@@ -45,7 +45,14 @@ export class HumanCampBuilding extends BaseBuilding {
   }
 
   public setChestInteractionSystem(chestInteractionSystem: ChestInteractionSystem): void {
+    console.log('💰 [HumanCampBuilding] ChestInteractionSystem being set:', !!chestInteractionSystem);
     this.chestInteractionSystem = chestInteractionSystem;
+    
+    // If building structure already exists but chests weren't created, create them now
+    if (chestInteractionSystem && this.buildingGroup.children.length > 0 && this.chests.length === 0) {
+      console.log('💰 [HumanCampBuilding] Building exists but no chests - creating chests now');
+      this.createCampChests();
+    }
   }
 
   protected createStructure(): void {
@@ -200,6 +207,7 @@ export class HumanCampBuilding extends BaseBuilding {
     console.log('💰 [HumanCampBuilding] Creating camp chests - START');
     console.log('💰 [HumanCampBuilding] Camp position:', this.position);
     console.log('💰 [HumanCampBuilding] ChestInteractionSystem available:', !!this.chestInteractionSystem);
+    console.log('💰 [HumanCampBuilding] Current chest count:', this.chests.length);
     
     if (!this.chestInteractionSystem) {
       console.warn('💰 [HumanCampBuilding] ChestInteractionSystem not available, skipping chest creation');
@@ -217,15 +225,19 @@ export class HumanCampBuilding extends BaseBuilding {
     
     console.log('💰 [HumanCampBuilding] Common chest position:', commonChestPosition);
     
-    const commonChest = this.chestInteractionSystem.createChest({
-      type: 'common',
-      position: commonChestPosition,
-      id: `camp_common_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}_${Date.now()}`
-    });
-    
-    this.chests.push(commonChest);
-    this.addComponent(commonChest.getGroup(), 'common_chest', 'wood');
-    console.log('💰 [HumanCampBuilding] Common chest created successfully');
+    try {
+      const commonChest = this.chestInteractionSystem.createChest({
+        type: 'common',
+        position: commonChestPosition,
+        id: `camp_common_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}_${Date.now()}`
+      });
+      
+      this.chests.push(commonChest);
+      this.addComponent(commonChest.getGroup(), 'common_chest', 'wood');
+      console.log('💰 [HumanCampBuilding] Common chest created successfully');
+    } catch (error) {
+      console.error('💰 [HumanCampBuilding] Error creating common chest:', error);
+    }
     
     // Maybe add rare chest
     if (this.config.hasRareChest) {
@@ -239,16 +251,20 @@ export class HumanCampBuilding extends BaseBuilding {
       
       console.log('💰 [HumanCampBuilding] Rare chest position:', rareChestPosition);
       
-      const rareChest = this.chestInteractionSystem.createChest({
-        type: 'rare',
-        position: rareChestPosition,
-        id: `camp_rare_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}_${Date.now()}`
-      });
-      
-      this.chests.push(rareChest);
-      this.addComponent(rareChest.getGroup(), 'rare_chest', 'metal');
-      
-      console.log('💰 [HumanCampBuilding] Rare chest created successfully');
+      try {
+        const rareChest = this.chestInteractionSystem.createChest({
+          type: 'rare',
+          position: rareChestPosition,
+          id: `camp_rare_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}_${Date.now()}`
+        });
+        
+        this.chests.push(rareChest);
+        this.addComponent(rareChest.getGroup(), 'rare_chest', 'metal');
+        
+        console.log('💰 [HumanCampBuilding] Rare chest created successfully');
+      } catch (error) {
+        console.error('💰 [HumanCampBuilding] Error creating rare chest:', error);
+      }
     }
     
     console.log(`💰 [HumanCampBuilding] Camp chest creation COMPLETE - ${this.chests.length} chest(s) for camp`);
