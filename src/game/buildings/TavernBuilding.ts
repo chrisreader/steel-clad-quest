@@ -103,146 +103,100 @@ export class TavernBuilding extends BaseBuilding {
 
   private createRealisticWalls(): void {
     const wallHeight = 6;
+    const logHeight = 0.3;
+    const logsPerWall = Math.floor(wallHeight / logHeight);
     
-    // Stone foundation base with individual rock outlines
-    const foundationMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x696969,
-      map: TextureGenerator.createStoneTexture(),
-      roughness: 0.9,
-      metalness: 0
-    });
+    // Wood log colors for variation
+    const logColors = [
+      0x8B4513, // Saddle brown
+      0xA0522D, // Sienna  
+      0x8B7355, // Dark khaki
+      0xCD853F, // Peru
+      0x654321  // Dark brown
+    ];
     
-    // Wood upper walls
-    const woodMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x8B7355,
-      map: TextureGenerator.createWoodTexture(),
-      roughness: 0.8,
-      metalness: 0
-    });
+    // Create stacked log walls for each side
+    this.createLogWall('back', 0, -6, 12, 0.4, logsPerWall, logColors);
+    this.createLogWall('left', -6, 0, 0.4, 12, logsPerWall, logColors);
+    this.createLogWall('right', 6, 0, 0.4, 12, logsPerWall, logColors);
     
-    // Back wall with stone foundation and wood upper
-    const backFoundation = new THREE.Mesh(new THREE.BoxGeometry(12, 1.5, 0.4), foundationMaterial);
-    backFoundation.position.set(0, 0.75, -6);
-    this.addComponent(backFoundation, 'back_foundation', 'stone');
-    
-    // Add individual rock outlines to back foundation
-    this.addRockOutlines(0, 0.75, -6, 12, 0.4, 'back');
-    
-    const backWoodWall = new THREE.Mesh(new THREE.BoxGeometry(12, wallHeight - 1.5, 0.3), woodMaterial);
-    backWoodWall.position.set(0, wallHeight - 2.25, -6);
-    this.addComponent(backWoodWall, 'back_wall', 'wood');
-    
-    // Add wooden support beams
-    for (let i = -1; i <= 1; i++) {
-      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.2, wallHeight, 0.2), woodMaterial.clone());
-      beam.position.set(i * 4, wallHeight/2, -5.9);
-      this.addComponent(beam, `back_beam_${i + 1}`, 'wood');
-    }
-    
-    // Left wall with rock outlines
-    const leftFoundation = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.5, 12), foundationMaterial.clone());
-    leftFoundation.position.set(-6, 0.75, 0);
-    this.addComponent(leftFoundation, 'left_foundation', 'stone');
-    
-    this.addRockOutlines(-6, 0.75, 0, 0.4, 12, 'left');
-    
-    const leftWoodWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, wallHeight - 1.5, 12), woodMaterial.clone());
-    leftWoodWall.position.set(-6, wallHeight - 2.25, 0);
-    this.addComponent(leftWoodWall, 'left_wall', 'wood');
-    
-    // Right wall with rock outlines
-    const rightFoundation = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.5, 12), foundationMaterial.clone());
-    rightFoundation.position.set(6, 0.75, 0);
-    this.addComponent(rightFoundation, 'right_foundation', 'stone');
-    
-    this.addRockOutlines(6, 0.75, 0, 0.4, 12, 'right');
-    
-    const rightWoodWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, wallHeight - 1.5, 12), woodMaterial.clone());
-    rightWoodWall.position.set(6, wallHeight - 2.25, 0);
-    this.addComponent(rightWoodWall, 'right_wall', 'wood');
-    
-    // Front walls with tavern door and rock outlines
-    const frontLeftFoundation = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 0.4), foundationMaterial.clone());
-    frontLeftFoundation.position.set(-3, 0.75, 6);
-    this.addComponent(frontLeftFoundation, 'front_left_foundation', 'stone');
-    
-    this.addRockOutlines(-3, 0.75, 6, 3, 0.4, 'front_left');
-    
-    const frontLeftWall = new THREE.Mesh(new THREE.BoxGeometry(3, wallHeight - 1.5, 0.3), woodMaterial.clone());
-    frontLeftWall.position.set(-3, wallHeight - 2.25, 6);
-    this.addComponent(frontLeftWall, 'front_wall_left', 'wood');
-    
-    const frontRightFoundation = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 0.4), foundationMaterial.clone());
-    frontRightFoundation.position.set(3, 0.75, 6);
-    this.addComponent(frontRightFoundation, 'front_right_foundation', 'stone');
-    
-    this.addRockOutlines(3, 0.75, 6, 3, 0.4, 'front_right');
-    
-    const frontRightWall = new THREE.Mesh(new THREE.BoxGeometry(3, wallHeight - 1.5, 0.3), woodMaterial.clone());
-    frontRightWall.position.set(3, wallHeight - 2.25, 6);
-    this.addComponent(frontRightWall, 'front_wall_right', 'wood');
+    // Front walls with door opening
+    this.createLogWall('front_left', -3, 6, 3, 0.4, logsPerWall, logColors);
+    this.createLogWall('front_right', 3, 6, 3, 0.4, logsPerWall, logColors);
     
     // Create tavern door frame
     this.createDoorFrame();
   }
 
-  private addRockOutlines(centerX: number, centerY: number, centerZ: number, width: number, depth: number, wallName: string): void {
-    const rockMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x505050,
-      roughness: 1.0,
+  private createLogWall(wallName: string, centerX: number, centerZ: number, width: number, depth: number, logsCount: number, logColors: number[]): void {
+    const logHeight = 0.3;
+    const logRadius = logHeight * 0.4;
+    
+    for (let i = 0; i < logsCount; i++) {
+      const colorIndex = i % logColors.length;
+      const logMaterial = new THREE.MeshStandardMaterial({
+        color: logColors[colorIndex],
+        map: TextureGenerator.createWoodTexture(),
+        roughness: 0.8,
+        metalness: 0
+      });
+      
+      let logGeometry: THREE.CylinderGeometry;
+      let logPosition: THREE.Vector3;
+      let rotation = new THREE.Euler(0, 0, Math.PI / 2); // Rotate to make horizontal
+      
+      if (width > depth) {
+        // Horizontal log (back/front walls)
+        logGeometry = new THREE.CylinderGeometry(logRadius, logRadius, width, 12);
+        logPosition = new THREE.Vector3(centerX, (i + 0.5) * logHeight, centerZ);
+      } else {
+        // Vertical log (left/right walls)  
+        logGeometry = new THREE.CylinderGeometry(logRadius, logRadius, depth, 12);
+        logPosition = new THREE.Vector3(centerX, (i + 0.5) * logHeight, centerZ);
+        rotation = new THREE.Euler(Math.PI / 2, 0, 0); // Different rotation for side walls
+      }
+      
+      const log = new THREE.Mesh(logGeometry, logMaterial);
+      log.position.copy(logPosition);
+      log.rotation.copy(rotation);
+      
+      // Add slight random variations for natural look
+      log.position.y += (Math.random() - 0.5) * 0.02;
+      log.rotation.z += (Math.random() - 0.5) * 0.05;
+      
+      this.addComponent(log, `${wallName}_log_${i}`, 'wood');
+      
+      // Add log end caps for more realistic appearance
+      if (i % 2 === 0) { // Every other log gets visible end caps
+        this.createLogEndCaps(logPosition, logRadius, width > depth ? width : depth, wallName, i);
+      }
+    }
+  }
+
+  private createLogEndCaps(logPosition: THREE.Vector3, radius: number, length: number, wallName: string, logIndex: number): void {
+    const endCapMaterial = new THREE.MeshStandardMaterial({
+      color: 0x654321,
+      map: TextureGenerator.createWoodTexture(),
+      roughness: 0.9,
       metalness: 0
     });
     
-    // Simpler, more visible rock placement
-    const maxDimension = Math.max(width, depth);
-    const rocksPerRow = Math.max(3, Math.ceil(maxDimension / 1.5)); // Fewer, larger rocks
-    const rocksPerColumn = 2; // Two clear rows
+    // Create ring pattern for log ends
+    const endCapGeometry = new THREE.CylinderGeometry(radius * 0.9, radius * 0.9, 0.05, 12);
     
-    for (let row = 0; row < rocksPerColumn; row++) {
-      for (let i = 0; i < rocksPerRow; i++) {
-        // Larger, more uniform rock sizes
-        const baseSize = 0.6;
-        const sizeVariation = 0.2;
-        const rockWidth = baseSize + Math.random() * sizeVariation;
-        const rockHeight = baseSize * 0.7 + Math.random() * sizeVariation * 0.5;
-        const rockDepth = baseSize * 0.8 + Math.random() * sizeVariation * 0.5;
-        
-        const rock = new THREE.Mesh(
-          new THREE.BoxGeometry(rockWidth, rockHeight, rockDepth),
-          rockMaterial.clone()
-        );
-        
-        // Position rocks in clear, stacked formation
-        let x = centerX;
-        let y = centerY - 0.6 + row * 0.6; // Clear vertical stacking
-        let z = centerZ;
-        
-        if (wallName.includes('back') || wallName.includes('front')) {
-          // Horizontal wall - evenly space rocks along width
-          x = centerX - width/2 + (i + 0.5) * (width / rocksPerRow);
-          z = centerZ; // Keep aligned with wall
-        } else {
-          // Vertical wall - evenly space rocks along depth  
-          z = centerZ - depth/2 + (i + 0.5) * (depth / rocksPerRow);
-          x = centerX; // Keep aligned with wall
-        }
-        
-        // Minimal random variation for natural look
-        x += (Math.random() - 0.5) * 0.05;
-        z += (Math.random() - 0.5) * 0.05;
-        
-        rock.position.set(x, y, z);
-        
-        // Slight rotation for natural appearance
-        rock.rotation.set(
-          (Math.random() - 0.5) * 0.1,
-          (Math.random() - 0.5) * 0.3,
-          (Math.random() - 0.5) * 0.1
-        );
-        
-        this.addComponent(rock, `${wallName}_rock_${row}_${i}`, 'stone');
-      }
-    }
+    // Left end cap
+    const leftEndCap = new THREE.Mesh(endCapGeometry, endCapMaterial.clone());
+    leftEndCap.position.copy(logPosition);
+    leftEndCap.position.x -= length / 2;
+    leftEndCap.rotation.z = Math.PI / 2;
+    this.addComponent(leftEndCap, `${wallName}_log_${logIndex}_left_end`, 'wood');
+    
+    // Right end cap
+    const rightEndCap = new THREE.Mesh(endCapGeometry, endCapMaterial.clone());
+    rightEndCap.position.copy(logPosition);
+    rightEndCap.position.x += length / 2;
+    rightEndCap.rotation.z = Math.PI / 2;
+    this.addComponent(rightEndCap, `${wallName}_log_${logIndex}_right_end`, 'wood');
   }
 
   private createRealisticRoof(): void {
