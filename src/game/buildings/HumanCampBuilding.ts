@@ -93,13 +93,17 @@ export class HumanCampBuilding extends BaseBuilding {
       this.audioManager = {} as AudioManager;
     }
 
-    console.log('🔥 Creating enhanced fireplace system for human camp');
+    console.log('🔥 Creating enhanced fireplace system for human camp at world position:', this.position);
+    
+    // CORE FIX: Use camp's world position instead of relative (0,0,0)
+    const fireplaceWorldPosition = this.position.clone();
+    console.log('🔥 Fireplace will be created at world coordinates:', fireplaceWorldPosition);
     
     this.fireplaceComponent = new FireplaceComponent(
       this.scene,
       this.physicsManager,
       this.audioManager,
-      new THREE.Vector3(0, 0, 0), // Center of camp
+      fireplaceWorldPosition, // Use actual world position of camp
       'camp_fireplace_' + this.position.x.toFixed(0) + '_' + this.position.z.toFixed(0), // Unique but consistent ID
       true // Always on for camp
     );
