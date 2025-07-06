@@ -51,27 +51,27 @@ export class MedievalSword extends Sword {
       // Left curved guard section
       const leftCurve = new THREE.Group();
       
-      // Base section (horizontal)
+      // Base section (horizontal outward)
       const leftBaseGeometry = new THREE.CylinderGeometry(0.03, 0.04, 0.08, 8);
       const leftBase = new THREE.Mesh(leftBaseGeometry, guardMaterial);
-      leftBase.position.set(-0.06, 0, 0);
-      leftBase.rotation.x = Math.PI / 2;
+      leftBase.position.set(-0.04, 0, 0);
+      leftBase.rotation.z = Math.PI / 2; // Make horizontal
       leftCurve.add(leftBase);
       
-      // Middle section (slight upward angle)
+      // Middle section (horizontal with slight upward position)
       const leftMidGeometry = new THREE.CylinderGeometry(0.025, 0.03, 0.06, 8);
       const leftMid = new THREE.Mesh(leftMidGeometry, guardMaterial);
-      leftMid.position.set(-0.11, 0.02, 0);
-      leftMid.rotation.x = Math.PI / 2;
-      leftMid.rotation.z = Math.PI / 8; // 22.5 degree upward angle
+      leftMid.position.set(-0.09, 0.015, 0);
+      leftMid.rotation.z = Math.PI / 2; // Keep horizontal
+      leftMid.rotation.y = Math.PI / 12; // Slight upward tilt
       leftCurve.add(leftMid);
       
-      // Tip section (curved upward)
-      const leftTipGeometry = new THREE.CylinderGeometry(0.015, 0.025, 0.05, 8);
+      // Tip section (horizontal with upward curve)
+      const leftTipGeometry = new THREE.CylinderGeometry(0.015, 0.025, 0.04, 8);
       const leftTip = new THREE.Mesh(leftTipGeometry, guardMaterial);
-      leftTip.position.set(-0.15, 0.05, 0);
-      leftTip.rotation.x = Math.PI / 2;
-      leftTip.rotation.z = Math.PI / 4; // 45 degree upward curve
+      leftTip.position.set(-0.13, 0.04, 0);
+      leftTip.rotation.z = Math.PI / 2; // Keep horizontal
+      leftTip.rotation.y = Math.PI / 6; // More upward curve
       leftCurve.add(leftTip);
       
       leftCurve.position.set(0, 0, -0.3);
@@ -81,24 +81,24 @@ export class MedievalSword extends Sword {
       // Right curved guard section (mirror of left)
       const rightCurve = new THREE.Group();
       
-      // Base section (horizontal)
+      // Base section (horizontal outward)
       const rightBase = new THREE.Mesh(leftBaseGeometry.clone(), guardMaterial);
-      rightBase.position.set(0.06, 0, 0);
-      rightBase.rotation.x = Math.PI / 2;
+      rightBase.position.set(0.04, 0, 0);
+      rightBase.rotation.z = Math.PI / 2; // Make horizontal
       rightCurve.add(rightBase);
       
-      // Middle section (slight upward angle)
+      // Middle section (horizontal with slight upward position)
       const rightMid = new THREE.Mesh(leftMidGeometry.clone(), guardMaterial);
-      rightMid.position.set(0.11, 0.02, 0);
-      rightMid.rotation.x = Math.PI / 2;
-      rightMid.rotation.z = -Math.PI / 8; // 22.5 degree upward angle (mirrored)
+      rightMid.position.set(0.09, 0.015, 0);
+      rightMid.rotation.z = Math.PI / 2; // Keep horizontal
+      rightMid.rotation.y = -Math.PI / 12; // Slight upward tilt (mirrored)
       rightCurve.add(rightMid);
       
-      // Tip section (curved upward)
+      // Tip section (horizontal with upward curve)
       const rightTip = new THREE.Mesh(leftTipGeometry.clone(), guardMaterial);
-      rightTip.position.set(0.15, 0.05, 0);
-      rightTip.rotation.x = Math.PI / 2;
-      rightTip.rotation.z = -Math.PI / 4; // 45 degree upward curve (mirrored)
+      rightTip.position.set(0.13, 0.04, 0);
+      rightTip.rotation.z = Math.PI / 2; // Keep horizontal
+      rightTip.rotation.y = -Math.PI / 6; // More upward curve (mirrored)
       rightCurve.add(rightTip);
       
       rightCurve.position.set(0, 0, -0.3);
