@@ -914,7 +914,7 @@ export abstract class EnemyHumanoid {
       console.log(`👂 [EnemyHumanoid] Left ear position:`, leftEarPosition);
       leftEar.position.set(leftEarPosition.x, leftEarPosition.y, leftEarPosition.z);
       leftEar.rotation.z = -0.4; // Tilt outward from head
-      leftEar.rotation.x = -Math.PI/2; // Point upward with base at head
+      leftEar.rotation.x = -Math.PI/3; // Angle upward more (was -Math.PI/2)
       leftEar.rotation.y = Math.PI; // Flip 180 degrees so thick end is at head
       leftEar.castShadow = true;
       headGroup.add(leftEar);
@@ -929,7 +929,7 @@ export abstract class EnemyHumanoid {
       console.log(`👂 [EnemyHumanoid] Right ear position:`, rightEarPosition);
       rightEar.position.set(rightEarPosition.x, rightEarPosition.y, rightEarPosition.z);
       rightEar.rotation.z = 0.4; // Tilt outward from head
-      rightEar.rotation.x = -Math.PI/2; // Point upward with base at head
+      rightEar.rotation.x = -Math.PI/3; // Angle upward more (was -Math.PI/2)
       rightEar.rotation.y = Math.PI; // Flip 180 degrees so thick end is at head
       rightEar.castShadow = true;
       headGroup.add(rightEar);
