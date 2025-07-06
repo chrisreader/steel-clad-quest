@@ -1143,11 +1143,11 @@ export abstract class EnemyHumanoid {
 
     // Define finger positions extending from the "palm" of the hand
     const fingerPositions = [
-      { x: -0.06, y: -0.15, z: 0.03, name: 'thumb' },     // Thumb - offset to side
-      { x: -0.03, y: -0.18, z: 0.02, name: 'index' },    // Index finger
-      { x: 0.0, y: -0.19, z: 0.0, name: 'middle' },      // Middle finger (longest)
-      { x: 0.03, y: -0.18, z: -0.02, name: 'ring' },     // Ring finger
-      { x: 0.06, y: -0.16, z: -0.03, name: 'pinky' }     // Pinky (shortest)
+      { x: -0.04, y: -0.12, z: 0.02, name: 'thumb' },     // Thumb - closer to hand
+      { x: -0.02, y: -0.14, z: 0.01, name: 'index' },    // Index finger
+      { x: 0.0, y: -0.15, z: 0.0, name: 'middle' },      // Middle finger (longest)
+      { x: 0.02, y: -0.14, z: -0.01, name: 'ring' },     // Ring finger
+      { x: 0.04, y: -0.13, z: -0.02, name: 'pinky' }     // Pinky (shortest)
     ];
 
     fingerPositions.forEach((pos, i) => {
@@ -1158,8 +1158,8 @@ export abstract class EnemyHumanoid {
       
       // Rotate fingers to point outward from hand naturally
       if (pos.name === 'thumb') {
-        // Thumb has different orientation
-        finger.rotation.set(0.2, 0, 0.8);
+        // Thumb points inward toward other fingers
+        finger.rotation.set(0.4, 0, -0.6);
       } else {
         // Other fingers point forward and slightly downward
         finger.rotation.set(0.3, 0, 0);
