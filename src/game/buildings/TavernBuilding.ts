@@ -396,8 +396,8 @@ export class TavernBuilding extends BaseBuilding {
       const chandelierGroup = new THREE.Group();
       const xPos = -2 + i * 4;
       
-      // Chandelier base
-      const chandelierBase = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.2, 8), chandelierMaterial.clone());
+      // Chandelier ring base
+      const chandelierBase = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.02, 8, 16), chandelierMaterial.clone());
       chandelierBase.position.set(0, 0, 0);
       chandelierGroup.add(chandelierBase);
       
@@ -406,25 +406,25 @@ export class TavernBuilding extends BaseBuilding {
       chain.position.set(0, 0.6, 0);
       chandelierGroup.add(chain);
       
-      // Candles around the chandelier (6 candles)
+      // Candles around the chandelier (6 candles) - 2x bigger circumference
       for (let j = 0; j < 6; j++) {
         const angle = (j / 6) * Math.PI * 2;
-        const radius = 0.25;
+        const radius = 0.5; // 2x bigger than before (was 0.25)
         
-        // Candle holder arm
-        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.02), chandelierMaterial.clone());
-        arm.position.set(Math.cos(angle) * radius * 0.7, -0.05, Math.sin(angle) * radius * 0.7);
+        // Candle holder arm (shorter since candles are on top of ring)
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.02), chandelierMaterial.clone());
+        arm.position.set(Math.cos(angle) * radius * 0.9, 0.02, Math.sin(angle) * radius * 0.9);
         arm.rotation.y = angle;
         chandelierGroup.add(arm);
         
-        // Candle
+        // Candle (positioned on top of ring)
         const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.1, 8), candleMaterial.clone());
-        candle.position.set(Math.cos(angle) * radius, -0.05, Math.sin(angle) * radius);
+        candle.position.set(Math.cos(angle) * radius, 0.05, Math.sin(angle) * radius);
         chandelierGroup.add(candle);
         
-        // Candle holder cup
+        // Candle holder cup (on top of ring)
         const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.02, 8), chandelierMaterial.clone());
-        holder.position.set(Math.cos(angle) * radius, -0.1, Math.sin(angle) * radius);
+        holder.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
         chandelierGroup.add(holder);
       }
       
