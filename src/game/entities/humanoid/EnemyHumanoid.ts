@@ -493,8 +493,19 @@ export abstract class EnemyHumanoid {
       
       // Apply the scaling (only if not already handled by human/goblin shoulder curve logic)
       if (!(isHuman && normalizedY > 0.1) && !(isGoblin && normalizedY > 0.1)) {
-        positions[i] = x * scaleFactor;
-        positions[i + 2] = z * scaleFactor;
+        // For goblins, apply the same front-to-back flattening to middle body areas
+        if (isGoblin) {
+          positions[i] = x * scaleFactor;
+          // Apply flatter front-to-back scaling to match chest area
+          let zScale = 0.7; // Same as chest frontBackScale
+          if (z < 0) { // Back of the torso (negative Z)
+            zScale = 0.7 * 0.7; // Make back even flatter (same as chest)
+          }
+          positions[i + 2] = z * scaleFactor * zScale;
+        } else {
+          positions[i] = x * scaleFactor;
+          positions[i + 2] = z * scaleFactor;
+        }
       }
     }
     
