@@ -89,6 +89,7 @@ export class HumanCampBuilding extends BaseBuilding {
   private createEnhancedFireplace(): void {
     if (!this.audioManager) {
       console.warn('🔥 AudioManager not set for HumanCampBuilding. Creating fireplace without audio.');
+      // Create a mock audio manager for now
       this.audioManager = {} as AudioManager;
     }
 
@@ -99,8 +100,8 @@ export class HumanCampBuilding extends BaseBuilding {
       this.physicsManager,
       this.audioManager,
       new THREE.Vector3(0, 0, 0), // Center of camp
-      `camp_fireplace_${Date.now()}`,
-      true // Always on like tavern fires
+      'camp_fireplace_' + this.position.x.toFixed(0) + '_' + this.position.z.toFixed(0), // Unique but consistent ID
+      true // Always on for camp
     );
     
     const fireplaceGroup = this.fireplaceComponent.create();
@@ -109,7 +110,7 @@ export class HumanCampBuilding extends BaseBuilding {
     // Register fireplace collisions
     this.fireplaceComponent.registerCollisions('human_camp');
     
-    console.log('🔥 Enhanced camp fireplace system created with realistic fire, organic rocks, and dynamic lighting');
+    console.log('🔥 Enhanced fireplace system created with realistic fire, organic rocks, and dynamic lighting');
   }
 
   private createCampTents(): void {
