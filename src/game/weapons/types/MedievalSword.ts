@@ -28,34 +28,38 @@ export class MedievalSword extends Sword {
     
     const metalTexture = TextureGenerator.createMetalTexture();
     
-    // Find and remove the existing blade
+    // Find and remove the existing blade (positioned at -1.2)
     const existingBladeIndex = swordGroup.children.findIndex(child => 
       child instanceof THREE.Mesh && 
-      child.geometry instanceof THREE.BoxGeometry &&
       child.position.z === -1.2
     );
     
     if (existingBladeIndex !== -1) {
-      // Remove the old rectangular blade
-      const oldBlade = swordGroup.children[existingBladeIndex];
-      const bladeMaterial = (oldBlade as THREE.Mesh).material;
+      // Remove the old blade but keep its material
+      const oldBlade = swordGroup.children[existingBladeIndex] as THREE.Mesh;
+      const bladeMaterial = oldBlade.material;
       swordGroup.remove(oldBlade);
       
-      // Create tapered blade geometry
+      // Create tapered blade shape - designed to match original blade dimensions
       const bladeShape = new THREE.Shape();
       
-      // Define blade profile (half-blade, will be mirrored)
-      bladeShape.moveTo(0, -0.9); // Start at tip
-      bladeShape.lineTo(0.025, -0.6); // Narrow section
-      bladeShape.lineTo(0.035, -0.3); // Widening
-      bladeShape.lineTo(0.04, 0); // Widest at middle
-      bladeShape.lineTo(0.035, 0.3); // Narrowing
-      bladeShape.lineTo(0.025, 0.6); // Narrow section
-      bladeShape.lineTo(0.01, 0.9); // Very narrow at base (handle end)
-      bladeShape.lineTo(0, 0.9); // Back to center at base
-      bladeShape.lineTo(0, -0.9); // Close shape
+      // Start from tip and work toward handle (Z goes from -0.9 to +0.9 for total length 1.8)
+      bladeShape.moveTo(0, 0.9);      // Tip point
+      bladeShape.lineTo(0.01, 0.7);   // Narrow near tip
+      bladeShape.lineTo(0.02, 0.3);   // Widening
+      bladeShape.lineTo(0.025, 0);    // Widest at middle
+      bladeShape.lineTo(0.02, -0.3);  // Narrowing back
+      bladeShape.lineTo(0.015, -0.7); // Getting narrow
+      bladeShape.lineTo(0.01, -0.9);  // Narrow at base (near handle)
+      bladeShape.lineTo(-0.01, -0.9); // Mirror to other side
+      bladeShape.lineTo(-0.015, -0.7);
+      bladeShape.lineTo(-0.02, -0.3);
+      bladeShape.lineTo(-0.025, 0);   // Widest at middle
+      bladeShape.lineTo(-0.02, 0.3);
+      bladeShape.lineTo(-0.01, 0.7);
+      bladeShape.lineTo(0, 0.9);      // Close at tip
       
-      // Extrude the shape to create 3D blade
+      // Extrude the shape to create 3D blade with same thickness as original (0.02)
       const extrudeSettings = {
         depth: 0.02,
         bevelEnabled: false
@@ -63,11 +67,12 @@ export class MedievalSword extends Sword {
       
       const bladeGeometry = new THREE.ExtrudeGeometry(bladeShape, extrudeSettings);
       
-      // Center the geometry
+      // Center the geometry and rotate to match original orientation
       bladeGeometry.translate(0, 0, -0.01);
+      bladeGeometry.rotateX(Math.PI / 2); // Rotate to match original blade orientation
       
       const taperedBlade = new THREE.Mesh(bladeGeometry, bladeMaterial);
-      taperedBlade.position.set(0, 0, -1.2);
+      taperedBlade.position.set(0, 0, -1.2); // Same position as original blade
       taperedBlade.castShadow = true;
       swordGroup.add(taperedBlade);
     }
