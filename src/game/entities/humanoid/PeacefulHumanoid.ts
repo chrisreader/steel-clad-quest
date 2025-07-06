@@ -26,15 +26,20 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     let config;
     if (isKeeperType) {
       config = HumanBodyConfig.createTavernKeeperConfig();
+      console.log(`👤 [PeacefulHumanoid] Creating tavern keeper config`);
     } else if (useRandomizedAppearance) {
       config = HumanBodyConfig.createRandomizedHumanConfig();
+      console.log(`👤 [PeacefulHumanoid] Creating randomized human config with colors:`, config.userData?.clothingColors);
       // Override tool type if provided
       if (toolType && config.userData) {
         config.userData.toolType = toolType;
       }
     } else {
       config = HumanBodyConfig.createHumanConfig();
+      console.log(`👤 [PeacefulHumanoid] Creating standard human config`);
     }
+    
+    console.log(`👤 [PeacefulHumanoid] Config type:`, config.type, 'Skin color:', config.colors.skin.toString(16));
     
     super(scene, config, position, effectsManager, audioManager);
     

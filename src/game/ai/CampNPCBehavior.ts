@@ -40,7 +40,11 @@ export class CampNPCBehavior {
 
   constructor(config: CampNPCConfig) {
     this.config = config;
-    console.log('🏕️ [CampNPCBehavior] Initialized with camp waypoint movement');
+    console.log(`🏕️ [CampNPCBehavior] Initialized camp behavior. Config:`, {
+      wanderRadius: config.wanderRadius,
+      moveSpeed: config.moveSpeed,
+      pauseDuration: config.pauseDuration
+    });
   }
 
   public update(

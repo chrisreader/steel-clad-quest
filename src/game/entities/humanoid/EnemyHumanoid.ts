@@ -1113,13 +1113,13 @@ export abstract class EnemyHumanoid {
     rightWrist.castShadow = true;
     rightElbow.add(rightWrist);
 
-    // Add fingers - check config to determine if claws or human fingers
-    if (this.config.features.hasWeapon) {
+    // Add fingers - check config TYPE to determine if claws or human fingers
+    if (this.config.type === EnemyType.ORC) {
       // Orcs get claws
       this.addClaws(leftWrist);
       this.addClaws(rightWrist);
     } else {
-      // Humans get normal fingers
+      // Humans get normal fingers (regardless of whether they have weapons)
       this.addHumanFingers(leftWrist);
       this.addHumanFingers(rightWrist);
     }

@@ -37,6 +37,8 @@ export class HumanCampNPC {
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     
+    console.log(`🏕️ [HumanCampNPC] Starting creation of ${config.name} with tool: ${config.toolType}`);
+    
     // Create sophisticated human using PeacefulHumanoid (same as tavern keeper)
     this.humanoid = new PeacefulHumanoid(
       scene,
@@ -51,6 +53,8 @@ export class HumanCampNPC {
     this.setupBehavior();
     
     console.log(`👤 [HumanCampNPC] Created sophisticated camp human ${config.name} with ${config.toolType || 'no tool'}`);
+    console.log(`🎯 [HumanCampNPC] Position:`, config.position);
+    console.log(`🎭 [HumanCampNPC] Mesh created:`, !!this.humanoid.getMesh());
   }
 
   private setupBehavior(): void {
@@ -72,15 +76,18 @@ export class HumanCampNPC {
     const action = this.behavior.update(deltaTime, this.getMesh().position, playerPosition);
     
     // Enhanced debug logging for camp NPCs
-    if (Math.random() < 0.02) { // Log occasionally
-      console.log(`🏕️ [${this.config.name}] Action: ${action.type}, Target:`, action.target, 'Position:', this.getMesh().position);
+    if (Math.random() < 0.05) { // Log occasionally (5% chance)
+      console.log(`🏕️ [${this.config.name}] Update - Action: ${action.type}, Position:`, this.getMesh().position.clone());
+      console.log(`🏕️ [${this.config.name}] Target:`, action.target);
     }
     
     // Handle movement based on behavior
     if (action.type === 'move' && action.target) {
+      console.log(`🚶 [${this.config.name}] Moving to target:`, action.target);
       this.moveTowards(action.target, deltaTime);
       this.humanoid.updateWalkAnimation(deltaTime);
     } else if (action.type === 'patrol' && action.target) {
+      console.log(`🛡️ [${this.config.name}] Patrolling to target:`, action.target);
       this.moveTowards(action.target, deltaTime);
       this.humanoid.updateWalkAnimation(deltaTime);
     } else if (action.type === 'idle') {
