@@ -380,8 +380,8 @@ export class HumanBodyConfig {
     
     // 1. Upper leg (thigh) pants sections - EXACT same size as legs but with fabric allowance
     const thighGeometry = new THREE.CylinderGeometry(
-      legTopRadius * 1.05,    // Top radius with 5% fabric allowance to overlay on skin
-      legBottomRadius * 1.05, // Bottom radius with 5% fabric allowance
+      legTopRadius * 1.15,    // Top radius with 15% fabric allowance to overlay on skin
+      legBottomRadius * 1.15, // Bottom radius with 15% fabric allowance
       legLength,              // Exact same length as actual thigh
       24, 8                   // Same high resolution as actual legs for smooth curves
     );
@@ -401,8 +401,8 @@ export class HumanBodyConfig {
     
     // 2. Lower leg (shin) pants sections - EXACT same size as shins but with fabric allowance
     const shinGeometry = new THREE.CylinderGeometry(
-      shinTopRadius * 1.05,    // Top radius with 5% fabric allowance
-      shinBottomRadius * 1.05, // Bottom radius with 5% fabric allowance  
+      shinTopRadius * 1.15,    // Top radius with 15% fabric allowance
+      shinBottomRadius * 1.15, // Bottom radius with 15% fabric allowance  
       shinLength,              // Exact same length as actual shin
       24, 8                    // Same high resolution as actual shins
     );
@@ -421,7 +421,7 @@ export class HumanBodyConfig {
     rightShinPants.receiveShadow = true;
     
     // 3. Knee fabric overlays - match the exact knee joint dimensions from EnemyHumanoid
-    const kneeJointRadius = (legTopRadius + 0.02) * 1.05; // Same as actual knee joints + fabric allowance
+    const kneeJointRadius = (legTopRadius + 0.02) * 1.15; // Same as actual knee joints + fabric allowance
     const kneeGeometry = new THREE.SphereGeometry(kneeJointRadius, 24, 20);
     
     // Apply same scaling as actual knee joints: scale.set(0.8, 1.2, 0.8)
@@ -437,8 +437,8 @@ export class HumanBodyConfig {
     
     // 4. Waistband - positioned at hip level
     const waistbandGeometry = new THREE.TorusGeometry(
-      bodyRadius * 0.45,     // Waistband radius slightly larger than body radius at hip level
-      bodyRadius * 0.06,     // Waistband thickness
+      bodyRadius * 0.5,      // Waistband radius larger than body radius at hip level
+      bodyRadius * 0.08,     // Waistband thickness - slightly thicker
       8, 16
     );
     
