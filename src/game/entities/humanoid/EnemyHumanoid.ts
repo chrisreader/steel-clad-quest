@@ -472,7 +472,7 @@ export abstract class EnemyHumanoid {
     torsoGroup.add(mainTorso);
 
     // Pelvis - more anatomically shaped (orcs only)
-    if (this.config.features.hasWeapon) { // Orcs only
+    if (this.config.type === EnemyType.ORC) { // Check actual creature type, not weapon status
       const pelvisGeometry = new THREE.SphereGeometry(bodyScale.body.radius * 0.8, 20, 16);
       const pelvisPositions = pelvisGeometry.attributes.position.array as Float32Array;
       for (let i = 0; i < pelvisPositions.length; i += 3) {

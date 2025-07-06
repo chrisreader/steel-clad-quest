@@ -66,7 +66,11 @@ export class HumanCampNPC {
       patrolRadius: this.config.wanderRadius || 6
     });
     
-    console.log(`🧠 [HumanCampNPC] Setup camp behavior for ${this.config.name}`);
+    console.log(`🧠 [HumanCampNPC] Setup camp behavior for ${this.config.name} with config:`, {
+      wanderRadius: this.config.wanderRadius || 6,
+      moveSpeed: 1.5,
+      pauseDuration: 2000
+    });
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {

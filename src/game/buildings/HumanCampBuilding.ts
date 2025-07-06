@@ -321,8 +321,15 @@ export class HumanCampBuilding extends BaseBuilding {
       chest.update(deltaTime);
     });
     
-    // Update NPCs
-    this.npcs.forEach(npc => {
+    // Update NPCs with detailed logging
+    if (Math.random() < 0.1) { // Log 10% of the time
+      console.log(`🏕️ [HumanCampBuilding] Updating ${this.npcs.length} NPCs. Player position:`, playerPosition);
+    }
+    
+    this.npcs.forEach((npc, index) => {
+      if (Math.random() < 0.05) { // Log 5% of the time per NPC
+        console.log(`🏕️ [HumanCampBuilding] Updating NPC ${index}: ${npc.getName()}`);
+      }
       npc.update(deltaTime, playerPosition);
     });
   }
