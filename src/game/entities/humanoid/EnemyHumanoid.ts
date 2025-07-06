@@ -477,50 +477,12 @@ export abstract class EnemyHumanoid {
       }
       else if (normalizedY > 0.1) {
         scaleFactor = 1.0; // Keep full width at chest
-        
-        // Apply front-to-back flattening for goblins in middle body area too
-        if (isGoblin) {
-          const shoulderRadius = Math.sqrt(x * x + z * z);
-          if (shoulderRadius > 0) {
-            const angle = Math.atan2(z, x);
-            const ovalX = Math.cos(angle) * shoulderRadius * scaleFactor;
-            
-            // Apply same flattening as chest area
-            let zScale = 0.7; // Same as chest front-to-back scale
-            if (z < 0) { // Back of the chest (negative Z)
-              zScale = 0.7 * 0.7; // Make back even flatter
-            }
-            
-            const ovalZ = Math.sin(angle) * shoulderRadius * zScale;
-            positions[i] = ovalX;
-            positions[i + 2] = ovalZ;
-          }
-        }
       }
       // Waist area - narrower 
       else if (normalizedY >= -0.2) {
         // Smooth transition to narrow waist
         const waistPosition = (normalizedY + 0.2) / 0.3; // 0 at bottom of waist, 1 at top
         scaleFactor = 0.75 + waistPosition * 0.25; // Scale from 0.75 to 1.0
-        
-        // Apply front-to-back flattening for goblins in waist area too
-        if (isGoblin) {
-          const shoulderRadius = Math.sqrt(x * x + z * z);
-          if (shoulderRadius > 0) {
-            const angle = Math.atan2(z, x);
-            const ovalX = Math.cos(angle) * shoulderRadius * scaleFactor;
-            
-            // Apply same flattening as chest area
-            let zScale = 0.7; // Same as chest front-to-back scale
-            if (z < 0) { // Back of the body (negative Z)
-              zScale = 0.7 * 0.7; // Make back even flatter
-            }
-            
-            const ovalZ = Math.sin(angle) * shoulderRadius * zScale;
-            positions[i] = ovalX;
-            positions[i + 2] = ovalZ;
-          }
-        }
       }
       // Hip/pelvis area - wider again
       else {
