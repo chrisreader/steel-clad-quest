@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { BaseWeapon } from './BaseWeapon';
-import { IronSword, WoodenSword, SteelSword } from './types';
+import { IronSword, WoodenSword, SteelSword, MedievalSword } from './types';
 import { HuntingBow } from './ranged';
 
 export class WeaponManager {
@@ -14,6 +14,7 @@ export class WeaponManager {
     this.weapons.set('iron_sword', () => new IronSword());
     this.weapons.set('wooden_sword', () => new WoodenSword());
     this.weapons.set('steel_sword', () => new SteelSword());
+    this.weapons.set('medieval_sword', () => new MedievalSword());
     this.weapons.set('hunting_bow', () => new HuntingBow());
   }
 
