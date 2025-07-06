@@ -3,7 +3,7 @@ import { BaseWeapon, WeaponConfig } from './BaseWeapon';
 import { TextureGenerator } from '../utils/graphics/TextureGenerator';
 
 export class Sword extends BaseWeapon {
-  private bladeMesh: THREE.Mesh | null = null;
+  protected bladeMesh: THREE.Mesh | null = null;
   private hitBoxMesh: THREE.Mesh | null = null;
   private debugHitBox: THREE.LineSegments | null = null;
   private debugMode: boolean = false;

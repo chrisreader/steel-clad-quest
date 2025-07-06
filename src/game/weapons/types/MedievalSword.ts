@@ -75,6 +75,9 @@ export class MedievalSword extends Sword {
       taperedBlade.position.set(0, 0, -1.2); // Same position as original blade
       taperedBlade.castShadow = true;
       swordGroup.add(taperedBlade);
+      
+      // CRITICAL: Store blade reference for animation system
+      this.bladeMesh = taperedBlade;
     }
     
     // Find and remove the existing rectangular cross guard
