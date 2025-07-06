@@ -12,7 +12,7 @@ import { TextureGenerator } from '../../utils';
  * Maintains the same combat stats and behavior as the original goblin
  */
 export class GreenHumanoidEnemy extends EnemyHumanoid {
-  private isPassive: boolean = true;
+  private isPassive: boolean = false; // Start aggressive like original goblins
   private lastPassiveStateChange: number = 0;
 
   private constructor(
@@ -24,7 +24,10 @@ export class GreenHumanoidEnemy extends EnemyHumanoid {
   ) {
     super(scene, config, position, effectsManager, audioManager);
     
-    console.log(`🟢 [GreenHumanoidEnemy] Created with health: ${this.health}, speed: ${config.speed}`);
+    // Start aggressive by default (same as original goblins)
+    this.isPassive = false;
+    
+    console.log(`🟢 [GreenHumanoidEnemy] Created with health: ${this.health}, speed: ${config.speed}, starting aggressive`);
   }
 
   public static create(
@@ -84,47 +87,44 @@ export class GreenHumanoidEnemy extends EnemyHumanoid {
       return;
     }
 
-    // Simple behavior - move towards player when aggressive, idle when passive
-    if (!this.isPassive) {
-      const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
+    // Always pursue player when not passive (same as original goblin logic)
+    const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
+    
+    if (!this.isPassive && distanceToPlayer > this.config.damageRange) {
+      // Chase player logic (same as original)
+      const direction = new THREE.Vector3()
+        .subVectors(playerPosition, this.mesh.position)
+        .normalize();
+      direction.y = 0;
+
+      // Always face the player when chasing
+      this.targetRotation = Math.atan2(direction.x, direction.z);
+      this.updateFacingDirection(deltaTime);
+
+      // Move towards player
+      const moveAmount = this.config.speed * deltaTime;
+      const newPosition = this.mesh.position.clone();
+      newPosition.add(direction.multiplyScalar(moveAmount));
+      newPosition.y = 0;
+
+      this.mesh.position.copy(newPosition);
+      this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
+    } else if (!this.isPassive && distanceToPlayer <= this.config.damageRange) {
+      // Attack when in range (same as original)
+      const direction = new THREE.Vector3()
+        .subVectors(playerPosition, this.mesh.position)
+        .normalize();
+      direction.y = 0;
+      this.targetRotation = Math.atan2(direction.x, direction.z);
+      this.updateFacingDirection(deltaTime);
       
-      if (distanceToPlayer > this.config.damageRange) {
-        const direction = new THREE.Vector3()
-          .subVectors(playerPosition, this.mesh.position)
-          .normalize();
-        direction.y = 0;
-
-        // Always face the player when chasing
-        this.targetRotation = Math.atan2(direction.x, direction.z);
-        this.updateFacingDirection(deltaTime);
-
-        // Move towards player
-        const moveAmount = this.config.speed * deltaTime;
-        const newPosition = this.mesh.position.clone();
-        newPosition.add(direction.multiplyScalar(moveAmount));
-        newPosition.y = 0;
-
-        this.mesh.position.copy(newPosition);
-        this.animationSystem.updateWalkAnimation(deltaTime, true, this.config.speed);
-      } else {
-        // Still face player when in attack range
-        const direction = new THREE.Vector3()
-          .subVectors(playerPosition, this.mesh.position)
-          .normalize();
-        direction.y = 0;
-        this.targetRotation = Math.atan2(direction.x, direction.z);
-        this.updateFacingDirection(deltaTime);
-        
-        // Attack if in range
-        if (now - this.lastAttackTime > this.config.attackCooldown) {
-          // Use base class attack method via casting
-          (this as any).attack(playerPosition);
-          this.lastAttackTime = now;
-        }
-        this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
+      if (now - this.lastAttackTime > this.config.attackCooldown) {
+        (this as any).attack(playerPosition);
+        this.lastAttackTime = now;
       }
+      this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
     } else {
-      // When passive, still update animations but don't move
+      // Idle animation when passive or not in combat
       this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
     }
   }
