@@ -26,6 +26,7 @@ export class HumanCampBuilding extends BaseBuilding {
   private campKeeper: CampNPC | null = null;
   private furniture: THREE.Group[] = [];
   private chestInteractionSystem: ChestInteractionSystem | null = null;
+  private chestsCreated: boolean = false;
 
   constructor(scene: THREE.Scene, physicsManager: any, position: THREE.Vector3, config?: Partial<CampConfig>) {
     super(scene, physicsManager, position);
@@ -48,9 +49,9 @@ export class HumanCampBuilding extends BaseBuilding {
     console.log('💰 [HumanCampBuilding] ChestInteractionSystem being set:', !!chestInteractionSystem);
     this.chestInteractionSystem = chestInteractionSystem;
     
-    // If building structure already exists but chests weren't created, create them now
-    if (chestInteractionSystem && this.buildingGroup.children.length > 0 && this.chests.length === 0) {
-      console.log('💰 [HumanCampBuilding] Building exists but no chests - creating chests now');
+    // Create chests immediately if system is available and not already created
+    if (chestInteractionSystem && !this.chestsCreated) {
+      console.log('💰 [HumanCampBuilding] Creating chests now that system is available');
       this.createCampChests();
     }
   }
@@ -67,16 +68,15 @@ export class HumanCampBuilding extends BaseBuilding {
     // 3. Add furniture (logs, tables, stools)
     this.createCampFurniture();
 
-    // 4. Add treasure chests
-    this.createCampChests();
-
-    // 5. Add scattered firewood and supplies
+    // 4. Add scattered firewood and supplies
     this.createCampSupplies();
 
-    // 6. Create camp keeper
+    // 5. Create camp keeper
     console.log('🏕️ [HumanCampBuilding] About to create camp keeper');
     this.createCampKeeper();
     console.log('🏕️ [HumanCampBuilding] Camp keeper creation finished');
+
+    // Note: Chests are created in setChestInteractionSystem() or update() when system is available
 
     console.log(`🏕️ [HumanCampBuilding] Camp structure complete with ${this.components.length} components`);
   }
@@ -207,33 +207,30 @@ export class HumanCampBuilding extends BaseBuilding {
     console.log('💰 [HumanCampBuilding] Creating camp chests - START');
     console.log('💰 [HumanCampBuilding] Camp position:', this.position);
     console.log('💰 [HumanCampBuilding] ChestInteractionSystem available:', !!this.chestInteractionSystem);
-    console.log('💰 [HumanCampBuilding] Current chest count:', this.chests.length);
+    console.log('💰 [HumanCampBuilding] Chests already created:', this.chestsCreated);
     
-    if (!this.chestInteractionSystem) {
-      console.warn('💰 [HumanCampBuilding] ChestInteractionSystem not available, skipping chest creation');
+    if (!this.chestInteractionSystem || this.chestsCreated) {
+      console.warn('💰 [HumanCampBuilding] ChestInteractionSystem not available or chests already created');
       return;
     }
     
-    // Always have at least one common chest - positioned close to fireplace
-    const commonChestPosition = this.position.clone().add(
-      new THREE.Vector3(
-        2 + (Math.random() - 0.5) * 2, // 1-3 units from center
-        0, // Y=0 to ensure floor level
-        2 + (Math.random() - 0.5) * 2  // 1-3 units from center
-      )
+    // Use absolute world coordinates like tavern chests
+    const commonChestPosition = new THREE.Vector3(
+      this.position.x + 2 + (Math.random() - 0.5) * 2, // World X coordinate
+      0, // Ground level
+      this.position.z + 2 + (Math.random() - 0.5) * 2  // World Z coordinate
     );
     
-    console.log('💰 [HumanCampBuilding] Common chest position:', commonChestPosition);
+    console.log('💰 [HumanCampBuilding] Common chest world position:', commonChestPosition);
     
     try {
       const commonChest = this.chestInteractionSystem.createChest({
         type: 'common',
         position: commonChestPosition,
-        id: `camp_common_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}_${Date.now()}`
+        id: `camp_common_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}`
       });
       
       this.chests.push(commonChest);
-      this.addComponent(commonChest.getGroup(), 'common_chest', 'wood');
       console.log('💰 [HumanCampBuilding] Common chest created successfully');
     } catch (error) {
       console.error('💰 [HumanCampBuilding] Error creating common chest:', error);
@@ -241,33 +238,30 @@ export class HumanCampBuilding extends BaseBuilding {
     
     // Maybe add rare chest
     if (this.config.hasRareChest) {
-      const rareChestPosition = this.position.clone().add(
-        new THREE.Vector3(
-          -2 - (Math.random() - 0.5) * 2, // -3 to -1 units from center (opposite side)
-          0, // Y=0 to ensure floor level
-          -2 - (Math.random() - 0.5) * 2  // -3 to -1 units from center
-        )
+      const rareChestPosition = new THREE.Vector3(
+        this.position.x - 2 - (Math.random() - 0.5) * 2, // World X coordinate (opposite side)
+        0, // Ground level
+        this.position.z - 2 - (Math.random() - 0.5) * 2  // World Z coordinate
       );
       
-      console.log('💰 [HumanCampBuilding] Rare chest position:', rareChestPosition);
+      console.log('💰 [HumanCampBuilding] Rare chest world position:', rareChestPosition);
       
       try {
         const rareChest = this.chestInteractionSystem.createChest({
           type: 'rare',
           position: rareChestPosition,
-          id: `camp_rare_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}_${Date.now()}`
+          id: `camp_rare_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}`
         });
         
         this.chests.push(rareChest);
-        this.addComponent(rareChest.getGroup(), 'rare_chest', 'metal');
-        
         console.log('💰 [HumanCampBuilding] Rare chest created successfully');
       } catch (error) {
         console.error('💰 [HumanCampBuilding] Error creating rare chest:', error);
       }
     }
     
-    console.log(`💰 [HumanCampBuilding] Camp chest creation COMPLETE - ${this.chests.length} chest(s) for camp`);
+    this.chestsCreated = true;
+    console.log(`💰 [HumanCampBuilding] Camp chest creation COMPLETE - ${this.chests.length} chest(s) created`);
   }
 
   private createCampSupplies(): void {
@@ -344,6 +338,12 @@ export class HumanCampBuilding extends BaseBuilding {
     // Update camp keeper
     if (this.campKeeper) {
       this.campKeeper.update(deltaTime, playerPosition);
+    }
+    
+    // Chest Recovery System: Try to create chests if system becomes available
+    if (!this.chestsCreated && this.chestInteractionSystem) {
+      console.log('💰 [HumanCampBuilding] ChestInteractionSystem now available - creating chests');
+      this.createCampChests();
     }
     
     // NPC Recovery System: Try to create missing NPCs if managers are now available
