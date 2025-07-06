@@ -45,19 +45,19 @@ export class MedievalSword extends Sword {
       
       // Start from tip and work toward handle (Z goes from -0.9 to +0.9 for total length 1.8)
       bladeShape.moveTo(0, 0.9);      // Tip point
-      bladeShape.lineTo(0.01, 0.7);   // Narrow near tip
-      bladeShape.lineTo(0.02, 0.3);   // Widening
-      bladeShape.lineTo(0.025, 0);    // Widest at middle
-      bladeShape.lineTo(0.02, -0.3);  // Narrowing back
-      bladeShape.lineTo(0.015, -0.7); // Getting narrow
-      bladeShape.lineTo(0.01, -0.9);  // Narrow at base (near handle)
-      bladeShape.lineTo(-0.01, -0.9); // Mirror to other side
-      bladeShape.lineTo(-0.015, -0.7);
-      bladeShape.lineTo(-0.02, -0.3);
-      bladeShape.lineTo(-0.025, 0);   // Widest at middle
-      bladeShape.lineTo(-0.02, 0.3);
-      bladeShape.lineTo(-0.01, 0.7);
-      bladeShape.lineTo(0, 0.9);      // Close at tip
+      bladeShape.lineTo(0.015, 0.7);  // Wider near tip (was 0.01)
+      bladeShape.lineTo(0.03, 0.3);   // Wider section (was 0.02)
+      bladeShape.lineTo(0.04, 0);     // Widest at middle (was 0.025)
+      bladeShape.lineTo(0.03, -0.3);  // Wider narrowing back (was 0.02)
+      bladeShape.lineTo(0.025, -0.7); // Wider narrow section (was 0.015)
+      bladeShape.lineTo(0.015, -0.9); // Wider at base (was 0.01)
+      bladeShape.lineTo(-0.015, -0.9); // Mirror to other side (was -0.01)
+      bladeShape.lineTo(-0.025, -0.7); // Mirror (was -0.015)
+      bladeShape.lineTo(-0.03, -0.3);  // Mirror (was -0.02)
+      bladeShape.lineTo(-0.04, 0);     // Widest at middle (was -0.025)
+      bladeShape.lineTo(-0.03, 0.3);   // Mirror (was -0.02)
+      bladeShape.lineTo(-0.015, 0.7);  // Mirror (was -0.01)
+      bladeShape.lineTo(0, 0.9);       // Close at tip
       
       // Extrude the shape to create 3D blade with increased thickness
       const extrudeSettings = {
