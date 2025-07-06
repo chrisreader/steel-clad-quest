@@ -60,6 +60,16 @@ export class TavernBuilding extends BaseBuilding {
     // Create realistic wooden plank floor with wear patterns
     const floorGroup = new THREE.Group();
     
+    // Wood color variations for different planks
+    const woodColors = [
+      0x8B4513, // Saddle brown
+      0xA0522D, // Sienna  
+      0xCD853F, // Peru
+      0xD2B48C, // Tan
+      0xDEB887, // Burlywood
+      0x8B7355  // Dark khaki
+    ];
+    
     // Main floor base
     const floorGeometry = new THREE.PlaneGeometry(12, 12);
     const floorMaterial = new THREE.MeshStandardMaterial({ 
@@ -73,11 +83,12 @@ export class TavernBuilding extends BaseBuilding {
     floor.position.y = 0.01;
     floorGroup.add(floor);
     
-    // Add individual wooden planks for detail
+    // Add individual wooden planks for detail with alternating wood colors
     for (let i = 0; i < 6; i++) {
       const plankGeometry = new THREE.BoxGeometry(12, 0.05, 1.8);
+      const colorIndex = i % woodColors.length;
       const plankMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8B4513 + Math.random() * 0x111111,
+        color: woodColors[colorIndex],
         map: TextureGenerator.createWoodTexture(),
         roughness: 0.9,
         metalness: 0.05
