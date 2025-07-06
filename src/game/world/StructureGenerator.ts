@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RingQuadrantSystem, RegionCoordinates } from './RingQuadrantSystem';
 import { PhysicsManager } from '../engine/PhysicsManager';
 import { BuildingManager } from '../buildings/BuildingManager';
+import { ForestBiomeManager } from './vegetation/ForestBiomeManager';
 
 export interface Structure {
   type: string;
@@ -288,41 +289,51 @@ export class StructureGenerator {
       }
     }
 
-    // NEW: Place human camps in dense forest areas (Ring 2-4)
-    if (region.ringIndex >= 2 && region.ringIndex <= 4) {
+    // NEW: Place human camps near forests and rock formations (Ring 1-4)
+    if (region.ringIndex >= 1 && region.ringIndex <= 4) {
       const regionCenter = this.ringSystem.getRegionCenter(region);
       
-      // Check if this area has dense forest biome
-      const biomeInfo = this.getBiomeInfoForPosition(regionCenter);
-      const shouldSpawnCamp = (biomeInfo.type === 'meadow' && Math.random() < 0.4) || Math.random() < 0.15;
-      
-      if (shouldSpawnCamp && this.buildingManager) {
-        const campPosition = regionCenter.clone().add(
+      // Check multiple positions in the region for optimal camp placement
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const testPosition = regionCenter.clone().add(
           new THREE.Vector3(
-            (Math.random() - 0.5) * 40,
+            (Math.random() - 0.5) * 60,
             0,
-            (Math.random() - 0.5) * 40
+            (Math.random() - 0.5) * 60
           )
         );
         
-        const campSize = Math.random() < 0.5 ? 'small' : Math.random() < 0.7 ? 'medium' : 'large';
+        const forestDensity = this.getForestDensityAtPosition(testPosition);
+        const rockFormationNearby = this.hasLargeRockFormationNearby(testPosition);
         
-        const humanCamp = this.buildingManager.createBuilding({
-          type: 'human_camp',
-          position: campPosition,
-          id: `human_camp_${region.ringIndex}_${region.quadrant}`,
-          campConfig: { size: campSize }
-        });
+        // Higher spawn chance near forests or rocks
+        const baseSpawnChance = forestDensity > 0.6 ? 0.8 : rockFormationNearby ? 0.7 : 0.3;
+        const shouldSpawnCamp = Math.random() < baseSpawnChance;
         
-        if (humanCamp) {
-          structures.push({
+        if (shouldSpawnCamp && this.buildingManager) {
+          // Fine-tune position for optimal placement
+          const campPosition = this.findOptimalCampPosition(testPosition);
+          const campSize = Math.random() < 0.4 ? 'small' : Math.random() < 0.7 ? 'medium' : 'large';
+          
+          const humanCamp = this.buildingManager.createBuilding({
             type: 'human_camp',
             position: campPosition,
-            rotation: 0,
-            model: humanCamp.getBuildingGroup()
+            id: `human_camp_${region.ringIndex}_${region.quadrant}_${attempt}`,
+            campConfig: { size: campSize }
           });
           
-          console.log(`🏕️ Placed ${campSize} human camp at ${campPosition.x.toFixed(2)}, ${campPosition.z.toFixed(2)} in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+          if (humanCamp) {
+            structures.push({
+              type: 'human_camp',
+              position: campPosition,
+              rotation: 0,
+              model: humanCamp.getBuildingGroup()
+            });
+            
+            const placementReason = forestDensity > 0.6 ? 'dense forest' : rockFormationNearby ? 'rock formation' : 'suitable terrain';
+            console.log(`🏕️ Placed ${campSize} human camp at ${campPosition.x.toFixed(2)}, ${campPosition.z.toFixed(2)} near ${placementReason} in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+            break; // Only place one camp per region
+          }
         }
       }
     }
@@ -335,6 +346,77 @@ export class StructureGenerator {
     // Simple forest detection - you can integrate with your biome system
     const forestNoise = Math.sin(position.x * 0.01) * Math.cos(position.z * 0.01);
     return { type: forestNoise > 0.3 ? 'meadow' : 'normal' };
+  }
+
+  // NEW: Detect forest density using ForestBiomeManager
+  private getForestDensityAtPosition(position: THREE.Vector3): number {
+    const forestBiome = ForestBiomeManager.getForestBiomeAtPosition(position);
+    if (!forestBiome) return 0;
+    
+    const config = ForestBiomeManager.getForestConfig(forestBiome);
+    // Add noise-based density variation
+    const densityNoise = Math.sin(position.x * 0.005) * Math.cos(position.z * 0.005);
+    return config.density * (0.8 + densityNoise * 0.4); // Vary density by ±40%
+  }
+
+  // NEW: Detect large rock formations nearby
+  private hasLargeRockFormationNearby(position: THREE.Vector3): boolean {
+    // Use noise to simulate rock formation detection
+    const rockNoise1 = Math.sin(position.x * 0.003) * Math.cos(position.z * 0.003);
+    const rockNoise2 = Math.sin(position.x * 0.007) * Math.cos(position.z * 0.007);
+    
+    // Large rock formations have both low-frequency and high-frequency components
+    const rockFormationStrength = Math.abs(rockNoise1) + Math.abs(rockNoise2) * 0.5;
+    return rockFormationStrength > 0.8; // Threshold for "large" formations
+  }
+
+  // NEW: Find optimal camp position near but not inside obstacles
+  private findOptimalCampPosition(basePosition: THREE.Vector3): THREE.Vector3 {
+    const searchRadius = 15;
+    let bestPosition = basePosition.clone();
+    let bestScore = this.evaluateCampPositionScore(basePosition);
+    
+    // Try several positions around the base position
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const testPosition = basePosition.clone().add(
+        new THREE.Vector3(
+          Math.cos(angle) * searchRadius,
+          0,
+          Math.sin(angle) * searchRadius
+        )
+      );
+      
+      const score = this.evaluateCampPositionScore(testPosition);
+      if (score > bestScore) {
+        bestScore = score;
+        bestPosition = testPosition;
+      }
+    }
+    
+    return bestPosition;
+  }
+
+  // Helper to evaluate how good a position is for a camp
+  private evaluateCampPositionScore(position: THREE.Vector3): number {
+    let score = 0;
+    
+    // Higher score near forests
+    const forestDensity = this.getForestDensityAtPosition(position);
+    score += forestDensity * 30;
+    
+    // Higher score near (but not too close to) rock formations
+    const hasRocks = this.hasLargeRockFormationNearby(position);
+    if (hasRocks) score += 40;
+    
+    // Prefer flatter areas (simulated)
+    const terrainFlatness = 1 - Math.abs(Math.sin(position.x * 0.01) * Math.cos(position.z * 0.01)) * 0.5;
+    score += terrainFlatness * 20;
+    
+    // Add some randomness for natural variation
+    score += (Math.random() - 0.5) * 10;
+    
+    return score;
   }
   
   // Cleanup structures for a region
