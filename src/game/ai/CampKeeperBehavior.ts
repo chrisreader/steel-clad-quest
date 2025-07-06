@@ -54,6 +54,8 @@ export class CampKeeperBehavior {
     const now = Date.now();
     const actionDuration = now - this.actionStartTime;
 
+    console.log(`🧠 [CampKeeperBehavior] Update - Current action: ${this.currentAction.type}, Duration: ${actionDuration}ms, Position: (${npcPosition.x.toFixed(2)}, ${npcPosition.z.toFixed(2)})`);
+
     // Check if we should greet the player when they're nearby
     if (playerPosition && this.shouldGreetPlayer(npcPosition, playerPosition)) {
       return this.handlePlayerInteraction(npcPosition, playerPosition);
@@ -71,6 +73,7 @@ export class CampKeeperBehavior {
         return this.handleInteractState(actionDuration);
       
       default:
+        console.warn(`⚠️ [CampKeeperBehavior] Unknown action type: ${this.currentAction.type}`);
         return { type: 'idle' };
     }
   }

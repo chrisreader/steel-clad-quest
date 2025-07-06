@@ -326,15 +326,23 @@ export class HumanCampBuilding extends BaseBuilding {
       chest.update(deltaTime);
     });
     
-    // Update camp keeper
+    // Update camp keeper with detailed logging
     if (this.campKeeper) {
+      console.log(`🏕️ [HumanCampBuilding] Updating camp keeper at position:`, this.position);
       this.campKeeper.update(deltaTime, playerPosition);
+    } else {
+      console.warn(`⚠️ [HumanCampBuilding] No camp keeper found for camp at position:`, this.position);
     }
     
     // NPC Recovery System: Try to create missing NPCs if managers are now available
     if (!this.campKeeper && this.audioManager && this.effectsManager) {
       console.log('🏕️ [HumanCampBuilding] Attempting to recover missing camp keeper NPC');
       this.createCampKeeper();
+    } else if (!this.campKeeper) {
+      console.log('🏕️ [HumanCampBuilding] Cannot recover camp keeper - missing managers:', {
+        audioManager: !!this.audioManager,
+        effectsManager: !!this.effectsManager
+      });
     }
   }
 
