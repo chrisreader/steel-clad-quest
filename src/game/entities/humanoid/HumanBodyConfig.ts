@@ -219,55 +219,99 @@ export class HumanBodyConfig {
     torso.receiveShadow = true;
     torso.position.set(0, 0, 0);
     
-    // 2. Shoulder connection pieces - smooth transition from torso to sleeves
-    const shoulderGeometry = new THREE.SphereGeometry(
-      bodyRadius * 0.25,    // Shoulder padding size 
-      12, 8,                // Segments
-      0, Math.PI,           // Hemisphere
-      0, Math.PI * 0.7      // Partial sphere for shoulder shape
-    );
+    // 2. Shoulder deltoid pieces - match EXACT deltoid geometry from EnemyHumanoid.ts
+    const shoulderJointRadius = (bodyRadius * 0.5) * 1.08; // Match body deltoid size + 8% fabric allowance
     
-    // Left shoulder
+    // Create custom deltoid-shaped shoulder geometry - IDENTICAL to body creation
+    const shoulderGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 16);
+    
+    // Apply the EXACT same deltoid vertex manipulation as the actual shoulder joints
+    const shoulderPositions = shoulderGeometry.attributes.position.array as Float32Array;
+    for (let i = 0; i < shoulderPositions.length; i += 3) {
+      const x = shoulderPositions[i];
+      const y = shoulderPositions[i + 1];
+      const z = shoulderPositions[i + 2];
+      
+      // Calculate normalized position within sphere (EXACT same logic)
+      const distance = Math.sqrt(x * x + y * y + z * z);
+      const normalizedY = y / shoulderJointRadius; // -1 to 1, where 1 is top, -1 is bottom
+      
+      // Convert to normalized coordinates (EXACT same)
+      const heightNorm = (normalizedY + 1.0) / 2.0; // 0 at bottom, 1 at top
+      
+      // Completely uniform scaling around circumference (EXACT same)
+      let scaleFactor = 0.75 + (heightNorm * 0.1); // Simple linear from 0.75 to 0.85
+      
+      // Constant front-back compression throughout (EXACT same)
+      let frontBackScale = 0.68;
+      
+      // Apply scaling with natural deltoid curves (EXACT same)
+      const horizontalDistance = Math.sqrt(x * x + z * z);
+      if (horizontalDistance > 0) {
+        const angle = Math.atan2(z, x);
+        
+        // Apply lateral scaling to X (side-to-side) and front-back scaling to Z
+        const newX = Math.cos(angle) * horizontalDistance * scaleFactor;
+        const newZ = Math.sin(angle) * horizontalDistance * frontBackScale;
+        
+        shoulderPositions[i] = newX; // X scaling with lateral constraint
+        shoulderPositions[i + 2] = newZ; // Z scaling with front-back compression
+      }
+    }
+    shoulderGeometry.attributes.position.needsUpdate = true;
+    shoulderGeometry.computeVertexNormals();
+    
+    // Left shoulder deltoid - positioned at EXACT arm location
     const leftShoulder = new THREE.Mesh(shoulderGeometry, shirtMaterial.clone());
-    leftShoulder.position.set(-armPositionX, bodyHeight * 0.35, 0);
-    leftShoulder.rotation.z = Math.PI * 0.15; // Slight rotation for natural fit
+    leftShoulder.position.set(
+      -armPositionX,           // Exact arm X position
+      bodyHeight * 0.35 + 0.05, // Match shoulder joint Y position (relative to arm + offset)
+      0
+    );
+    leftShoulder.rotation.set(-0.393 + Math.PI, 0, -0.3); // Match arm rotation + deltoid flip
     leftShoulder.castShadow = true;
     
-    // Right shoulder  
-    const rightShoulder = new THREE.Mesh(shoulderGeometry, shirtMaterial.clone());
-    rightShoulder.position.set(armPositionX, bodyHeight * 0.35, 0);
-    rightShoulder.rotation.z = -Math.PI * 0.15; // Mirror rotation
+    // Right shoulder deltoid - positioned at EXACT arm location  
+    const rightShoulder = new THREE.Mesh(shoulderGeometry.clone(), shirtMaterial.clone());
+    rightShoulder.position.set(
+      armPositionX,            // Exact arm X position
+      bodyHeight * 0.35 + 0.05, // Match shoulder joint Y position
+      0
+    );
+    rightShoulder.rotation.set(-0.393 + Math.PI, 0, 0.3); // Match arm rotation + deltoid flip
     rightShoulder.castShadow = true;
     
-    // 3. Sleeves - positioned exactly at arm attachment points with correct dimensions
-    const sleeveRadius = armRadius * 1.15; // 15% larger than arm for fabric fit
-    const sleeveLength = armLength * 0.6;  // Cover upper arm partially
+    // 3. Sleeves - match EXACT tapered arm geometry from EnemyHumanoid.ts
+    const armTopRadius = armRadius; // 0.1 (bodyScale.arm.radius[1])
+    const armBottomRadius = 0.08;   // bodyScale.arm.radius[0] 
+    const sleeveLength = armLength * 0.6; // Cover 60% of upper arm
     
+    // Create tapered sleeve geometry - IDENTICAL to createTaperedLimbGeometry
     const sleeveGeometry = new THREE.CylinderGeometry(
-      sleeveRadius,         // Top radius (matches arm + fabric allowance)
-      sleeveRadius * 0.9,   // Bottom radius (slightly tapered)
-      sleeveLength,         // Length based on arm measurements
-      12, 4                 // Segments
+      armTopRadius * 1.1,      // Top radius with 10% fabric allowance
+      armBottomRadius * 1.1,   // Bottom radius with 10% fabric allowance  
+      sleeveLength,            // Length based on arm measurements
+      24, 8                    // Same high resolution as arms
     );
     
-    // Left sleeve - positioned at exact arm location
+    // Left sleeve - positioned at EXACT arm location with EXACT arm rotation
     const leftSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
     leftSleeve.position.set(
-      -armPositionX,                    // Exact arm X position
-      bodyHeight * 0.35 - sleeveLength * 0.3, // Slightly below shoulder
+      -armPositionX,                    // Exact arm X position (-0.255)
+      bodyHeight * 0.35 - sleeveLength * 0.3, // Positioned relative to shoulder height
       0
     );
-    leftSleeve.rotation.z = Math.PI * 0.08; // Slight outward angle
+    leftSleeve.rotation.set(-0.393, 0, -0.3); // EXACT same rotation as actual arm
     leftSleeve.castShadow = true;
     
-    // Right sleeve - positioned at exact arm location
-    const rightSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
+    // Right sleeve - positioned at EXACT arm location with EXACT arm rotation
+    const rightSleeve = new THREE.Mesh(sleeveGeometry.clone(), shirtMaterial.clone());
     rightSleeve.position.set(
-      armPositionX,                     // Exact arm X position  
-      bodyHeight * 0.35 - sleeveLength * 0.3, // Slightly below shoulder
+      armPositionX,                     // Exact arm X position (0.255)  
+      bodyHeight * 0.35 - sleeveLength * 0.3, // Positioned relative to shoulder height
       0
     );
-    rightSleeve.rotation.z = -Math.PI * 0.08; // Mirror angle
+    rightSleeve.rotation.set(-0.393, 0, 0.3); // EXACT same rotation as actual arm
     rightSleeve.castShadow = true;
     
     // 4. Neck opening - realistic collar
