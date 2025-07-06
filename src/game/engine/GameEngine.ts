@@ -79,9 +79,6 @@ export class GameEngine {
       this.sceneManager.setCamera(this.renderEngine.getCamera());
       console.log("📹 [GameEngine] Camera reference passed to SceneManager for sun glow calculations");
       
-      // Create default world
-      this.sceneManager.createDefaultWorld();
-      
       // Create the input manager
       this.inputManager = new InputManager();
       this.inputManager.initialize(this.renderEngine.getRenderer());
@@ -95,7 +92,7 @@ export class GameEngine {
       // Create the audio manager
       this.audioManager = new AudioManager(this.renderEngine.getCamera(), this.renderEngine.getScene());
       
-      // Set audio manager and effects manager for building manager
+      // Set audio manager and effects manager for building manager BEFORE world creation
       if (this.buildingManager && this.audioManager && this.effectsManager) {
         this.buildingManager.setAudioManager(this.audioManager);
         this.buildingManager.setEffectsManager(this.effectsManager);
@@ -110,8 +107,14 @@ export class GameEngine {
         this.sceneManager.initializeWithEffectsManager(this.effectsManager);
       }
       
+      // Create default world AFTER managers are set
+      this.sceneManager.createDefaultWorld();
+      
       // Create buildings with fireplaces
       this.createBuildings();
+      
+      // Force create a test camp near spawn with NPCs
+      this.createTestCampWithNPC();
       
       // Preload audio
       try {
@@ -173,6 +176,43 @@ export class GameEngine {
     
     if (tavernBuilding) {
       console.log("🔥 [GameEngine] Tavern with animated fireplace created successfully");
+    }
+  }
+  
+  private createTestCampWithNPC(): void {
+    if (!this.buildingManager) {
+      console.warn("🏕️ [GameEngine] Cannot create test camp - BuildingManager not available");
+      return;
+    }
+    
+    console.log("🏕️ [GameEngine] Creating guaranteed test camp near spawn with NPC...");
+    
+    // Create a test human camp near spawn with guaranteed NPC
+    const testCamp = this.buildingManager.createBuilding({
+      type: 'human_camp',
+      position: new THREE.Vector3(25, 0, 15),
+      id: 'test_spawn_camp',
+      campConfig: {
+        size: 'medium',
+        npcCount: 1,
+        hasRareChest: true,
+        tentCount: 2
+      }
+    });
+    
+    if (testCamp) {
+      console.log("🏕️ [GameEngine] Test camp created successfully with NPC configuration");
+      
+      // Force NPC creation if building is available
+      setTimeout(() => {
+        console.log("🏕️ [GameEngine] Checking test camp NPC creation...");
+        if (testCamp && 'createCampKeeper' in testCamp && typeof testCamp.createCampKeeper === 'function') {
+          testCamp.createCampKeeper();
+          console.log("🏕️ [GameEngine] Forced camp keeper creation on test camp");
+        }
+      }, 100);
+    } else {
+      console.error("🏕️ [GameEngine] Failed to create test camp");
     }
   }
   

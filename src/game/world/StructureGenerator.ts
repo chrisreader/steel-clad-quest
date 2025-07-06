@@ -213,12 +213,125 @@ export class StructureGenerator {
     return t * t * (3 - 2 * t);
   }
   
+  // NEW: Create specific test camp near spawn
+  private createTestCamp(): void {
+    console.log('🏕️ [StructureGenerator] Creating TEST CAMP near spawn');
+    
+    if (!this.buildingManager) {
+      console.warn('🏕️ [StructureGenerator] BuildingManager not available for test camp');
+      return;
+    }
+    
+    const testCampPosition = new THREE.Vector3(40, 0, 30);
+    const testCamp = this.buildingManager.createBuilding({
+      type: 'human_camp',
+      position: testCampPosition,
+      id: 'test_camp_spawn',
+      campConfig: { 
+        size: 'medium',
+        npcCount: 1,
+        hasRareChest: true,
+        tentCount: 2
+      }
+    });
+    
+    if (testCamp) {
+      console.log(`🏕️ ✅ TEST CAMP placed at (${testCampPosition.x}, ${testCampPosition.z}) with NPC`);
+    } else {
+      console.error(`🏕️ ❌ TEST CAMP creation failed`);
+    }
+  }
+  
+  // NEW: Create guaranteed camps at specific locations
+  private createGuaranteedCamp(type: string, position: THREE.Vector3): void {
+    console.log(`🏕️ [StructureGenerator] Creating GUARANTEED ${type} camp at`, position);
+    
+    if (!this.buildingManager) {
+      console.warn(`🏕️ [StructureGenerator] BuildingManager not available for ${type} camp`);
+      return;
+    }
+    
+    const campConfig = {
+      size: Math.random() < 0.5 ? 'medium' : 'large' as 'medium' | 'large',
+      npcCount: 1,
+      hasRareChest: true,
+      tentCount: type === 'forest' ? 3 : 2
+    };
+    
+    const camp = this.buildingManager.createBuilding({
+      type: 'human_camp',
+      position: position,
+      id: `guaranteed_${type}_camp`,
+      campConfig: campConfig
+    });
+    
+    if (camp) {
+      console.log(`🏕️ ✅ GUARANTEED ${type.toUpperCase()} CAMP placed at (${position.x}, ${position.z}) with NPC`);
+    } else {
+      console.error(`🏕️ ❌ GUARANTEED ${type.toUpperCase()} CAMP creation failed`);
+    }
+  }
+  
+  // NEW: Create random camps in appropriate locations
+  private createRandomCamp(region: RegionCoordinates): void {
+    console.log(`🏕️ [StructureGenerator] Creating RANDOM camp in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    
+    if (!this.buildingManager) {
+      console.warn(`🏕️ [StructureGenerator] BuildingManager not available for random camp`);
+      return;
+    }
+    
+    const regionCenter = this.ringSystem.getRegionCenter(region);
+    const testPosition = regionCenter.clone().add(
+      new THREE.Vector3(
+        (Math.random() - 0.5) * 50,
+        0,
+        (Math.random() - 0.5) * 50
+      )
+    );
+    
+    const forestDensity = this.getForestDensityAtPosition(testPosition);
+    const rockFormationNearby = this.hasLargeRockFormationNearby(testPosition);
+    
+    // Only spawn if near forests OR rocks
+    if (forestDensity > 0.5 || rockFormationNearby) {
+      const campPosition = this.findOptimalCampPosition(testPosition);
+      const campSize = Math.random() < 0.6 ? 'small' : Math.random() < 0.8 ? 'medium' : 'large';
+      
+      const randomCamp = this.buildingManager.createBuilding({
+        type: 'human_camp',
+        position: campPosition,
+        id: `random_camp_${region.ringIndex}_${region.quadrant}`,
+        campConfig: { 
+          size: campSize as 'small' | 'medium' | 'large',
+          npcCount: 1,
+          hasRareChest: Math.random() < 0.3,
+          tentCount: campSize === 'small' ? 1 : campSize === 'medium' ? 2 : 3
+        }
+      });
+      
+      if (randomCamp) {
+        const placementReason = forestDensity > 0.5 ? 'dense forest' : 'rock formation';
+        console.log(`🏕️ ✅ RANDOM ${campSize.toUpperCase()} CAMP placed at (${campPosition.x.toFixed(2)}, ${campPosition.z.toFixed(2)}) near ${placementReason}`);
+      } else {
+        console.error(`🏕️ ❌ RANDOM CAMP creation failed`);
+      }
+    } else {
+      console.log(`🏕️ [StructureGenerator] Random camp rejected - not near suitable terrain`);
+    }
+  }
+
   // Place structures in regions based on ring definitions
   public generateStructuresForRegion(region: RegionCoordinates): void {
+    console.log(`🏗️ [StructureGenerator] Generating structures for Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    
     const regionKey = this.ringSystem.getRegionKey(region);
     
     // Skip if already generated
-    if (this.structures.has(regionKey)) return;
+    if (this.structures.has(regionKey)) {
+      console.log(`🏗️ [StructureGenerator] Region ${regionKey} already generated, skipping`);
+      return;
+    }
     
     // Initialize structures array
     const structures: Structure[] = [];
@@ -227,13 +340,12 @@ export class StructureGenerator {
     // Get region properties
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
     
-    // Check if this region should have structures
-    const structureTypes = ringDef.structureTypes;
-    if (!structureTypes || structureTypes.length === 0) return;
-    
-    // For ring 0 (center), quadrant 0 (NE), place enhanced staircase and test hill
+    // GUARANTEED TEST CAMP - Ring 0, Quadrant 0 ONLY
     if (region.ringIndex === 0 && region.quadrant === 0) {
-      // Enhanced staircase at (50, 0, 50)
+      console.log('🏕️ [StructureGenerator] Creating GUARANTEED test camp in Ring 0, Quadrant 0');
+      this.createTestCamp();
+      
+      // Also create original structures (staircase, hill)
       const staircase = this.createStaircase(50, 0, 50, 8, 3, 0.6, 1.2);
       structures.push({
         type: 'staircase',
@@ -241,11 +353,8 @@ export class StructureGenerator {
         rotation: 0,
         model: staircase
       });
-      
       this.scene.add(staircase);
-      console.log(`🪜 Placed enhanced staircase at (50, 0, 50) in Ring 0, Quadrant 0`);
       
-      // Test hill with realistic curved shape at (20, 0, 30)
       const testHill = this.createTestHill(20, 0, 30, 12, 6);
       structures.push({
         type: 'test_hill',
@@ -253,52 +362,47 @@ export class StructureGenerator {
         rotation: 0,
         model: testHill
       });
-      
-      console.log(`🏔️ Placed realistic curved hill at (20, 0, 30) in Ring 0, Quadrant 0 for slope testing`);
-
-      // TEST HUMAN CAMP: Add a test camp near spawn to verify NPC movement
-      console.log(`🏕️ [TEST] Creating test human camp at (40, 0, 30) to verify NPC movement`);
-      
-      if (this.buildingManager) {
-        const testCampPosition = new THREE.Vector3(40, 0, 30);
-        const testCamp = this.buildingManager.createBuilding({
-          type: 'human_camp',
-          position: testCampPosition,
-          id: 'test_camp_ring0',
-          campConfig: { 
-            size: 'small',
-            npcCount: 1,
-            hasRareChest: false
-          }
-        });
-        
-        if (testCamp) {
-          structures.push({
-            type: 'human_camp',
-            position: testCampPosition,
-            rotation: 0,
-            model: testCamp.getBuildingGroup()
-          });
-          
-          console.log(`🏕️ ✅ TEST CAMP placed at (${testCampPosition.x}, ${testCampPosition.z}) for immediate NPC testing`);
-        } else {
-          console.error(`🏕️ ❌ TEST CAMP creation failed`);
-        }
+    }
+    
+    // ADDITIONAL CAMPS - More regions for better coverage
+    if (region.ringIndex === 1 && region.quadrant === 0) {
+      console.log('🏕️ [StructureGenerator] Creating camp in Ring 1, Quadrant 0');
+      this.createGuaranteedCamp('forest', new THREE.Vector3(60, 0, 20));
+    }
+    
+    if (region.ringIndex === 1 && region.quadrant === 2) {
+      console.log('🏕️ [StructureGenerator] Creating camp in Ring 1, Quadrant 2');
+      this.createGuaranteedCamp('plains', new THREE.Vector3(-40, 0, -30));
+    }
+    
+    // Original guaranteed camps in ring 2
+    if (region.ringIndex === 2 && region.quadrant === 1) {
+      console.log('🏕️ [StructureGenerator] Creating GUARANTEED forest camp in Ring 2, Quadrant 1');
+      this.createGuaranteedCamp('forest', new THREE.Vector3(-80, 0, 60));
+    }
+    
+    if (region.ringIndex === 2 && region.quadrant === 3) {
+      console.log('🏕️ [StructureGenerator] Creating GUARANTEED rock camp in Ring 2, Quadrant 3');
+      this.createGuaranteedCamp('rock', new THREE.Vector3(70, 0, -85));
+    }
+    
+    // Random camps in outer rings - INCREASED SPAWN CHANCE
+    if (region.ringIndex >= 2 && region.ringIndex <= 4) {
+      // Increased spawn chance from 0.3 to 0.6 for more camps
+      if (Math.random() < 0.6) {
+        console.log(`🏕️ [StructureGenerator] Creating RANDOM camp in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+        this.createRandomCamp(region);
       } else {
-        console.warn(`🏕️ ❌ BuildingManager not available for test camp`);
+        console.log(`🏕️ [StructureGenerator] Skipped random camp creation in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
       }
     }
     
-    // For ring 1, quadrant 2 (SW), place a ruined castle using BuildingManager
+    // Handle other structures (castle, etc.)
     if (region.ringIndex === 1 && region.quadrant === 2) {
-      // Place castle in the middle of the region
       const position = this.ringSystem.getRegionCenter(region);
-      
-      // Adjust position to be somewhere in the quadrant, not exactly at center
       position.x += (Math.random() * 30) - 15;
       position.z += (Math.random() * 30) - 15;
 
-      // NEW: Use BuildingManager to create castle
       if (this.buildingManager) {
         const castle = this.buildingManager.createBuilding({
           type: 'castle',
@@ -313,77 +417,12 @@ export class StructureGenerator {
             rotation: Math.random() * Math.PI * 2,
             model: castle.getBuildingGroup()
           });
-          
-          console.log(`🏰 Placed ruined castle using BuildingManager at ${position.x.toFixed(2)}, ${position.z.toFixed(2)} in Ring 1, Quadrant 2`);
+          console.log(`🏰 Placed ruined castle using BuildingManager at ${position.x.toFixed(2)}, ${position.z.toFixed(2)}`);
         }
-      } else {
-        console.warn('🏰 BuildingManager not available, skipping castle creation');
       }
     }
-
-    // GUARANTEED CAMPS: Always place at least 2 camps in specific locations
-    this.createGuaranteedCamps(region, structures);
-
-    // NEW: Place human camps sparingly near forests and rock formations (Ring 2-4 only)
-    if (region.ringIndex >= 2 && region.ringIndex <= 4) {
-      // FIXED: Increased spawn rates to be more reasonable while still performance-optimized
-      const baseChance = region.ringIndex === 2 ? 0.25 : region.ringIndex === 3 ? 0.20 : 0.15;
-      
-      console.log(`🏕️ [DEBUG] Checking camp spawn for Ring ${region.ringIndex}, Quadrant ${region.quadrant} - baseChance: ${baseChance}`);
-      
-      if (Math.random() < baseChance) {
-        const regionCenter = this.ringSystem.getRegionCenter(region);
-        const testPosition = regionCenter.clone().add(
-          new THREE.Vector3(
-            (Math.random() - 0.5) * 50,
-            0,
-            (Math.random() - 0.5) * 50
-          )
-        );
-        
-        const forestDensity = this.getForestDensityAtPosition(testPosition);
-        const rockFormationNearby = this.hasLargeRockFormationNearby(testPosition);
-        
-        console.log(`🏕️ [DEBUG] Position: (${testPosition.x.toFixed(1)}, ${testPosition.z.toFixed(1)}) - Forest density: ${forestDensity.toFixed(2)}, Has rocks: ${rockFormationNearby}`);
-        
-        // Only spawn if near forests OR rocks (not just anywhere)
-        const shouldSpawnCamp = forestDensity > 0.5 || rockFormationNearby;
-        
-        console.log(`🏕️ [DEBUG] Should spawn camp: ${shouldSpawnCamp}, Has BuildingManager: ${!!this.buildingManager}`);
-        
-        if (shouldSpawnCamp && this.buildingManager) {
-          const campPosition = this.findOptimalCampPosition(testPosition);
-          const campSize = Math.random() < 0.6 ? 'small' : Math.random() < 0.8 ? 'medium' : 'large';
-          
-          console.log(`🏕️ [DEBUG] Creating ${campSize} camp at optimal position: (${campPosition.x.toFixed(1)}, ${campPosition.z.toFixed(1)})`);
-          
-          const humanCamp = this.buildingManager.createBuilding({
-            type: 'human_camp',
-            position: campPosition,
-            id: `human_camp_${region.ringIndex}_${region.quadrant}`,
-            campConfig: { size: campSize }
-          });
-          
-          if (humanCamp) {
-            structures.push({
-              type: 'human_camp',
-              position: campPosition,
-              rotation: 0,
-              model: humanCamp.getBuildingGroup()
-            });
-            
-            const placementReason = forestDensity > 0.5 ? 'dense forest' : 'rock formation';
-            console.log(`🏕️ ✅ SUCCESS: Placed ${campSize} human camp at ${campPosition.x.toFixed(2)}, ${campPosition.z.toFixed(2)} near ${placementReason} in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-          } else {
-            console.error(`🏕️ ❌ FAILED: BuildingManager.createBuilding returned null for camp`);
-          }
-        } else {
-          console.log(`🏕️ [DEBUG] Camp spawn rejected - shouldSpawn: ${shouldSpawnCamp}, buildingManager: ${!!this.buildingManager}`);
-        }
-      } else {
-        console.log(`🏕️ [DEBUG] Random chance failed for Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-      }
-    }
+    
+    console.log(`🏗️ [StructureGenerator] Structure generation complete for Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
   }
   // GUARANTEED CAMPS: Ensure at least 2 camps always exist in the world
   private createGuaranteedCamps(region: RegionCoordinates, structures: Structure[]): void {

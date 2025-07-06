@@ -278,21 +278,40 @@ export class HumanCampBuilding extends BaseBuilding {
 
     console.log('👤 [HumanCampBuilding] Creating camp keeper NPC');
     
-    // Position the camp keeper near the fireplace
-    const keeperPosition = new THREE.Vector3(2, 0, 1);
-    // Adjust position to be relative to camp position
-    keeperPosition.add(this.position);
-    
-    console.log('👤 [HumanCampBuilding] Camp keeper position:', keeperPosition);
-    
-    this.campKeeper = CampNPC.createCampKeeper(
-      this.scene,
-      keeperPosition,
-      this.effectsManager,
-      this.audioManager
-    );
-    
-    console.log('👤 [HumanCampBuilding] Camp keeper created:', !!this.campKeeper);
+    try {
+      // Position the camp keeper near the fireplace
+      const keeperPosition = new THREE.Vector3(2, 0, 1);
+      // Adjust position to be relative to camp position
+      keeperPosition.add(this.position);
+      
+      console.log('👤 [HumanCampBuilding] Camp keeper position:', keeperPosition);
+      
+      this.campKeeper = CampNPC.createCampKeeper(
+        this.scene,
+        keeperPosition,
+        this.effectsManager,
+        this.audioManager
+      );
+      
+      if (this.campKeeper) {
+        console.log('👤✅ [HumanCampBuilding] Camp keeper created successfully');
+        
+        // Add to building group for proper management
+        if (this.campKeeper && 'getGroup' in this.campKeeper && typeof this.campKeeper.getGroup === 'function') {
+          const npcGroup = this.campKeeper.getGroup();
+          if (npcGroup) {
+            this.buildingGroup.add(npcGroup);
+            console.log('👤 [HumanCampBuilding] Camp keeper added to building group');
+          }
+        } else {
+          console.log('👤 [HumanCampBuilding] Camp keeper created but no getGroup method available');
+        }
+      } else {
+        console.error('👤❌ [HumanCampBuilding] CampNPC.createCampKeeper returned null');
+      }
+    } catch (error) {
+      console.error('👤❌ [HumanCampBuilding] Error creating camp keeper:', error);
+    }
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
@@ -309,6 +328,12 @@ export class HumanCampBuilding extends BaseBuilding {
     // Update camp keeper
     if (this.campKeeper) {
       this.campKeeper.update(deltaTime, playerPosition);
+    }
+    
+    // NPC Recovery System: Try to create missing NPCs if managers are now available
+    if (!this.campKeeper && this.audioManager && this.effectsManager) {
+      console.log('🏕️ [HumanCampBuilding] Attempting to recover missing camp keeper NPC');
+      this.createCampKeeper();
     }
   }
 
