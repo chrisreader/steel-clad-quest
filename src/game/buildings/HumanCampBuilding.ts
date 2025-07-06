@@ -99,7 +99,7 @@ export class HumanCampBuilding extends BaseBuilding {
       this.audioManager,
       this.position.clone(), // Pass world position for fire effects
       'camp_fireplace_' + this.position.x.toFixed(0) + '_' + this.position.z.toFixed(0), // Unique but consistent ID
-      true // Always on for camp
+      false // Time-based: on at sunset (19:00), off at sunrise (6:00)
     );
     
     const fireplaceGroup = this.fireplaceComponent.create();
