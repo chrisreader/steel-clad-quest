@@ -120,7 +120,7 @@ export class HumanCampNPC {
     const mesh = this.getMesh();
     const currentPos = mesh.position.clone();
     
-    console.log(`🏃 [${this.config.name}] moveTowards called - From:`, currentPos, 'To:', target);
+    console.error(`🚨 [${this.config.name}] MOVE TOWARDS - From:`, currentPos, 'To:', target);
     
     // Calculate direction to target
     const direction = new THREE.Vector3()
@@ -128,27 +128,27 @@ export class HumanCampNPC {
       .normalize();
     direction.y = 0; // Keep on ground level
     
-    const moveSpeed = 1.5 * deltaTime;
+    // FIXED: Much higher move speed and simpler logic
+    const moveSpeed = 5.0 * deltaTime; // Increased from 1.5 to 5.0
     const distanceToTarget = currentPos.distanceTo(target);
     
-    console.log(`🏃 [${this.config.name}] Distance to target: ${distanceToTarget.toFixed(2)}m, Speed: ${moveSpeed.toFixed(3)}`);
+    console.error(`🚨 [${this.config.name}] Distance: ${distanceToTarget.toFixed(2)}m, Speed: ${moveSpeed.toFixed(3)}`);
     
-    // Only move if we're not too close to the target
-    if (distanceToTarget > 0.5) {
-      const newPosition = currentPos.clone();
-      newPosition.add(direction.multiplyScalar(moveSpeed));
-      newPosition.y = 0; // Ensure stays on ground
+    // FIXED: Move if any distance > 0.1 (was 0.5)
+    if (distanceToTarget > 0.1) {
+      // FIXED: Directly modify mesh position
+      mesh.position.x += direction.x * moveSpeed;
+      mesh.position.z += direction.z * moveSpeed;
+      mesh.position.y = 0; // Keep on ground
       
-      console.log(`🏃 [${this.config.name}] Moving to new position:`, newPosition);
-      mesh.position.copy(newPosition);
+      console.error(`🚨 [${this.config.name}] NEW POSITION:`, mesh.position.clone());
       
-      // Update rotation to face movement direction
+      // Update rotation
       const targetRotation = Math.atan2(direction.x, direction.z);
-      mesh.rotation.y = THREE.MathUtils.lerp(mesh.rotation.y, targetRotation, 0.1);
+      mesh.rotation.y = targetRotation; // Direct assignment, no lerp
       
-      console.log(`🏃 [${this.config.name}] New rotation: ${mesh.rotation.y.toFixed(2)} rad`);
     } else {
-      console.log(`🏃 [${this.config.name}] Too close to target, not moving`);
+      console.error(`🚨 [${this.config.name}] REACHED TARGET`);
     }
   }
 
