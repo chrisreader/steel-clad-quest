@@ -43,23 +43,23 @@ export class MedievalSword extends Sword {
       // Create tapered blade shape - designed to match original blade dimensions
       const bladeShape = new THREE.Shape();
       
-      // Start from tip and work toward handle (Z goes from -0.9 to +0.9 for total length 1.8)
-      bladeShape.moveTo(0, 0.9);      // Sharp tip point
-      bladeShape.lineTo(0.008, 0.8);  // Very narrow near tip for sharp point
-      bladeShape.lineTo(0.015, 0.7);  // Gradually widening
-      bladeShape.lineTo(0.03, 0.3);   // Wider section
+      // Start from base (handle end) and work toward tip (flipped coordinates)
+      bladeShape.moveTo(0, -0.9);      // Sharp tip point (flipped)
+      bladeShape.lineTo(0.008, -0.8);  // Very narrow near tip for sharp point
+      bladeShape.lineTo(0.015, -0.7);  // Gradually widening
+      bladeShape.lineTo(0.03, -0.3);   // Wider section
       bladeShape.lineTo(0.04, 0);     // Widest at middle
-      bladeShape.lineTo(0.03, -0.3);  // Wider narrowing back
-      bladeShape.lineTo(0.025, -0.7); // Getting wider toward base
-      bladeShape.lineTo(0.03, -0.9);  // Much wider at base for better handle connection
-      bladeShape.lineTo(-0.03, -0.9); // Mirror wide base
-      bladeShape.lineTo(-0.025, -0.7); // Mirror
-      bladeShape.lineTo(-0.03, -0.3);  // Mirror
-      bladeShape.lineTo(-0.04, 0);     // Widest at middle
+      bladeShape.lineTo(0.03, 0.3);   // Wider narrowing back
+      bladeShape.lineTo(0.025, 0.7);  // Getting wider toward base
+      bladeShape.lineTo(0.03, 0.9);   // Much wider at base for better handle connection
+      bladeShape.lineTo(-0.03, 0.9);  // Mirror wide base
+      bladeShape.lineTo(-0.025, 0.7);  // Mirror
       bladeShape.lineTo(-0.03, 0.3);   // Mirror
-      bladeShape.lineTo(-0.015, 0.7);  // Mirror
-      bladeShape.lineTo(-0.008, 0.8);  // Mirror narrow near tip
-      bladeShape.lineTo(0, 0.9);       // Close at sharp tip
+      bladeShape.lineTo(-0.04, 0);     // Widest at middle
+      bladeShape.lineTo(-0.03, -0.3);  // Mirror
+      bladeShape.lineTo(-0.015, -0.7); // Mirror
+      bladeShape.lineTo(-0.008, -0.8); // Mirror narrow near tip
+      bladeShape.lineTo(0, -0.9);      // Close at sharp tip
       
       // Extrude the shape to create 3D blade with increased thickness
       const extrudeSettings = {
