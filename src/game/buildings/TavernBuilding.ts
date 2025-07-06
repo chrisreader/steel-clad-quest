@@ -129,8 +129,8 @@ export class TavernBuilding extends BaseBuilding {
   }
 
   private createLogWall(wallName: string, centerX: number, centerZ: number, width: number, depth: number, logsCount: number, logColors: number[]): void {
-    const logHeight = 0.3;
-    const logRadius = logHeight * 0.4;
+    const logHeight = 0.35; // Increased from 0.3 to eliminate gaps
+    const logRadius = logHeight * 0.6; // Increased radius for thicker logs
     
     for (let i = 0; i < logsCount; i++) {
       const colorIndex = i % logColors.length;
@@ -160,9 +160,9 @@ export class TavernBuilding extends BaseBuilding {
       log.position.copy(logPosition);
       log.rotation.copy(rotation);
       
-      // Add slight random variations for natural look
-      log.position.y += (Math.random() - 0.5) * 0.02;
-      log.rotation.z += (Math.random() - 0.5) * 0.05;
+      // Reduced random variations to keep logs tightly packed
+      log.position.y += (Math.random() - 0.5) * 0.01;
+      log.rotation.z += (Math.random() - 0.5) * 0.02;
       
       this.addComponent(log, `${wallName}_log_${i}`, 'wood');
       
@@ -181,22 +181,27 @@ export class TavernBuilding extends BaseBuilding {
       metalness: 0
     });
     
-    // Create ring pattern for log ends
-    const endCapGeometry = new THREE.CylinderGeometry(radius * 0.9, radius * 0.9, 0.05, 12);
+    // Create ring pattern for log ends with proper thickness
+    const endCapGeometry = new THREE.CylinderGeometry(radius * 0.9, radius * 0.9, 0.08, 12);
     
-    // Left end cap
-    const leftEndCap = new THREE.Mesh(endCapGeometry, endCapMaterial.clone());
-    leftEndCap.position.copy(logPosition);
-    leftEndCap.position.x -= length / 2;
-    leftEndCap.rotation.z = Math.PI / 2;
-    this.addComponent(leftEndCap, `${wallName}_log_${logIndex}_left_end`, 'wood');
-    
-    // Right end cap
-    const rightEndCap = new THREE.Mesh(endCapGeometry, endCapMaterial.clone());
-    rightEndCap.position.copy(logPosition);
-    rightEndCap.position.x += length / 2;
-    rightEndCap.rotation.z = Math.PI / 2;
-    this.addComponent(rightEndCap, `${wallName}_log_${logIndex}_right_end`, 'wood');
+    // Only create end caps for reasonable lengths and avoid side walls that extend too far
+    if (length <= 12 && !wallName.includes('left') && !wallName.includes('right')) { 
+      // Only create end caps for front/back walls to avoid distant circles
+      
+      // Left end cap
+      const leftEndCap = new THREE.Mesh(endCapGeometry, endCapMaterial.clone());
+      leftEndCap.position.copy(logPosition);
+      leftEndCap.position.x -= length / 2;
+      leftEndCap.rotation.z = Math.PI / 2;
+      this.addComponent(leftEndCap, `${wallName}_log_${logIndex}_left_end`, 'wood');
+      
+      // Right end cap
+      const rightEndCap = new THREE.Mesh(endCapGeometry, endCapMaterial.clone());
+      rightEndCap.position.copy(logPosition);
+      rightEndCap.position.x += length / 2;
+      rightEndCap.rotation.z = Math.PI / 2;
+      this.addComponent(rightEndCap, `${wallName}_log_${logIndex}_right_end`, 'wood');
+    }
   }
 
   private createRealisticRoof(): void {
