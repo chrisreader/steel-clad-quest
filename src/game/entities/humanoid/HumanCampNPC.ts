@@ -82,45 +82,32 @@ export class HumanCampNPC {
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     if (this.isDead) return;
 
-    // ALWAYS log for debugging - remove randomness
-    console.log(`🏕️ [${this.config.name}] === UPDATE DEBUG ===`);
-    console.log(`🏕️ [${this.config.name}] Position:`, this.getMesh().position.clone());
-    console.log(`🏕️ [${this.config.name}] Player pos:`, playerPosition);
-    console.log(`🏕️ [${this.config.name}] Behavior debug:`, this.behavior.getDebugInfo());
-
     // Update AI behavior
     const action = this.behavior.update(deltaTime, this.getMesh().position, playerPosition);
     
-    // ALWAYS log actions for debugging
-    console.log(`🏕️ [${this.config.name}] Action result:`, action);
-    console.log(`🏕️ [${this.config.name}] Current position:`, this.getMesh().position.clone());
-    if (action.target) {
-      console.log(`🏕️ [${this.config.name}] Target distance:`, this.getMesh().position.distanceTo(action.target).toFixed(2));
-    }
-    
-    // Handle movement based on behavior with enhanced debugging
+    // Handle movement and animation based on behavior
     if (action.type === 'move' && action.target) {
-      console.log(`🚶 [${this.config.name}] MOVING to target:`, action.target);
-      this.moveTowards(action.target, deltaTime);
-      this.humanoid.updateWalkAnimation(deltaTime);
+      const wasMoving = this.moveTowards(action.target, deltaTime);
+      this.humanoid.updateAnimation(deltaTime, wasMoving, wasMoving ? 1.5 : 0);
     } else if (action.type === 'patrol' && action.target) {
-      console.log(`🛡️ [${this.config.name}] PATROLLING to target:`, action.target);
-      this.moveTowards(action.target, deltaTime);
-      this.humanoid.updateWalkAnimation(deltaTime);
+      const wasMoving = this.moveTowards(action.target, deltaTime);
+      this.humanoid.updateAnimation(deltaTime, wasMoving, wasMoving ? 1.2 : 0); // Slower patrol speed
+    } else if (action.type === 'guard' && action.lookDirection) {
+      // Guard behavior: rotate to look in direction while idle
+      const mesh = this.getMesh();
+      const targetRotation = Math.atan2(action.lookDirection.x, action.lookDirection.z);
+      mesh.rotation.y = this.smoothRotate(mesh.rotation.y, targetRotation, deltaTime * 2);
+      this.humanoid.updateAnimation(deltaTime, false, 0); // Idle animation
     } else if (action.type === 'idle') {
-      console.log(`💤 [${this.config.name}] IDLE state`);
-      this.humanoid.updateIdleAnimation(deltaTime);
+      this.humanoid.updateAnimation(deltaTime, false, 0); // Idle animation
     } else if (action.type === 'interact') {
-      console.log(`👋 [${this.config.name}] INTERACTING with player`);
-      this.humanoid.updateIdleAnimation(deltaTime);
+      this.humanoid.updateAnimation(deltaTime, false, 0); // Idle animation during interaction
     }
   }
 
-  private moveTowards(target: THREE.Vector3, deltaTime: number): void {
+  private moveTowards(target: THREE.Vector3, deltaTime: number): boolean {
     const mesh = this.getMesh();
     const currentPos = mesh.position.clone();
-    
-    console.error(`🚨 [${this.config.name}] MOVE TOWARDS - From:`, currentPos, 'To:', target);
     
     // Calculate direction to target
     const direction = new THREE.Vector3()
@@ -128,28 +115,35 @@ export class HumanCampNPC {
       .normalize();
     direction.y = 0; // Keep on ground level
     
-    // FIXED: Much higher move speed and simpler logic
-    const moveSpeed = 5.0 * deltaTime; // Increased from 1.5 to 5.0
+    const moveSpeed = 3.0 * deltaTime; // Realistic walking speed
     const distanceToTarget = currentPos.distanceTo(target);
     
-    console.error(`🚨 [${this.config.name}] Distance: ${distanceToTarget.toFixed(2)}m, Speed: ${moveSpeed.toFixed(3)}`);
-    
-    // FIXED: Move if any distance > 0.1 (was 0.5)
-    if (distanceToTarget > 0.1) {
-      // FIXED: Directly modify mesh position
+    // Move if distance > threshold
+    if (distanceToTarget > 0.5) {
+      // Move towards target
       mesh.position.x += direction.x * moveSpeed;
       mesh.position.z += direction.z * moveSpeed;
       mesh.position.y = 0; // Keep on ground
       
-      console.error(`🚨 [${this.config.name}] NEW POSITION:`, mesh.position.clone());
-      
-      // Update rotation
+      // Smooth rotation towards movement direction
       const targetRotation = Math.atan2(direction.x, direction.z);
-      mesh.rotation.y = targetRotation; // Direct assignment, no lerp
+      mesh.rotation.y = this.smoothRotate(mesh.rotation.y, targetRotation, deltaTime * 4);
       
-    } else {
-      console.error(`🚨 [${this.config.name}] REACHED TARGET`);
+      return true; // Was moving
     }
+    
+    return false; // Not moving
+  }
+
+  private smoothRotate(currentRotation: number, targetRotation: number, speed: number): number {
+    let diff = targetRotation - currentRotation;
+    
+    // Normalize angle difference to [-π, π]
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    
+    // Smooth interpolation
+    return currentRotation + diff * Math.min(1, speed);
   }
 
   public getMesh(): THREE.Group {

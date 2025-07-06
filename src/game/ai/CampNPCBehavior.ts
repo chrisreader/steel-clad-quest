@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 
 export interface CampAction {
-  type: 'move' | 'idle' | 'patrol' | 'interact';
+  type: 'move' | 'idle' | 'patrol' | 'interact' | 'guard';
   target?: THREE.Vector3;
+  lookDirection?: THREE.Vector3;
   duration?: number;
 }
 
@@ -85,6 +86,9 @@ export class CampNPCBehavior {
       case 'interact':
         return this.handleInteractState(actionDuration);
       
+      case 'guard':
+        return this.handleGuardState(actionDuration);
+      
       default:
         console.log(`🏕️ [CampNPCBehavior] Unknown action type: ${this.currentAction.type}, switching to idle`);
         return { type: 'idle' };
@@ -111,25 +115,20 @@ export class CampNPCBehavior {
   }
 
   private handleIdleState(actionDuration: number, npcPosition: THREE.Vector3): CampAction {
-    // Reduced pause duration for more active movement (from pauseDuration to pauseDuration/2)
-    const activePauseDuration = this.config.pauseDuration / 2; // 500ms instead of 1000ms
+    const activePauseDuration = this.config.pauseDuration / 2; // 500ms
     
     if (actionDuration > activePauseDuration) {
-      console.log(`🏕️ [CampNPC] Idle timeout after ${actionDuration}ms, starting new action`);
+      // Choose next behavior: 40% patrol, 30% guard, 30% move
+      const rand = Math.random();
       
-      const shouldPatrol = Math.random() < 0.4; // Increased to 40% chance to patrol
-      
-      if (shouldPatrol) {
-        console.log(`🏕️ [CampNPC] Choosing patrol action`);
+      if (rand < 0.4) {
         return this.startPatrol(npcPosition);
+      } else if (rand < 0.7) {
+        return this.startGuard();
       } else {
-        console.log(`🏕️ [CampNPC] Choosing movement action`);
         return this.startMovement(npcPosition);
       }
     }
-    
-    // Still idling - ALWAYS log for debugging
-    console.log(`🏕️ [CampNPC] Still idling... ${actionDuration}ms / ${activePauseDuration}ms`);
     
     return { type: 'idle' };
   }
@@ -238,6 +237,61 @@ export class CampNPCBehavior {
     return this.currentAction;
   }
 
+  private startGuard(): CampAction {
+    // Generate random look direction for guard behavior
+    const angle = Math.random() * Math.PI * 2;
+    const lookDirection = new THREE.Vector3(
+      Math.cos(angle),
+      0,
+      Math.sin(angle)
+    );
+    
+    this.currentAction = {
+      type: 'guard',
+      lookDirection: lookDirection,
+      duration: 2000 + Math.random() * 3000 // 2-5 seconds of guarding
+    };
+    this.actionStartTime = Date.now();
+    
+    console.log('👁️ [CampNPC] Starting guard duty, looking towards:', lookDirection);
+    
+    return this.currentAction;
+  }
+
+  private handleGuardState(actionDuration: number): CampAction {
+    if (actionDuration > (this.currentAction.duration || 3000)) {
+      this.currentAction = { type: 'idle' };
+      this.actionStartTime = Date.now();
+      
+      console.log('👁️ [CampNPC] Finished guard duty, returning to idle');
+    }
+    
+    return this.currentAction;
+  }
+
+  public getCurrentAction(): CampAction {
+    return { ...this.currentAction };
+  }
+
+  public isMoving(): boolean {
+    return this.currentAction.type === 'move' || this.currentAction.type === 'patrol';
+  }
+
+  public isInteracting(): boolean {
+    return this.currentAction.type === 'interact';
+  }
+
+  public getDebugInfo(): any {
+    return {
+      currentAction: this.currentAction.type,
+      currentWaypoint: this.currentWaypointIndex,
+      isAtWaypoint: this.isAtWaypoint,
+      isPatrolling: this.isPatrolling,
+      waypointTarget: this.currentWaypoint,
+      totalWaypoints: this.campWaypoints.length
+    };
+  }
+
   private selectNextWaypoint(currentPosition: THREE.Vector3): THREE.Vector3 {
     // Generate waypoint relative to camp center, not world origin
     let selectedWaypoint: THREE.Vector3;
@@ -266,28 +320,5 @@ export class CampNPCBehavior {
     console.log(`🎯 [CampNPC] Distance from current: ${currentPosition.distanceTo(selectedWaypoint).toFixed(2)}m`);
     
     return selectedWaypoint;
-  }
-
-  public getCurrentAction(): CampAction {
-    return { ...this.currentAction };
-  }
-
-  public isMoving(): boolean {
-    return this.currentAction.type === 'move' || this.currentAction.type === 'patrol';
-  }
-
-  public isInteracting(): boolean {
-    return this.currentAction.type === 'interact';
-  }
-
-  public getDebugInfo(): any {
-    return {
-      currentAction: this.currentAction.type,
-      currentWaypoint: this.currentWaypointIndex,
-      isAtWaypoint: this.isAtWaypoint,
-      isPatrolling: this.isPatrolling,
-      waypointTarget: this.currentWaypoint,
-      totalWaypoints: this.campWaypoints.length
-    };
   }
 }

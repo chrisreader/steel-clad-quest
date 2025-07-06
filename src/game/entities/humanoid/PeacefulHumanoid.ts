@@ -387,22 +387,26 @@ export class PeacefulHumanoid extends EnemyHumanoid {
   }
 
   /**
-   * Add walking animation for NPC movement
+   * Update animation based on actual movement state
    */
-  public updateWalkAnimation(deltaTime: number): void {
+  public updateAnimation(deltaTime: number, isMoving: boolean, movementSpeed: number): void {
     if (this.animationSystem) {
-      this.animationSystem.updateWalkAnimation(deltaTime, true, 1.5);
+      this.animationSystem.updateWalkAnimation(deltaTime, isMoving, movementSpeed);
     }
   }
 
   /**
-   * Add idle animation for when NPC is stationary
+   * DEPRECATED: Use updateAnimation instead
+   */
+  public updateWalkAnimation(deltaTime: number): void {
+    this.updateAnimation(deltaTime, true, 1.5);
+  }
+
+  /**
+   * DEPRECATED: Use updateAnimation instead  
    */
   public updateIdleAnimation(deltaTime: number): void {
-    if (this.animationSystem) {
-      // Use updateWalkAnimation with isMoving=false for idle state
-      this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
-    }
+    this.updateAnimation(deltaTime, false, 0);
   }
 
   /**
