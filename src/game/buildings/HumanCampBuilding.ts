@@ -6,7 +6,7 @@ import { FireplaceComponent } from './components/FireplaceComponent';
 import { TreasureChest } from '../world/objects/TreasureChest';
 import { AudioManager } from '../engine/AudioManager';
 import { EffectsManager } from '../engine/EffectsManager';
-import { HumanCampNPC } from '../entities/humanoid/HumanCampNPC';
+import { CampNPC } from '../entities/humanoid/CampNPC';
 
 export interface CampConfig {
   size: 'small' | 'medium' | 'large';
@@ -22,23 +22,16 @@ export class HumanCampBuilding extends BaseBuilding {
   private fireplaceComponent: FireplaceComponent | null = null;
   private tents: THREE.Group[] = [];
   private chests: TreasureChest[] = [];
-  private npcs: HumanCampNPC[] = [];
+  private campKeeper: CampNPC | null = null;
   private furniture: THREE.Group[] = [];
 
   constructor(scene: THREE.Scene, physicsManager: any, position: THREE.Vector3, config?: Partial<CampConfig>) {
-    // ULTRA CRITICAL DEBUG - Force visibility with multiple methods
-    console.error(`🚨🚨🚨 [HumanCampBuilding] ===== CONSTRUCTOR START =====`);
-    console.warn(`🚨🚨🚨 [HumanCampBuilding] Camp being created at:`, position);
-    console.log(`🚨🚨🚨 [HumanCampBuilding] Config:`, config);
-    alert(`🚨 HUMAN CAMP CONSTRUCTOR CALLED at ${position.x}, ${position.z}`);
-    
     super(scene, physicsManager, position);
     
     // Generate random camp configuration
     this.config = this.generateCampConfig(config);
     
-    console.error(`🚨🚨🚨 [HumanCampBuilding] Camp config: ${this.config.size} with ${this.config.npcCount} NPCs`);
-    console.error(`🚨🚨🚨 [HumanCampBuilding] ===== CONSTRUCTOR END =====`);
+    console.log(`🏕️ [HumanCampBuilding] Creating ${this.config.size} human camp with camp keeper`);
   }
 
   public setAudioManager(audioManager: AudioManager): void {
@@ -51,7 +44,6 @@ export class HumanCampBuilding extends BaseBuilding {
 
   protected createStructure(): void {
     console.log(`🏕️ [HumanCampBuilding] Creating camp structure at position:`, this.position);
-    console.error(`🚨 [HumanCampBuilding] CREATE STRUCTURE CALLED - ERROR LOG for visibility`);
 
     // 1. Create central fireplace
     this.createCampFireplace();
@@ -68,21 +60,17 @@ export class HumanCampBuilding extends BaseBuilding {
     // 5. Add scattered firewood and supplies
     this.createCampSupplies();
 
-    // 6. Create NPCs
-    console.error(`🚨 [HumanCampBuilding] ABOUT TO CREATE NPCs`);
-    this.createCampNPCs();
-    console.error(`🚨 [HumanCampBuilding] FINISHED CREATING NPCs`);
+    // 6. Create camp keeper
+    this.createCampKeeper();
 
     console.log(`🏕️ [HumanCampBuilding] Camp structure complete with ${this.components.length} components`);
-    console.error(`🚨 [HumanCampBuilding] STRUCTURE CREATION COMPLETE`);
   }
 
   private generateCampConfig(config?: Partial<CampConfig>): CampConfig {
-    // PERFORMANCE: Dramatically reduced NPC counts to prevent lag
     const baseConfigs = {
       small: { npcCount: 1, tentCount: 1, hasRareChest: false },
-      medium: { npcCount: 2, tentCount: 2, hasRareChest: Math.random() < 0.2 },
-      large: { npcCount: 2, tentCount: 2, hasRareChest: Math.random() < 0.4 }
+      medium: { npcCount: 1, tentCount: 2, hasRareChest: Math.random() < 0.2 },
+      large: { npcCount: 1, tentCount: 2, hasRareChest: Math.random() < 0.4 }
     };
 
     const size = config?.size || (['small', 'medium', 'large'][Math.floor(Math.random() * 3)] as 'small' | 'medium' | 'large');
@@ -90,7 +78,7 @@ export class HumanCampBuilding extends BaseBuilding {
 
     return {
       size,
-      npcCount: config?.npcCount || baseConfig.npcCount,
+      npcCount: 1, // Always single camp keeper
       hasRareChest: config?.hasRareChest !== undefined ? config.hasRareChest : baseConfig.hasRareChest,
       tentCount: config?.tentCount || baseConfig.tentCount
     };
@@ -276,49 +264,27 @@ export class HumanCampBuilding extends BaseBuilding {
     console.log(`📦 Created ${firewoodCount} firewood pile(s)`);
   }
 
-  private createCampNPCs(): void {
-    if (!this.effectsManager || !this.audioManager) {
-      console.warn('🏕️ [HumanCampBuilding] AudioManager or EffectsManager not set. Cannot create NPCs.');
-      console.warn(`🏕️ [DEBUG] EffectsManager: ${!!this.effectsManager}, AudioManager: ${!!this.audioManager}`);
-      
-      // Create NPCs anyway with fallback managers if needed
-      if (!this.audioManager) {
-        console.log('🏕️ [DEBUG] Creating fallback AudioManager for NPCs');
-        this.audioManager = {} as AudioManager;
-      }
-      if (!this.effectsManager) {
-        console.log('🏕️ [DEBUG] Creating fallback EffectsManager for NPCs');
-        this.effectsManager = {} as EffectsManager;
-      }
+  private createCampKeeper(): void {
+    if (!this.audioManager || !this.effectsManager) {
+      console.warn('🏕️ [HumanCampBuilding] AudioManager or EffectsManager not set. Cannot create camp keeper.');
+      return;
     }
 
-    console.log(`👥 Creating ${this.config.npcCount} camp NPCs`);
+    console.log('👤 [HumanCampBuilding] Creating camp keeper NPC');
     
-    for (let i = 0; i < this.config.npcCount; i++) {
-      const angle = (i / this.config.npcCount) * Math.PI * 2 + Math.random() * 0.5;
-      const distance = 2 + Math.random() * 3;
-      
-      const npcPosition = this.position.clone().add(
-        new THREE.Vector3(
-          Math.cos(angle) * distance,
-          0,
-          Math.sin(angle) * distance
-        )
-      );
-      
-      const npc = HumanCampNPC.createCampNPC(
-        this.scene,
-        npcPosition,
-        this.effectsManager!,
-        this.audioManager!,
-        i
-      );
-      
-      this.npcs.push(npc);
-      console.log(`👤 Created camp NPC ${i + 1} at position:`, npcPosition);
-    }
+    // Position the camp keeper near the fireplace
+    const keeperPosition = new THREE.Vector3(2, 0, 1);
+    // Adjust position to be relative to camp position
+    keeperPosition.add(this.position);
     
-    console.log(`👥 Created ${this.npcs.length} camp NPCs successfully`);
+    this.campKeeper = CampNPC.createCampKeeper(
+      this.scene,
+      keeperPosition,
+      this.effectsManager,
+      this.audioManager
+    );
+    
+    console.log('👤 [HumanCampBuilding] Camp keeper created successfully');
   }
 
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
@@ -332,10 +298,10 @@ export class HumanCampBuilding extends BaseBuilding {
       chest.update(deltaTime);
     });
     
-    // Update NPCs with less logging
-    this.npcs.forEach((npc, index) => {
-      npc.update(deltaTime, playerPosition);
-    });
+    // Update camp keeper
+    if (this.campKeeper) {
+      this.campKeeper.update(deltaTime, playerPosition);
+    }
   }
 
   public updateTimeOfDay(gameTime: number, timePhases: any): void {
@@ -359,11 +325,11 @@ export class HumanCampBuilding extends BaseBuilding {
     });
     this.chests.length = 0;
     
-    // Dispose NPCs
-    this.npcs.forEach(npc => {
-      npc.dispose();
-    });
-    this.npcs.length = 0;
+    // Dispose camp keeper
+    if (this.campKeeper) {
+      this.campKeeper.dispose();
+      this.campKeeper = null;
+    }
     
     // Dispose tents and furniture
     this.tents.length = 0;
@@ -381,8 +347,8 @@ export class HumanCampBuilding extends BaseBuilding {
     return [...this.chests];
   }
 
-  public getNPCs(): HumanCampNPC[] {
-    return [...this.npcs];
+  public getCampKeeper(): CampNPC | null {
+    return this.campKeeper;
   }
 
   public getCampConfig(): CampConfig {

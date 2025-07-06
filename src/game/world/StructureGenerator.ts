@@ -215,10 +215,6 @@ export class StructureGenerator {
   
   // Place structures in regions based on ring definitions
   public generateStructuresForRegion(region: RegionCoordinates): void {
-    console.error(`🚨🚨🚨 [StructureGenerator] ===== GENERATE STRUCTURES START =====`);
-    console.error(`🚨🚨🚨 [StructureGenerator] Region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-    alert(`🚨 STRUCTURE GENERATION CALLED for Ring ${region.ringIndex}, Quad ${region.quadrant}`);
-    
     const regionKey = this.ringSystem.getRegionKey(region);
     
     // Skip if already generated
