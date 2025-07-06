@@ -680,7 +680,7 @@ export abstract class EnemyHumanoid {
     leftEye.position.set(
       -features.eyeConfig.offsetX,
       features.eyeConfig.offsetY,
-      bodyScale.head.radius * features.eyeConfig.offsetZ * (isHuman ? 1.05 : 1.15) // More recessed for humans
+      bodyScale.head.radius * features.eyeConfig.offsetZ * (isHuman ? 0.95 : 1.15) // Much more recessed for humans
     );
     leftEye.castShadow = false; // Disable shadow casting for eyes to avoid shader issues
 
@@ -688,7 +688,7 @@ export abstract class EnemyHumanoid {
     rightEye.position.set(
       features.eyeConfig.offsetX,
       features.eyeConfig.offsetY,
-      bodyScale.head.radius * features.eyeConfig.offsetZ * (isHuman ? 1.05 : 1.15) // More recessed for humans
+      bodyScale.head.radius * features.eyeConfig.offsetZ * (isHuman ? 0.95 : 1.15) // Much more recessed for humans
     );
     rightEye.castShadow = false; // Disable shadow casting for eyes
 
@@ -702,6 +702,11 @@ export abstract class EnemyHumanoid {
     // Remove nose to eliminate rectangle between eyes
 
     // Remove rectangular eyebrows for humans to eliminate rectangles between eyes
+    
+    // Add realistic mouth for humans
+    if (isHuman) {
+      this.addMouthToHead(headGroup, bodyScale, this.config.colors.skin);
+    }
 
     const leftPupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
     leftPupil.position.set(0, 0, features.eyeConfig.radius * 0.7);
@@ -764,6 +769,26 @@ export abstract class EnemyHumanoid {
     nose.castShadow = true;
     
     headGroup.add(nose);
+  }
+
+  /**
+   * Add realistic mouth geometry to human heads
+   */
+  private addMouthToHead(headGroup: THREE.Group, bodyScale: any, skinColor: number): void {
+    // Create subtle mouth line
+    const mouthGeometry = new THREE.CylinderGeometry(0.02, 0.03, 0.08, 8);
+    const mouthMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8B4444, // Slightly darker reddish color for mouth
+      shininess: 5
+    });
+
+    const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+    mouth.position.set(0, -0.15, bodyScale.head.radius * 0.92);
+    mouth.rotation.z = Math.PI / 2; // Rotate to make it horizontal
+    mouth.scale.set(1, 0.6, 1); // Make it slightly flatter
+    mouth.castShadow = true;
+    
+    headGroup.add(mouth);
   }
 
   /**
