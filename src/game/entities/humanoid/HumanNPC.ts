@@ -8,6 +8,7 @@ export interface HumanNPCConfig {
   name: string;
   position: THREE.Vector3;
   wanderRadius?: number;
+  useRandomizedAppearance?: boolean;
 }
 
 export class HumanNPC {
@@ -149,7 +150,8 @@ export class HumanNPC {
     return new HumanNPC(scene, {
       name: npcNames[npcIndex % npcNames.length],
       position: position,
-      wanderRadius: 5
+      wanderRadius: 5,
+      useRandomizedAppearance: true // Enable randomized appearance for camp NPCs
     }, effectsManager, audioManager);
   }
 }

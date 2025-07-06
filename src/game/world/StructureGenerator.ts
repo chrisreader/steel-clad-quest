@@ -264,7 +264,7 @@ export class StructureGenerator {
       // Adjust position to be somewhere in the quadrant, not exactly at center
       position.x += (Math.random() * 30) - 15;
       position.z += (Math.random() * 30) - 15;
-      
+
       // NEW: Use BuildingManager to create castle
       if (this.buildingManager) {
         const castle = this.buildingManager.createBuilding({
@@ -287,8 +287,54 @@ export class StructureGenerator {
         console.warn('🏰 BuildingManager not available, skipping castle creation');
       }
     }
-    
-    // Add more structure placement logic for other rings/quadrants here
+
+    // NEW: Place human camps in dense forest areas (Ring 2-4)
+    if (region.ringIndex >= 2 && region.ringIndex <= 4) {
+      const regionCenter = this.ringSystem.getRegionCenter(region);
+      
+      // Check if this area has dense forest biome
+      const biomeInfo = this.getBiomeInfoForPosition(regionCenter);
+      const shouldSpawnCamp = (biomeInfo.type === 'meadow' && Math.random() < 0.4) || Math.random() < 0.15;
+      
+      if (shouldSpawnCamp && this.buildingManager) {
+        const campPosition = regionCenter.clone().add(
+          new THREE.Vector3(
+            (Math.random() - 0.5) * 40,
+            0,
+            (Math.random() - 0.5) * 40
+          )
+        );
+        
+        const campSize = Math.random() < 0.5 ? 'small' : Math.random() < 0.7 ? 'medium' : 'large';
+        
+        const humanCamp = this.buildingManager.createBuilding({
+          type: 'human_camp',
+          position: campPosition,
+          id: `human_camp_${region.ringIndex}_${region.quadrant}`,
+          campConfig: { size: campSize }
+        });
+        
+        if (humanCamp) {
+          structures.push({
+            type: 'human_camp',
+            position: campPosition,
+            rotation: 0,
+            model: humanCamp.getBuildingGroup()
+          });
+          
+          console.log(`🏕️ Placed ${campSize} human camp at ${campPosition.x.toFixed(2)}, ${campPosition.z.toFixed(2)} in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+        }
+      }
+    }
+  
+  // Add more structure placement logic for other rings/quadrants here
+  }
+
+  // Helper method to get biome info for camp placement
+  private getBiomeInfoForPosition(position: THREE.Vector3): { type: string } {
+    // Simple forest detection - you can integrate with your biome system
+    const forestNoise = Math.sin(position.x * 0.01) * Math.cos(position.z * 0.01);
+    return { type: forestNoise > 0.3 ? 'meadow' : 'normal' };
   }
   
   // Cleanup structures for a region

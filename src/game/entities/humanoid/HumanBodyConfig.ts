@@ -76,6 +76,42 @@ export class HumanBodyConfig {
   }
 
   /**
+   * Creates randomized human configuration with varied clothing and hair
+   */
+  public static createRandomizedHumanConfig(): HumanoidConfig {
+    const baseConfig = this.createHumanConfig();
+    
+    // Randomize t-shirt colors
+    const tshirtColors = [0x808080, 0x2F4F2F, 0xF5F5DC]; // grey, dark green, cream
+    const tshirtColor = tshirtColors[Math.floor(Math.random() * tshirtColors.length)];
+    
+    // Randomize pants colors
+    const pantsColors = [0x000000, 0x2F4F2F, 0x808080, 0x8B4513]; // black, dark green, grey, brown
+    const pantsColor = pantsColors[Math.floor(Math.random() * pantsColors.length)];
+    
+    // Randomize hair colors
+    const hairColors = [0x000000, 0x8B4513, 0x808080]; // black, brown, grey
+    const hairColor = hairColors[Math.floor(Math.random() * hairColors.length)];
+    
+    // Small chance for weapons
+    const hasWeapon = Math.random() < 0.3; // 30% chance
+    const weaponType = Math.random() < 0.6 ? 'dagger' : 'sword';
+    
+    return {
+      ...baseConfig,
+      colors: {
+        skin: 0xFFDBAE,    // Human skin tone
+        muscle: tshirtColor, // Use as t-shirt color
+        accent: pantsColor   // Use as pants color
+      },
+      features: {
+        ...baseConfig.features,
+        hasWeapon
+      }
+    };
+  }
+
+  /**
    * Creates hair geometry for human NPCs
    */
   public static createHumanHair(headRadius: number, hairColor: number = 0x8B4513): THREE.Mesh {
