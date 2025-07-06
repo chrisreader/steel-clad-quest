@@ -33,29 +33,29 @@ export class FireEffectsManager {
     // Initialize ONLY organic particle generator - no static fire system
     this.particleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
     
-    // PERFORMANCE: Reduced particle counts for better performance
+    // PERFORMANCE: Restored particle counts for visual appeal while keeping performance
     const flameConfig = { ...FIREPLACE_PARTICLE_CONFIGS.flames };
-    flameConfig.count = Math.floor(this.config.particleCount * 0.3); // Reduced from 0.55
+    flameConfig.count = Math.floor(this.config.particleCount * 0.45); // Increased from 0.3
     this.particleGenerator.addParticleType('flames', flameConfig);
 
     if (this.config.smokeEnabled) {
       const smokeConfig = { ...FIREPLACE_PARTICLE_CONFIGS.smoke };
-      smokeConfig.count = Math.floor(this.config.particleCount * 0.2); // Reduced from 0.33
+      smokeConfig.count = Math.floor(this.config.particleCount * 0.25); // Increased from 0.2
       this.particleGenerator.addParticleType('smoke', smokeConfig);
     }
 
     const emberConfig = { ...FIREPLACE_PARTICLE_CONFIGS.embers };
-    emberConfig.count = Math.max(1, this.config.emberCount * 0.3); // Significantly reduced
+    emberConfig.count = Math.max(2, this.config.emberCount * 0.6); // Increased from 0.3
     this.particleGenerator.addParticleType('embers', emberConfig);
 
-    // PERFORMANCE: Reduced lighting system for better performance
+    // PERFORMANCE: Balanced lighting system for visual appeal + performance
     const lightConfig: FireLightConfig = {
       color: this.config.lightColor,
-      baseIntensity: this.config.lightIntensity * 0.3, // Reduced from 1.0
-      maxIntensity: this.config.lightIntensity * 0.5, // Reduced from 1.5
+      baseIntensity: this.config.lightIntensity * 0.6, // Increased from 0.3
+      maxIntensity: this.config.lightIntensity * 0.8, // Increased from 0.5
       flickerSpeed: this.config.flickerSpeed,
-      distance: this.config.lightDistance * 0.4, // Reduced from 1.0
-      castShadow: false // Disabled shadows for performance
+      distance: this.config.lightDistance * 0.7, // Increased from 0.4
+      castShadow: true // Re-enabled for visual quality
     };
     this.lightingSystem = new FireLightingSystem(this.scene, this.position, lightConfig);
 

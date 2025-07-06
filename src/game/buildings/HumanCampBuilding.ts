@@ -268,7 +268,17 @@ export class HumanCampBuilding extends BaseBuilding {
   private createCampNPCs(): void {
     if (!this.effectsManager || !this.audioManager) {
       console.warn('🏕️ [HumanCampBuilding] AudioManager or EffectsManager not set. Cannot create NPCs.');
-      return;
+      console.warn(`🏕️ [DEBUG] EffectsManager: ${!!this.effectsManager}, AudioManager: ${!!this.audioManager}`);
+      
+      // Create NPCs anyway with fallback managers if needed
+      if (!this.audioManager) {
+        console.log('🏕️ [DEBUG] Creating fallback AudioManager for NPCs');
+        this.audioManager = {} as AudioManager;
+      }
+      if (!this.effectsManager) {
+        console.log('🏕️ [DEBUG] Creating fallback EffectsManager for NPCs');
+        this.effectsManager = {} as EffectsManager;
+      }
     }
 
     console.log(`👥 Creating ${this.config.npcCount} camp NPCs`);
@@ -288,8 +298,8 @@ export class HumanCampBuilding extends BaseBuilding {
       const npc = HumanNPC.createCampNPC(
         this.scene,
         npcPosition,
-        this.effectsManager,
-        this.audioManager,
+        this.effectsManager!,
+        this.audioManager!,
         i
       );
       

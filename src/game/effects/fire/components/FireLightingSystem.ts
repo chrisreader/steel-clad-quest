@@ -26,20 +26,43 @@ export class FireLightingSystem {
   }
 
   private createMassiveLightingSystem(): void {
-    // PERFORMANCE: Simplified to single primary light for camps
+    // PERFORMANCE: Balanced lighting system - 2 lights for good visuals + performance
+    
+    // 1. Primary fire light with good intensity and range
     const primaryLight = new THREE.PointLight(
       this.config.color,
-      3.0, // Reduced from 10.0
-      25   // Reduced from 50
+      5.0, // Increased from 3.0
+      40   // Increased from 25
     );
     primaryLight.position.copy(this.position);
     primaryLight.position.y += 0.5;
-    primaryLight.castShadow = false; // Disabled for performance
+    primaryLight.castShadow = this.config.castShadow;
+    
+    if (primaryLight.castShadow) {
+      primaryLight.shadow.mapSize.width = 1024;
+      primaryLight.shadow.mapSize.height = 1024;
+      primaryLight.shadow.bias = -0.0005;
+      primaryLight.shadow.camera.near = 0.1;
+      primaryLight.shadow.camera.far = 40;
+    }
     
     this.lights.push(primaryLight);
     this.scene.add(primaryLight);
 
-    console.log('🔥 Optimized fire lighting system created for performance');
+    // 2. Secondary atmospheric light for glow effect
+    const atmosphericLight = new THREE.PointLight(
+      this.config.color,
+      2.5, // Moderate intensity for atmosphere
+      60   // Wider range for atmosphere
+    );
+    atmosphericLight.position.copy(this.position);
+    atmosphericLight.position.y += 1.0;
+    atmosphericLight.castShadow = false; // No shadows for atmosphere
+    
+    this.lights.push(atmosphericLight);
+    this.scene.add(atmosphericLight);
+
+    console.log('🔥 Balanced fire lighting system created - good visuals + performance');
   }
 
   public update(deltaTime: number): void {
@@ -51,25 +74,47 @@ export class FireLightingSystem {
       adjustedBaseIntensity = this.timeAwareIntensity.getAdjustedIntensity(this.currentGameTime, this.gameTimePhases);
     }
 
-    // PERFORMANCE: Simple single light flickering
+    // Primary light with enhanced flickering
     const primaryLight = this.lights[0];
     if (primaryLight) {
-      const flicker = Math.sin(this.time * 2.5) * 0.1;
+      const flicker1 = Math.sin(this.time * 2.5) * 0.15;
+      const flicker2 = Math.sin(this.time * 4.1) * 0.08;
+      
+      const intensityVariation = flicker1 + flicker2;
       primaryLight.intensity = Math.max(
-        2.0, // Minimum
+        3.5, // Minimum bright
         Math.min(
-          4.0, // Maximum
-          3.0 + flicker * (adjustedBaseIntensity / this.config.baseIntensity)
+          6.5, // Maximum very bright
+          5.0 + intensityVariation * (adjustedBaseIntensity / this.config.baseIntensity)
         )
+      );
+
+      // Subtle position flicker for realism
+      primaryLight.position.x = this.position.x + Math.sin(this.time * 3) * 0.03;
+      primaryLight.position.z = this.position.z + Math.cos(this.time * 2.7) * 0.03;
+    }
+
+    // Atmospheric light with gentle breathing
+    const atmosphericLight = this.lights[1];
+    if (atmosphericLight) {
+      const atmosphericFlicker = Math.sin(this.time * 1.5) * 0.1;
+      atmosphericLight.intensity = Math.max(
+        1.5,
+        2.5 + atmosphericFlicker * (adjustedBaseIntensity / this.config.baseIntensity)
       );
     }
   }
 
   public setIntensity(multiplier: number): void {
-    // PERFORMANCE: Simple intensity setting for single light
-    const light = this.lights[0];
-    if (light) {
-      light.intensity = Math.max(2.0, 3.0 * multiplier);
+    // PERFORMANCE: Balanced intensity setting for both lights
+    const primaryLight = this.lights[0];
+    const atmosphericLight = this.lights[1];
+    
+    if (primaryLight) {
+      primaryLight.intensity = Math.max(3.5, 5.0 * multiplier);
+    }
+    if (atmosphericLight) {
+      atmosphericLight.intensity = Math.max(1.5, 2.5 * multiplier);
     }
     
     this.timeAwareIntensity = new TimeAwareFireIntensity(this.config.baseIntensity * multiplier);
@@ -80,6 +125,6 @@ export class FireLightingSystem {
       this.scene.remove(light);
     }
     this.lights = [];
-    console.log('🔥 Optimized fire lighting system disposed');
+    console.log('🔥 Balanced fire lighting system disposed');
   }
 }
