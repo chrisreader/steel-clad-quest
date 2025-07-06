@@ -62,12 +62,13 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       0x4169E1 // Blue t-shirt
     );
     
-    // Position t-shirt to align with body center
+    // Position t-shirt relative to body center (like hair to head)
     this.humanTShirt.position.set(0, 0, 0);
     
-    // Add t-shirt to the body mesh parent (the main group) so it moves with animations
-    if (bodyMesh.parent) {
-      bodyMesh.parent.add(this.humanTShirt);
+    // Add t-shirt directly to the body mesh (same pattern as hair to headGroup)
+    if (bodyMesh instanceof THREE.Mesh) {
+      // Add to the body mesh directly, like hair is added to headGroup
+      bodyMesh.add(this.humanTShirt);
     }
   }
 
