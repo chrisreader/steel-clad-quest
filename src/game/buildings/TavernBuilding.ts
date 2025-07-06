@@ -246,43 +246,57 @@ export class TavernBuilding extends BaseBuilding {
       metalness: 0
     });
     
-    // Create left roof slope using 3D box geometry
-    const leftRoofGeometry = new THREE.BoxGeometry(6, 0.3, tavernDepth + 2); // Extra 2 for overhang
+    // Ridge beam at the correct peak height
+    const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, tavernDepth + 2), roofMaterial.clone());
+    ridgeBeam.position.set(0, wallHeight + roofHeight, 0);
+    this.addComponent(ridgeBeam, 'ridge_beam', 'wood');
+    
+    // Create left roof slope that connects to the ridge beam
+    const leftRoofGeometry = new THREE.BoxGeometry(6, 0.3, tavernDepth + 2);
     const leftRoof = new THREE.Mesh(leftRoofGeometry, roofMaterial);
-    leftRoof.position.set(-3, wallHeight + roofHeight/2, 0);
+    leftRoof.position.set(-3, wallHeight + roofHeight/2 + 0.2, 0); // Adjusted to connect to ridge
     leftRoof.rotation.z = Math.PI/8; // 22.5-degree pitch
     this.addComponent(leftRoof, 'roof_left', 'wood');
     
-    // Create right roof slope using 3D box geometry
-    const rightRoofGeometry = new THREE.BoxGeometry(6, 0.3, tavernDepth + 2); // Extra 2 for overhang
+    // Create right roof slope that connects to the ridge beam
+    const rightRoofGeometry = new THREE.BoxGeometry(6, 0.3, tavernDepth + 2);
     const rightRoof = new THREE.Mesh(rightRoofGeometry, roofMaterial.clone());
-    rightRoof.position.set(3, wallHeight + roofHeight/2, 0);
+    rightRoof.position.set(3, wallHeight + roofHeight/2 + 0.2, 0); // Adjusted to connect to ridge
     rightRoof.rotation.z = -Math.PI/8; // 22.5-degree pitch opposite direction
     this.addComponent(rightRoof, 'roof_right', 'wood');
     
-    // Ridge beam at the peak where both slopes meet
-    const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, tavernDepth + 2), roofMaterial.clone());
-    ridgeBeam.position.set(0, wallHeight + roofHeight + 1, 0);
-    this.addComponent(ridgeBeam, 'ridge_beam', 'wood');
-    
-    // End caps to close the roof triangles
+    // End caps with proper normals facing outward
     const endCapMaterial = roofMaterial.clone();
+    endCapMaterial.side = THREE.DoubleSide; // Make visible from both sides
     
-    // Front end cap
+    // Front end cap triangle
     const frontEndCapGeometry = new THREE.BufferGeometry();
     const frontVertices = new Float32Array([
-      -6, wallHeight, 7,        // Bottom left
-      6, wallHeight, 7,         // Bottom right  
-      0, wallHeight + roofHeight + 1, 7  // Top center
+      // Triangle vertices in counter-clockwise order for outward-facing normal
+      -6, wallHeight, 7,                    // Bottom left
+      0, wallHeight + roofHeight, 7,        // Top center
+      6, wallHeight, 7                      // Bottom right
     ]);
+    const frontIndices = [0, 1, 2]; // Counter-clockwise order
     frontEndCapGeometry.setAttribute('position', new THREE.BufferAttribute(frontVertices, 3));
+    frontEndCapGeometry.setIndex(frontIndices);
     frontEndCapGeometry.computeVertexNormals();
     const frontEndCap = new THREE.Mesh(frontEndCapGeometry, endCapMaterial);
     this.addComponent(frontEndCap, 'roof_front_cap', 'wood');
     
-    // Back end cap
-    const backEndCap = frontEndCap.clone();
-    backEndCap.position.set(0, 0, -14);
+    // Back end cap triangle
+    const backEndCapGeometry = new THREE.BufferGeometry();
+    const backVertices = new Float32Array([
+      // Triangle vertices in clockwise order for outward-facing normal (opposite direction)
+      6, wallHeight, -7,                    // Bottom right
+      0, wallHeight + roofHeight, -7,       // Top center  
+      -6, wallHeight, -7                    // Bottom left
+    ]);
+    const backIndices = [0, 1, 2]; // Clockwise for back face
+    backEndCapGeometry.setAttribute('position', new THREE.BufferAttribute(backVertices, 3));
+    backEndCapGeometry.setIndex(backIndices);
+    backEndCapGeometry.computeVertexNormals();
+    const backEndCap = new THREE.Mesh(backEndCapGeometry, endCapMaterial);
     this.addComponent(backEndCap, 'roof_back_cap', 'wood');
   }
 
