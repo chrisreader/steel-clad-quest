@@ -4,6 +4,7 @@ import { PlayerStats, Item } from '../../../types/GameTypes';
 import { HealthBar } from './HealthBar';
 import { StaminaBar } from './StaminaBar';
 import { WeaponSlotsHUD } from './WeaponSlotsHUD';
+import { ChestInteractionPrompt } from './ChestInteractionPrompt';
 
 interface GameHUDProps {
   playerStats: PlayerStats;
@@ -97,6 +98,9 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         onSlotSelect={onWeaponSlotSelect}
         isOffhandDisabled={isOffhandDisabled}
       />
+
+      {/* Chest Interaction Prompt */}
+      <ChestInteractionPrompt />
     </>
   );
 };

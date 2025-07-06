@@ -124,9 +124,30 @@ export class GameEngine {
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
       this.movementSystem = new MovementSystem(this.renderEngine.getScene(), this.renderEngine.getCamera(), this.player, this.inputManager, this.physicsManager);
       
-      // Create chest interaction system AFTER player is created
+  // Create chest interaction system AFTER player is created
       this.chestInteractionSystem = new ChestInteractionSystem(this.renderEngine.getScene(), this.player);
-      // REMOVED: setupChestsInTavern() - chests should only spawn in human camps
+      
+      // Set up chest interaction callbacks
+      this.chestInteractionSystem.setInteractionPromptCallback((show: boolean, chestType?: 'common' | 'rare') => {
+        // Dispatch custom event for UI to handle
+        document.dispatchEvent(new CustomEvent('chestInteraction', {
+          detail: { show, chestType }
+        }));
+      });
+      
+      this.chestInteractionSystem.setChestOpenCallback((chest, loot) => {
+        // Add loot to player and update UI
+        if (loot.gold > 0 && this.player) {
+          // Add gold to player directly
+          this.player.addGold(loot.gold);
+        }
+        console.log(`💰 [GameEngine] Player opened ${chest.getType()} chest:`, loot);
+        
+        // Dispatch custom event for UI feedback
+        document.dispatchEvent(new CustomEvent('chestOpened', {
+          detail: { chestType: chest.getType(), loot }
+        }));
+      });
       
       // Set chest interaction system for building manager BEFORE building creation
       if (this.buildingManager && this.chestInteractionSystem) {
