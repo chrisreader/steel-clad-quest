@@ -339,6 +339,13 @@ export class GameEngine {
     // Update building manager (critical for fire animation)
     if (this.buildingManager) {
       this.buildingManager.update(deltaTime);
+      
+      // Update time-aware buildings (like human camps with fireplaces)
+      if (this.sceneManager) {
+        const gameTime = this.sceneManager.getTimeOfDay() * 24; // Convert to 24-hour format
+        const timePhases = this.sceneManager.getTimePhases();
+        this.buildingManager.updateTimeOfDay(gameTime, timePhases);
+      }
     }
     
     // Update chest interaction system

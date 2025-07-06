@@ -18,12 +18,18 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     position: THREE.Vector3,
     effectsManager: EffectsManager,
     audioManager: AudioManager,
-    isKeeperType: boolean = false
+    isKeeperType: boolean = false,
+    useRandomizedAppearance: boolean = false
   ) {
     // Use appropriate human configuration
-    const config = isKeeperType 
-      ? HumanBodyConfig.createTavernKeeperConfig()
-      : HumanBodyConfig.createHumanConfig();
+    let config;
+    if (isKeeperType) {
+      config = HumanBodyConfig.createTavernKeeperConfig();
+    } else if (useRandomizedAppearance) {
+      config = HumanBodyConfig.createRandomizedHumanConfig();
+    } else {
+      config = HumanBodyConfig.createHumanConfig();
+    }
     
     super(scene, config, position, effectsManager, audioManager);
     
@@ -208,11 +214,8 @@ export class PeacefulHumanoid extends EnemyHumanoid {
    * Override update to remove combat logic, keep only animation
    */
   public update(deltaTime: number, playerPosition: THREE.Vector3): void {
-    // Only update animations, no combat logic
-    if (this.animationSystem && !this.isDead) {
-      // Update idle animation (not moving)
-      this.animationSystem.updateWalkAnimation(deltaTime, false, 0);
-    }
+    // Only update animations, no combat logic - let HumanNPC handle movement
+    // Don't override animations here, let the calling NPC control them
   }
 
   /**

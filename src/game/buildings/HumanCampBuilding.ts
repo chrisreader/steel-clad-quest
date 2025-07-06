@@ -327,6 +327,12 @@ export class HumanCampBuilding extends BaseBuilding {
     });
   }
 
+  public updateTimeOfDay(gameTime: number, timePhases: any): void {
+    if (this.fireplaceComponent) {
+      this.fireplaceComponent.updateTimeOfDay(gameTime, timePhases);
+    }
+  }
+
   public dispose(): void {
     // Dispose fireplace
     if (this.fireplaceComponent) {

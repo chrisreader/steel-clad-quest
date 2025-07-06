@@ -703,6 +703,14 @@ export class SceneManager {
     console.log(`Time set to: ${(this.timeOfDay * 24).toFixed(1)} hours`);
   }
   
+  public getTimeOfDay(): number {
+    return this.timeOfDay;
+  }
+  
+  public getTimePhases(): any {
+    return TIME_PHASES;
+  }
+  
   public toggleDayNightCycle(): void {
     this.dayNightCycleEnabled = !this.dayNightCycleEnabled;
     console.log(`Day/night cycle: ${this.dayNightCycleEnabled ? 'enabled' : 'disabled'}`);

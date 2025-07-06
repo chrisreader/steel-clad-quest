@@ -34,12 +34,14 @@ export class HumanNPC {
     this.audioManager = audioManager;
     
     // Create realistic human using the sophisticated PeacefulHumanoid system
+    const isKeeperType = config.name === 'Tavern Keeper';
     this.humanoid = new PeacefulHumanoid(
       scene,
       config.position,
       effectsManager,
       audioManager,
-      true // isKeeperType for tavern keeper configuration
+      isKeeperType, // keeper type for tavern keeper
+      config.useRandomizedAppearance || false // use randomized appearance if specified
     );
     
     this.setupBehavior();

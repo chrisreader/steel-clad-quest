@@ -135,6 +135,15 @@ export class BuildingManager {
     }
   }
 
+  public updateTimeOfDay(gameTime: number, timePhases: any): void {
+    // Update time-aware buildings (like human camps with fireplaces)
+    for (const building of this.buildings.values()) {
+      if ('updateTimeOfDay' in building && typeof building.updateTimeOfDay === 'function') {
+        building.updateTimeOfDay(gameTime, timePhases);
+      }
+    }
+  }
+
   public destroyBuilding(id: string): void {
     const building = this.buildings.get(id);
     if (building) {

@@ -17,6 +17,8 @@ export class FireplaceComponent {
   private fireplaceGroup: THREE.Group;
   
   private fireplaceId: string;
+  private fireActive: boolean = false;
+  private currentGameTime: number = 0;
 
   constructor(
     scene: THREE.Scene, 
@@ -50,19 +52,7 @@ export class FireplaceComponent {
     const rocksGroup = this.fireplaceRocks.createRockCircle(0.8, 16);
     this.fireplaceGroup.add(rocksGroup);
 
-    // Create fire effects with MASSIVE landscape-reaching lighting
-    const firePosition = this.position.clone();
-    firePosition.y += 0.2;
-    
-    this.fireSystem.createFire(this.fireplaceId, firePosition, {
-      intensity: 1.0,
-      size: 1.0,
-      particleCount: 45,
-      smokeEnabled: true,
-      emberCount: 12,
-      lightIntensity: 10.0, // MASSIVE intensity for landscape visibility
-      lightDistance: 120    // EXTREME range for doorway spillover effect
-    });
+    // Don't start fire immediately - wait for night time
 
     this.scene.add(this.fireplaceGroup);
     console.log(`🔥 Fireplace component '${this.fireplaceId}' created with MASSIVE landscape-reaching lighting`);
@@ -71,7 +61,19 @@ export class FireplaceComponent {
   }
 
   public updateTimeOfDay(gameTime: number, timePhases: any): void {
+    this.currentGameTime = gameTime;
     this.fireSystem.updateTimeOfDay(gameTime, timePhases);
+    
+    // Turn fire on at night (18:00-6:00), off during day
+    const isNightTime = gameTime >= 18 || gameTime <= 6;
+    
+    if (isNightTime && !this.fireActive) {
+      this.lightFire();
+      this.fireActive = true;
+    } else if (!isNightTime && this.fireActive) {
+      this.extinguishFire();
+      this.fireActive = false;
+    }
   }
 
   public registerCollisions(buildingName: string = 'tavern'): void {
