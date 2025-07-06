@@ -97,20 +97,20 @@ export class MedievalSword extends Sword {
       // Create tapered rectangular crossguard - left side with dual-plane tapering
       // Create a custom tapered rectangular geometry extending outward
       const leftGuardShape = new THREE.Shape();
-      leftGuardShape.moveTo(0, -0.04);      // Start at center bottom
-      leftGuardShape.lineTo(-0.15, -0.025); // Intermediate taper
-      leftGuardShape.lineTo(-0.22, -0.01);  // Near sharp tip, narrower
+      leftGuardShape.moveTo(0, -0.025);     // Start at center bottom (reduced from -0.04)
+      leftGuardShape.lineTo(-0.15, -0.015); // Intermediate taper (reduced)
+      leftGuardShape.lineTo(-0.22, -0.008); // Near sharp tip, narrower (reduced)
       leftGuardShape.lineTo(-0.25, 0);      // Sharp point at tip center
-      leftGuardShape.lineTo(-0.22, 0.01);   // Near sharp tip, narrower (top)
-      leftGuardShape.lineTo(-0.15, 0.025);  // Intermediate taper (top)
-      leftGuardShape.lineTo(0, 0.04);       // Back to center top
-      leftGuardShape.lineTo(0, -0.04);      // Close shape
+      leftGuardShape.lineTo(-0.22, 0.008);  // Near sharp tip, narrower (top, reduced)
+      leftGuardShape.lineTo(-0.15, 0.015);  // Intermediate taper (top, reduced)
+      leftGuardShape.lineTo(0, 0.025);      // Back to center top (reduced from 0.04)
+      leftGuardShape.lineTo(0, -0.025);     // Close shape
       
       const leftGuardGeometry = new THREE.ExtrudeGeometry(leftGuardShape, {
-        depth: 0.08,
+        depth: 0.05, // Reduced from 0.08 to 0.05
         bevelEnabled: true,
-        bevelThickness: 0.01,
-        bevelSize: 0.01,
+        bevelThickness: 0.005, // Reduced bevel
+        bevelSize: 0.005,      // Reduced bevel
         bevelSegments: 3
       });
       
@@ -129,20 +129,20 @@ export class MedievalSword extends Sword {
 
       // Create tapered rectangular crossguard - right side with dual-plane tapering
       const rightGuardShape = new THREE.Shape();
-      rightGuardShape.moveTo(0, -0.04);      // Start at center bottom
-      rightGuardShape.lineTo(0.15, -0.025);  // Intermediate taper
-      rightGuardShape.lineTo(0.22, -0.01);   // Near sharp tip, narrower
+      rightGuardShape.moveTo(0, -0.025);     // Start at center bottom (reduced from -0.04)
+      rightGuardShape.lineTo(0.15, -0.015);  // Intermediate taper (reduced)
+      rightGuardShape.lineTo(0.22, -0.008);  // Near sharp tip, narrower (reduced)
       rightGuardShape.lineTo(0.25, 0);       // Sharp point at tip center
-      rightGuardShape.lineTo(0.22, 0.01);    // Near sharp tip, narrower (top)
-      rightGuardShape.lineTo(0.15, 0.025);   // Intermediate taper (top)
-      rightGuardShape.lineTo(0, 0.04);       // Back to center top
-      rightGuardShape.lineTo(0, -0.04);      // Close shape
+      rightGuardShape.lineTo(0.22, 0.008);   // Near sharp tip, narrower (top, reduced)
+      rightGuardShape.lineTo(0.15, 0.015);   // Intermediate taper (top, reduced)
+      rightGuardShape.lineTo(0, 0.025);      // Back to center top (reduced from 0.04)
+      rightGuardShape.lineTo(0, -0.025);     // Close shape
       
       const rightGuardGeometry = new THREE.ExtrudeGeometry(rightGuardShape, {
-        depth: 0.08,
+        depth: 0.05, // Reduced from 0.08 to 0.05
         bevelEnabled: true,
-        bevelThickness: 0.01,
-        bevelSize: 0.01,
+        bevelThickness: 0.005, // Reduced bevel
+        bevelSize: 0.005,      // Reduced bevel
         bevelSegments: 3
       });
       
