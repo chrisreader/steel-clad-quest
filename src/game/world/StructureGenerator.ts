@@ -291,8 +291,10 @@ export class StructureGenerator {
 
     // NEW: Place human camps sparingly near forests and rock formations (Ring 2-4 only)
     if (region.ringIndex >= 2 && region.ringIndex <= 4) {
-      // Very low base spawn chance to prevent performance issues
-      const baseChance = region.ringIndex === 2 ? 0.15 : region.ringIndex === 3 ? 0.10 : 0.05;
+      // FIXED: Increased spawn rates to be more reasonable while still performance-optimized
+      const baseChance = region.ringIndex === 2 ? 0.25 : region.ringIndex === 3 ? 0.20 : 0.15;
+      
+      console.log(`🏕️ [DEBUG] Checking camp spawn for Ring ${region.ringIndex}, Quadrant ${region.quadrant} - baseChance: ${baseChance}`);
       
       if (Math.random() < baseChance) {
         const regionCenter = this.ringSystem.getRegionCenter(region);
@@ -307,12 +309,18 @@ export class StructureGenerator {
         const forestDensity = this.getForestDensityAtPosition(testPosition);
         const rockFormationNearby = this.hasLargeRockFormationNearby(testPosition);
         
+        console.log(`🏕️ [DEBUG] Position: (${testPosition.x.toFixed(1)}, ${testPosition.z.toFixed(1)}) - Forest density: ${forestDensity.toFixed(2)}, Has rocks: ${rockFormationNearby}`);
+        
         // Only spawn if near forests OR rocks (not just anywhere)
         const shouldSpawnCamp = forestDensity > 0.5 || rockFormationNearby;
+        
+        console.log(`🏕️ [DEBUG] Should spawn camp: ${shouldSpawnCamp}, Has BuildingManager: ${!!this.buildingManager}`);
         
         if (shouldSpawnCamp && this.buildingManager) {
           const campPosition = this.findOptimalCampPosition(testPosition);
           const campSize = Math.random() < 0.6 ? 'small' : Math.random() < 0.8 ? 'medium' : 'large';
+          
+          console.log(`🏕️ [DEBUG] Creating ${campSize} camp at optimal position: (${campPosition.x.toFixed(1)}, ${campPosition.z.toFixed(1)})`);
           
           const humanCamp = this.buildingManager.createBuilding({
             type: 'human_camp',
@@ -330,9 +338,15 @@ export class StructureGenerator {
             });
             
             const placementReason = forestDensity > 0.5 ? 'dense forest' : 'rock formation';
-            console.log(`🏕️ Placed ${campSize} human camp at ${campPosition.x.toFixed(2)}, ${campPosition.z.toFixed(2)} near ${placementReason} in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+            console.log(`🏕️ ✅ SUCCESS: Placed ${campSize} human camp at ${campPosition.x.toFixed(2)}, ${campPosition.z.toFixed(2)} near ${placementReason} in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+          } else {
+            console.error(`🏕️ ❌ FAILED: BuildingManager.createBuilding returned null for camp`);
           }
+        } else {
+          console.log(`🏕️ [DEBUG] Camp spawn rejected - shouldSpawn: ${shouldSpawnCamp}, buildingManager: ${!!this.buildingManager}`);
         }
+      } else {
+        console.log(`🏕️ [DEBUG] Random chance failed for Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
       }
     }
   
@@ -349,12 +363,18 @@ export class StructureGenerator {
   // NEW: Detect forest density using ForestBiomeManager
   private getForestDensityAtPosition(position: THREE.Vector3): number {
     const forestBiome = ForestBiomeManager.getForestBiomeAtPosition(position);
-    if (!forestBiome) return 0;
+    if (!forestBiome) {
+      console.log(`🌲 [DEBUG] No forest biome at position (${position.x.toFixed(1)}, ${position.z.toFixed(1)})`);
+      return 0;
+    }
     
     const config = ForestBiomeManager.getForestConfig(forestBiome);
     // Add noise-based density variation
     const densityNoise = Math.sin(position.x * 0.005) * Math.cos(position.z * 0.005);
-    return config.density * (0.8 + densityNoise * 0.4); // Vary density by ±40%
+    const finalDensity = config.density * (0.8 + densityNoise * 0.4); // Vary density by ±40%
+    
+    console.log(`🌲 [DEBUG] Forest density at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}): biome=${forestBiome}, base=${config.density}, final=${finalDensity.toFixed(2)}`);
+    return finalDensity;
   }
 
   // NEW: Detect large rock formations nearby
@@ -365,7 +385,10 @@ export class StructureGenerator {
     
     // Large rock formations have both low-frequency and high-frequency components
     const rockFormationStrength = Math.abs(rockNoise1) + Math.abs(rockNoise2) * 0.5;
-    return rockFormationStrength > 0.8; // Threshold for "large" formations
+    const hasRocks = rockFormationStrength > 0.8; // Threshold for "large" formations
+    
+    console.log(`🪨 [DEBUG] Rock formation at (${position.x.toFixed(1)}, ${position.z.toFixed(1)}): strength=${rockFormationStrength.toFixed(2)}, hasRocks=${hasRocks}`);
+    return hasRocks;
   }
 
   // NEW: Find optimal camp position near but not inside obstacles
