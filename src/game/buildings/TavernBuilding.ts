@@ -165,37 +165,38 @@ export class TavernBuilding extends BaseBuilding {
   private createRealisticRoof(): void {
     const wallHeight = 6;
     
-    // Pitched roof with wooden beams
+    // Pitched roof with proper geometry
     const roofMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x8B4513,
+      color: 0x654321,
       map: TextureGenerator.createWoodTexture(),
-      roughness: 0.7,
+      roughness: 0.8,
       metalness: 0
     });
     
-    // Main roof slopes
-    const roofLeft = new THREE.Mesh(new THREE.PlaneGeometry(14, 6), roofMaterial);
-    roofLeft.rotation.set(-Math.PI/4, 0, 0);
-    roofLeft.position.set(-3, wallHeight + 2, 0);
-    this.addComponent(roofLeft, 'roof_left', 'wood');
+    // Create proper pitched roof using box geometry for better visibility
+    const roofWidth = 14;
+    const roofDepth = 8;
+    const roofHeight = 3;
     
-    const roofRight = new THREE.Mesh(new THREE.PlaneGeometry(14, 6), roofMaterial.clone());
-    roofRight.rotation.set(Math.PI/4, 0, 0);
-    roofRight.position.set(3, wallHeight + 2, 0);
-    this.addComponent(roofRight, 'roof_right', 'wood');
+    // Left roof slope
+    const leftRoofGeometry = new THREE.BoxGeometry(roofWidth, 0.2, roofDepth);
+    const leftRoof = new THREE.Mesh(leftRoofGeometry, roofMaterial);
+    leftRoof.position.set(0, wallHeight + roofHeight / 2, 0);
+    leftRoof.rotation.z = -Math.PI / 6; // 30-degree pitch
+    leftRoof.position.x = -1.5;
+    this.addComponent(leftRoof, 'roof_left', 'wood');
     
-    // Ridge beam
-    const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 14), roofMaterial.clone());
-    ridgeBeam.position.set(0, wallHeight + 4.2, 0);
+    // Right roof slope  
+    const rightRoof = new THREE.Mesh(leftRoofGeometry.clone(), roofMaterial.clone());
+    rightRoof.position.set(0, wallHeight + roofHeight / 2, 0);
+    rightRoof.rotation.z = Math.PI / 6; // 30-degree pitch
+    rightRoof.position.x = 1.5;
+    this.addComponent(rightRoof, 'roof_right', 'wood');
+    
+    // Ridge beam at the peak
+    const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, roofWidth), roofMaterial.clone());
+    ridgeBeam.position.set(0, wallHeight + roofHeight + 0.5, 0);
     this.addComponent(ridgeBeam, 'ridge_beam', 'wood');
-    
-    // Roof support beams
-    for (let i = -2; i <= 2; i++) {
-      const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 8), roofMaterial.clone());
-      rafter.rotation.set(0, 0, Math.PI/4);
-      rafter.position.set(i * 2.5, wallHeight + 2.5, 0);
-      this.addComponent(rafter, `rafter_${i + 2}`, 'wood');
-    }
   }
 
   private createArchitecturalDetails(): void {
@@ -343,30 +344,30 @@ export class TavernBuilding extends BaseBuilding {
       metalness: 0
     });
     
-    // Main bar counter
-    const barTop = new THREE.Mesh(new THREE.BoxGeometry(6, 0.15, 1.5), barMaterial);
-    barTop.position.set(3, 1.2, 3);
+    // Main bar counter along left wall
+    const barTop = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.15, 6), barMaterial);
+    barTop.position.set(-4.5, 1.2, -1);
     this.addComponent(barTop, 'bar_counter_top', 'wood');
     
     // Bar base/support
-    const barBase = new THREE.Mesh(new THREE.BoxGeometry(6, 1, 1.2), barMaterial.clone());
-    barBase.position.set(3, 0.5, 3);
+    const barBase = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1, 6), barMaterial.clone());
+    barBase.position.set(-4.5, 0.5, -1);
     this.addComponent(barBase, 'bar_counter_base', 'wood');
     
-    // Bar stools
+    // Bar stools facing the counter
     for (let i = 0; i < 3; i++) {
       const stoolSeat = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.05, 12), barMaterial.clone());
-      stoolSeat.position.set(1.5 + i * 1.5, 0.8, 2);
+      stoolSeat.position.set(-3, 0.8, -2.5 + i * 1.5);
       this.addComponent(stoolSeat, `bar_stool_seat_${i}`, 'wood');
       
       const stoolLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 8), barMaterial.clone());
-      stoolLeg.position.set(1.5 + i * 1.5, 0.4, 2);
+      stoolLeg.position.set(-3, 0.4, -2.5 + i * 1.5);
       this.addComponent(stoolLeg, `bar_stool_leg_${i}`, 'wood');
     }
     
-    // Bar shelf behind counter
-    const backShelf = new THREE.Mesh(new THREE.BoxGeometry(6, 0.1, 0.4), barMaterial.clone());
-    backShelf.position.set(3, 2, 3.8);
+    // Bar shelf behind counter on wall
+    const backShelf = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 6), barMaterial.clone());
+    backShelf.position.set(-5.2, 2, -1);
     this.addComponent(backShelf, 'bar_back_shelf', 'wood');
     
     // Add bottles on shelf
@@ -378,7 +379,7 @@ export class TavernBuilding extends BaseBuilding {
         roughness: 0.1,
         metalness: 0.1
       }));
-      bottle.position.set(1 + i * 1, 2.3, 3.8);
+      bottle.position.set(-5.2, 2.3, -3 + i * 1);
       this.addComponent(bottle, `bar_bottle_${i}`, 'metal');
     }
   }
