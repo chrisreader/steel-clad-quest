@@ -117,8 +117,32 @@ export class TavernBuilding extends BaseBuilding {
     
     // Create stacked log walls for each side
     this.createLogWall('back', 0, -6, 12, 0.4, logsPerWall, logColors);
-    this.createLogWall('left', -6, 0, 0.4, 12, logsPerWall, logColors);
-    this.createLogWall('right', 6, 0, 0.4, 12, logsPerWall, logColors);
+    
+    // Left wall with window opening
+    const leftWindowOpenings = [{
+      minY: 2.25, // Window bottom (3 - 1.5/2)
+      maxY: 3.75, // Window top (3 + 1.5/2)  
+      minZ: -3,   // Window left edge (-2 - 2/2)
+      maxZ: -1    // Window right edge (-2 + 2/2)
+    }];
+    this.createLogWall('left', -6, 0, 0.4, 12, logsPerWall, logColors, leftWindowOpenings);
+    
+    // Right wall with two window openings
+    const rightWindowOpenings = [
+      {
+        minY: 2.25, // Window bottom
+        maxY: 3.75, // Window top
+        minZ: 1,    // First window left edge (2 - 2/2)
+        maxZ: 3     // First window right edge (2 + 2/2)
+      },
+      {
+        minY: 2.25, // Window bottom  
+        maxY: 3.75, // Window top
+        minZ: -3,   // Second window left edge (-2 - 2/2)
+        maxZ: -1    // Second window right edge (-2 + 2/2)
+      }
+    ];
+    this.createLogWall('right', 6, 0, 0.4, 12, logsPerWall, logColors, rightWindowOpenings);
     
     // Front walls with door opening
     this.createLogWall('front_left', -3, 6, 3, 0.4, logsPerWall, logColors);
@@ -128,11 +152,34 @@ export class TavernBuilding extends BaseBuilding {
     this.createDoorFrame();
   }
 
-  private createLogWall(wallName: string, centerX: number, centerZ: number, width: number, depth: number, logsCount: number, logColors: number[]): void {
+  private createLogWall(wallName: string, centerX: number, centerZ: number, width: number, depth: number, logsCount: number, logColors: number[], windowOpenings?: Array<{minY: number, maxY: number, minZ: number, maxZ: number}>): void {
     const logHeight = 0.35; // Increased from 0.3 to eliminate gaps
     const logRadius = logHeight * 0.6; // Increased radius for thicker logs
     
     for (let i = 0; i < logsCount; i++) {
+      const logY = (i + 0.5) * logHeight;
+      
+      // Check if this log intersects with any window opening
+      if (windowOpenings) {
+        let skipLog = false;
+        for (const opening of windowOpenings) {
+          if (logY >= opening.minY && logY <= opening.maxY) {
+            // For side walls, also check Z position
+            if (width <= depth) { // Side wall (left/right)
+              if (centerZ >= opening.minZ && centerZ <= opening.maxZ) {
+                skipLog = true;
+                break;
+              }
+            } else {
+              // For front/back walls, window spans entire wall width
+              skipLog = true;
+              break;
+            }
+          }
+        }
+        if (skipLog) continue;
+      }
+      
       const colorIndex = i % logColors.length;
       const logMaterial = new THREE.MeshStandardMaterial({
         color: logColors[colorIndex],
