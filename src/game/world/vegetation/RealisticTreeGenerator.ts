@@ -26,7 +26,6 @@ export class RealisticTreeGenerator {
   private foliageGeometryCache: Map<string, THREE.BufferGeometry> = new Map();
   private materialCache: Map<string, THREE.Material> = new Map();
   private activeFoliageMaterials: Set<THREE.MeshStandardMaterial> = new Set();
-  private activeTrunkMaterials: Set<THREE.MeshStandardMaterial> = new Set();
   private debugMode: boolean = false;
 
   constructor() {
@@ -1195,7 +1194,7 @@ export class RealisticTreeGenerator {
     color.getHSL(hsl);
     color.setHSL(hsl.h, hsl.s, Math.min(1.0, hsl.l * 1.4)); // Increase lightness by 40%
 
-    const material = new THREE.MeshStandardMaterial({
+    return new THREE.MeshStandardMaterial({
       color: color,
       map: texture,
       roughness: 0.8, // Slightly less rough for better light reflection
@@ -1203,20 +1202,14 @@ export class RealisticTreeGenerator {
       bumpMap: texture,
       bumpScale: 0.2 // Reduced bump scale for more even lighting
     });
-
-    // Add trunk material to tracking set for day/night updates
-    this.activeTrunkMaterials.add(material);
-
-    return material;
   }
 
   /**
-   * Update foliage and trunk materials for day/night lighting
+   * Update foliage materials for day/night lighting
    */
   public updateDayNightLighting(dayFactor: number, nightFactor: number): void {
     console.log(`🍃 Day/Night update called - dayFactor: ${dayFactor}, nightFactor: ${nightFactor}`);
     
-    // Update foliage materials
     for (const material of this.activeFoliageMaterials) {
       // Get the material's current color - NOT the original color which is being overwritten
       const currentColor = new THREE.Color(material.color);
@@ -1252,26 +1245,6 @@ export class RealisticTreeGenerator {
       // Remove emissive completely to prevent glow
       material.emissive.setRGB(0, 0, 0);
     }
-
-    // Update trunk materials - make them always visible
-    for (const material of this.activeTrunkMaterials) {
-      // Get the base trunk color from the material's current color
-      const baseColor = new THREE.Color(material.color);
-      
-      // Create a visible day version (brighter) and night version (darker but still visible)
-      const dayColor = baseColor.clone().multiplyScalar(1.2); // Bright during day
-      const nightColor = baseColor.clone().multiplyScalar(0.8); // Dimmer but visible at night
-      
-      // Blend between day and night colors
-      const blendedColor = dayColor.clone().lerp(nightColor, nightFactor);
-      material.color.copy(blendedColor);
-      
-      // Adjust material properties
-      const baseRoughness = 0.8;
-      material.roughness = baseRoughness + (nightFactor * 0.1);
-      
-      console.log(`🌲 Trunk material updated for day/night: ${blendedColor.getHexString()}`);
-    }
   }
   
   /**
@@ -1300,8 +1273,7 @@ export class RealisticTreeGenerator {
     }
     this.materialCache.clear();
     
-    // Clear active materials sets
+    // Clear active materials set
     this.activeFoliageMaterials.clear();
-    this.activeTrunkMaterials.clear();
   }
 }

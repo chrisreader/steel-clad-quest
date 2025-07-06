@@ -142,18 +142,10 @@ export class BuildingManager {
   }
 
   public updateTimeOfDay(gameTime: number, timePhases: any): void {
-    // Determine if it's night time (simplified check)
-    const isNight = gameTime < 6 || gameTime > 18; // Night between 6 PM and 6 AM
-    
-    // Update time-aware buildings (like human camps with fireplaces and taverns with candles)
+    // Update time-aware buildings (like human camps with fireplaces)
     for (const building of this.buildings.values()) {
       if ('updateTimeOfDay' in building && typeof building.updateTimeOfDay === 'function') {
         building.updateTimeOfDay(gameTime, timePhases);
-      }
-      
-      // Update tavern candle lighting
-      if (building instanceof TavernBuilding) {
-        building.updateCandleLighting(isNight);
       }
     }
   }

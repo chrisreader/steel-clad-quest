@@ -377,66 +377,22 @@ export class TavernBuilding extends BaseBuilding {
   }
 
   private createHangingElements(): void {
-    // Hanging candle chandeliers
-    const chandelierMaterial = new THREE.MeshStandardMaterial({ 
+    // Hanging lanterns
+    const lanternMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x8B7355,
-      metalness: 0.6,
-      roughness: 0.4
-    });
-    
-    const candleMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xFFFACD,
-      emissive: 0x332211,
-      emissiveIntensity: 0.2
+      metalness: 0.3,
+      roughness: 0.7
     });
     
     for (let i = 0; i < 2; i++) {
-      const xPos = -2 + i * 4;
+      const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.6, 8), lanternMaterial.clone());
+      lantern.position.set(-2 + i * 4, 5, 1);
+      this.addComponent(lantern, `hanging_lantern_${i}`, 'metal');
       
-      // Chandelier base ring
-      const chandelierRing = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 8, 16), chandelierMaterial.clone());
-      chandelierRing.position.set(xPos, 4.5, 1);
-      this.addComponent(chandelierRing, `chandelier_ring_${i}`, 'metal');
-      
-      // Hanging chain
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1, 6), chandelierMaterial.clone());
-      chain.position.set(xPos, 5.3, 1);
-      this.addComponent(chain, `chandelier_chain_${i}`, 'metal');
-      
-      // Candles around the ring (6 candles per chandelier)
-      for (let j = 0; j < 6; j++) {
-        const angle = (j / 6) * Math.PI * 2;
-        const candleX = xPos + Math.cos(angle) * 0.35;
-        const candleZ = 1 + Math.sin(angle) * 0.35;
-        
-        // Candle holder
-        const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.05, 8), chandelierMaterial.clone());
-        holder.position.set(candleX, 4.4, candleZ);
-        this.addComponent(holder, `chandelier_holder_${i}_${j}`, 'metal');
-        
-        // Candle
-        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.12, 8), candleMaterial.clone());
-        candle.position.set(candleX, 4.52, candleZ);
-        this.addComponent(candle, `chandelier_candle_${i}_${j}`, 'fabric');
-        
-        // Candle flame (will be lit at night)
-        const flame = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 8), new THREE.MeshStandardMaterial({
-          color: 0xff6600,
-          emissive: 0xff6600,
-          emissiveIntensity: 0,
-          transparent: true,
-          opacity: 0
-        }));
-        flame.position.set(candleX, 4.65, candleZ);
-        this.addComponent(flame, `chandelier_flame_${i}_${j}`, 'fabric');
-        
-        // Point light for each candle (initially off)
-        const light = new THREE.PointLight(0xffdd88, 0, 8, 2);
-        light.position.set(candleX, 4.65, candleZ);
-        light.castShadow = true;
-        this.scene.add(light);
-        this.addComponent(light, `chandelier_light_${i}_${j}`, 'metal');
-      }
+      // Lantern chain
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1, 6), lanternMaterial.clone());
+      chain.position.set(-2 + i * 4, 5.8, 1);
+      this.addComponent(chain, `lantern_chain_${i}`, 'metal');
     }
   }
   
@@ -623,30 +579,12 @@ export class TavernBuilding extends BaseBuilding {
     const candleMaterial = new THREE.MeshStandardMaterial({ 
       color: 0xFFFACD,
       emissive: 0x332211,
-      emissiveIntensity: 0.2
+      emissiveIntensity: 0.3
     });
     
     const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.15, 8), candleMaterial);
     candle.position.set(3.5, 1.08, -3.5);
     this.addComponent(candle, 'table_candle', 'fabric');
-    
-    // Table candle flame (will be lit at night)
-    const tableFlame = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), new THREE.MeshStandardMaterial({
-      color: 0xff6600,
-      emissive: 0xff6600,
-      emissiveIntensity: 0,
-      transparent: true,
-      opacity: 0
-    }));
-    tableFlame.position.set(3.5, 1.23, -3.5);
-    this.addComponent(tableFlame, 'table_candle_flame', 'fabric');
-    
-    // Point light for table candle (initially off)
-    const tableLight = new THREE.PointLight(0xffdd88, 0, 5, 2);
-    tableLight.position.set(3.5, 1.23, -3.5);
-    tableLight.castShadow = true;
-    this.scene.add(tableLight);
-    this.addComponent(tableLight, 'table_candle_light', 'metal');
     
     // Candle holder
     const holderMaterial = new THREE.MeshStandardMaterial({ 
@@ -796,44 +734,5 @@ export class TavernBuilding extends BaseBuilding {
 
   public getChests(): TreasureChest[] {
     return [...this.chests];
-  }
-
-  // Time-based lighting control for candles (called at night)
-  public updateCandleLighting(isNight: boolean): void {
-    const intensity = isNight ? 1.0 : 0;
-    const flameOpacity = isNight ? 0.8 : 0;
-    const lightIntensity = isNight ? 0.6 : 0;
-    
-    // Update chandelier candles and lights
-    for (let i = 0; i < 2; i++) {
-      for (let j = 0; j < 6; j++) {
-        // Find flame components
-        const flame = this.components.find(c => c.name === `chandelier_flame_${i}_${j}`)?.mesh;
-        if (flame && flame instanceof THREE.Mesh && flame.material instanceof THREE.MeshStandardMaterial) {
-          flame.material.emissiveIntensity = intensity;
-          flame.material.opacity = flameOpacity;
-        }
-        
-        // Find light components
-        const light = this.components.find(c => c.name === `chandelier_light_${i}_${j}`)?.mesh;
-        if (light && light instanceof THREE.PointLight) {
-          light.intensity = lightIntensity;
-        }
-      }
-    }
-    
-    // Update table candle flame and light
-    const tableFlame = this.components.find(c => c.name === 'table_candle_flame')?.mesh;
-    if (tableFlame && tableFlame instanceof THREE.Mesh && tableFlame.material instanceof THREE.MeshStandardMaterial) {
-      tableFlame.material.emissiveIntensity = intensity;
-      tableFlame.material.opacity = flameOpacity;
-    }
-    
-    const tableLight = this.components.find(c => c.name === 'table_candle_light')?.mesh;
-    if (tableLight && tableLight instanceof THREE.PointLight) {
-      tableLight.intensity = lightIntensity * 0.8; // Slightly dimmer for table candle
-    }
-    
-    console.log(`🕯️ [TavernBuilding] Candle lighting ${isNight ? 'activated' : 'deactivated'} for night time`);
   }
 }
