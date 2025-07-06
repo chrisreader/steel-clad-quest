@@ -109,7 +109,79 @@ export class HumanBodyConfig {
   }
 
   /**
-   * Creates clothing overlay for human NPCs
+   * Creates realistic t-shirt for human NPCs that wraps around torso and shoulders
+   */
+  public static createTShirt(bodyRadius: number, bodyHeight: number, tshirtColor: number = 0x4169E1): THREE.Group {
+    const tshirtGroup = new THREE.Group();
+    
+    // Create main t-shirt body - slightly larger than torso for fabric effect
+    const shirtBodyGeometry = new THREE.CylinderGeometry(
+      bodyRadius * 1.08,    // Top radius - slightly larger
+      bodyRadius * 1.12,    // Bottom radius - slightly flared
+      bodyHeight * 0.75,    // Height - covers most of torso
+      16, 8                 // Segments for smooth appearance
+    );
+    
+    // Create fabric material with realistic properties
+    const shirtMaterial = new THREE.MeshPhongMaterial({
+      color: tshirtColor,
+      shininess: 5,         // Low shininess for fabric
+      specular: 0x111111,   // Minimal specular for cotton-like appearance
+      transparent: false
+    });
+    
+    const shirtBody = new THREE.Mesh(shirtBodyGeometry, shirtMaterial);
+    shirtBody.castShadow = true;
+    shirtBody.receiveShadow = true;
+    
+    // Create sleeves that extend to shoulders
+    const sleeveGeometry = new THREE.CylinderGeometry(
+      bodyRadius * 0.45,    // Sleeve opening
+      bodyRadius * 0.35,    // Sleeve at shoulder
+      bodyHeight * 0.25,    // Sleeve length
+      12, 4
+    );
+    
+    // Left sleeve
+    const leftSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
+    leftSleeve.position.set(-bodyRadius * 0.9, bodyHeight * 0.25, 0);
+    leftSleeve.rotation.z = Math.PI / 6; // Slight angle for natural fit
+    leftSleeve.castShadow = true;
+    
+    // Right sleeve
+    const rightSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
+    rightSleeve.position.set(bodyRadius * 0.9, bodyHeight * 0.25, 0);
+    rightSleeve.rotation.z = -Math.PI / 6; // Mirror angle
+    rightSleeve.castShadow = true;
+    
+    // Add collar detail
+    const collarGeometry = new THREE.TorusGeometry(
+      bodyRadius * 1.05,    // Collar radius
+      bodyRadius * 0.08,    // Collar thickness
+      8, 16
+    );
+    
+    const collarMaterial = new THREE.MeshPhongMaterial({
+      color: tshirtColor,
+      shininess: 3
+    });
+    
+    const collar = new THREE.Mesh(collarGeometry, collarMaterial);
+    collar.position.set(0, bodyHeight * 0.35, 0);
+    collar.rotation.x = Math.PI / 2;
+    collar.castShadow = true;
+    
+    // Assemble t-shirt
+    tshirtGroup.add(shirtBody);
+    tshirtGroup.add(leftSleeve);
+    tshirtGroup.add(rightSleeve);
+    tshirtGroup.add(collar);
+    
+    return tshirtGroup;
+  }
+
+  /**
+   * Creates clothing overlay for human NPCs (legacy method)
    */
   public static createClothing(bodyRadius: number, bodyHeight: number, clothingColor: number = 0x8B4513): THREE.Mesh {
     // Create simple tunic/apron overlay

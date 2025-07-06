@@ -10,6 +10,7 @@ import { HumanBodyConfig } from './HumanBodyConfig';
  */
 export class PeacefulHumanoid extends EnemyHumanoid {
   private humanHair?: THREE.Mesh;
+  private humanTShirt?: THREE.Group;
 
   constructor(
     scene: THREE.Scene,
@@ -32,13 +33,14 @@ export class PeacefulHumanoid extends EnemyHumanoid {
   }
 
   /**
-   * Add human-specific features like hair
+   * Add human-specific features like hair and clothing
    */
   private addHumanFeatures(): void {
     // Since bodyParts.head is now a THREE.Group itself, use it directly
     const headGroup = this.bodyParts.head as THREE.Group;
+    const bodyMesh = this.bodyParts.body;
     
-    if (!headGroup) return;
+    if (!headGroup || !bodyMesh) return;
 
     // Add realistic human hair
     this.humanHair = HumanBodyConfig.createHumanHair(
@@ -52,6 +54,21 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     
     // Add hair to the head group for proper positioning
     headGroup.add(this.humanHair);
+
+    // Add realistic t-shirt
+    this.humanTShirt = HumanBodyConfig.createTShirt(
+      this.config.bodyScale.body.radius,
+      this.config.bodyScale.body.height,
+      0x4169E1 // Blue t-shirt
+    );
+    
+    // Position t-shirt to align with body center
+    this.humanTShirt.position.set(0, 0, 0);
+    
+    // Add t-shirt to the body mesh parent (the main group) so it moves with animations
+    if (bodyMesh.parent) {
+      bodyMesh.parent.add(this.humanTShirt);
+    }
   }
 
   /**
@@ -131,6 +148,18 @@ export class PeacefulHumanoid extends EnemyHumanoid {
       if (this.humanHair.material instanceof THREE.Material) {
         this.humanHair.material.dispose();
       }
+    }
+    
+    // Clean up t-shirt
+    if (this.humanTShirt) {
+      this.humanTShirt.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material instanceof THREE.Material) {
+            child.material.dispose();
+          }
+        }
+      });
     }
     
     // Call parent disposal
