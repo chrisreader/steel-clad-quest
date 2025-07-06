@@ -26,7 +26,6 @@ export class RealisticTreeGenerator {
   private foliageGeometryCache: Map<string, THREE.BufferGeometry> = new Map();
   private materialCache: Map<string, THREE.Material> = new Map();
   private activeFoliageMaterials: Set<THREE.MeshStandardMaterial> = new Set();
-  private activeTrunkMaterials: Set<THREE.MeshStandardMaterial> = new Set();
   private debugMode: boolean = false;
 
   constructor() {
@@ -818,8 +817,6 @@ export class RealisticTreeGenerator {
         metalness: 0.0
       });
       this.materialCache.set(materialKey, material);
-      // Track trunk materials for day/night updates
-      this.activeTrunkMaterials.add(material);
     }
     
     return this.materialCache.get(materialKey)!;
@@ -1213,7 +1210,6 @@ export class RealisticTreeGenerator {
   public updateDayNightLighting(dayFactor: number, nightFactor: number): void {
     console.log(`🍃 Day/Night update called - dayFactor: ${dayFactor}, nightFactor: ${nightFactor}`);
     
-    // Update foliage materials
     for (const material of this.activeFoliageMaterials) {
       // Get the material's current color - NOT the original color which is being overwritten
       const currentColor = new THREE.Color(material.color);
@@ -1249,30 +1245,6 @@ export class RealisticTreeGenerator {
       // Remove emissive completely to prevent glow
       material.emissive.setRGB(0, 0, 0);
     }
-
-    // Update trunk materials
-    for (const material of this.activeTrunkMaterials) {
-      // Always use the full base bark color during day time
-      const baseBarkColor = new THREE.Color(0xA0522D); // Brown bark color
-      console.log(`🌳 Trunk material current color:`, material.color.getHexString());
-      
-      // During day time (nightFactor = 0), use full base color
-      // During night time (nightFactor = 1), use darker version but still visible
-      const dayColor = baseBarkColor.clone();
-      const nightColor = baseBarkColor.clone().multiplyScalar(0.5); // Brighter at night than before
-      
-      // Blend between day and night colors
-      const blendedColor = dayColor.clone().lerp(nightColor, nightFactor);
-      material.color.copy(blendedColor);
-      console.log(`🌳 Trunk material updated color:`, blendedColor.getHexString());
-      
-      // Adjust material properties for lighting conditions
-      const baseRoughness = 0.8;
-      material.roughness = baseRoughness + (nightFactor * 0.1);
-      
-      // Remove emissive completely
-      material.emissive.setRGB(0, 0, 0);
-    }
   }
   
   /**
@@ -1301,8 +1273,7 @@ export class RealisticTreeGenerator {
     }
     this.materialCache.clear();
     
-    // Clear active materials sets
+    // Clear active materials set
     this.activeFoliageMaterials.clear();
-    this.activeTrunkMaterials.clear();
   }
 }
