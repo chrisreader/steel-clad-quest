@@ -43,7 +43,7 @@ export class FireplaceComponent {
   }
 
   public create(): THREE.Group {
-    console.log(`🔥 Creating fireplace component '${this.fireplaceId}' at position:`, this.position);
+    console.log(`🔥 Creating fireplace component '${this.fireplaceId}' at position:`, this.position, `alwaysOn: ${this.alwaysOn}`);
 
     // Create fireplace structure (base, logs, ash)
     this.fireplaceGeometry = new FireplaceGeometry(this.scene, new THREE.Vector3(0, 0, 0));
@@ -55,14 +55,20 @@ export class FireplaceComponent {
     const rocksGroup = this.fireplaceRocks.createRockCircle(0.8, 16);
     this.fireplaceGroup.add(rocksGroup);
 
-    // Start fire immediately if always-on (tavern), otherwise wait for night time
+    // Start fire immediately if always-on (tavern), otherwise check current time for camp fires
     if (this.alwaysOn) {
+      console.log(`🔥 [${this.fireplaceId}] TAVERN FIRE - Always on, lighting immediately`);
       this.lightFire();
       this.fireActive = true;
+    } else {
+      console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - Time-based, will check time updates`);
+      // For camp fires, check if we should start lit based on current time
+      // This will be set when first updateTimeOfDay is called
+      this.fireActive = false;
     }
 
     this.scene.add(this.fireplaceGroup);
-    console.log(`🔥 Fireplace component '${this.fireplaceId}' created with MASSIVE landscape-reaching lighting`);
+    console.log(`🔥 Fireplace component '${this.fireplaceId}' created - Fire Active: ${this.fireActive}`);
     
     return this.fireplaceGroup;
   }
@@ -71,9 +77,13 @@ export class FireplaceComponent {
     this.currentGameTime = gameTime;
     this.fireSystem.updateTimeOfDay(gameTime, timePhases);
     
+    console.log(`🔥 [${this.fireplaceId}] Time update: ${gameTime.toFixed(1)}h, alwaysOn: ${this.alwaysOn}, fireActive: ${this.fireActive}`);
+    
     // Skip time-based control if always on (tavern fire)
     if (this.alwaysOn) {
+      console.log(`🔥 [${this.fireplaceId}] TAVERN FIRE - Skipping time-based control`);
       if (!this.fireActive) {
+        console.log(`🔥 [${this.fireplaceId}] TAVERN FIRE - Fire was off, lighting it`);
         this.lightFire();
         this.fireActive = true;
       }
@@ -82,13 +92,18 @@ export class FireplaceComponent {
     
     // Turn fire on at sunset (19:00) and off at sunrise (6:00) for camp fires
     const isNightTime = gameTime >= 19 || gameTime <= 6;
+    console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - Time: ${gameTime.toFixed(1)}h, isNightTime: ${isNightTime}, fireActive: ${this.fireActive}`);
     
     if (isNightTime && !this.fireActive) {
+      console.log(`🔥 [${this.fireplaceId}] 🌙 CAMP FIRE - Lighting fire for night time!`);
       this.lightFire();
       this.fireActive = true;
     } else if (!isNightTime && this.fireActive) {
+      console.log(`🔥 [${this.fireplaceId}] ☀️ CAMP FIRE - Extinguishing fire for day time!`);
       this.extinguishFire();
       this.fireActive = false;
+    } else {
+      console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - No state change needed`);
     }
   }
 
@@ -121,7 +136,8 @@ export class FireplaceComponent {
       lightDistance: 60     // Good range for area lighting
     });
     
-    console.log(`🔥 Fire '${this.fireplaceId}' lit with MASSIVE landscape-reaching lighting`);
+    const fireType = this.alwaysOn ? 'TAVERN' : 'CAMP';
+    console.log(`🔥✨ [${this.fireplaceId}] ${fireType} FIRE LIT - Strong shadows & lighting active!`);
   }
 
   public setFireIntensity(intensity: number): void {

@@ -339,8 +339,8 @@ export class HumanCampBuilding extends BaseBuilding {
   }
 
   public updateTimeOfDay(gameTime: number, timePhases: any): void {
+    console.log(`🏕️ [HumanCampBuilding] updateTimeOfDay called: ${gameTime.toFixed(1)}h, has fireplace: ${!!this.fireplaceComponent}`);
     if (this.fireplaceComponent) {
-      console.log(`🔥 [HumanCampBuilding] Updating time of day: ${gameTime}h for fireplace`);
       this.fireplaceComponent.updateTimeOfDay(gameTime, timePhases);
     }
   }
