@@ -40,7 +40,7 @@ export class MedievalSword extends Sword {
       const oldGuard = swordGroup.children[existingGuardIndex];
       swordGroup.remove(oldGuard);
       
-      // Create realistic curved crossguard with upward curving tips
+      // Create realistic curved crossguard with single tapered pieces
       const guardMaterial = new THREE.MeshPhongMaterial({ 
         color: 0x9A9A9A, // Match original guard color
         shininess: 100,
@@ -48,62 +48,20 @@ export class MedievalSword extends Sword {
         map: metalTexture
       });
       
-      // Left curved guard section
-      const leftCurve = new THREE.Group();
-      
-      // Base section (horizontal outward)
-      const leftBaseGeometry = new THREE.CylinderGeometry(0.03, 0.04, 0.08, 8);
-      const leftBase = new THREE.Mesh(leftBaseGeometry, guardMaterial);
-      leftBase.position.set(-0.04, 0, 0);
-      leftBase.rotation.z = Math.PI / 2; // Make horizontal
-      leftCurve.add(leftBase);
-      
-      // Middle section (horizontal with slight upward position)
-      const leftMidGeometry = new THREE.CylinderGeometry(0.025, 0.03, 0.06, 8);
-      const leftMid = new THREE.Mesh(leftMidGeometry, guardMaterial);
-      leftMid.position.set(-0.09, 0.015, 0);
-      leftMid.rotation.z = Math.PI / 2; // Keep horizontal
-      leftMid.rotation.y = Math.PI / 12; // Slight upward tilt
-      leftCurve.add(leftMid);
-      
-      // Tip section (horizontal with upward curve)
-      const leftTipGeometry = new THREE.CylinderGeometry(0.015, 0.025, 0.04, 8);
-      const leftTip = new THREE.Mesh(leftTipGeometry, guardMaterial);
-      leftTip.position.set(-0.13, 0.04, 0);
-      leftTip.rotation.z = Math.PI / 2; // Keep horizontal
-      leftTip.rotation.y = Math.PI / 6; // More upward curve
-      leftCurve.add(leftTip);
-      
-      leftCurve.position.set(0, 0, -0.3);
-      leftCurve.castShadow = true;
-      swordGroup.add(leftCurve);
+      // Left tapered guard - single piece curving upward
+      const leftGuardGeometry = new THREE.ConeGeometry(0.02, 0.2, 8);
+      const leftGuard = new THREE.Mesh(leftGuardGeometry, guardMaterial);
+      leftGuard.position.set(-0.1, 0.03, -0.3);
+      leftGuard.rotation.z = Math.PI / 2 + Math.PI / 8; // Horizontal + 22.5° upward tilt
+      leftGuard.castShadow = true;
+      swordGroup.add(leftGuard);
 
-      // Right curved guard section (mirror of left)
-      const rightCurve = new THREE.Group();
-      
-      // Base section (horizontal outward)
-      const rightBase = new THREE.Mesh(leftBaseGeometry.clone(), guardMaterial);
-      rightBase.position.set(0.04, 0, 0);
-      rightBase.rotation.z = Math.PI / 2; // Make horizontal
-      rightCurve.add(rightBase);
-      
-      // Middle section (horizontal with slight upward position)
-      const rightMid = new THREE.Mesh(leftMidGeometry.clone(), guardMaterial);
-      rightMid.position.set(0.09, 0.015, 0);
-      rightMid.rotation.z = Math.PI / 2; // Keep horizontal
-      rightMid.rotation.y = -Math.PI / 12; // Slight upward tilt (mirrored)
-      rightCurve.add(rightMid);
-      
-      // Tip section (horizontal with upward curve)
-      const rightTip = new THREE.Mesh(leftTipGeometry.clone(), guardMaterial);
-      rightTip.position.set(0.13, 0.04, 0);
-      rightTip.rotation.z = Math.PI / 2; // Keep horizontal
-      rightTip.rotation.y = -Math.PI / 6; // More upward curve (mirrored)
-      rightCurve.add(rightTip);
-      
-      rightCurve.position.set(0, 0, -0.3);
-      rightCurve.castShadow = true;
-      swordGroup.add(rightCurve);
+      // Right tapered guard - single piece curving upward (mirrored)
+      const rightGuard = new THREE.Mesh(leftGuardGeometry.clone(), guardMaterial);
+      rightGuard.position.set(0.1, 0.03, -0.3);
+      rightGuard.rotation.z = -Math.PI / 2 - Math.PI / 8; // Horizontal + 22.5° upward tilt (mirrored)
+      rightGuard.castShadow = true;
+      swordGroup.add(rightGuard);
       
       // Small center piece to connect the tapered ends
       const centerGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.08, 8);
