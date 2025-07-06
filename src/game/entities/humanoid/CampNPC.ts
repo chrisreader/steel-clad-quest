@@ -94,14 +94,17 @@ export class CampNPC {
     // Handle movement based on behavior with enhanced logging
     if (action.type === 'move' && action.target) {
       this.moveTowards(action.target, deltaTime);
-      this.humanoid.updateWalkAnimation(deltaTime);
+      // Use unified animation method with movement state
+      this.humanoid.updateAnimation(deltaTime, true, 2.0); // isMoving=true, speed=2.0
       this.lastMoveTime = Date.now();
       console.log(`🚶 [${this.npcId}] Moving towards target:`, action.target);
     } else if (action.type === 'idle') {
-      this.humanoid.updateIdleAnimation(deltaTime);
+      // Use unified animation method for idle state
+      this.humanoid.updateAnimation(deltaTime, false, 0); // isMoving=false
       console.log(`🛌 [${this.npcId}] Standing idle at position:`, this.getMesh().position);
     } else if (action.type === 'interact') {
-      this.humanoid.updateIdleAnimation(deltaTime);
+      // Use unified animation method for interaction
+      this.humanoid.updateAnimation(deltaTime, false, 0); // isMoving=false
       console.log(`💬 [${this.npcId}] Interacting with player`);
     }
   }
@@ -113,15 +116,42 @@ export class CampNPC {
     if (distanceMoved < 0.1) { // Less than 0.1 units moved
       this.stuckTimer += deltaTime * 1000; // Convert to milliseconds
       
-      if (this.stuckTimer > 5000) { // Stuck for 5 seconds
-        console.warn(`⚠️ [${this.npcId}] NPC appears stuck! Resetting behavior...`);
+      if (this.stuckTimer > 3000) { // More aggressive: stuck for 3 seconds
+        console.warn(`⚠️ [${this.npcId}] NPC appears stuck! Position: ${currentPosition.x.toFixed(2)}, ${currentPosition.z.toFixed(2)}, Distance moved: ${distanceMoved.toFixed(3)}`);
+        console.warn(`⚠️ [${this.npcId}] Current behavior state:`, this.behavior.getCurrentAction());
+        
+        // Force movement by resetting behavior and forcing a move action
         this.resetBehavior();
+        this.forceMovement();
         this.stuckTimer = 0;
       }
     } else {
       this.stuckTimer = 0;
       this.lastPosition.copy(currentPosition);
     }
+  }
+
+  private forceMovement(): void {
+    // Force the NPC to move by creating a random target near camp center
+    const randomOffset = new THREE.Vector3(
+      (Math.random() - 0.5) * 6,
+      0,
+      (Math.random() - 0.5) * 6
+    );
+    const forceTarget = this.config.campCenter.clone().add(randomOffset);
+    
+    console.log(`🔄 [${this.npcId}] Forcing movement to:`, forceTarget);
+    
+    // Manually move the NPC a bit to break any collision issues
+    const currentPos = this.getMesh().position;
+    const escapeDirection = new THREE.Vector3(
+      (Math.random() - 0.5) * 2,
+      0,
+      (Math.random() - 0.5) * 2
+    ).normalize();
+    
+    currentPos.add(escapeDirection.multiplyScalar(0.5));
+    this.lastMoveTime = Date.now();
   }
 
   private resetBehavior(): void {

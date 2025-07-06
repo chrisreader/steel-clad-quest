@@ -331,19 +331,32 @@ export class HumanCampBuilding extends BaseBuilding {
       this.campKeeper.update(deltaTime, playerPosition);
     }
     
-    // NPC Recovery System: Try to create missing NPCs if managers are now available
+    // Enhanced NPC Recovery System: Try to create missing NPCs if managers are now available
     if (!this.campKeeper && this.audioManager && this.effectsManager) {
       console.log('🏕️ [HumanCampBuilding] Attempting to recover missing camp keeper NPC');
       this.createCampKeeper();
     }
     
-    // Health check for camp keeper
-    if (this.campKeeper && this.campKeeper.getIsDead()) {
-      console.warn('🏕️ [HumanCampBuilding] Camp keeper is dead, attempting recreation');
-      this.campKeeper.dispose();
-      this.campKeeper = null;
-      if (this.audioManager && this.effectsManager) {
-        this.createCampKeeper();
+    // Enhanced Health check for camp keeper
+    if (this.campKeeper) {
+      if (this.campKeeper.getIsDead()) {
+        console.warn('🏕️ [HumanCampBuilding] Camp keeper is dead, attempting recreation');
+        this.campKeeper.dispose();
+        this.campKeeper = null;
+        if (this.audioManager && this.effectsManager) {
+          this.createCampKeeper();
+        }
+      } else {
+        // Periodic health check - ensure NPC is still functional
+        const npcPosition = this.campKeeper.getPosition();
+        if (!npcPosition || (isNaN(npcPosition.x) || isNaN(npcPosition.y) || isNaN(npcPosition.z))) {
+          console.error('🏕️ [HumanCampBuilding] Camp keeper has invalid position, recreating');
+          this.campKeeper.dispose();
+          this.campKeeper = null;
+          if (this.audioManager && this.effectsManager) {
+            this.createCampKeeper();
+          }
+        }
       }
     }
   }

@@ -107,12 +107,20 @@ export class CampKeeperBehavior {
       this.actionStartTime = Date.now();
       this.isAtWaypoint = false;
       
-      console.log('🚶 [CampKeeper] Starting movement from idle after', actionDuration, 'ms pause. Moving to waypoint:', nextWaypoint);
+      console.log('🚶 [CampKeeper] Starting movement from idle after', actionDuration, 'ms pause. Moving to waypoint:', nextWaypoint, 'from position:', npcPosition);
       
       return this.currentAction;
     }
     
-    console.log('🛌 [CampKeeper] Remaining idle for', this.config.pauseDuration - actionDuration, 'ms more');
+    // Enhanced idle logging with position tracking
+    const remainingTime = this.config.pauseDuration - actionDuration;
+    if (remainingTime > 1000) { // Only log if more than 1 second remaining
+      console.log('🛌 [CampKeeper] Remaining idle for', remainingTime, 'ms more at position:', {
+        x: npcPosition.x.toFixed(2),
+        z: npcPosition.z.toFixed(2)
+      });
+    }
+    
     return { type: 'idle' };
   }
 
