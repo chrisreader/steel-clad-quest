@@ -65,7 +65,7 @@ export class FireplaceComponent {
       this.fireActive = false;
     }
 
-    this.scene.add(this.fireplaceGroup);
+    // Don't add directly to scene - let the parent building handle positioning
     console.log(`🔥 Fireplace component '${this.fireplaceId}' created - Fire Active: ${this.fireActive}`);
     
     return this.fireplaceGroup;
@@ -130,10 +130,14 @@ export class FireplaceComponent {
   }
 
   public lightFire(): void {
-    const firePosition = this.position.clone();
-    firePosition.y += 0.2;
+    // Calculate world position from the fireplace group's world position
+    const worldPosition = new THREE.Vector3();
+    this.fireplaceGroup.getWorldPosition(worldPosition);
+    worldPosition.y += 0.2;
     
-    this.fireSystem.createFire(this.fireplaceId, firePosition, {
+    console.log(`🔥 [${this.fireplaceId}] Lighting fire at calculated world position:`, worldPosition);
+    
+    this.fireSystem.createFire(this.fireplaceId, worldPosition, {
       intensity: 1.0,
       size: 1.0,
       particleCount: 45,
@@ -173,7 +177,7 @@ export class FireplaceComponent {
       this.fireplaceRocks = null;
     }
     
-    this.scene.remove(this.fireplaceGroup);
+    // Don't remove from scene - parent building handles cleanup
     console.log(`🔥 Fireplace component '${this.fireplaceId}' disposed`);
   }
 }
