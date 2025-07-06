@@ -55,15 +55,13 @@ export class FireplaceComponent {
     const rocksGroup = this.fireplaceRocks.createRockCircle(0.8, 16);
     this.fireplaceGroup.add(rocksGroup);
 
-    // Start fire immediately if always-on (tavern), otherwise check current time for camp fires
+    // Start fire immediately if always-on (tavern), otherwise wait for time updates for camp fires
     if (this.alwaysOn) {
       console.log(`🔥 [${this.fireplaceId}] TAVERN FIRE - Always on, lighting immediately`);
       this.lightFire();
       this.fireActive = true;
     } else {
-      console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - Time-based, will check time updates`);
-      // For camp fires, check if we should start lit based on current time
-      // This will be set when first updateTimeOfDay is called
+      console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - Time-based, starting inactive`);
       this.fireActive = false;
     }
 
@@ -102,6 +100,15 @@ export class FireplaceComponent {
       console.log(`🔥 [${this.fireplaceId}] ☀️ CAMP FIRE - Extinguishing fire for day time!`);
       this.extinguishFire();
       this.fireActive = false;
+    } else if (isNightTime && this.fireActive) {
+      // FORCED FIX: Check if fire is actually lit visually
+      const actualFire = this.fireSystem.getFire(this.fireplaceId);
+      if (!actualFire || !actualFire.isRunning()) {
+        console.log(`🔥 [${this.fireplaceId}] 🔧 CAMP FIRE - Fire marked active but not running, re-lighting!`);
+        this.lightFire();
+      } else {
+        console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - No state change needed`);
+      }
     } else {
       console.log(`🔥 [${this.fireplaceId}] CAMP FIRE - No state change needed`);
     }
