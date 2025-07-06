@@ -397,7 +397,7 @@ export class TavernBuilding extends BaseBuilding {
       const xPos = -2 + i * 4;
       
       // Chandelier base
-      const chandelierBase = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.2, 8), chandelierMaterial.clone());
+      const chandelierBase = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.2, 8), chandelierMaterial.clone());
       chandelierBase.position.set(0, 0, 0);
       chandelierGroup.add(chandelierBase);
       
