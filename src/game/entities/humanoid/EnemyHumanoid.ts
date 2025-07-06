@@ -910,7 +910,7 @@ export abstract class EnemyHumanoid {
         0
       );
       leftEar.rotation.z = -0.4; // Tilt outward from head
-      leftEar.rotation.x = Math.PI/2; // Point upward
+      leftEar.rotation.x = -Math.PI/2; // Point upward with base at head
       leftEar.castShadow = true;
       headGroup.add(leftEar);
 
@@ -922,7 +922,7 @@ export abstract class EnemyHumanoid {
         0
       );
       rightEar.rotation.z = 0.4; // Tilt outward from head
-      rightEar.rotation.x = Math.PI/2; // Point upward
+      rightEar.rotation.x = -Math.PI/2; // Point upward with base at head
       rightEar.castShadow = true;
       headGroup.add(rightEar);
     } else {
