@@ -113,7 +113,11 @@ export class SceneManager {
     
     // Initialize 3D grass system
     this.grassSystem = new GrassSystem(this.scene);
-    console.log("🌱 3D Grass system initialized");
+    
+    // Connect BuildingManager to GrassSystem for building floor exclusion
+    this.grassSystem.setBuildingManager(this.buildingManager);
+    
+    console.log("🌱 3D Grass system initialized with building exclusion");
     
     // Initialize skybox system
     this.skyboxSystem = new SkyboxSystem(this.scene);

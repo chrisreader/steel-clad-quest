@@ -63,6 +63,18 @@ export abstract class BaseBuilding {
     return this.position.clone();
   }
   
+  // Get the building's floor bounds for grass exclusion
+  public getFloorBounds(): { minX: number; maxX: number; minZ: number; maxZ: number } {
+    // Default bounds for most buildings (override in subclasses)
+    const size = 12; // Default 12x12 floor
+    return {
+      minX: this.position.x - size / 2,
+      maxX: this.position.x + size / 2,
+      minZ: this.position.z - size / 2,
+      maxZ: this.position.z + size / 2
+    };
+  }
+  
   // Get the building group
   public getBuildingGroup(): THREE.Group {
     return this.buildingGroup;

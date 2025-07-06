@@ -868,6 +868,17 @@ export class TavernBuilding extends BaseBuilding {
   protected getBuildingName(): string {
     return 'Tavern';
   }
+  
+  public getFloorBounds(): { minX: number; maxX: number; minZ: number; maxZ: number } {
+    // Tavern has a 12x12 floor
+    const size = 12;
+    return {
+      minX: this.position.x - size / 2,
+      maxX: this.position.x + size / 2,
+      minZ: this.position.z - size / 2,
+      maxZ: this.position.z + size / 2
+    };
+  }
 
   public getChests(): TreasureChest[] {
     return [...this.chests];

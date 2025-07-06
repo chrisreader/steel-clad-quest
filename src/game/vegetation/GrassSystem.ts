@@ -8,11 +8,16 @@ import { TIME_PHASES } from '../config/DayNightConfig';
 import { GrassShader } from './core/GrassShader';
 import { GrassRenderBubbleManager } from './performance/GrassRenderBubbleManager';
 import { DeterministicBiomeManager } from './biomes/DeterministicBiomeManager';
+import { BuildingManager } from '../buildings/BuildingManager';
 
 export class GrassSystem {
   private scene: THREE.Scene;
   private config: GrassConfig;
   private currentSeason: 'spring' | 'summer' | 'autumn' | 'winter' = 'summer';
+  private buildingManager: BuildingManager | null = null;
+  
+  // Static reference for SeededGrassDistribution to access
+  private static globalBuildingManager: BuildingManager | null = null;
   
   // Core systems
   private renderer: GrassRenderer;
@@ -41,6 +46,16 @@ export class GrassSystem {
     // Initialize position-based biome system with enhanced organic biomes
     DeterministicBiomeManager.setWorldSeed(Date.now());
     DeterministicBiomeManager.forceRegenerateAllBiomes();
+  }
+  
+  public setBuildingManager(buildingManager: BuildingManager): void {
+    this.buildingManager = buildingManager;
+    GrassSystem.globalBuildingManager = buildingManager;
+    console.log('🌱 GrassSystem: BuildingManager connected for grass exclusion');
+  }
+  
+  public static getBuildingManager(): BuildingManager | null {
+    return GrassSystem.globalBuildingManager;
   }
   
   public initializeGrassSystem(playerPosition: THREE.Vector3, coverageRadius: number = 200): void {

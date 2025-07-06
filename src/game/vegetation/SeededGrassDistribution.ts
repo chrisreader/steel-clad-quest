@@ -3,6 +3,7 @@ import { MathUtils } from '../utils/math/MathUtils';
 import { EnvironmentalFactors } from './EnvironmentalGrassDistribution';
 import { ChunkCoordinate, DeterministicBiomeManager } from './biomes/DeterministicBiomeManager';
 import { BiomeManager } from './biomes/BiomeManager';
+import { GrassSystem } from './GrassSystem';
 
 export interface SeededGrassData {
   positions: THREE.Vector3[];
@@ -69,6 +70,11 @@ export class SeededGrassDistribution {
         );
         
         if (seededRandom() < spawnProbability) {
+          // Check if position overlaps with any building floor
+          if (this.isPositionInBuildingFloor(worldPos)) {
+            continue; // Skip this position
+          }
+          
           positions.push(worldPos);
           
           // Generate seeded scale with ENHANCED BIOME-SPECIFIC variation including position-based height
@@ -172,6 +178,24 @@ export class SeededGrassDistribution {
     }
     
     return 'meadow';
+  }
+  
+  private static isPositionInBuildingFloor(position: THREE.Vector3): boolean {
+    const buildingManager = GrassSystem.getBuildingManager();
+    if (!buildingManager) {
+      return false; // No building manager, allow grass everywhere
+    }
+    
+    const buildingBounds = buildingManager.getBuildingFloorBounds();
+    
+    for (const bounds of buildingBounds) {
+      if (position.x >= bounds.minX && position.x <= bounds.maxX &&
+          position.z >= bounds.minZ && position.z <= bounds.maxZ) {
+        return true; // Position is inside a building floor
+      }
+    }
+    
+    return false; // Position is not inside any building floor
   }
 
   public static clearCache(): void {

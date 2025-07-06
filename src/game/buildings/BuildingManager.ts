@@ -166,6 +166,15 @@ export class BuildingManager {
   public getAllBuildings(): Map<string, BaseBuilding> {
     return new Map(this.buildings);
   }
+  
+  // Get all building floor bounds for grass exclusion
+  public getBuildingFloorBounds(): Array<{ minX: number; maxX: number; minZ: number; maxZ: number }> {
+    const bounds: Array<{ minX: number; maxX: number; minZ: number; maxZ: number }> = [];
+    for (const building of this.buildings.values()) {
+      bounds.push(building.getFloorBounds());
+    }
+    return bounds;
+  }
 
   public getSafeZoneManager(): SafeZoneManager {
     return this.safeZoneManager;
