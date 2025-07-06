@@ -67,10 +67,11 @@ export class HumanCampBuilding extends BaseBuilding {
   }
 
   private generateCampConfig(config?: Partial<CampConfig>): CampConfig {
+    // PERFORMANCE: Dramatically reduced NPC counts to prevent lag
     const baseConfigs = {
-      small: { npcCount: 2, tentCount: 1, hasRareChest: false },
-      medium: { npcCount: 3, tentCount: 2, hasRareChest: Math.random() < 0.3 },
-      large: { npcCount: 4 + Math.floor(Math.random() * 2), tentCount: 3, hasRareChest: Math.random() < 0.6 }
+      small: { npcCount: 1, tentCount: 1, hasRareChest: false },
+      medium: { npcCount: 2, tentCount: 2, hasRareChest: Math.random() < 0.2 },
+      large: { npcCount: 2, tentCount: 2, hasRareChest: Math.random() < 0.4 }
     };
 
     const size = config?.size || (['small', 'medium', 'large'][Math.floor(Math.random() * 3)] as 'small' | 'medium' | 'large');
@@ -153,7 +154,8 @@ export class HumanCampBuilding extends BaseBuilding {
   private createCampFurniture(): void {
     console.log('🪑 Creating camp furniture');
     
-    const furnitureCount = this.config.size === 'small' ? 2 : this.config.size === 'medium' ? 4 : 6;
+    // PERFORMANCE: Reduced furniture count to minimize render load
+    const furnitureCount = this.config.size === 'small' ? 1 : this.config.size === 'medium' ? 2 : 3;
     
     for (let i = 0; i < furnitureCount; i++) {
       const angle = (i / furnitureCount) * Math.PI * 2 + Math.random() * 0.8;
@@ -240,8 +242,8 @@ export class HumanCampBuilding extends BaseBuilding {
   private createCampSupplies(): void {
     console.log('📦 Creating camp supplies');
     
-    // Add firewood piles
-    const firewoodCount = this.config.size === 'small' ? 1 : this.config.size === 'medium' ? 2 : 3;
+    // PERFORMANCE: Reduced supply count to minimize render load
+    const firewoodCount = this.config.size === 'small' ? 1 : this.config.size === 'medium' ? 1 : 2;
     
     for (let i = 0; i < firewoodCount; i++) {
       const angle = Math.random() * Math.PI * 2;

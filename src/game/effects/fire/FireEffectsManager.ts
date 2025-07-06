@@ -33,29 +33,29 @@ export class FireEffectsManager {
     // Initialize ONLY organic particle generator - no static fire system
     this.particleGenerator = new OrganicFireParticleGenerator(this.scene, this.position);
     
-    // Add different particle types based on config
+    // PERFORMANCE: Reduced particle counts for better performance
     const flameConfig = { ...FIREPLACE_PARTICLE_CONFIGS.flames };
-    flameConfig.count = Math.floor(this.config.particleCount * 0.55);
+    flameConfig.count = Math.floor(this.config.particleCount * 0.3); // Reduced from 0.55
     this.particleGenerator.addParticleType('flames', flameConfig);
 
     if (this.config.smokeEnabled) {
       const smokeConfig = { ...FIREPLACE_PARTICLE_CONFIGS.smoke };
-      smokeConfig.count = Math.floor(this.config.particleCount * 0.33);
+      smokeConfig.count = Math.floor(this.config.particleCount * 0.2); // Reduced from 0.33
       this.particleGenerator.addParticleType('smoke', smokeConfig);
     }
 
     const emberConfig = { ...FIREPLACE_PARTICLE_CONFIGS.embers };
-    emberConfig.count = this.config.emberCount;
+    emberConfig.count = Math.max(1, this.config.emberCount * 0.3); // Significantly reduced
     this.particleGenerator.addParticleType('embers', emberConfig);
 
-    // Initialize massive lighting system with tavern-wide coverage
+    // PERFORMANCE: Reduced lighting system for better performance
     const lightConfig: FireLightConfig = {
       color: this.config.lightColor,
-      baseIntensity: this.config.lightIntensity, // Now 5.0 from config
-      maxIntensity: this.config.lightIntensity * 1.5, // 7.5 max intensity
+      baseIntensity: this.config.lightIntensity * 0.3, // Reduced from 1.0
+      maxIntensity: this.config.lightIntensity * 0.5, // Reduced from 1.5
       flickerSpeed: this.config.flickerSpeed,
-      distance: this.config.lightDistance, // Now 40 from config
-      castShadow: true
+      distance: this.config.lightDistance * 0.4, // Reduced from 1.0
+      castShadow: false // Disabled shadows for performance
     };
     this.lightingSystem = new FireLightingSystem(this.scene, this.position, lightConfig);
 
