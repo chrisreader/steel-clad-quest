@@ -55,34 +55,21 @@ export class PeacefulHumanoid extends EnemyHumanoid {
     // Add hair to the head group for proper positioning
     headGroup.add(this.humanHair);
 
-    // Add realistic t-shirt with components attached to appropriate body parts for animation
-    const tshirtParts = HumanBodyConfig.createTShirtComponents(
+    // Add realistic t-shirt
+    this.humanTShirt = HumanBodyConfig.createTShirt(
       this.config.bodyScale.body.radius,
       this.config.bodyScale.body.height,
       0x4169E1 // Blue t-shirt
     );
     
-    // Attach torso and collar to body mesh for torso movement
+    // Position t-shirt relative to body center (like hair to head)
+    this.humanTShirt.position.set(0, 0, 0);
+    
+    // Add t-shirt directly to the body mesh (same pattern as hair to headGroup)
     if (bodyMesh instanceof THREE.Mesh) {
-      bodyMesh.add(tshirtParts.torso);
-      bodyMesh.add(tshirtParts.neckCollar);
+      // Add to the body mesh directly, like hair is added to headGroup
+      bodyMesh.add(this.humanTShirt);
     }
-    
-    // Attach shoulder and sleeve components to arms for proper animation following
-    if (this.bodyParts.leftArm && this.bodyParts.rightArm) {
-      // Left arm components
-      this.bodyParts.leftArm.add(tshirtParts.leftShoulder);
-      this.bodyParts.leftArm.add(tshirtParts.leftSleeve);
-      
-      // Right arm components  
-      this.bodyParts.rightArm.add(tshirtParts.rightShoulder);
-      this.bodyParts.rightArm.add(tshirtParts.rightSleeve);
-    }
-    
-    // Store reference to t-shirt for cleanup
-    this.humanTShirt = new THREE.Group();
-    this.humanTShirt.add(tshirtParts.torso, tshirtParts.leftShoulder, tshirtParts.rightShoulder, 
-                         tshirtParts.leftSleeve, tshirtParts.rightSleeve, tshirtParts.neckCollar);
   }
 
   /**

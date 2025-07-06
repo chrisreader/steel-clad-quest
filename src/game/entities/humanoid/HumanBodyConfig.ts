@@ -109,16 +109,11 @@ export class HumanBodyConfig {
   }
 
   /**
-   * Creates form-fitting t-shirt components that can be attached to individual body parts for animation
+   * Creates form-fitting t-shirt that matches exact body contours
    */
-  public static createTShirtComponents(bodyRadius: number, bodyHeight: number, tshirtColor: number = 0x4169E1): {
-    torso: THREE.Mesh,
-    leftShoulder: THREE.Mesh,
-    rightShoulder: THREE.Mesh,
-    leftSleeve: THREE.Mesh,
-    rightSleeve: THREE.Mesh,
-    neckCollar: THREE.Mesh
-  } {
+  public static createTShirt(bodyRadius: number, bodyHeight: number, tshirtColor: number = 0x4169E1): THREE.Group {
+    const tshirtGroup = new THREE.Group();
+    
     // Use exact body measurements for perfect fit (from createHumanConfig)
     const armRadius = 0.1; // bodyScale.arm.radius[1] from config
     const armLength = 0.5; // bodyScale.arm.length from config  
@@ -224,8 +219,22 @@ export class HumanBodyConfig {
     torso.receiveShadow = true;
     torso.position.set(0, 0, 0);
     
-    // 2. Shoulder deltoid pieces - positioned FURTHER OUTWARD, made 30% SMALLER than previous size
-    const shoulderJointRadius = (bodyRadius * 0.5) * 1.02; // Match body deltoid size + 2% to overlay on top (30% smaller than 1.46)
+    // Calculate positions RELATIVE TO BODY since t-shirt will be added as child to body mesh
+    // From EnemyHumanoid: shoulderHeight = bodyTopY - 0.15, arms are at shoulderHeight in world coords
+    // Body is positioned at bodyY in world coords, so relative to body: shoulderHeight - bodyY
+    const legLength = 0.6; // bodyScale.leg.length from human config
+    const shinLength = 0.55; // bodyScale.shin.length from human config  
+    const footHeight = 0.2; // estimated foot height
+    const groundToFeetBottom = legLength + shinLength + footHeight / 2;
+    const legTopY = groundToFeetBottom;
+    const bodyY = legTopY + bodyHeight / 2;
+    const bodyTopY = bodyY + bodyHeight / 2;
+    const shoulderHeightWorld = bodyTopY - 0.15; // World position
+    const shoulderHeightRelative = shoulderHeightWorld - bodyY; // Relative to body center
+    const exactArmPositionX = bodyRadius * 0.85; // EXACT same as arms: ±(bodyScale.body.radius * 0.85)
+    
+    // 2. Shoulder deltoid pieces - positioned FURTHER OUTWARD and made 30% WIDER to overlay on top of body shoulders
+    const shoulderJointRadius = (bodyRadius * 0.5) * 1.46; // Match body deltoid size + 46% to overlay on top + 30% wider
     
     // Create custom deltoid-shaped shoulder geometry - IDENTICAL to body creation
     const shoulderGeometry = new THREE.SphereGeometry(shoulderJointRadius, 24, 16);
@@ -266,19 +275,27 @@ export class HumanBodyConfig {
     shoulderGeometry.attributes.position.needsUpdate = true;
     shoulderGeometry.computeVertexNormals();
     
-    // Left shoulder deltoid - positioned to overlay on shoulder joint
+    // Left shoulder deltoid - positioned 40% MORE OUTWARD to overlay properly on top
     const leftShoulder = new THREE.Mesh(shoulderGeometry, shirtMaterial.clone());
-    leftShoulder.position.set(0, 0.05, 0); // Relative to arm position
+    leftShoulder.position.set(
+      -exactArmPositionX * 1.4,      // 40% MORE OUTWARD than arm position
+      shoulderHeightRelative + 0.05, // EXACT shoulder joint Y position (arm Y + joint offset)
+      0                              // EXACT Z position
+    );
     leftShoulder.rotation.set(-0.393 + Math.PI, 0, -0.3); // EXACT shoulder joint rotation
     leftShoulder.castShadow = true;
     
-    // Right shoulder deltoid - positioned to overlay on shoulder joint  
+    // Right shoulder deltoid - positioned 40% MORE OUTWARD to overlay properly on top  
     const rightShoulder = new THREE.Mesh(shoulderGeometry.clone(), shirtMaterial.clone());
-    rightShoulder.position.set(0, 0.05, 0); // Relative to arm position
+    rightShoulder.position.set(
+      exactArmPositionX * 1.4,       // 40% MORE OUTWARD than arm position
+      shoulderHeightRelative + 0.05, // EXACT shoulder joint Y position (arm Y + joint offset)
+      0                              // EXACT Z position
+    );
     rightShoulder.rotation.set(-0.393 + Math.PI, 0, 0.3); // EXACT shoulder joint rotation
     rightShoulder.castShadow = true;
     
-    // 3. Sleeves - positioned to overlay on arms
+    // 3. Sleeves - positioned SLIGHTLY MORE OUTWARD to overlay on top of arms
     const armTopRadius = armRadius; // 0.1 (bodyScale.arm.radius[1])
     const armBottomRadius = 0.08;   // bodyScale.arm.radius[0] 
     const sleeveLength = armLength * 0.6; // Cover 60% of upper arm
@@ -295,15 +312,23 @@ export class HumanBodyConfig {
     // But adjust for sleeve length: translate(0, -sleeveLength * 0.5, 0)
     sleeveGeometry.translate(0, -sleeveLength * 0.5, 0);
     
-    // Left sleeve - positioned to overlay on arm
+    // Left sleeve - positioned 40% MORE OUTWARD to overlay on top of arm
     const leftSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
-    leftSleeve.position.set(0, 0, 0); // Relative to arm position
+    leftSleeve.position.set(
+      -exactArmPositionX * 1.4,      // 40% MORE OUTWARD than arm position
+      shoulderHeightRelative,        // EXACT arm Y position: shoulderHeightRelative
+      0                              // EXACT arm Z position
+    );
     leftSleeve.rotation.set(-0.393, 0, -0.3); // EXACT same rotation as actual left arm
     leftSleeve.castShadow = true;
     
-    // Right sleeve - positioned to overlay on arm
+    // Right sleeve - positioned 40% MORE OUTWARD to overlay on top of arm
     const rightSleeve = new THREE.Mesh(sleeveGeometry.clone(), shirtMaterial.clone());
-    rightSleeve.position.set(0, 0, 0); // Relative to arm position
+    rightSleeve.position.set(
+      exactArmPositionX * 1.4,       // 40% MORE OUTWARD than arm position  
+      shoulderHeightRelative,        // EXACT arm Y position: shoulderHeightRelative
+      0                              // EXACT arm Z position
+    );
     rightSleeve.rotation.set(-0.393, 0, 0.3); // EXACT same rotation as actual right arm
     rightSleeve.castShadow = true;
     
@@ -319,14 +344,15 @@ export class HumanBodyConfig {
     neckCollar.rotation.x = Math.PI / 2;
     neckCollar.castShadow = true;
     
-    return {
-      torso,
-      leftShoulder,
-      rightShoulder,
-      leftSleeve,
-      rightSleeve,
-      neckCollar
-    };
+    // Assemble complete form-fitting t-shirt
+    tshirtGroup.add(torso);
+    tshirtGroup.add(leftShoulder);
+    tshirtGroup.add(rightShoulder);
+    tshirtGroup.add(leftSleeve);
+    tshirtGroup.add(rightSleeve);
+    tshirtGroup.add(neckCollar);
+    
+    return tshirtGroup;
   }
 
   /**
