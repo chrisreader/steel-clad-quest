@@ -73,6 +73,9 @@ export class BuildingManager {
           if (this.effectsManager) {
             building.setEffectsManager(this.effectsManager);
           }
+          if (this.chestInteractionSystem) {
+            building.setChestInteractionSystem(this.chestInteractionSystem);
+          }
         }
         break;
       case 'castle':

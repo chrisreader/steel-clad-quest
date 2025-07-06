@@ -209,9 +209,9 @@ export class HumanCampBuilding extends BaseBuilding {
     // Always have at least one common chest - positioned close to fireplace
     const commonChestPosition = this.position.clone().add(
       new THREE.Vector3(
-        (Math.random() - 0.5) * 4, // Reduced from 6 to 4 units
+        2 + (Math.random() - 0.5) * 2, // 1-3 units from center
         0, // Y=0 to ensure floor level
-        (Math.random() - 0.5) * 4  // Reduced from 6 to 4 units
+        2 + (Math.random() - 0.5) * 2  // 1-3 units from center
       )
     );
     
@@ -231,9 +231,9 @@ export class HumanCampBuilding extends BaseBuilding {
     if (this.config.hasRareChest) {
       const rareChestPosition = this.position.clone().add(
         new THREE.Vector3(
-          (Math.random() - 0.5) * 5, // Reduced from 8 to 5 units
+          -2 - (Math.random() - 0.5) * 2, // -3 to -1 units from center (opposite side)
           0, // Y=0 to ensure floor level
-          (Math.random() - 0.5) * 5  // Reduced from 8 to 5 units
+          -2 - (Math.random() - 0.5) * 2  // -3 to -1 units from center
         )
       );
       

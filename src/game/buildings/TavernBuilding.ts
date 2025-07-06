@@ -5,12 +5,16 @@ import { FireplaceComponent } from './components/FireplaceComponent';
 import { AudioManager } from '../engine/AudioManager';
 import { HumanNPC } from '../entities/humanoid/HumanNPC';
 import { EffectsManager } from '../engine/EffectsManager';
+import { ChestInteractionSystem } from '../systems/ChestInteractionSystem';
+import { TreasureChest } from '../world/objects/TreasureChest';
 
 export class TavernBuilding extends BaseBuilding {
   private fireplaceComponent: FireplaceComponent | null = null;
   private audioManager: AudioManager | null = null;
   private effectsManager: EffectsManager | null = null;
   private tavernKeeper: HumanNPC | null = null;
+  private chestInteractionSystem: ChestInteractionSystem | null = null;
+  private chests: TreasureChest[] = [];
 
   public setAudioManager(audioManager: AudioManager): void {
     this.audioManager = audioManager;
@@ -18,6 +22,10 @@ export class TavernBuilding extends BaseBuilding {
 
   public setEffectsManager(effectsManager: EffectsManager): void {
     this.effectsManager = effectsManager;
+  }
+
+  public setChestInteractionSystem(chestInteractionSystem: ChestInteractionSystem): void {
+    this.chestInteractionSystem = chestInteractionSystem;
   }
 
   protected createStructure(): void {
@@ -84,6 +92,9 @@ export class TavernBuilding extends BaseBuilding {
     
     // Create tavern keeper NPC
     this.createTavernKeeper();
+    
+    // Create treasure chests
+    this.createTavernChests();
   }
   
   private createEnhancedFireplace(): void {
@@ -180,6 +191,53 @@ export class TavernBuilding extends BaseBuilding {
     console.log('👤 [TavernBuilding] Tavern keeper created successfully');
   }
 
+  private createTavernChests(): void {
+    console.log('💰 [TavernBuilding] Creating tavern chests - START');
+    console.log('💰 [TavernBuilding] Tavern position:', this.position);
+    console.log('💰 [TavernBuilding] ChestInteractionSystem available:', !!this.chestInteractionSystem);
+    
+    if (!this.chestInteractionSystem) {
+      console.warn('💰 [TavernBuilding] ChestInteractionSystem not available, skipping chest creation');
+      return;
+    }
+    
+    // Create common chest near the table
+    const commonChestPosition = this.position.clone().add(
+      new THREE.Vector3(-4.5, 0, -3) // Near the table area
+    );
+    
+    console.log('💰 [TavernBuilding] Common chest position:', commonChestPosition);
+    
+    const commonChest = this.chestInteractionSystem.createChest({
+      type: 'common',
+      position: commonChestPosition,
+      id: `tavern_common_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}`
+    });
+    
+    this.chests.push(commonChest);
+    this.addComponent(commonChest.getGroup(), 'common_chest', 'wood');
+    console.log('💰 [TavernBuilding] Common chest created successfully');
+    
+    // Create rare chest in corner
+    const rareChestPosition = this.position.clone().add(
+      new THREE.Vector3(4.5, 0, -4.5) // Corner position
+    );
+    
+    console.log('💰 [TavernBuilding] Rare chest position:', rareChestPosition);
+    
+    const rareChest = this.chestInteractionSystem.createChest({
+      type: 'rare',
+      position: rareChestPosition,
+      id: `tavern_rare_chest_${this.position.x.toFixed(0)}_${this.position.z.toFixed(0)}`
+    });
+    
+    this.chests.push(rareChest);
+    this.addComponent(rareChest.getGroup(), 'rare_chest', 'metal');
+    console.log('💰 [TavernBuilding] Rare chest created successfully');
+    
+    console.log(`💰 [TavernBuilding] Tavern chest creation COMPLETE - ${this.chests.length} chest(s) created`);
+  }
+
   public update(deltaTime: number): void {
     if (this.fireplaceComponent) {
       this.fireplaceComponent.update(deltaTime);
@@ -189,6 +247,11 @@ export class TavernBuilding extends BaseBuilding {
       // For now, update without player position (tavern keeper will wander on its own)
       this.tavernKeeper.update(deltaTime);
     }
+    
+    // Update chests
+    this.chests.forEach(chest => {
+      chest.update(deltaTime);
+    });
   }
   
   public dispose(): void {
@@ -202,10 +265,21 @@ export class TavernBuilding extends BaseBuilding {
       this.tavernKeeper = null;
     }
     
+    // Dispose chests
+    this.chests.forEach(chest => {
+      this.scene.remove(chest.getGroup());
+      chest.dispose();
+    });
+    this.chests.length = 0;
+    
     super.dispose();
   }
   
   protected getBuildingName(): string {
     return 'Tavern';
+  }
+
+  public getChests(): TreasureChest[] {
+    return [...this.chests];
   }
 }
