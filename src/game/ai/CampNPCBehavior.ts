@@ -60,12 +60,14 @@ export class CampNPCBehavior {
     const actionDuration = now - this.actionStartTime;
 
     // ALWAYS log for debugging - remove randomness
-    console.log(`🏕️ [CampNPCBehavior] === BEHAVIOR UPDATE ===`);
-    console.log(`🏕️ [CampNPCBehavior] Current action: ${this.currentAction.type}`);
-    console.log(`🏕️ [CampNPCBehavior] Action duration: ${actionDuration}ms`);
-    console.log(`🏕️ [CampNPCBehavior] NPC position:`, npcPosition);
-    console.log(`🏕️ [CampNPCBehavior] Camp center:`, this.campCenter);
-    console.log(`🏕️ [CampNPCBehavior] Current waypoint:`, this.currentWaypoint);
+    if (Math.random() < 0.1) { // Only log 10% of the time to reduce spam
+      console.log(`🏕️ [CampNPCBehavior] === BEHAVIOR UPDATE ===`);
+      console.log(`🏕️ [CampNPCBehavior] Current action: ${this.currentAction.type}`);
+      console.log(`🏕️ [CampNPCBehavior] Action duration: ${actionDuration}ms`);
+      console.log(`🏕️ [CampNPCBehavior] NPC position:`, npcPosition);
+      console.log(`🏕️ [CampNPCBehavior] Camp center:`, this.campCenter);
+      console.log(`🏕️ [CampNPCBehavior] Current waypoint:`, this.currentWaypoint);
+    }
 
     // Check if we should interact with the player when they're nearby
     if (playerPosition && this.shouldInteractWithPlayer(npcPosition, playerPosition)) {

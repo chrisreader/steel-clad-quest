@@ -54,6 +54,11 @@ export class HumanCampNPC {
       config.toolType // Tool type for weapon
     );
     
+    // CRITICAL: Set the mesh position after creation to ensure it's at the config position
+    const mesh = this.humanoid.getMesh();
+    mesh.position.copy(config.position);
+    console.log(`👤 [HumanCampNPC] Set NPC mesh position to:`, mesh.position);
+    
     this.setupBehavior();
     
     console.log(`👤 [HumanCampNPC] Created sophisticated camp human ${config.name} with ${config.toolType || 'no tool'}`);
@@ -82,32 +87,55 @@ export class HumanCampNPC {
   public update(deltaTime: number, playerPosition?: THREE.Vector3): void {
     if (this.isDead) return;
 
+    // EXTENSIVE DEBUG LOGGING
+    const mesh = this.getMesh();
+    console.log(`🔄 [HumanCampNPC] UPDATE - ${this.config.name}:`);
+    console.log(`🔄 [HumanCampNPC] Current position:`, mesh.position);
+    console.log(`🔄 [HumanCampNPC] Delta time:`, deltaTime);
+
     // Update AI behavior
     const action = this.behavior.update(deltaTime, this.getMesh().position, playerPosition);
     
+    console.log(`🎯 [HumanCampNPC] Action received:`, action.type, action.target ? `Target: ${action.target.x.toFixed(2)}, ${action.target.z.toFixed(2)}` : '');
+    
     // Handle movement and animation based on behavior
     if (action.type === 'move' && action.target) {
+      console.log(`🚶 [HumanCampNPC] MOVING to:`, action.target);
       const wasMoving = this.moveTowards(action.target, deltaTime);
+      console.log(`🚶 [HumanCampNPC] Movement result:`, wasMoving);
       this.humanoid.updateAnimation(deltaTime, wasMoving, wasMoving ? 1.5 : 0);
     } else if (action.type === 'patrol' && action.target) {
+      console.log(`🛡️ [HumanCampNPC] PATROLLING to:`, action.target);
       const wasMoving = this.moveTowards(action.target, deltaTime);
+      console.log(`🛡️ [HumanCampNPC] Patrol movement result:`, wasMoving);
       this.humanoid.updateAnimation(deltaTime, wasMoving, wasMoving ? 1.2 : 0); // Slower patrol speed
     } else if (action.type === 'guard' && action.lookDirection) {
+      console.log(`👁️ [HumanCampNPC] GUARDING - looking towards:`, action.lookDirection);
       // Guard behavior: rotate to look in direction while idle
-      const mesh = this.getMesh();
       const targetRotation = Math.atan2(action.lookDirection.x, action.lookDirection.z);
+      const oldRotation = mesh.rotation.y;
       mesh.rotation.y = this.smoothRotate(mesh.rotation.y, targetRotation, deltaTime * 2);
+      console.log(`👁️ [HumanCampNPC] Rotation: ${oldRotation.toFixed(2)} -> ${mesh.rotation.y.toFixed(2)}`);
       this.humanoid.updateAnimation(deltaTime, false, 0); // Idle animation
     } else if (action.type === 'idle') {
+      console.log(`😴 [HumanCampNPC] IDLE`);
       this.humanoid.updateAnimation(deltaTime, false, 0); // Idle animation
     } else if (action.type === 'interact') {
+      console.log(`💬 [HumanCampNPC] INTERACTING`);
       this.humanoid.updateAnimation(deltaTime, false, 0); // Idle animation during interaction
     }
+    
+    console.log(`🔄 [HumanCampNPC] After update position:`, mesh.position);
   }
 
   private moveTowards(target: THREE.Vector3, deltaTime: number): boolean {
     const mesh = this.getMesh();
     const currentPos = mesh.position.clone();
+    
+    console.log(`🎯 [HumanCampNPC] MOVE TOWARDS - ${this.config.name}:`);
+    console.log(`🎯 [HumanCampNPC] Current pos:`, currentPos);
+    console.log(`🎯 [HumanCampNPC] Target pos:`, target);
+    console.log(`🎯 [HumanCampNPC] Delta time:`, deltaTime);
     
     // Calculate direction to target
     const direction = new THREE.Vector3()
@@ -115,23 +143,43 @@ export class HumanCampNPC {
       .normalize();
     direction.y = 0; // Keep on ground level
     
+    console.log(`🎯 [HumanCampNPC] Direction:`, direction);
+    
     const moveSpeed = 3.0 * deltaTime; // Realistic walking speed
     const distanceToTarget = currentPos.distanceTo(target);
     
+    console.log(`🎯 [HumanCampNPC] Move speed:`, moveSpeed);
+    console.log(`🎯 [HumanCampNPC] Distance to target:`, distanceToTarget);
+    
     // Move if distance > threshold
     if (distanceToTarget > 0.5) {
+      console.log(`🎯 [HumanCampNPC] SHOULD MOVE - distance ${distanceToTarget} > 0.5`);
+      
+      // Store old position for comparison
+      const oldX = mesh.position.x;
+      const oldZ = mesh.position.z;
+      
       // Move towards target
       mesh.position.x += direction.x * moveSpeed;
       mesh.position.z += direction.z * moveSpeed;
       mesh.position.y = 0; // Keep on ground
       
+      console.log(`🎯 [HumanCampNPC] Position change: X(${oldX.toFixed(2)} -> ${mesh.position.x.toFixed(2)}), Z(${oldZ.toFixed(2)} -> ${mesh.position.z.toFixed(2)})`);
+      
       // Smooth rotation towards movement direction
       const targetRotation = Math.atan2(direction.x, direction.z);
+      const oldRotation = mesh.rotation.y;
       mesh.rotation.y = this.smoothRotate(mesh.rotation.y, targetRotation, deltaTime * 4);
       
+      console.log(`🎯 [HumanCampNPC] Rotation change: ${oldRotation.toFixed(2)} -> ${mesh.rotation.y.toFixed(2)}`);
+      console.log(`🎯 [HumanCampNPC] RETURNING TRUE - WAS MOVING`);
+      
       return true; // Was moving
+    } else {
+      console.log(`🎯 [HumanCampNPC] NOT MOVING - distance ${distanceToTarget} <= 0.5`);
     }
     
+    console.log(`🎯 [HumanCampNPC] RETURNING FALSE - NOT MOVING`);
     return false; // Not moving
   }
 
