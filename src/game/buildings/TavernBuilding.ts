@@ -234,9 +234,11 @@ export class TavernBuilding extends BaseBuilding {
 
   private createRealisticRoof(): void {
     const wallHeight = 6;
-    const roofHeight = 3;
+    const roofHeight = 2.5;
+    const tavernWidth = 12;
+    const tavernDepth = 12;
     
-    // Pitched roof with proper geometry
+    // Pitched roof with proper 3D geometry
     const roofMaterial = new THREE.MeshStandardMaterial({ 
       color: 0x654321,
       map: TextureGenerator.createWoodTexture(),
@@ -244,36 +246,44 @@ export class TavernBuilding extends BaseBuilding {
       metalness: 0
     });
     
-    // Create proper pitched roof using angled planes
-    const roofLength = 14; // Length along Z-axis
-    const roofSlope = 5;   // Width of each roof slope
-    
-    // Left roof slope - angled downward from center ridge to left wall
-    const leftRoofGeometry = new THREE.PlaneGeometry(roofSlope, roofLength);
+    // Create left roof slope using 3D box geometry
+    const leftRoofGeometry = new THREE.BoxGeometry(6, 0.3, tavernDepth + 2); // Extra 2 for overhang
     const leftRoof = new THREE.Mesh(leftRoofGeometry, roofMaterial);
-    leftRoof.position.set(-roofSlope/2, wallHeight + roofHeight/2, 0);
-    leftRoof.rotation.set(0, 0, Math.PI/6); // Angle downward to the left
+    leftRoof.position.set(-3, wallHeight + roofHeight/2, 0);
+    leftRoof.rotation.z = Math.PI/8; // 22.5-degree pitch
     this.addComponent(leftRoof, 'roof_left', 'wood');
     
-    // Right roof slope - angled downward from center ridge to right wall
-    const rightRoofGeometry = new THREE.PlaneGeometry(roofSlope, roofLength);
+    // Create right roof slope using 3D box geometry
+    const rightRoofGeometry = new THREE.BoxGeometry(6, 0.3, tavernDepth + 2); // Extra 2 for overhang
     const rightRoof = new THREE.Mesh(rightRoofGeometry, roofMaterial.clone());
-    rightRoof.position.set(roofSlope/2, wallHeight + roofHeight/2, 0);
-    rightRoof.rotation.set(0, 0, -Math.PI/6); // Angle downward to the right
+    rightRoof.position.set(3, wallHeight + roofHeight/2, 0);
+    rightRoof.rotation.z = -Math.PI/8; // 22.5-degree pitch opposite direction
     this.addComponent(rightRoof, 'roof_right', 'wood');
     
-    // Ridge beam at the peak
-    const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, roofLength), roofMaterial.clone());
-    ridgeBeam.position.set(0, wallHeight + roofHeight, 0);
+    // Ridge beam at the peak where both slopes meet
+    const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, tavernDepth + 2), roofMaterial.clone());
+    ridgeBeam.position.set(0, wallHeight + roofHeight + 1, 0);
     this.addComponent(ridgeBeam, 'ridge_beam', 'wood');
     
-    // Add roof support beams for realism
-    for (let i = -1; i <= 1; i++) {
-      const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, roofSlope * 2.2), roofMaterial.clone());
-      rafter.position.set(0, wallHeight + roofHeight - 0.5, i * 4);
-      rafter.rotation.set(0, Math.PI/2, 0);
-      this.addComponent(rafter, `roof_rafter_${i + 1}`, 'wood');
-    }
+    // End caps to close the roof triangles
+    const endCapMaterial = roofMaterial.clone();
+    
+    // Front end cap
+    const frontEndCapGeometry = new THREE.BufferGeometry();
+    const frontVertices = new Float32Array([
+      -6, wallHeight, 7,        // Bottom left
+      6, wallHeight, 7,         // Bottom right  
+      0, wallHeight + roofHeight + 1, 7  // Top center
+    ]);
+    frontEndCapGeometry.setAttribute('position', new THREE.BufferAttribute(frontVertices, 3));
+    frontEndCapGeometry.computeVertexNormals();
+    const frontEndCap = new THREE.Mesh(frontEndCapGeometry, endCapMaterial);
+    this.addComponent(frontEndCap, 'roof_front_cap', 'wood');
+    
+    // Back end cap
+    const backEndCap = frontEndCap.clone();
+    backEndCap.position.set(0, 0, -14);
+    this.addComponent(backEndCap, 'roof_back_cap', 'wood');
   }
 
   private createArchitecturalDetails(): void {
