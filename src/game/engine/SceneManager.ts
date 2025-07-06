@@ -807,6 +807,11 @@ export class SceneManager {
     };
     
     this.loadedRegions.set(regionKey, newRegion);
+    
+    console.error(`🚨🚨🚨 [SceneManager] ===== ABOUT TO GENERATE STRUCTURES =====`);
+    console.error(`🚨🚨🚨 [SceneManager] Region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    alert(`🚨 SceneManager: About to generate structures for Ring ${region.ringIndex}, Quad ${region.quadrant}`);
+    
     this.terrainFeatureGenerator.generateFeaturesForRegion(region);
     this.structureGenerator.generateStructuresForRegion(region);
     

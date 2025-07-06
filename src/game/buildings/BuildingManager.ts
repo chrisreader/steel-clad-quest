@@ -81,16 +81,22 @@ export class BuildingManager {
         building = new CastleBuilding(this.scene, this.physicsManager, config.position);
         break;
       case 'human_camp':
+        console.error(`🚨🚨🚨 [BuildingManager] ABOUT TO CREATE HUMAN CAMP at:`, config.position);
+        alert(`🚨 BuildingManager: Creating human camp at ${config.position.x}, ${config.position.z}`);
+        
         building = new HumanCampBuilding(this.scene, this.physicsManager, config.position, config.campConfig);
+        
+        console.error(`🚨🚨🚨 [BuildingManager] Human camp created successfully:`, !!building);
+        
         if (building instanceof HumanCampBuilding) {
           if (this.audioManager) {
             building.setAudioManager(this.audioManager);
           }
           if (this.effectsManager) {
             building.setEffectsManager(this.effectsManager);
-            console.log('🏕️ [BuildingManager] Human camp created with EffectsManager for NPCs');
+            console.error('🏕️ [BuildingManager] Human camp created with EffectsManager for NPCs');
           } else {
-            console.warn('🏕️ [BuildingManager] EffectsManager not set - camp NPCs will not spawn');
+            console.error('🏕️ [BuildingManager] EffectsManager not set - camp NPCs will not spawn');
           }
         }
         break;

@@ -26,17 +26,19 @@ export class HumanCampBuilding extends BaseBuilding {
   private furniture: THREE.Group[] = [];
 
   constructor(scene: THREE.Scene, physicsManager: any, position: THREE.Vector3, config?: Partial<CampConfig>) {
-    super(scene, physicsManager, position);
+    // ULTRA CRITICAL DEBUG - Force visibility with multiple methods
+    console.error(`🚨🚨🚨 [HumanCampBuilding] ===== CONSTRUCTOR START =====`);
+    console.warn(`🚨🚨🚨 [HumanCampBuilding] Camp being created at:`, position);
+    console.log(`🚨🚨🚨 [HumanCampBuilding] Config:`, config);
+    alert(`🚨 HUMAN CAMP CONSTRUCTOR CALLED at ${position.x}, ${position.z}`);
     
-    // CRITICAL DEBUG - This should ALWAYS show if a camp is being created
-    console.log(`🚨 [HumanCampBuilding] CONSTRUCTOR CALLED at position:`, position);
-    console.error(`🚨 [HumanCampBuilding] CONSTRUCTOR CALLED - ERROR LOG for visibility`);
+    super(scene, physicsManager, position);
     
     // Generate random camp configuration
     this.config = this.generateCampConfig(config);
     
-    console.log(`🏕️ [HumanCampBuilding] Creating ${this.config.size} human camp with ${this.config.npcCount} NPCs`);
-    console.error(`🏕️ [HumanCampBuilding] Camp config generated:`, this.config);
+    console.error(`🚨🚨🚨 [HumanCampBuilding] Camp config: ${this.config.size} with ${this.config.npcCount} NPCs`);
+    console.error(`🚨🚨🚨 [HumanCampBuilding] ===== CONSTRUCTOR END =====`);
   }
 
   public setAudioManager(audioManager: AudioManager): void {
