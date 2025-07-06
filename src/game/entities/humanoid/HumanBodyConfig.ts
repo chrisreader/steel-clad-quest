@@ -109,18 +109,15 @@ export class HumanBodyConfig {
   }
 
   /**
-   * Creates realistic t-shirt for human NPCs that wraps around torso and shoulders
+   * Creates form-fitting t-shirt that matches exact body contours
    */
   public static createTShirt(bodyRadius: number, bodyHeight: number, tshirtColor: number = 0x4169E1): THREE.Group {
     const tshirtGroup = new THREE.Group();
     
-    // Create main t-shirt body - slightly larger than torso for fabric effect
-    const shirtBodyGeometry = new THREE.CylinderGeometry(
-      bodyRadius * 1.08,    // Top radius - slightly larger
-      bodyRadius * 1.12,    // Bottom radius - slightly flared
-      bodyHeight * 0.75,    // Height - covers most of torso
-      16, 8                 // Segments for smooth appearance
-    );
+    // Use exact body measurements for perfect fit (from createHumanConfig)
+    const armRadius = 0.1; // bodyScale.arm.radius[1] from config
+    const armLength = 0.5; // bodyScale.arm.length from config  
+    const armPositionX = bodyRadius * 0.85; // Exact arm attachment position
     
     // Create fabric material with realistic properties
     const shirtMaterial = new THREE.MeshPhongMaterial({
@@ -130,52 +127,89 @@ export class HumanBodyConfig {
       transparent: false
     });
     
-    const shirtBody = new THREE.Mesh(shirtBodyGeometry, shirtMaterial);
-    shirtBody.castShadow = true;
-    shirtBody.receiveShadow = true;
-    
-    // Create sleeves that extend to shoulders
-    const sleeveGeometry = new THREE.CylinderGeometry(
-      bodyRadius * 0.45,    // Sleeve opening
-      bodyRadius * 0.35,    // Sleeve at shoulder
-      bodyHeight * 0.25,    // Sleeve length
-      12, 4
+    // 1. Main torso section - matches body exactly but slightly larger
+    const torsoGeometry = new THREE.CylinderGeometry(
+      bodyRadius * 1.06,    // Top radius - 6% larger for fabric fit
+      bodyRadius * 1.08,    // Bottom radius - slightly more flared
+      bodyHeight * 0.8,     // Height - covers most of torso
+      16, 8                 // Smooth segments
     );
     
-    // Left sleeve
+    const torso = new THREE.Mesh(torsoGeometry, shirtMaterial);
+    torso.castShadow = true;
+    torso.receiveShadow = true;
+    torso.position.set(0, 0, 0);
+    
+    // 2. Shoulder connection pieces - smooth transition from torso to sleeves
+    const shoulderGeometry = new THREE.SphereGeometry(
+      bodyRadius * 0.25,    // Shoulder padding size 
+      12, 8,                // Segments
+      0, Math.PI,           // Hemisphere
+      0, Math.PI * 0.7      // Partial sphere for shoulder shape
+    );
+    
+    // Left shoulder
+    const leftShoulder = new THREE.Mesh(shoulderGeometry, shirtMaterial.clone());
+    leftShoulder.position.set(-armPositionX, bodyHeight * 0.35, 0);
+    leftShoulder.rotation.z = Math.PI * 0.15; // Slight rotation for natural fit
+    leftShoulder.castShadow = true;
+    
+    // Right shoulder  
+    const rightShoulder = new THREE.Mesh(shoulderGeometry, shirtMaterial.clone());
+    rightShoulder.position.set(armPositionX, bodyHeight * 0.35, 0);
+    rightShoulder.rotation.z = -Math.PI * 0.15; // Mirror rotation
+    rightShoulder.castShadow = true;
+    
+    // 3. Sleeves - positioned exactly at arm attachment points with correct dimensions
+    const sleeveRadius = armRadius * 1.15; // 15% larger than arm for fabric fit
+    const sleeveLength = armLength * 0.6;  // Cover upper arm partially
+    
+    const sleeveGeometry = new THREE.CylinderGeometry(
+      sleeveRadius,         // Top radius (matches arm + fabric allowance)
+      sleeveRadius * 0.9,   // Bottom radius (slightly tapered)
+      sleeveLength,         // Length based on arm measurements
+      12, 4                 // Segments
+    );
+    
+    // Left sleeve - positioned at exact arm location
     const leftSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
-    leftSleeve.position.set(-bodyRadius * 0.9, bodyHeight * 0.25, 0);
-    leftSleeve.rotation.z = Math.PI / 6; // Slight angle for natural fit
+    leftSleeve.position.set(
+      -armPositionX,                    // Exact arm X position
+      bodyHeight * 0.35 - sleeveLength * 0.3, // Slightly below shoulder
+      0
+    );
+    leftSleeve.rotation.z = Math.PI * 0.08; // Slight outward angle
     leftSleeve.castShadow = true;
     
-    // Right sleeve
+    // Right sleeve - positioned at exact arm location
     const rightSleeve = new THREE.Mesh(sleeveGeometry, shirtMaterial.clone());
-    rightSleeve.position.set(bodyRadius * 0.9, bodyHeight * 0.25, 0);
-    rightSleeve.rotation.z = -Math.PI / 6; // Mirror angle
+    rightSleeve.position.set(
+      armPositionX,                     // Exact arm X position  
+      bodyHeight * 0.35 - sleeveLength * 0.3, // Slightly below shoulder
+      0
+    );
+    rightSleeve.rotation.z = -Math.PI * 0.08; // Mirror angle
     rightSleeve.castShadow = true;
     
-    // Add collar detail
-    const collarGeometry = new THREE.TorusGeometry(
-      bodyRadius * 1.05,    // Collar radius
-      bodyRadius * 0.08,    // Collar thickness
+    // 4. Neck opening - realistic collar
+    const neckGeometry = new THREE.TorusGeometry(
+      bodyRadius * 0.4,     // Neck opening radius
+      bodyRadius * 0.04,    // Collar thickness  
       8, 16
     );
     
-    const collarMaterial = new THREE.MeshPhongMaterial({
-      color: tshirtColor,
-      shininess: 3
-    });
+    const neckCollar = new THREE.Mesh(neckGeometry, shirtMaterial.clone());
+    neckCollar.position.set(0, bodyHeight * 0.38, 0);
+    neckCollar.rotation.x = Math.PI / 2;
+    neckCollar.castShadow = true;
     
-    const collar = new THREE.Mesh(collarGeometry, collarMaterial);
-    collar.position.set(0, bodyHeight * 0.35, 0);
-    collar.rotation.x = Math.PI / 2;
-    collar.castShadow = true;
-    
-    // Assemble t-shirt
-    tshirtGroup.add(shirtBody);
+    // Assemble complete form-fitting t-shirt
+    tshirtGroup.add(torso);
+    tshirtGroup.add(leftShoulder);
+    tshirtGroup.add(rightShoulder);
     tshirtGroup.add(leftSleeve);
     tshirtGroup.add(rightSleeve);
-    tshirtGroup.add(collar);
+    tshirtGroup.add(neckCollar);
     
     return tshirtGroup;
   }
