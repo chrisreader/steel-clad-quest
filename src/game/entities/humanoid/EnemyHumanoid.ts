@@ -907,7 +907,7 @@ export abstract class EnemyHumanoid {
       leftEar.position.set(
         -bodyScale.head.radius * 0.85, // Closer to head surface
         bodyScale.head.radius * 0.3,   // Positioned on side of head 
-        0
+        -bodyScale.head.radius * 0.2   // Position ears back where they should naturally be
       );
       leftEar.rotation.z = -0.4; // Tilt outward from head
       leftEar.rotation.x = -Math.PI/2; // Point upward with base at head
@@ -919,7 +919,7 @@ export abstract class EnemyHumanoid {
       rightEar.position.set(
         bodyScale.head.radius * 0.85,  // Closer to head surface
         bodyScale.head.radius * 0.3,   // Positioned on side of head
-        0
+        -bodyScale.head.radius * 0.2   // Position ears back where they should naturally be
       );
       rightEar.rotation.z = 0.4; // Tilt outward from head
       rightEar.rotation.x = -Math.PI/2; // Point upward with base at head
