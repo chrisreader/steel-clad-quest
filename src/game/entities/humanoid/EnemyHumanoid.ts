@@ -626,8 +626,9 @@ export abstract class EnemyHumanoid {
       this.addTusks(headGroup, 0, bodyScale, features); // Use 0 since head group is positioned
     }
 
-    // Ears
-    this.addEars(headGroup, 0, bodyScale, colors, muscleMaterial); // Use 0 since head group is positioned
+    // Add ears (longer for green humanoids/goblins)
+    const isGreenHumanoid = this.config.type === EnemyType.GOBLIN; // Green humanoids use GOBLIN type
+    this.addEars(headGroup, 0, bodyScale, colors, muscleMaterial, isGreenHumanoid);
 
     return { parent: headGroup, mesh: upperSkull };
   }
@@ -890,58 +891,109 @@ export abstract class EnemyHumanoid {
     headY: number,
     bodyScale: BodyScale,
     colors: any,
-    muscleMaterial: THREE.MeshPhongMaterial
+    muscleMaterial: THREE.MeshPhongMaterial,
+    isGreenHumanoid: boolean = false
   ) {
-    // Create realistic human ear structure
-    const earMaterial = muscleMaterial.clone();
-    
-    // Outer ear (main structure)
-    const outerEarGeometry = new THREE.SphereGeometry(0.08, 12, 10);
-    const outerEarPositions = outerEarGeometry.attributes.position.array as Float32Array;
-    for (let i = 0; i < outerEarPositions.length; i += 3) {
-      const x = outerEarPositions[i];
-      const y = outerEarPositions[i + 1];
-      const z = outerEarPositions[i + 2];
+    if (isGreenHumanoid) {
+      // Create longer, pointed goblin ears
+      const earLength = 0.25; // Much longer for goblins
+      const earWidth = 0.12;
+      const earThickness = 0.06;
       
-      // Shape into realistic ear form
-      outerEarPositions[i] = x * 0.5;      // Much thinner from side
-      outerEarPositions[i + 1] = y * 1.3;  // Taller
-      outerEarPositions[i + 2] = z * 0.7;  // Less depth
+      const earGeometry = new THREE.BoxGeometry(earThickness, earLength, earWidth);
+      
+      // Left ear - positioned and angled for goblin look
+      const leftEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
+      leftEar.position.set(
+        -bodyScale.head.radius * 0.9, 
+        0.1, // Slightly higher for goblins
+        0
+      );
+      leftEar.rotation.z = -0.3; // More angled for goblins
+      leftEar.rotation.y = -0.2; // Slight forward angle for goblins
+      leftEar.castShadow = true;
+      headGroup.add(leftEar);
+
+      // Right ear - positioned and angled for goblin look  
+      const rightEar = new THREE.Mesh(earGeometry, muscleMaterial.clone());
+      rightEar.position.set(
+        bodyScale.head.radius * 0.9, 
+        0.1, // Slightly higher for goblins
+        0
+      );
+      rightEar.rotation.z = 0.3; // More angled for goblins
+      rightEar.rotation.y = 0.2; // Slight forward angle for goblins
+      rightEar.castShadow = true;
+      headGroup.add(rightEar);
+
+      // Add pointed ear tips for goblin ears
+      const tipGeometry = new THREE.ConeGeometry(0.02, 0.08, 6);
+      
+      // Left ear tip
+      const leftTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
+      leftTip.position.set(-bodyScale.head.radius * 0.9, 0.22, 0);
+      leftTip.rotation.z = -0.3;
+      leftTip.castShadow = true;
+      headGroup.add(leftTip);
+      
+      // Right ear tip
+      const rightTip = new THREE.Mesh(tipGeometry, muscleMaterial.clone());
+      rightTip.position.set(bodyScale.head.radius * 0.9, 0.22, 0);
+      rightTip.rotation.z = 0.3;
+      rightTip.castShadow = true;
+      headGroup.add(rightTip);
+    } else {
+      // Create realistic human ear structure (original code)
+      const earMaterial = muscleMaterial.clone();
+      
+      // Outer ear (main structure)
+      const outerEarGeometry = new THREE.SphereGeometry(0.08, 12, 10);
+      const outerEarPositions = outerEarGeometry.attributes.position.array as Float32Array;
+      for (let i = 0; i < outerEarPositions.length; i += 3) {
+        const x = outerEarPositions[i];
+        const y = outerEarPositions[i + 1];
+        const z = outerEarPositions[i + 2];
+        
+        // Shape into realistic ear form
+        outerEarPositions[i] = x * 0.5;      // Much thinner from side
+        outerEarPositions[i + 1] = y * 1.3;  // Taller
+        outerEarPositions[i + 2] = z * 0.7;  // Less depth
+      }
+      outerEarGeometry.attributes.position.needsUpdate = true;
+      outerEarGeometry.computeVertexNormals();
+
+      // Left ear
+      const leftOuterEar = new THREE.Mesh(outerEarGeometry, earMaterial);
+      leftOuterEar.position.set(-bodyScale.head.radius * 0.85, 0.05, 0);
+      leftOuterEar.rotation.z = -Math.PI / 12; // Slight tilt
+      leftOuterEar.castShadow = true;
+      headGroup.add(leftOuterEar);
+      
+      // Inner ear cavity for left ear
+      const innerEarGeometry = new THREE.SphereGeometry(0.035, 8, 6);
+      const innerEarMaterial = new THREE.MeshPhongMaterial({
+        color: 0x555555, // Darker inner ear
+        shininess: 5
+      });
+      
+      const leftInnerEar = new THREE.Mesh(innerEarGeometry, innerEarMaterial);
+      leftInnerEar.position.set(-bodyScale.head.radius * 0.83, 0.05, 0.02);
+      leftInnerEar.scale.set(0.4, 0.8, 0.6);
+      headGroup.add(leftInnerEar);
+
+      // Right ear 
+      const rightOuterEar = new THREE.Mesh(outerEarGeometry.clone(), earMaterial.clone());
+      rightOuterEar.position.set(bodyScale.head.radius * 0.85, 0.05, 0);
+      rightOuterEar.rotation.z = Math.PI / 12; // Slight tilt opposite direction
+      rightOuterEar.castShadow = true;
+      headGroup.add(rightOuterEar);
+      
+      // Inner ear cavity for right ear
+      const rightInnerEar = new THREE.Mesh(innerEarGeometry.clone(), innerEarMaterial.clone());
+      rightInnerEar.position.set(bodyScale.head.radius * 0.83, 0.05, 0.02);
+      rightInnerEar.scale.set(0.4, 0.8, 0.6);
+      headGroup.add(rightInnerEar);
     }
-    outerEarGeometry.attributes.position.needsUpdate = true;
-    outerEarGeometry.computeVertexNormals();
-
-    // Left ear
-    const leftOuterEar = new THREE.Mesh(outerEarGeometry, earMaterial);
-    leftOuterEar.position.set(-bodyScale.head.radius * 0.85, 0.05, 0);
-    leftOuterEar.rotation.z = -Math.PI / 12; // Slight tilt
-    leftOuterEar.castShadow = true;
-    headGroup.add(leftOuterEar);
-    
-    // Inner ear cavity for left ear
-    const innerEarGeometry = new THREE.SphereGeometry(0.035, 8, 6);
-    const innerEarMaterial = new THREE.MeshPhongMaterial({
-      color: 0x555555, // Darker inner ear
-      shininess: 5
-    });
-    
-    const leftInnerEar = new THREE.Mesh(innerEarGeometry, innerEarMaterial);
-    leftInnerEar.position.set(-bodyScale.head.radius * 0.83, 0.05, 0.02);
-    leftInnerEar.scale.set(0.4, 0.8, 0.6);
-    headGroup.add(leftInnerEar);
-
-    // Right ear 
-    const rightOuterEar = new THREE.Mesh(outerEarGeometry.clone(), earMaterial.clone());
-    rightOuterEar.position.set(bodyScale.head.radius * 0.85, 0.05, 0);
-    rightOuterEar.rotation.z = Math.PI / 12; // Slight tilt opposite direction
-    rightOuterEar.castShadow = true;
-    headGroup.add(rightOuterEar);
-    
-    // Inner ear cavity for right ear
-    const rightInnerEar = new THREE.Mesh(innerEarGeometry.clone(), innerEarMaterial.clone());
-    rightInnerEar.position.set(bodyScale.head.radius * 0.83, 0.05, 0.02);
-    rightInnerEar.scale.set(0.4, 0.8, 0.6);
-    headGroup.add(rightInnerEar);
   }
 
   private createArms(
