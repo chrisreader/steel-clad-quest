@@ -289,6 +289,9 @@ export class StructureGenerator {
       }
     }
 
+    // GUARANTEED CAMPS: Always place at least 2 camps in specific locations
+    this.createGuaranteedCamps(region, structures);
+
     // NEW: Place human camps sparingly near forests and rock formations (Ring 2-4 only)
     if (region.ringIndex >= 2 && region.ringIndex <= 4) {
       // FIXED: Increased spawn rates to be more reasonable while still performance-optimized
@@ -349,8 +352,72 @@ export class StructureGenerator {
         console.log(`🏕️ [DEBUG] Random chance failed for Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
       }
     }
-  
-  // Add more structure placement logic for other rings/quadrants here
+  }
+  // GUARANTEED CAMPS: Ensure at least 2 camps always exist in the world
+  private createGuaranteedCamps(region: RegionCoordinates, structures: Structure[]): void {
+    // Only place guaranteed camps in specific regions to avoid duplicates
+    
+    // Guaranteed Forest Camp - Ring 2, Quadrant 1 (SE)
+    if (region.ringIndex === 2 && region.quadrant === 1) {
+      const forestCampPosition = new THREE.Vector3(120, 0, 80); // Known dense forest area
+      
+      console.log(`🏕️ [GUARANTEED] Creating forest camp at (${forestCampPosition.x}, ${forestCampPosition.z})`);
+      
+      if (this.buildingManager) {
+        const forestCamp = this.buildingManager.createBuilding({
+          type: 'human_camp',
+          position: forestCampPosition,
+          id: `guaranteed_forest_camp`,
+          campConfig: { 
+            size: Math.random() < 0.5 ? 'medium' : 'large',
+            npcCount: 2,
+            hasRareChest: true
+          }
+        });
+        
+        if (forestCamp) {
+          structures.push({
+            type: 'human_camp',
+            position: forestCampPosition,
+            rotation: 0,
+            model: forestCamp.getBuildingGroup()
+          });
+          
+          console.log(`🏕️ ✅ GUARANTEED FOREST CAMP placed at (${forestCampPosition.x}, ${forestCampPosition.z})`);
+        }
+      }
+    }
+    
+    // Guaranteed Rock Camp - Ring 2, Quadrant 3 (NW)  
+    if (region.ringIndex === 2 && region.quadrant === 3) {
+      const rockCampPosition = new THREE.Vector3(-90, 0, 110); // Known rock formation area
+      
+      console.log(`🏕️ [GUARANTEED] Creating rock camp at (${rockCampPosition.x}, ${rockCampPosition.z})`);
+      
+      if (this.buildingManager) {
+        const rockCamp = this.buildingManager.createBuilding({
+          type: 'human_camp',
+          position: rockCampPosition,
+          id: `guaranteed_rock_camp`,
+          campConfig: { 
+            size: Math.random() < 0.5 ? 'medium' : 'large',
+            npcCount: 2,
+            hasRareChest: true
+          }
+        });
+        
+        if (rockCamp) {
+          structures.push({
+            type: 'human_camp',
+            position: rockCampPosition,
+            rotation: 0,
+            model: rockCamp.getBuildingGroup()
+          });
+          
+          console.log(`🏕️ ✅ GUARANTEED ROCK CAMP placed at (${rockCampPosition.x}, ${rockCampPosition.z})`);
+        }
+      }
+    }
   }
 
   // Helper method to get biome info for camp placement
