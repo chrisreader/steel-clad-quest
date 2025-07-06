@@ -234,6 +234,7 @@ export class TavernBuilding extends BaseBuilding {
 
   private createRealisticRoof(): void {
     const wallHeight = 6;
+    const roofHeight = 3;
     
     // Pitched roof with proper geometry
     const roofMaterial = new THREE.MeshStandardMaterial({ 
@@ -243,30 +244,36 @@ export class TavernBuilding extends BaseBuilding {
       metalness: 0
     });
     
-    // Create proper pitched roof using box geometry for better visibility
-    const roofWidth = 14;
-    const roofDepth = 8;
-    const roofHeight = 3;
+    // Create proper pitched roof using angled planes
+    const roofLength = 14; // Length along Z-axis
+    const roofSlope = 5;   // Width of each roof slope
     
-    // Left roof slope
-    const leftRoofGeometry = new THREE.BoxGeometry(roofWidth, 0.2, roofDepth);
+    // Left roof slope - angled downward from center ridge to left wall
+    const leftRoofGeometry = new THREE.PlaneGeometry(roofSlope, roofLength);
     const leftRoof = new THREE.Mesh(leftRoofGeometry, roofMaterial);
-    leftRoof.position.set(0, wallHeight + roofHeight / 2, 0);
-    leftRoof.rotation.z = -Math.PI / 6; // 30-degree pitch
-    leftRoof.position.x = -1.5;
+    leftRoof.position.set(-roofSlope/2, wallHeight + roofHeight/2, 0);
+    leftRoof.rotation.set(0, 0, Math.PI/6); // Angle downward to the left
     this.addComponent(leftRoof, 'roof_left', 'wood');
     
-    // Right roof slope  
-    const rightRoof = new THREE.Mesh(leftRoofGeometry.clone(), roofMaterial.clone());
-    rightRoof.position.set(0, wallHeight + roofHeight / 2, 0);
-    rightRoof.rotation.z = Math.PI / 6; // 30-degree pitch
-    rightRoof.position.x = 1.5;
+    // Right roof slope - angled downward from center ridge to right wall
+    const rightRoofGeometry = new THREE.PlaneGeometry(roofSlope, roofLength);
+    const rightRoof = new THREE.Mesh(rightRoofGeometry, roofMaterial.clone());
+    rightRoof.position.set(roofSlope/2, wallHeight + roofHeight/2, 0);
+    rightRoof.rotation.set(0, 0, -Math.PI/6); // Angle downward to the right
     this.addComponent(rightRoof, 'roof_right', 'wood');
     
     // Ridge beam at the peak
-    const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, roofWidth), roofMaterial.clone());
-    ridgeBeam.position.set(0, wallHeight + roofHeight + 0.5, 0);
+    const ridgeBeam = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, roofLength), roofMaterial.clone());
+    ridgeBeam.position.set(0, wallHeight + roofHeight, 0);
     this.addComponent(ridgeBeam, 'ridge_beam', 'wood');
+    
+    // Add roof support beams for realism
+    for (let i = -1; i <= 1; i++) {
+      const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, roofSlope * 2.2), roofMaterial.clone());
+      rafter.position.set(0, wallHeight + roofHeight - 0.5, i * 4);
+      rafter.rotation.set(0, Math.PI/2, 0);
+      this.addComponent(rafter, `roof_rafter_${i + 1}`, 'wood');
+    }
   }
 
   private createArchitecturalDetails(): void {
