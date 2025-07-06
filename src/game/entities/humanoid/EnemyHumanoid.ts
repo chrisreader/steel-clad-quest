@@ -446,16 +446,16 @@ export abstract class EnemyHumanoid {
           // Very top - significant taper toward neck (more aggressive than human)
           const topCurve = (normalizedY - 0.45) / 0.05; // 0 at upper-top boundary, 1 at very top
           scaleFactor = 1.1 - (topCurve * 0.5); // Taper from 1.1 to 0.6 (more aggressive)
-          frontBackScale = 1.0 - topCurve * 0.4; // More narrow front-to-back
+          frontBackScale = 0.7 - topCurve * 0.3; // Flatter front-to-back (reduced from 1.0)
         } else if (normalizedY > 0.4) {
           // Upper-top - start slight taper
           const upperCurve = (normalizedY - 0.4) / 0.05; // 0 at upper-middle boundary, 1 at very top boundary
           scaleFactor = 1.1 - (upperCurve * 0.15); // Gradual reduction from 1.1 to 0.95
-          frontBackScale = 1.0 - upperCurve * 0.2; // Start front-to-back compression
+          frontBackScale = 0.7 - upperCurve * 0.15; // Flatter front-to-back compression (reduced from 1.0)
         } else {
           // Upper-middle - broader chest/shoulder area for goblin
           scaleFactor = 1.1; // Slightly broader chest
-          frontBackScale = 0.9; // Slightly flatter chest front-to-back
+          frontBackScale = 0.7; // Much flatter chest front-to-back (reduced from 0.9)
         }
         
         // Create curved shoulder transition for all upper sections
@@ -467,7 +467,7 @@ export abstract class EnemyHumanoid {
           // Apply different scaling to front vs back
           let zScale = frontBackScale;
           if (z < 0) { // Back of the chest (negative Z)
-            zScale = frontBackScale * 0.8; // Make back flatter
+            zScale = frontBackScale * 0.7; // Make back even flatter (reduced from 0.8)
           }
           
           const ovalZ = Math.sin(angle) * shoulderRadius * zScale;
