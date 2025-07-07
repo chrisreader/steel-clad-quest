@@ -1886,16 +1886,11 @@ export class TerrainFeatureGenerator {
   }
   
   public dispose(): void {
-    // Feature cleanup handled by GlobalFeatureManager.dispose()
+    // Feature cleanup NOW HANDLED BY GlobalFeatureManager.dispose()
+    console.log(`🗑️ [TerrainFeatureGenerator] DEPRECATED region-based disposal - features managed by GlobalFeatureManager`);
     
-    // Original region-based cleanup for compatibility
-    for (const [regionKey, features] of this.spawnedFeatures.entries()) {
-      features.forEach(feature => {
-        this.scene.remove(feature);
-        this.disposeFeature(feature);
-      });
-    }
-    
+    // DO NOT remove features from scene - they're managed by GlobalFeatureManager
+    // Original region-based cleanup REMOVED to prevent conflicts
     this.spawnedFeatures.clear();
     this.largeRockFormations.length = 0;
     
