@@ -102,7 +102,7 @@ export class SceneManager {
     this.ringSystem = new RingQuadrantSystem(new THREE.Vector3(0, 0, 0));
     
     // Initialize terrain feature generator
-    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.scene, this.ringSystem);
+    this.terrainFeatureGenerator = new TerrainFeatureGenerator(this.ringSystem, this.scene);
     
     // Initialize structure generator with PhysicsManager
     this.structureGenerator = new StructureGenerator(this.ringSystem, this.scene, this.physicsManager);
@@ -149,14 +149,10 @@ export class SceneManager {
     // Initialize environment collision manager
     this.environmentCollisionManager = new EnvironmentCollisionManager(this.scene, this.physicsManager);
     
-    // Pass collision registration callback to terrain feature generator
-    this.terrainFeatureGenerator = new TerrainFeatureGenerator(
-      this.scene, 
-      this.ringSystem, 
-      (object: THREE.Object3D) => {
-        this.environmentCollisionManager.registerSingleObject(object);
-      }
-    );
+    // Set up collision registration callback
+    this.terrainFeatureGenerator.setCollisionRegistrationCallback((object: THREE.Object3D) => {
+      this.environmentCollisionManager.registerSingleObject(object);
+    });
     console.log('🔧 Simplified collision system established');
   }
 
@@ -633,8 +629,6 @@ export class SceneManager {
     if (this.birdSpawningSystem && playerPosition) {
       this.birdSpawningSystem.update(deltaTime, playerPosition);
     }
-    
-    const playerRegion = this.ringSystem.getRegionForPosition(playerPosition);
     
     // Update 3D grass system with game time for day/night color changes
     if (this.grassSystem && playerPosition) {

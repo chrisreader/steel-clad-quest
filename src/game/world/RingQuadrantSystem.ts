@@ -30,25 +30,44 @@ export class RingQuadrantSystem {
   private noise: any;
   private static readonly TRANSITION_ZONE_SIZE = 12; // Reduced for more stable transitions
   
-  // Define base ring parameters for infinite generation
-  private static readonly BASE_RING_SIZE = 100; // Base radius for ring 1
-  private static readonly RING_SIZE_MULTIPLIER = 1.8; // How much each ring grows
-  private static readonly MAX_CACHED_RINGS = 20; // Cache first 20 rings for performance
-
-  // Cache for generated ring definitions to avoid recalculation
-  private ringCache: Map<number, RingDefinition> = new Map();
-
-  // Base biome definitions that will be extended infinitely
-  private baseBiomes = [
-    { name: 'spawn', color: 0x5FAD5F }, // Spawn area - green
-    { name: 'forest', color: 0x4A9A4A }, // Forest biome - darker green  
-    { name: 'plains', color: 0x6B8E5A }, // Plains biome - olive green
-    { name: 'hills', color: 0x3A8A3A }, // Hills biome - dark green
-    { name: 'mountains', color: 0x4A5D3A }, // Mountain biome - brownish green
-    { name: 'wasteland', color: 0x8B7355 }, // Wasteland biome - brown
-    { name: 'desert', color: 0xDEB887 }, // Desert biome - sandy
-    { name: 'tundra', color: 0x708090 }, // Tundra biome - gray
-    { name: 'frozen', color: 0xE6E6FA } // Frozen biome - white
+  // Define 4 rings with increasing radius and difficulty
+  private rings: RingDefinition[] = [
+    {
+      innerRadius: 0,
+      outerRadius: 50, // Reduced from 200 to 50
+      difficulty: 1,
+      terrainColor: 0x5FAD5F, // Match existing green terrain
+      enemyTypes: ['goblin', 'wolf'],
+      structureTypes: ['tavern'],
+      eventChance: 0.1
+    },
+    {
+      innerRadius: 50, // Updated to match new center ring size
+      outerRadius: 150, // Reduced proportionally
+      difficulty: 2,
+      terrainColor: 0x4A9A4A, // Slightly darker green
+      enemyTypes: ['goblin', 'wolf', 'orc'],
+      structureTypes: ['ruins', 'cabin'],
+      eventChance: 0.2
+    },
+    {
+      innerRadius: 150, // Updated to match previous ring
+      outerRadius: 300, // Reduced proportionally
+      difficulty: 3,
+      terrainColor: 0x3A8A3A, // Even darker green
+      enemyTypes: ['orc', 'bandit', 'troll'],
+      structureTypes: ['castle', 'tower'],
+      eventChance: 0.3
+    },
+    {
+      innerRadius: 300, // Updated to match previous ring
+      outerRadius: 600, // Reduced proportionally
+      difficulty: 4,
+      terrainColor: 0x2A7A2A, // Darkest green
+      enemyTypes: ['troll', 'warlord', 'witch'],
+      structureTypes: ['temple', 'fortress'],
+      eventChance: 0.4
+    }
   ];
   
   private worldCenter: THREE.Vector3;
@@ -60,32 +79,34 @@ export class RingQuadrantSystem {
     this.noise = new Noise(Math.random());
   }
   
-  // Get which ring and quadrant a position belongs to - INFINITE VERSION
-  public getRegionForPosition(position: THREE.Vector3): RegionCoordinates {
+  // Get which ring and quadrant a position belongs to
+  public getRegionForPosition(position: THREE.Vector3): RegionCoordinates | null {
     const dx = position.x - this.worldCenter.x;
     const dz = position.z - this.worldCenter.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
     
-    // Calculate ring index based on distance - INFINITE GENERATION
-    let ringIndex = 0;
-    if (distance > 0) {
-      // Ring 0: 0-50, Ring 1: 50-140, Ring 2: 140-292, etc.
-      ringIndex = this.calculateRingIndex(distance);
+    let ringIndex = -1;
+    for (let i = 0; i < this.rings.length; i++) {
+      if (distance >= this.rings[i].innerRadius && distance < this.rings[i].outerRadius) {
+        ringIndex = i;
+        break;
+      }
     }
     
-    // Calculate quadrant based on position
+    if (ringIndex === -1) return null;
+    
     let quadrant = 0;
-    if (dx >= 0 && dz >= 0) quadrant = 0;      // NE
-    else if (dx >= 0 && dz < 0) quadrant = 1;  // SE  
-    else if (dx < 0 && dz < 0) quadrant = 2;   // SW
-    else if (dx < 0 && dz >= 0) quadrant = 3;  // NW
+    if (dx >= 0 && dz >= 0) quadrant = 0;
+    else if (dx >= 0 && dz < 0) quadrant = 1;
+    else if (dx < 0 && dz < 0) quadrant = 2;
+    else if (dx < 0 && dz >= 0) quadrant = 3;
     
     return { ringIndex, quadrant };
   }
   
-  // Get the center position of a region - INFINITE VERSION
+  // Get the center position of a region
   public getRegionCenter(region: RegionCoordinates): THREE.Vector3 {
-    const ring = this.getRingDefinition(region.ringIndex);
+    const ring = this.rings[region.ringIndex];
     const midRadius = (ring.innerRadius + ring.outerRadius) / 2;
     
     // Calculate angle based on quadrant (center of quadrant)
@@ -104,17 +125,19 @@ export class RingQuadrantSystem {
     return `r${region.ringIndex}_q${region.quadrant}`;
   }
   
-  // Get regions that should be active based on player position - INFINITE VERSION
+  // Get regions that should be active based on player position
   public getActiveRegions(playerPosition: THREE.Vector3, renderDistance: number): RegionCoordinates[] {
     const playerRegion = this.getRegionForPosition(playerPosition);
+    if (!playerRegion) return [];
+    
     const activeRegions: RegionCoordinates[] = [];
     
     // Always include player's current region
     activeRegions.push(playerRegion);
     
-    // Check adjacent regions - NO UPPER LIMIT for infinite world
+    // Check adjacent regions
     for (let r = Math.max(0, playerRegion.ringIndex - 1); 
-         r <= playerRegion.ringIndex + 2; // Load 2 rings ahead for smooth transitions
+         r <= Math.min(this.rings.length - 1, playerRegion.ringIndex + 1); 
          r++) {
       for (let q = 0; q < 4; q++) {
         // Skip current region (already added)
@@ -131,152 +154,14 @@ export class RingQuadrantSystem {
     return activeRegions;
   }
   
-  // Get ring definition for a region - INFINITE VERSION WITH CACHING
+  // Get ring definition for a region
   public getRingDefinition(ringIndex: number): RingDefinition {
-    // Check cache first
-    if (this.ringCache.has(ringIndex)) {
-      return this.ringCache.get(ringIndex)!;
-    }
-    
-    // Generate ring definition procedurally
-    const ringDef = this.generateRingDefinition(ringIndex);
-    
-    // Cache if within reasonable limits
-    if (ringIndex < RingQuadrantSystem.MAX_CACHED_RINGS) {
-      this.ringCache.set(ringIndex, ringDef);
-    }
-    
-    return ringDef;
+    return this.rings[ringIndex];
   }
   
-  // Helper to get difficulty for a region - INFINITE VERSION
+  // Helper to get difficulty for a region
   public getDifficultyForRegion(region: RegionCoordinates): number {
-    return this.getRingDefinition(region.ringIndex).difficulty;
-  }
-
-  // NEW: Calculate which ring a distance falls into - FIXED FOR INFINITE GENERATION
-  private calculateRingIndex(distance: number): number {
-    if (distance <= 50) return 0; // Ring 0: spawn area (0-50)
-    
-    // For rings beyond 0, use exponential growth but handle all cases
-    let currentRadius = 50;
-    let ringIndex = 1;
-    
-    while (distance > currentRadius) {
-      const nextRadius = currentRadius * RingQuadrantSystem.RING_SIZE_MULTIPLIER;
-      if (distance <= nextRadius) break;
-      currentRadius = nextRadius;
-      ringIndex++;
-      
-      // Safety check to prevent infinite loops (though mathematically impossible)
-      if (ringIndex > 1000) {
-        console.warn(`Ring index exceeded 1000 for distance ${distance}, capping at 1000`);
-        break;
-      }
-    }
-    
-    return ringIndex;
-  }
-
-  // NEW: Procedurally generate ring definition for any ring index
-  private generateRingDefinition(ringIndex: number): RingDefinition {
-    if (ringIndex === 0) {
-      // Special case for spawn ring  
-      return {
-        innerRadius: 0,
-        outerRadius: 50,
-        difficulty: 1,
-        terrainColor: this.baseBiomes[0].color, // Spawn green
-        enemyTypes: ['goblin', 'wolf'],
-        structureTypes: ['tavern'],
-        eventChance: 0.1
-      };
-    }
-    
-    // Calculate ring boundaries using exponential growth
-    const innerRadius = ringIndex === 1 ? 50 : 50 * Math.pow(RingQuadrantSystem.RING_SIZE_MULTIPLIER, ringIndex - 1);
-    const outerRadius = 50 * Math.pow(RingQuadrantSystem.RING_SIZE_MULTIPLIER, ringIndex);
-    
-    // Calculate difficulty - grows with distance but caps at reasonable levels
-    const difficulty = Math.min(10, 1 + Math.floor(ringIndex / 2));
-    
-    // Select biome based on ring index
-    const biomeIndex = Math.min(this.baseBiomes.length - 1, Math.floor(ringIndex / 2));
-    const biome = this.baseBiomes[biomeIndex];
-    
-    // Generate appropriate enemy types based on difficulty
-    const enemyTypes = this.generateEnemyTypes(difficulty, biome.name);
-    
-    // Generate structure types based on biome and difficulty
-    const structureTypes = this.generateStructureTypes(biome.name, difficulty);
-    
-    // Event chance increases with distance but caps
-    const eventChance = Math.min(0.8, 0.1 + (ringIndex * 0.1));
-    
-    return {
-      innerRadius,
-      outerRadius,
-      difficulty,
-      terrainColor: biome.color,
-      enemyTypes,
-      structureTypes,
-      eventChance
-    };
-  }
-
-  // NEW: Generate enemy types based on difficulty and biome
-  private generateEnemyTypes(difficulty: number, biomeName: string): string[] {
-    const baseEnemies = ['goblin', 'wolf'];
-    const intermediateEnemies = ['orc', 'bandit', 'bear'];
-    const advancedEnemies = ['troll', 'warlord', 'witch', 'dragon'];
-    
-    let enemies = [...baseEnemies];
-    
-    if (difficulty >= 2) enemies.push(...intermediateEnemies);
-    if (difficulty >= 4) enemies.push(...advancedEnemies);
-    
-    // Add biome-specific enemies
-    switch (biomeName) {
-      case 'forest':
-        enemies.push('treant', 'dryad');
-        break;
-      case 'desert':
-        enemies.push('scorpion', 'sphinx');
-        break;
-      case 'mountains':
-        enemies.push('giant', 'yeti');
-        break;
-      case 'frozen':
-        enemies.push('ice_elemental', 'frost_giant');
-        break;
-    }
-    
-    return enemies;
-  }
-
-  // NEW: Generate structure types based on biome and difficulty  
-  private generateStructureTypes(biomeName: string, difficulty: number): string[] {
-    const baseStructures = ['ruins', 'cabin'];
-    const advancedStructures = ['castle', 'tower', 'temple', 'fortress'];
-    
-    let structures = [...baseStructures];
-    
-    if (difficulty >= 3) structures.push(...advancedStructures);
-    
-    // Add biome-specific structures
-    switch (biomeName) {
-      case 'desert':
-        structures.push('pyramid', 'oasis');
-        break;
-      case 'mountains':
-        structures.push('mine', 'monastery');
-        break;
-      case 'frozen':
-        structures.push('ice_palace', 'glacier_cave');
-        break;
-    }
-    
-    return structures;
+    return this.rings[region.ringIndex].difficulty;
   }
   
   // Enhanced heightmap generation with proper base level for hills
@@ -314,41 +199,42 @@ export class RingQuadrantSystem {
     const dz = position.z - this.worldCenter.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
     
-    // Check ring boundaries for transition zones - INFINITE VERSION
-    const currentRingIndex = this.calculateRingIndex(distance);
-    const currentRing = this.getRingDefinition(currentRingIndex);
-    const nextRing = this.getRingDefinition(currentRingIndex + 1);
-    const boundary = currentRing.outerRadius;
-    
-    // Check if we're in the transition zone
-    const distanceFromBoundary = Math.abs(distance - boundary);
-    if (distanceFromBoundary <= RingQuadrantSystem.TRANSITION_ZONE_SIZE) {
-      // Enhanced blend factor calculation with hysteresis
-      const rawBlendFactor = Math.min(1, Math.max(0, 1 - (distanceFromBoundary / RingQuadrantSystem.TRANSITION_ZONE_SIZE)));
+    // Check each ring boundary for transition zones
+    for (let i = 0; i < this.rings.length - 1; i++) {
+      const currentRing = this.rings[i];
+      const nextRing = this.rings[i + 1];
+      const boundary = currentRing.outerRadius;
       
-      // Apply smoothstep function for even smoother transitions
-      const smoothBlendFactor = rawBlendFactor * rawBlendFactor * rawBlendFactor * (rawBlendFactor * (rawBlendFactor * 6 - 15) + 10);
-      
-      // Add hysteresis - minimum threshold to prevent rapid switching
-      const HYSTERESIS_THRESHOLD = 0.1;
-      const finalBlendFactor = smoothBlendFactor < HYSTERESIS_THRESHOLD ? 0 : smoothBlendFactor;
-      
-      if (distance < boundary) {
-        // Transitioning from inner ring to outer ring
-        return {
-          isInTransition: finalBlendFactor > 0,
-          fromRing: currentRingIndex,
-          toRing: currentRingIndex + 1,
-          blendFactor: distance > boundary - RingQuadrantSystem.TRANSITION_ZONE_SIZE ? finalBlendFactor : 0
-        };
-      } else {
-        // Transitioning from outer ring to inner ring (approaching from outside)
-        return {
-          isInTransition: finalBlendFactor > 0,
-          fromRing: currentRingIndex + 1,
-          toRing: currentRingIndex,
-          blendFactor: distance < boundary + RingQuadrantSystem.TRANSITION_ZONE_SIZE ? finalBlendFactor : 0
-        };
+      // Check if we're in the transition zone
+      const distanceFromBoundary = Math.abs(distance - boundary);
+      if (distanceFromBoundary <= RingQuadrantSystem.TRANSITION_ZONE_SIZE) {
+        // Enhanced blend factor calculation with hysteresis
+        const rawBlendFactor = Math.min(1, Math.max(0, 1 - (distanceFromBoundary / RingQuadrantSystem.TRANSITION_ZONE_SIZE)));
+        
+        // Apply smoothstep function for even smoother transitions
+        const smoothBlendFactor = rawBlendFactor * rawBlendFactor * rawBlendFactor * (rawBlendFactor * (rawBlendFactor * 6 - 15) + 10);
+        
+        // Add hysteresis - minimum threshold to prevent rapid switching
+        const HYSTERESIS_THRESHOLD = 0.1;
+        const finalBlendFactor = smoothBlendFactor < HYSTERESIS_THRESHOLD ? 0 : smoothBlendFactor;
+        
+        if (distance < boundary) {
+          // Transitioning from inner ring to outer ring
+          return {
+            isInTransition: finalBlendFactor > 0,
+            fromRing: i,
+            toRing: i + 1,
+            blendFactor: distance > boundary - RingQuadrantSystem.TRANSITION_ZONE_SIZE ? finalBlendFactor : 0
+          };
+        } else {
+          // Transitioning from outer ring to inner ring (approaching from outside)
+          return {
+            isInTransition: finalBlendFactor > 0,
+            fromRing: i + 1,
+            toRing: i,
+            blendFactor: distance < boundary + RingQuadrantSystem.TRANSITION_ZONE_SIZE ? finalBlendFactor : 0
+          };
+        }
       }
     }
     
@@ -359,12 +245,13 @@ export class RingQuadrantSystem {
    * Get blended color between two ring colors
    */
   public getBlendedRingColor(fromRingIndex: number, toRingIndex: number, blendFactor: number): number {
-    if (fromRingIndex < 0 || toRingIndex < 0) {
-      return this.getRingDefinition(0).terrainColor;
+    if (fromRingIndex < 0 || fromRingIndex >= this.rings.length || 
+        toRingIndex < 0 || toRingIndex >= this.rings.length) {
+      return this.rings[0].terrainColor;
     }
     
-    const fromColor = this.getRingDefinition(fromRingIndex).terrainColor;
-    const toColor = this.getRingDefinition(toRingIndex).terrainColor;
+    const fromColor = this.rings[fromRingIndex].terrainColor;
+    const toColor = this.rings[toRingIndex].terrainColor;
     
     // Extract RGB components
     const fromR = (fromColor >> 16) & 255;
@@ -417,8 +304,8 @@ export class RingQuadrantSystem {
       
       // Create blended material for transition zones
       material = GroundMaterialUtils.createBlendedGrassMaterial(
-        this.getRingDefinition(transitionInfo.fromRing).terrainColor,
-        this.getRingDefinition(transitionInfo.toRing).terrainColor,
+        this.rings[transitionInfo.fromRing].terrainColor,
+        this.rings[transitionInfo.toRing].terrainColor,
         transitionInfo.blendFactor,
         region.ringIndex
       );
@@ -426,7 +313,7 @@ export class RingQuadrantSystem {
       console.log(`🌱 Creating standard terrain with hills for ring ${region.ringIndex}`);
       
       // Standard ring material with realistic grass
-      const ring = this.getRingDefinition(region.ringIndex);
+      const ring = this.rings[region.ringIndex];
       material = GroundMaterialUtils.createGrassMaterial(ring.terrainColor, region.ringIndex, {
         roughness: 0.9,
         metalness: 0.0,
@@ -457,9 +344,8 @@ export class RingQuadrantSystem {
   public createDebugRingMarkers(scene: THREE.Scene): void {
     const segments = 64;
     
-    // Create debug rings for first few rings only (performance)
-    for (let ringIndex = 0; ringIndex < 5; ringIndex++) {
-      const ring = this.getRingDefinition(ringIndex);
+    // Create a ring for each boundary
+    this.rings.forEach((ring) => {
       [ring.innerRadius, ring.outerRadius].forEach((radius) => {
         if (radius === 0) return; // Skip center point
         
@@ -483,12 +369,12 @@ export class RingQuadrantSystem {
           opacity: 0.5
         });
         
-        const ringMesh = new THREE.LineLoop(geometry, material);
-        ringMesh.position.copy(this.worldCenter);
-        scene.add(ringMesh);
+        const ring = new THREE.LineLoop(geometry, material);
+        ring.position.copy(this.worldCenter);
+        scene.add(ring);
       });
       
-      // Add quadrant dividers for this ring
+      // Add quadrant dividers
       for (let q = 0; q < 4; q++) {
         const geometry = new THREE.BufferGeometry();
         const angle = q * Math.PI / 2;
@@ -510,6 +396,6 @@ export class RingQuadrantSystem {
         const line = new THREE.Line(geometry, material);
         scene.add(line);
       }
-    }
+    });
   }
 }
