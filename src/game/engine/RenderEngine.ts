@@ -40,12 +40,12 @@ export class RenderEngine {
     this.scene = new THREE.Scene();
     this.scene.background = null;
     
-    // ULTRA-AGGRESSIVE camera settings for performance
+    // Fixed camera settings for world exploration
     this.camera = new THREE.PerspectiveCamera(
       75,
       this.mountElement.clientWidth / this.mountElement.clientHeight,
       0.1,
-      500 // Reduced from 1000 for 50% fewer far calculations
+      2000 // Increased to support world generation distances
     );
     
     // Set up camera layers
@@ -143,9 +143,9 @@ export class RenderEngine {
     if (object instanceof THREE.Mesh && object.geometry) {
       const sphere = object.geometry.boundingSphere;
       if (sphere) {
-        // Quick distance check first (cheaper than frustum test)
+        // Use proper frustum culling distance matching world generation
         const distance = this.camera.position.distanceTo(object.position);
-        if (distance > 200) return false; // Cull very distant objects immediately
+        if (distance > 1500) return false; // Match world generation distances
         
         const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
         return this.frustum.intersectsSphere(worldSphere);
