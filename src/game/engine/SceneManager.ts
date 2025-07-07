@@ -21,6 +21,7 @@ import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
 import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 import { GrassSystem } from '../vegetation/GrassSystem';
+import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -864,8 +865,9 @@ export class SceneManager {
     
     console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
+    // Only cleanup structures, let features persist beyond region boundaries
     this.structureGenerator.cleanupStructuresForRegion(region);
-    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
+    // REMOVED: this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
     
     // Remove 3D grass for this region
     this.grassSystem.removeGrassForRegion(region);
@@ -1298,5 +1300,8 @@ export class SceneManager {
       
       console.log(`Simplified shadow camera updated for position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)} with dynamic sun tracking`);
     }
+    
+    // Update terrain feature visibility based on player position (continuous world system)
+    this.terrainFeatureGenerator.updateFeatureVisibility(playerPosition);
   }
 }

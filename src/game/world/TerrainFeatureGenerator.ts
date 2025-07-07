@@ -5,6 +5,7 @@ import { ROCK_SHAPES, RockShape } from './rocks/config/RockShapeConfig';
 import { RockMaterialGenerator } from './rocks/materials/RockMaterialGenerator';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
 import { TreeGenerator, BushGenerator } from './vegetation';
+import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 export interface FeatureCluster {
   position: THREE.Vector3;
@@ -33,6 +34,10 @@ export class TerrainFeatureGenerator {
   // Track spawned objects by region for cleanup
   private spawnedFeatures: Map<string, THREE.Object3D[]> = new Map();
   
+  // NEW: Player-distance-based feature management for continuous world
+  private allFeatures: Map<string, { object: THREE.Object3D; position: THREE.Vector3; visible: boolean }> = new Map();
+  private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
+  
   // Track large rock formations to maintain distance
   private largeRockFormations: THREE.Vector3[] = [];
   private minimumLargeRockDistance: number = 150;
@@ -59,6 +64,90 @@ export class TerrainFeatureGenerator {
   public setCollisionRegistrationCallback(callback: (object: THREE.Object3D) => void): void {
     this.collisionRegistrationCallback = callback;
     console.log('🔧 TerrainFeatureGenerator collision registration callback set');
+  }
+  
+  // NEW: Update feature visibility based on player position (continuous world system)
+  public updateFeatureVisibility(playerPosition: THREE.Vector3): void {
+    let hiddenCount = 0;
+    let visibleCount = 0;
+    
+    this.allFeatures.forEach((feature, featureId) => {
+      const distance = feature.position.distanceTo(playerPosition);
+      const shouldBeVisible = distance <= RENDER_DISTANCES.TERRAIN;
+      
+      if (shouldBeVisible && !feature.visible) {
+        // Show feature
+        feature.object.visible = true;
+        feature.visible = true;
+        visibleCount++;
+      } else if (!shouldBeVisible && feature.visible) {
+        // Hide feature
+        feature.object.visible = false;
+        feature.visible = false;
+        hiddenCount++;
+      }
+    });
+    
+    // Clean up features that are very far away
+    const featuresToRemove: string[] = [];
+    this.allFeatures.forEach((feature, featureId) => {
+      const distance = feature.position.distanceTo(playerPosition);
+      if (distance > RENDER_DISTANCES.MASTER_CULL_DISTANCE) {
+        this.scene.remove(feature.object);
+        this.disposeFeature(feature.object);
+        featuresToRemove.push(featureId);
+      }
+    });
+    
+    featuresToRemove.forEach(id => this.allFeatures.delete(id));
+    
+    if (hiddenCount > 0 || visibleCount > 0 || featuresToRemove.length > 0) {
+      console.log(`🌍 [TerrainFeatureGenerator] Updated visibility: ${visibleCount} shown, ${hiddenCount} hidden, ${featuresToRemove.length} removed`);
+    }
+    
+    this.lastPlayerPosition.copy(playerPosition);
+  }
+  
+  // NEW: Register a feature in the player-distance-based system
+  private registerFeature(object: THREE.Object3D, position: THREE.Vector3): void {
+    const featureId = `feature_${Date.now()}_${Math.random()}`;
+    this.allFeatures.set(featureId, {
+      object,
+      position: position.clone(),
+      visible: true
+    });
+    
+    // Also register for collision detection
+    if (this.collisionRegistrationCallback) {
+      this.collisionRegistrationCallback(object);
+    }
+  }
+  
+  // NEW: Dispose a single feature properly
+  private disposeFeature(feature: THREE.Object3D): void {
+    if (feature instanceof THREE.Mesh) {
+      if (feature.geometry) feature.geometry.dispose();
+      if (feature.material) {
+        if (Array.isArray(feature.material)) {
+          feature.material.forEach(m => m.dispose());
+        } else {
+          feature.material.dispose();
+        }
+      }
+    } else if (feature instanceof THREE.Group) {
+      feature.traverse(child => {
+        if (child instanceof THREE.Mesh) {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        }
+      });
+    }
   }
   
   // NEW: Get spawned features for a region (for manual collision registration)
@@ -1692,10 +1781,8 @@ export class TerrainFeatureGenerator {
           features.push(feature);
           this.scene.add(feature);
           
-          if (this.collisionRegistrationCallback) {
-            this.collisionRegistrationCallback(feature);
-            console.log(`🔧 Callback registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
-          }
+          // Register feature in both systems
+          this.registerFeature(feature, position);
         }
       }
     }
@@ -1716,10 +1803,8 @@ export class TerrainFeatureGenerator {
           features.push(feature);
           this.scene.add(feature);
           
-          if (this.collisionRegistrationCallback) {
-            this.collisionRegistrationCallback(feature);
-            console.log(`🔧 Callback registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
-          }
+          // Register feature in both systems
+          this.registerFeature(feature, position);
         }
       }
     }
@@ -1831,33 +1916,18 @@ export class TerrainFeatureGenerator {
   }
   
   public dispose(): void {
+    // Dispose all features from player-distance system
+    this.allFeatures.forEach((feature) => {
+      this.scene.remove(feature.object);
+      this.disposeFeature(feature.object);
+    });
+    this.allFeatures.clear();
+    
+    // Original region-based cleanup for compatibility
     for (const [regionKey, features] of this.spawnedFeatures.entries()) {
       features.forEach(feature => {
         this.scene.remove(feature);
-        
-        if (feature instanceof THREE.Mesh) {
-          if (feature.geometry) feature.geometry.dispose();
-          if (feature.material) {
-            if (Array.isArray(feature.material)) {
-              feature.material.forEach(m => m.dispose());
-            } else {
-              feature.material.dispose();
-            }
-          }
-        } else if (feature instanceof THREE.Group) {
-          feature.traverse(child => {
-            if (child instanceof THREE.Mesh) {
-              if (child.geometry) child.geometry.dispose();
-              if (child.material) {
-                if (Array.isArray(child.material)) {
-                  child.material.forEach(m => m.dispose());
-                } else {
-                  child.material.dispose();
-                }
-              }
-            }
-          });
-        }
+        this.disposeFeature(feature);
       });
     }
     

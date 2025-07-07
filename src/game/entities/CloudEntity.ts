@@ -1,6 +1,7 @@
 
 import * as THREE from 'three';
 import { SpawnableEntity, EntityLifecycleState } from '../../types/SpawnableEntity';
+import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 export class CloudEntity implements SpawnableEntity {
   public id: string;
@@ -74,9 +75,9 @@ export class CloudEntity implements SpawnableEntity {
     this.mesh.position.add(movement);
     this.position.copy(this.mesh.position);
     
-    // Calculate distance-based opacity
-    const fadeInDistance = 200;
-    const fadeOutDistance = 300;
+    // Calculate distance-based opacity using unified render distances
+    const fadeInDistance = RENDER_DISTANCES.FADE_IN_DISTANCE;
+    const fadeOutDistance = RENDER_DISTANCES.FADE_OUT_DISTANCE;
     
     let distanceFactor = 1.0;
     if (this.distanceFromPlayer > fadeOutDistance) {
