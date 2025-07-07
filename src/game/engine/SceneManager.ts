@@ -1316,7 +1316,6 @@ export class SceneManager {
       console.log(`Simplified shadow camera updated for position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)} with dynamic sun tracking`);
     }
     
-    // Update terrain feature visibility based on player position (continuous world system)
-    this.terrainFeatureGenerator.updateFeatureVisibility(playerPosition);
+    // REMOVED: Duplicate feature visibility update - handled by GlobalFeatureManager now
   }
 }

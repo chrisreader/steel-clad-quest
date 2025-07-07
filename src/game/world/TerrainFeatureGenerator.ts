@@ -35,9 +35,7 @@ export class TerrainFeatureGenerator {
   // DEPRECATED: Legacy region-based feature tracking - being phased out
   private spawnedFeatures: Map<string, THREE.Object3D[]> = new Map();
   
-  // NEW: Player-distance-based feature management for continuous world
-  private allFeatures: Map<string, { object: THREE.Object3D; position: THREE.Vector3; visible: boolean }> = new Map();
-  private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
+  // REMOVED: Local feature tracking - now handled by GlobalFeatureManager only
   
   // Track large rock formations to maintain distance
   private largeRockFormations: THREE.Vector3[] = [];
@@ -75,71 +73,35 @@ export class TerrainFeatureGenerator {
     console.log('🔧 TerrainFeatureGenerator collision registration callback set');
   }
   
-  // NEW: Update feature visibility based on player position (continuous world system)
-  public updateFeatureVisibility(playerPosition: THREE.Vector3): void {
-    let hiddenCount = 0;
-    let visibleCount = 0;
-    
-    this.allFeatures.forEach((feature, featureId) => {
-      const distance = feature.position.distanceTo(playerPosition);
-      const shouldBeVisible = distance <= RENDER_DISTANCES.TERRAIN;
-      
-      if (shouldBeVisible && !feature.visible) {
-        // Show feature
-        feature.object.visible = true;
-        feature.visible = true;
-        visibleCount++;
-      } else if (!shouldBeVisible && feature.visible) {
-        // Hide feature
-        feature.object.visible = false;
-        feature.visible = false;
-        hiddenCount++;
-      }
-    });
-    
-    // Clean up features that are very far away
-    const featuresToRemove: string[] = [];
-    this.allFeatures.forEach((feature, featureId) => {
-      const distance = feature.position.distanceTo(playerPosition);
-      if (distance > RENDER_DISTANCES.MASTER_CULL_DISTANCE) {
-        this.scene.remove(feature.object);
-        this.disposeFeature(feature.object);
-        featuresToRemove.push(featureId);
-      }
-    });
-    
-    featuresToRemove.forEach(id => this.allFeatures.delete(id));
-    
-    if (hiddenCount > 0 || visibleCount > 0 || featuresToRemove.length > 0) {
-      console.log(`🌍 [TerrainFeatureGenerator] Updated visibility: ${visibleCount} shown, ${hiddenCount} hidden, ${featuresToRemove.length} removed`);
-    }
-    
-    this.lastPlayerPosition.copy(playerPosition);
-  }
+  // REMOVED: Local feature visibility - now handled by GlobalFeatureManager only
   
-  // NEW: Register a feature in the player-distance-based system
+  // Register a feature in the global system only (like tree foliage)
   private registerFeature(object: THREE.Object3D, position: THREE.Vector3): void {
     const featureId = `feature_${Date.now()}_${Math.random()}`;
-    this.allFeatures.set(featureId, {
-      object,
-      position: position.clone(),
-      visible: true
-    });
     
-    // Register with global feature manager for persistent rendering
-    const featureType = object.children.length > 5 ? 'tree' : 'rock'; // Simple heuristic
+    // Only register with global feature manager - no local tracking
+    const featureType = this.getFeatureType(object);
     this.globalFeatureManager.registerFeature(
       featureId,
       object,
       position,
       featureType,
-      new THREE.Vector3(0, 0, 0)
+      position // Use feature position as player reference
     );
     
-    // Also register for collision detection
+    // Register for collision detection
     if (this.collisionRegistrationCallback) {
       this.collisionRegistrationCallback(object);
     }
+    
+    console.log(`🌍 [TerrainFeatureGenerator] Registered ${featureType} feature: ${featureId} globally`);
+  }
+  
+  // Helper to determine feature type more accurately
+  private getFeatureType(object: THREE.Object3D): 'tree' | 'rock' | 'bush' {
+    if (object.children.length > 8) return 'tree';  // Trees have many parts
+    if (object.children.length > 2) return 'bush';  // Bushes have several parts  
+    return 'rock'; // Rocks are simple
   }
   
   // NEW: Dispose a single feature properly
@@ -1903,12 +1865,7 @@ export class TerrainFeatureGenerator {
   }
   
   public dispose(): void {
-    // Dispose all features from player-distance system
-    this.allFeatures.forEach((feature) => {
-      this.scene.remove(feature.object);
-      this.disposeFeature(feature.object);
-    });
-    this.allFeatures.clear();
+    // Feature cleanup handled by GlobalFeatureManager.dispose()
     
     // Original region-based cleanup for compatibility
     for (const [regionKey, features] of this.spawnedFeatures.entries()) {
