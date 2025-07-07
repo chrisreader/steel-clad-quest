@@ -4,9 +4,11 @@ import { DynamicSpawningSystem } from './DynamicSpawningSystem';
 import { CloudEntity } from '../entities/CloudEntity';
 import { SpawningConfig, SpawnZone } from '../../types/SpawnableEntity';
 import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
+import { GlobalFeatureManager } from './GlobalFeatureManager';
 
 export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntity> {
   private cloudMaterial: THREE.MeshLambertMaterial;
+  private globalFeatureManager: GlobalFeatureManager;
   
   constructor(scene: THREE.Scene) {
     const config: SpawningConfig = {
@@ -24,6 +26,7 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
     };
     
     super(scene, config);
+    this.globalFeatureManager = GlobalFeatureManager.getInstance(scene);
     
     // Create cloud material
     this.cloudMaterial = new THREE.MeshLambertMaterial({
@@ -73,6 +76,16 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
     
     const spawnPosition = new THREE.Vector3(spawnX, cloudHeight, spawnZ);
     cloud.initialize(spawnPosition);
+    
+    // Register with global feature manager for persistent rendering
+    const cloudId = `cloud_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.globalFeatureManager.registerFeature(
+      cloudId, 
+      cloud.mesh, // CloudEntity uses mesh property directly
+      spawnPosition, 
+      'cloud', 
+      playerPosition || new THREE.Vector3(0, 0, 0)
+    );
     
     return cloud;
   }

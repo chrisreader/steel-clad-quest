@@ -6,6 +6,7 @@ import { RockMaterialGenerator } from './rocks/materials/RockMaterialGenerator';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
 import { TreeGenerator, BushGenerator } from './vegetation';
 import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
+import { GlobalFeatureManager } from '../systems/GlobalFeatureManager';
 
 export interface FeatureCluster {
   position: THREE.Vector3;
@@ -49,6 +50,9 @@ export class TerrainFeatureGenerator {
   // NEW: Collision registration callback
   private collisionRegistrationCallback?: (object: THREE.Object3D) => void;
   
+  // Global feature manager for persistent world features
+  private globalFeatureManager: GlobalFeatureManager;
+  
   constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
@@ -57,7 +61,12 @@ export class TerrainFeatureGenerator {
     this.treeGenerator = new TreeGenerator();
     this.bushGenerator = new BushGenerator();
     
+    // Initialize global feature manager
+    this.globalFeatureManager = GlobalFeatureManager.getInstance(scene);
+    
     this.loadRockModels();
+    
+    console.log('TerrainFeatureGenerator initialized with global feature tracking');
   }
   
   // NEW: Set collision registration callback
@@ -116,6 +125,16 @@ export class TerrainFeatureGenerator {
       position: position.clone(),
       visible: true
     });
+    
+    // Register with global feature manager for persistent rendering
+    const featureType = object.children.length > 5 ? 'tree' : 'rock'; // Simple heuristic
+    this.globalFeatureManager.registerFeature(
+      featureId,
+      object,
+      position,
+      featureType,
+      new THREE.Vector3(0, 0, 0)
+    );
     
     // Also register for collision detection
     if (this.collisionRegistrationCallback) {

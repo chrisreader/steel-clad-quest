@@ -9,6 +9,7 @@ import { SafeZoneManager } from './SafeZoneManager';
 import { LineOfSightDetector } from './LineOfSightDetector';
 import { EnemyStateManager, EnemyAIState } from './EnemyStateManager';
 import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
+import { GlobalFeatureManager } from './GlobalFeatureManager';
 
 // Enemy wrapper to implement SpawnableEntity interface
 class SpawnableEnemyWrapper implements SpawnableEntity {
@@ -71,6 +72,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   private spawnCooldown: number = 15000; // 15 seconds between spawns
   private playerRotation: number = 0;
   private hasInitialSpawn: boolean = false;
+  private globalFeatureManager: GlobalFeatureManager;
 
   constructor(
     scene: THREE.Scene, 
@@ -96,6 +98,7 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     this.effectsManager = effectsManager;
     this.audioManager = audioManager;
     this.lineOfSightDetector = new LineOfSightDetector(scene);
+    this.globalFeatureManager = GlobalFeatureManager.getInstance(scene);
     
     // Initialize safe zone manager with exact tavern dimensions
     this.safeZoneManager = new SafeZoneManager({
@@ -255,6 +258,16 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
     // Wrap it in the spawnable interface
     const wrapper = new SpawnableEnemyWrapper(enemy);
     wrapper.initialize(position);
+    
+    // Register with global feature manager for persistent rendering
+    const enemyId = `enemy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    this.globalFeatureManager.registerFeature(
+      enemyId, 
+      enemy.getMesh(), 
+      position, 
+      'enemy', 
+      position // Use spawn position as reference player position
+    );
     
     // Add to entities list and scene
     this.entities.push(wrapper);

@@ -22,6 +22,7 @@ import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../c
 import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 import { GrassSystem } from '../vegetation/GrassSystem';
 import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
+import { GlobalFeatureManager } from '../systems/GlobalFeatureManager';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -93,6 +94,9 @@ export class SceneManager {
   // Volumetric fog system
   private volumetricFogSystem: VolumetricFogSystem | null = null;
   
+  // Global feature manager for persistent world rendering
+  private globalFeatureManager: GlobalFeatureManager;
+  
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
@@ -134,6 +138,10 @@ export class SceneManager {
     // Initialize volumetric fog system with horizon blocking
     this.volumetricFogSystem = new VolumetricFogSystem(this.scene);
     console.log("VolumetricFogSystem initialized");
+    
+    // Initialize global feature manager for persistent world rendering
+    this.globalFeatureManager = GlobalFeatureManager.getInstance(this.scene);
+    console.log("GlobalFeatureManager initialized for persistent world features");
     
     // Add debug ring markers
     if (this.debugMode) {
@@ -671,6 +679,11 @@ export class SceneManager {
     
     if (this.volumetricFogSystem && playerPosition) {
       this.volumetricFogSystem.update(deltaTime, this.timeOfDay, playerPosition);
+    }
+    
+    // Update global feature manager for persistent world rendering
+    if (playerPosition) {
+      this.globalFeatureManager.updateFeatureVisibility(playerPosition, deltaTime);
     }
   }
   

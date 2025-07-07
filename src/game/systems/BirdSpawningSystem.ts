@@ -3,6 +3,7 @@ import { CrowBird } from '../entities/birds/CrowBird';
 import { SpawnableEntity, SpawningConfig } from '../../types/SpawnableEntity';
 import { BirdType } from '../../types/GameTypes';
 import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
+import { GlobalFeatureManager } from './GlobalFeatureManager';
 
 export interface BirdSpawningConfig extends SpawningConfig {
   birdTypes: BirdType[];
@@ -20,9 +21,11 @@ export class BirdSpawningSystem {
   private playerMovementAccumulator: number = 0;
   private lastSpawnTime: number = 0;
   private birdIdCounter: number = 0;
+  private globalFeatureManager: GlobalFeatureManager;
 
   constructor(scene: THREE.Scene, config?: Partial<BirdSpawningConfig>) {
     this.scene = scene;
+    this.globalFeatureManager = GlobalFeatureManager.getInstance(scene);
     this.config = {
       // Movement tracking
       playerMovementThreshold: 15,
@@ -258,6 +261,15 @@ export class BirdSpawningSystem {
     bird.initialize(position);
     this.birds.set(birdId, bird);
     this.scene.add(bird.mesh);
+    
+    // Register with global feature manager for persistent rendering
+    this.globalFeatureManager.registerFeature(
+      birdId, 
+      bird.mesh, 
+      position, 
+      'bird', 
+      position // Use spawn position as reference player position
+    );
     
     console.log(`🐦 [BirdSpawningSystem] Spawned ${birdType} at position:`, position);
   }
