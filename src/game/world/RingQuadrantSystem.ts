@@ -145,7 +145,7 @@ export class RingQuadrantSystem {
     return `r${region.ringIndex}_q${region.quadrant}`;
   }
   
-  // Get regions that should be active based on player position - ENHANCED VERSION
+  // Get regions that should be active based on player position - PLAYER BUBBLE SYSTEM
   public getActiveRegions(playerPosition: THREE.Vector3, renderDistance: number): RegionCoordinates[] {
     const playerRegion = this.getRegionForPosition(playerPosition);
     if (!playerRegion) return [];
@@ -157,29 +157,24 @@ export class RingQuadrantSystem {
     activeRegions.push(playerRegion);
     activeRegionKeys.add(this.getRegionKey(playerRegion));
     
-    // CRITICAL: Always keep Ring 0 loaded (spawn area) to prevent floor disappearing
-    if (playerRegion.ringIndex !== 0) {
-      for (let q = 0; q < 4; q++) {
-        const spawnRegion: RegionCoordinates = { ringIndex: 0, quadrant: q };
-        const spawnKey = this.getRegionKey(spawnRegion);
-        if (!activeRegionKeys.has(spawnKey)) {
-          activeRegions.push(spawnRegion);
-          activeRegionKeys.add(spawnKey);
-        }
-      }
-    }
+    // ADAPTIVE SAFETY BUFFER: Calculate buffer based on current ring size to prevent gaps
+    const currentRing = this.getRingDefinition(playerRegion.ringIndex);
+    const ringSize = currentRing.outerRadius - currentRing.innerRadius;
     
-    // ENHANCED: Calculate more comprehensive region loading
-    // Use expanded render distance with buffer for seamless loading
-    const bufferedRenderDistance = renderDistance * 1.25; // 25% buffer for smooth loading
+    // CRITICAL: Adaptive buffer sizing - larger rings need bigger buffers
+    const baseBuffer = Math.max(200, ringSize * 0.8); // Minimum 200 units or 80% of ring size
+    const adaptiveRenderDistance = Math.max(renderDistance, baseBuffer);
+    const bufferedRenderDistance = adaptiveRenderDistance * 1.5; // 50% buffer for large rings
     
-    // FIXED: More aggressive ring range calculation to prevent gaps
-    const baseRingRange = Math.ceil(renderDistance / 150); // Smaller divisor = more rings loaded
-    const ringRange = Math.max(5, baseRingRange); // Minimum 5 rings in each direction
+    console.log(`🌐 [PlayerBubble] Ring ${playerRegion.ringIndex} - Ring Size: ${ringSize.toFixed(0)}, Adaptive Render: ${adaptiveRenderDistance.toFixed(0)}, Buffered: ${bufferedRenderDistance.toFixed(0)}`);
     
-    console.log(`🔍 [RingSystem] Enhanced loading - Player Ring: ${playerRegion.ringIndex}, Ring Range: ±${ringRange}, Render Distance: ${renderDistance}`);
+    // ENHANCED: Ring-aware loading - load more rings for larger ring systems
+    const ringDifficulty = Math.max(2, Math.ceil(ringSize / 100)); // More complex rings need more neighbors
+    const ringRange = Math.max(3, ringDifficulty); // Minimum 3 rings, more for complex areas
     
-    // Load all rings within expanded range
+    console.log(`🌐 [PlayerBubble] Ring ${playerRegion.ringIndex} loading - Ring Range: ±${ringRange}, Adaptive Render: ${adaptiveRenderDistance.toFixed(0)}`);
+    
+    // COMPREHENSIVE LOADING: Load all rings within adaptive range
     for (let r = Math.max(0, playerRegion.ringIndex - ringRange); 
          r <= playerRegion.ringIndex + ringRange; 
          r++) {
@@ -190,19 +185,19 @@ export class RingQuadrantSystem {
         // Skip if already added
         if (activeRegionKeys.has(regionKey)) continue;
         
-        // Check if region overlaps with buffered render distance
+        // ALWAYS LOAD ADJACENT REGIONS: Ensure no gaps in coverage
         const regionCenter = this.getRegionCenter(regionCoords);
         const distanceToRegion = regionCenter.distanceTo(playerPosition);
         
-        // ENHANCED: Use region size to determine if any part is within range
-        const ring = this.getRingDefinition(r);
-        const regionRadius = (ring.outerRadius - ring.innerRadius) / 2; // Approximate region radius
-        const effectiveDistance = distanceToRegion - regionRadius; // Distance to nearest edge
+        // Load if within adaptive distance OR if it's an adjacent ring to prevent gaps
+        const isAdjacentRing = Math.abs(r - playerRegion.ringIndex) <= 1;
+        const isWithinDistance = distanceToRegion <= bufferedRenderDistance;
         
-        if (effectiveDistance <= bufferedRenderDistance) {
+        if (isWithinDistance || isAdjacentRing) {
           activeRegions.push(regionCoords);
           activeRegionKeys.add(regionKey);
-          console.log(`✅ [RingSystem] Loading region ${regionKey} - Distance: ${distanceToRegion.toFixed(1)}, Effective: ${effectiveDistance.toFixed(1)}`);
+          const reason = isAdjacentRing ? "adjacent" : "distance";
+          console.log(`✅ [PlayerBubble] Loading region ${regionKey} (${reason}) - Distance: ${distanceToRegion.toFixed(0)}`);
         }
       }
     }

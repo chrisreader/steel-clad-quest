@@ -662,7 +662,7 @@ export class SceneManager {
     if (playerPosition) {
       this.updateShadowCamera(playerPosition);
       
-      // Enhanced region loading with safety buffer
+      // PLAYER BUBBLE SYSTEM: Enhanced region loading with adaptive safety buffer
       const activeRegions = this.ringSystem ? this.ringSystem.getActiveRegions(playerPosition, RENDER_DISTANCES.TERRAIN) : [];
       const activeRegionKeys = new Set<string>();
       
@@ -670,8 +670,8 @@ export class SceneManager {
       if (this.ringSystem) {
         const currentPlayerRegion = this.ringSystem.getRegionForPosition(playerPosition);
         if (currentPlayerRegion) {
-          console.log(`🗺️ [SceneManager] Player in Ring ${currentPlayerRegion.ringIndex}, Quadrant ${currentPlayerRegion.quadrant}`);
-          console.log(`🗺️ [SceneManager] Active regions: ${activeRegions.length}, Loaded regions: ${this.loadedRegions.size}`);
+          console.log(`🌐 [PlayerBubble] Player in Ring ${currentPlayerRegion.ringIndex}, Quadrant ${currentPlayerRegion.quadrant}`);
+          console.log(`🌐 [PlayerBubble] Active regions: ${activeRegions.length}, Loaded regions: ${this.loadedRegions.size}`);
         }
       }
       
@@ -680,36 +680,40 @@ export class SceneManager {
         activeRegionKeys.add(regionKey);
         
         if (!this.loadedRegions.has(regionKey)) {
-          console.log(`📥 [SceneManager] Loading new region: ${regionKey}`);
+          console.log(`📥 [PlayerBubble] Loading new region: ${regionKey}`);
           this.loadRegion(region);
         }
       }
       
-      // CRITICAL FIX: Add safety buffer - never unload regions within minimum safety distance
-      const SAFETY_DISTANCE = RENDER_DISTANCES.TERRAIN * 0.75; // 75% of terrain render distance
+      // ADAPTIVE SAFETY BUFFER: Calculate based on current ring size to prevent gaps
+      const currentPlayerRegion = this.ringSystem?.getRegionForPosition(playerPosition);
+      const safetyMultiplier = currentPlayerRegion ? Math.max(2.0, currentPlayerRegion.ringIndex * 0.15) : 2.0;
+      const ADAPTIVE_SAFETY_DISTANCE = RENDER_DISTANCES.TERRAIN * safetyMultiplier;
       const regionsToUnload: string[] = [];
+      
+      console.log(`🛡️ [PlayerBubble] Using adaptive safety distance: ${ADAPTIVE_SAFETY_DISTANCE.toFixed(0)} (multiplier: ${safetyMultiplier.toFixed(2)})`);
       
       for (const [regionKey, region] of this.loadedRegions.entries()) {
         if (!activeRegionKeys.has(regionKey)) {
-          // Check if region is within safety distance before unloading
+          // Enhanced safety check with adaptive distance
           if (this.ringSystem) {
             const regionCenter = this.ringSystem.getRegionCenter(region.coordinates);
             const distanceToPlayer = regionCenter.distanceTo(playerPosition);
             
-            if (distanceToPlayer > SAFETY_DISTANCE) {
+            if (distanceToPlayer > ADAPTIVE_SAFETY_DISTANCE) {
               regionsToUnload.push(regionKey);
             } else {
-              console.log(`🛡️ [SceneManager] Keeping region ${regionKey} within safety distance (${distanceToPlayer.toFixed(1)} units)`);
+              console.log(`🛡️ [PlayerBubble] Keeping region ${regionKey} within safety distance (${distanceToPlayer.toFixed(1)}/${ADAPTIVE_SAFETY_DISTANCE.toFixed(1)} units)`);
             }
           }
         }
       }
       
-      // Unload regions outside safety distance
+      // CONSERVATIVE UNLOADING: Only unload regions far outside adaptive safety distance
       regionsToUnload.forEach(regionKey => {
         const region = this.loadedRegions.get(regionKey);
         if (region) {
-          console.log(`🗑️ [SceneManager] Unloading region: ${regionKey}`);
+          console.log(`🗑️ [PlayerBubble] Safely unloading distant region: ${regionKey}`);
           this.unloadRegion(region.coordinates);
         }
       });
