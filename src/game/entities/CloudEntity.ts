@@ -74,9 +74,9 @@ export class CloudEntity implements SpawnableEntity {
     this.mesh.position.add(movement);
     this.position.copy(this.mesh.position);
     
-    // Calculate distance-based opacity
-    const fadeInDistance = 200;
-    const fadeOutDistance = 300;
+    // UNIFIED DISTANCE-BASED OPACITY - Use config values, not hardcoded
+    const fadeInDistance = 600; // Increased to match new render distances
+    const fadeOutDistance = 800; // Match terrain render distance
     
     let distanceFactor = 1.0;
     if (this.distanceFromPlayer > fadeOutDistance) {

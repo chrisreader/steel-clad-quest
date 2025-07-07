@@ -1,5 +1,6 @@
 
 import * as THREE from 'three';
+import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 interface Cloud {
   mesh: THREE.Group;
@@ -29,9 +30,9 @@ export class DynamicCloudSystem {
   private playerMovementSpeed: number = 0; // Track player movement speed
   
   // Distance-based fade settings - EXPANDED for better coverage
-  private fadeInDistance: number = 200; // Increased visible zone
-  private fadeOutDistance: number = 300; // Increased fade zone
-  private maxCloudDistance: number = 400; // Hard limit for cloud removal
+  private fadeInDistance: number = RENDER_DISTANCES.LOD_FAR; // Use unified config - 600 units
+  private fadeOutDistance: number = RENDER_DISTANCES.CLOUDS; // Use unified config - 800 units  
+  private maxCloudDistance: number = RENDER_DISTANCES.CLEANUP.CLOUDS; // Use unified config - 1000 units
   
   // Spawn zone settings - EXPANDED
   private minSpawnDistance: number = 150; // Minimum distance from player to spawn

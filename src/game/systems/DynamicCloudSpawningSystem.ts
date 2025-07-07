@@ -13,13 +13,13 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
       playerMovementThreshold: 3,
       fadeInDistance: RENDER_DISTANCES.LOD_MEDIUM,
       fadeOutDistance: RENDER_DISTANCES.LOD_FAR,
-      maxEntityDistance: RENDER_DISTANCES.CLOUDS,
-      minSpawnDistance: RENDER_DISTANCES.SPAWN.MIN_DISTANCE * 3, // Clouds spawn farther
+      maxEntityDistance: RENDER_DISTANCES.CLOUDS, // Now 800 units - unified with terrain
+      minSpawnDistance: RENDER_DISTANCES.SPAWN.MIN_DISTANCE * 2, // Clouds spawn at medium distance
       maxSpawnDistance: RENDER_DISTANCES.SPAWN.MAX_DISTANCE,
-      maxEntities: 8,
+      maxEntities: 12, // Increased for larger render distance
       baseSpawnInterval: 4000,
-      spawnCountPerTrigger: 2,
-      aggressiveCleanupDistance: RENDER_DISTANCES.CLEANUP.CLOUDS,
+      spawnCountPerTrigger: 3, // Increased for larger coverage
+      aggressiveCleanupDistance: RENDER_DISTANCES.CLEANUP.CLOUDS, // Now 1000 units - very conservative
       fadedOutTimeout: 2000
     };
     
@@ -42,10 +42,10 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
     // Calculate spawn position
     const cloudHeight = 35 + Math.random() * 15;
     
-    // FIXED: Require valid player position - no more fallback to spawn point
+    // UNIFIED PLAYER-CENTERED: Always use player position, never fallback to spawn
     if (!playerPosition) {
-      console.error('❌ [DynamicCloudSpawningSystem] No player position provided for cloud creation');
-      playerPosition = new THREE.Vector3(0, 0, 0); // Last resort fallback with warning
+      console.error('❌ [DynamicCloudSpawningSystem] CRITICAL: No player position provided - clouds will not spawn correctly');
+      return cloud; // Return uninitialized cloud rather than create at wrong position
     }
     
     const centerX = playerPosition.x;

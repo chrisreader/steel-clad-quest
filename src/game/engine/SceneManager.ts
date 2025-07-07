@@ -21,6 +21,7 @@ import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
 import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 import { GrassSystem } from '../vegetation/GrassSystem';
+import { DistanceManager } from '../systems/UnifiedDistanceManager';
 import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 export class SceneManager {
@@ -659,7 +660,12 @@ export class SceneManager {
       this.terrainFeatureGenerator.updateTreeDayNightLighting(dayFactor, nightFactor);
     }
     
+    // UPDATE UNIFIED DISTANCE MANAGER - Single source of truth for all systems
     if (playerPosition) {
+      const currentPlayerRegion = this.ringSystem?.getRegionForPosition(playerPosition);
+      const currentRingIndex = currentPlayerRegion ? currentPlayerRegion.ringIndex : 0;
+      DistanceManager.updatePlayerPosition(playerPosition, currentRingIndex);
+      
       this.updateShadowCamera(playerPosition);
       
       // PLAYER BUBBLE SYSTEM: Enhanced region loading with adaptive safety buffer
@@ -668,9 +674,9 @@ export class SceneManager {
       
       // Enhanced logging for debugging
       if (this.ringSystem) {
-        const currentPlayerRegion = this.ringSystem.getRegionForPosition(playerPosition);
-        if (currentPlayerRegion) {
-          console.log(`🌐 [PlayerBubble] Player in Ring ${currentPlayerRegion.ringIndex}, Quadrant ${currentPlayerRegion.quadrant}`);
+        const playerRegionInfo = this.ringSystem.getRegionForPosition(playerPosition);
+        if (playerRegionInfo) {
+          console.log(`🌐 [PlayerBubble] Player in Ring ${playerRegionInfo.ringIndex}, Quadrant ${playerRegionInfo.quadrant}`);
           console.log(`🌐 [PlayerBubble] Active regions: ${activeRegions.length}, Loaded regions: ${this.loadedRegions.size}`);
         }
       }
@@ -686,8 +692,8 @@ export class SceneManager {
       }
       
       // ADAPTIVE SAFETY BUFFER: Calculate based on current ring size to prevent gaps
-      const currentPlayerRegion = this.ringSystem?.getRegionForPosition(playerPosition);
-      const safetyMultiplier = currentPlayerRegion ? Math.max(2.0, currentPlayerRegion.ringIndex * 0.15) : 2.0;
+      const playerRegionForSafety = this.ringSystem?.getRegionForPosition(playerPosition);
+      const safetyMultiplier = playerRegionForSafety ? Math.max(2.0, playerRegionForSafety.ringIndex * 0.15) : 2.0;
       const ADAPTIVE_SAFETY_DISTANCE = RENDER_DISTANCES.TERRAIN * safetyMultiplier;
       const regionsToUnload: string[] = [];
       
