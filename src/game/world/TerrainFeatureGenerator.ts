@@ -1843,6 +1843,29 @@ export class TerrainFeatureGenerator {
           features.push(feature);
           this.scene.add(feature);
           
+          // UNIFIED MANAGEMENT: Register with WorldFeatureManager for player-distance management
+          const currentRegionKey = this.ringSystem.getRegionKey(region);
+          this.worldFeatureManager.registerFeature(
+            feature, 
+            type === 'forest' ? 'tree' : type === 'rocks' ? 'rock' : 'bush', 
+            currentRegionKey,
+            () => {
+              // Disposal callback
+              feature.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                  if (child.geometry) child.geometry.dispose();
+                  if (child.material) {
+                    if (Array.isArray(child.material)) {
+                      child.material.forEach(mat => mat.dispose());
+                    } else {
+                      child.material.dispose();
+                    }
+                  }
+                }
+              });
+            }
+          );
+          
           if (this.collisionRegistrationCallback) {
             this.collisionRegistrationCallback(feature);
             console.log(`🔧 Callback registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
@@ -1866,6 +1889,29 @@ export class TerrainFeatureGenerator {
         if (feature) {
           features.push(feature);
           this.scene.add(feature);
+          
+          // UNIFIED MANAGEMENT: Register with WorldFeatureManager for player-distance management
+          const currentRegionKey = this.ringSystem.getRegionKey(region);
+          this.worldFeatureManager.registerFeature(
+            feature, 
+            type === 'forest' ? 'tree' : type === 'rocks' ? 'rock' : 'bush', 
+            currentRegionKey,
+            () => {
+              // Disposal callback
+              feature.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                  if (child.geometry) child.geometry.dispose();
+                  if (child.material) {
+                    if (Array.isArray(child.material)) {
+                      child.material.forEach(mat => mat.dispose());
+                    } else {
+                      child.material.dispose();
+                    }
+                  }
+                }
+              });
+            }
+          );
           
           if (this.collisionRegistrationCallback) {
             this.collisionRegistrationCallback(feature);
@@ -1932,28 +1978,20 @@ export class TerrainFeatureGenerator {
     return distance < this.tavernExclusionRadius;
   }
   
+  // UPDATED: Region cleanup now only disposes resources - WorldFeatureManager handles scene removal
   public cleanupFeaturesForRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
     const features = this.spawnedFeatures.get(regionKey);
     
     if (!features) return;
     
-    console.log(`Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`🧹 [DISTANCE-BASED] Disposing feature resources for region ${regionKey} - WorldFeatureManager handles visibility`);
     
     features.forEach(feature => {
-      this.scene.remove(feature);
-      
-      if (feature instanceof THREE.Mesh) {
-        if (feature.geometry) feature.geometry.dispose();
-        if (feature.material) {
-          if (Array.isArray(feature.material)) {
-            feature.material.forEach(m => m.dispose());
-          } else {
-            feature.material.dispose();
-          }
-        }
-      } else if (feature instanceof THREE.Group) {
-        feature.traverse(child => {
+      // Don't remove from scene - WorldFeatureManager handles this based on player distance
+      // Just dispose resources to prevent memory leaks
+      if (feature instanceof THREE.Group || feature instanceof THREE.Object3D) {
+        feature.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             if (child.geometry) child.geometry.dispose();
             if (child.material) {
@@ -1969,8 +2007,9 @@ export class TerrainFeatureGenerator {
     });
     
     this.spawnedFeatures.delete(regionKey);
+    console.log(`✅ Feature resources disposed for region ${regionKey} - scene removal handled by WorldFeatureManager`);
   }
-  
+
   private gaussianRandom(): number {
     let u = 0, v = 0;
     while(u === 0) u = Math.random();
@@ -1980,7 +2019,7 @@ export class TerrainFeatureGenerator {
     
     return Math.min(Math.max((num + 3) / 6, 0), 1);
   }
-  
+
   public dispose(): void {
     for (const [regionKey, features] of this.spawnedFeatures.entries()) {
       features.forEach(feature => {

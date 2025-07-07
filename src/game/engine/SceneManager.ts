@@ -938,10 +938,13 @@ export class SceneManager {
     
     if (!loadedRegion) return;
     
-    console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`🌍 [CONSERVATIVE] Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
+    // Only cleanup structures - WorldFeatureManager handles all features based on player distance
     this.structureGenerator.cleanupStructuresForRegion(region);
-    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
+    
+    // REMOVED: this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
+    // Features are now managed by WorldFeatureManager based on player distance, not region boundaries
     
     // Remove 3D grass for this region
     this.grassSystem.removeGrassForRegion(region);
