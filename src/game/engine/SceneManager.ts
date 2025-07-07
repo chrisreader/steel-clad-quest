@@ -630,6 +630,8 @@ export class SceneManager {
       this.birdSpawningSystem.update(deltaTime, playerPosition);
     }
     
+    const playerRegion = this.getRegionForPosition(playerPosition);
+    
     // Update 3D grass system with game time for day/night color changes
     if (this.grassSystem && playerPosition) {
       this.grassSystem.update(deltaTime, playerPosition, this.timeOfDay);

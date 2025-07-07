@@ -1749,7 +1749,172 @@ export class TerrainFeatureGenerator {
   }
   
   private getRandomPositionInRegion(region: RegionCoordinates): THREE.Vector3 {
+  // NEW: Generate feature clusters for infinite world
+  private generateFeatureClusters(region: RegionCoordinates, density: number): FeatureCluster[] {
+    const clusters: FeatureCluster[] = [];
+    const regionCenter = this.ringSystem.getRegionCenter(region);
     const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
+    
+    // Calculate cluster count based on ring size and density
+    const ringSize = ringDef.outerRadius - ringDef.innerRadius;
+    const baseClusterCount = Math.floor(ringSize / 100); // 1 cluster per 100 units
+    const actualClusterCount = Math.max(1, Math.floor(baseClusterCount * density));
+    
+    for (let i = 0; i < actualClusterCount; i++) {
+      // Generate cluster position within region bounds
+      const angle = (region.quadrant * Math.PI / 2) + (Math.random() * Math.PI / 2);
+      const distance = ringDef.innerRadius + (Math.random() * (ringDef.outerRadius - ringDef.innerRadius));
+      
+      const clusterCenter = new THREE.Vector3(
+        Math.cos(angle) * distance,
+        0,
+        Math.sin(angle) * distance
+      );
+      
+      // Determine cluster type based on biome and position
+      const clusterType = this.determineClusterType(region, clusterCenter);
+      const clusterRadius = 20 + (Math.random() * 30); // 20-50 unit radius
+      const clusterDensity = 0.5 + (Math.random() * 0.5); // 50-100% density
+      
+      clusters.push({
+        position: clusterCenter,
+        radius: clusterRadius,
+        density: clusterDensity,
+        type: clusterType
+      });
+    }
+    
+    return clusters;
+  }
+
+  // NEW: Determine cluster type based on biome and location
+  private determineClusterType(region: RegionCoordinates, position: THREE.Vector3): 'forest' | 'rocks' | 'bushes' | 'mixed' {
+    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
+    const distance = position.length();
+    
+    // Biome-based cluster determination
+    if (distance < 100) {
+      return Math.random() < 0.6 ? 'mixed' : 'forest';
+    } else if (distance < 300) {
+      return Math.random() < 0.4 ? 'forest' : Math.random() < 0.7 ? 'mixed' : 'rocks';
+    } else {
+      // Outer regions - more sparse, rocky terrain
+      return Math.random() < 0.3 ? 'forest' : Math.random() < 0.6 ? 'rocks' : 'bushes';
+    }
+  }
+
+  // NEW: Generate features for a specific cluster
+  private generateClusterFeatures(cluster: FeatureCluster, clusterId: string): THREE.Object3D[] {
+    const features: THREE.Object3D[] = [];
+    
+    // Calculate number of features based on cluster size and density
+    const baseFeatureCount = Math.floor((cluster.radius * cluster.radius * Math.PI) / 100); // Rough count based on area
+    const actualFeatureCount = Math.floor(baseFeatureCount * cluster.density);
+    
+    for (let i = 0; i < actualFeatureCount; i++) {
+      const featurePosition = this.generateFeaturePosition(cluster);
+      
+      // Skip if too close to tavern
+      if (featurePosition.distanceTo(this.tavernPosition) < this.tavernExclusionRadius) {
+        continue;
+      }
+      
+      let feature: THREE.Object3D | null = null;
+      
+      // Generate feature based on cluster type
+      switch (cluster.type) {
+        case 'forest':
+          feature = this.generateTreeFeature(featurePosition, clusterId + `_tree_${i}`);
+          break;
+        case 'rocks':
+          feature = this.generateRockFeature(featurePosition, clusterId + `_rock_${i}`);
+          break;
+        case 'bushes':
+          feature = this.generateBushFeature(featurePosition, clusterId + `_bush_${i}`);
+          break;
+        case 'mixed':
+          feature = this.generateMixedFeature(featurePosition, clusterId + `_mixed_${i}`);
+          break;
+      }
+      
+      if (feature) {
+        features.push(feature);
+        this.scene.add(feature);
+        
+        // Register collision if callback is available
+        if (this.collisionRegistrationCallback) {
+          this.collisionRegistrationCallback(feature);
+        }
+      }
+    }
+    
+    return features;
+  }
+
+  // NEW: Generate position within cluster bounds
+  private generateFeaturePosition(cluster: FeatureCluster): THREE.Vector3 {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * cluster.radius;
+    
+    return new THREE.Vector3(
+      cluster.position.x + Math.cos(angle) * distance,
+      0,
+      cluster.position.z + Math.sin(angle) * distance
+    );
+  }
+
+  // NEW: Generate tree feature
+  private generateTreeFeature(position: THREE.Vector3, id: string): THREE.Object3D | null {
+    try {
+      const tree = this.treeGenerator.createRealisticTree();
+      tree.position.copy(position);
+      tree.name = id;
+      return tree;
+    } catch (error) {
+      console.warn(`Failed to generate tree at ${position.x}, ${position.z}:`, error);
+      return null;
+    }
+  }
+
+  // NEW: Generate rock feature
+  private generateRockFeature(position: THREE.Vector3, id: string): THREE.Object3D | null {
+    try {
+      const rockVariation = this.rockVariations[Math.floor(Math.random() * this.rockVariations.length)];
+      const rock = this.createEnhancedRockFromVariation(rockVariation, 0);
+      rock.position.copy(position);
+      rock.name = id;
+      return rock;
+    } catch (error) {
+      console.warn(`Failed to generate rock at ${position.x}, ${position.z}:`, error);
+      return null;
+    }
+  }
+
+  // NEW: Generate bush feature
+  private generateBushFeature(position: THREE.Vector3, id: string): THREE.Object3D | null {
+    try {
+      const bush = this.bushGenerator.createBush();
+      bush.position.copy(position);
+      bush.name = id;
+      return bush;
+    } catch (error) {
+      console.warn(`Failed to generate bush at ${position.x}, ${position.z}:`, error);
+      return null;
+    }
+  }
+
+  // NEW: Generate mixed feature (random selection)
+  private generateMixedFeature(position: THREE.Vector3, id: string): THREE.Object3D | null {
+    const featureType = Math.random();
+    
+    if (featureType < 0.5) {
+      return this.generateTreeFeature(position, id);
+    } else if (featureType < 0.8) {
+      return this.generateBushFeature(position, id);
+    } else {
+      return this.generateRockFeature(position, id);
+    }
+  }
     const worldCenter = new THREE.Vector3(0, 0, 0);
     
     const innerRadius = ringDef.innerRadius;

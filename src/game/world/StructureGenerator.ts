@@ -386,16 +386,20 @@ export class StructureGenerator {
       this.createGuaranteedCamp('rock', new THREE.Vector3(70, 0, -85));
     }
     
-    // Random camps in outer rings - INCREASED SPAWN CHANCE
-    if (region.ringIndex >= 2 && region.ringIndex <= 4) {
-      // Increased spawn chance from 0.3 to 0.6 for more camps
-      if (Math.random() < 0.6) {
-        console.log(`🏕️ [StructureGenerator] Creating RANDOM camp in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-        this.createRandomCamp(region);
-      } else {
-        console.log(`🏕️ [StructureGenerator] Skipped random camp creation in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-      }
+  // Random camps in outer rings - INFINITE SCALING
+  if (region.ringIndex >= 2) {
+    // Base spawn chance that decreases with distance but never reaches zero
+    const baseChance = 0.6;
+    const distanceReduction = Math.max(0.1, 1 - (region.ringIndex * 0.05)); // Minimum 10% chance
+    const spawnChance = baseChance * distanceReduction;
+    
+    if (Math.random() < spawnChance) {
+      console.log(`🏕️ [StructureGenerator] Creating RANDOM camp in Ring ${region.ringIndex}, Quadrant ${region.quadrant} (chance: ${(spawnChance * 100).toFixed(1)}%)`);
+      this.createRandomCamp(region);
+    } else {
+      console.log(`🏕️ [StructureGenerator] Skipped random camp creation in Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     }
+  }
     
     // Handle other structures (castle, etc.)
     if (region.ringIndex === 1 && region.quadrant === 2) {
