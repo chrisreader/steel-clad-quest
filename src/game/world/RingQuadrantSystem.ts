@@ -103,20 +103,41 @@ export class RingQuadrantSystem {
     return { ringIndex, quadrant };
   }
   
-  // Get the center position of a region (infinite procedural)
+  // Get the center position of a region (infinite procedural) - ENHANCED VERSION
   public getRegionCenter(region: RegionCoordinates): THREE.Vector3 {
     const ring = this.getRingDefinition(region.ringIndex);
+    
+    // FIXED: For Ring 0 (spawn), use the world center
+    if (region.ringIndex === 0) {
+      // For spawn ring, place quadrants closer to center to prevent gaps
+      const spawnRadius = 25; // Small radius for spawn quadrants
+      const quadrantAngle = Math.PI / 2; // 90 degrees per quadrant
+      const angle = region.quadrant * quadrantAngle + (quadrantAngle / 2);
+      
+      return new THREE.Vector3(
+        this.worldCenter.x + spawnRadius * Math.cos(angle),
+        this.worldCenter.y,
+        this.worldCenter.z + spawnRadius * Math.sin(angle)
+      );
+    }
+    
+    // ENHANCED: For other rings, use more accurate center calculation
     const midRadius = (ring.innerRadius + ring.outerRadius) / 2;
     
     // Calculate angle based on quadrant (center of quadrant)
     const quadrantAngle = Math.PI / 2; // 90 degrees per quadrant
     const angle = region.quadrant * quadrantAngle + (quadrantAngle / 2);
     
-    return new THREE.Vector3(
+    const center = new THREE.Vector3(
       this.worldCenter.x + midRadius * Math.cos(angle),
       this.worldCenter.y,
       this.worldCenter.z + midRadius * Math.sin(angle)
     );
+    
+    // Debug logging for region centers
+    console.log(`📍 [RingSystem] Region R${region.ringIndex}Q${region.quadrant} center: (${center.x.toFixed(1)}, ${center.z.toFixed(1)}), radius: ${midRadius.toFixed(1)}`);
+    
+    return center;
   }
   
   // Get a unique string key for a region
@@ -124,7 +145,7 @@ export class RingQuadrantSystem {
     return `r${region.ringIndex}_q${region.quadrant}`;
   }
   
-  // Get regions that should be active based on player position
+  // Get regions that should be active based on player position - ENHANCED VERSION
   public getActiveRegions(playerPosition: THREE.Vector3, renderDistance: number): RegionCoordinates[] {
     const playerRegion = this.getRegionForPosition(playerPosition);
     if (!playerRegion) return [];
@@ -148,8 +169,17 @@ export class RingQuadrantSystem {
       }
     }
     
-    // Expanded adjacency check (±3 rings instead of ±1) for continuous terrain
-    const ringRange = Math.min(3, Math.max(2, Math.floor(renderDistance / 200))); // Dynamic range based on render distance
+    // ENHANCED: Calculate more comprehensive region loading
+    // Use expanded render distance with buffer for seamless loading
+    const bufferedRenderDistance = renderDistance * 1.25; // 25% buffer for smooth loading
+    
+    // FIXED: More aggressive ring range calculation to prevent gaps
+    const baseRingRange = Math.ceil(renderDistance / 150); // Smaller divisor = more rings loaded
+    const ringRange = Math.max(5, baseRingRange); // Minimum 5 rings in each direction
+    
+    console.log(`🔍 [RingSystem] Enhanced loading - Player Ring: ${playerRegion.ringIndex}, Ring Range: ±${ringRange}, Render Distance: ${renderDistance}`);
+    
+    // Load all rings within expanded range
     for (let r = Math.max(0, playerRegion.ringIndex - ringRange); 
          r <= playerRegion.ringIndex + ringRange; 
          r++) {
@@ -160,20 +190,27 @@ export class RingQuadrantSystem {
         // Skip if already added
         if (activeRegionKeys.has(regionKey)) continue;
         
-        // Check if region center is within render distance
+        // Check if region overlaps with buffered render distance
         const regionCenter = this.getRegionCenter(regionCoords);
         const distanceToRegion = regionCenter.distanceTo(playerPosition);
         
-        if (distanceToRegion <= renderDistance) {
+        // ENHANCED: Use region size to determine if any part is within range
+        const ring = this.getRingDefinition(r);
+        const regionRadius = (ring.outerRadius - ring.innerRadius) / 2; // Approximate region radius
+        const effectiveDistance = distanceToRegion - regionRadius; // Distance to nearest edge
+        
+        if (effectiveDistance <= bufferedRenderDistance) {
           activeRegions.push(regionCoords);
           activeRegionKeys.add(regionKey);
+          console.log(`✅ [RingSystem] Loading region ${regionKey} - Distance: ${distanceToRegion.toFixed(1)}, Effective: ${effectiveDistance.toFixed(1)}`);
         }
       }
     }
     
-    // Distance-based fallback: Load any regions within render distance regardless of ring adjacency
-    // This ensures no gaps in terrain when render distance is large
-    const maxCheckRing = Math.ceil(renderDistance / 100); // Rough estimate of rings to check
+    // ENHANCED: Comprehensive distance-based fallback with larger search area
+    const maxSearchDistance = Math.max(bufferedRenderDistance, 1000); // At least 1000 units
+    const maxCheckRing = Math.ceil(maxSearchDistance / 50); // Check more rings
+    
     for (let r = 0; r <= maxCheckRing; r++) {
       for (let q = 0; q < 4; q++) {
         const regionCoords: RegionCoordinates = { ringIndex: r, quadrant: q };
@@ -185,15 +222,34 @@ export class RingQuadrantSystem {
         const regionCenter = this.getRegionCenter(regionCoords);
         const distanceToRegion = regionCenter.distanceTo(playerPosition);
         
-        // Load if within render distance
-        if (distanceToRegion <= renderDistance) {
+        // Load if within buffered render distance
+        if (distanceToRegion <= bufferedRenderDistance) {
           activeRegions.push(regionCoords);
           activeRegionKeys.add(regionKey);
+          console.log(`🔄 [RingSystem] Fallback loading region ${regionKey} - Distance: ${distanceToRegion.toFixed(1)}`);
         }
       }
     }
     
-    console.log(`🗺️ [RingSystem] Active regions: ${activeRegions.length} (player in Ring ${playerRegion.ringIndex})`);
+    // ENHANCED: Ensure continuity by loading intermediate rings
+    // This prevents gaps when jumping between distant rings
+    const minRing = Math.min(...activeRegions.map(r => r.ringIndex));
+    const maxRing = Math.max(...activeRegions.map(r => r.ringIndex));
+    
+    for (let r = minRing; r <= maxRing; r++) {
+      for (let q = 0; q < 4; q++) {
+        const regionCoords: RegionCoordinates = { ringIndex: r, quadrant: q };
+        const regionKey = this.getRegionKey(regionCoords);
+        
+        if (!activeRegionKeys.has(regionKey)) {
+          activeRegions.push(regionCoords);
+          activeRegionKeys.add(regionKey);
+          console.log(`🔗 [RingSystem] Continuity loading region ${regionKey}`);
+        }
+      }
+    }
+    
+    console.log(`🗺️ [RingSystem] FINAL - Active regions: ${activeRegions.length} (Rings ${minRing}-${maxRing}, Player in Ring ${playerRegion.ringIndex})`);
     return activeRegions;
   }
   

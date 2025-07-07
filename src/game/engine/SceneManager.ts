@@ -646,23 +646,57 @@ export class SceneManager {
     if (playerPosition) {
       this.updateShadowCamera(playerPosition);
       
-      const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
+      // Enhanced region loading with safety buffer
+      const activeRegions = this.ringSystem ? this.ringSystem.getActiveRegions(playerPosition, RENDER_DISTANCES.TERRAIN) : [];
       const activeRegionKeys = new Set<string>();
       
+      // Enhanced logging for debugging
+      if (this.ringSystem) {
+        const currentPlayerRegion = this.ringSystem.getRegionForPosition(playerPosition);
+        if (currentPlayerRegion) {
+          console.log(`🗺️ [SceneManager] Player in Ring ${currentPlayerRegion.ringIndex}, Quadrant ${currentPlayerRegion.quadrant}`);
+          console.log(`🗺️ [SceneManager] Active regions: ${activeRegions.length}, Loaded regions: ${this.loadedRegions.size}`);
+        }
+      }
+      
       for (const region of activeRegions) {
-        const regionKey = this.ringSystem.getRegionKey(region);
+        const regionKey = this.ringSystem!.getRegionKey(region);
         activeRegionKeys.add(regionKey);
         
         if (!this.loadedRegions.has(regionKey)) {
+          console.log(`📥 [SceneManager] Loading new region: ${regionKey}`);
           this.loadRegion(region);
         }
       }
       
+      // CRITICAL FIX: Add safety buffer - never unload regions within minimum safety distance
+      const SAFETY_DISTANCE = RENDER_DISTANCES.TERRAIN * 0.75; // 75% of terrain render distance
+      const regionsToUnload: string[] = [];
+      
       for (const [regionKey, region] of this.loadedRegions.entries()) {
         if (!activeRegionKeys.has(regionKey)) {
-          this.unloadRegion(region.coordinates);
+          // Check if region is within safety distance before unloading
+          if (this.ringSystem) {
+            const regionCenter = this.ringSystem.getRegionCenter(region.coordinates);
+            const distanceToPlayer = regionCenter.distanceTo(playerPosition);
+            
+            if (distanceToPlayer > SAFETY_DISTANCE) {
+              regionsToUnload.push(regionKey);
+            } else {
+              console.log(`🛡️ [SceneManager] Keeping region ${regionKey} within safety distance (${distanceToPlayer.toFixed(1)} units)`);
+            }
+          }
         }
       }
+      
+      // Unload regions outside safety distance
+      regionsToUnload.forEach(regionKey => {
+        const region = this.loadedRegions.get(regionKey);
+        if (region) {
+          console.log(`🗑️ [SceneManager] Unloading region: ${regionKey}`);
+          this.unloadRegion(region.coordinates);
+        }
+      });
     }
     
     if (playerPosition) {
