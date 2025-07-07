@@ -28,12 +28,12 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
     super(scene, config);
     this.globalFeatureManager = GlobalFeatureManager.getInstance(scene);
     
-    // Create cloud material
+    // Create cloud material with better visibility
     this.cloudMaterial = new THREE.MeshLambertMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.4,
-      fog: false
+      opacity: 0.6, // Increased from 0.4
+      fog: true // Allow fog to affect clouds naturally
     });
     
     console.log('DynamicCloudSpawningSystem initialized');
@@ -42,8 +42,8 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
   protected createEntity(isInitial: boolean = false, playerPosition?: THREE.Vector3): CloudEntity {
     const cloud = new CloudEntity(this.cloudMaterial);
     
-    // Calculate spawn position with higher altitude
-    const cloudHeight = 80 + Math.random() * 40; // Increased from 35-50 to 80-120
+    // Calculate spawn position with proper altitude
+    const cloudHeight = 60 + Math.random() * 30; // 60-90 altitude for visibility
     const centerX = playerPosition ? playerPosition.x : 0;
     const centerZ = playerPosition ? playerPosition.z : 0;
     

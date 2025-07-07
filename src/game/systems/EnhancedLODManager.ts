@@ -266,51 +266,23 @@ export class EnhancedLODManager {
   }
 
   private updateFogVisibility(feature: LODFeature, distance: number): void {
-    // DISABLED: Fog visibility was making close objects transparent
-    // Only apply fog effects to distant objects to prevent bush transparency near player
-    if (distance < FOG_CONFIG.NEAR + 20) {
-      // Keep objects close to player fully opaque
-      feature.object.traverse((child) => {
-        if (child instanceof THREE.Mesh && child.material) {
-          if (Array.isArray(child.material)) {
-            child.material.forEach(mat => {
-              if ('opacity' in mat) {
-                mat.transparent = false;
-                mat.opacity = 1.0;
-              }
-            });
-          } else if ('opacity' in child.material) {
-            child.material.transparent = false;
-            child.material.opacity = 1.0;
-          }
-        }
-      });
-      return;
-    }
-    
-    // Only apply fog effects to distant objects
-    const fogFactor = this.calculateFogFactor(distance);
-    
+    // DISABLED: Fog visibility system causing transparency issues
+    // Keep all objects fully opaque to prevent transparency problems
     feature.object.traverse((child) => {
       if (child instanceof THREE.Mesh && child.material) {
         if (Array.isArray(child.material)) {
           child.material.forEach(mat => {
             if ('opacity' in mat) {
-              mat.transparent = true;
-              mat.opacity = fogFactor;
+              mat.transparent = false;
+              mat.opacity = 1.0;
             }
           });
         } else if ('opacity' in child.material) {
-          child.material.transparent = true;
-          child.material.opacity = fogFactor;
+          child.material.transparent = false;
+          child.material.opacity = 1.0;
         }
       }
     });
-
-    if (feature.billboard && feature.currentLOD === 'billboard') {
-      const spriteMaterial = feature.billboard.material as THREE.SpriteMaterial;
-      spriteMaterial.opacity = fogFactor;
-    }
   }
 
   private calculateFogFactor(distance: number): number {
