@@ -414,12 +414,15 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         const player = gameEngine.getPlayer();
         const gameState = gameEngine.getGameState();
         
-        setPlayerStats(player.getStats());
-        setGameTime(gameState.timeElapsed);
-        
-        if (!player.isAlive()) {
-          setIsGameOver(true);
+        if (player) { // Add null check for player
+          setPlayerStats(player.getStats());
+          
+          if (!player.isAlive()) {
+            setIsGameOver(true);
+          }
         }
+        
+        setGameTime(gameState.timeElapsed);
       }
     }, 100);
 
