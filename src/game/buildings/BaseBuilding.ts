@@ -51,7 +51,7 @@ export abstract class BaseBuilding {
   }
   
   // Helper method to add a component to the building
-  public addComponent(mesh: THREE.Object3D, name: string, material: 'wood' | 'stone' | 'metal' | 'fabric'): void {
+  protected addComponent(mesh: THREE.Object3D, name: string, material: 'wood' | 'stone' | 'metal' | 'fabric'): void {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     this.buildingGroup.add(mesh);
