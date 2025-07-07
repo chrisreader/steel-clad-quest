@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CrowBird } from '../entities/birds/CrowBird';
 import { SpawnableEntity, SpawningConfig } from '../../types/SpawnableEntity';
 import { BirdType } from '../../types/GameTypes';
+import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 export interface BirdSpawningConfig extends SpawningConfig {
   birdTypes: BirdType[];
@@ -26,20 +27,20 @@ export class BirdSpawningSystem {
       // Movement tracking
       playerMovementThreshold: 15,
       
-      // Distance settings
-      fadeInDistance: 40,
-      fadeOutDistance: 60,
-      maxEntityDistance: 80,
-      minSpawnDistance: 20,
-      maxSpawnDistance: 50,
+      // Distance settings - aligned with render distance config
+      fadeInDistance: RENDER_DISTANCES.LOD_NEAR,
+      fadeOutDistance: RENDER_DISTANCES.LOD_MEDIUM,
+      maxEntityDistance: RENDER_DISTANCES.BIRDS,
+      minSpawnDistance: RENDER_DISTANCES.SPAWN.MIN_DISTANCE,
+      maxSpawnDistance: RENDER_DISTANCES.SPAWN.MAX_DISTANCE * 0.6, // Birds closer than clouds
       
       // Spawn settings
       maxEntities: 8,
       baseSpawnInterval: 8000, // 8 seconds
       spawnCountPerTrigger: 1,
       
-      // Cleanup settings
-      aggressiveCleanupDistance: 100,
+      // Cleanup settings - aligned with render distance config
+      aggressiveCleanupDistance: RENDER_DISTANCES.CLEANUP.BIRDS,
       fadedOutTimeout: 5000,
       
       // Bird-specific settings

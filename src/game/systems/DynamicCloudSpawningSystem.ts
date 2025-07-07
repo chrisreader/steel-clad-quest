@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { DynamicSpawningSystem } from './DynamicSpawningSystem';
 import { CloudEntity } from '../entities/CloudEntity';
 import { SpawningConfig, SpawnZone } from '../../types/SpawnableEntity';
+import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntity> {
   private cloudMaterial: THREE.MeshLambertMaterial;
@@ -10,15 +11,15 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
   constructor(scene: THREE.Scene) {
     const config: SpawningConfig = {
       playerMovementThreshold: 3,
-      fadeInDistance: 200,
-      fadeOutDistance: 300,
-      maxEntityDistance: 400,
-      minSpawnDistance: 150,
-      maxSpawnDistance: 350,
+      fadeInDistance: RENDER_DISTANCES.LOD_MEDIUM,
+      fadeOutDistance: RENDER_DISTANCES.LOD_FAR,
+      maxEntityDistance: RENDER_DISTANCES.CLOUDS,
+      minSpawnDistance: RENDER_DISTANCES.SPAWN.MIN_DISTANCE * 3, // Clouds spawn farther
+      maxSpawnDistance: RENDER_DISTANCES.SPAWN.MAX_DISTANCE,
       maxEntities: 8,
       baseSpawnInterval: 4000,
       spawnCountPerTrigger: 2,
-      aggressiveCleanupDistance: 320,
+      aggressiveCleanupDistance: RENDER_DISTANCES.CLEANUP.CLOUDS,
       fadedOutTimeout: 2000
     };
     

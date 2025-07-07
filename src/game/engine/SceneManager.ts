@@ -21,6 +21,7 @@ import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
 import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 import { GrassSystem } from '../vegetation/GrassSystem';
+import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -35,7 +36,7 @@ export class SceneManager {
   private terrainFeatureGenerator: TerrainFeatureGenerator;
   private structureGenerator: StructureGenerator;
   private loadedRegions: Map<string, Region> = new Map();
-  private renderDistance: number = 800;
+  private renderDistance: number = RENDER_DISTANCES.TERRAIN;
   private debugMode: boolean = true;
   
   // Building management system
