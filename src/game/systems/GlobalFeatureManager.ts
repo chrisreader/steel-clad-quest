@@ -10,6 +10,7 @@ export interface GlobalFeature {
   isVisible: boolean;
   spawnedAtPlayerPosition: THREE.Vector3;
   age: number;
+  originalOpacity?: number; // Store original opacity for materials like clouds
 }
 
 export class GlobalFeatureManager {
@@ -43,6 +44,23 @@ export class GlobalFeatureManager {
     type: GlobalFeature['type'],
     playerPosition: THREE.Vector3
   ): void {
+    // Store original opacity for clouds to preserve transparency
+    let originalOpacity: number | undefined;
+    if (type === 'cloud') {
+      mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material && !originalOpacity) {
+          if (Array.isArray(child.material)) {
+            const mat = child.material[0];
+            if ('opacity' in mat) {
+              originalOpacity = mat.opacity;
+            }
+          } else if ('opacity' in child.material) {
+            originalOpacity = child.material.opacity;
+          }
+        }
+      });
+    }
+    
     const feature: GlobalFeature = {
       id,
       mesh,
@@ -51,7 +69,8 @@ export class GlobalFeatureManager {
       distanceFromPlayer: position.distanceTo(playerPosition),
       isVisible: true,
       spawnedAtPlayerPosition: playerPosition.clone(),
-      age: 0
+      age: 0,
+      originalOpacity
     };
     
     this.features.set(id, feature);
@@ -59,7 +78,7 @@ export class GlobalFeatureManager {
     // ADD TO PERSISTENT SET - Like tree foliage materials
     this.persistentFeatures.add(feature);
     
-    console.log(`🌍 [GlobalFeatureManager] Registered PERSISTENT ${type} feature: ${id} at distance ${feature.distanceFromPlayer.toFixed(1)}`);
+    console.log(`🌍 [GlobalFeatureManager] Registered PERSISTENT ${type} feature: ${id} at distance ${feature.distanceFromPlayer.toFixed(1)}${originalOpacity ? ` with opacity ${originalOpacity}` : ''}`);
   }
   
   public unregisterFeature(id: string): void {
@@ -209,18 +228,23 @@ export class GlobalFeatureManager {
   }
   
   private setFeatureOpacity(feature: GlobalFeature, opacity: number): void {
+    // For clouds, respect the original opacity by multiplying the distance factor
+    const finalOpacity = feature.type === 'cloud' && feature.originalOpacity !== undefined 
+      ? feature.originalOpacity * opacity 
+      : opacity;
+    
     feature.mesh.traverse((child) => {
       if (child instanceof THREE.Mesh && child.material) {
         if (Array.isArray(child.material)) {
           child.material.forEach(mat => {
             if ('transparent' in mat) {
-              mat.transparent = opacity < 1.0;
-              mat.opacity = opacity;
+              mat.transparent = finalOpacity < 1.0;
+              mat.opacity = finalOpacity;
             }
           });
         } else if ('transparent' in child.material) {
-          child.material.transparent = opacity < 1.0;
-          child.material.opacity = opacity;
+          child.material.transparent = finalOpacity < 1.0;
+          child.material.opacity = finalOpacity;
         }
       }
     });
