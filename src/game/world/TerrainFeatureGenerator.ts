@@ -1536,58 +1536,85 @@ export class TerrainFeatureGenerator {
       return;
     }
     
-    // INFINITE RING SYSTEM - Generate features based on ring characteristics instead of hardcoded cases
-    console.log(`🌍 [TerrainFeatureGenerator] Generating features for INFINITE RING ${region.ringIndex}, Quadrant ${region.quadrant} - using player-distance management`);
+    console.log(`🌍 [TerrainFeatureGenerator] Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant} - using player-distance management`);
     
     const features: THREE.Object3D[] = [];
     this.spawnedFeatures.set(regionKey, features);
     
-    // Get ring definition to determine generation pattern
-    const ringDef = this.ringSystem.getRingDefinition(region.ringIndex);
-    
-    // Enhanced biome-aware feature generation
-    this.generateBiomeSpecificFeatures(region, ringDef, features);
-  }
-  
-  // ENHANCED BIOME-SPECIFIC FEATURE GENERATION
-  private generateBiomeSpecificFeatures(region: RegionCoordinates, ringDef: any, features: THREE.Object3D[]): void {
-    // Base feature generation patterns by ring characteristics
-    if (region.ringIndex <= 2) {
-      // Early rings: Focus on enhanced current biomes
-      this.generateEnhancedGrasslandFeatures(region, features);
-    } else if (region.ringIndex <= 4) {
-      // Mid rings: Mixed biomes with higher difficulty
-      this.generateMixedBiomeFeatures(region, features);
-    } else {
-      // Outer rings: Extreme biomes for future expansion
-      this.generateExtremeBiomeFeatures(region, features);
+    switch(region.ringIndex) {
+      case 0:
+        this.generateEvenlyDistributedFeatures(region, features);
+        break;
+      case 1:
+        this.generateClusteredFeatures(region, features);
+        break;
+      case 2:
+        this.generateSparseFeatures(region, features);
+        break;
+      case 3:
+        this.generateWastelandFeatures(region, features);
+        break;
     }
   }
   
-  // Enhanced grassland features focusing on current game elements
-  private generateEnhancedGrasslandFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    const baseTreeCount = 12 + (region.ringIndex * 2);
-    const baseRockCount = 20 + (region.ringIndex * 5);
-    const baseBushCount = 18 + (region.ringIndex * 3);
+  private generateEvenlyDistributedFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
+    this.spawnRandomFeatures(region, 'forest', 12, features);
+    this.spawnEnhancedRocks(region, 20, features);
+    this.spawnRandomFeatures(region, 'bushes', 18, features);
+  }
+  
+  private generateClusteredFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
+    const clusterCount = 3 + Math.floor(Math.random() * 3);
     
-    // Use existing methods for enhanced generation
-    this.spawnRandomFeatures(region, 'forest', baseTreeCount, features);
-    this.spawnEnhancedRocks(region, baseRockCount, features);
-    this.spawnRandomFeatures(region, 'bushes', baseBushCount, features);
+    for (let i = 0; i < clusterCount; i++) {
+      const position = this.getRandomPositionInRegion(region);
+      
+      const cluster: FeatureCluster = {
+        position: position,
+        radius: 20 + Math.random() * 30,
+        density: 0.3 + Math.random() * 0.7,
+        type: this.getRandomClusterType()
+      };
+      
+      this.generateFeaturesForCluster(region, cluster, features);
+    }
+    
+    this.spawnRandomFeatures(region, 'forest', 5, features);
+    this.spawnEnhancedRocks(region, 25, features);
+    this.spawnRandomFeatures(region, 'bushes', 10, features);
   }
   
-  // Mixed biome features for variety
-  private generateMixedBiomeFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    this.spawnRandomFeatures(region, 'forest', 10, features);
+  private generateSparseFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
+    this.spawnRandomFeatures(region, 'forest', 8, features);
     this.spawnEnhancedRocks(region, 30, features);
-    this.spawnRandomFeatures(region, 'bushes', 12, features);
+    this.spawnRandomFeatures(region, 'bushes', 5, features);
   }
   
-  // Extreme biome features for outer rings
-  private generateExtremeBiomeFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    this.spawnRandomFeatures(region, 'forest', 6, features);
-    this.spawnEnhancedRocks(region, 40, features);
-    this.spawnRandomFeatures(region, 'bushes', 5, features);
+  private generateWastelandFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
+    this.spawnRandomFeatures(region, 'forest', 2, features);
+    this.spawnEnhancedRocks(region, 35, features);
+    this.spawnRandomFeatures(region, 'bushes', 3, features);
+  }
+  
+  private getRandomClusterType(): 'forest' | 'rocks' | 'bushes' | 'mixed' {
+    const clusterTypes = [
+      { type: 'forest' as const, weight: 35 },
+      { type: 'rocks' as const, weight: 25 },
+      { type: 'bushes' as const, weight: 25 },
+      { type: 'mixed' as const, weight: 15 }
+    ];
+    
+    const totalWeight = clusterTypes.reduce((sum, cluster) => sum + cluster.weight, 0);
+    let random = Math.random() * totalWeight;
+    
+    for (const cluster of clusterTypes) {
+      if (random < cluster.weight) {
+        return cluster.type;
+      }
+      random -= cluster.weight;
+    }
+    
+    return 'mixed';
   }
   
   private spawnEnhancedRocks(region: RegionCoordinates, totalRocks: number, features: THREE.Object3D[]): void {
