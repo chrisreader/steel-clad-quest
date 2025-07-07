@@ -1650,6 +1650,9 @@ export class TerrainFeatureGenerator {
           rocks: Math.floor((65 + Math.random() * 45) * baseMultiplier),
           bushes: Math.floor((55 + Math.random() * 35) * baseMultiplier)
         };
+    }
+  }
+  
   // BIOME-SPECIFIC FEATURE GENERATION - Dense, realistic environments
   private generateBiomeSpecificFeatures(region: RegionCoordinates, biomeType: string, counts: {trees: number, rocks: number, bushes: number}, features: THREE.Object3D[]): void {
     // Generate trees based on biome type
@@ -1754,7 +1757,6 @@ export class TerrainFeatureGenerator {
         }
       }
     }
-  }
   }
   
   private getRandomClusterType(): 'forest' | 'rocks' | 'bushes' | 'mixed' {
