@@ -130,26 +130,70 @@ export class RingQuadrantSystem {
     if (!playerRegion) return [];
     
     const activeRegions: RegionCoordinates[] = [];
+    const activeRegionKeys = new Set<string>();
     
     // Always include player's current region
     activeRegions.push(playerRegion);
+    activeRegionKeys.add(this.getRegionKey(playerRegion));
     
-    // Check adjacent regions (infinite rings)
-    for (let r = Math.max(0, playerRegion.ringIndex - 1); 
-         r <= playerRegion.ringIndex + 1; 
-         r++) {
+    // CRITICAL: Always keep Ring 0 loaded (spawn area) to prevent floor disappearing
+    if (playerRegion.ringIndex !== 0) {
       for (let q = 0; q < 4; q++) {
-        // Skip current region (already added)
-        if (r === playerRegion.ringIndex && q === playerRegion.quadrant) continue;
-        
-        // Check if region center is within render distance
-        const regionCenter = this.getRegionCenter({ ringIndex: r, quadrant: q });
-        if (regionCenter.distanceTo(playerPosition) <= renderDistance) {
-          activeRegions.push({ ringIndex: r, quadrant: q });
+        const spawnRegion: RegionCoordinates = { ringIndex: 0, quadrant: q };
+        const spawnKey = this.getRegionKey(spawnRegion);
+        if (!activeRegionKeys.has(spawnKey)) {
+          activeRegions.push(spawnRegion);
+          activeRegionKeys.add(spawnKey);
         }
       }
     }
     
+    // Expanded adjacency check (±3 rings instead of ±1) for continuous terrain
+    const ringRange = Math.min(3, Math.max(2, Math.floor(renderDistance / 200))); // Dynamic range based on render distance
+    for (let r = Math.max(0, playerRegion.ringIndex - ringRange); 
+         r <= playerRegion.ringIndex + ringRange; 
+         r++) {
+      for (let q = 0; q < 4; q++) {
+        const regionCoords: RegionCoordinates = { ringIndex: r, quadrant: q };
+        const regionKey = this.getRegionKey(regionCoords);
+        
+        // Skip if already added
+        if (activeRegionKeys.has(regionKey)) continue;
+        
+        // Check if region center is within render distance
+        const regionCenter = this.getRegionCenter(regionCoords);
+        const distanceToRegion = regionCenter.distanceTo(playerPosition);
+        
+        if (distanceToRegion <= renderDistance) {
+          activeRegions.push(regionCoords);
+          activeRegionKeys.add(regionKey);
+        }
+      }
+    }
+    
+    // Distance-based fallback: Load any regions within render distance regardless of ring adjacency
+    // This ensures no gaps in terrain when render distance is large
+    const maxCheckRing = Math.ceil(renderDistance / 100); // Rough estimate of rings to check
+    for (let r = 0; r <= maxCheckRing; r++) {
+      for (let q = 0; q < 4; q++) {
+        const regionCoords: RegionCoordinates = { ringIndex: r, quadrant: q };
+        const regionKey = this.getRegionKey(regionCoords);
+        
+        // Skip if already added
+        if (activeRegionKeys.has(regionKey)) continue;
+        
+        const regionCenter = this.getRegionCenter(regionCoords);
+        const distanceToRegion = regionCenter.distanceTo(playerPosition);
+        
+        // Load if within render distance
+        if (distanceToRegion <= renderDistance) {
+          activeRegions.push(regionCoords);
+          activeRegionKeys.add(regionKey);
+        }
+      }
+    }
+    
+    console.log(`🗺️ [RingSystem] Active regions: ${activeRegions.length} (player in Ring ${playerRegion.ringIndex})`);
     return activeRegions;
   }
   

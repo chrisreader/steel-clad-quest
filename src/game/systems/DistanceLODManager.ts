@@ -13,11 +13,11 @@ export class DistanceLODManager {
   private objects: Map<string, LODObject> = new Map();
   private playerPosition: THREE.Vector3 = new THREE.Vector3();
   
-  // Performance thresholds
-  private readonly NEAR_DISTANCE = 50;
-  private readonly MEDIUM_DISTANCE = 100;
-  private readonly FAR_DISTANCE = 200;
-  private readonly CULL_DISTANCE = 300;
+  // Performance thresholds - aligned with terrain render distance
+  private readonly NEAR_DISTANCE = 100;
+  private readonly MEDIUM_DISTANCE = 200;
+  private readonly FAR_DISTANCE = 400;
+  private readonly CULL_DISTANCE = 600; // Reduced from terrain render distance but still generous
 
   public addLODObject(
     id: string, 
