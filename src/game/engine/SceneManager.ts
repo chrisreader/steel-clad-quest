@@ -51,6 +51,8 @@ export class SceneManager {
   private tavernLight: THREE.PointLight;
   private rimLight: THREE.DirectionalLight;
   private fillLight: THREE.DirectionalLight;
+  private bounceLight: THREE.DirectionalLight;
+  private hemisphereLight: THREE.HemisphereLight;
   
   // Dynamic shadow system
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -202,7 +204,7 @@ export class SceneManager {
       )
     );
     this.scene.add(this.ambientLight);
-    console.log("Simplified ambient lighting initialized");
+    console.log("Enhanced ambient lighting initialized");
     
     // Main directional light (sun) - position will be updated dynamically
     this.directionalLight = new THREE.DirectionalLight(
@@ -211,7 +213,7 @@ export class SceneManager {
     );
     this.directionalLight.castShadow = true;
     
-    // Enhanced shadow settings
+    // Enhanced shadow settings for softer shadows
     this.directionalLight.shadow.mapSize.width = LIGHTING_CONFIG.directional.shadowMapSize;
     this.directionalLight.shadow.mapSize.height = LIGHTING_CONFIG.directional.shadowMapSize;
     this.directionalLight.shadow.camera.left = -DAY_NIGHT_CONFIG.shadowCameraSize;
@@ -233,9 +235,9 @@ export class SceneManager {
     );
     this.moonLight.castShadow = false;
     this.scene.add(this.moonLight);
-    console.log("Simplified moon lighting initialized");
+    console.log("Enhanced moon lighting initialized");
     
-    // Fill light with day/night control
+    // Fill light - now active at all times for realistic shadow filling
     this.fillLight = new THREE.DirectionalLight(LIGHTING_CONFIG.fill.color, 0.0);
     this.fillLight.position.set(
       LIGHTING_CONFIG.fill.position.x, 
@@ -244,6 +246,16 @@ export class SceneManager {
     );
     this.fillLight.castShadow = false;
     this.scene.add(this.fillLight);
+    
+    // Bounce light - simulates light bouncing off surfaces (opposite direction to sun)
+    this.bounceLight = new THREE.DirectionalLight(0xB0E0E6, 0.0);
+    this.bounceLight.position.set(10, 8, 10); // Opposite side from rim light
+    this.bounceLight.castShadow = false;
+    this.scene.add(this.bounceLight);
+    
+    // Sky hemisphere light for realistic outdoor lighting
+    this.hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x8B4513, 0.0);
+    this.scene.add(this.hemisphereLight);
     
     // Tavern light with much higher nighttime intensity
     this.tavernLight = new THREE.PointLight(
@@ -258,7 +270,7 @@ export class SceneManager {
     this.tavernLight.shadow.bias = LIGHTING_CONFIG.tavern.shadowBias;
     this.scene.add(this.tavernLight);
     
-    // Rim light with day/night control
+    // Rim light - now active at all times for edge definition
     this.rimLight = new THREE.DirectionalLight(LIGHTING_CONFIG.rim.color, 0.0);
     this.rimLight.position.set(
       LIGHTING_CONFIG.rim.position.x, 
@@ -268,7 +280,7 @@ export class SceneManager {
     this.rimLight.castShadow = false;
     this.scene.add(this.rimLight);
     
-    console.log("Simplified lighting system initialized");
+    console.log("Realistic multi-light system initialized with bounce lighting");
   }
   
   private create3DSunAndMoon(): void {
@@ -669,11 +681,24 @@ export class SceneManager {
     );
     
     const dayFactor = TimeUtils.getDayFactor(this.timeOfDay, TIME_PHASES);
-    this.fillLight.intensity = 0.4 * dayFactor;
-    this.rimLight.intensity = 0.5 * dayFactor;
-    
-    const moonElevation = this.getMoonElevationFactor();
     const nightFactor = TimeUtils.getSynchronizedNightFactor(this.timeOfDay, TIME_PHASES);
+    const moonElevation = this.getMoonElevationFactor();
+    
+    // Persistent fill lighting - prevents pure black shadows
+    const fillIntensity = 0.4 * dayFactor + 0.15 * nightFactor + 0.05; // Always minimum 0.05
+    this.fillLight.intensity = fillIntensity;
+    
+    // Persistent rim lighting - provides edge definition at all times  
+    const rimIntensity = 0.5 * dayFactor + 0.2 * nightFactor + 0.08; // Always minimum 0.08
+    this.rimLight.intensity = rimIntensity;
+    
+    // Bounce light - simulates realistic light bouncing (opposite to main light)
+    const bounceIntensity = 0.3 * dayFactor + 0.12 * nightFactor + 0.04; // Always minimum 0.04
+    this.bounceLight.intensity = bounceIntensity;
+    
+    // Sky hemisphere light - realistic outdoor sky illumination
+    const skyIntensity = 0.6 * dayFactor + 0.25 * nightFactor + 0.1 * moonElevation; // Varies with conditions
+    this.hemisphereLight.intensity = skyIntensity;
     
     // Enhanced tavern lighting during darker phases
     const currentPhase = TimeUtils.getCurrentPhase(this.timeOfDay, TIME_PHASES);
