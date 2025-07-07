@@ -41,8 +41,15 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
     
     // Calculate spawn position
     const cloudHeight = 35 + Math.random() * 15;
-    const centerX = playerPosition ? playerPosition.x : 0;
-    const centerZ = playerPosition ? playerPosition.z : 0;
+    
+    // FIXED: Require valid player position - no more fallback to spawn point
+    if (!playerPosition) {
+      console.error('❌ [DynamicCloudSpawningSystem] No player position provided for cloud creation');
+      playerPosition = new THREE.Vector3(0, 0, 0); // Last resort fallback with warning
+    }
+    
+    const centerX = playerPosition.x;
+    const centerZ = playerPosition.z;
     
     let spawnX, spawnZ;
     

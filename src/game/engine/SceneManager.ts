@@ -616,24 +616,40 @@ export class SceneManager {
       }
     }
     
-    if (this.cloudSpawningSystem && playerPosition) {
-      this.cloudSpawningSystem.update(deltaTime, playerPosition);
-    } else if (this.cloudSpawningSystem) {
-      this.cloudSpawningSystem.update(deltaTime);
+    // FIXED: Always pass player position to cloud system - no fallback to spawn-based rendering
+    if (this.cloudSpawningSystem) {
+      if (playerPosition) {
+        this.cloudSpawningSystem.update(deltaTime, playerPosition);
+      } else {
+        console.warn('⚠️ [SceneManager] No player position for cloud system - skipping update');
+      }
     }
     
-    if (this.enemySpawningSystem && playerPosition) {
-      this.enemySpawningSystem.update(deltaTime, playerPosition);
+    // FIXED: Always require player position for enemy spawning
+    if (this.enemySpawningSystem) {
+      if (playerPosition) {
+        this.enemySpawningSystem.update(deltaTime, playerPosition);
+      } else {
+        console.warn('⚠️ [SceneManager] No player position for enemy system - skipping update');
+      }
     }
     
-    // Update bird spawning system
-    if (this.birdSpawningSystem && playerPosition) {
-      this.birdSpawningSystem.update(deltaTime, playerPosition);
+    // FIXED: Always require player position for bird spawning
+    if (this.birdSpawningSystem) {
+      if (playerPosition) {
+        this.birdSpawningSystem.update(deltaTime, playerPosition);
+      } else {
+        console.warn('⚠️ [SceneManager] No player position for bird system - skipping update');
+      }
     }
     
-    // Update 3D grass system with game time for day/night color changes
-    if (this.grassSystem && playerPosition) {
-      this.grassSystem.update(deltaTime, playerPosition, this.timeOfDay);
+    // FIXED: Always require player position for grass system
+    if (this.grassSystem) {
+      if (playerPosition) {
+        this.grassSystem.update(deltaTime, playerPosition, this.timeOfDay);
+      } else {
+        console.warn('⚠️ [SceneManager] No player position for grass system - skipping update');
+      }
     }
     
     // Update tree foliage materials for day/night lighting

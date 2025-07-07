@@ -97,9 +97,15 @@ export class DynamicCloudSystem {
     const cloudHeight = 35 + Math.random() * 15;
     let spawnX, spawnZ;
     
+    // FIXED: Require valid player position - no more fallback to spawn point
+    if (!playerPosition) {
+      console.error('❌ [DynamicCloudSystem] No player position provided for cloud creation');
+      playerPosition = new THREE.Vector3(0, 0, 0); // Last resort fallback with warning
+    }
+    
     // Use player position as the center of the cloud spawning area
-    const centerX = playerPosition ? playerPosition.x : 0;
-    const centerZ = playerPosition ? playerPosition.z : 0;
+    const centerX = playerPosition.x;
+    const centerZ = playerPosition.z;
     
     if (isInitial) {
       // Initial clouds: distribute in a circle around the player
