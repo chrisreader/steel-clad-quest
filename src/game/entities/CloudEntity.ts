@@ -46,8 +46,6 @@ export class CloudEntity implements SpawnableEntity {
         16, 12
       );
       const puffMaterial = this.cloudMaterial.clone();
-      puffMaterial.transparent = true;  // Ensure transparency is enabled
-      puffMaterial.opacity = this.baseOpacity;  // Set initial opacity
       const puffMesh = new THREE.Mesh(puffGeometry, puffMaterial);
       
       puffMesh.position.set(
