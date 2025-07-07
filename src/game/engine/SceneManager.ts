@@ -18,10 +18,10 @@ import { VolumetricFogSystem } from '../effects/VolumetricFogSystem';
 import { SkyboxSystem } from '../effects/SkyboxSystem';
 import { ColorUtils } from '../utils/ColorUtils';
 import { TimeUtils } from '../utils/TimeUtils';
-import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
+import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG } from '../config/DayNightConfig';
 import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 import { GrassSystem } from '../vegetation/GrassSystem';
-import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
+import { RENDER_DISTANCES, FOG_CONFIG } from '../config/RenderDistanceConfig';
 import { GlobalFeatureManager } from '../systems/GlobalFeatureManager';
 
 export class SceneManager {
@@ -191,11 +191,11 @@ export class SceneManager {
       () => this.getMoonElevationFactor()
     );
     
-    this.fog = new THREE.Fog(fogColor, FOG_CONFIG.near, FOG_CONFIG.far);
+    this.fog = new THREE.Fog(fogColor, FOG_CONFIG.NEAR, FOG_CONFIG.FAR);
     this.scene.fog = this.fog;
     this.scene.background = new THREE.Color(fogColor);
     
-    console.log("Simplified fog system initialized");
+    console.log(`🌫️ Enhanced fog system: ${FOG_CONFIG.NEAR}-${FOG_CONFIG.FAR} units for natural LOD culling`);
   }
   
   private getMoonElevationFactor(): number {

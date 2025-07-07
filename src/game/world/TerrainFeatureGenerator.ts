@@ -5,7 +5,9 @@ import { ROCK_SHAPES, RockShape } from './rocks/config/RockShapeConfig';
 import { RockMaterialGenerator } from './rocks/materials/RockMaterialGenerator';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
 import { TreeGenerator, BushGenerator } from './vegetation';
-import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
+import { RENDER_DISTANCES, FOG_CONFIG } from '../config/RenderDistanceConfig';
+import { EnhancedLODManager } from '../systems/EnhancedLODManager';
+import { SmartDensityManager } from './SmartDensityManager';
 import { GlobalFeatureManager } from '../systems/GlobalFeatureManager';
 
 export interface FeatureCluster {
@@ -54,6 +56,10 @@ export class TerrainFeatureGenerator {
   // Global feature manager for persistent world features
   private globalFeatureManager: GlobalFeatureManager;
   
+  // NEW: Smart performance and density management systems
+  private lodManager: EnhancedLODManager;
+  private densityManager: SmartDensityManager;
+  
   constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
@@ -65,9 +71,13 @@ export class TerrainFeatureGenerator {
     // Initialize global feature manager
     this.globalFeatureManager = GlobalFeatureManager.getInstance(scene);
     
+    // NEW: Initialize smart performance systems
+    this.lodManager = new EnhancedLODManager(scene);
+    this.densityManager = new SmartDensityManager();
+    
     this.loadRockModels();
     
-    console.log('TerrainFeatureGenerator initialized with global feature tracking');
+    console.log('🎯 TerrainFeatureGenerator initialized with LOD and smart density systems');
   }
   
   // NEW: Set collision registration callback
@@ -78,6 +88,9 @@ export class TerrainFeatureGenerator {
   
   // NEW: Update current player position for accurate distance calculations
   public updatePlayerPosition(playerPosition: THREE.Vector3): void {
+    this.currentPlayerPosition.copy(playerPosition);
+    this.lodManager.updatePlayerPosition(playerPosition);
+    this.densityManager.updatePlayerPosition(playerPosition);
     this.currentPlayerPosition.copy(playerPosition);
   }
   
@@ -1536,11 +1549,32 @@ export class TerrainFeatureGenerator {
     const features: THREE.Object3D[] = [];
     this.spawnedFeatures.set(regionKey, features);
     
-    // INFINITE DENSE BIOME-AWARE FEATURE GENERATION
-    this.generateDenseBiomeFeatures(region, features);
+    // Update density manager with player position
+    this.densityManager.updatePlayerPosition(this.currentPlayerPosition);
+    
+    // SMART HIGH-DENSITY BIOME-AWARE FEATURE GENERATION with LOD
+    this.generateSmartDensityFeatures(region, features);
   }
   
-  // DENSE BIOME-AWARE FEATURE GENERATION - Infinite world support
+  // NEW: SMART HIGH-DENSITY GENERATION with LOD and fog-based culling
+  private generateSmartDensityFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
+    const regionCenter = this.ringSystem.getRegionCenter(region);
+    const biomeType = this.getBiomeType(region);
+    
+    // Use smart density to get optimal feature counts
+    const optimalCounts = {
+      trees: this.densityManager.getOptimalFeatureCount(200, 'trees', regionCenter),
+      rocks: this.densityManager.getOptimalFeatureCount(200, 'rocks', regionCenter),
+      bushes: this.densityManager.getOptimalFeatureCount(200, 'bushes', regionCenter)
+    };
+    
+    console.log(`🎯 [SmartDensity] ${biomeType} biome: ${optimalCounts.trees} trees, ${optimalCounts.rocks} rocks, ${optimalCounts.bushes} bushes`);
+    
+    // Generate with smart density and register with LOD manager
+    this.generateBiomeSpecificFeatures(region, biomeType, optimalCounts, features);
+  }
+
+  // LEGACY: Keep existing method for compatibility
   private generateDenseBiomeFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
     const biomeType = this.getBiomeType(region);
     const density = this.getFeatureDensity(region);
