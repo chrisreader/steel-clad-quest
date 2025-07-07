@@ -77,16 +77,33 @@ export class GlobalFeatureManager {
     let hiddenCount = 0;
     const featuresToRemove: GlobalFeature[] = [];
     
+    // DEBUG: Log update call every 2 seconds
+    if (currentTime % 2000 < 100) {
+      console.log(`🌍 [GlobalFeatureManager] UpdateFeatureVisibility called - processing ${this.persistentFeatures.size} features at player position: (${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+    }
+    
     // PERSISTENT SYSTEM - Iterate through persistent set like tree foliage materials
     this.persistentFeatures.forEach((feature) => {
       // Update age
       feature.age += deltaTime * 1000;
       
       // Update distance from current player position
+      const oldDistance = feature.distanceFromPlayer;
       feature.distanceFromPlayer = feature.position.distanceTo(playerPosition);
       
+      // DEBUG: Log distance changes for trees specifically
+      if (feature.type === 'tree' && Math.abs(oldDistance - feature.distanceFromPlayer) > 10) {
+        console.log(`🌳 [GlobalFeatureManager] Tree ${feature.id} distance changed: ${oldDistance.toFixed(1)} -> ${feature.distanceFromPlayer.toFixed(1)}`);
+      }
+      
       // Determine if feature should be visible based on player distance
-      const shouldBeVisible = feature.distanceFromPlayer <= this.getRenderDistanceForType(feature.type);
+      const renderDistance = this.getRenderDistanceForType(feature.type);
+      const shouldBeVisible = feature.distanceFromPlayer <= renderDistance;
+      
+      // DEBUG: Log visibility state changes
+      if (feature.isVisible !== shouldBeVisible) {
+        console.log(`🔄 [GlobalFeatureManager] ${feature.type} ${feature.id} visibility changing: ${feature.isVisible} -> ${shouldBeVisible} (distance: ${feature.distanceFromPlayer.toFixed(1)}, limit: ${renderDistance})`);
+      }
       
       // Update visibility if changed - but NEVER remove from scene unless extremely far
       if (feature.isVisible !== shouldBeVisible) {
@@ -95,14 +112,17 @@ export class GlobalFeatureManager {
         if (shouldBeVisible) {
           // Ensure mesh is in scene and fade in
           if (!this.scene.children.includes(feature.mesh)) {
+            console.log(`🌍 [GlobalFeatureManager] Adding ${feature.type} ${feature.id} back to scene`);
             this.scene.add(feature.mesh);
           }
           feature.mesh.visible = true;
           this.fadeInFeature(feature);
+          console.log(`✅ [GlobalFeatureManager] Made ${feature.type} ${feature.id} visible`);
         } else {
           // Hide but DON'T remove from scene - like tree foliage materials
           feature.mesh.visible = false;
           this.fadeOutFeature(feature);
+          console.log(`❌ [GlobalFeatureManager] Made ${feature.type} ${feature.id} invisible (but kept in scene)`);
         }
       }
       
@@ -117,6 +137,7 @@ export class GlobalFeatureManager {
       // VERY CONSERVATIVE removal - only if extremely far away (2000+ units)
       if (feature.distanceFromPlayer > RENDER_DISTANCES.MASTER_CULL_DISTANCE) {
         featuresToRemove.push(feature);
+        console.log(`🗑️ [GlobalFeatureManager] Marking ${feature.type} ${feature.id} for extreme distance removal (${feature.distanceFromPlayer.toFixed(1)} > ${RENDER_DISTANCES.MASTER_CULL_DISTANCE})`);
       }
     });
     

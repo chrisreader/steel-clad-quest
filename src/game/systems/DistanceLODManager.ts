@@ -13,11 +13,11 @@ export class DistanceLODManager {
   private objects: Map<string, LODObject> = new Map();
   private playerPosition: THREE.Vector3 = new THREE.Vector3();
   
-  // Performance thresholds
-  private readonly NEAR_DISTANCE = 50;
-  private readonly MEDIUM_DISTANCE = 100;
-  private readonly FAR_DISTANCE = 200;
-  private readonly CULL_DISTANCE = 300;
+  // SYNCHRONIZED WITH GLOBAL FEATURE MANAGER - Do not compete!
+  private readonly NEAR_DISTANCE = 200;
+  private readonly MEDIUM_DISTANCE = 500;
+  private readonly FAR_DISTANCE = 1000;
+  private readonly CULL_DISTANCE = 2000; // Match GlobalFeatureManager MASTER_CULL_DISTANCE
 
   public addLODObject(
     id: string, 
