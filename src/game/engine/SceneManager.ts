@@ -21,9 +21,6 @@ import { TimeUtils } from '../utils/TimeUtils';
 import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
 import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 import { GrassSystem } from '../vegetation/GrassSystem';
-import { DistanceManager } from '../systems/UnifiedDistanceManager';
-import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
-import { WorldFeatureManager } from '../systems/WorldFeatureManager';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -38,7 +35,7 @@ export class SceneManager {
   private terrainFeatureGenerator: TerrainFeatureGenerator;
   private structureGenerator: StructureGenerator;
   private loadedRegions: Map<string, Region> = new Map();
-  private renderDistance: number = RENDER_DISTANCES.TERRAIN;
+  private renderDistance: number = 800;
   private debugMode: boolean = true;
   
   // Building management system
@@ -46,9 +43,6 @@ export class SceneManager {
   
   // 3D grass system
   private grassSystem: GrassSystem;
-  
-  // UNIFIED WORLD FEATURE MANAGER - Single source of truth for all features
-  private worldFeatureManager: WorldFeatureManager;
   
   // Enhanced lighting system for realistic shadows
   private ambientLight: THREE.AmbientLight;
@@ -126,10 +120,6 @@ export class SceneManager {
     this.grassSystem.setBuildingManager(this.buildingManager);
     
     console.log("🌱 3D Grass system initialized with building exclusion");
-    
-    // INITIALIZE UNIFIED WORLD FEATURE MANAGER
-    this.worldFeatureManager = WorldFeatureManager.getInstance(this.scene);
-    console.log("🌍 Unified World Feature Manager initialized - all features now player-centered");
     
     // Initialize skybox system
     this.skyboxSystem = new SkyboxSystem(this.scene);
@@ -625,47 +615,24 @@ export class SceneManager {
       }
     }
     
-    // FIXED: Always pass player position to cloud system - no fallback to spawn-based rendering
-    if (this.cloudSpawningSystem) {
-      if (playerPosition) {
-        this.cloudSpawningSystem.update(deltaTime, playerPosition);
-      } else {
-        console.warn('⚠️ [SceneManager] No player position for cloud system - skipping update');
-      }
+    if (this.cloudSpawningSystem && playerPosition) {
+      this.cloudSpawningSystem.update(deltaTime, playerPosition);
+    } else if (this.cloudSpawningSystem) {
+      this.cloudSpawningSystem.update(deltaTime);
     }
     
-    // FIXED: Always require player position for enemy spawning
-    if (this.enemySpawningSystem) {
-      if (playerPosition) {
-        this.enemySpawningSystem.update(deltaTime, playerPosition);
-      } else {
-        console.warn('⚠️ [SceneManager] No player position for enemy system - skipping update');
-      }
+    if (this.enemySpawningSystem && playerPosition) {
+      this.enemySpawningSystem.update(deltaTime, playerPosition);
     }
     
-    // FIXED: Always require player position for bird spawning
-    if (this.birdSpawningSystem) {
-      if (playerPosition) {
-        this.birdSpawningSystem.update(deltaTime, playerPosition);
-      } else {
-        console.warn('⚠️ [SceneManager] No player position for bird system - skipping update');
-      }
+    // Update bird spawning system
+    if (this.birdSpawningSystem && playerPosition) {
+      this.birdSpawningSystem.update(deltaTime, playerPosition);
     }
     
-    // FIXED: Always require player position for grass system
-    if (this.grassSystem) {
-      if (playerPosition) {
-        this.grassSystem.update(deltaTime, playerPosition, this.timeOfDay);
-      } else {
-        console.warn('⚠️ [SceneManager] No player position for grass system - skipping update');
-      }
-    }
-    
-    // UPDATE UNIFIED WORLD FEATURE MANAGER - Player-centered feature management
-    if (playerPosition) {
-      const currentRingIndex = this.getCurrentRingIndex(playerPosition);
-      DistanceManager.updatePlayerPosition(playerPosition, currentRingIndex);
-      this.worldFeatureManager.update();
+    // Update 3D grass system with game time for day/night color changes
+    if (this.grassSystem && playerPosition) {
+      this.grassSystem.update(deltaTime, playerPosition, this.timeOfDay);
     }
     
     // Update tree foliage materials for day/night lighting
@@ -675,69 +642,26 @@ export class SceneManager {
       this.terrainFeatureGenerator.updateTreeDayNightLighting(dayFactor, nightFactor);
     }
     
-    // UPDATE UNIFIED DISTANCE MANAGER - Single source of truth for all systems
     if (playerPosition) {
-      const currentPlayerRegion = this.ringSystem?.getRegionForPosition(playerPosition);
-      const currentRingIndex = currentPlayerRegion ? currentPlayerRegion.ringIndex : 0;
-      DistanceManager.updatePlayerPosition(playerPosition, currentRingIndex);
-      
       this.updateShadowCamera(playerPosition);
       
-      // PLAYER BUBBLE SYSTEM: Enhanced region loading with adaptive safety buffer
-      const activeRegions = this.ringSystem ? this.ringSystem.getActiveRegions(playerPosition, RENDER_DISTANCES.TERRAIN) : [];
+      const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
       const activeRegionKeys = new Set<string>();
       
-      // Enhanced logging for debugging
-      if (this.ringSystem) {
-        const playerRegionInfo = this.ringSystem.getRegionForPosition(playerPosition);
-        if (playerRegionInfo) {
-          console.log(`🌐 [PlayerBubble] Player in Ring ${playerRegionInfo.ringIndex}, Quadrant ${playerRegionInfo.quadrant}`);
-          console.log(`🌐 [PlayerBubble] Active regions: ${activeRegions.length}, Loaded regions: ${this.loadedRegions.size}`);
-        }
-      }
-      
       for (const region of activeRegions) {
-        const regionKey = this.ringSystem!.getRegionKey(region);
+        const regionKey = this.ringSystem.getRegionKey(region);
         activeRegionKeys.add(regionKey);
         
         if (!this.loadedRegions.has(regionKey)) {
-          console.log(`📥 [PlayerBubble] Loading new region: ${regionKey}`);
           this.loadRegion(region);
         }
       }
       
-      // ADAPTIVE SAFETY BUFFER: Calculate based on current ring size to prevent gaps
-      const playerRegionForSafety = this.ringSystem?.getRegionForPosition(playerPosition);
-      const safetyMultiplier = playerRegionForSafety ? Math.max(2.0, playerRegionForSafety.ringIndex * 0.15) : 2.0;
-      const ADAPTIVE_SAFETY_DISTANCE = RENDER_DISTANCES.TERRAIN * safetyMultiplier;
-      const regionsToUnload: string[] = [];
-      
-      console.log(`🛡️ [PlayerBubble] Using adaptive safety distance: ${ADAPTIVE_SAFETY_DISTANCE.toFixed(0)} (multiplier: ${safetyMultiplier.toFixed(2)})`);
-      
       for (const [regionKey, region] of this.loadedRegions.entries()) {
         if (!activeRegionKeys.has(regionKey)) {
-          // Enhanced safety check with adaptive distance
-          if (this.ringSystem) {
-            const regionCenter = this.ringSystem.getRegionCenter(region.coordinates);
-            const distanceToPlayer = regionCenter.distanceTo(playerPosition);
-            
-            if (distanceToPlayer > ADAPTIVE_SAFETY_DISTANCE) {
-              regionsToUnload.push(regionKey);
-            } else {
-              console.log(`🛡️ [PlayerBubble] Keeping region ${regionKey} within safety distance (${distanceToPlayer.toFixed(1)}/${ADAPTIVE_SAFETY_DISTANCE.toFixed(1)} units)`);
-            }
-          }
-        }
-      }
-      
-      // CONSERVATIVE UNLOADING: Only unload regions far outside adaptive safety distance
-      regionsToUnload.forEach(regionKey => {
-        const region = this.loadedRegions.get(regionKey);
-        if (region) {
-          console.log(`🗑️ [PlayerBubble] Safely unloading distant region: ${regionKey}`);
           this.unloadRegion(region.coordinates);
         }
-      });
+      }
     }
     
     if (playerPosition) {
@@ -938,13 +862,10 @@ export class SceneManager {
     
     if (!loadedRegion) return;
     
-    console.log(`🌍 [CONSERVATIVE] Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
-    // Only cleanup structures - WorldFeatureManager handles all features based on player distance
     this.structureGenerator.cleanupStructuresForRegion(region);
-    
-    // REMOVED: this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
-    // Features are now managed by WorldFeatureManager based on player distance, not region boundaries
+    this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
     
     // Remove 3D grass for this region
     this.grassSystem.removeGrassForRegion(region);
@@ -1328,21 +1249,12 @@ export class SceneManager {
       this.birdSpawningSystem = null;
     }
     
-    if (this.worldFeatureManager) {
-      this.worldFeatureManager.dispose();
-    }
     for (const [regionKey, region] of this.loadedRegions.entries()) {
       this.unloadRegion(region.coordinates);
     }
     this.loadedRegions.clear();
     
     console.log("SceneManager with 3D grass system disposed");
-  }
-  
-  // Helper method to get current ring index for player
-  private getCurrentRingIndex(playerPosition: THREE.Vector3): number {
-    const playerRegion = this.ringSystem?.getRegionForPosition(playerPosition);
-    return playerRegion ? playerRegion.ringIndex : 0;
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {

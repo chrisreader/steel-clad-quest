@@ -8,7 +8,6 @@ import { AudioManager } from '../engine/AudioManager';
 import { SafeZoneManager } from './SafeZoneManager';
 import { LineOfSightDetector } from './LineOfSightDetector';
 import { EnemyStateManager, EnemyAIState } from './EnemyStateManager';
-import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 // Enemy wrapper to implement SpawnableEntity interface
 class SpawnableEnemyWrapper implements SpawnableEntity {
@@ -80,17 +79,15 @@ export class DynamicEnemySpawningSystem extends DynamicSpawningSystem<SpawnableE
   ) {
     const defaultConfig: SpawningConfig = {
       playerMovementThreshold: 15, // Increased to prevent constant spawning 
-      // Distance configuration for enemy spawning - aligned with render distance config
-      fadeInDistance: RENDER_DISTANCES.LOD_NEAR,
-      fadeOutDistance: RENDER_DISTANCES.LOD_MEDIUM,
-      maxEntityDistance: RENDER_DISTANCES.ENEMIES,
-      minSpawnDistance: RENDER_DISTANCES.SPAWN.MIN_DISTANCE,
-      maxSpawnDistance: RENDER_DISTANCES.SPAWN.MAX_DISTANCE * 0.5, // Enemies closer than birds/clouds
+      fadeInDistance: 35,
+      fadeOutDistance: 90,
+      maxEntityDistance: 180, // Increased cleanup distance
+      minSpawnDistance: 35, // Initial spawn safe distance
+      maxSpawnDistance: 60, // Initial spawn max distance  
       maxEntities: 8, // More enemies for engaging gameplay
       baseSpawnInterval: 15000, // Fixed interval spawning
       spawnCountPerTrigger: 1, // Single enemy spawns
-      // Cleanup and performance - aligned with render distance config
-      aggressiveCleanupDistance: RENDER_DISTANCES.CLEANUP.ENEMIES,
+      aggressiveCleanupDistance: 140,
       fadedOutTimeout: 20000
     };
     

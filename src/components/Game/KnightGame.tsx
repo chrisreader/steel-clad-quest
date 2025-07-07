@@ -144,7 +144,6 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       if (!gameEngine || !gameStarted) return;
 
       const player = gameEngine.getPlayer();
-      if (!player) return; // Add null check to prevent error
       
       // Get the weapon for the currently active slot
       const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
@@ -414,15 +413,12 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
         const player = gameEngine.getPlayer();
         const gameState = gameEngine.getGameState();
         
-        if (player) { // Add null check for player
-          setPlayerStats(player.getStats());
-          
-          if (!player.isAlive()) {
-            setIsGameOver(true);
-          }
-        }
-        
+        setPlayerStats(player.getStats());
         setGameTime(gameState.timeElapsed);
+        
+        if (!player.isAlive()) {
+          setIsGameOver(true);
+        }
       }
     }, 100);
 

@@ -1,6 +1,5 @@
 
 import * as THREE from 'three';
-import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 interface Cloud {
   mesh: THREE.Group;
@@ -30,9 +29,9 @@ export class DynamicCloudSystem {
   private playerMovementSpeed: number = 0; // Track player movement speed
   
   // Distance-based fade settings - EXPANDED for better coverage
-  private fadeInDistance: number = RENDER_DISTANCES.LOD_FAR; // Use unified config - 600 units
-  private fadeOutDistance: number = RENDER_DISTANCES.CLOUDS; // Use unified config - 800 units  
-  private maxCloudDistance: number = RENDER_DISTANCES.CLEANUP.CLOUDS; // Use unified config - 1000 units
+  private fadeInDistance: number = 200; // Increased visible zone
+  private fadeOutDistance: number = 300; // Increased fade zone
+  private maxCloudDistance: number = 400; // Hard limit for cloud removal
   
   // Spawn zone settings - EXPANDED
   private minSpawnDistance: number = 150; // Minimum distance from player to spawn
@@ -98,15 +97,9 @@ export class DynamicCloudSystem {
     const cloudHeight = 35 + Math.random() * 15;
     let spawnX, spawnZ;
     
-    // FIXED: Require valid player position - no more fallback to spawn point
-    if (!playerPosition) {
-      console.error('❌ [DynamicCloudSystem] No player position provided for cloud creation');
-      playerPosition = new THREE.Vector3(0, 0, 0); // Last resort fallback with warning
-    }
-    
     // Use player position as the center of the cloud spawning area
-    const centerX = playerPosition.x;
-    const centerZ = playerPosition.z;
+    const centerX = playerPosition ? playerPosition.x : 0;
+    const centerZ = playerPosition ? playerPosition.z : 0;
     
     if (isInitial) {
       // Initial clouds: distribute in a circle around the player

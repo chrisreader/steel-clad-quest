@@ -74,9 +74,18 @@ export class CloudEntity implements SpawnableEntity {
     this.mesh.position.add(movement);
     this.position.copy(this.mesh.position);
     
-    // REMOVED DISTANCE-BASED OPACITY - WorldFeatureManager now handles all visibility
-    // Individual entities no longer self-manage their visibility based on distance
-    let distanceFactor = 1.0; // Always full visibility - WorldFeatureManager handles culling
+    // Calculate distance-based opacity
+    const fadeInDistance = 200;
+    const fadeOutDistance = 300;
+    
+    let distanceFactor = 1.0;
+    if (this.distanceFromPlayer > fadeOutDistance) {
+      distanceFactor = 0;
+    } else if (this.distanceFromPlayer > fadeInDistance) {
+      const fadeRange = fadeOutDistance - fadeInDistance;
+      const fadeProgress = (this.distanceFromPlayer - fadeInDistance) / fadeRange;
+      distanceFactor = 1 - fadeProgress;
+    }
     
     // Handle age-based fade
     let ageFactor = 1.0;

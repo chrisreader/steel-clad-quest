@@ -3,24 +3,23 @@ import * as THREE from 'three';
 import { DynamicSpawningSystem } from './DynamicSpawningSystem';
 import { CloudEntity } from '../entities/CloudEntity';
 import { SpawningConfig, SpawnZone } from '../../types/SpawnableEntity';
-import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 
 export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntity> {
   private cloudMaterial: THREE.MeshLambertMaterial;
   
   constructor(scene: THREE.Scene) {
     const config: SpawningConfig = {
-      playerMovementThreshold: 5, // Reduced spawning frequency
-      fadeInDistance: RENDER_DISTANCES.LOD_MEDIUM,
-      fadeOutDistance: RENDER_DISTANCES.LOD_FAR,
-      maxEntityDistance: RENDER_DISTANCES.CLOUDS, // 800 units - unified with terrain
-      minSpawnDistance: RENDER_DISTANCES.SPAWN.MIN_DISTANCE * 1.5, // Closer spawn for better coverage
-      maxSpawnDistance: RENDER_DISTANCES.SPAWN.MAX_DISTANCE * 0.8, // Slightly closer max distance
-      maxEntities: 15, // More clouds for larger world
-      baseSpawnInterval: 6000, // Slower spawning to reduce performance impact
-      spawnCountPerTrigger: 2, // Moderate spawning
-      aggressiveCleanupDistance: RENDER_DISTANCES.MASTER_CULL_DISTANCE, // Use unified cull distance
-      fadedOutTimeout: 1000 // Faster cleanup of faded clouds
+      playerMovementThreshold: 3,
+      fadeInDistance: 200,
+      fadeOutDistance: 300,
+      maxEntityDistance: 400,
+      minSpawnDistance: 150,
+      maxSpawnDistance: 350,
+      maxEntities: 8,
+      baseSpawnInterval: 4000,
+      spawnCountPerTrigger: 2,
+      aggressiveCleanupDistance: 320,
+      fadedOutTimeout: 2000
     };
     
     super(scene, config);
@@ -41,16 +40,8 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
     
     // Calculate spawn position
     const cloudHeight = 35 + Math.random() * 15;
-    
-    // UNIFIED PLAYER-CENTERED: Always use player position from DistanceManager
-    if (!playerPosition) {
-      console.error('❌ [DynamicCloudSpawningSystem] No player position - using DistanceManager fallback');
-      const { DistanceManager } = require('./UnifiedDistanceManager');
-      playerPosition = DistanceManager.getPlayerPosition();
-    }
-    
-    const centerX = playerPosition.x;
-    const centerZ = playerPosition.z;
+    const centerX = playerPosition ? playerPosition.x : 0;
+    const centerZ = playerPosition ? playerPosition.z : 0;
     
     let spawnX, spawnZ;
     

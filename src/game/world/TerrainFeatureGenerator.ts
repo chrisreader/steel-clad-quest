@@ -5,7 +5,6 @@ import { ROCK_SHAPES, RockShape } from './rocks/config/RockShapeConfig';
 import { RockMaterialGenerator } from './rocks/materials/RockMaterialGenerator';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
 import { TreeGenerator, BushGenerator } from './vegetation';
-import { WorldFeatureManager } from '../systems/WorldFeatureManager';
 
 export interface FeatureCluster {
   position: THREE.Vector3;
@@ -34,9 +33,6 @@ export class TerrainFeatureGenerator {
   // Track spawned objects by region for cleanup
   private spawnedFeatures: Map<string, THREE.Object3D[]> = new Map();
   
-  // UNIFIED FEATURE MANAGEMENT - Connect to WorldFeatureManager
-  private worldFeatureManager: WorldFeatureManager;
-  
   // Track large rock formations to maintain distance
   private largeRockFormations: THREE.Vector3[] = [];
   private minimumLargeRockDistance: number = 150;
@@ -56,11 +52,7 @@ export class TerrainFeatureGenerator {
     this.treeGenerator = new TreeGenerator();
     this.bushGenerator = new BushGenerator();
     
-    // Connect to unified world feature manager
-    this.worldFeatureManager = WorldFeatureManager.getInstance(scene);
-    
     this.loadRockModels();
-    console.log('🌍 TerrainFeatureGenerator connected to WorldFeatureManager for unified feature management');
   }
   
   // NEW: Set collision registration callback
@@ -1453,145 +1445,25 @@ export class TerrainFeatureGenerator {
     
     if (this.spawnedFeatures.has(regionKey)) return;
     
-    console.log(`🌍 Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
     const features: THREE.Object3D[] = [];
     this.spawnedFeatures.set(regionKey, features);
     
-    // Use procedural generation based on ring distance from spawn
-    this.generateProceduralFeatures(region, features);
-  }
-  
-  // NEW: Procedural feature generation for infinite world
-  private generateProceduralFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    const ringIndex = region.ringIndex;
-    const difficulty = this.ringSystem.getDifficultyForRegion(region);
-    
-    // Calculate feature densities based on ring characteristics
-    const { treeCount, rockCount, bushCount, clusterCount } = this.calculateFeatureDensities(ringIndex, difficulty);
-    
-    console.log(`🌲 Ring ${ringIndex}: Trees=${treeCount}, Rocks=${rockCount}, Bushes=${bushCount}, Clusters=${clusterCount}`);
-    
-    // Generate clusters first (they add additional features)
-    if (clusterCount > 0) {
-      this.generateProceduralClusters(region, clusterCount, features);
+    switch(region.ringIndex) {
+      case 0:
+        this.generateEvenlyDistributedFeatures(region, features);
+        break;
+      case 1:
+        this.generateClusteredFeatures(region, features);
+        break;
+      case 2:
+        this.generateSparseFeatures(region, features);
+        break;
+      case 3:
+        this.generateWastelandFeatures(region, features);
+        break;
     }
-    
-    // Generate scattered features
-    this.spawnRandomFeatures(region, 'forest', treeCount, features);
-    this.spawnEnhancedRocks(region, rockCount, features);
-    this.spawnRandomFeatures(region, 'bushes', bushCount, features);
-  }
-  
-  // Calculate feature densities based on ring properties
-  private calculateFeatureDensities(ringIndex: number, difficulty: number): {
-    treeCount: number;
-    rockCount: number; 
-    bushCount: number;
-    clusterCount: number;
-  } {
-    let treeCount: number;
-    let rockCount: number;
-    let bushCount: number;
-    let clusterCount: number;
-    
-    if (ringIndex === 0) {
-      // Spawn region - even distribution
-      treeCount = 12;
-      rockCount = 20;
-      bushCount = 18;
-      clusterCount = 0;
-    } else if (ringIndex === 1) {
-      // First exploration ring - clustered features
-      treeCount = 5;
-      rockCount = 25;
-      bushCount = 10;
-      clusterCount = 3 + Math.floor(Math.random() * 3);
-    } else if (ringIndex <= 5) {
-      // Close exploration rings - moderate density
-      treeCount = Math.max(2, 8 - ringIndex);
-      rockCount = Math.min(35, 20 + ringIndex * 3);
-      bushCount = Math.max(3, 8 - ringIndex);
-      clusterCount = Math.max(1, 4 - Math.floor(ringIndex / 2));
-    } else if (ringIndex <= 10) {
-      // Distant rings - sparser but still interesting
-      treeCount = Math.max(1, 4 - Math.floor(ringIndex / 3));
-      rockCount = Math.min(40, 25 + ringIndex * 2);
-      bushCount = Math.max(1, 5 - Math.floor(ringIndex / 3));
-      clusterCount = Math.random() < 0.7 ? 1 : 2;
-    } else {
-      // Far rings - wasteland but not empty
-      const sparsity = Math.min(0.8, (ringIndex - 10) * 0.1);
-      treeCount = Math.floor((2 - sparsity * 1.5) * (0.5 + Math.random() * 0.5));
-      rockCount = Math.floor((30 + ringIndex) * (1 - sparsity * 0.3));
-      bushCount = Math.floor((2 - sparsity * 1.5) * (0.5 + Math.random() * 0.5));
-      clusterCount = Math.random() < (0.5 - sparsity * 0.3) ? 1 : 0;
-    }
-    
-    return { treeCount, rockCount, bushCount, clusterCount };
-  }
-  
-  // Generate procedural clusters for variety
-  private generateProceduralClusters(region: RegionCoordinates, clusterCount: number, features: THREE.Object3D[]): void {
-    for (let i = 0; i < clusterCount; i++) {
-      const position = this.getRandomPositionInRegion(region);
-      
-      const cluster: FeatureCluster = {
-        position: position,
-        radius: 15 + Math.random() * 35, // Varied cluster sizes
-        density: 0.2 + Math.random() * 0.8, // Varied densities
-        type: this.getProceduralClusterType(region.ringIndex)
-      };
-      
-      this.generateFeaturesForCluster(region, cluster, features);
-    }
-  }
-  
-  // Get cluster type based on ring characteristics
-  private getProceduralClusterType(ringIndex: number): 'forest' | 'rocks' | 'bushes' | 'mixed' {
-    if (ringIndex <= 2) {
-      // Early rings - more forests and mixed
-      const types = [
-        { type: 'forest' as const, weight: 40 },
-        { type: 'rocks' as const, weight: 20 },
-        { type: 'bushes' as const, weight: 25 },
-        { type: 'mixed' as const, weight: 15 }
-      ];
-      return this.weightedRandomSelect(types);
-    } else if (ringIndex <= 8) {
-      // Middle rings - more balanced
-      const types = [
-        { type: 'forest' as const, weight: 25 },
-        { type: 'rocks' as const, weight: 35 },
-        { type: 'bushes' as const, weight: 20 },
-        { type: 'mixed' as const, weight: 20 }
-      ];
-      return this.weightedRandomSelect(types);
-    } else {
-      // Far rings - mostly rocks with sparse vegetation
-      const types = [
-        { type: 'forest' as const, weight: 10 },
-        { type: 'rocks' as const, weight: 50 },
-        { type: 'bushes' as const, weight: 15 },
-        { type: 'mixed' as const, weight: 25 }
-      ];
-      return this.weightedRandomSelect(types);
-    }
-  }
-  
-  // Weighted random selection helper
-  private weightedRandomSelect<T>(items: { type: T; weight: number }[]): T {
-    const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
-    let random = Math.random() * totalWeight;
-    
-    for (const item of items) {
-      if (random < item.weight) {
-        return item.type;
-      }
-      random -= item.weight;
-    }
-    
-    return items[0].type; // Fallback
   }
   
   private generateEvenlyDistributedFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
@@ -1672,29 +1544,6 @@ export class TerrainFeatureGenerator {
         if (rock) {
           features.push(rock);
           this.scene.add(rock);
-          
-          // REGISTER WITH UNIFIED WORLD FEATURE MANAGER
-          const currentRegionKey = this.ringSystem.getRegionKey(region);
-          this.worldFeatureManager.registerFeature(
-            rock, 
-            'rock', 
-            currentRegionKey,
-            () => {
-              // Simple disposal callback
-              rock.traverse(child => {
-                if (child instanceof THREE.Mesh) {
-                  if (child.geometry) child.geometry.dispose();
-                  if (child.material) {
-                    if (Array.isArray(child.material)) {
-                      child.material.forEach(mat => mat.dispose());
-                    } else {
-                      child.material.dispose();
-                    }
-                  }
-                }
-              });
-            }
-          );
           
           if (variation.category === 'large' || variation.category === 'massive') {
             this.largeRockFormations.push(position.clone());
@@ -1843,29 +1692,6 @@ export class TerrainFeatureGenerator {
           features.push(feature);
           this.scene.add(feature);
           
-          // UNIFIED MANAGEMENT: Register with WorldFeatureManager for player-distance management
-          const currentRegionKey = this.ringSystem.getRegionKey(region);
-          this.worldFeatureManager.registerFeature(
-            feature, 
-            type === 'forest' ? 'tree' : type === 'rocks' ? 'rock' : 'bush', 
-            currentRegionKey,
-            () => {
-              // Disposal callback
-              feature.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                  if (child.geometry) child.geometry.dispose();
-                  if (child.material) {
-                    if (Array.isArray(child.material)) {
-                      child.material.forEach(mat => mat.dispose());
-                    } else {
-                      child.material.dispose();
-                    }
-                  }
-                }
-              });
-            }
-          );
-          
           if (this.collisionRegistrationCallback) {
             this.collisionRegistrationCallback(feature);
             console.log(`🔧 Callback registered collision for dynamically spawned ${type} at (${position.x.toFixed(2)}, ${position.z.toFixed(2)})`);
@@ -1889,29 +1715,6 @@ export class TerrainFeatureGenerator {
         if (feature) {
           features.push(feature);
           this.scene.add(feature);
-          
-          // UNIFIED MANAGEMENT: Register with WorldFeatureManager for player-distance management
-          const currentRegionKey = this.ringSystem.getRegionKey(region);
-          this.worldFeatureManager.registerFeature(
-            feature, 
-            type === 'forest' ? 'tree' : type === 'rocks' ? 'rock' : 'bush', 
-            currentRegionKey,
-            () => {
-              // Disposal callback
-              feature.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                  if (child.geometry) child.geometry.dispose();
-                  if (child.material) {
-                    if (Array.isArray(child.material)) {
-                      child.material.forEach(mat => mat.dispose());
-                    } else {
-                      child.material.dispose();
-                    }
-                  }
-                }
-              });
-            }
-          );
           
           if (this.collisionRegistrationCallback) {
             this.collisionRegistrationCallback(feature);
@@ -1978,20 +1781,28 @@ export class TerrainFeatureGenerator {
     return distance < this.tavernExclusionRadius;
   }
   
-  // UPDATED: Region cleanup now only disposes resources - WorldFeatureManager handles scene removal
   public cleanupFeaturesForRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
     const features = this.spawnedFeatures.get(regionKey);
     
     if (!features) return;
     
-    console.log(`🧹 [DISTANCE-BASED] Disposing feature resources for region ${regionKey} - WorldFeatureManager handles visibility`);
+    console.log(`Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
     features.forEach(feature => {
-      // Don't remove from scene - WorldFeatureManager handles this based on player distance
-      // Just dispose resources to prevent memory leaks
-      if (feature instanceof THREE.Group || feature instanceof THREE.Object3D) {
-        feature.traverse((child) => {
+      this.scene.remove(feature);
+      
+      if (feature instanceof THREE.Mesh) {
+        if (feature.geometry) feature.geometry.dispose();
+        if (feature.material) {
+          if (Array.isArray(feature.material)) {
+            feature.material.forEach(m => m.dispose());
+          } else {
+            feature.material.dispose();
+          }
+        }
+      } else if (feature instanceof THREE.Group) {
+        feature.traverse(child => {
           if (child instanceof THREE.Mesh) {
             if (child.geometry) child.geometry.dispose();
             if (child.material) {
@@ -2007,9 +1818,8 @@ export class TerrainFeatureGenerator {
     });
     
     this.spawnedFeatures.delete(regionKey);
-    console.log(`✅ Feature resources disposed for region ${regionKey} - scene removal handled by WorldFeatureManager`);
   }
-
+  
   private gaussianRandom(): number {
     let u = 0, v = 0;
     while(u === 0) u = Math.random();
@@ -2019,7 +1829,7 @@ export class TerrainFeatureGenerator {
     
     return Math.min(Math.max((num + 3) / 6, 0), 1);
   }
-
+  
   public dispose(): void {
     for (const [regionKey, features] of this.spawnedFeatures.entries()) {
       features.forEach(feature => {
