@@ -144,6 +144,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
       if (!gameEngine || !gameStarted) return;
 
       const player = gameEngine.getPlayer();
+      if (!player) return; // Add null check to prevent error
       
       // Get the weapon for the currently active slot
       const activeWeapon = activeWeaponSlot === 1 ? equippedWeapons.primary : 
