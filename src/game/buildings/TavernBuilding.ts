@@ -7,6 +7,9 @@ import { HumanNPC } from '../entities/humanoid/HumanNPC';
 import { EffectsManager } from '../engine/EffectsManager';
 import { ChestInteractionSystem } from '../systems/ChestInteractionSystem';
 import { TreasureChest } from '../world/objects/TreasureChest';
+import { TavernFurniture } from './components/TavernFurniture';
+import { TavernLighting } from './components/TavernLighting';
+import { TavernWalls } from './components/TavernWalls';
 
 export class TavernBuilding extends BaseBuilding {
   private fireplaceComponent: FireplaceComponent | null = null;
@@ -15,8 +18,11 @@ export class TavernBuilding extends BaseBuilding {
   private tavernKeeper: HumanNPC | null = null;
   private chestInteractionSystem: ChestInteractionSystem | null = null;
   private chests: TreasureChest[] = [];
-  private chandelierLights: THREE.PointLight[] = [];
-  private tableCandleLight: THREE.PointLight | null = null;
+  
+  // Component helpers
+  private furniture: TavernFurniture;
+  private lighting: TavernLighting;
+  private walls: TavernWalls;
 
   public setAudioManager(audioManager: AudioManager): void {
     this.audioManager = audioManager;
@@ -31,28 +37,20 @@ export class TavernBuilding extends BaseBuilding {
   }
 
   protected createStructure(): void {
-    // Enhanced tavern floor with realistic wooden planks
+    // Initialize component helpers
+    this.furniture = new TavernFurniture(this, this.scene);
+    this.lighting = new TavernLighting(this, this.scene);
+    this.walls = new TavernWalls(this);
+    
+    // Create building components
     this.createRealisticFloor();
-    
-    // Enhanced walls with stone/wood hybrid construction
-    this.createRealisticWalls();
-    
-    // Enhanced roof with proper pitched structure
+    this.walls.createWalls();
     this.createRealisticRoof();
-    
-    // Add architectural details
-    this.createArchitecturalDetails();
-    
-    // Enhanced fireplace system
+    this.createDecorations();
+    this.lighting.createAllLighting();
     this.createEnhancedFireplace();
-    
-    // Furniture (moved to sides to make room for fireplace)
-    this.createFurniture();
-    
-    // Create tavern keeper NPC
+    this.furniture.createAllFurniture();
     this.createTavernKeeper();
-    
-    // Create treasure chests
     this.createTavernChests();
   }
 
@@ -62,12 +60,7 @@ export class TavernBuilding extends BaseBuilding {
     
     // Wood color variations for different planks
     const woodColors = [
-      0x8B4513, // Saddle brown
-      0xA0522D, // Sienna  
-      0xCD853F, // Peru
-      0xD2B48C, // Tan
-      0xDEB887, // Burlywood
-      0x8B7355  // Dark khaki
+      0x8B4513, 0xA0522D, 0xCD853F, 0xD2B48C, 0xDEB887, 0x8B7355
     ];
     
     // Main floor base
@@ -83,7 +76,7 @@ export class TavernBuilding extends BaseBuilding {
     floor.position.y = 0.01;
     floorGroup.add(floor);
     
-    // Add individual wooden planks for detail with alternating wood colors
+    // Add individual wooden planks for detail
     for (let i = 0; i < 6; i++) {
       const plankGeometry = new THREE.BoxGeometry(12, 0.05, 1.8);
       const colorIndex = i % woodColors.length;
@@ -424,71 +417,29 @@ export class TavernBuilding extends BaseBuilding {
     }
   }
 
-  private createHangingElements(): void {
-    // Hanging candle chandeliers
-    const chandelierMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x8B7355,
-      metalness: 0.6,
-      roughness: 0.4
-    });
-    
-    const candleMaterial = new THREE.MeshStandardMaterial({
-      color: 0xFFFACD,
-      emissive: 0x221100,
-      emissiveIntensity: 0.1
-    });
-    
-    for (let i = 0; i < 2; i++) {
-      const chandelierGroup = new THREE.Group();
-      const xPos = -2 + i * 4;
-      
-      // Chandelier ring base (rotated to lay flat)
-      const chandelierBase = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.02, 8, 16), chandelierMaterial.clone());
-      chandelierBase.position.set(0, 0, 0);
-      chandelierBase.rotation.x = Math.PI / 2; // Rotate to lay flat
-      chandelierGroup.add(chandelierBase);
-      
-      // Hanging chain
-      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 6), chandelierMaterial.clone());
-      chain.position.set(0, 0.6, 0);
-      chandelierGroup.add(chain);
-      
-      // Candles around the chandelier (6 candles) - 2x bigger circumference
-      for (let j = 0; j < 6; j++) {
-        const angle = (j / 6) * Math.PI * 2;
-        const radius = 0.5; // 2x bigger than before (was 0.25)
-        
-        // Candle holder arm (shorter since candles are on top of ring)
-        const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.02), chandelierMaterial.clone());
-        arm.position.set(Math.cos(angle) * radius * 0.9, 0.02, Math.sin(angle) * radius * 0.9);
-        arm.rotation.y = angle;
-        chandelierGroup.add(arm);
-        
-        // Candle (positioned on top of ring) - larger size
-        const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8), candleMaterial.clone());
-        candle.position.set(Math.cos(angle) * radius, 0.1, Math.sin(angle) * radius);
-        chandelierGroup.add(candle);
-        
-        // Candle holder cup (on top of ring) - larger to match candle
-        const holder = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.03, 8), chandelierMaterial.clone());
-        holder.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-        chandelierGroup.add(holder);
-      }
-      
-      // Position the chandelier group
-      chandelierGroup.position.set(xPos, 5, 1);
-      this.addComponent(chandelierGroup, `hanging_chandelier_${i}`, 'metal');
-      
-      // Create point light for chandelier (initially off)
-      const chandelierLight = new THREE.PointLight(0xffaa44, 0, 8, 2);
-      chandelierLight.position.set(xPos, 5, 1);
-      chandelierLight.castShadow = true;
-      this.scene.add(chandelierLight);
-      this.chandelierLights.push(chandelierLight);
-    }
-  }
-  
   private createEnhancedFireplace(): void {
+    if (!this.audioManager) {
+      console.warn('🔥 AudioManager not set for TavernBuilding. Creating fireplace without audio.');
+      this.audioManager = {} as AudioManager;
+    }
+
+    console.log('🔥 Creating enhanced fireplace system for tavern');
+    
+    this.fireplaceComponent = new FireplaceComponent(
+      this.scene,
+      this.physicsManager,
+      this.audioManager,
+      new THREE.Vector3(0, 0, 0),
+      'tavern_fireplace',
+      true
+    );
+    
+    const fireplaceGroup = this.fireplaceComponent.create();
+    this.buildingGroup.add(fireplaceGroup);
+    this.fireplaceComponent.registerCollisions('tavern');
+    
+    console.log('🔥 Enhanced fireplace system created with realistic fire, organic rocks, and dynamic lighting');
+  }
     if (!this.audioManager) {
       console.warn('🔥 AudioManager not set for TavernBuilding. Creating fireplace without audio.');
       // Create a mock audio manager for now
@@ -806,29 +757,9 @@ export class TavernBuilding extends BaseBuilding {
   }
   
   public updateTimeOfDay(gameTime: number, timePhases: any): void {
-    // Determine if it's night time (when candles should be lit)
-    const isNight = timePhases.isNight || gameTime < 0.25 || gameTime > 0.75;
-    
-    if (isNight) {
-      // Turn on chandelier lights
-      this.chandelierLights.forEach(light => {
-        light.intensity = 1.5;
-      });
-      
-      // Turn on table candle light
-      if (this.tableCandleLight) {
-        this.tableCandleLight.intensity = 0.8;
-      }
-    } else {
-      // Turn off lights during day
-      this.chandelierLights.forEach(light => {
-        light.intensity = 0;
-      });
-      
-      // Turn off table candle light
-      if (this.tableCandleLight) {
-        this.tableCandleLight.intensity = 0;
-      }
+    // Delegate lighting updates to the lighting component
+    if (this.lighting) {
+      this.lighting.updateTimeOfDay(gameTime, timePhases);
     }
   }
   
@@ -843,16 +774,9 @@ export class TavernBuilding extends BaseBuilding {
       this.tavernKeeper = null;
     }
     
-    // Dispose chandelier lights
-    this.chandelierLights.forEach(light => {
-      this.scene.remove(light);
-    });
-    this.chandelierLights.length = 0;
-    
-    // Dispose table candle light
-    if (this.tableCandleLight) {
-      this.scene.remove(this.tableCandleLight);
-      this.tableCandleLight = null;
+    // Dispose lighting component
+    if (this.lighting) {
+      this.lighting.dispose();
     }
     
     // Dispose chests
