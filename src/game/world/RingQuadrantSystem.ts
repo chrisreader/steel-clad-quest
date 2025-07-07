@@ -154,11 +154,11 @@ export class RingQuadrantSystem {
     return this.getRingDefinition(region.ringIndex).difficulty;
   }
 
-  // NEW: Calculate which ring a distance falls into
+  // NEW: Calculate which ring a distance falls into - FIXED FOR INFINITE GENERATION
   private calculateRingIndex(distance: number): number {
     if (distance <= 50) return 0; // Ring 0: spawn area (0-50)
     
-    // For rings beyond 0, use exponential growth
+    // For rings beyond 0, use exponential growth but handle all cases
     let currentRadius = 50;
     let ringIndex = 1;
     
@@ -167,6 +167,12 @@ export class RingQuadrantSystem {
       if (distance <= nextRadius) break;
       currentRadius = nextRadius;
       ringIndex++;
+      
+      // Safety check to prevent infinite loops (though mathematically impossible)
+      if (ringIndex > 1000) {
+        console.warn(`Ring index exceeded 1000 for distance ${distance}, capping at 1000`);
+        break;
+      }
     }
     
     return ringIndex;
