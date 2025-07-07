@@ -17,6 +17,10 @@ export class GlobalFeatureManager {
   private features: Map<string, GlobalFeature> = new Map();
   private scene: THREE.Scene;
   
+  // PERSISTENT FEATURE SYSTEM - Like tree foliage materials
+  // Features are NEVER removed unless extremely far away
+  private persistentFeatures: Set<GlobalFeature> = new Set();
+  
   private constructor(scene: THREE.Scene) {
     this.scene = scene;
     console.log('🌍 [GlobalFeatureManager] Initialized - managing all world features globally');
@@ -51,7 +55,11 @@ export class GlobalFeatureManager {
     };
     
     this.features.set(id, feature);
-    console.log(`🌍 [GlobalFeatureManager] Registered ${type} feature: ${id} at distance ${feature.distanceFromPlayer.toFixed(1)}`);
+    
+    // ADD TO PERSISTENT SET - Like tree foliage materials
+    this.persistentFeatures.add(feature);
+    
+    console.log(`🌍 [GlobalFeatureManager] Registered PERSISTENT ${type} feature: ${id} at distance ${feature.distanceFromPlayer.toFixed(1)}`);
   }
   
   public unregisterFeature(id: string): void {
@@ -59,6 +67,7 @@ export class GlobalFeatureManager {
     if (feature) {
       console.log(`🌍 [GlobalFeatureManager] Unregistered ${feature.type} feature: ${id}`);
       this.features.delete(id);
+      this.persistentFeatures.delete(feature);
     }
   }
   
@@ -66,9 +75,10 @@ export class GlobalFeatureManager {
     const currentTime = performance.now();
     let visibleCount = 0;
     let hiddenCount = 0;
-    const featuresToRemove: string[] = [];
+    const featuresToRemove: GlobalFeature[] = [];
     
-    this.features.forEach((feature, id) => {
+    // PERSISTENT SYSTEM - Iterate through persistent set like tree foliage materials
+    this.persistentFeatures.forEach((feature) => {
       // Update age
       feature.age += deltaTime * 1000;
       
@@ -78,16 +88,20 @@ export class GlobalFeatureManager {
       // Determine if feature should be visible based on player distance
       const shouldBeVisible = feature.distanceFromPlayer <= this.getRenderDistanceForType(feature.type);
       
-      // Update visibility if changed
+      // Update visibility if changed - but NEVER remove from scene unless extremely far
       if (feature.isVisible !== shouldBeVisible) {
         feature.isVisible = shouldBeVisible;
-        feature.mesh.visible = shouldBeVisible;
         
         if (shouldBeVisible) {
-          // Fade in
+          // Ensure mesh is in scene and fade in
+          if (!this.scene.children.includes(feature.mesh)) {
+            this.scene.add(feature.mesh);
+          }
+          feature.mesh.visible = true;
           this.fadeInFeature(feature);
         } else {
-          // Fade out
+          // Hide but DON'T remove from scene - like tree foliage materials
+          feature.mesh.visible = false;
           this.fadeOutFeature(feature);
         }
       }
@@ -100,26 +114,24 @@ export class GlobalFeatureManager {
         hiddenCount++;
       }
       
-      // Mark for removal if extremely far away (conservative cleanup)
+      // VERY CONSERVATIVE removal - only if extremely far away (2000+ units)
       if (feature.distanceFromPlayer > RENDER_DISTANCES.MASTER_CULL_DISTANCE) {
-        featuresToRemove.push(id);
+        featuresToRemove.push(feature);
       }
     });
     
-    // Remove extremely distant features
-    featuresToRemove.forEach(id => {
-      const feature = this.features.get(id);
-      if (feature) {
-        this.scene.remove(feature.mesh);
-        this.disposeFeature(feature);
-        this.features.delete(id);
-        console.log(`🗑️ [GlobalFeatureManager] Removed distant ${feature.type}: ${id} (distance: ${feature.distanceFromPlayer.toFixed(1)})`);
-      }
+    // Remove extremely distant features (very conservative)
+    featuresToRemove.forEach(feature => {
+      this.scene.remove(feature.mesh);
+      this.disposeFeature(feature);
+      this.features.delete(feature.id);
+      this.persistentFeatures.delete(feature);
+      console.log(`🗑️ [GlobalFeatureManager] Removed EXTREMELY distant ${feature.type}: ${feature.id} (distance: ${feature.distanceFromPlayer.toFixed(1)})`);
     });
     
     // Debug log every 5 seconds
     if (currentTime % 5000 < 100) {
-      console.log(`🌍 [GlobalFeatureManager] Status: ${visibleCount} visible, ${hiddenCount} hidden, ${this.features.size} total features`);
+      console.log(`🌍 [GlobalFeatureManager] PERSISTENT Status: ${visibleCount} visible, ${hiddenCount} hidden, ${this.persistentFeatures.size} persistent features`);
     }
   }
   
@@ -209,26 +221,27 @@ export class GlobalFeatureManager {
   }
   
   public getFeatureCount(): number {
-    return this.features.size;
+    return this.persistentFeatures.size;
   }
   
   public getFeaturesByType(type: GlobalFeature['type']): GlobalFeature[] {
-    return Array.from(this.features.values()).filter(feature => feature.type === type);
+    return Array.from(this.persistentFeatures.values()).filter(feature => feature.type === type);
   }
   
   public getVisibleFeatureCount(): number {
-    return Array.from(this.features.values()).filter(feature => feature.isVisible).length;
+    return Array.from(this.persistentFeatures.values()).filter(feature => feature.isVisible).length;
   }
   
   public dispose(): void {
-    console.log(`🗑️ [GlobalFeatureManager] Disposing ${this.features.size} features`);
+    console.log(`🗑️ [GlobalFeatureManager] Disposing ${this.persistentFeatures.size} persistent features`);
     
-    this.features.forEach((feature) => {
+    this.persistentFeatures.forEach((feature) => {
       this.scene.remove(feature.mesh);
       this.disposeFeature(feature);
     });
     
     this.features.clear();
+    this.persistentFeatures.clear();
     GlobalFeatureManager.instance = null;
   }
   
@@ -237,7 +250,7 @@ export class GlobalFeatureManager {
     const typeCount = new Map<string, number>();
     const visibleTypeCount = new Map<string, number>();
     
-    this.features.forEach(feature => {
+    this.persistentFeatures.forEach(feature => {
       typeCount.set(feature.type, (typeCount.get(feature.type) || 0) + 1);
       if (feature.isVisible) {
         visibleTypeCount.set(feature.type, (visibleTypeCount.get(feature.type) || 0) + 1);
@@ -245,7 +258,7 @@ export class GlobalFeatureManager {
     });
     
     return {
-      totalFeatures: this.features.size,
+      totalPersistentFeatures: this.persistentFeatures.size,
       byType: Object.fromEntries(typeCount),
       visibleByType: Object.fromEntries(visibleTypeCount)
     };

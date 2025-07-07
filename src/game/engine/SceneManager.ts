@@ -881,9 +881,10 @@ export class SceneManager {
     
     console.log(`Unloading region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
-    // Only cleanup structures, let features persist beyond region boundaries
+    // Only cleanup structures, FEATURES ARE NOW PERSISTENT via GlobalFeatureManager
     this.structureGenerator.cleanupStructuresForRegion(region);
     // REMOVED: this.terrainFeatureGenerator.cleanupFeaturesForRegion(region);
+    console.log(`🌍 Features now persist via GlobalFeatureManager - region unload doesn't affect them`);
     
     // Remove 3D grass for this region
     this.grassSystem.removeGrassForRegion(region);
@@ -906,7 +907,7 @@ export class SceneManager {
     
     this.loadedRegions.delete(regionKey);
     
-    console.log(`🗑️ Unloaded region ${regionKey} - terrain only, features persist`);
+    console.log(`🗑️ Unloaded region ${regionKey} - TERRAIN ONLY, features persist globally like foliage`);
   }
   
   private createRegionTerrain(region: RegionCoordinates, centerPosition: THREE.Vector3): THREE.Mesh {

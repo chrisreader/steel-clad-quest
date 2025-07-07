@@ -1,17 +1,17 @@
 export const RENDER_DISTANCES = {
-  // Master render distance for all terrain features
-  TERRAIN: 800,
+  // Master render distance for all terrain features - INCREASED to match region loading
+  TERRAIN: 1500,
   
-  // Conservative culling distance - only remove when absolutely sure
-  MASTER_CULL_DISTANCE: 1000,
+  // Conservative culling distance - very conservative, only remove when extremely far
+  MASTER_CULL_DISTANCE: 2000,
   
-  // Feature-specific distances
-  TREES: 800,        // Same as terrain
-  ROCKS: 800,        // Same as terrain  
-  BUSHES: 800,       // Same as terrain
-  CLOUDS: 800,       // Same as terrain
-  ENEMIES: 600,      // Slightly closer for performance
-  BIRDS: 700,        // Between enemies and terrain
+  // Feature-specific distances - INCREASED to match terrain/region system
+  TREES: 1500,       // Match terrain to prevent disappearing
+  ROCKS: 1500,       // Match terrain to prevent disappearing
+  BUSHES: 1500,      // Match terrain to prevent disappearing
+  CLOUDS: 1200,      // Slightly closer for performance
+  ENEMIES: 800,      // Slightly closer for performance
+  BIRDS: 1000,       // Between enemies and terrain
   
   // Spawn distances - where new entities appear
   SPAWN: {
