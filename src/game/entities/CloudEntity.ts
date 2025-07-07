@@ -30,7 +30,7 @@ export class CloudEntity implements SpawnableEntity {
     this.velocity = new THREE.Vector3();
     this.maxAge = 25000 + Math.random() * 15000; // 25-40 seconds
     this.fadeSpeed = 0.02 + Math.random() * 0.01;
-    this.baseOpacity = 0.2 + Math.random() * 0.2;
+    this.baseOpacity = 0.6 + Math.random() * 0.2; // Increased from 0.2-0.4 to 0.6-0.8
     this.targetOpacity = this.baseOpacity;
   }
   

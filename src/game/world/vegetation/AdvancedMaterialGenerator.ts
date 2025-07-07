@@ -60,11 +60,11 @@ export class AdvancedMaterialGenerator {
       color: variation.baseColor,
       roughness: variation.roughness,
       metalness: variation.metalness,
-      transparent: true,
-      opacity: variation.opacity,
-      transmission: variation.transmission,
-      thickness: variation.thickness,
-      ior: variation.ior,
+      transparent: false, // Force main foliage to be fully opaque
+      opacity: 1.0, // Force full opacity for main foliage
+      transmission: 0, // Disable transmission for main foliage
+      thickness: 0, // Disable thickness for main foliage
+      ior: 1.0, // Standard IOR for opaque materials
       side: THREE.DoubleSide,
       // Enhanced for subsurface scattering
       clearcoat: 0.1,
