@@ -1541,59 +1541,220 @@ export class TerrainFeatureGenerator {
     const features: THREE.Object3D[] = [];
     this.spawnedFeatures.set(regionKey, features);
     
-    switch(region.ringIndex) {
-      case 0:
-        this.generateEvenlyDistributedFeatures(region, features);
-        break;
-      case 1:
-        this.generateClusteredFeatures(region, features);
-        break;
-      case 2:
-        this.generateSparseFeatures(region, features);
-        break;
-      case 3:
-        this.generateWastelandFeatures(region, features);
-        break;
+    // INFINITE DENSE BIOME-AWARE FEATURE GENERATION
+    this.generateDenseBiomeFeatures(region, features);
+  }
+  
+  // DENSE BIOME-AWARE FEATURE GENERATION - Infinite world support
+  private generateDenseBiomeFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
+    const biomeType = this.getBiomeType(region);
+    const density = this.getFeatureDensity(region);
+    
+    console.log(`🌍 Generating DENSE ${biomeType} biome features for Ring ${region.ringIndex}, Quadrant ${region.quadrant} (density: ${density.toFixed(2)})`);
+    
+    // DRAMATICALLY INCREASED FEATURE COUNTS for realistic environments
+    const baseCounts = this.getBaseFeatureCounts(region, biomeType);
+    const scaledCounts = {
+      trees: Math.floor(baseCounts.trees * density),
+      rocks: Math.floor(baseCounts.rocks * density), 
+      bushes: Math.floor(baseCounts.bushes * density)
+    };
+    
+    console.log(`🌲 Spawning ${scaledCounts.trees} trees, 🪨 ${scaledCounts.rocks} rocks, 🌿 ${scaledCounts.bushes} bushes`);
+    
+    // Generate biome-specific features
+    this.generateBiomeSpecificFeatures(region, biomeType, scaledCounts, features);
+    
+    // Add procedural landmarks and adventure content
+    this.generateProceduralLandmarks(region, biomeType, features);
+    
+    // Create micro-biomes within the region
+    this.generateMicroBiomes(region, biomeType, features);
+  }
+  
+  // BIOME TYPE DETERMINATION - Ring-Quadrant based biomes
+  private getBiomeType(region: RegionCoordinates): string {
+    if (region.ringIndex <= 1) {
+      return 'grassland'; // Safe starting area
+    }
+    
+    // Ring 2+: Quadrant-specific biomes
+    switch (region.quadrant) {
+      case 0: return 'desert';    // Northeast: Desert canyons and oases
+      case 1: return 'forest';    // Southeast: Dense woodlands 
+      case 2: return 'swamp';     // Southwest: Wetlands and marshes
+      case 3: return 'mountain';  // Northwest: Rocky highlands
+      default: return 'grassland';
     }
   }
   
-  private generateEvenlyDistributedFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    this.spawnRandomFeatures(region, 'forest', 12, features);
-    this.spawnEnhancedRocks(region, 20, features);
-    this.spawnRandomFeatures(region, 'bushes', 18, features);
+  // FEATURE DENSITY CALCULATION - More features at higher rings
+  private getFeatureDensity(region: RegionCoordinates): number {
+    // Base density increases with ring index (more content further out)
+    const baseDensity = 1.0 + (region.ringIndex * 0.3); // 1.0, 1.3, 1.6, 1.9...
+    
+    // Random variation to prevent predictability
+    const randomFactor = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
+    
+    return Math.min(3.0, baseDensity * randomFactor); // Cap at 3x density
   }
   
-  private generateClusteredFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    const clusterCount = 3 + Math.floor(Math.random() * 3);
+  // BASE FEATURE COUNTS - DRAMATICALLY INCREASED for realistic worlds
+  private getBaseFeatureCounts(region: RegionCoordinates, biomeType: string): {
+    trees: number;
+    rocks: number; 
+    bushes: number;
+  } {
+    // Base counts are now 3-5x higher than before
+    const baseMultiplier = 1.0 + (region.ringIndex * 0.2); // Slight increase with distance
     
-    for (let i = 0; i < clusterCount; i++) {
+    switch (biomeType) {
+      case 'grassland':
+        return {
+          trees: Math.floor((40 + Math.random() * 20) * baseMultiplier),    // 40-60 trees
+          rocks: Math.floor((60 + Math.random() * 40) * baseMultiplier),    // 60-100 rocks
+          bushes: Math.floor((50 + Math.random() * 30) * baseMultiplier)    // 50-80 bushes
+        };
+        
+      case 'desert':
+        return {
+          trees: Math.floor((15 + Math.random() * 10) * baseMultiplier),    // 15-25 cacti/dead trees
+          rocks: Math.floor((80 + Math.random() * 60) * baseMultiplier),    // 80-140 rock formations
+          bushes: Math.floor((25 + Math.random() * 15) * baseMultiplier)    // 25-40 desert bushes
+        };
+        
+      case 'forest':
+        return {
+          trees: Math.floor((70 + Math.random() * 50) * baseMultiplier),    // 70-120 trees (dense forest)
+          rocks: Math.floor((40 + Math.random() * 30) * baseMultiplier),    // 40-70 rocks
+          bushes: Math.floor((80 + Math.random() * 40) * baseMultiplier)    // 80-120 bushes
+        };
+        
+      case 'swamp':
+        return {
+          trees: Math.floor((50 + Math.random() * 30) * baseMultiplier),    // 50-80 swamp trees
+          rocks: Math.floor((30 + Math.random() * 20) * baseMultiplier),    // 30-50 moss-covered rocks
+          bushes: Math.floor((90 + Math.random() * 50) * baseMultiplier)    // 90-140 wetland bushes
+        };
+        
+      case 'mountain':
+        return {
+          trees: Math.floor((20 + Math.random() * 15) * baseMultiplier),    // 20-35 hardy pines
+          rocks: Math.floor((100 + Math.random() * 80) * baseMultiplier),   // 100-180 rock formations
+          bushes: Math.floor((30 + Math.random() * 20) * baseMultiplier)    // 30-50 mountain bushes
+        };
+        
+      default:
+        return {
+          trees: Math.floor((45 + Math.random() * 25) * baseMultiplier),
+          rocks: Math.floor((65 + Math.random() * 45) * baseMultiplier),
+          bushes: Math.floor((55 + Math.random() * 35) * baseMultiplier)
+        };
+  // BIOME-SPECIFIC FEATURE GENERATION - Dense, realistic environments
+  private generateBiomeSpecificFeatures(region: RegionCoordinates, biomeType: string, counts: {trees: number, rocks: number, bushes: number}, features: THREE.Object3D[]): void {
+    // Generate trees based on biome type
+    for (let i = 0; i < counts.trees; i++) {
       const position = this.getRandomPositionInRegion(region);
-      
-      const cluster: FeatureCluster = {
-        position: position,
-        radius: 20 + Math.random() * 30,
-        density: 0.3 + Math.random() * 0.7,
-        type: this.getRandomClusterType()
-      };
-      
-      this.generateFeaturesForCluster(region, cluster, features);
+      if (!this.isPositionNearTavern(position)) {
+        const tree = this.createBiomeSpecificTree(biomeType, position);
+        if (tree) {
+          features.push(tree);
+          this.scene.add(tree);
+          this.registerFeature(tree, position);
+        }
+      }
     }
     
-    this.spawnRandomFeatures(region, 'forest', 5, features);
-    this.spawnEnhancedRocks(region, 25, features);
-    this.spawnRandomFeatures(region, 'bushes', 10, features);
+    // Generate enhanced rocks
+    this.spawnEnhancedRocks(region, counts.rocks, features);
+    
+    // Generate biome-specific bushes
+    for (let i = 0; i < counts.bushes; i++) {
+      const position = this.getRandomPositionInRegion(region);
+      if (!this.isPositionNearTavern(position)) {
+        const bush = this.createBiomeSpecificBush(biomeType, position);
+        if (bush) {
+          features.push(bush);
+          this.scene.add(bush);
+          this.registerFeature(bush, position);
+        }
+      }
+    }
   }
   
-  private generateSparseFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    this.spawnRandomFeatures(region, 'forest', 8, features);
-    this.spawnEnhancedRocks(region, 30, features);
-    this.spawnRandomFeatures(region, 'bushes', 5, features);
+  // PROCEDURAL LANDMARKS - Adventure content generation
+  private generateProceduralLandmarks(region: RegionCoordinates, biomeType: string, features: THREE.Object3D[]): void {
+    // Generate 1-3 landmarks per region based on ring distance
+    const landmarkCount = Math.min(3, 1 + Math.floor(region.ringIndex / 3));
+    
+    for (let i = 0; i < landmarkCount; i++) {
+      const position = this.getRandomPositionInRegion(region);
+      if (!this.isPositionNearTavern(position)) {
+        const landmark = this.createLandmark(biomeType, position, region.ringIndex);
+        if (landmark) {
+          features.push(landmark);
+          this.scene.add(landmark);
+          this.registerFeature(landmark, position);
+        }
+      }
+    }
   }
   
-  private generateWastelandFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    this.spawnRandomFeatures(region, 'forest', 2, features);
-    this.spawnEnhancedRocks(region, 35, features);
-    this.spawnRandomFeatures(region, 'bushes', 3, features);
+  // MICRO-BIOMES - Small environmental details
+  private generateMicroBiomes(region: RegionCoordinates, biomeType: string, features: THREE.Object3D[]): void {
+    // Generate 2-5 micro-biomes per region
+    const microBiomeCount = 2 + Math.floor(Math.random() * 4);
+    
+    for (let i = 0; i < microBiomeCount; i++) {
+      const position = this.getRandomPositionInRegion(region);
+      this.createMicroBiome(biomeType, position, features);
+    }
+  }
+  
+  // Helper methods for biome-specific generation
+  private createBiomeSpecificTree(biomeType: string, position: THREE.Vector3): THREE.Object3D | null {
+    return this.treeGenerator.createTree(position);
+  }
+  
+  private createBiomeSpecificBush(biomeType: string, position: THREE.Vector3): THREE.Object3D | null {
+    return this.bushGenerator.createBush(position);
+  }
+  
+  private createLandmark(biomeType: string, position: THREE.Vector3, ringIndex: number): THREE.Object3D | null {
+    // Create larger rock formations as landmarks
+    if (this.rockModels.length > 0) {
+      const rock = this.rockModels[Math.floor(Math.random() * this.rockModels.length)].clone();
+      rock.position.copy(position);
+      rock.scale.multiplyScalar(2 + Math.random()); // Make landmarks larger
+      return rock;
+    }
+    return null;
+  }
+  
+  private createMicroBiome(biomeType: string, position: THREE.Vector3, features: THREE.Object3D[]): void {
+    // Create small clusters of features
+    const clusterRadius = 10 + Math.random() * 10;
+    const featureCount = 3 + Math.floor(Math.random() * 5);
+    
+    for (let i = 0; i < featureCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = Math.random() * clusterRadius;
+      const clusterPos = new THREE.Vector3(
+        position.x + Math.cos(angle) * distance,
+        position.y,
+        position.z + Math.sin(angle) * distance
+      );
+      
+      if (Math.random() < 0.6) {
+        const bush = this.bushGenerator.createBush(clusterPos);
+        if (bush) {
+          features.push(bush);
+          this.scene.add(bush);
+          this.registerFeature(bush, clusterPos);
+        }
+      }
+    }
+  }
   }
   
   private getRandomClusterType(): 'forest' | 'rocks' | 'bushes' | 'mixed' {
