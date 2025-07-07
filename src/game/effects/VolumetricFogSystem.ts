@@ -86,9 +86,8 @@ export class VolumetricFogSystem {
   private getFogMaxDistance(timeOfDay: number): number {
     const darknessFactor = this.getDarknessFactor(timeOfDay);
     
-    // AGGRESSIVE FOG DISTANCES - Dense environment optimization
-    // Distance ranges from 250 (day) to 150 (night) for high performance
-    return 250 - (darknessFactor * 100);
+    // Distance ranges from 300 (day) to 200 (night)
+    return 300 - (darknessFactor * 100);
   }
   
   private getFogMaxOpacity(timeOfDay: number): number {
@@ -118,7 +117,7 @@ export class VolumetricFogSystem {
         sunsetFogColor: { value: new THREE.Color(0xFFDCC0) },
         // NEW: Dynamic parameters for smooth transitions
         fogWallDensityMultiplier: { value: 1.0 },
-        maxWallDistance: { value: 250.0 }, // Reduced for aggressive culling
+        maxWallDistance: { value: 300.0 },
         maxWallOpacity: { value: 0.25 }, // Reduced for realism
         blendingAlpha: { value: 0.0 },
         fogWallDensity: { value: 0.05 }, // Reduced base density
@@ -395,7 +394,7 @@ export class VolumetricFogSystem {
         sunsetFogColor: { value: new THREE.Color(0xFFE0C0) },
         atmosphericDensity: { value: 0.06 },
         atmosphericMultiplier: { value: 1.0 },
-        maxAtmosphericDistance: { value: 300.0 }, // Reduced for performance
+        maxAtmosphericDistance: { value: 400.0 },
         playerPosition: { value: new THREE.Vector3() }
       },
       vertexShader: `

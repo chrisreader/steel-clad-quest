@@ -1,32 +1,30 @@
-// DEPRECATED: Use FogSynchronizedRenderConfig instead for fog-aware rendering
-// This is kept for backward compatibility only
 export const RENDER_DISTANCES = {
-  // FOG-SYNCHRONIZED DISTANCES - Aggressive reduction for dense environments
-  TERRAIN: 300,        // Reduced from 1500 to match fog
+  // Master render distance for all terrain features - INCREASED to match region loading
+  TERRAIN: 1500,
   
-  // Fog-based culling distance - everything beyond fog is invisible anyway
-  MASTER_CULL_DISTANCE: 400,  // Reduced from 2000
+  // Conservative culling distance - very conservative, only remove when extremely far
+  MASTER_CULL_DISTANCE: 2000,
   
-  // Feature-specific distances - ALL synchronized with fog visibility
-  TREES: 300,          // Reduced from 1500 - fog hides them anyway
-  ROCKS: 300,          // Reduced from 1500 - fog hides them anyway  
-  BUSHES: 300,         // Reduced from 1500 - fog hides them anyway
-  CLOUDS: 350,         // Slightly farther for realism
-  ENEMIES: 200,        // Reduced from 800 - fog limits visibility
-  BIRDS: 250,          // Reduced from 1000 - fog limits visibility
+  // Feature-specific distances - INCREASED to match terrain/region system
+  TREES: 1500,       // Match terrain to prevent disappearing
+  ROCKS: 1500,       // Match terrain to prevent disappearing
+  BUSHES: 1500,      // Match terrain to prevent disappearing
+  CLOUDS: 1200,      // Slightly closer for performance
+  ENEMIES: 800,      // Slightly closer for performance
+  BIRDS: 1000,       // Between enemies and terrain
   
-  // Dense environment spawn distances - closer but higher density
+  // Spawn distances - where new entities appear
   SPAWN: {
-    MIN_DISTANCE: 20,     // Closer spawning for denser environment
-    MAX_DISTANCE: 200     // Much closer - fog limits visibility anyway
+    MIN_DISTANCE: 100,   // Don't spawn too close to player
+    MAX_DISTANCE: 600    // Don't spawn too far from player
   },
   
-  // Fog-synchronized fade distances
-  FADE_IN_DISTANCE: 150,   // Much closer - fog does the fading
-  FADE_OUT_DISTANCE: 250,  // Much closer - fog does the fading
+  // Fade distances for smooth transitions
+  FADE_IN_DISTANCE: 700,   // Start becoming visible
+  FADE_OUT_DISTANCE: 850,  // Start becoming invisible
   
-  // Fog-aware region unloading
-  REGION_UNLOAD_MULTIPLIER: 1.2  // More aggressive unloading
+  // Region unloading - more conservative than feature distance
+  REGION_UNLOAD_MULTIPLIER: 1.5  // Only unload regions when player is 1.5x render distance away
 };
 
 console.log('🎯 [RenderDistanceConfig] Unified distance configuration loaded - Player-centered world rendering');
