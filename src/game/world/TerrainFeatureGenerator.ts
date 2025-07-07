@@ -31,7 +31,7 @@ export class TerrainFeatureGenerator {
   // Rock cluster generator
   private rockClusterGenerator: RockClusterGenerator = new RockClusterGenerator();
   
-  // Track spawned objects by region for cleanup
+  // DEPRECATED: Legacy region-based feature tracking - being phased out
   private spawnedFeatures: Map<string, THREE.Object3D[]> = new Map();
   
   // NEW: Player-distance-based feature management for continuous world
@@ -1534,7 +1534,7 @@ export class TerrainFeatureGenerator {
     
     if (this.spawnedFeatures.has(regionKey)) return;
     
-    console.log(`Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    console.log(`Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant} - using player-distance management`);
     
     const features: THREE.Object3D[] = [];
     this.spawnedFeatures.set(regionKey, features);
@@ -1866,43 +1866,11 @@ export class TerrainFeatureGenerator {
     return distance < this.tavernExclusionRadius;
   }
   
+  // DEPRECATED: Legacy region-based cleanup - now handled by player-distance system
   public cleanupFeaturesForRegion(region: RegionCoordinates): void {
-    const regionKey = this.ringSystem.getRegionKey(region);
-    const features = this.spawnedFeatures.get(regionKey);
-    
-    if (!features) return;
-    
-    console.log(`Cleaning up features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
-    
-    features.forEach(feature => {
-      this.scene.remove(feature);
-      
-      if (feature instanceof THREE.Mesh) {
-        if (feature.geometry) feature.geometry.dispose();
-        if (feature.material) {
-          if (Array.isArray(feature.material)) {
-            feature.material.forEach(m => m.dispose());
-          } else {
-            feature.material.dispose();
-          }
-        }
-      } else if (feature instanceof THREE.Group) {
-        feature.traverse(child => {
-          if (child instanceof THREE.Mesh) {
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) {
-              if (Array.isArray(child.material)) {
-                child.material.forEach(m => m.dispose());
-              } else {
-                child.material.dispose();
-              }
-            }
-          }
-        });
-      }
-    });
-    
-    this.spawnedFeatures.delete(regionKey);
+    console.log(`🗑️ [DEPRECATED] Region-based cleanup called for Ring ${region.ringIndex}, Quadrant ${region.quadrant} - ignoring (features managed by player distance)`);
+    // Features are now managed by the player-distance system in updateFeatureVisibility()
+    // This method is kept for compatibility but does nothing
   }
   
   private gaussianRandom(): number {

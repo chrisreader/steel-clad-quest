@@ -36,7 +36,7 @@ export class SceneManager {
   private terrainFeatureGenerator: TerrainFeatureGenerator;
   private structureGenerator: StructureGenerator;
   private loadedRegions: Map<string, Region> = new Map();
-  private renderDistance: number = 800;
+  private renderDistance: number = 1500; // Increased to prevent terrain unloading while features are visible
   private debugMode: boolean = true;
   
   // Building management system
@@ -889,6 +889,8 @@ export class SceneManager {
     }
     
     this.loadedRegions.delete(regionKey);
+    
+    console.log(`🗑️ Unloaded region ${regionKey} - terrain only, features persist`);
   }
   
   private createRegionTerrain(region: RegionCoordinates, centerPosition: THREE.Vector3): THREE.Mesh {
