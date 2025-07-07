@@ -23,6 +23,7 @@ import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 import { GrassSystem } from '../vegetation/GrassSystem';
 import { DistanceManager } from '../systems/UnifiedDistanceManager';
 import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
+import { WorldFeatureManager } from '../systems/WorldFeatureManager';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -45,6 +46,9 @@ export class SceneManager {
   
   // 3D grass system
   private grassSystem: GrassSystem;
+  
+  // UNIFIED WORLD FEATURE MANAGER - Single source of truth for all features
+  private worldFeatureManager: WorldFeatureManager;
   
   // Enhanced lighting system for realistic shadows
   private ambientLight: THREE.AmbientLight;
@@ -122,6 +126,10 @@ export class SceneManager {
     this.grassSystem.setBuildingManager(this.buildingManager);
     
     console.log("🌱 3D Grass system initialized with building exclusion");
+    
+    // INITIALIZE UNIFIED WORLD FEATURE MANAGER
+    this.worldFeatureManager = WorldFeatureManager.getInstance(this.scene);
+    console.log("🌍 Unified World Feature Manager initialized - all features now player-centered");
     
     // Initialize skybox system
     this.skyboxSystem = new SkyboxSystem(this.scene);
@@ -651,6 +659,13 @@ export class SceneManager {
       } else {
         console.warn('⚠️ [SceneManager] No player position for grass system - skipping update');
       }
+    }
+    
+    // UPDATE UNIFIED WORLD FEATURE MANAGER - Player-centered feature management
+    if (playerPosition) {
+      const currentRingIndex = this.getCurrentRingIndex(playerPosition);
+      DistanceManager.updatePlayerPosition(playerPosition, currentRingIndex);
+      this.worldFeatureManager.update();
     }
     
     // Update tree foliage materials for day/night lighting
@@ -1310,12 +1325,21 @@ export class SceneManager {
       this.birdSpawningSystem = null;
     }
     
+    if (this.worldFeatureManager) {
+      this.worldFeatureManager.dispose();
+    }
     for (const [regionKey, region] of this.loadedRegions.entries()) {
       this.unloadRegion(region.coordinates);
     }
     this.loadedRegions.clear();
     
     console.log("SceneManager with 3D grass system disposed");
+  }
+  
+  // Helper method to get current ring index for player
+  private getCurrentRingIndex(playerPosition: THREE.Vector3): number {
+    const playerRegion = this.ringSystem?.getRegionForPosition(playerPosition);
+    return playerRegion ? playerRegion.ringIndex : 0;
   }
   
   public getEnvironmentCollisionManager(): EnvironmentCollisionManager {

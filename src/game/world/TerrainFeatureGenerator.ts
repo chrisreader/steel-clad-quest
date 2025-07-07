@@ -5,6 +5,7 @@ import { ROCK_SHAPES, RockShape } from './rocks/config/RockShapeConfig';
 import { RockMaterialGenerator } from './rocks/materials/RockMaterialGenerator';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
 import { TreeGenerator, BushGenerator } from './vegetation';
+import { WorldFeatureManager } from '../systems/WorldFeatureManager';
 
 export interface FeatureCluster {
   position: THREE.Vector3;
@@ -33,6 +34,9 @@ export class TerrainFeatureGenerator {
   // Track spawned objects by region for cleanup
   private spawnedFeatures: Map<string, THREE.Object3D[]> = new Map();
   
+  // UNIFIED FEATURE MANAGEMENT - Connect to WorldFeatureManager
+  private worldFeatureManager: WorldFeatureManager;
+  
   // Track large rock formations to maintain distance
   private largeRockFormations: THREE.Vector3[] = [];
   private minimumLargeRockDistance: number = 150;
@@ -52,7 +56,11 @@ export class TerrainFeatureGenerator {
     this.treeGenerator = new TreeGenerator();
     this.bushGenerator = new BushGenerator();
     
+    // Connect to unified world feature manager
+    this.worldFeatureManager = WorldFeatureManager.getInstance(scene);
+    
     this.loadRockModels();
+    console.log('🌍 TerrainFeatureGenerator connected to WorldFeatureManager for unified feature management');
   }
   
   // NEW: Set collision registration callback
@@ -1664,6 +1672,29 @@ export class TerrainFeatureGenerator {
         if (rock) {
           features.push(rock);
           this.scene.add(rock);
+          
+          // REGISTER WITH UNIFIED WORLD FEATURE MANAGER
+          const currentRegionKey = this.ringSystem.getRegionKey(region);
+          this.worldFeatureManager.registerFeature(
+            rock, 
+            'rock', 
+            currentRegionKey,
+            () => {
+              // Simple disposal callback
+              rock.traverse(child => {
+                if (child instanceof THREE.Mesh) {
+                  if (child.geometry) child.geometry.dispose();
+                  if (child.material) {
+                    if (Array.isArray(child.material)) {
+                      child.material.forEach(mat => mat.dispose());
+                    } else {
+                      child.material.dispose();
+                    }
+                  }
+                }
+              });
+            }
+          );
           
           if (variation.category === 'large' || variation.category === 'massive') {
             this.largeRockFormations.push(position.clone());
