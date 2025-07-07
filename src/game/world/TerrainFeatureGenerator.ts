@@ -48,6 +48,9 @@ export class TerrainFeatureGenerator {
   // NEW: Collision registration callback
   private collisionRegistrationCallback?: (object: THREE.Object3D) => void;
   
+  // Player position for accurate distance calculations
+  private currentPlayerPosition: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
+  
   // Global feature manager for persistent world features
   private globalFeatureManager: GlobalFeatureManager;
   
@@ -73,6 +76,16 @@ export class TerrainFeatureGenerator {
     console.log('🔧 TerrainFeatureGenerator collision registration callback set');
   }
   
+  // NEW: Update current player position for accurate distance calculations
+  public updatePlayerPosition(playerPosition: THREE.Vector3): void {
+    this.currentPlayerPosition.copy(playerPosition);
+  }
+  
+  // NEW: Get current player position for feature registration
+  private getCurrentPlayerPosition(): THREE.Vector3 {
+    return this.currentPlayerPosition.clone();
+  }
+  
   // REMOVED: Local feature visibility - now handled by GlobalFeatureManager only
   
   // Register a feature in the global system only (like tree foliage)
@@ -81,12 +94,15 @@ export class TerrainFeatureGenerator {
     
     // Only register with global feature manager - no local tracking
     const featureType = this.getFeatureType(object);
+    
+    // FIXED: Use actual current player position from SceneManager
+    const currentPlayerPosition = this.getCurrentPlayerPosition();
     this.globalFeatureManager.registerFeature(
       featureId,
       object,
       position,
       featureType,
-      position // Use feature position as player reference
+      currentPlayerPosition
     );
     
     // Register for collision detection

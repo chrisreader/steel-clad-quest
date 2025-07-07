@@ -852,6 +852,9 @@ export class SceneManager {
     };
     
     this.loadedRegions.set(regionKey, newRegion);
+    
+    // FIXED: Update player position before generating features for accurate distance calculations
+    this.terrainFeatureGenerator.updatePlayerPosition(this.lastPlayerPosition);
     this.terrainFeatureGenerator.generateFeaturesForRegion(region);
     this.structureGenerator.generateStructuresForRegion(region);
     
