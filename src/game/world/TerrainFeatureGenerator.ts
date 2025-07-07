@@ -1529,9 +1529,14 @@ export class TerrainFeatureGenerator {
   public generateFeaturesForRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
     
-    if (this.spawnedFeatures.has(regionKey)) return;
+    console.log(`🌍 [TerrainFeatureGenerator] generateFeaturesForRegion called for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
     
-    console.log(`Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant} - using player-distance management`);
+    if (this.spawnedFeatures.has(regionKey)) {
+      console.log(`🌍 [TerrainFeatureGenerator] Region ${regionKey} already has features, skipping`);
+      return;
+    }
+    
+    console.log(`🌍 [TerrainFeatureGenerator] Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant} - using player-distance management`);
     
     const features: THREE.Object3D[] = [];
     this.spawnedFeatures.set(regionKey, features);

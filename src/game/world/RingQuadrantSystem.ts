@@ -85,15 +85,23 @@ export class RingQuadrantSystem {
     const dz = position.z - this.worldCenter.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
     
+    // DEBUG: Log position and distance calculation
+    console.log(`🌍 [RingSystem] Position: (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), Distance: ${distance.toFixed(1)}`);
+    
     let ringIndex = -1;
     for (let i = 0; i < this.rings.length; i++) {
+      console.log(`🌍 [RingSystem] Checking ring ${i}: inner=${this.rings[i].innerRadius}, outer=${this.rings[i].outerRadius}`);
       if (distance >= this.rings[i].innerRadius && distance < this.rings[i].outerRadius) {
         ringIndex = i;
+        console.log(`🌍 [RingSystem] Found ring ${i} for distance ${distance.toFixed(1)}`);
         break;
       }
     }
     
-    if (ringIndex === -1) return null;
+    if (ringIndex === -1) {
+      console.log(`🌍 [RingSystem] No ring found for distance ${distance.toFixed(1)}`);
+      return null;
+    }
     
     let quadrant = 0;
     if (dx >= 0 && dz >= 0) quadrant = 0;

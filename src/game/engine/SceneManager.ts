@@ -654,14 +654,22 @@ export class SceneManager {
     if (playerPosition) {
       this.updateShadowCamera(playerPosition);
       
+      // DEBUG: Log player position and region system state
+      console.log(`🌍 [SceneManager] Player position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)}`);
+      
       const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
+      console.log(`🌍 [SceneManager] Active regions found: ${activeRegions.length}`, activeRegions);
+      
       const activeRegionKeys = new Set<string>();
       
       for (const region of activeRegions) {
         const regionKey = this.ringSystem.getRegionKey(region);
         activeRegionKeys.add(regionKey);
         
+        console.log(`🌍 [SceneManager] Checking region ${regionKey}, loaded: ${this.loadedRegions.has(regionKey)}`);
+        
         if (!this.loadedRegions.has(regionKey)) {
+          console.log(`🌍 [SceneManager] Loading region ${regionKey}...`);
           this.loadRegion(region);
         }
       }
