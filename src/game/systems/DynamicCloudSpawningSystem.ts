@@ -12,17 +12,17 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
   
   constructor(scene: THREE.Scene) {
     const config: SpawningConfig = {
-      playerMovementThreshold: 3,
+      playerMovementThreshold: 5,
       fadeInDistance: RENDER_DISTANCES.FADE_IN_DISTANCE,
       fadeOutDistance: RENDER_DISTANCES.FADE_OUT_DISTANCE,
       maxEntityDistance: RENDER_DISTANCES.CLOUDS,
-      minSpawnDistance: RENDER_DISTANCES.SPAWN.MIN_DISTANCE,
-      maxSpawnDistance: RENDER_DISTANCES.SPAWN.MAX_DISTANCE,
-      maxEntities: 8,
-      baseSpawnInterval: 4000,
-      spawnCountPerTrigger: 2,
+      minSpawnDistance: 200, // Increased distance
+      maxSpawnDistance: 400, // Reduced max distance
+      maxEntities: 4, // Reduced from 8
+      baseSpawnInterval: 8000, // Doubled interval (slower spawning)
+      spawnCountPerTrigger: 1, // Reduced from 2
       aggressiveCleanupDistance: RENDER_DISTANCES.MASTER_CULL_DISTANCE,
-      fadedOutTimeout: 2000
+      fadedOutTimeout: 3000
     };
     
     super(scene, config);
@@ -42,8 +42,8 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
   protected createEntity(isInitial: boolean = false, playerPosition?: THREE.Vector3): CloudEntity {
     const cloud = new CloudEntity(this.cloudMaterial);
     
-    // Calculate spawn position
-    const cloudHeight = 35 + Math.random() * 15;
+    // Calculate spawn position with higher altitude
+    const cloudHeight = 80 + Math.random() * 40; // Increased from 35-50 to 80-120
     const centerX = playerPosition ? playerPosition.x : 0;
     const centerZ = playerPosition ? playerPosition.z : 0;
     

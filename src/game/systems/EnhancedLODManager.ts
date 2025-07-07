@@ -266,9 +266,31 @@ export class EnhancedLODManager {
   }
 
   private updateFogVisibility(feature: LODFeature, distance: number): void {
+    // DISABLED: Fog visibility was making close objects transparent
+    // Only apply fog effects to distant objects to prevent bush transparency near player
+    if (distance < FOG_CONFIG.NEAR + 20) {
+      // Keep objects close to player fully opaque
+      feature.object.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(mat => {
+              if ('opacity' in mat) {
+                mat.transparent = false;
+                mat.opacity = 1.0;
+              }
+            });
+          } else if ('opacity' in child.material) {
+            child.material.transparent = false;
+            child.material.opacity = 1.0;
+          }
+        }
+      });
+      return;
+    }
+    
+    // Only apply fog effects to distant objects
     const fogFactor = this.calculateFogFactor(distance);
     
-    // Apply fog-based opacity
     feature.object.traverse((child) => {
       if (child instanceof THREE.Mesh && child.material) {
         if (Array.isArray(child.material)) {
