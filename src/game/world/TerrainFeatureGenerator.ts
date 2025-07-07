@@ -5,9 +5,7 @@ import { ROCK_SHAPES, RockShape } from './rocks/config/RockShapeConfig';
 import { RockMaterialGenerator } from './rocks/materials/RockMaterialGenerator';
 import { RockClusterGenerator } from './rocks/generators/RockClusterGenerator';
 import { TreeGenerator, BushGenerator } from './vegetation';
-import { RENDER_DISTANCES, FOG_CONFIG } from '../config/RenderDistanceConfig';
-import { EnhancedLODManager } from '../systems/EnhancedLODManager';
-import { SmartDensityManager } from './SmartDensityManager';
+import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 import { GlobalFeatureManager } from '../systems/GlobalFeatureManager';
 
 export interface FeatureCluster {
@@ -56,10 +54,6 @@ export class TerrainFeatureGenerator {
   // Global feature manager for persistent world features
   private globalFeatureManager: GlobalFeatureManager;
   
-  // NEW: Smart performance and density management systems
-  private lodManager: EnhancedLODManager;
-  private densityManager: SmartDensityManager;
-  
   constructor(ringSystem: RingQuadrantSystem, scene: THREE.Scene) {
     this.ringSystem = ringSystem;
     this.scene = scene;
@@ -71,13 +65,9 @@ export class TerrainFeatureGenerator {
     // Initialize global feature manager
     this.globalFeatureManager = GlobalFeatureManager.getInstance(scene);
     
-    // NEW: Initialize smart performance systems
-    this.lodManager = new EnhancedLODManager(scene);
-    this.densityManager = new SmartDensityManager();
-    
     this.loadRockModels();
     
-    console.log('🎯 TerrainFeatureGenerator initialized with LOD and smart density systems');
+    console.log('TerrainFeatureGenerator initialized with global feature tracking');
   }
   
   // NEW: Set collision registration callback
@@ -88,9 +78,6 @@ export class TerrainFeatureGenerator {
   
   // NEW: Update current player position for accurate distance calculations
   public updatePlayerPosition(playerPosition: THREE.Vector3): void {
-    this.currentPlayerPosition.copy(playerPosition);
-    this.lodManager.updatePlayerPosition(playerPosition);
-    this.densityManager.updatePlayerPosition(playerPosition);
     this.currentPlayerPosition.copy(playerPosition);
   }
   
@@ -123,7 +110,7 @@ export class TerrainFeatureGenerator {
       this.collisionRegistrationCallback(object);
     }
     
-    // Feature registered globally
+    console.log(`🌍 [TerrainFeatureGenerator] Registered ${featureType} feature: ${featureId} globally`);
   }
   
   // Helper to determine feature type more accurately
@@ -1542,39 +1529,23 @@ export class TerrainFeatureGenerator {
   public generateFeaturesForRegion(region: RegionCoordinates): void {
     const regionKey = this.ringSystem.getRegionKey(region);
     
+    console.log(`🌍 [TerrainFeatureGenerator] generateFeaturesForRegion called for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant}`);
+    
     if (this.spawnedFeatures.has(regionKey)) {
+      console.log(`🌍 [TerrainFeatureGenerator] Region ${regionKey} already has features, skipping`);
       return;
     }
+    
+    console.log(`🌍 [TerrainFeatureGenerator] Generating features for region: Ring ${region.ringIndex}, Quadrant ${region.quadrant} - using player-distance management`);
     
     const features: THREE.Object3D[] = [];
     this.spawnedFeatures.set(regionKey, features);
     
-    // Update density manager with player position
-    this.densityManager.updatePlayerPosition(this.currentPlayerPosition);
-    
-    // SMART HIGH-DENSITY BIOME-AWARE FEATURE GENERATION with LOD
-    this.generateSmartDensityFeatures(region, features);
+    // INFINITE DENSE BIOME-AWARE FEATURE GENERATION
+    this.generateDenseBiomeFeatures(region, features);
   }
   
-  // NEW: SMART HIGH-DENSITY GENERATION with LOD and fog-based culling
-  private generateSmartDensityFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
-    const regionCenter = this.ringSystem.getRegionCenter(region);
-    const biomeType = this.getBiomeType(region);
-    
-    // Use smart density to get optimal feature counts
-    const optimalCounts = {
-      trees: this.densityManager.getOptimalFeatureCount(200, 'trees', regionCenter),
-      rocks: this.densityManager.getOptimalFeatureCount(200, 'rocks', regionCenter),
-      bushes: this.densityManager.getOptimalFeatureCount(200, 'bushes', regionCenter)
-    };
-    
-    console.log(`🎯 [SmartDensity] ${biomeType} biome: ${optimalCounts.trees} trees, ${optimalCounts.rocks} rocks, ${optimalCounts.bushes} bushes`);
-    
-    // Generate with smart density and register with LOD manager
-    this.generateBiomeSpecificFeatures(region, biomeType, optimalCounts, features);
-  }
-
-  // LEGACY: Keep existing method for compatibility
+  // DENSE BIOME-AWARE FEATURE GENERATION - Infinite world support
   private generateDenseBiomeFeatures(region: RegionCoordinates, features: THREE.Object3D[]): void {
     const biomeType = this.getBiomeType(region);
     const density = this.getFeatureDensity(region);
@@ -1634,43 +1605,43 @@ export class TerrainFeatureGenerator {
     rocks: number; 
     bushes: number;
   } {
-    // PERFORMANCE: Optimized counts (reduced 75% for smooth FPS)
+    // Base counts are now 3-5x higher than before
     const baseMultiplier = 1.0 + (region.ringIndex * 0.2); // Slight increase with distance
     
     switch (biomeType) {
       case 'grassland':
         return {
-          trees: Math.floor((8 + Math.random() * 7) * baseMultiplier),      // 8-15 trees (reduced 75%)
-          rocks: Math.floor((15 + Math.random() * 10) * baseMultiplier),    // 15-25 rocks (reduced 75%)
-          bushes: Math.floor((12 + Math.random() * 8) * baseMultiplier)     // 12-20 bushes (reduced 75%)
+          trees: Math.floor((40 + Math.random() * 20) * baseMultiplier),    // 40-60 trees
+          rocks: Math.floor((60 + Math.random() * 40) * baseMultiplier),    // 60-100 rocks
+          bushes: Math.floor((50 + Math.random() * 30) * baseMultiplier)    // 50-80 bushes
         };
         
       case 'desert':
         return {
-          trees: Math.floor((3 + Math.random() * 4) * baseMultiplier),      // 3-7 cacti/dead trees (reduced 75%)
-          rocks: Math.floor((18 + Math.random() * 12) * baseMultiplier),    // 18-30 rock formations (reduced 75%)
-          bushes: Math.floor((6 + Math.random() * 4) * baseMultiplier)      // 6-10 desert bushes (reduced 75%)
+          trees: Math.floor((15 + Math.random() * 10) * baseMultiplier),    // 15-25 cacti/dead trees
+          rocks: Math.floor((80 + Math.random() * 60) * baseMultiplier),    // 80-140 rock formations
+          bushes: Math.floor((25 + Math.random() * 15) * baseMultiplier)    // 25-40 desert bushes
         };
         
       case 'forest':
         return {
-          trees: Math.floor((15 + Math.random() * 10) * baseMultiplier),    // 15-25 trees (reduced 75%)
-          rocks: Math.floor((8 + Math.random() * 7) * baseMultiplier),      // 8-15 rocks (reduced 75%)
-          bushes: Math.floor((18 + Math.random() * 12) * baseMultiplier)    // 18-30 bushes (reduced 75%)
+          trees: Math.floor((70 + Math.random() * 50) * baseMultiplier),    // 70-120 trees (dense forest)
+          rocks: Math.floor((40 + Math.random() * 30) * baseMultiplier),    // 40-70 rocks
+          bushes: Math.floor((80 + Math.random() * 40) * baseMultiplier)    // 80-120 bushes
         };
         
       case 'swamp':
         return {
-          trees: Math.floor((12 + Math.random() * 8) * baseMultiplier),     // 12-20 swamp trees (reduced 75%)
-          rocks: Math.floor((7 + Math.random() * 6) * baseMultiplier),      // 7-13 moss-covered rocks (reduced 75%)
-          bushes: Math.floor((20 + Math.random() * 15) * baseMultiplier)    // 20-35 wetland bushes (reduced 75%)
+          trees: Math.floor((50 + Math.random() * 30) * baseMultiplier),    // 50-80 swamp trees
+          rocks: Math.floor((30 + Math.random() * 20) * baseMultiplier),    // 30-50 moss-covered rocks
+          bushes: Math.floor((90 + Math.random() * 50) * baseMultiplier)    // 90-140 wetland bushes
         };
         
       case 'mountain':
         return {
-          trees: Math.floor((5 + Math.random() * 5) * baseMultiplier),      // 5-10 hardy pines (reduced 75%)
-          rocks: Math.floor((22 + Math.random() * 18) * baseMultiplier),    // 22-40 rock formations (reduced 75%)
-          bushes: Math.floor((7 + Math.random() * 6) * baseMultiplier)      // 7-13 mountain bushes (reduced 75%)
+          trees: Math.floor((20 + Math.random() * 15) * baseMultiplier),    // 20-35 hardy pines
+          rocks: Math.floor((100 + Math.random() * 80) * baseMultiplier),   // 100-180 rock formations
+          bushes: Math.floor((30 + Math.random() * 20) * baseMultiplier)    // 30-50 mountain bushes
         };
         
       default:

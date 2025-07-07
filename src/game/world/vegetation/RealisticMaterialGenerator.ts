@@ -45,8 +45,8 @@ export class RealisticMaterialGenerator {
       color: color,
       roughness: 0.85 + Math.random() * 0.1, // 0.85 - 0.95
       metalness: 0.05 + Math.random() * 0.05, // 0.05 - 0.1
-      transparent: false, // Force main foliage to be fully opaque
-      opacity: 1.0, // Force full opacity for main foliage
+      transparent: true,
+      opacity: 0.92 + Math.random() * 0.06, // 0.92 - 0.98
       side: THREE.DoubleSide, // For better light interaction
     });
   }

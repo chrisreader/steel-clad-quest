@@ -12,28 +12,28 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
   
   constructor(scene: THREE.Scene) {
     const config: SpawningConfig = {
-      playerMovementThreshold: 5,
+      playerMovementThreshold: 3,
       fadeInDistance: RENDER_DISTANCES.FADE_IN_DISTANCE,
       fadeOutDistance: RENDER_DISTANCES.FADE_OUT_DISTANCE,
       maxEntityDistance: RENDER_DISTANCES.CLOUDS,
-      minSpawnDistance: 200, // Increased distance
-      maxSpawnDistance: 400, // Reduced max distance
-      maxEntities: 4, // Reduced from 8
-      baseSpawnInterval: 8000, // Doubled interval (slower spawning)
-      spawnCountPerTrigger: 1, // Reduced from 2
+      minSpawnDistance: RENDER_DISTANCES.SPAWN.MIN_DISTANCE,
+      maxSpawnDistance: RENDER_DISTANCES.SPAWN.MAX_DISTANCE,
+      maxEntities: 8,
+      baseSpawnInterval: 4000,
+      spawnCountPerTrigger: 2,
       aggressiveCleanupDistance: RENDER_DISTANCES.MASTER_CULL_DISTANCE,
-      fadedOutTimeout: 3000
+      fadedOutTimeout: 2000
     };
     
     super(scene, config);
     this.globalFeatureManager = GlobalFeatureManager.getInstance(scene);
     
-    // Create cloud material with better visibility
+    // Create cloud material
     this.cloudMaterial = new THREE.MeshLambertMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.6, // Increased from 0.4
-      fog: true // Allow fog to affect clouds naturally
+      opacity: 0.4,
+      fog: false
     });
     
     console.log('DynamicCloudSpawningSystem initialized');
@@ -42,8 +42,8 @@ export class DynamicCloudSpawningSystem extends DynamicSpawningSystem<CloudEntit
   protected createEntity(isInitial: boolean = false, playerPosition?: THREE.Vector3): CloudEntity {
     const cloud = new CloudEntity(this.cloudMaterial);
     
-    // Calculate spawn position with proper altitude
-    const cloudHeight = 60 + Math.random() * 30; // 60-90 altitude for visibility
+    // Calculate spawn position
+    const cloudHeight = 35 + Math.random() * 15;
     const centerX = playerPosition ? playerPosition.x : 0;
     const centerZ = playerPosition ? playerPosition.z : 0;
     

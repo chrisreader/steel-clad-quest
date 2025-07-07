@@ -18,10 +18,10 @@ import { VolumetricFogSystem } from '../effects/VolumetricFogSystem';
 import { SkyboxSystem } from '../effects/SkyboxSystem';
 import { ColorUtils } from '../utils/ColorUtils';
 import { TimeUtils } from '../utils/TimeUtils';
-import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG } from '../config/DayNightConfig';
+import { TIME_PHASES, DAY_NIGHT_CONFIG, LIGHTING_CONFIG, FOG_CONFIG } from '../config/DayNightConfig';
 import { CelestialGlowShader } from '../effects/CelestialGlowShader';
 import { GrassSystem } from '../vegetation/GrassSystem';
-import { RENDER_DISTANCES, FOG_CONFIG } from '../config/RenderDistanceConfig';
+import { RENDER_DISTANCES } from '../config/RenderDistanceConfig';
 import { GlobalFeatureManager } from '../systems/GlobalFeatureManager';
 
 export class SceneManager {
@@ -96,10 +96,6 @@ export class SceneManager {
   
   // Global feature manager for persistent world rendering
   private globalFeatureManager: GlobalFeatureManager;
-  
-  // Performance optimization
-  private updateCounter: number = 0;
-  private readonly MAX_ACTIVE_RINGS = 2; // Limit active regions to 2 rings
   
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
@@ -191,11 +187,11 @@ export class SceneManager {
       () => this.getMoonElevationFactor()
     );
     
-    this.fog = new THREE.Fog(fogColor, FOG_CONFIG.NEAR, FOG_CONFIG.FAR);
+    this.fog = new THREE.Fog(fogColor, FOG_CONFIG.near, FOG_CONFIG.far);
     this.scene.fog = this.fog;
     this.scene.background = new THREE.Color(fogColor);
     
-    console.log(`🌫️ Enhanced fog system: ${FOG_CONFIG.NEAR}-${FOG_CONFIG.FAR} units for natural LOD culling`);
+    console.log("Simplified fog system initialized");
   }
   
   private getMoonElevationFactor(): number {
@@ -658,28 +654,29 @@ export class SceneManager {
     if (playerPosition) {
       this.updateShadowCamera(playerPosition);
       
-      // PERFORMANCE: Only update every few frames and limit active regions
-      this.updateCounter++;
-      if (this.updateCounter % 10 === 0) { // Only check every 10 frames for better FPS
-        const limitedActiveRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance)
-          .filter(region => region.ringIndex <= this.MAX_ACTIVE_RINGS); // Limit to 2 rings
-        
-        const activeRegionKeys = new Set<string>();
-        
-        for (const region of limitedActiveRegions) {
-          const regionKey = this.ringSystem.getRegionKey(region);
-          activeRegionKeys.add(regionKey);
-          
-          if (!this.loadedRegions.has(regionKey)) {
-            this.loadRegion(region);
-          }
-        }
+      // DEBUG: Log player position and region system state
+      console.log(`🌍 [SceneManager] Player position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)}`);
       
-        // Unload distant regions more aggressively for performance
-        for (const [regionKey, region] of this.loadedRegions.entries()) {
-          if (!activeRegionKeys.has(regionKey)) {
-            this.unloadRegion(region.coordinates);
-          }
+      const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
+      console.log(`🌍 [SceneManager] Active regions found: ${activeRegions.length}`, activeRegions);
+      
+      const activeRegionKeys = new Set<string>();
+      
+      for (const region of activeRegions) {
+        const regionKey = this.ringSystem.getRegionKey(region);
+        activeRegionKeys.add(regionKey);
+        
+        console.log(`🌍 [SceneManager] Checking region ${regionKey}, loaded: ${this.loadedRegions.has(regionKey)}`);
+        
+        if (!this.loadedRegions.has(regionKey)) {
+          console.log(`🌍 [SceneManager] Loading region ${regionKey}...`);
+          this.loadRegion(region);
+        }
+      }
+      
+      for (const [regionKey, region] of this.loadedRegions.entries()) {
+        if (!activeRegionKeys.has(regionKey)) {
+          this.unloadRegion(region.coordinates);
         }
       }
     }
