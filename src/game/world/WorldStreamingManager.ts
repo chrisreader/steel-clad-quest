@@ -25,8 +25,10 @@ export class WorldStreamingManager {
   private isProcessingQueue: boolean = false;
   
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
-  private streamingRadius: number = 800; // Distance to start loading regions
-  private unloadRadius: number = 1200; // Distance to unload regions
+  // FOG-SYNCHRONIZED STREAMING - Optimized for fog-based visibility
+  private streamingRadius: number = 300; // Load within fog visibility
+  private unloadRadius: number = 500; // Unload just beyond fog range
+  private fogVisibilityRange: number = 400; // Current fog distance
   
   constructor(
     ringSystem: RingQuadrantSystem,
@@ -45,10 +47,10 @@ export class WorldStreamingManager {
   public update(playerPosition: THREE.Vector3, deltaTime: number): void {
     const playerMovement = playerPosition.distanceTo(this.lastPlayerPosition);
     
-    // Only update streaming if player moved significantly
-    if (playerMovement > 10) {
+    // FOG-AWARE STREAMING - More responsive for fog-based world
+    if (playerMovement > 5) { // More sensitive to movement for fog-based loading
       this.updatePlayerPosition(playerPosition);
-      this.updateRegionStreaming(playerPosition);
+      this.updateFogAwareStreaming(playerPosition);
       this.processGenerationQueue();
       this.unloadDistantRegions(playerPosition);
       
@@ -65,8 +67,10 @@ export class WorldStreamingManager {
     }
   }
 
-  private updateRegionStreaming(playerPosition: THREE.Vector3): void {
-    const activeRegions = this.getRegionsInRadius(playerPosition, this.streamingRadius);
+  private updateFogAwareStreaming(playerPosition: THREE.Vector3): void {
+    // Dynamic streaming radius based on fog visibility
+    const dynamicRadius = Math.min(this.streamingRadius, this.fogVisibilityRange * 0.75);
+    const activeRegions = this.getRegionsInRadius(playerPosition, dynamicRadius);
     
     activeRegions.forEach(region => {
       const regionKey = this.ringSystem.getRegionKey(region);
@@ -241,15 +245,17 @@ export class WorldStreamingManager {
   private unloadDistantRegions(playerPosition: THREE.Vector3): void {
     const regionsToUnload: string[] = [];
     const currentTime = Date.now();
-    const maxAge = 60000; // 60 seconds
+    const maxAge = 30000; // 30 seconds - more aggressive for fog-based system
     
     this.loadedRegions.forEach((streamingRegion, regionKey) => {
       const regionCenter = this.ringSystem.getRegionCenter(streamingRegion.region);
       const distance = regionCenter.distanceTo(playerPosition);
       const age = currentTime - streamingRegion.lastAccessTime;
       
-      // Unload if too far or too old
-      if (distance > this.unloadRadius || age > maxAge) {
+      // FOG-AWARE UNLOADING - Aggressive unloading beyond fog visibility
+      const fogAwareUnloadDistance = Math.max(this.unloadRadius, this.fogVisibilityRange * 1.25);
+      
+      if (distance > fogAwareUnloadDistance || age > maxAge) {
         regionsToUnload.push(regionKey);
       }
     });
@@ -297,8 +303,18 @@ export class WorldStreamingManager {
       generatingRegions: generatingRegions.length,
       queueLength: this.generateQueue.length,
       maxGeneratedRing: this.infiniteWorldSystem.getMaxGeneratedRing(),
-      loadedRingDistribution: this.getLoadedRingDistribution()
+      loadedRingDistribution: this.getLoadedRingDistribution(),
+      fogVisibilityRange: this.fogVisibilityRange,
+      streamingRadius: Math.min(this.streamingRadius, this.fogVisibilityRange * 0.75),
+      unloadRadius: Math.max(this.unloadRadius, this.fogVisibilityRange * 1.25)
     };
+  }
+  
+  public setFogVisibilityRange(range: number): void {
+    this.fogVisibilityRange = range;
+    // Auto-adjust streaming distances based on fog
+    this.streamingRadius = Math.min(300, range * 0.75);
+    this.unloadRadius = Math.max(500, range * 1.25);
   }
 
   private getLoadedRingDistribution(): Record<number, number> {

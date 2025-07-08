@@ -11,19 +11,32 @@ export interface InstanceLODInfo {
 
 export class InstanceLODManager {
   private regionInstanceData: Map<string, InstanceLODInfo> = new Map();
-  // AGGRESSIVE LOD distances - Phase 2 FPS optimization
-  private lodDistances: number[] = [10, 20, 35, 60]; // Drastically reduced from [40, 80, 120, 200]
-  private readonly DENSITY_UPDATE_THRESHOLD = 0.1; // Lower threshold for smoother updates
-  private readonly POSITION_UPDATE_THRESHOLD = 3; // Lower threshold for responsiveness
-  private readonly CULLING_DISTANCE = 60; // Aggressive culling - reduced from 200
+  // FOG-SYNCHRONIZED LOD distances - Aligned with fog-based culling system
+  private lodDistances: number[] = [25, 50, 100, 150]; // Fog-aware distances for massive environments
+  private readonly DENSITY_UPDATE_THRESHOLD = 0.05; // Ultra-smooth fog transitions
+  private readonly POSITION_UPDATE_THRESHOLD = 2; // Hyper-responsive for fog-based changes
+  private readonly CULLING_DISTANCE = 200; // Fog-synchronized culling distance
+  
+  // Fog integration
+  private fogVisibilityRange: number = 400;
 
   public calculateInstanceLODDensity(distance: number): number {
-    if (distance >= this.CULLING_DISTANCE) return 0.0; // Complete culling beyond 60 units
-    if (distance < this.lodDistances[0]) return 1.0;    // 0-10 units: full density
-    if (distance < this.lodDistances[1]) return 0.5;    // 10-20 units: 50% density (more aggressive)
-    if (distance < this.lodDistances[2]) return 0.2;    // 20-35 units: 20% density (very aggressive)
-    if (distance < this.lodDistances[3]) return 0.05;   // 35-60 units: 5% density (ultra sparse)
-    return 0.0; // Complete culling
+    // FOG-AWARE INSTANCE DENSITY - Complete culling beyond fog visibility
+    if (distance >= this.fogVisibilityRange) return 0.0; // Complete culling beyond fog
+    if (distance >= this.CULLING_DISTANCE) return 0.0;   // Secondary culling threshold
+    
+    // Fog-synchronized density scaling
+    const fogFactor = 1.0 - (distance / this.fogVisibilityRange);
+    
+    if (distance < this.lodDistances[0]) return 1.0 * fogFactor;    // 0-25 units: full density with fog factor
+    if (distance < this.lodDistances[1]) return 0.7 * fogFactor;    // 25-50 units: 70% density
+    if (distance < this.lodDistances[2]) return 0.4 * fogFactor;    // 50-100 units: 40% density
+    if (distance < this.lodDistances[3]) return 0.15 * fogFactor;   // 100-150 units: 15% density
+    return 0.05 * fogFactor; // 150+ units: 5% density fading into fog
+  }
+  
+  public setFogVisibilityRange(range: number): void {
+    this.fogVisibilityRange = range;
   }
 
   public updateInstanceVisibility(

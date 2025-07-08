@@ -10,10 +10,15 @@ export interface RegionLODInfo {
 }
 
 export class LODManager {
-  private lodDistances: number[] = [15, 30, 50, 80]; // ULTRA-AGGRESSIVE optimization for 70-90% FPS boost
+  // FOG-SYNCHRONIZED LOD DISTANCES - Aligned with fog visibility
+  private lodDistances: number[] = [50, 100, 150, 200]; // Fog-aware distances for massive world support
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 3; // RESPONSIVE: Every 3 frames for immediate turn response
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 2; // HYPER-RESPONSIVE: Every 2 frames for fog-based culling
+  
+  // Fog-based performance tracking
+  private fogVisibilityRange: number = 400;
+  private currentPerformanceLevel: number = 1.0;
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
   private readonly LOD_REGENERATION_THRESHOLD: number = 0.5; // Ultra-aggressive LOD switching
@@ -23,7 +28,25 @@ export class LODManager {
   private instanceLODManager: InstanceLODManager = new InstanceLODManager();
 
   public calculateLODDensity(distance: number): number {
-    return GradientDensity.calculateLODDensity(distance, this.lodDistances);
+    // FOG-AWARE DENSITY: Aggressive culling beyond fog visibility
+    if (distance > this.fogVisibilityRange) return 0.0; // Complete culling beyond fog
+    
+    return GradientDensity.calculateLODDensity(distance, this.lodDistances) * this.currentPerformanceLevel;
+  }
+  
+  public setFogVisibilityRange(range: number): void {
+    this.fogVisibilityRange = range;
+    // Dynamically adjust LOD distances based on fog
+    this.lodDistances = [
+      range * 0.125,  // 12.5% of fog distance
+      range * 0.25,   // 25% of fog distance  
+      range * 0.375,  // 37.5% of fog distance
+      range * 0.5     // 50% of fog distance
+    ];
+  }
+  
+  public setPerformanceLevel(level: number): void {
+    this.currentPerformanceLevel = Math.max(0.1, Math.min(1.0, level));
   }
 
   public updateVisibility(
@@ -98,8 +121,8 @@ export class LODManager {
       }
     }
     
-    // ULTRA-AGGRESSIVE ground grass distance (65% area reduction)
-    const groundRenderDistance = Math.min(maxDistance * 0.6, 50);
+    // FOG-SYNCHRONIZED ground grass distance (aggressive fog-based culling)
+    const groundRenderDistance = Math.min(maxDistance * 0.4, this.fogVisibilityRange * 0.3); // Only 30% of fog range
     for (const [regionKey, instancedMesh] of groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);

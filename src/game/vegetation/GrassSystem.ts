@@ -24,12 +24,15 @@ export class GrassSystem {
   private windSystem: WindSystem;
   private bubbleManager: GrassRenderBubbleManager;
   
-  // Performance optimization
+  // FOG-AWARE PERFORMANCE OPTIMIZATION
   private updateCounter: number = 0;
   private lastFogUpdate: number = 0;
   private cachedFogValues: { color: THREE.Color; near: number; far: number } | null = null;
-  private readonly MATERIAL_UPDATE_INTERVAL: number = 60; // ULTRA-AGGRESSIVE: Every 60 frames for max performance
-  private readonly FOG_CHECK_INTERVAL: number = 600; // ULTRA-REDUCED: Every 10 seconds for performance
+  private readonly MATERIAL_UPDATE_INTERVAL: number = 30; // FOG-RESPONSIVE: Every 30 frames for fog awareness
+  private readonly FOG_CHECK_INTERVAL: number = 60; // RESPONSIVE: Every second for dynamic fog changes
+  
+  // Fog integration
+  private fogVisibilityRange: number = 400;
   
   // Player tracking
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
@@ -62,7 +65,9 @@ export class GrassSystem {
     // Force biome regeneration for fractal shapes
     DeterministicBiomeManager.clearCache();
     
-    this.bubbleManager.initializeWithCoverage(playerPosition, 80);
+    // FOG-AWARE INITIALIZATION - Coverage based on fog visibility
+    const fogAwareCoverage = Math.min(coverageRadius, this.fogVisibilityRange * 0.6);
+    this.bubbleManager.initializeWithCoverage(playerPosition, fogAwareCoverage);
     this.lastPlayerPosition.copy(playerPosition);
   }
   
@@ -220,6 +225,16 @@ export class GrassSystem {
   
   public regenerateOrganicBiomes(): void {
     DeterministicBiomeManager.setWorldSeed(Date.now());
+  }
+  
+  public setFogVisibilityRange(range: number): void {
+    this.fogVisibilityRange = range;
+    // Update fog-aware initialization coverage
+    console.log(`🌫️ [GrassSystem] Updated fog visibility range to ${range} units`);
+  }
+  
+  public getFogVisibilityRange(): number {
+    return this.fogVisibilityRange;
   }
 }
 

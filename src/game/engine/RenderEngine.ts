@@ -22,13 +22,17 @@ export class RenderEngine {
   // FIXED: Consistent camera height
   private readonly CAMERA_HEIGHT_OFFSET: number = 1.6; // Standard eye height
   
-  // Performance optimizations
+  // Performance optimizations with fog integration
   private renderCount: number = 0;
   private lastRenderTime: number = 0;
   private frustum: THREE.Frustum = new THREE.Frustum();
   private cameraMatrix: THREE.Matrix4 = new THREE.Matrix4();
   private lastCullingUpdate: number = 0;
-  private readonly CULLING_UPDATE_INTERVAL: number = 6; // RESPONSIVE: Every 6 frames for smooth turning while maintaining performance
+  private readonly CULLING_UPDATE_INTERVAL: number = 4; // HYPER-RESPONSIVE: Every 4 frames for fog-based culling
+  
+  // Fog-based culling integration
+  private fogAwareCullingEnabled: boolean = true;
+  private baseFogFar: number = 400;
   
   constructor(mountElement: HTMLDivElement) {
     this.mountElement = mountElement;
@@ -52,8 +56,12 @@ export class RenderEngine {
     this.camera.layers.enable(0);
     this.camera.layers.disable(1);
     
-    // ULTRA-AGGRESSIVE renderer settings for maximum performance
-    this.renderer = new THREE.WebGLRenderer({ antialias: false }); // Disabled for performance
+    // FOG-OPTIMIZED renderer settings for massive environments
+    this.renderer = new THREE.WebGLRenderer({ 
+      antialias: false,           // Disabled for performance
+      powerPreference: "high-performance",
+      failIfMajorPerformanceCaveat: false
+    });
     this.renderer.setSize(this.mountElement.clientWidth, this.mountElement.clientHeight);
     this.renderer.shadowMap.enabled = true; // Re-enabled for proper foliage lighting
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -143,9 +151,11 @@ export class RenderEngine {
     if (object instanceof THREE.Mesh && object.geometry) {
       const sphere = object.geometry.boundingSphere;
       if (sphere) {
-        // Use proper frustum culling distance matching world generation
+        // FOG-SYNCHRONIZED CULLING - Use fog distance as maximum render distance
         const distance = this.camera.position.distanceTo(object.position);
-        if (distance > 1500) return false; // Match world generation distances
+        const maxRenderDistance = this.fogAwareCullingEnabled ? this.baseFogFar : 800;
+        
+        if (distance > maxRenderDistance) return false; // Fog-based culling
         
         const worldSphere = sphere.clone().applyMatrix4(object.matrixWorld);
         return this.frustum.intersectsSphere(worldSphere);
@@ -202,6 +212,15 @@ export class RenderEngine {
   
   public getRenderer(): THREE.WebGLRenderer {
     return this.renderer;
+  }
+  
+  // Fog-based culling controls
+  public setFogAwareCulling(enabled: boolean): void {
+    this.fogAwareCullingEnabled = enabled;
+  }
+  
+  public updateFogDistance(fogFar: number): void {
+    this.baseFogFar = fogFar;
   }
   
   public dispose(): void {
