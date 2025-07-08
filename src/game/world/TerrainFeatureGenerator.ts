@@ -196,7 +196,7 @@ export class TerrainFeatureGenerator {
         regionCenter.z + Math.sin(angle) * distance
       );
       
-      const rock = this.createSingleRock(position, 1 + Math.random(), this.rockVariations[0], 0);
+      const rock = this.spawnRockByVariation(this.rockVariations[0], position);
       if (rock) {
         this.registerFeature(rock, position);
         rocks.push(rock);
