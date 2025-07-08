@@ -220,24 +220,57 @@ export class FogAwareCullingManager {
     
     materials.forEach(mat => {
       if (mat instanceof THREE.ShaderMaterial || mat instanceof THREE.MeshStandardMaterial) {
-        // PHASE 3: FIXED MATERIAL LOD - Never make materials invisible
-        const fogFactor = this.calculateFogFactor(distance);
+        // FIXED MATERIAL LOD: Objects are fully opaque until approaching fog wall
         
-        // Only make transparent if fog factor is very low AND distance is far
-        if (mat.transparent !== undefined && distance > this.lodSettings.farRange) {
-          mat.transparent = fogFactor < 0.3; // Much more conservative
-        }
-        
-        // Ensure minimum opacity for visibility
-        if (mat.opacity !== undefined) {
-          mat.opacity = Math.max(0.3, fogFactor); // Minimum 30% opacity
-        }
-        
-        // Reduce material complexity at distance but keep objects visible
-        if (distance > this.lodSettings.mediumRange) {
+        if (distance <= this.lodSettings.mediumRange) {
+          // 0-200 units: Full opacity, no transparency changes
+          if (mat.transparent !== undefined) {
+            mat.transparent = false;
+          }
+          if (mat.opacity !== undefined) {
+            mat.opacity = 1.0; // Full opacity for close objects
+          }
+          
+          // Only minor material quality changes for medium range (100-200 units)
+          if (distance > this.lodSettings.closeRange && mat instanceof THREE.MeshStandardMaterial) {
+            mat.roughness = Math.min(1.0, mat.roughness + 0.02); // Very subtle changes
+            mat.metalness = Math.max(0.0, mat.metalness - 0.01); // Very subtle changes
+          }
+        } else if (distance <= this.lodSettings.farRange) {
+          // 200-300 units: Start subtle transparency (90-100% opacity)
+          const fadeStart = this.lodSettings.mediumRange;
+          const fadeRange = this.lodSettings.farRange - fadeStart;
+          const fadeProgress = (distance - fadeStart) / fadeRange;
+          
+          if (mat.transparent !== undefined) {
+            mat.transparent = true;
+          }
+          if (mat.opacity !== undefined) {
+            mat.opacity = Math.max(0.9, 1.0 - (fadeProgress * 0.1)); // 90-100% opacity
+          }
+          
+          // Progressive material quality reduction
           if (mat instanceof THREE.MeshStandardMaterial) {
-            mat.roughness = Math.min(1.0, mat.roughness + 0.1); // Reduced effect
-            mat.metalness = Math.max(0.0, mat.metalness - 0.05); // Reduced effect
+            mat.roughness = Math.min(1.0, mat.roughness + (fadeProgress * 0.1));
+            mat.metalness = Math.max(0.0, mat.metalness - (fadeProgress * 0.05));
+          }
+        } else {
+          // 300-400 units: Progressive fade out (30-90% opacity) before culling
+          const fadeStart = this.lodSettings.farRange;
+          const fadeRange = this.lodSettings.cullRange - fadeStart;
+          const fadeProgress = (distance - fadeStart) / fadeRange;
+          
+          if (mat.transparent !== undefined) {
+            mat.transparent = true;
+          }
+          if (mat.opacity !== undefined) {
+            mat.opacity = Math.max(0.3, 0.9 - (fadeProgress * 0.6)); // 30-90% opacity
+          }
+          
+          // Aggressive material quality reduction for far objects
+          if (mat instanceof THREE.MeshStandardMaterial) {
+            mat.roughness = Math.min(1.0, mat.roughness + (fadeProgress * 0.2));
+            mat.metalness = Math.max(0.0, mat.metalness - (fadeProgress * 0.1));
           }
         }
       }
