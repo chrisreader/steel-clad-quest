@@ -169,15 +169,9 @@ export class RenderEngine {
     this.renderCount++;
     const now = performance.now();
     
-    // Update frustum culling less frequently for performance
-    this.updateFrustumCulling();
-    
-    // Apply frustum culling to scene objects
-    this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.Group) {
-        object.visible = this.isObjectInFrustum(object);
-      }
-    });
+    // FOG-BASED CULLING - Let FogAwareCullingManager handle all culling
+    // The GameEngine calls FogAwareCullingManager.updateFogBasedCulling() which handles visibility
+    // So we don't need to do frustum culling here - it's handled by the fog system
     
     // Performance logging (every 5000 frames = ~5 minutes at 60fps)
     if (this.renderCount % 5000 === 0) {

@@ -120,7 +120,11 @@ export class FogAwareCullingManager {
       if (this.shouldCullObject(object)) {
         const distance = playerPosition.distanceTo(object.position);
         
+        // AGGRESSIVE FOG-BASED CULLING - Hide everything beyond fog visibility
         if (distance > this.lodSettings.cullRange) {
+          this.cullObject(object);
+        } else if (distance > this.lodSettings.farRange) {
+          // Objects in the far fog zone should be barely visible or hidden
           this.cullObject(object);
         } else {
           this.updateObjectLOD(object, distance);
