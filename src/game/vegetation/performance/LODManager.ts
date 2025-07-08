@@ -10,8 +10,8 @@ export interface RegionLODInfo {
 }
 
 export class LODManager {
-  // FOG-SYNCHRONIZED LOD DISTANCES - Aligned with fog visibility
-  private lodDistances: number[] = [50, 100, 150, 200]; // Fog-aware distances for massive world support
+  // VEGETATION-OPTIMIZED LOD DISTANCES - Fixed for proper close-range visibility
+  private lodDistances: number[] = [100, 200, 300, 350]; // Proper vegetation LOD ranges
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
   private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 2; // HYPER-RESPONSIVE: Every 2 frames for fog-based culling
@@ -28,8 +28,11 @@ export class LODManager {
   private instanceLODManager: InstanceLODManager = new InstanceLODManager();
 
   public calculateLODDensity(distance: number): number {
-    // FOG-AWARE DENSITY: Aggressive culling beyond fog visibility
-    if (distance > this.fogVisibilityRange) return 0.0; // Complete culling beyond fog
+    // VEGETATION LOD FIX: Complete culling only beyond fog visibility
+    if (distance > this.fogVisibilityRange) return 0.0; // Complete culling beyond fog (400+ units)
+    
+    // PLAYER-CENTRIC PROTECTION: Full density within 50 units
+    if (distance < 50) return 1.0 * this.currentPerformanceLevel;
     
     return GradientDensity.calculateLODDensity(distance, this.lodDistances) * this.currentPerformanceLevel;
   }
@@ -108,21 +111,29 @@ export class LODManager {
         }
       }
       
-      // Update material opacity for distant grass
+      // FIXED: Only apply transparency when approaching fog wall (250+ units)
       const newLodDensity = this.calculateLODDensity(distanceToPlayer);
       if (instancedMesh.userData.lodLevel !== newLodDensity && shouldBeVisible) {
         instancedMesh.userData.lodLevel = newLodDensity;
-        if (instancedMesh.material && newLodDensity < 0.8) { // ULTRA-AGGRESSIVE: Start opacity reduction much earlier
+        // Only apply transparency reduction when distance > 250 units (approaching fog wall)
+        if (instancedMesh.material && distanceToPlayer > 250) {
           (instancedMesh.material as THREE.ShaderMaterial).transparent = true;
           if ((instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity) {
-            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.1, newLodDensity * 0.7); // More aggressive opacity reduction
+            // Gentle opacity reduction only near fog wall (250-400 units)
+            const fadeProgress = (distanceToPlayer - 250) / (this.fogVisibilityRange - 250);
+            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = Math.max(0.3, 1.0 - (fadeProgress * 0.7));
+          }
+        } else if (instancedMesh.material && distanceToPlayer <= 250) {
+          // Ensure close vegetation is fully opaque
+          if ((instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity) {
+            (instancedMesh.material as THREE.ShaderMaterial).uniforms.opacity.value = 1.0;
           }
         }
       }
     }
     
-    // FOG-SYNCHRONIZED ground grass distance (aggressive fog-based culling)
-    const groundRenderDistance = Math.min(maxDistance * 0.4, this.fogVisibilityRange * 0.3); // Only 30% of fog range
+    // EXTENDED ground grass distance (60% of fog range instead of 30%)
+    const groundRenderDistance = Math.min(maxDistance * 0.6, this.fogVisibilityRange * 0.6); // Increased to 60% of fog range (240 units)
     for (const [regionKey, instancedMesh] of groundGrassInstances.entries()) {
       const regionCenter = instancedMesh.userData.centerPosition as THREE.Vector3;
       const distanceToPlayer = playerPosition.distanceTo(regionCenter);

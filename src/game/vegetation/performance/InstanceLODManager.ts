@@ -11,28 +11,33 @@ export interface InstanceLODInfo {
 
 export class InstanceLODManager {
   private regionInstanceData: Map<string, InstanceLODInfo> = new Map();
-  // FOG-SYNCHRONIZED LOD distances - Aligned with fog-based culling system
-  private lodDistances: number[] = [25, 50, 100, 150]; // Fog-aware distances for massive environments
+  // VEGETATION-OPTIMIZED LOD distances - Fixed for proper close-range visibility
+  private lodDistances: number[] = [100, 200, 300, 350]; // Proper vegetation LOD ranges
   private readonly DENSITY_UPDATE_THRESHOLD = 0.05; // Ultra-smooth fog transitions
   private readonly POSITION_UPDATE_THRESHOLD = 2; // Hyper-responsive for fog-based changes
-  private readonly CULLING_DISTANCE = 200; // Fog-synchronized culling distance
+  private readonly CULLING_DISTANCE = 350; // Extended culling distance aligned with fog wall
+  private readonly PLAYER_PROTECTION_RANGE = 50; // Full quality vegetation within 50 units of player
   
   // Fog integration
   private fogVisibilityRange: number = 400;
 
   public calculateInstanceLODDensity(distance: number): number {
-    // FOG-AWARE INSTANCE DENSITY - Complete culling beyond fog visibility
-    if (distance >= this.fogVisibilityRange) return 0.0; // Complete culling beyond fog
-    if (distance >= this.CULLING_DISTANCE) return 0.0;   // Secondary culling threshold
+    // VEGETATION LOD FIX: Complete culling only beyond fog visibility
+    if (distance >= this.fogVisibilityRange) return 0.0; // Complete culling beyond fog (400+ units)
+    if (distance >= this.CULLING_DISTANCE) return 0.0;   // Secondary culling threshold (350+ units)
     
-    // Fog-synchronized density scaling
-    const fogFactor = 1.0 - (distance / this.fogVisibilityRange);
+    // PLAYER-CENTRIC PROTECTION: Full quality vegetation within protection range
+    if (distance < this.PLAYER_PROTECTION_RANGE) return 1.0; // 0-50 units: always full density
     
-    if (distance < this.lodDistances[0]) return 1.0 * fogFactor;    // 0-25 units: full density with fog factor
-    if (distance < this.lodDistances[1]) return 0.7 * fogFactor;    // 25-50 units: 70% density
-    if (distance < this.lodDistances[2]) return 0.4 * fogFactor;    // 50-100 units: 40% density
-    if (distance < this.lodDistances[3]) return 0.15 * fogFactor;   // 100-150 units: 15% density
-    return 0.05 * fogFactor; // 150+ units: 5% density fading into fog
+    // FIXED DENSITY SCALING: No fog factor applied until approaching fog wall
+    if (distance < this.lodDistances[0]) return 1.0;    // 0-100 units: full density (no fog factor)
+    if (distance < this.lodDistances[1]) return 0.8;    // 100-200 units: 80% density
+    if (distance < this.lodDistances[2]) return 0.5;    // 200-300 units: 50% density
+    if (distance < this.lodDistances[3]) return 0.2;    // 300-350 units: 20% density
+    
+    // Only apply fog factor for objects very close to fog wall (350-400 units)
+    const fogFactor = 1.0 - ((distance - this.CULLING_DISTANCE) / (this.fogVisibilityRange - this.CULLING_DISTANCE));
+    return 0.1 * Math.max(0.0, fogFactor); // 350-400 units: fade out with fog
   }
   
   public setFogVisibilityRange(range: number): void {
