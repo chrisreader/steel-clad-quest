@@ -19,6 +19,9 @@ export class FogAwareCullingManager {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   
+  // PHASE 5: Emergency fallback controls
+  private fogCullingEnabled: boolean = true;
+  
   // Fog-synchronized settings
   private lodSettings: FogAwareLODSettings = {
     closeRange: 100,
@@ -72,6 +75,12 @@ export class FogAwareCullingManager {
   }
   
   public updateFogBasedCulling(playerPosition: THREE.Vector3, deltaTime: number): void {
+    // PHASE 5: Emergency bypass for fog culling
+    if (!this.fogCullingEnabled) {
+      console.log('🌫️ [FogAwareCullingManager] Fog culling disabled - skipping');
+      return;
+    }
+    
     this.updatePerformanceMetrics(deltaTime);
     
     if (this.adaptiveFogEnabled) {
@@ -116,17 +125,18 @@ export class FogAwareCullingManager {
   }
   
   private performFogAwareCulling(playerPosition: THREE.Vector3): void {
+    console.log(`🌫️ [FogAwareCullingManager] Culling at player position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+    
     this.scene.traverse((object) => {
       if (this.shouldCullObject(object)) {
         const distance = playerPosition.distanceTo(object.position);
         
-        // AGGRESSIVE FOG-BASED CULLING - Hide everything beyond fog visibility
+        // FIXED: Only cull objects BEYOND fog visibility (400+ units)
         if (distance > this.lodSettings.cullRange) {
           this.cullObject(object);
-        } else if (distance > this.lodSettings.farRange) {
-          // Objects in the far fog zone should be barely visible or hidden
-          this.cullObject(object);
+          console.log(`🌫️ Culled ${object.name || 'unnamed'} at distance ${distance.toFixed(1)}`);
         } else {
+          // Keep objects visible but apply LOD based on distance
           this.updateObjectLOD(object, distance);
         }
       }
@@ -134,10 +144,27 @@ export class FogAwareCullingManager {
   }
   
   private shouldCullObject(object: THREE.Object3D): boolean {
-    // Don't cull cameras, lights, or essential objects
+    // PHASE 1: PROTECT ESSENTIAL OBJECTS
+    
+    // Never cull cameras, lights, or essential objects
     if (object instanceof THREE.Camera || 
         object instanceof THREE.Light ||
         object.userData.essential) {
+      return false;
+    }
+    
+    // Protect skybox and background objects
+    if (object.name && (
+        object.name.toLowerCase().includes('skybox') ||
+        object.name.toLowerCase().includes('sky') ||
+        object.name.toLowerCase().includes('background')
+    )) {
+      console.log(`🌫️ Protected ${object.name} from culling`);
+      return false;
+    }
+    
+    // Protect objects at infinite distance (like skybox)
+    if (object.position.length() > 900) {
       return false;
     }
     
@@ -181,18 +208,24 @@ export class FogAwareCullingManager {
     
     materials.forEach(mat => {
       if (mat instanceof THREE.ShaderMaterial || mat instanceof THREE.MeshStandardMaterial) {
-        // Reduce quality in fog
+        // PHASE 3: FIXED MATERIAL LOD - Never make materials invisible
         const fogFactor = this.calculateFogFactor(distance);
         
-        if (mat.transparent !== undefined) {
-          mat.transparent = fogFactor < 0.9;
+        // Only make transparent if fog factor is very low AND distance is far
+        if (mat.transparent !== undefined && distance > this.lodSettings.farRange) {
+          mat.transparent = fogFactor < 0.3; // Much more conservative
         }
         
-        // Reduce material complexity at distance
+        // Ensure minimum opacity for visibility
+        if (mat.opacity !== undefined) {
+          mat.opacity = Math.max(0.3, fogFactor); // Minimum 30% opacity
+        }
+        
+        // Reduce material complexity at distance but keep objects visible
         if (distance > this.lodSettings.mediumRange) {
           if (mat instanceof THREE.MeshStandardMaterial) {
-            mat.roughness = Math.min(1.0, mat.roughness + 0.2);
-            mat.metalness = Math.max(0.0, mat.metalness - 0.1);
+            mat.roughness = Math.min(1.0, mat.roughness + 0.1); // Reduced effect
+            mat.metalness = Math.max(0.0, mat.metalness - 0.05); // Reduced effect
           }
         }
       }
@@ -251,6 +284,21 @@ export class FogAwareCullingManager {
     return { culled: culledCount, active: activeCount };
   }
   
+  // PHASE 5: Emergency controls
+  public setFogCullingEnabled(enabled: boolean): void {
+    this.fogCullingEnabled = enabled;
+    console.log(`🌫️ [FogAwareCullingManager] Fog culling ${enabled ? 'enabled' : 'disabled'}`);
+  }
+  
+  public restoreAllObjectVisibility(): void {
+    console.log('🌫️ [FogAwareCullingManager] Restoring all object visibility');
+    this.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh || object instanceof THREE.InstancedMesh || object instanceof THREE.Group) {
+        object.visible = true;
+      }
+    });
+  }
+
   public dispose(): void {
     this.culledObjects.clear();
     this.activeObjects.clear();
