@@ -58,7 +58,7 @@ export class InstanceLODManager {
     if (distanceToPlayer > this.CULLING_DISTANCE) {
       if (instancedMesh.visible) {
         instancedMesh.visible = false;
-        console.log(`🌱 LOD: Culled ${regionKey} at distance ${distanceToPlayer.toFixed(1)}`);
+        // PERFORMANCE: Removed per-frame logging to reduce lag
         return true;
       }
       return false;
@@ -117,7 +117,7 @@ export class InstanceLODManager {
         instancedMesh.visible = false;
       }
       
-      console.log(`🌱 LOD: Updated ${regionKey} instances: ${targetVisibleCount}/${lodInfo.originalInstanceCount} (${targetLODDensity.toFixed(2)}) at ${distanceToPlayer.toFixed(1)}u`);
+      // PERFORMANCE: Removed per-frame logging to reduce lag
       return true;
     }
 

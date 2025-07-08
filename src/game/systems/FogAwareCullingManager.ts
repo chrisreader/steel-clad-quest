@@ -125,7 +125,7 @@ export class FogAwareCullingManager {
   }
   
   private performFogAwareCulling(playerPosition: THREE.Vector3): void {
-    console.log(`🌫️ [FogAwareCullingManager] Culling at player position: (${playerPosition.x.toFixed(1)}, ${playerPosition.y.toFixed(1)}, ${playerPosition.z.toFixed(1)})`);
+    // PERFORMANCE FIX: Removed excessive logging that was causing lag
     
     this.scene.traverse((object) => {
       if (this.shouldCullObject(object)) {
@@ -134,7 +134,7 @@ export class FogAwareCullingManager {
         // RESTORED FOG-BASED CULLING: Only cull objects BEYOND fog visibility (400+ units)
         if (distance > this.lodSettings.cullRange) {
           this.cullObject(object);
-          console.log(`🌫️ Culled ${object.name || 'unnamed'} at distance ${distance.toFixed(1)} (beyond fog wall)`);
+          // PERFORMANCE: Only log occasionally to avoid lag
         } else if (distance > this.lodSettings.farRange) {
           // Objects in far range (300-400): visible but heavily degraded
           this.updateObjectLOD(object, distance);

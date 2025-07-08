@@ -14,7 +14,7 @@ export class LODManager {
   private lodDistances: number[] = [100, 200, 300, 350]; // Proper vegetation LOD ranges
   private lastPlayerPosition: THREE.Vector3 = new THREE.Vector3();
   private grassCullingUpdateCounter: number = 0;
-  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 2; // HYPER-RESPONSIVE: Every 2 frames for fog-based culling
+  private readonly GRASS_CULLING_UPDATE_INTERVAL: number = 5; // PERFORMANCE: Reduced from 2 to 5 frames
   
   // Fog-based performance tracking
   private fogVisibilityRange: number = 400;
@@ -22,7 +22,7 @@ export class LODManager {
   
   private regionLODState: Map<string, RegionLODInfo> = new Map();
   private readonly LOD_REGENERATION_THRESHOLD: number = 0.5; // Ultra-aggressive LOD switching
-  private readonly POSITION_UPDATE_THRESHOLD: number = 5; // Less responsive for better performance
+  private readonly POSITION_UPDATE_THRESHOLD: number = 10; // PERFORMANCE: Increased from 5 to 10 for better performance
 
   // NEW: Instance-level LOD manager for smooth density changes
   private instanceLODManager: InstanceLODManager = new InstanceLODManager();
@@ -161,9 +161,9 @@ export class LODManager {
       }
     }
     
-    // ULTRA-AGGRESSIVE logging reduction (every 150 frames = 2.5 minutes)
-    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 150 === 0) {
-      console.log(`🌱 ULTRA-LOD: ${visibilityChanges} visibility changes, ${instanceUpdates} instance updates`);
+    // PERFORMANCE: Drastically reduced logging frequency (every 1000 frames = ~16 seconds)
+    if ((visibilityChanges > 0 || instanceUpdates > 0) && this.grassCullingUpdateCounter % 1000 === 0) {
+      console.log(`🌱 LOD: ${visibilityChanges} visibility changes, ${instanceUpdates} instance updates`);
     }
   }
 
