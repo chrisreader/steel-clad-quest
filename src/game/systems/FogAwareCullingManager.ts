@@ -22,12 +22,12 @@ export class FogAwareCullingManager {
   // PHASE 5: Emergency fallback controls
   private fogCullingEnabled: boolean = true;
   
-  // Fog-synchronized settings
+  // Fog-synchronized settings - RESTORED TO PROPER DISTANCES
   private lodSettings: FogAwareLODSettings = {
-    closeRange: 100,
-    mediumRange: 200,
-    farRange: 300,
-    cullRange: 400,
+    closeRange: 100,    // 0-100: Full detail
+    mediumRange: 200,   // 100-200: Medium detail  
+    farRange: 300,      // 200-300: Low detail
+    cullRange: 400,     // 300-400: Fade out
     fogDensityFactor: 1.0
   };
   
@@ -43,8 +43,8 @@ export class FogAwareCullingManager {
   private culledObjects: Map<string, THREE.Object3D[]> = new Map();
   private activeObjects: Map<string, THREE.Object3D[]> = new Map();
   
-  // Dynamic fog control
-  private baseFogNear: number = 10;
+  // Dynamic fog control - RESTORED TO PROPER VALUES
+  private baseFogNear: number = 50;
   private baseFogFar: number = 400;
   private adaptiveFogEnabled: boolean = true;
   
@@ -52,7 +52,7 @@ export class FogAwareCullingManager {
     this.scene = scene;
     this.camera = camera;
     
-    // Initialize fog if not present
+    // Initialize fog if not present with RESTORED DISTANCES
     if (!this.scene.fog) {
       this.scene.fog = new THREE.Fog(0x87CEEB, this.baseFogNear, this.baseFogFar);
     }
@@ -131,12 +131,15 @@ export class FogAwareCullingManager {
       if (this.shouldCullObject(object)) {
         const distance = playerPosition.distanceTo(object.position);
         
-        // FIXED: Only cull objects BEYOND fog visibility (400+ units)
+        // RESTORED FOG-BASED CULLING: Only cull objects BEYOND fog visibility (400+ units)
         if (distance > this.lodSettings.cullRange) {
           this.cullObject(object);
-          console.log(`🌫️ Culled ${object.name || 'unnamed'} at distance ${distance.toFixed(1)}`);
+          console.log(`🌫️ Culled ${object.name || 'unnamed'} at distance ${distance.toFixed(1)} (beyond fog wall)`);
+        } else if (distance > this.lodSettings.farRange) {
+          // Objects in far range (300-400): visible but heavily degraded
+          this.updateObjectLOD(object, distance);
         } else {
-          // Keep objects visible but apply LOD based on distance
+          // Objects within 300 units: visible with appropriate LOD
           this.updateObjectLOD(object, distance);
         }
       }
@@ -153,7 +156,7 @@ export class FogAwareCullingManager {
       return false;
     }
     
-    // Protect skybox and background objects
+    // ENHANCED SKYBOX PROTECTION - Multiple protection layers
     if (object.name && (
         object.name.toLowerCase().includes('skybox') ||
         object.name.toLowerCase().includes('sky') ||
@@ -161,6 +164,15 @@ export class FogAwareCullingManager {
     )) {
       console.log(`🌫️ Protected ${object.name} from culling`);
       return false;
+    }
+    
+    // Protect skybox by geometry type (SphereGeometry with radius 1000)
+    if (object instanceof THREE.Mesh && object.geometry instanceof THREE.SphereGeometry) {
+      const sphere = object.geometry as THREE.SphereGeometry;
+      if (sphere.parameters && sphere.parameters.radius >= 999) {
+        console.log(`🌫️ Protected skybox sphere geometry from culling`);
+        return false;
+      }
     }
     
     // Protect objects at infinite distance (like skybox)

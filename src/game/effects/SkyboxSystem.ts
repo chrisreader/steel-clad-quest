@@ -190,6 +190,8 @@ export class SkyboxSystem {
     const skyboxGeometry = new THREE.SphereGeometry(1000, 32, 32);
     this.skyboxMesh = new THREE.Mesh(skyboxGeometry, this.skyboxMaterial);
     this.skyboxMesh.renderOrder = -1;
+    this.skyboxMesh.userData.essential = true; // Protect from culling
+    this.skyboxMesh.name = 'skybox'; // Explicit naming for protection
     this.scene.add(this.skyboxMesh);
   }
 
