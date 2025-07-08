@@ -204,7 +204,15 @@ export class FogAwareCullingManager {
       object.visible = true;
     }
     
-    // Apply fog-based material quality
+    // PROTECT ESSENTIAL OBJECTS from LOD material changes
+    if (object.userData.essential || 
+        (object.name && object.name.toLowerCase().includes('skybox')) ||
+        object instanceof THREE.Light ||
+        object instanceof THREE.Camera) {
+      return; // Skip LOD for essential objects
+    }
+    
+    // Apply fog-based material quality only to non-essential objects
     if (object instanceof THREE.Mesh && object.material) {
       this.updateMaterialLOD(object.material, distance);
     }
@@ -219,7 +227,12 @@ export class FogAwareCullingManager {
     const materials = Array.isArray(material) ? material : [material];
     
     materials.forEach(mat => {
-      if (mat instanceof THREE.ShaderMaterial || mat instanceof THREE.MeshStandardMaterial) {
+      // ADDITIONAL PROTECTION: Never modify ShaderMaterial (likely skybox materials)
+      if (mat instanceof THREE.ShaderMaterial) {
+        return; // Skip shader materials to protect skybox
+      }
+      
+      if (mat instanceof THREE.MeshStandardMaterial) {
         // FIXED MATERIAL LOD: Objects are fully opaque until approaching fog wall
         
         if (distance <= this.lodSettings.mediumRange) {
