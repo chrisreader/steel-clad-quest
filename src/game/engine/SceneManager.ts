@@ -97,6 +97,9 @@ export class SceneManager {
   // Global feature manager for persistent world rendering
   private globalFeatureManager: GlobalFeatureManager;
   
+  // Performance optimization counter
+  private frameCounter: number = 0;
+  
   constructor(scene: THREE.Scene, physicsManager: PhysicsManager) {
     this.scene = scene;
     this.physicsManager = physicsManager;
@@ -644,8 +647,9 @@ export class SceneManager {
       this.grassSystem.update(deltaTime, playerPosition, this.timeOfDay);
     }
     
-    // Update tree foliage materials for day/night lighting
-    if (this.terrainFeatureGenerator && this.timeOfDay !== undefined) {
+    // PERFORMANCE: Update tree foliage materials less frequently
+    this.frameCounter = (this.frameCounter || 0) + 1;
+    if (this.terrainFeatureGenerator && this.timeOfDay !== undefined && this.frameCounter % 10 === 0) {
       const dayFactor = TimeUtils.getDayFactor(this.timeOfDay, TIME_PHASES);
       const nightFactor = TimeUtils.getSynchronizedNightFactor(this.timeOfDay, TIME_PHASES);
       this.terrainFeatureGenerator.updateTreeDayNightLighting(dayFactor, nightFactor);
@@ -654,8 +658,10 @@ export class SceneManager {
     if (playerPosition) {
       this.updateShadowCamera(playerPosition);
       
-      // DEBUG: Log player position and region system state
-      console.log(`🌍 [SceneManager] Player position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)}`);
+      // PERFORMANCE: Reduced logging frequency to prevent lag
+      if (this.frameCounter % 300 === 0) {
+        console.log(`🌍 [SceneManager] Player position: ${playerPosition.x.toFixed(1)}, ${playerPosition.z.toFixed(1)}`);
+      }
       
       const activeRegions = this.ringSystem.getActiveRegions(playerPosition, this.renderDistance);
       console.log(`🌍 [SceneManager] Active regions found: ${activeRegions.length}`, activeRegions);

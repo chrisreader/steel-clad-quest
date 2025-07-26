@@ -19,8 +19,8 @@ export class GrassRenderBubbleManager {
   private readonly DATA_LOAD_RADIUS = 80; // Reduced from 200 for faster loading  
   private readonly UNLOAD_RADIUS = 70; // Reduced from 100
   private readonly CHUNK_SIZE = 64;
-  private readonly MAX_CHUNKS_PER_FRAME = 2; // Ultra-reduced from 3 for maximum smoothness
-  private readonly MOVEMENT_THRESHOLD = 0.8; // RESPONSIVE: More sensitive to camera turns for immediate loading
+  private readonly MAX_CHUNKS_PER_FRAME = 1; // PERFORMANCE: Further reduced for ultra-smooth FPS
+  private readonly MOVEMENT_THRESHOLD = 2.0; // PERFORMANCE: Less sensitive to reduce frequent updates
   
   // Chunk tracking
   private loadedChunks: Map<string, LoadedChunk> = new Map();
@@ -265,7 +265,10 @@ export class GrassRenderBubbleManager {
     // Remove from data-only cache if it was there
     this.dataOnlyChunks.delete(chunkKey);
     
-    console.log(`🌱 Loaded 3D chunk ${chunkKey} with ${tallGrassData.positions.length} tall grass, ${groundGrassData.positions.length} ground grass`);
+    // PERFORMANCE: Reduced logging frequency
+    if (this.frameCounter % 300 === 0) {
+      console.log(`🌱 Loaded 3D chunk ${chunkKey} with ${tallGrassData.positions.length} tall grass, ${groundGrassData.positions.length} ground grass`);
+    }
   }
 
   private unloadChunk(chunkKey: string): void {
@@ -286,7 +289,10 @@ export class GrassRenderBubbleManager {
     // Remove from tracking
     this.loadedChunks.delete(chunkKey);
     
-    console.log(`🌱 Unloaded 3D chunk ${chunkKey}`);
+    // PERFORMANCE: Reduced logging frequency
+    if (this.frameCounter % 300 === 0) {
+      console.log(`🌱 Unloaded 3D chunk ${chunkKey}`);
+    }
   }
 
   private groupGrassBySpecies(grassData: SeededGrassData) {
