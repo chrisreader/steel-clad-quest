@@ -19,9 +19,9 @@ export const RENDER_DISTANCES = {
     MAX_DISTANCE: 200    // Reduced from 250
   },
   
-  // Fog-synchronized fade distances - 20% reduction
-  FADE_IN_DISTANCE: 208,   // Reduced from 260
-  FADE_OUT_DISTANCE: 224,  // Reduced from 280
+  // Fog-synchronized fade distances - aligned with fog wall
+  FADE_IN_DISTANCE: 240,   // Objects fully visible until approaching fog wall
+  FADE_OUT_DISTANCE: 280,  // Fade out WITH the fog wall, not before it
   
   // Region unloading - fog-aware
   REGION_UNLOAD_MULTIPLIER: 1.2  // More aggressive unloading beyond fog wall
