@@ -30,11 +30,11 @@ export class RingQuadrantSystem {
   private noise: any;
   private static readonly TRANSITION_ZONE_SIZE = 12; // Reduced for more stable transitions
   
-  // Define BASE 4 rings - extended infinite system will add more dynamically
+  // Define 4 rings with increasing radius and difficulty
   private rings: RingDefinition[] = [
     {
       innerRadius: 0,
-      outerRadius: 50,
+      outerRadius: 50, // Reduced from 200 to 50
       difficulty: 1,
       terrainColor: 0x5FAD5F, // Match existing green terrain
       enemyTypes: ['goblin', 'wolf'],
@@ -42,8 +42,8 @@ export class RingQuadrantSystem {
       eventChance: 0.1
     },
     {
-      innerRadius: 50,
-      outerRadius: 150,
+      innerRadius: 50, // Updated to match new center ring size
+      outerRadius: 150, // Reduced proportionally
       difficulty: 2,
       terrainColor: 0x4A9A4A, // Slightly darker green
       enemyTypes: ['goblin', 'wolf', 'orc'],
@@ -51,8 +51,8 @@ export class RingQuadrantSystem {
       eventChance: 0.2
     },
     {
-      innerRadius: 150,
-      outerRadius: 300,
+      innerRadius: 150, // Updated to match previous ring
+      outerRadius: 300, // Reduced proportionally
       difficulty: 3,
       terrainColor: 0x3A8A3A, // Even darker green
       enemyTypes: ['orc', 'bandit', 'troll'],
@@ -60,8 +60,8 @@ export class RingQuadrantSystem {
       eventChance: 0.3
     },
     {
-      innerRadius: 300,
-      outerRadius: 600,
+      innerRadius: 300, // Updated to match previous ring
+      outerRadius: 600, // Reduced proportionally
       difficulty: 4,
       terrainColor: 0x2A7A2A, // Darkest green
       enemyTypes: ['troll', 'warlord', 'witch'],
@@ -69,10 +69,6 @@ export class RingQuadrantSystem {
       eventChance: 0.4
     }
   ];
-  
-  // INFINITE WORLD SUPPORT - Dynamic ring expansion
-  private maxGeneratedRing: number = 3;
-  private infiniteRings: Map<number, RingDefinition> = new Map();
   
   private worldCenter: THREE.Vector3;
   private activeRegions: Map<string, Region> = new Map();
@@ -83,33 +79,27 @@ export class RingQuadrantSystem {
     this.noise = new Noise(Math.random());
   }
   
-  // ENHANCED: Get which ring and quadrant a position belongs to (supports infinite rings)
+  // Get which ring and quadrant a position belongs to
   public getRegionForPosition(position: THREE.Vector3): RegionCoordinates | null {
     const dx = position.x - this.worldCenter.x;
     const dz = position.z - this.worldCenter.z;
     const distance = Math.sqrt(dx * dx + dz * dz);
     
-    let ringIndex = -1;
+    // DEBUG: Log position and distance calculation
+    console.log(`🌍 [RingSystem] Position: (${position.x.toFixed(1)}, ${position.z.toFixed(1)}), Distance: ${distance.toFixed(1)}`);
     
-    // Check base rings first (0-3)
+    let ringIndex = -1;
     for (let i = 0; i < this.rings.length; i++) {
+      console.log(`🌍 [RingSystem] Checking ring ${i}: inner=${this.rings[i].innerRadius}, outer=${this.rings[i].outerRadius}`);
       if (distance >= this.rings[i].innerRadius && distance < this.rings[i].outerRadius) {
         ringIndex = i;
+        console.log(`🌍 [RingSystem] Found ring ${i} for distance ${distance.toFixed(1)}`);
         break;
       }
     }
     
-    // If not in base rings, check infinite rings
     if (ringIndex === -1) {
-      ringIndex = this.findInfiniteRing(distance);
-    }
-    
-    // If still not found, generate new ring
-    if (ringIndex === -1) {
-      ringIndex = this.generateNewRingForDistance(distance);
-    }
-    
-    if (ringIndex === -1) {
+      console.log(`🌍 [RingSystem] No ring found for distance ${distance.toFixed(1)}`);
       return null;
     }
     
@@ -172,20 +162,9 @@ export class RingQuadrantSystem {
     return activeRegions;
   }
   
-  // ENHANCED: Get ring definition for a region (supports infinite rings)
+  // Get ring definition for a region
   public getRingDefinition(ringIndex: number): RingDefinition {
-    if (ringIndex < this.rings.length) {
-      return this.rings[ringIndex];
-    }
-    
-    // Check infinite rings
-    const infiniteRing = this.infiniteRings.get(ringIndex);
-    if (infiniteRing) {
-      return infiniteRing;
-    }
-    
-    // Generate new infinite ring if needed
-    return this.generateInfiniteRingDefinition(ringIndex);
+    return this.rings[ringIndex];
   }
   
   // Helper to get difficulty for a region
@@ -369,162 +348,62 @@ export class RingQuadrantSystem {
     return terrain;
   }
   
-  // INFINITE WORLD: Find ring in infinite rings map
-  private findInfiniteRing(distance: number): number {
-    for (const [ringIndex, ringDef] of this.infiniteRings.entries()) {
-      if (distance >= ringDef.innerRadius && distance < ringDef.outerRadius) {
-        return ringIndex;
-      }
-    }
-    return -1;
-  }
-
-  // INFINITE WORLD: Generate new ring definition for distance
-  private generateNewRingForDistance(distance: number): number {
-    const newRingIndex = this.maxGeneratedRing + 1;
-    this.generateInfiniteRingDefinition(newRingIndex);
-    this.maxGeneratedRing = newRingIndex;
-    
-    // Check if the new ring contains this distance
-    const newRing = this.infiniteRings.get(newRingIndex);
-    if (newRing && distance >= newRing.innerRadius && distance < newRing.outerRadius) {
-      console.log(`🌍 [RingSystem] Generated new infinite ring ${newRingIndex} for distance ${distance.toFixed(1)}`);
-      return newRingIndex;
-    }
-    
-    // If not, continue generating rings until we find one
-    return this.continueGeneratingRings(distance, newRingIndex);
-  }
-
-  // INFINITE WORLD: Continue generating rings until distance is covered
-  private continueGeneratingRings(distance: number, startingRing: number): number {
-    let currentRing = startingRing;
-    
-    while (currentRing < startingRing + 10) { // Safety limit
-      const ringDef = this.infiniteRings.get(currentRing);
-      if (ringDef && distance >= ringDef.innerRadius && distance < ringDef.outerRadius) {
-        return currentRing;
-      }
-      
-      currentRing++;
-      this.generateInfiniteRingDefinition(currentRing);
-      this.maxGeneratedRing = currentRing;
-    }
-    
-    console.warn(`🌍 [RingSystem] Could not generate ring for distance ${distance.toFixed(1)}`);
-    return -1;
-  }
-
-  // INFINITE WORLD: Generate new infinite ring definition
-  private generateInfiniteRingDefinition(ringIndex: number): RingDefinition {
-    const lastBaseRing = this.rings[this.rings.length - 1];
-    const progressionFactor = ringIndex - 3; // Start progression from ring 4
-    const scaleFactor = Math.pow(1.4, progressionFactor);
-    
-    const innerRadius = ringIndex === 4 ? lastBaseRing.outerRadius : 
-                       this.infiniteRings.get(ringIndex - 1)?.outerRadius || 600;
-    
-    const ringWidth = 300 * Math.pow(1.2, progressionFactor);
-    const outerRadius = innerRadius + ringWidth;
-    
-    const infiniteRing: RingDefinition = {
-      innerRadius,
-      outerRadius,
-      difficulty: Math.min(10, 4 + progressionFactor * 0.5),
-      terrainColor: this.generateInfiniteRingColor(ringIndex),
-      enemyTypes: this.generateInfiniteEnemyTypes(ringIndex),
-      structureTypes: this.generateInfiniteStructureTypes(ringIndex),
-      eventChance: Math.min(0.6, 0.4 + progressionFactor * 0.02)
-    };
-    
-    this.infiniteRings.set(ringIndex, infiniteRing);
-    console.log(`🌍 [RingSystem] Generated infinite ring ${ringIndex}: ${innerRadius.toFixed(0)}-${outerRadius.toFixed(0)}`);
-    
-    return infiniteRing;
-  }
-
-  // INFINITE WORLD: Generate color for infinite rings
-  private generateInfiniteRingColor(ringIndex: number): number {
-    const hue = (120 + ringIndex * 12) % 360;
-    const saturation = Math.max(0.3, 0.8 - ringIndex * 0.02);
-    const lightness = Math.max(0.2, 0.5 - ringIndex * 0.015);
-    
-    return new THREE.Color().setHSL(hue / 360, saturation, lightness).getHex();
-  }
-
-  // INFINITE WORLD: Generate enemy types for infinite rings
-  private generateInfiniteEnemyTypes(ringIndex: number): string[] {
-    const baseEnemies = ['troll', 'warlord', 'witch'];
-    const advancedEnemies = ['ancient_guardian', 'void_walker', 'crystal_beast', 'shadow_wraith'];
-    const epicEnemies = ['titan', 'primordial', 'world_ender'];
-    
-    if (ringIndex <= 6) return [...baseEnemies, advancedEnemies[0]];
-    if (ringIndex <= 10) return [...baseEnemies, ...advancedEnemies.slice(0, 2)];
-    if (ringIndex <= 15) return [...advancedEnemies, epicEnemies[0]];
-    
-    return [...advancedEnemies, ...epicEnemies];
-  }
-
-  // INFINITE WORLD: Generate structure types for infinite rings  
-  private generateInfiniteStructureTypes(ringIndex: number): string[] {
-    const baseStructures = ['temple', 'fortress'];
-    const ancientStructures = ['ancient_temple', 'forgotten_city', 'crystal_spire'];
-    const epicStructures = ['titan_bones', 'world_shard', 'primordial_altar'];
-    
-    if (ringIndex <= 6) return [...baseStructures, ancientStructures[0]];
-    if (ringIndex <= 10) return [...baseStructures, ...ancientStructures.slice(0, 2)];
-    if (ringIndex <= 15) return [...ancientStructures, epicStructures[0]];
-    
-    return [...ancientStructures, ...epicStructures];
-  }
-
-  // DEBUG: Create visual markers for ring boundaries (enhanced for infinite rings)
+  // DEBUG: Create visual markers for ring boundaries
   public createDebugRingMarkers(scene: THREE.Scene): void {
     const segments = 64;
     
-    // Create markers for base rings
-    this.rings.forEach((ring, index) => {
-      this.createRingMarker(scene, ring, index, segments);
-    });
-    
-    // Create markers for currently generated infinite rings
-    this.infiniteRings.forEach((ring, index) => {
-      this.createRingMarker(scene, ring, index, segments);
-    });
-  }
-
-  private createRingMarker(scene: THREE.Scene, ring: RingDefinition, index: number, segments: number): void {
-    [ring.innerRadius, ring.outerRadius].forEach((radius) => {
-      if (radius === 0) return;
-      
-      const geometry = new THREE.BufferGeometry();
-      const vertices = [];
-      
-      for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        vertices.push(
-          Math.cos(angle) * radius, 
-          0.1,
-          Math.sin(angle) * radius
-        );
-      }
-      
-      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-      
-      const material = new THREE.LineBasicMaterial({ 
-        color: index >= 4 ? 0x00FFFF : 0xFFFFFF, // Cyan for infinite rings
-        transparent: true,
-        opacity: index >= 4 ? 0.3 : 0.5
+    // Create a ring for each boundary
+    this.rings.forEach((ring) => {
+      [ring.innerRadius, ring.outerRadius].forEach((radius) => {
+        if (radius === 0) return; // Skip center point
+        
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        
+        for (let i = 0; i <= segments; i++) {
+          const angle = (i / segments) * Math.PI * 2;
+          vertices.push(
+            Math.cos(angle) * radius, 
+            0.1, // Slightly above ground
+            Math.sin(angle) * radius
+          );
+        }
+        
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        
+        const material = new THREE.LineBasicMaterial({ 
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.5
+        });
+        
+        const ring = new THREE.LineLoop(geometry, material);
+        ring.position.copy(this.worldCenter);
+        scene.add(ring);
       });
       
-      const ringMarker = new THREE.LineLoop(geometry, material);
-      ringMarker.position.copy(this.worldCenter);
-      scene.add(ringMarker);
+      // Add quadrant dividers
+      for (let q = 0; q < 4; q++) {
+        const geometry = new THREE.BufferGeometry();
+        const angle = q * Math.PI / 2;
+        const vertices = [
+          this.worldCenter.x, 0.1, this.worldCenter.z,
+          this.worldCenter.x + Math.cos(angle) * ring.outerRadius,
+          0.1,
+          this.worldCenter.z + Math.sin(angle) * ring.outerRadius
+        ];
+        
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        
+        const material = new THREE.LineBasicMaterial({ 
+          color: 0xffffff, 
+          transparent: true,
+          opacity: 0.3
+        });
+        
+        const line = new THREE.Line(geometry, material);
+        scene.add(line);
+      }
     });
-  }
-
-  // INFINITE WORLD: Get maximum generated ring
-  public getMaxGeneratedRing(): number {
-    return this.maxGeneratedRing;
   }
 }

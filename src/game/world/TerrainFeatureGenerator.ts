@@ -89,7 +89,7 @@ export class TerrainFeatureGenerator {
   // REMOVED: Local feature visibility - now handled by GlobalFeatureManager only
   
   // Register a feature in the global system only (like tree foliage)
-  public registerFeature(object: THREE.Object3D, position: THREE.Vector3): void {
+  private registerFeature(object: THREE.Object3D, position: THREE.Vector3): void {
     const featureId = `feature_${Date.now()}_${Math.random()}`;
     
     // Only register with global feature manager - no local tracking
@@ -150,60 +150,6 @@ export class TerrainFeatureGenerator {
   // NEW: Get spawned features for a region (for manual collision registration)
   public getSpawnedFeaturesForRegion(regionKey: string): THREE.Object3D[] | undefined {
     return this.spawnedFeatures.get(regionKey);
-  }
-
-  // NEW: Create tree helper method
-  public createTree(position: THREE.Vector3): THREE.Object3D | null {
-    return this.treeGenerator.createTree(position);
-  }
-
-  // NEW: Create bush helper method  
-  public createBush(position: THREE.Vector3): THREE.Object3D | null {
-    return this.bushGenerator.createBush(position);
-  }
-
-  // NEW: Remove features by region
-  public removeFeaturesByRegion(region: RegionCoordinates): void {
-    const regionKey = this.ringSystem.getRegionKey(region);
-    const features = this.spawnedFeatures.get(regionKey);
-    
-    if (features) {
-      features.forEach(feature => {
-        this.scene.remove(feature);
-        this.disposeFeature(feature);
-      });
-      this.spawnedFeatures.delete(regionKey);
-    }
-  }
-
-  // NEW: Public method for generating rocks (simplified)
-  public generateRocksForRegion(region: RegionCoordinates): void {
-    const regionKey = this.ringSystem.getRegionKey(region);
-    if (this.spawnedFeatures.has(regionKey)) {
-      return;
-    }
-
-    const rocks: THREE.Object3D[] = [];
-    const regionCenter = this.ringSystem.getRegionCenter(region);
-    const rockCount = 5 + region.ringIndex * 2;
-    
-    for (let i = 0; i < rockCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const distance = Math.random() * 30;
-      const position = new THREE.Vector3(
-        regionCenter.x + Math.cos(angle) * distance,
-        regionCenter.y,
-        regionCenter.z + Math.sin(angle) * distance
-      );
-      
-      const rock = this.spawnRockByVariation(this.rockVariations[0], position);
-      if (rock) {
-        this.registerFeature(rock, position);
-        rocks.push(rock);
-      }
-    }
-    
-    this.spawnedFeatures.set(regionKey, rocks);
   }
   
   private loadRockModels(): void {

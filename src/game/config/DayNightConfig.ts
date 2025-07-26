@@ -60,8 +60,8 @@ export const LIGHTING_CONFIG = {
 };
 
 export const FOG_CONFIG = {
-  near: 50,
-  far: 400
+  near: 25,
+  far: 120
 };
 
 // More realistic color palettes with darker pre-sunrise colors

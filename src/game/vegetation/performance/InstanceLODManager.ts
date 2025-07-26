@@ -11,37 +11,19 @@ export interface InstanceLODInfo {
 
 export class InstanceLODManager {
   private regionInstanceData: Map<string, InstanceLODInfo> = new Map();
-  // VEGETATION-OPTIMIZED LOD distances - Fixed for proper close-range visibility
-  private lodDistances: number[] = [100, 200, 300, 350]; // Proper vegetation LOD ranges
-  private readonly DENSITY_UPDATE_THRESHOLD = 0.05; // Ultra-smooth fog transitions
-  private readonly POSITION_UPDATE_THRESHOLD = 2; // Hyper-responsive for fog-based changes
-  private readonly CULLING_DISTANCE = 350; // Extended culling distance aligned with fog wall
-  private readonly PLAYER_PROTECTION_RANGE = 50; // Full quality vegetation within 50 units of player
-  
-  // Fog integration
-  private fogVisibilityRange: number = 400;
+  // AGGRESSIVE LOD distances - Phase 2 FPS optimization
+  private lodDistances: number[] = [10, 20, 35, 60]; // Drastically reduced from [40, 80, 120, 200]
+  private readonly DENSITY_UPDATE_THRESHOLD = 0.1; // Lower threshold for smoother updates
+  private readonly POSITION_UPDATE_THRESHOLD = 3; // Lower threshold for responsiveness
+  private readonly CULLING_DISTANCE = 60; // Aggressive culling - reduced from 200
 
   public calculateInstanceLODDensity(distance: number): number {
-    // VEGETATION LOD FIX: Complete culling only beyond fog visibility
-    if (distance >= this.fogVisibilityRange) return 0.0; // Complete culling beyond fog (400+ units)
-    if (distance >= this.CULLING_DISTANCE) return 0.0;   // Secondary culling threshold (350+ units)
-    
-    // PLAYER-CENTRIC PROTECTION: Full quality vegetation within protection range
-    if (distance < this.PLAYER_PROTECTION_RANGE) return 1.0; // 0-50 units: always full density
-    
-    // FIXED DENSITY SCALING: No fog factor applied until approaching fog wall
-    if (distance < this.lodDistances[0]) return 1.0;    // 0-100 units: full density (no fog factor)
-    if (distance < this.lodDistances[1]) return 0.8;    // 100-200 units: 80% density
-    if (distance < this.lodDistances[2]) return 0.5;    // 200-300 units: 50% density
-    if (distance < this.lodDistances[3]) return 0.2;    // 300-350 units: 20% density
-    
-    // Only apply fog factor for objects very close to fog wall (350-400 units)
-    const fogFactor = 1.0 - ((distance - this.CULLING_DISTANCE) / (this.fogVisibilityRange - this.CULLING_DISTANCE));
-    return 0.1 * Math.max(0.0, fogFactor); // 350-400 units: fade out with fog
-  }
-  
-  public setFogVisibilityRange(range: number): void {
-    this.fogVisibilityRange = range;
+    if (distance >= this.CULLING_DISTANCE) return 0.0; // Complete culling beyond 60 units
+    if (distance < this.lodDistances[0]) return 1.0;    // 0-10 units: full density
+    if (distance < this.lodDistances[1]) return 0.5;    // 10-20 units: 50% density (more aggressive)
+    if (distance < this.lodDistances[2]) return 0.2;    // 20-35 units: 20% density (very aggressive)
+    if (distance < this.lodDistances[3]) return 0.05;   // 35-60 units: 5% density (ultra sparse)
+    return 0.0; // Complete culling
   }
 
   public updateInstanceVisibility(
@@ -58,7 +40,7 @@ export class InstanceLODManager {
     if (distanceToPlayer > this.CULLING_DISTANCE) {
       if (instancedMesh.visible) {
         instancedMesh.visible = false;
-        // PERFORMANCE: Removed per-frame logging to reduce lag
+        console.log(`🌱 LOD: Culled ${regionKey} at distance ${distanceToPlayer.toFixed(1)}`);
         return true;
       }
       return false;
@@ -117,7 +99,7 @@ export class InstanceLODManager {
         instancedMesh.visible = false;
       }
       
-      // PERFORMANCE: Removed per-frame logging to reduce lag
+      console.log(`🌱 LOD: Updated ${regionKey} instances: ${targetVisibleCount}/${lodInfo.originalInstanceCount} (${targetLODDensity.toFixed(2)}) at ${distanceToPlayer.toFixed(1)}u`);
       return true;
     }
 

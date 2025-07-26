@@ -12,7 +12,6 @@ import { UIIntegrationManager } from './UIIntegrationManager';
 import { PhysicsManager } from './PhysicsManager';
 import { BuildingManager } from '../buildings/BuildingManager';
 import { ChestInteractionSystem } from '../systems/ChestInteractionSystem';
-import { FogAwareCullingManager } from '../systems/FogAwareCullingManager';
 import { GameState, EnemyType } from '../../types/GameTypes';
 
 export class GameEngine {
@@ -31,7 +30,6 @@ export class GameEngine {
   private combatSystem: CombatSystem | null = null;
   private movementSystem: MovementSystem | null = null;
   private chestInteractionSystem: ChestInteractionSystem | null = null;
-  private fogAwareCullingManager: FogAwareCullingManager | null = null;
   
   // Game entities
   private player: Player | null = null;
@@ -121,9 +119,6 @@ export class GameEngine {
       const playerBody = this.player.getBody();
       if (playerBody.leftArm) playerBody.leftArm.visible = true;
       if (playerBody.rightArm) playerBody.rightArm.visible = true;
-      
-      // Create fog-aware culling manager for massive environment performance
-      this.fogAwareCullingManager = new FogAwareCullingManager(this.renderEngine.getScene(), this.renderEngine.getCamera());
       
       // Create game systems with physics manager
       this.combatSystem = new CombatSystem(this.renderEngine.getScene(), this.player, this.effectsManager, this.audioManager, this.renderEngine.getCamera(), this.physicsManager);
@@ -451,15 +446,6 @@ export class GameEngine {
     // Update camera to follow player
     this.renderEngine.updateFirstPersonCamera(this.player.getPosition());
     
-    // Update fog-aware culling system for massive environment performance
-    if (this.fogAwareCullingManager) {
-      this.fogAwareCullingManager.updateFogBasedCulling(this.player.getPosition(), deltaTime);
-      
-      // Sync fog distance with render engine
-      const fogSettings = this.fogAwareCullingManager.getFogSettings();
-      this.renderEngine.updateFogDistance(fogSettings.cullRange);
-    }
-    
     // NEW: Update scene manager with player position for ring-quadrant system
     if (this.sceneManager) {
       this.sceneManager.update(deltaTime, this.player.getPosition());
@@ -698,9 +684,6 @@ export class GameEngine {
     }
     if (this.chestInteractionSystem) {
       this.chestInteractionSystem.dispose();
-    }
-    if (this.fogAwareCullingManager) {
-      this.fogAwareCullingManager.dispose();
     }
     
     console.log("🎮 [GameEngine] Game engine disposed!");
