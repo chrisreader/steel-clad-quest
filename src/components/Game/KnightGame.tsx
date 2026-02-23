@@ -20,6 +20,7 @@ import { useWeaponManagement } from './hooks/useWeaponManagement';
 import { useGameManager } from './hooks/useGameManager';
 import { useCursorManagement } from './hooks/useCursorManagement';
 import { useInputHandling } from './hooks/useInputHandling';
+import RockClusterDebugPanel from './UI/RockClusterDebugPanel';
 
 interface KnightGameProps {
   onLoadingComplete?: () => void;
@@ -130,6 +131,7 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
   });
 
   const [mountReady, setMountReady] = useState(false);
+  const [showRockDebug, setShowRockDebug] = useState(false);
   const gameControllerRef = useRef<GameControllerRef>(null);
   const engineControllerRef = useRef<GameEngineControllerRef>(null);
 
@@ -562,6 +564,18 @@ export const KnightGame: React.FC<KnightGameProps> = ({ onLoadingComplete }) => 
           }}
         />
       )}
+
+      {/* Rock Cluster Debug Panel */}
+      {gameStarted && (
+        <button
+          onClick={() => setShowRockDebug(prev => !prev)}
+          className="absolute left-4 top-40 z-10 bg-black bg-opacity-50 text-white p-2 rounded-lg hover:bg-opacity-70 transition-colors text-xs"
+          title="Rock Cluster Debug"
+        >
+          🏔️ Rocks
+        </button>
+      )}
+      <RockClusterDebugPanel isOpen={showRockDebug} onClose={() => setShowRockDebug(false)} />
 
       {/* Chest Inventory UI */}
       <DualInventoryView
