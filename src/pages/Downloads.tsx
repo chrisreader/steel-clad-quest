@@ -114,10 +114,17 @@ function downloadFile(name: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function downloadAll(files: FileEntry[]) {
-  files.forEach((f, i) => {
-    setTimeout(() => downloadFile(f.name, f.content), i * 200);
-  });
+async function downloadAll(sectionTitle: string, files: FileEntry[]) {
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+  files.forEach((f) => zip.file(f.name, f.content));
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${sectionTitle.toLowerCase()}-source.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function SectionBlock({ section }: { section: Section }) {
@@ -146,7 +153,7 @@ function SectionBlock({ section }: { section: Section }) {
       {open && (
         <div className="px-5 pb-4">
           <button
-            onClick={() => downloadAll(section.files)}
+            onClick={() => downloadAll(section.title, section.files)}
             className="mb-3 flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors"
           >
             <Download className="w-4 h-4" />
